@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collage Edge Dragging Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .instructions {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .instructions h2 {
+            margin-top: 0;
+            color: #2196F3;
+        }
+        .instructions ul {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        .instructions li {
+            margin: 5px 0;
+        }
+        .collage-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            cursor: pointer;
+            max-width: 100%;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        .highlight {
+            color: #2196F3;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Collage Edge Dragging Demo</h1>
+        
+        <div class="instructions">
+            <h2>How to use:</h2>
+            <ul>
+                <li>Move your mouse over the <span class="highlight">edges between panels</span> - they will be highlighted in blue</li>
+                <li>Click and drag an edge to <span class="highlight">resize the panels</span></li>
+                <li>The cursor will change to resize mode when hovering over an edge</li>
+                <li>Minimum panel size is enforced to prevent panels from becoming too small</li>
+                <li>Works with both mouse and touch input</li>
+            </ul>
+        </div>
+        
+        <div class="collage-container">
+            <canvas id="collageCanvas"></canvas>
+            <div class="status" id="status">Hover over edges to resize panels</div>
+        </div>
+    </div>
+
+    <script>
+        // Simple implementation of the edge dragging functionality
+        const canvas = document.getElementById('collageCanvas');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
+        
+        // Set canvas size
+        canvas.width = 600;
+        canvas.height = 400;
+        
+        // Layout configuration (2x2 grid)
+        let columnFrValues = [1, 1];
+        let rowFrValues = [1, 1];
+        const borderSize = 10;
+        
+        // Dragging state
+        let isDraggingEdge = false;
+        let draggingEdge = null;
+        let dragStart = { x: 0, y: 0 };
+        let hoveredEdge = null;
+        
+        // Calculate panel rectangles based on fr values
+        function calculatePanelRects() {
+            const totalWidth = canvas.width - borderSize * 3;
+            const totalHeight = canvas.height - borderSize * 3;
+            
+            const totalColFr = columnFrValues.reduce((sum, fr) => sum + fr, 0);
+            const totalRowFr = rowFrValues.reduce((sum, fr) => sum + fr, 0);
+            
+            const colWidths = columnFrValues.map(fr => (fr / totalColFr) * totalWidth);
+            const rowHeights = rowFrValues.map(fr => (fr / totalRowFr) * totalHeight);
+            
+            const panels = [];
+            let y = borderSize;
+            
+            for (let row = 0; row < rowFrValues.length; row++) {
+                let x = borderSize;
+                for (let col = 0; col < columnFrValues.length; col++) {
+                    panels.push({
+                        x: x,
+                        y: y,
+                        width: colWidths[col],
+                        height: rowHeights[row],
+                        row: row,
+                        col: col
+                    });
+                    x += colWidths[col] + borderSize;
+                }
+                y += rowHeights[row] + borderSize;
+            }
+            
+            return panels;
+        }
+        
+        // Detect if mouse is near an edge
+        function detectEdge(x, y, threshold = 10) {
+            const panels = calculatePanelRects();
+            
+            // Check vertical edges
+            for (let col = 0; col < columnFrValues.length - 1; col++) {
+                const edgeX = panels[col].x + panels[col].width + borderSize / 2;
+                if (Math.abs(x - edgeX) <= threshold) {
+                    return {
+                        type: 'vertical',
+                        index: col,
+                        position: edgeX,
+                        y1: borderSize,
+                        y2: canvas.height - borderSize
+                    };
+                }
+            }
+            
+            // Check horizontal edges
+            for (let row = 0; row < rowFrValues.length - 1; row++) {
+                const edgeY = panels[row * columnFrValues.length].y + panels[row * columnFrValues.length].height + borderSize / 2;
+                if (Math.abs(y - edgeY) <= threshold) {
+                    return {
+                        type: 'horizontal',
+                        index: row,
+                        position: edgeY,
+                        x1: borderSize,
+                        x2: canvas.width - borderSize
+                    };
+                }
+            }
+            
+            return null;
+        }
+        
+        // Draw the collage
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw panels
+            const panels = calculatePanelRects();
+            panels.forEach((panel, index) => {
+                // Panel background
+                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24'];
+                ctx.fillStyle = colors[index % colors.length];
+                ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+                
+                // Panel label
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`Panel ${index + 1}`, panel.x + panel.width / 2, panel.y + panel.height / 2);
+            });
+            
+            // Draw edge hover indicator
+            if (hoveredEdge && !isDraggingEdge) {
+                ctx.save();
+                ctx.strokeStyle = '#2196F3';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                
+                if (hoveredEdge.type === 'horizontal') {
+                    ctx.beginPath();
+                    ctx.moveTo(hoveredEdge.x1, hoveredEdge.position);
+                    ctx.lineTo(hoveredEdge.x2, hoveredEdge.position);
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.moveTo(hoveredEdge.position, hoveredEdge.y1);
+                    ctx.lineTo(hoveredEdge.position, hoveredEdge.y2);
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            }
+            
+            // Draw edge dragging indicator
+            if (isDraggingEdge && draggingEdge) {
+                ctx.save();
+                ctx.strokeStyle = '#FF9800';
+                ctx.lineWidth = 3;
+                
+                if (draggingEdge.type === 'horizontal') {
+                    ctx.beginPath();
+                    ctx.moveTo(draggingEdge.x1, draggingEdge.position);
+                    ctx.lineTo(draggingEdge.x2, draggingEdge.position);
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.moveTo(draggingEdge.position, draggingEdge.y1);
+                    ctx.lineTo(draggingEdge.position, draggingEdge.y2);
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // Mouse move handler
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (isDraggingEdge && draggingEdge) {
+                const delta = draggingEdge.type === 'horizontal' ? y - dragStart.y : x - dragStart.x;
+                
+                if (draggingEdge.type === 'horizontal') {
+                    const totalHeight = canvas.height - borderSize * 3;
+                    const totalFr = rowFrValues.reduce((sum, fr) => sum + fr, 0);
+                    const frToPixel = totalHeight / totalFr;
+                    const deltaFr = delta / frToPixel;
+                    
+                    const newRowFrValues = [...rowFrValues];
+                    const rowIndex = draggingEdge.index;
+                    
+                    const minFr = 0.3;
+                    const maxDeltaFr = Math.min(
+                        rowFrValues[rowIndex] - minFr,
+                        rowFrValues[rowIndex + 1] - minFr
+                    );
+                    
+                    const clampedDeltaFr = Math.max(-maxDeltaFr, Math.min(maxDeltaFr, deltaFr));
+                    
+                    newRowFrValues[rowIndex] += clampedDeltaFr;
+                    newRowFrValues[rowIndex + 1] -= clampedDeltaFr;
+                    
+                    rowFrValues = newRowFrValues;
+                    status.textContent = `Row sizes: ${rowFrValues.map(fr => fr.toFixed(2)).join(' : ')}`;
+                } else {
+                    const totalWidth = canvas.width - borderSize * 3;
+                    const totalFr = columnFrValues.reduce((sum, fr) => sum + fr, 0);
+                    const frToPixel = totalWidth / totalFr;
+                    const deltaFr = delta / frToPixel;
+                    
+                    const newColumnFrValues = [...columnFrValues];
+                    const colIndex = draggingEdge.index;
+                    
+                    const minFr = 0.3;
+                    const maxDeltaFr = Math.min(
+                        columnFrValues[colIndex] - minFr,
+                        columnFrValues[colIndex + 1] - minFr
+                    );
+                    
+                    const clampedDeltaFr = Math.max(-maxDeltaFr, Math.min(maxDeltaFr, deltaFr));
+                    
+                    newColumnFrValues[colIndex] += clampedDeltaFr;
+                    newColumnFrValues[colIndex + 1] -= clampedDeltaFr;
+                    
+                    columnFrValues = newColumnFrValues;
+                    status.textContent = `Column sizes: ${columnFrValues.map(fr => fr.toFixed(2)).join(' : ')}`;
+                }
+                
+                draw();
+                return;
+            }
+            
+            const edge = detectEdge(x, y);
+            if (edge !== hoveredEdge) {
+                hoveredEdge = edge;
+                if (edge) {
+                    canvas.style.cursor = edge.type === 'horizontal' ? 'ns-resize' : 'ew-resize';
+                    status.textContent = 'Click and drag to resize';
+                } else {
+                    canvas.style.cursor = 'default';
+                    status.textContent = 'Hover over edges to resize panels';
+                }
+                draw();
+            }
+        });
+        
+        // Mouse down handler
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const edge = detectEdge(x, y);
+            if (edge) {
+                isDraggingEdge = true;
+                draggingEdge = edge;
+                dragStart = { x, y };
+                status.textContent = 'Dragging edge...';
+            }
+        });
+        
+        // Mouse up handler
+        canvas.addEventListener('mouseup', () => {
+            isDraggingEdge = false;
+            draggingEdge = null;
+            if (hoveredEdge) {
+                status.textContent = 'Click and drag to resize';
+            }
+        });
+        
+        // Mouse leave handler
+        canvas.addEventListener('mouseleave', () => {
+            hoveredEdge = null;
+            isDraggingEdge = false;
+            draggingEdge = null;
+            canvas.style.cursor = 'default';
+            status.textContent = 'Hover over edges to resize panels';
+            draw();
+        });
+        
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>

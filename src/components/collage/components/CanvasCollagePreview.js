@@ -123,6 +123,113 @@ const parseGridTemplateAreas = (gridTemplateAreas) => {
 };
 
 /**
+ * Helper function to parse fr values from grid template string
+ */
+const parseFrValues = (templateString) => {
+  if (!templateString) return [];
+  
+  if (templateString.includes('repeat(')) {
+    const repeatMatch = templateString.match(/repeat\((\d+),\s*(\d*\.?\d*)fr\)/);
+    if (repeatMatch) {
+      const count = parseInt(repeatMatch[1], 10);
+      const value = repeatMatch[2] ? parseFloat(repeatMatch[2]) : 1;
+      return Array(count).fill(value);
+    }
+  }
+  
+  // Parse individual fr units like "2fr 1fr" or "1fr 1fr 1fr"
+  const frMatches = templateString.match(/(\d*\.?\d*)fr/g);
+  if (frMatches) {
+    return frMatches.map(match => {
+      const value = match.replace('fr', '').trim();
+      return value === '' ? 1 : parseFloat(value);
+    });
+  }
+  
+  return [1]; // Default single column/row
+};
+
+/**
+ * Helper function to convert fr values array back to template string
+ */
+const frValuesToTemplate = (frValues) => {
+  return frValues.map(value => `${value}fr`).join(' ');
+};
+
+/**
+ * Helper function to detect if a point is near an edge
+ */
+const detectEdge = (x, y, panelRects, borderPixels, threshold = 10) => {
+  // Check horizontal edges (between rows)
+  const horizontalEdges = [];
+  const verticalEdges = [];
+  
+  // Group panels by their positions to find edges
+  const rowPositions = new Set();
+  const colPositions = new Set();
+  
+  panelRects.forEach(rect => {
+    rowPositions.add(rect.y);
+    rowPositions.add(rect.y + rect.height);
+    colPositions.add(rect.x);
+    colPositions.add(rect.x + rect.width);
+  });
+  
+  // Convert to arrays and sort
+  const sortedRows = Array.from(rowPositions).sort((a, b) => a - b);
+  const sortedCols = Array.from(colPositions).sort((a, b) => a - b);
+  
+  // Find internal edges (not the outer borders)
+  for (let i = 1; i < sortedRows.length - 1; i++) {
+    const edgeY = sortedRows[i];
+    if (Math.abs(y - edgeY) <= threshold) {
+      // Check if this is an internal edge by verifying panels exist on both sides
+      const panelsAbove = panelRects.some(rect => rect.y + rect.height === edgeY);
+      const panelsBelow = panelRects.some(rect => rect.y === edgeY);
+      
+      if (panelsAbove && panelsBelow) {
+        horizontalEdges.push({
+          type: 'horizontal',
+          position: edgeY,
+          index: i - 1, // Adjust index to match row gaps
+          x1: Math.min(...panelRects.map(r => r.x)),
+          x2: Math.max(...panelRects.map(r => r.x + r.width))
+        });
+      }
+    }
+  }
+  
+  for (let i = 1; i < sortedCols.length - 1; i++) {
+    const edgeX = sortedCols[i];
+    if (Math.abs(x - edgeX) <= threshold) {
+      // Check if this is an internal edge by verifying panels exist on both sides
+      const panelsLeft = panelRects.some(rect => rect.x + rect.width === edgeX);
+      const panelsRight = panelRects.some(rect => rect.x === edgeX);
+      
+      if (panelsLeft && panelsRight) {
+        verticalEdges.push({
+          type: 'vertical',
+          position: edgeX,
+          index: i - 1, // Adjust index to match column gaps
+          y1: Math.min(...panelRects.map(r => r.y)),
+          y2: Math.max(...panelRects.map(r => r.y + r.height))
+        });
+      }
+    }
+  }
+  
+  // Return the closest edge if any
+  if (horizontalEdges.length > 0) {
+    return horizontalEdges[0];
+  }
+  if (verticalEdges.length > 0) {
+    return verticalEdges[0];
+  }
+  
+  return null;
+};
+
+/**
  * Helper function to parse CSS grid template and convert to panel rectangles
  */
 const parseGridToRects = (layoutConfig, containerWidth, containerHeight, panelCount, borderPixels) => {
@@ -318,14 +425,29 @@ const CanvasCollagePreview = ({
   const [textEditAnchor, setTextEditAnchor] = useState(null);
   const [touchStartDistance, setTouchStartDistance] = useState(null);
   const [touchStartScale, setTouchStartScale] = useState(1);
+  
+  // Edge dragging state
+  const [isDraggingEdge, setIsDraggingEdge] = useState(false);
+  const [draggingEdge, setDraggingEdge] = useState(null);
+  const [hoveredEdge, setHoveredEdge] = useState(null);
+  const [customLayoutConfig, setCustomLayoutConfig] = useState(null);
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
+    // Use custom layout config if edge dragging has modified it
+    if (customLayoutConfig) {
+      return customLayoutConfig;
+    }
     return selectedTemplate ? createLayoutConfig(selectedTemplate, panelCount) : null;
-  }, [selectedTemplate, panelCount]);
+  }, [selectedTemplate, panelCount, customLayoutConfig]);
 
   // Calculate border pixels
   const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
+
+  // Reset custom layout when template changes
+  useEffect(() => {
+    setCustomLayoutConfig(null);
+  }, [selectedTemplate]);
 
   // Load images when they change
   useEffect(() => {
@@ -604,6 +726,49 @@ const CanvasCollagePreview = ({
         ctx.restore();
       }
     });
+    
+    // Draw edge hover indicator
+    if (hoveredEdge && !isDraggingEdge) {
+      ctx.save();
+      ctx.strokeStyle = '#2196F3';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 5]);
+      
+      if (hoveredEdge.type === 'horizontal') {
+        ctx.beginPath();
+        ctx.moveTo(hoveredEdge.x1, hoveredEdge.position);
+        ctx.lineTo(hoveredEdge.x2, hoveredEdge.position);
+        ctx.stroke();
+      } else if (hoveredEdge.type === 'vertical') {
+        ctx.beginPath();
+        ctx.moveTo(hoveredEdge.position, hoveredEdge.y1);
+        ctx.lineTo(hoveredEdge.position, hoveredEdge.y2);
+        ctx.stroke();
+      }
+      
+      ctx.restore();
+    }
+    
+    // Draw edge dragging indicator
+    if (isDraggingEdge && draggingEdge) {
+      ctx.save();
+      ctx.strokeStyle = '#FF9800';
+      ctx.lineWidth = 3;
+      
+      if (draggingEdge.type === 'horizontal') {
+        ctx.beginPath();
+        ctx.moveTo(draggingEdge.x1, draggingEdge.position);
+        ctx.lineTo(draggingEdge.x2, draggingEdge.position);
+        ctx.stroke();
+      } else if (draggingEdge.type === 'vertical') {
+        ctx.beginPath();
+        ctx.moveTo(draggingEdge.position, draggingEdge.y1);
+        ctx.lineTo(draggingEdge.position, draggingEdge.y2);
+        ctx.stroke();
+      }
+      
+      ctx.restore();
+    }
   }, [
     componentWidth, 
     componentHeight, 
@@ -616,7 +781,10 @@ const CanvasCollagePreview = ({
     selectedPanel, 
     isTransformMode,
     panelTexts,
-    theme.palette.mode
+    theme.palette.mode,
+    hoveredEdge,
+    isDraggingEdge,
+    draggingEdge
   ]);
 
   // Redraw canvas when dependencies change
@@ -633,19 +801,106 @@ const CanvasCollagePreview = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
+    // Handle edge dragging
+    if (isDraggingEdge && draggingEdge && layoutConfig) {
+      const delta = draggingEdge.type === 'horizontal' ? y - dragStart.y : x - dragStart.x;
+      
+      // Parse current grid template values
+      const columnFrValues = parseFrValues(layoutConfig.gridTemplateColumns);
+      const rowFrValues = parseFrValues(layoutConfig.gridTemplateRows);
+      
+      // Calculate new fr values based on drag
+      if (draggingEdge.type === 'horizontal') {
+        // Dragging horizontal edge affects row heights
+        const totalHeight = componentHeight - (borderPixels * 2) - (borderPixels * (rowFrValues.length - 1));
+        const totalFr = rowFrValues.reduce((sum, fr) => sum + fr, 0);
+        const frToPixel = totalHeight / totalFr;
+        
+        // Calculate the change in fr units
+        const deltaFr = delta / frToPixel;
+        
+        // Update the fr values for the rows above and below the edge
+        const newRowFrValues = [...rowFrValues];
+        const rowIndex = draggingEdge.index;
+        
+        if (rowIndex >= 0 && rowIndex < rowFrValues.length - 1) {
+          // Ensure minimum size of 0.2fr for both rows
+          const minFr = 0.2;
+          const maxDeltaFr = Math.min(
+            rowFrValues[rowIndex] - minFr,
+            rowFrValues[rowIndex + 1] - minFr
+          );
+          
+          const clampedDeltaFr = Math.max(-maxDeltaFr, Math.min(maxDeltaFr, deltaFr));
+          
+          newRowFrValues[rowIndex] += clampedDeltaFr;
+          newRowFrValues[rowIndex + 1] -= clampedDeltaFr;
+          
+          // Update custom layout config
+          setCustomLayoutConfig({
+            ...layoutConfig,
+            gridTemplateRows: frValuesToTemplate(newRowFrValues)
+          });
+        }
+      } else if (draggingEdge.type === 'vertical') {
+        // Dragging vertical edge affects column widths
+        const totalWidth = componentWidth - (borderPixels * 2) - (borderPixels * (columnFrValues.length - 1));
+        const totalFr = columnFrValues.reduce((sum, fr) => sum + fr, 0);
+        const frToPixel = totalWidth / totalFr;
+        
+        // Calculate the change in fr units
+        const deltaFr = delta / frToPixel;
+        
+        // Update the fr values for the columns left and right of the edge
+        const newColumnFrValues = [...columnFrValues];
+        const colIndex = draggingEdge.index;
+        
+        if (colIndex >= 0 && colIndex < columnFrValues.length - 1) {
+          // Ensure minimum size of 0.2fr for both columns
+          const minFr = 0.2;
+          const maxDeltaFr = Math.min(
+            columnFrValues[colIndex] - minFr,
+            columnFrValues[colIndex + 1] - minFr
+          );
+          
+          const clampedDeltaFr = Math.max(-maxDeltaFr, Math.min(maxDeltaFr, deltaFr));
+          
+          newColumnFrValues[colIndex] += clampedDeltaFr;
+          newColumnFrValues[colIndex + 1] -= clampedDeltaFr;
+          
+          // Update custom layout config
+          setCustomLayoutConfig({
+            ...layoutConfig,
+            gridTemplateColumns: frValuesToTemplate(newColumnFrValues)
+          });
+        }
+      }
+      
+      return; // Skip other mouse move logic when dragging edge
+    }
+    
+    // Check for edge hover
+    const edge = detectEdge(x, y, panelRects, borderPixels);
+    if (edge !== hoveredEdge) {
+      setHoveredEdge(edge);
+      if (edge) {
+        canvas.style.cursor = edge.type === 'horizontal' ? 'ns-resize' : 'ew-resize';
+      }
+    }
+    
     // Find which panel is under the mouse
     const hoveredPanelIndex = panelRects.findIndex(panel => 
       x >= panel.x && x <= panel.x + panel.width &&
       y >= panel.y && y <= panel.y + panel.height
     );
     
-    if (hoveredPanelIndex !== hoveredPanel) {
+    if (!edge && hoveredPanelIndex !== hoveredPanel) {
       setHoveredPanel(hoveredPanelIndex >= 0 ? hoveredPanelIndex : null);
       canvas.style.cursor = hoveredPanelIndex >= 0 ? 'pointer' : 'default';
     }
     
     // Handle dragging for transform mode
-    if (isDragging && selectedPanel !== null) {
+    if (isDragging && selectedPanel !== null && !isDraggingEdge) {
       const panel = panelRects[selectedPanel];
       if (panel && isTransformMode[panel.panelId]) {
         const deltaX = x - dragStart.x;
@@ -728,7 +983,7 @@ const CanvasCollagePreview = ({
         setDragStart({ x, y });
       }
     }
-  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform]);
+  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, loadedImages, panelImageMapping, isDraggingEdge, draggingEdge, layoutConfig, componentHeight, componentWidth, borderPixels, hoveredEdge]);
 
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -737,6 +992,15 @@ const CanvasCollagePreview = ({
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    
+    // Check if clicking on an edge first
+    const edge = detectEdge(x, y, panelRects, borderPixels);
+    if (edge) {
+      setIsDraggingEdge(true);
+      setDraggingEdge(edge);
+      setDragStart({ x, y });
+      return;
+    }
     
     const clickedPanelIndex = panelRects.findIndex(panel => 
       x >= panel.x && x <= panel.x + panel.width &&
@@ -756,15 +1020,20 @@ const CanvasCollagePreview = ({
         onPanelClick(clickedPanel.index, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick]);
+  }, [panelRects, isTransformMode, onPanelClick, borderPixels]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
+    setIsDraggingEdge(false);
+    setDraggingEdge(null);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
     // Clear hover state when mouse leaves canvas
     setHoveredPanel(null);
+    setHoveredEdge(null);
+    setIsDraggingEdge(false);
+    setDraggingEdge(null);
     const canvas = canvasRef.current;
     if (canvas) {
       canvas.style.cursor = 'default';
@@ -924,6 +1193,17 @@ const CanvasCollagePreview = ({
       const x = touch.clientX - rect.left;
       const y = touch.clientY - rect.top;
       
+      // Check if touching an edge first
+      const edge = detectEdge(x, y, panelRects, borderPixels);
+      if (edge) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingEdge(true);
+        setDraggingEdge(edge);
+        setDragStart({ x, y });
+        return;
+      }
+      
       const clickedPanelIndex = panelRects.findIndex(panel => 
         x >= panel.x && x <= panel.x + panel.width &&
         y >= panel.y && y <= panel.y + panel.height
@@ -943,16 +1223,9 @@ const CanvasCollagePreview = ({
           e.stopPropagation();
           setIsDragging(true);
           setDragStart({ x, y });
-        } else {
-          // Allow normal touch behavior for panels not in transform mode
-          if (anyPanelInTransformMode) {
-            // If any panel is in transform mode, we need to manually allow scrolling
-            // Don't preventDefault here to allow normal page scrolling
-          }
-          if (onPanelClick) {
-            // Regular panel click
-            onPanelClick(clickedPanel.index, clickedPanel.panelId);
-          }
+        } else if (onPanelClick) {
+          // Regular panel click
+          onPanelClick(clickedPanel.index, clickedPanel.panelId);
         }
       }
       // Note: When touched outside any panel, we allow normal scrolling by not calling preventDefault
@@ -974,7 +1247,7 @@ const CanvasCollagePreview = ({
         setIsDragging(false); // Stop any ongoing drag
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, borderPixels]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -982,6 +1255,91 @@ const CanvasCollagePreview = ({
     
     const rect = canvas.getBoundingClientRect();
     const touches = Array.from(e.touches);
+    
+    // Handle edge dragging with single touch
+    if (touches.length === 1 && isDraggingEdge && draggingEdge && layoutConfig) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const touch = touches[0];
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      
+      const delta = draggingEdge.type === 'horizontal' ? y - dragStart.y : x - dragStart.x;
+      
+      // Parse current grid template values
+      const columnFrValues = parseFrValues(layoutConfig.gridTemplateColumns);
+      const rowFrValues = parseFrValues(layoutConfig.gridTemplateRows);
+      
+      // Calculate new fr values based on drag
+      if (draggingEdge.type === 'horizontal') {
+        // Dragging horizontal edge affects row heights
+        const totalHeight = componentHeight - (borderPixels * 2) - (borderPixels * (rowFrValues.length - 1));
+        const totalFr = rowFrValues.reduce((sum, fr) => sum + fr, 0);
+        const frToPixel = totalHeight / totalFr;
+        
+        // Calculate the change in fr units
+        const deltaFr = delta / frToPixel;
+        
+        // Update the fr values for the rows above and below the edge
+        const newRowFrValues = [...rowFrValues];
+        const rowIndex = draggingEdge.index;
+        
+        if (rowIndex >= 0 && rowIndex < rowFrValues.length - 1) {
+          // Ensure minimum size of 0.2fr for both rows
+          const minFr = 0.2;
+          const maxDeltaFr = Math.min(
+            rowFrValues[rowIndex] - minFr,
+            rowFrValues[rowIndex + 1] - minFr
+          );
+          
+          const clampedDeltaFr = Math.max(-maxDeltaFr, Math.min(maxDeltaFr, deltaFr));
+          
+          newRowFrValues[rowIndex] += clampedDeltaFr;
+          newRowFrValues[rowIndex + 1] -= clampedDeltaFr;
+          
+          // Update custom layout config
+          setCustomLayoutConfig({
+            ...layoutConfig,
+            gridTemplateRows: frValuesToTemplate(newRowFrValues)
+          });
+        }
+      } else if (draggingEdge.type === 'vertical') {
+        // Dragging vertical edge affects column widths
+        const totalWidth = componentWidth - (borderPixels * 2) - (borderPixels * (columnFrValues.length - 1));
+        const totalFr = columnFrValues.reduce((sum, fr) => sum + fr, 0);
+        const frToPixel = totalWidth / totalFr;
+        
+        // Calculate the change in fr units
+        const deltaFr = delta / frToPixel;
+        
+        // Update the fr values for the columns left and right of the edge
+        const newColumnFrValues = [...columnFrValues];
+        const colIndex = draggingEdge.index;
+        
+        if (colIndex >= 0 && colIndex < columnFrValues.length - 1) {
+          // Ensure minimum size of 0.2fr for both columns
+          const minFr = 0.2;
+          const maxDeltaFr = Math.min(
+            columnFrValues[colIndex] - minFr,
+            columnFrValues[colIndex + 1] - minFr
+          );
+          
+          const clampedDeltaFr = Math.max(-maxDeltaFr, Math.min(maxDeltaFr, deltaFr));
+          
+          newColumnFrValues[colIndex] += clampedDeltaFr;
+          newColumnFrValues[colIndex + 1] -= clampedDeltaFr;
+          
+          // Update custom layout config
+          setCustomLayoutConfig({
+            ...layoutConfig,
+            gridTemplateColumns: frValuesToTemplate(newColumnFrValues)
+          });
+        }
+      }
+      
+      return; // Skip other touch move logic when dragging edge
+    }
     
     if (touches.length === 1 && isDragging && selectedPanel !== null) {
       // Single touch drag
@@ -1158,10 +1516,12 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter]);
+  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter, isDraggingEdge, draggingEdge, layoutConfig, componentHeight, componentWidth, borderPixels]);
 
   const handleTouchEnd = useCallback((e) => {
     setIsDragging(false);
+    setIsDraggingEdge(false);
+    setDraggingEdge(null);
     setTouchStartDistance(null);
     setTouchStartScale(1);
   }, []);
