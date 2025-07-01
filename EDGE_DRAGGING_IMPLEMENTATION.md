@@ -33,7 +33,11 @@ I have successfully implemented edge dragging functionality for the `/collage` p
 - **Mode Awareness**: Edge dragging is disabled when panels are in transform mode
 - **Priority System**: Edge interactions take precedence over panel interactions when hovering edges
 - **Touch Optimization**: Larger touch targets for better mobile usability
-- **Scroll Prevention**: Prevents page scrolling during edge dragging operations
+- **Comprehensive Scroll Prevention**: Multiple layers of scroll prevention during edge dragging:
+  - Event prevention on touch/mouse handlers
+  - Global document event listeners with `passive: false`
+  - Body overflow and touch-action CSS overrides
+  - Canvas and container-specific event prevention
 
 ## Technical Implementation
 
