@@ -779,6 +779,28 @@ const CanvasCollagePreview = ({
     drawCanvas();
   }, [drawCanvas]);
 
+  // Prevent page scrolling when dragging edges
+  useEffect(() => {
+    const preventScroll = (e) => {
+      if (isDraggingEdge) {
+        e.preventDefault();
+      }
+    };
+
+    if (isDraggingEdge) {
+      // Add passive: false to ensure preventDefault works
+      document.addEventListener('touchmove', preventScroll, { passive: false });
+      document.addEventListener('wheel', preventScroll, { passive: false });
+      document.addEventListener('scroll', preventScroll, { passive: false });
+    }
+
+    return () => {
+      document.removeEventListener('touchmove', preventScroll);
+      document.removeEventListener('wheel', preventScroll);
+      document.removeEventListener('scroll', preventScroll);
+    };
+  }, [isDraggingEdge]);
+
   // Handle mouse events
   const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -790,6 +812,9 @@ const CanvasCollagePreview = ({
     
     // Handle edge dragging
     if (isDraggingEdge && draggedEdge) {
+      // Prevent default behavior when dragging edges
+      e.preventDefault();
+      e.stopPropagation();
       const currentLayoutConfig = customLayoutConfig || (selectedTemplate ? createLayoutConfig(selectedTemplate, panelCount) : null);
       if (!currentLayoutConfig) return;
       
@@ -1030,6 +1055,8 @@ const CanvasCollagePreview = ({
     // Check if clicking on an edge first
     if (hoveredEdge !== null && gridEdges[hoveredEdge]) {
       const edge = gridEdges[hoveredEdge];
+      e.preventDefault();
+      e.stopPropagation();
       setIsDraggingEdge(true);
       setDraggedEdge(edge);
       setDragStart({ x, y });
@@ -1075,6 +1102,13 @@ const CanvasCollagePreview = ({
   const handleWheel = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    
+    // Prevent wheel events when dragging edges
+    if (isDraggingEdge) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     
     const rect = canvas.getBoundingClientRect();
     const cursorX = e.clientX - rect.left;
@@ -1189,7 +1223,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, panelImageMapping, loadedImages, selectedPanel, panelTransforms, updatePanelTransform, setSelectedPanel, isTransformMode]);
+  }, [panelRects, panelImageMapping, loadedImages, selectedPanel, panelTransforms, updatePanelTransform, setSelectedPanel, isTransformMode, isDraggingEdge]);
 
   // Helper function to get distance between two touch points
   const getTouchDistance = useCallback((touches) => {
@@ -1726,7 +1760,7 @@ const CanvasCollagePreview = ({
           width: '100%',
           height: 'auto',
           border: `1px solid ${theme.palette.divider}`,
-          touchAction: anyPanelInTransformMode ? 'none' : 'auto', // Dynamic touch behavior
+          touchAction: (anyPanelInTransformMode || isDraggingEdge) ? 'none' : 'auto', // Dynamic touch behavior
         }}
       />
       
