@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { Box, IconButton, Typography, TextField, Popover, Slider, FormControl, InputLabel, Select, MenuItem, Button, ToggleButton, ToggleButtonGroup, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { Add, OpenWith, Check, TextFields, FormatColorText, Close, FormatBold, FormatItalic, FormatColorFill, Edit } from '@mui/icons-material';
+import { fabric } from 'fabric';
 import { layoutDefinitions } from '../config/layouts';
 import fonts from '../../../utils/fonts';
 
@@ -283,7 +284,7 @@ const parseGridToRects = (layoutConfig, containerWidth, containerHeight, panelCo
 };
 
 /**
- * Canvas-based Collage Preview Component
+ * Fabric.js-based Collage Preview Component with In-Place Text Editing
  */
 const CanvasCollagePreview = ({
   selectedTemplate,
@@ -305,21 +306,13 @@ const CanvasCollagePreview = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const canvasRef = useRef(null);
+  const fabricCanvasRef = useRef(null);
   const containerRef = useRef(null);
   const [componentWidth, setComponentWidth] = useState(400);
   const [componentHeight, setComponentHeight] = useState(400);
   const [loadedImages, setLoadedImages] = useState({});
   const [panelRects, setPanelRects] = useState([]);
-  const [hoveredPanel, setHoveredPanel] = useState(null);
-  const [selectedPanel, setSelectedPanel] = useState(null);
   const [isTransformMode, setIsTransformMode] = useState({});
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [inlineEditingPanel, setInlineEditingPanel] = useState(null);
-  const [inlineEditText, setInlineEditText] = useState('');
-  const [showMobileControls, setShowMobileControls] = useState(false);
-  const [touchStartDistance, setTouchStartDistance] = useState(null);
-  const [touchStartScale, setTouchStartScale] = useState(1);
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
@@ -361,14 +354,12 @@ const CanvasCollagePreview = ({
       });
       
       setLoadedImages(newLoadedImages);
-      
-
     };
 
     if (images.length > 0) {
       loadAllImages();
     }
-  }, [images, panelRects, updatePanelText, panelTexts, lastUsedTextSettings]);
+  }, [images]);
 
   // Update component dimensions and panel rectangles
   useEffect(() => {
@@ -394,779 +385,254 @@ const CanvasCollagePreview = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, [aspectRatioValue, layoutConfig, panelCount, borderPixels]);
 
-  // Draw the canvas
-  const drawCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    
-    // Set canvas size with device pixel ratio for crisp rendering
-    canvas.width = componentWidth * dpr;
-    canvas.height = componentHeight * dpr;
-    canvas.style.width = `${componentWidth}px`;
-    canvas.style.height = `${componentHeight}px`;
-    
-    // Scale context to match device pixel ratio
-    ctx.scale(dpr, dpr);
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, componentWidth, componentHeight);
-    
-    // Draw background (border color if borders are enabled)
-    if (borderPixels > 0) {
-      ctx.fillStyle = borderColor;
-      ctx.fillRect(0, 0, componentWidth, componentHeight);
+  // Initialize fabric canvas
+  useEffect(() => {
+    if (canvasRef.current && componentWidth && componentHeight) {
+      // Clean up existing canvas
+      if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.dispose();
+      }
+
+      // Create new fabric canvas
+      const fabricCanvas = new fabric.Canvas(canvasRef.current, {
+        width: componentWidth,
+        height: componentHeight,
+        backgroundColor: borderPixels > 0 ? borderColor : 'transparent',
+        selection: false, // Disable group selection
+        preserveObjectStacking: true,
+      });
+
+      fabricCanvasRef.current = fabricCanvas;
+
+      // Configure fabric for better mobile experience
+      if (isMobile) {
+        fabricCanvas.touchCornerSize = 30;
+        fabricCanvas.cornerSize = 20;
+      }
+
+      return () => {
+        if (fabricCanvas) {
+          fabricCanvas.dispose();
+        }
+      };
     }
-    
-    // Draw panels
+  }, [componentWidth, componentHeight, borderPixels, borderColor, isMobile]);
+
+  // Draw panels and setup text objects
+  useEffect(() => {
+    const fabricCanvas = fabricCanvasRef.current;
+    if (!fabricCanvas || panelRects.length === 0) return;
+
+    // Clear canvas
+    fabricCanvas.clear();
+    if (borderPixels > 0) {
+      fabricCanvas.backgroundColor = borderColor;
+    }
+
     panelRects.forEach((rect) => {
       const { x, y, width, height, panelId, index } = rect;
       const imageIndex = panelImageMapping[panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
-      const isHovered = hoveredPanel === index;
-      const isSelected = selectedPanel === index;
-      const isInTransformMode = isTransformMode[panelId];
       const panelText = panelTexts[panelId] || {};
-      
-      // Draw panel background
-      ctx.fillStyle = hasImage 
-        ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
-        : 'rgba(0,0,0,0.3)';
-      ctx.fillRect(x, y, width, height);
-      
-      // Note: Hover effects are now handled by CSS overlays, not canvas drawing
-      // This ensures they don't interfere with collage generation
-      
+
+      // Create panel background
+      const panelBg = new fabric.Rect({
+        left: x,
+        top: y,
+        width: width,
+        height: height,
+        fill: hasImage 
+          ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
+          : 'rgba(0,0,0,0.3)',
+        selectable: false,
+        evented: false,
+        data: { panelId, type: 'background' }
+      });
+
+      fabricCanvas.add(panelBg);
+
+      // Add image if available
       if (hasImage) {
         const img = loadedImages[imageIndex];
         if (img) {
-          ctx.save();
-          
-          // Clip to panel bounds
-          ctx.beginPath();
-          ctx.rect(x, y, width, height);
-          ctx.clip();
-          
+          const fabricImg = new fabric.Image(img, {
+            left: x,
+            top: y,
+            selectable: isTransformMode[panelId] || false,
+            evented: isTransformMode[panelId] || false,
+            data: { panelId, type: 'image' }
+          });
+
           // Calculate initial scale to cover the panel (like object-fit: cover)
           const imageAspectRatio = img.naturalWidth / img.naturalHeight;
           const panelAspectRatio = width / height;
           
           let initialScale;
           if (imageAspectRatio > panelAspectRatio) {
-            // Image is wider than panel, scale to fit height
             initialScale = height / img.naturalHeight;
           } else {
-            // Image is taller than panel, scale to fit width  
             initialScale = width / img.naturalWidth;
           }
-          
-          // Apply user transform on top of initial scale
+
+          // Apply transforms
           const finalScale = initialScale * transform.scale;
+          fabricImg.scale(finalScale);
+
+          // Position image
           const scaledWidth = img.naturalWidth * finalScale;
           const scaledHeight = img.naturalHeight * finalScale;
-          
-          // Calculate centering offset (for initial positioning)
           const centerOffsetX = (width - scaledWidth) / 2;
           const centerOffsetY = (height - scaledHeight) / 2;
           
-          // Apply user position offset on top of centering
-          const finalOffsetX = centerOffsetX + transform.positionX;
-          const finalOffsetY = centerOffsetY + transform.positionY;
-          
-          // Draw image with transforms
-          ctx.drawImage(
-            img,
-            x + finalOffsetX,
-            y + finalOffsetY,
-            scaledWidth,
-            scaledHeight
-          );
-          
-          ctx.restore();
+          fabricImg.set({
+            left: x + centerOffsetX + transform.positionX,
+            top: y + centerOffsetY + transform.positionY
+          });
+
+          // Create clipping path for the panel
+          const clipPath = new fabric.Rect({
+            left: x,
+            top: y,
+            width: width,
+            height: height,
+            absolutePositioned: true
+          });
+          fabricImg.clipPath = clipPath;
+
+          fabricCanvas.add(fabricImg);
         }
       } else {
-        // Draw add icon for empty panels
+        // Add "+" icon for empty panels
         const iconSize = Math.min(width, height) * 0.3;
         const iconX = x + (width - iconSize) / 2;
         const iconY = y + (height - iconSize) / 2;
-        
-        // Draw add icon background circle
-        ctx.fillStyle = '#2196F3';
-        ctx.beginPath();
-        ctx.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Draw plus sign
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        // Horizontal line
-        ctx.moveTo(iconX + iconSize * 0.25, iconY + iconSize/2);
-        ctx.lineTo(iconX + iconSize * 0.75, iconY + iconSize/2);
-        // Vertical line
-        ctx.moveTo(iconX + iconSize/2, iconY + iconSize * 0.25);
-        ctx.lineTo(iconX + iconSize/2, iconY + iconSize * 0.75);
-        ctx.stroke();
-      }
-      
-      // Draw text at the bottom of the panel or show placeholder
-      const hasTextContent = panelText.content && panelText.content.trim();
-      const showPlaceholder = !hasTextContent;
-      
-      if (hasTextContent || showPlaceholder) {
-        ctx.save();
-        
-        // Set text properties (use last used settings as defaults)
-        const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
-        const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
-        const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
-        const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
-        const textColor = showPlaceholder ? 'rgba(255, 255, 255, 0.4)' : (panelText.color || lastUsedTextSettings.color || '#ffffff');
-        const strokeWidth = showPlaceholder ? 0 : (panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2);
-        
-        ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-        ctx.fillStyle = textColor;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        
-        // Set stroke properties
-        ctx.strokeStyle = '#000000'; // Black stroke for contrast
-        ctx.lineWidth = strokeWidth;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        
-        // Add text shadow for better readability
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-        ctx.shadowBlur = 3;
-        
-        // Calculate available text area (with padding on sides and bottom)
-        const textPadding = 10;
-        const maxTextWidth = width - (textPadding * 2);
-        const textX = x + width / 2;
-        const textY = y + height - textPadding;
-        const lineHeight = fontSize * 1.2;
-        
-        // Helper function to wrap text
-        const wrapText = (text, maxWidth) => {
-          const lines = [];
-          const manualLines = text.split('\n'); // Handle manual line breaks first
-          
-          manualLines.forEach(line => {
-            if (ctx.measureText(line).width <= maxWidth) {
-              // Line fits within width
-              lines.push(line);
-            } else {
-              // Line needs to be wrapped
-              const words = line.split(' ');
-              let currentLine = '';
-              
-              words.forEach(word => {
-                const testLine = currentLine ? `${currentLine} ${word}` : word;
-                const testWidth = ctx.measureText(testLine).width;
-                
-                                 if (testWidth <= maxWidth) {
-                   currentLine = testLine;
-                 } else if (currentLine) {
-                   // Current line is full, start a new line
-                   lines.push(currentLine);
-                   currentLine = word;
-                 } else {
-                   // Single word is too long, force it on its own line
-                   lines.push(word);
-                 }
-              });
-              
-              // Add the last line if it has content
-              if (currentLine) {
-                lines.push(currentLine);
-              }
-            }
-          });
-          
-          return lines;
-        };
-        
-        // Get wrapped lines - use placeholder text if no content
-        const displayText = showPlaceholder ? 'Tap to add text' : panelText.content;
-        const wrappedLines = wrapText(displayText, maxTextWidth);
-        
-        // Draw each line
-        wrappedLines.forEach((line, lineIndex) => {
-          const lineY = textY - (wrappedLines.length - 1 - lineIndex) * lineHeight;
-          
-          // Draw stroke first if stroke width > 0
-          if (strokeWidth > 0) {
-            ctx.strokeText(line, textX, lineY);
-          }
-          
-          // Then draw the fill text on top
-          ctx.fillText(line, textX, lineY);
+
+        const circle = new fabric.Circle({
+          left: iconX,
+          top: iconY,
+          radius: iconSize / 2,
+          fill: '#2196F3',
+          selectable: false,
+          evented: false,
+          data: { panelId, type: 'add-icon' }
         });
+
+        const plusH = new fabric.Rect({
+          left: iconX + iconSize * 0.25,
+          top: iconY + iconSize * 0.45,
+          width: iconSize * 0.5,
+          height: iconSize * 0.1,
+          fill: '#ffffff',
+          selectable: false,
+          evented: false,
+          data: { panelId, type: 'add-icon' }
+        });
+
+        const plusV = new fabric.Rect({
+          left: iconX + iconSize * 0.45,
+          top: iconY + iconSize * 0.25,
+          width: iconSize * 0.1,
+          height: iconSize * 0.5,
+          fill: '#ffffff',
+          selectable: false,
+          evented: false,
+          data: { panelId, type: 'add-icon' }
+        });
+
+        fabricCanvas.add(circle, plusH, plusV);
+      }
+
+      // Add text object for subtitle
+      const textContent = panelText.content || '';
+      const showPlaceholder = !textContent.trim();
+      const displayText = showPlaceholder ? 'Tap to add text' : textContent;
+
+      const textObject = new fabric.IText(displayText, {
+        left: x + width / 2,
+        top: y + height - 60, // Position near bottom of panel
+        width: width - 20, // Leave some padding
+        fontSize: panelText.fontSize || lastUsedTextSettings.fontSize || 24,
+        fontFamily: panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial',
+        fontWeight: panelText.fontWeight || lastUsedTextSettings.fontWeight || 'bold',
+        fontStyle: panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal',
+        fill: showPlaceholder ? 'rgba(255, 255, 255, 0.6)' : (panelText.color || lastUsedTextSettings.color || '#ffffff'),
+        stroke: showPlaceholder ? '' : '#000000',
+        strokeWidth: showPlaceholder ? 0 : (panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2),
+        textAlign: 'center',
+        originX: 'center',
+        originY: 'bottom',
+        selectable: true,
+        editable: true,
+        lockMovementX: true,
+        lockMovementY: true,
+        lockScalingX: true,
+        lockScalingY: true,
+        lockRotation: true,
+        hasControls: false,
+        hasBorders: false,
+        cornerSize: 0,
+        data: { panelId, type: 'text', isPlaceholder: showPlaceholder }
+      });
+
+      // Handle text editing events
+      textObject.on('editing:entered', () => {
+        if (showPlaceholder) {
+          textObject.text = '';
+          textObject.set({
+            fill: panelText.color || lastUsedTextSettings.color || '#ffffff',
+            stroke: '#000000',
+            strokeWidth: panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2
+          });
+          fabricCanvas.renderAll();
+        }
+      });
+
+      textObject.on('editing:exited', () => {
+        const newText = textObject.text.trim();
+        if (newText === '') {
+          // Revert to placeholder
+          textObject.text = 'Tap to add text';
+          textObject.set({
+            fill: 'rgba(255, 255, 255, 0.6)',
+            stroke: '',
+            strokeWidth: 0
+          });
+        }
         
-        ctx.restore();
+        // Update panel text
+        if (updatePanelText) {
+          updatePanelText(panelId, {
+            ...panelText,
+            content: newText
+          });
+        }
+        
+        fabricCanvas.renderAll();
+      });
+
+      fabricCanvas.add(textObject);
+    });
+
+    // Handle canvas clicks for panel selection
+    fabricCanvas.on('mouse:down', (e) => {
+      if (e.target && e.target.data) {
+        const { panelId, type } = e.target.data;
+        
+        if (type === 'background' || type === 'add-icon') {
+          if (onPanelClick) {
+            const panelIndex = panelRects.findIndex(r => r.panelId === panelId);
+            onPanelClick(panelIndex, panelId);
+          }
+        }
       }
     });
-  }, [
-    componentWidth, 
-    componentHeight, 
-    panelRects, 
-    loadedImages, 
-    panelImageMapping, 
-    panelTransforms, 
-    borderPixels, 
-    borderColor, 
-    selectedPanel, 
-    isTransformMode,
-    panelTexts,
-    theme.palette.mode
-  ]);
 
-  // Redraw canvas when dependencies change
-  useEffect(() => {
-    drawCanvas();
-  }, [drawCanvas]);
+    fabricCanvas.renderAll();
 
-  // Handle mouse events
-  const handleMouseMove = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Find which panel is under the mouse
-    const hoveredPanelIndex = panelRects.findIndex(panel => 
-      x >= panel.x && x <= panel.x + panel.width &&
-      y >= panel.y && y <= panel.y + panel.height
-    );
-    
-    if (hoveredPanelIndex !== hoveredPanel) {
-      setHoveredPanel(hoveredPanelIndex >= 0 ? hoveredPanelIndex : null);
-      canvas.style.cursor = hoveredPanelIndex >= 0 ? 'pointer' : 'default';
-    }
-    
-    // Handle dragging for transform mode
-    if (isDragging && selectedPanel !== null) {
-      const panel = panelRects[selectedPanel];
-      if (panel && isTransformMode[panel.panelId]) {
-        const deltaX = x - dragStart.x;
-        const deltaY = y - dragStart.y;
-        
-        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
-        const imageIndex = panelImageMapping[panel.panelId];
-        const img = loadedImages[imageIndex];
-        
-        if (img && updatePanelTransform) {
-          // Calculate the same scaling and positioning logic as in drawCanvas
-          const imageAspectRatio = img.naturalWidth / img.naturalHeight;
-          const panelAspectRatio = panel.width / panel.height;
-          
-          let initialScale;
-          if (imageAspectRatio > panelAspectRatio) {
-            // Image is wider than panel, scale to fit height
-            initialScale = panel.height / img.naturalHeight;
-          } else {
-            // Image is taller than panel, scale to fit width  
-            initialScale = panel.width / img.naturalWidth;
-          }
-          
-          // Apply user transform on top of initial scale
-          const finalScale = initialScale * currentTransform.scale;
-          const scaledWidth = img.naturalWidth * finalScale;
-          const scaledHeight = img.naturalHeight * finalScale;
-          
-          // Calculate centering offset (for initial positioning)
-          const centerOffsetX = (panel.width - scaledWidth) / 2;
-          const centerOffsetY = (panel.height - scaledHeight) / 2;
-          
-          // Calculate proposed new positions
-          const newPositionX = currentTransform.positionX + deltaX;
-          const newPositionY = currentTransform.positionY + deltaY;
-          
-          // Calculate the final image bounds with new position
-          const finalOffsetX = centerOffsetX + newPositionX;
-          const finalOffsetY = centerOffsetY + newPositionY;
-          
-          // Calculate bounds to prevent white space (image must always cover the panel)
-          let minPositionX;
-          let maxPositionX;
-          let minPositionY;
-          let maxPositionY;
-          
-          if (scaledWidth > panel.width) {
-            // Image is wider than panel - can move horizontally but not show white space
-            // When image is wider, centerOffsetX is negative
-            maxPositionX = -centerOffsetX; // Left edge of image at left edge of panel
-            minPositionX = panel.width - scaledWidth - centerOffsetX; // Right edge of image at right edge of panel
-          } else {
-            // Image is narrower than or equal to panel - center it and don't allow horizontal movement
-            minPositionX = 0;
-            maxPositionX = 0;
-          }
-          
-          if (scaledHeight > panel.height) {
-            // Image is taller than panel - can move vertically but not show white space
-            // When image is taller, centerOffsetY is negative
-            maxPositionY = -centerOffsetY; // Top edge of image at top edge of panel
-            minPositionY = panel.height - scaledHeight - centerOffsetY; // Bottom edge of image at bottom edge of panel
-          } else {
-            // Image is shorter than or equal to panel - center it and don't allow vertical movement
-            minPositionY = 0;
-            maxPositionY = 0;
-          }
-          
-          // Clamp the positions to prevent white space
-          const clampedPositionX = Math.max(minPositionX, Math.min(maxPositionX, newPositionX));
-          const clampedPositionY = Math.max(minPositionY, Math.min(maxPositionY, newPositionY));
-          
-          updatePanelTransform(panel.panelId, {
-            ...currentTransform,
-            positionX: clampedPositionX,
-            positionY: clampedPositionY
-          });
-        }
-        
-        setDragStart({ x, y });
-      }
-    }
-  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform]);
+  }, [panelRects, loadedImages, panelImageMapping, panelTransforms, panelTexts, lastUsedTextSettings, isTransformMode, theme.palette.mode, borderColor, onPanelClick, updatePanelText]);
 
-  const handleMouseDown = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const clickedPanelIndex = panelRects.findIndex(panel => 
-      x >= panel.x && x <= panel.x + panel.width &&
-      y >= panel.y && y <= panel.y + panel.height
-    );
-    
-    if (clickedPanelIndex >= 0) {
-      const clickedPanel = panelRects[clickedPanelIndex];
-      setSelectedPanel(clickedPanelIndex);
-      
-      // Check if this panel is in transform mode
-      if (isTransformMode[clickedPanel.panelId]) {
-        setIsDragging(true);
-        setDragStart({ x, y });
-      } else if (onPanelClick) {
-        // Regular panel click
-        onPanelClick(clickedPanel.index, clickedPanel.panelId);
-      }
-    }
-  }, [panelRects, isTransformMode, onPanelClick]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    // Clear hover state when mouse leaves canvas
-    setHoveredPanel(null);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.style.cursor = 'default';
-    }
-  }, []);
-
-  const handleWheel = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const cursorX = e.clientX - rect.left;
-    const cursorY = e.clientY - rect.top;
-    
-    // Find which panel is under the cursor
-    const hoveredPanelIndex = panelRects.findIndex(panel => 
-      cursorX >= panel.x && cursorX <= panel.x + panel.width &&
-      cursorY >= panel.y && cursorY <= panel.y + panel.height
-    );
-    
-    // Only proceed with zoom if cursor is over a panel with an image AND this specific panel has transform mode enabled
-    if (hoveredPanelIndex >= 0) {
-      const panel = panelRects[hoveredPanelIndex];
-      const imageIndex = panelImageMapping[panel.panelId];
-      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-      
-      if (hasImage && isTransformMode[panel.panelId]) {
-        // Prevent page scrolling only when actually zooming an image in transform mode
-        e.preventDefault();
-        e.stopPropagation();
-        // Auto-select this panel for zoom operation
-        if (selectedPanel !== hoveredPanelIndex) {
-          setSelectedPanel(hoveredPanelIndex);
-        }
-        
-        const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
-        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
-        const img = loadedImages[imageIndex];
-        
-        if (img && updatePanelTransform) {
-          // Calculate cursor position relative to the panel
-          const panelCursorX = cursorX - panel.x;
-          const panelCursorY = cursorY - panel.y;
-          
-          // Calculate the minimum scale needed to cover the panel (same as initial scale logic)
-          const imageAspectRatio = img.naturalWidth / img.naturalHeight;
-          const panelAspectRatio = panel.width / panel.height;
-          
-          let minScale;
-          if (imageAspectRatio > panelAspectRatio) {
-            // Image is wider than panel, scale to fit height
-            minScale = 1; // The initial scale already fits height, so 1x user scale is minimum
-          } else {
-            // Image is taller than panel, scale to fit width  
-            minScale = 1; // The initial scale already fits width, so 1x user scale is minimum
-          }
-          
-          const proposedScale = currentTransform.scale * scaleChange;
-          const newScale = Math.max(minScale, Math.min(5, proposedScale));
-          
-          // Calculate initial scale and current image dimensions
-          const initialScale = imageAspectRatio > panelAspectRatio 
-            ? panel.height / img.naturalHeight 
-            : panel.width / img.naturalWidth;
-          const currentFinalScale = initialScale * currentTransform.scale;
-          const newFinalScale = initialScale * newScale;
-          const currentScaledWidth = img.naturalWidth * currentFinalScale;
-          const currentScaledHeight = img.naturalHeight * currentFinalScale;
-          const newScaledWidth = img.naturalWidth * newFinalScale;
-          const newScaledHeight = img.naturalHeight * newFinalScale;
-          
-          // Calculate current center offsets
-          const currentCenterOffsetX = (panel.width - currentScaledWidth) / 2;
-          const currentCenterOffsetY = (panel.height - currentScaledHeight) / 2;
-          const newCenterOffsetX = (panel.width - newScaledWidth) / 2;
-          const newCenterOffsetY = (panel.height - newScaledHeight) / 2;
-          
-          // Calculate the point on the image that corresponds to the cursor position (before scaling)
-          const currentImageX = currentCenterOffsetX + currentTransform.positionX;
-          const currentImageY = currentCenterOffsetY + currentTransform.positionY;
-          const pointOnImageX = (panelCursorX - currentImageX) / currentFinalScale;
-          const pointOnImageY = (panelCursorY - currentImageY) / currentFinalScale;
-          
-          // Calculate new position so the same point on the image stays under the cursor
-          const newImageX = panelCursorX - (pointOnImageX * newFinalScale);
-          const newImageY = panelCursorY - (pointOnImageY * newFinalScale);
-          const newPositionX = newImageX - newCenterOffsetX;
-          const newPositionY = newImageY - newCenterOffsetY;
-          
-          // Calculate bounds to prevent white space and clamp the new position
-          let minPositionX;
-          let maxPositionX;
-          let minPositionY;
-          let maxPositionY;
-          
-          if (newScaledWidth > panel.width) {
-            maxPositionX = -newCenterOffsetX;
-            minPositionX = panel.width - newScaledWidth - newCenterOffsetX;
-          } else {
-            minPositionX = 0;
-            maxPositionX = 0;
-          }
-          
-          if (newScaledHeight > panel.height) {
-            maxPositionY = -newCenterOffsetY;
-            minPositionY = panel.height - newScaledHeight - newCenterOffsetY;
-          } else {
-            minPositionY = 0;
-            maxPositionY = 0;
-          }
-          
-          const clampedPositionX = Math.max(minPositionX, Math.min(maxPositionX, newPositionX));
-          const clampedPositionY = Math.max(minPositionY, Math.min(maxPositionY, newPositionY));
-          
-          updatePanelTransform(panel.panelId, {
-            ...currentTransform,
-            scale: newScale,
-            positionX: clampedPositionX,
-            positionY: clampedPositionY
-          });
-        }
-      }
-    }
-  }, [panelRects, panelImageMapping, loadedImages, selectedPanel, panelTransforms, updatePanelTransform, setSelectedPanel, isTransformMode]);
-
-  // Helper function to get distance between two touch points
-  const getTouchDistance = useCallback((touches) => {
-    if (touches.length < 2) return 0;
-    
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    
-    return Math.sqrt(dx * dx + dy * dy);
-  }, []);
-
-  // Helper function to get center point between two touches
-  const getTouchCenter = useCallback((touches) => {
-    if (touches.length < 2) return { x: touches[0].clientX, y: touches[0].clientY };
-    
-    return {
-      x: (touches[0].clientX + touches[1].clientX) / 2,
-      y: (touches[0].clientY + touches[1].clientY) / 2
-    };
-  }, []);
-
-  // Touch event handlers
-  const handleTouchStart = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const touches = Array.from(e.touches);
-    
-    if (touches.length === 1) {
-      // Single touch - handle like mouse down
-      const touch = touches[0];
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      
-      const clickedPanelIndex = panelRects.findIndex(panel => 
-        x >= panel.x && x <= panel.x + panel.width &&
-        y >= panel.y && y <= panel.y + panel.height
-      );
-      
-      if (clickedPanelIndex >= 0) {
-        const clickedPanel = panelRects[clickedPanelIndex];
-        const imageIndex = panelImageMapping[clickedPanel.panelId];
-        const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-        
-        setSelectedPanel(clickedPanelIndex);
-        
-        // Check if this specific panel is in transform mode
-        if (hasImage && isTransformMode[clickedPanel.panelId]) {
-          // Prevent page scrolling only when touching an image in transform mode
-          e.preventDefault();
-          e.stopPropagation();
-          setIsDragging(true);
-          setDragStart({ x, y });
-        } else if (onPanelClick) {
-          // Regular panel click
-          onPanelClick(clickedPanel.index, clickedPanel.panelId);
-        }
-      }
-      // Note: When touched outside any panel, we allow normal scrolling by not calling preventDefault
-    } else if (touches.length === 2 && selectedPanel !== null) {
-      // Two touches - prepare for pinch zoom
-      const panel = panelRects[selectedPanel];
-      const imageIndex = panelImageMapping[panel.panelId];
-      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-      
-      if (panel && hasImage && isTransformMode[panel.panelId]) {
-        // Only prevent page scrolling when performing pinch zoom on a panel in transform mode
-        e.preventDefault();
-        e.stopPropagation();
-        const distance = getTouchDistance(touches);
-        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
-        
-        setTouchStartDistance(distance);
-        setTouchStartScale(currentTransform.scale);
-        setIsDragging(false); // Stop any ongoing drag
-      }
-    }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance]);
-
-  const handleTouchMove = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const touches = Array.from(e.touches);
-    
-    if (touches.length === 1 && isDragging && selectedPanel !== null) {
-      // Single touch drag
-      const panel = panelRects[selectedPanel];
-      const imageIndex = panelImageMapping[panel.panelId];
-      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-      
-      if (panel && hasImage && isTransformMode[panel.panelId]) {
-        // Prevent page scrolling only when dragging an image in transform mode
-        e.preventDefault();
-        e.stopPropagation();
-        const touch = touches[0];
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        const deltaX = x - dragStart.x;
-        const deltaY = y - dragStart.y;
-        
-        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
-        const img = loadedImages[imageIndex];
-        
-        if (img && updatePanelTransform) {
-          // Same positioning logic as mouse drag
-          const imageAspectRatio = img.naturalWidth / img.naturalHeight;
-          const panelAspectRatio = panel.width / panel.height;
-          
-          let initialScale;
-          if (imageAspectRatio > panelAspectRatio) {
-            initialScale = panel.height / img.naturalHeight;
-          } else {
-            initialScale = panel.width / img.naturalWidth;
-          }
-          
-          const finalScale = initialScale * currentTransform.scale;
-          const scaledWidth = img.naturalWidth * finalScale;
-          const scaledHeight = img.naturalHeight * finalScale;
-          
-          const centerOffsetX = (panel.width - scaledWidth) / 2;
-          const centerOffsetY = (panel.height - scaledHeight) / 2;
-          
-          const newPositionX = currentTransform.positionX + deltaX;
-          const newPositionY = currentTransform.positionY + deltaY;
-          
-          // Calculate bounds to prevent white space
-          let minPositionX;
-          let maxPositionX;
-          let minPositionY;
-          let maxPositionY;
-          
-          if (scaledWidth > panel.width) {
-            maxPositionX = -centerOffsetX;
-            minPositionX = panel.width - scaledWidth - centerOffsetX;
-          } else {
-            minPositionX = 0;
-            maxPositionX = 0;
-          }
-          
-          if (scaledHeight > panel.height) {
-            maxPositionY = -centerOffsetY;
-            minPositionY = panel.height - scaledHeight - centerOffsetY;
-          } else {
-            minPositionY = 0;
-            maxPositionY = 0;
-          }
-          
-          const clampedPositionX = Math.max(minPositionX, Math.min(maxPositionX, newPositionX));
-          const clampedPositionY = Math.max(minPositionY, Math.min(maxPositionY, newPositionY));
-          
-          updatePanelTransform(panel.panelId, {
-            ...currentTransform,
-            positionX: clampedPositionX,
-            positionY: clampedPositionY
-          });
-        }
-        
-        setDragStart({ x, y });
-      }
-    } else if (touches.length === 2 && selectedPanel !== null && touchStartDistance !== null) {
-      // Two-finger pinch zoom
-      const panel = panelRects[selectedPanel];
-      const imageIndex = panelImageMapping[panel.panelId];
-      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-      
-      if (panel && hasImage && isTransformMode[panel.panelId]) {
-        // Only prevent page scrolling when performing pinch zoom on a panel in transform mode
-        e.preventDefault();
-        e.stopPropagation();
-        const currentDistance = getTouchDistance(touches);
-        const scaleRatio = currentDistance / touchStartDistance;
-        const newScale = touchStartScale * scaleRatio;
-        
-        // Get the center point of the pinch gesture
-        const pinchCenter = getTouchCenter(touches);
-        const canvas = canvasRef.current;
-        const rect = canvas.getBoundingClientRect();
-        const pinchCenterX = pinchCenter.x - rect.left;
-        const pinchCenterY = pinchCenter.y - rect.top;
-        
-        // Calculate pinch center position relative to the panel
-        const panelPinchX = pinchCenterX - panel.x;
-        const panelPinchY = pinchCenterY - panel.y;
-        
-        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
-        const img = loadedImages[imageIndex];
-        
-        if (img && updatePanelTransform) {
-          // Calculate minimum scale (same logic as wheel handler)
-          const imageAspectRatio = img.naturalWidth / img.naturalHeight;
-          const panelAspectRatio = panel.width / panel.height;
-          
-          const minScale = 1;
-          const clampedScale = Math.max(minScale, Math.min(5, newScale));
-          
-          // Calculate initial scale and current image dimensions
-          const initialScale = imageAspectRatio > panelAspectRatio 
-            ? panel.height / img.naturalHeight 
-            : panel.width / img.naturalWidth;
-          const currentFinalScale = initialScale * currentTransform.scale;
-          const newFinalScale = initialScale * clampedScale;
-          const currentScaledWidth = img.naturalWidth * currentFinalScale;
-          const currentScaledHeight = img.naturalHeight * currentFinalScale;
-          const newScaledWidth = img.naturalWidth * newFinalScale;
-          const newScaledHeight = img.naturalHeight * newFinalScale;
-          
-          // Calculate current center offsets
-          const currentCenterOffsetX = (panel.width - currentScaledWidth) / 2;
-          const currentCenterOffsetY = (panel.height - currentScaledHeight) / 2;
-          const newCenterOffsetX = (panel.width - newScaledWidth) / 2;
-          const newCenterOffsetY = (panel.height - newScaledHeight) / 2;
-          
-          // Calculate the point on the image that corresponds to the pinch center (before scaling)
-          const currentImageX = currentCenterOffsetX + currentTransform.positionX;
-          const currentImageY = currentCenterOffsetY + currentTransform.positionY;
-          const pointOnImageX = (panelPinchX - currentImageX) / currentFinalScale;
-          const pointOnImageY = (panelPinchY - currentImageY) / currentFinalScale;
-          
-          // Calculate new position so the same point on the image stays under the pinch center
-          const newImageX = panelPinchX - (pointOnImageX * newFinalScale);
-          const newImageY = panelPinchY - (pointOnImageY * newFinalScale);
-          const newPositionX = newImageX - newCenterOffsetX;
-          const newPositionY = newImageY - newCenterOffsetY;
-          
-          // Calculate bounds to prevent white space and clamp the new position
-          let minPositionX;
-          let maxPositionX;
-          let minPositionY;
-          let maxPositionY;
-          
-          if (newScaledWidth > panel.width) {
-            maxPositionX = -newCenterOffsetX;
-            minPositionX = panel.width - newScaledWidth - newCenterOffsetX;
-          } else {
-            minPositionX = 0;
-            maxPositionX = 0;
-          }
-          
-          if (newScaledHeight > panel.height) {
-            maxPositionY = -newCenterOffsetY;
-            minPositionY = panel.height - newScaledHeight - newCenterOffsetY;
-          } else {
-            minPositionY = 0;
-            maxPositionY = 0;
-          }
-          
-          const clampedPositionX = Math.max(minPositionX, Math.min(maxPositionX, newPositionX));
-          const clampedPositionY = Math.max(minPositionY, Math.min(maxPositionY, newPositionY));
-          
-          updatePanelTransform(panel.panelId, {
-            ...currentTransform,
-            scale: clampedScale,
-            positionX: clampedPositionX,
-            positionY: clampedPositionY
-          });
-        }
-      }
-    }
-  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter]);
-
-  const handleTouchEnd = useCallback((e) => {
-    setIsDragging(false);
-    setTouchStartDistance(null);
-    setTouchStartScale(1);
-  }, []);
-
-  // Toggle transform mode for a panel
+  // Toggle transform mode for images
   const toggleTransformMode = useCallback((panelId) => {
     setIsTransformMode(prev => ({
       ...prev,
@@ -1177,9 +643,29 @@ const CanvasCollagePreview = ({
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => {
     return new Promise((resolve) => {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.toBlob(resolve, 'image/png');
+      const fabricCanvas = fabricCanvasRef.current;
+      if (fabricCanvas) {
+        // Hide placeholder texts before export
+        const objects = fabricCanvas.getObjects();
+        objects.forEach(obj => {
+          if (obj.data && obj.data.type === 'text' && obj.data.isPlaceholder) {
+            obj.visible = false;
+          }
+        });
+        
+        fabricCanvas.renderAll();
+        
+        fabricCanvas.toBlob((blob) => {
+          // Restore placeholder visibility
+          objects.forEach(obj => {
+            if (obj.data && obj.data.type === 'text') {
+              obj.visible = true;
+            }
+          });
+          fabricCanvas.renderAll();
+          
+          resolve(blob);
+        }, 'image/png');
       } else {
         resolve(null);
       }
@@ -1192,39 +678,6 @@ const CanvasCollagePreview = ({
       canvasRef.current.getCanvasBlob = getCanvasBlob;
     }
   }, [getCanvasBlob]);
-
-  // Handle text editing
-  const handleTextEdit = useCallback((panelId) => {
-    const currentText = panelTexts[panelId]?.content || '';
-    setInlineEditText(currentText);
-    setInlineEditingPanel(panelId);
-    if (isMobile) {
-      setShowMobileControls(true);
-    }
-  }, [isMobile, panelTexts]);
-
-  const handleInlineEditClose = useCallback(() => {
-    if (inlineEditingPanel && updatePanelText) {
-      const currentText = panelTexts[inlineEditingPanel] || {};
-      updatePanelText(inlineEditingPanel, {
-        ...currentText,
-        content: inlineEditText
-      });
-    }
-    setInlineEditingPanel(null);
-    setInlineEditText('');
-    setShowMobileControls(false);
-  }, [inlineEditingPanel, inlineEditText, panelTexts, updatePanelText]);
-
-  const handleTextChange = useCallback((panelId, property, value) => {
-    if (updatePanelText) {
-      const currentText = panelTexts[panelId] || {};
-      updatePanelText(panelId, {
-        ...currentText,
-        [property]: value
-      });
-    }
-  }, [panelTexts, updatePanelText]);
 
   if (!selectedTemplate || !layoutConfig) {
     return (
@@ -1261,28 +714,16 @@ const CanvasCollagePreview = ({
     );
   }
 
-  // Check if any panel has transform mode enabled for dynamic touch behavior
-  const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
-
   return (
     <Box ref={containerRef} sx={{ position: 'relative', width: '100%' }}>
       <canvas
         ref={canvasRef}
-        data-testid="canvas-collage-preview"
-        onMouseMove={handleMouseMove}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        data-testid="fabric-collage-preview"
         style={{
           display: 'block',
           width: '100%',
           height: 'auto',
           border: `1px solid ${theme.palette.divider}`,
-          touchAction: anyPanelInTransformMode ? 'none' : 'auto', // Dynamic touch behavior
         }}
       />
       
@@ -1320,194 +761,9 @@ const CanvasCollagePreview = ({
                 {isInTransformMode ? <Check sx={{ fontSize: 20 }} /> : <OpenWith sx={{ fontSize: 16 }} />}
               </IconButton>
             )}
-            
-            {/* Text edit button */}
-            <IconButton
-              size="small"
-              onClick={() => handleTextEdit(panelId)}
-              sx={{
-                position: 'absolute',
-                top: rect.y + 8,
-                left: rect.x + rect.width - (hasImage ? 104 : 56),
-                width: 40,
-                height: 40,
-                backgroundColor: (panelTexts[panelId]?.content && panelTexts[panelId].content.trim()) ? '#4CAF50' : '#FF9800',
-                color: '#ffffff',
-                border: '2px solid #ffffff',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                '&:hover': {
-                  backgroundColor: (panelTexts[panelId]?.content && panelTexts[panelId].content.trim()) ? '#388E3C' : '#F57C00',
-                  transform: 'scale(1.1)',
-                },
-                zIndex: 10,
-              }}
-            >
-              {(panelTexts[panelId]?.content && panelTexts[panelId].content.trim()) ? 
-                <Edit sx={{ fontSize: 16 }} /> : 
-                <TextFields sx={{ fontSize: 16 }} />
-              }
-            </IconButton>
           </Box>
         );
       })}
-
-      {/* Hover overlays - positioned over canvas panels */}
-      {panelRects.map((rect, index) => {
-        const { panelId } = rect;
-        const imageIndex = panelImageMapping[panelId];
-        const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-        const isHovered = hoveredPanel === index;
-        const isInTransformMode = isTransformMode[panelId];
-        
-        // Only show hover overlay when actually hovered and not in transform mode
-        if (!isHovered || isInTransformMode) return null;
-        
-        return (
-          <Box
-            key={`hover-overlay-${panelId}`}
-            sx={{
-              position: 'absolute',
-              top: rect.y,
-              left: rect.x,
-              width: rect.width,
-              height: rect.height,
-              backgroundColor: hasImage 
-                ? 'rgba(0, 0, 0, 0.1)' // Light overlay for images
-                : 'rgba(0, 0, 0, 0.4)', // Darker overlay for empty panels
-              pointerEvents: 'none', // Don't interfere with mouse events
-              transition: 'backgroundColor 0.2s ease-in-out',
-              zIndex: 5, // Above canvas, below control buttons
-            }}
-          />
-        );
-      })}
-
-      {/* Inline text editing - positioned over the panel */}
-      {inlineEditingPanel && panelRects.find(r => r.panelId === inlineEditingPanel) && (
-        (() => {
-          const editingRect = panelRects.find(r => r.panelId === inlineEditingPanel);
-          const textY = editingRect.y + editingRect.height - 80; // Position in text area
-          
-          return (
-            <Box
-              sx={{
-                position: 'absolute',
-                left: editingRect.x + 10,
-                top: textY,
-                right: componentWidth - editingRect.x - editingRect.width + 10,
-                zIndex: 20,
-              }}
-            >
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                placeholder="Enter text..."
-                value={inlineEditText}
-                onChange={(e) => setInlineEditText(e.target.value)}
-                autoFocus
-                onBlur={handleInlineEditClose}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleInlineEditClose();
-                  }
-                  if (e.key === 'Escape') {
-                    setInlineEditingPanel(null);
-                    setInlineEditText('');
-                    setShowMobileControls(false);
-                  }
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    fontSize: '16px',
-                    '& fieldset': {
-                      borderColor: '#2196F3',
-                      borderWidth: 2,
-                    },
-                  },
-                }}
-              />
-            </Box>
-          );
-        })()
-      )}
-
-      {/* Simple mobile controls bar - only when editing */}
-      {showMobileControls && inlineEditingPanel && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: theme.palette.background.paper,
-            borderTop: `1px solid ${theme.palette.divider}`,
-            p: 1,
-            display: 'flex',
-            gap: 1,
-            alignItems: 'center',
-            zIndex: 30,
-            boxShadow: '0 -2px 8px rgba(0,0,0,0.1)',
-          }}
-        >
-          {/* Bold/Italic */}
-          <ToggleButtonGroup
-            value={[
-              (panelTexts[inlineEditingPanel]?.fontWeight === 'bold' || panelTexts[inlineEditingPanel]?.fontWeight === '700') && 'bold',
-              (panelTexts[inlineEditingPanel]?.fontStyle === 'italic') && 'italic'
-            ].filter(Boolean)}
-            onChange={(e, newFormats) => {
-              const isBold = newFormats.includes('bold');
-              const isItalic = newFormats.includes('italic');
-              handleTextChange(inlineEditingPanel, 'fontWeight', isBold ? 'bold' : 'normal');
-              handleTextChange(inlineEditingPanel, 'fontStyle', isItalic ? 'italic' : 'normal');
-            }}
-            size="small"
-          >
-            <ToggleButton value="bold">
-              <FormatBold />
-            </ToggleButton>
-            <ToggleButton value="italic">
-              <FormatItalic />
-            </ToggleButton>
-          </ToggleButtonGroup>
-
-          {/* Color buttons */}
-          <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
-            {['#ffffff', '#000000', '#ff4444', '#4444ff'].map((color) => (
-              <Button
-                key={color}
-                onClick={() => handleTextChange(inlineEditingPanel, 'color', color)}
-                sx={{
-                  width: 32,
-                  height: 32,
-                  minWidth: 32,
-                  backgroundColor: color,
-                  border: (panelTexts[inlineEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff') === color 
-                    ? '2px solid #2196F3' 
-                    : '1px solid #ccc',
-                  '&:hover': {
-                    backgroundColor: color,
-                    opacity: 0.8,
-                  }
-                }}
-              />
-            ))}
-          </Box>
-
-          {/* Done button */}
-          <Button
-            variant="contained"
-            size="small"
-            onClick={handleInlineEditClose}
-            sx={{ ml: 'auto' }}
-          >
-            Done
-          </Button>
-        </Box>
-      )}
     </Box>
   );
 };
