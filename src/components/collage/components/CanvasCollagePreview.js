@@ -315,10 +315,9 @@ const CanvasCollagePreview = ({
   const [isTransformMode, setIsTransformMode] = useState({});
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [textEditingPanel, setTextEditingPanel] = useState(null);
-  const [textEditAnchor, setTextEditAnchor] = useState(null);
-  const [directEditingPanel, setDirectEditingPanel] = useState(null);
-  const [directEditText, setDirectEditText] = useState('');
+  const [inlineEditingPanel, setInlineEditingPanel] = useState(null);
+  const [inlineEditText, setInlineEditText] = useState('');
+  const [showMobileControls, setShowMobileControls] = useState(false);
   const [touchStartDistance, setTouchStartDistance] = useState(null);
   const [touchStartScale, setTouchStartScale] = useState(1);
 
@@ -759,21 +758,12 @@ const CanvasCollagePreview = ({
       if (isTransformMode[clickedPanel.panelId]) {
         setIsDragging(true);
         setDragStart({ x, y });
-      } else {
-        // Check if user clicked on text area (bottom third of panel)
-        const textAreaY = clickedPanel.y + (clickedPanel.height * 0.67);
-        if (y >= textAreaY && isMobile) {
-          // On mobile, clicking in text area opens text editor
-          const currentText = panelTexts[clickedPanel.panelId]?.content || '';
-          setDirectEditText(currentText);
-          setDirectEditingPanel(clickedPanel.panelId);
-        } else if (onPanelClick) {
-          // Regular panel click
-          onPanelClick(clickedPanel.index, clickedPanel.panelId);
-        }
+      } else if (onPanelClick) {
+        // Regular panel click
+        onPanelClick(clickedPanel.index, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, isMobile, panelTexts]);
+  }, [panelRects, isTransformMode, onPanelClick]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -960,18 +950,9 @@ const CanvasCollagePreview = ({
           e.stopPropagation();
           setIsDragging(true);
           setDragStart({ x, y });
-        } else {
-          // Check if user tapped on text area (bottom third of panel)
-          const textAreaY = clickedPanel.y + (clickedPanel.height * 0.67);
-          if (y >= textAreaY) {
-            // Tapping in text area opens text editor
-            const currentText = panelTexts[clickedPanel.panelId]?.content || '';
-            setDirectEditText(currentText);
-            setDirectEditingPanel(clickedPanel.panelId);
-          } else if (onPanelClick) {
-            // Regular panel click
-            onPanelClick(clickedPanel.index, clickedPanel.panelId);
-          }
+        } else if (onPanelClick) {
+          // Regular panel click
+          onPanelClick(clickedPanel.index, clickedPanel.panelId);
         }
       }
       // Note: When touched outside any panel, we allow normal scrolling by not calling preventDefault
@@ -993,7 +974,7 @@ const CanvasCollagePreview = ({
         setIsDragging(false); // Stop any ongoing drag
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, panelTexts]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1213,35 +1194,27 @@ const CanvasCollagePreview = ({
   }, [getCanvasBlob]);
 
   // Handle text editing
-  const handleTextEdit = useCallback((panelId, event) => {
+  const handleTextEdit = useCallback((panelId) => {
+    const currentText = panelTexts[panelId]?.content || '';
+    setInlineEditText(currentText);
+    setInlineEditingPanel(panelId);
     if (isMobile) {
-      // Mobile: Direct editing mode
-      const currentText = panelTexts[panelId]?.content || '';
-      setDirectEditText(currentText);
-      setDirectEditingPanel(panelId);
-    } else {
-      // Desktop: Popover mode
-      setTextEditingPanel(panelId);
-      setTextEditAnchor(event.currentTarget);
+      setShowMobileControls(true);
     }
   }, [isMobile, panelTexts]);
 
-  const handleTextClose = useCallback(() => {
-    setTextEditingPanel(null);
-    setTextEditAnchor(null);
-  }, []);
-
-  const handleDirectEditClose = useCallback(() => {
-    if (directEditingPanel && updatePanelText) {
-      const currentText = panelTexts[directEditingPanel] || {};
-      updatePanelText(directEditingPanel, {
+  const handleInlineEditClose = useCallback(() => {
+    if (inlineEditingPanel && updatePanelText) {
+      const currentText = panelTexts[inlineEditingPanel] || {};
+      updatePanelText(inlineEditingPanel, {
         ...currentText,
-        content: directEditText
+        content: inlineEditText
       });
     }
-    setDirectEditingPanel(null);
-    setDirectEditText('');
-  }, [directEditingPanel, directEditText, panelTexts, updatePanelText]);
+    setInlineEditingPanel(null);
+    setInlineEditText('');
+    setShowMobileControls(false);
+  }, [inlineEditingPanel, inlineEditText, panelTexts, updatePanelText]);
 
   const handleTextChange = useCallback((panelId, property, value) => {
     if (updatePanelText) {
@@ -1351,7 +1324,7 @@ const CanvasCollagePreview = ({
             {/* Text edit button */}
             <IconButton
               size="small"
-              onClick={(e) => handleTextEdit(panelId, e)}
+              onClick={() => handleTextEdit(panelId)}
               sx={{
                 position: 'absolute',
                 top: rect.y + 8,
@@ -1409,282 +1382,132 @@ const CanvasCollagePreview = ({
         );
       })}
 
-      {/* Mobile direct text editing overlay */}
-      {directEditingPanel && (
+      {/* Inline text editing - positioned over the panel */}
+      {inlineEditingPanel && panelRects.find(r => r.panelId === inlineEditingPanel) && (
+        (() => {
+          const editingRect = panelRects.find(r => r.panelId === inlineEditingPanel);
+          const textY = editingRect.y + editingRect.height - 80; // Position in text area
+          
+          return (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: editingRect.x + 10,
+                top: textY,
+                right: componentWidth - editingRect.x - editingRect.width + 10,
+                zIndex: 20,
+              }}
+            >
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                placeholder="Enter text..."
+                value={inlineEditText}
+                onChange={(e) => setInlineEditText(e.target.value)}
+                autoFocus
+                onBlur={handleInlineEditClose}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleInlineEditClose();
+                  }
+                  if (e.key === 'Escape') {
+                    setInlineEditingPanel(null);
+                    setInlineEditText('');
+                    setShowMobileControls(false);
+                  }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    fontSize: '16px',
+                    '& fieldset': {
+                      borderColor: '#2196F3',
+                      borderWidth: 2,
+                    },
+                  },
+                }}
+              />
+            </Box>
+          );
+        })()
+      )}
+
+      {/* Simple mobile controls bar - only when editing */}
+      {showMobileControls && inlineEditingPanel && (
         <Box
           sx={{
             position: 'fixed',
-            top: 0,
+            bottom: 0,
             left: 0,
             right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            zIndex: 1000,
+            backgroundColor: theme.palette.background.paper,
+            borderTop: `1px solid ${theme.palette.divider}`,
+            p: 1,
             display: 'flex',
-            flexDirection: 'column',
+            gap: 1,
+            alignItems: 'center',
+            zIndex: 30,
+            boxShadow: '0 -2px 8px rgba(0,0,0,0.1)',
           }}
         >
-          {/* Header */}
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              p: 2,
-              backgroundColor: theme.palette.background.paper,
-              borderBottom: `1px solid ${theme.palette.divider}`,
+          {/* Bold/Italic */}
+          <ToggleButtonGroup
+            value={[
+              (panelTexts[inlineEditingPanel]?.fontWeight === 'bold' || panelTexts[inlineEditingPanel]?.fontWeight === '700') && 'bold',
+              (panelTexts[inlineEditingPanel]?.fontStyle === 'italic') && 'italic'
+            ].filter(Boolean)}
+            onChange={(e, newFormats) => {
+              const isBold = newFormats.includes('bold');
+              const isItalic = newFormats.includes('italic');
+              handleTextChange(inlineEditingPanel, 'fontWeight', isBold ? 'bold' : 'normal');
+              handleTextChange(inlineEditingPanel, 'fontStyle', isItalic ? 'italic' : 'normal');
             }}
+            size="small"
           >
-            <Typography variant="h6">Edit Text</Typography>
-            <IconButton onClick={handleDirectEditClose}>
-              <Close />
-            </IconButton>
+            <ToggleButton value="bold">
+              <FormatBold />
+            </ToggleButton>
+            <ToggleButton value="italic">
+              <FormatItalic />
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          {/* Color buttons */}
+          <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
+            {['#ffffff', '#000000', '#ff4444', '#4444ff'].map((color) => (
+              <Button
+                key={color}
+                onClick={() => handleTextChange(inlineEditingPanel, 'color', color)}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  minWidth: 32,
+                  backgroundColor: color,
+                  border: (panelTexts[inlineEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff') === color 
+                    ? '2px solid #2196F3' 
+                    : '1px solid #ccc',
+                  '&:hover': {
+                    backgroundColor: color,
+                    opacity: 0.8,
+                  }
+                }}
+              />
+            ))}
           </Box>
 
-          {/* Text input area */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2 }}>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              placeholder="Enter your text here..."
-              value={directEditText}
-              onChange={(e) => setDirectEditText(e.target.value)}
-              autoFocus
-              sx={{
-                mb: 3,
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: theme.palette.background.paper,
-                  fontSize: '18px',
-                },
-              }}
-            />
-
-            {/* Simple formatting controls */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, color: 'white' }}>
-                Formatting
-              </Typography>
-              
-              {/* Bold/Italic toggles */}
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <ToggleButtonGroup
-                  value={[
-                    (panelTexts[directEditingPanel]?.fontWeight === 'bold' || panelTexts[directEditingPanel]?.fontWeight === '700') && 'bold',
-                    (panelTexts[directEditingPanel]?.fontStyle === 'italic') && 'italic'
-                  ].filter(Boolean)}
-                  onChange={(e, newFormats) => {
-                    const isBold = newFormats.includes('bold');
-                    const isItalic = newFormats.includes('italic');
-                    handleTextChange(directEditingPanel, 'fontWeight', isBold ? 'bold' : 'normal');
-                    handleTextChange(directEditingPanel, 'fontStyle', isItalic ? 'italic' : 'normal');
-                  }}
-                  size="small"
-                >
-                  <ToggleButton value="bold" sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
-                    <FormatBold />
-                  </ToggleButton>
-                  <ToggleButton value="italic" sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
-                    <FormatItalic />
-                  </ToggleButton>
-                </ToggleButtonGroup>
-              </Box>
-
-              {/* Font size slider */}
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" sx={{ color: 'white', mb: 1 }}>
-                  Size: {panelTexts[directEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}px
-                </Typography>
-                <Slider
-                  value={panelTexts[directEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}
-                  onChange={(e, value) => handleTextChange(directEditingPanel, 'fontSize', value)}
-                  min={12}
-                  max={48}
-                  step={2}
-                  sx={{
-                    color: 'white',
-                    '& .MuiSlider-thumb': {
-                      backgroundColor: 'white',
-                    },
-                    '& .MuiSlider-track': {
-                      backgroundColor: 'white',
-                    },
-                    '& .MuiSlider-rail': {
-                      backgroundColor: 'rgba(255,255,255,0.3)',
-                    },
-                  }}
-                />
-              </Box>
-
-              {/* Color picker */}
-              <Box>
-                <Typography variant="body2" sx={{ color: 'white', mb: 1 }}>
-                  Color
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  {['#ffffff', '#000000', '#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff', '#44ffff'].map((color) => (
-                    <Button
-                      key={color}
-                      onClick={() => handleTextChange(directEditingPanel, 'color', color)}
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        minWidth: 40,
-                        backgroundColor: color,
-                        border: (panelTexts[directEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff') === color 
-                          ? '3px solid #2196F3' 
-                          : '2px solid rgba(255,255,255,0.3)',
-                        '&:hover': {
-                          backgroundColor: color,
-                          opacity: 0.8,
-                        }
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            </Box>
-          </Box>
-
-          {/* Action buttons */}
-          <Box
-            sx={{
-              p: 2,
-              backgroundColor: theme.palette.background.paper,
-              borderTop: `1px solid ${theme.palette.divider}`,
-              display: 'flex',
-              gap: 1,
-            }}
+          {/* Done button */}
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleInlineEditClose}
+            sx={{ ml: 'auto' }}
           >
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setDirectEditText('');
-                if (directEditingPanel && updatePanelText) {
-                  const currentText = panelTexts[directEditingPanel] || {};
-                  updatePanelText(directEditingPanel, {
-                    ...currentText,
-                    content: ''
-                  });
-                }
-                setDirectEditingPanel(null);
-              }}
-              sx={{ flex: 1 }}
-            >
-              Clear
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleDirectEditClose}
-              sx={{ flex: 2 }}
-            >
-              Done
-            </Button>
-          </Box>
+            Done
+          </Button>
         </Box>
       )}
-
-      {/* Desktop text editing popover (simplified) */}
-      <Popover
-        open={Boolean(textEditingPanel)}
-        anchorEl={textEditAnchor}
-        onClose={handleTextClose}
-        anchorOrigin={{
-          vertical: 'bottom', 
-          horizontal: 'left',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'left',
-        }}
-      >
-        {textEditingPanel && (
-          <Box sx={{ p: 2, minWidth: 280 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Edit Text</Typography>
-              <IconButton size="small" onClick={handleTextClose}>
-                <Close />
-              </IconButton>
-            </Box>
-            
-            {/* Text content */}
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              placeholder="Enter text..."
-              value={panelTexts[textEditingPanel]?.content || ''}
-              onChange={(e) => handleTextChange(textEditingPanel, 'content', e.target.value)}
-              sx={{ mb: 2 }}
-            />
-            
-            {/* Simple formatting */}
-            <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center' }}>
-              <ToggleButtonGroup
-                value={[
-                  (panelTexts[textEditingPanel]?.fontWeight === 'bold' || panelTexts[textEditingPanel]?.fontWeight === '700') && 'bold',
-                  (panelTexts[textEditingPanel]?.fontStyle === 'italic') && 'italic'
-                ].filter(Boolean)}
-                onChange={(e, newFormats) => {
-                  const isBold = newFormats.includes('bold');
-                  const isItalic = newFormats.includes('italic');
-                  handleTextChange(textEditingPanel, 'fontWeight', isBold ? 'bold' : 'normal');
-                  handleTextChange(textEditingPanel, 'fontStyle', isItalic ? 'italic' : 'normal');
-                }}
-                size="small"
-              >
-                <ToggleButton value="bold">
-                  <FormatBold />
-                </ToggleButton>
-                <ToggleButton value="italic">
-                  <FormatItalic />
-                </ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-
-            {/* Font size */}
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" gutterBottom>
-                Size: {panelTexts[textEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}px
-              </Typography>
-              <Slider
-                value={panelTexts[textEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}
-                onChange={(e, value) => handleTextChange(textEditingPanel, 'fontSize', value)}
-                min={12}
-                max={48}
-                step={2}
-                size="small"
-              />
-            </Box>
-            
-            {/* Color picker */}
-            <Box>
-              <Typography variant="body2" gutterBottom>Color</Typography>
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                {['#ffffff', '#000000', '#ff4444', '#44ff44', '#4444ff', '#ffff44'].map((color) => (
-                  <Button
-                    key={color}
-                    onClick={() => handleTextChange(textEditingPanel, 'color', color)}
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      minWidth: 32,
-                      backgroundColor: color,
-                      border: (panelTexts[textEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff') === color 
-                        ? '2px solid #2196F3' 
-                        : '1px solid #ccc',
-                      '&:hover': {
-                        backgroundColor: color,
-                        opacity: 0.8,
-                      }
-                    }}
-                  />
-                ))}
-              </Box>
-            </Box>
-          </Box>
-        )}
-      </Popover>
     </Box>
   );
 };
