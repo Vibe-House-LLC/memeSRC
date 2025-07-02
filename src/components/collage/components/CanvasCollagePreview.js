@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, IconButton, Typography, TextField, Popover, Slider, FormControl, InputLabel, Select, MenuItem, Button } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Add, OpenWith, Check, TextFields, FormatColorText, Close } from '@mui/icons-material';
+import { Add, OpenWith, Check, TextFields, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import fonts from '../../../utils/fonts';
 
@@ -316,6 +316,7 @@ const CanvasCollagePreview = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [textEditingPanel, setTextEditingPanel] = useState(null);
   const [textEditAnchor, setTextEditAnchor] = useState(null);
+  const [activeTextSetting, setActiveTextSetting] = useState(null);
   const [touchStartDistance, setTouchStartDistance] = useState(null);
   const [touchStartScale, setTouchStartScale] = useState(1);
 
@@ -1236,12 +1237,40 @@ const CanvasCollagePreview = ({
   // Handle text editing
   const handleTextEdit = useCallback((panelId, event) => {
     setTextEditingPanel(panelId);
-    setTextEditAnchor(event.currentTarget);
-  }, []);
+    
+    // Find the panel rect to position the popover below the specific frame
+    const panelRect = panelRects.find(rect => rect.panelId === panelId);
+    if (panelRect && containerRef.current) {
+      // Get the canvas element's position relative to the viewport
+      const canvasElement = canvasRef.current;
+      if (canvasElement) {
+        const canvasRect = canvasElement.getBoundingClientRect();
+        
+        // Create a virtual anchor element positioned at the bottom center of the specific frame
+        const virtualAnchor = {
+          getBoundingClientRect: () => ({
+            top: canvasRect.top + panelRect.y + panelRect.height,
+            left: canvasRect.left + panelRect.x + (panelRect.width / 2),
+            right: canvasRect.left + panelRect.x + (panelRect.width / 2),
+            bottom: canvasRect.top + panelRect.y + panelRect.height,
+            width: 0,
+            height: 0,
+          }),
+        };
+        setTextEditAnchor(virtualAnchor);
+      } else {
+        setTextEditAnchor(event.currentTarget);
+      }
+    } else {
+      // Fallback to the original element if panel rect not found
+      setTextEditAnchor(event.currentTarget);
+    }
+  }, [panelRects]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
     setTextEditAnchor(null);
+    setActiveTextSetting(null);
   }, []);
 
   const handleTextChange = useCallback((panelId, property, value) => {
@@ -1529,139 +1558,290 @@ const CanvasCollagePreview = ({
         onClose={handleTextClose}
         anchorOrigin={{
           vertical: 'bottom', 
-          horizontal: 'left',
+          horizontal: 'center',
         }}
         transformOrigin={{
           vertical: 'top',
-          horizontal: 'left',
+          horizontal: 'center',
+        }}
+        PaperProps={{
+          sx: {
+            maxWidth: '90vw', // Prevent overflow on mobile
+            width: { xs: '240px', sm: '280px' }, // More compact width
+          }
         }}
       >
         {textEditingPanel && (
-          <Box sx={{ p: 3, minWidth: 300 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Edit Text</Typography>
+          <Box sx={{ p: 1.5 }}>
+            {/* Header with close button */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+              <Typography variant="h6" sx={{ fontSize: '1rem' }}>Edit Text</Typography>
               <IconButton size="small" onClick={handleTextClose}>
                 <Close />
               </IconButton>
             </Box>
             
-            {/* Text content */}
+            {/* Text content field */}
             <TextField
               fullWidth
               multiline
-              rows={3}
+              rows={2}
               label="Text Content"
               value={panelTexts[textEditingPanel]?.content || ''}
               onChange={(e) => handleTextChange(textEditingPanel, 'content', e.target.value)}
-              sx={{ mb: 2 }}
+              sx={{ mb: 1.5 }}
+              size="small"
             />
             
-            {/* Font size */}
-            <Box sx={{ mb: 2 }}>
-              <Typography gutterBottom>Font Size: {panelTexts[textEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}px</Typography>
-              <Slider
-                value={panelTexts[textEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}
-                onChange={(e, value) => handleTextChange(textEditingPanel, 'fontSize', value)}
-                min={8}
-                max={72}
-                step={1}
-                marks={[
-                  { value: 8, label: '8px' },
-                  { value: 24, label: '24px' },
-                  { value: 48, label: '48px' },
-                  { value: 72, label: '72px' }
-                ]}
-              />
-            </Box>
+            {/* Active setting panel */}
+            {activeTextSetting === 'fontSize' && (
+              <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Typography gutterBottom variant="caption" sx={{ fontSize: '0.7rem', mb: 0.25 }}>
+                  Size: {panelTexts[textEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}px
+                </Typography>
+                <Slider
+                  value={panelTexts[textEditingPanel]?.fontSize || lastUsedTextSettings.fontSize || 26}
+                  onChange={(e, value) => handleTextChange(textEditingPanel, 'fontSize', value)}
+                  min={8}
+                  max={72}
+                  step={1}
+                  size="small"
+                  sx={{ 
+                    height: 6,
+                    '& .MuiSlider-track': {
+                      height: 3,
+                    },
+                    '& .MuiSlider-rail': {
+                      height: 3,
+                    },
+                    '& .MuiSlider-thumb': {
+                      height: 12,
+                      width: 12,
+                      '&:before': {
+                        boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
+                      },
+                      '&:hover, &.Mui-focusVisible': {
+                        boxShadow: '0px 0px 0px 6px rgb(25 118 210 / 16%)'
+                      }
+                    }
+                  }}
+                />
+              </Box>
+            )}
             
-            {/* Stroke width */}
-            <Box sx={{ mb: 2 }}>
-              <Typography gutterBottom>Stroke Width: {panelTexts[textEditingPanel]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}px</Typography>
-              <Slider
-                value={panelTexts[textEditingPanel]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
-                onChange={(e, value) => handleTextChange(textEditingPanel, 'strokeWidth', value)}
-                min={0}
-                max={10}
-                step={0.5}
-                marks={[
-                  { value: 0, label: '0px' },
-                  { value: 2, label: '2px' },
-                  { value: 5, label: '5px' },
-                  { value: 10, label: '10px' }
-                ]}
-              />
-            </Box>
+            {activeTextSetting === 'strokeWidth' && (
+              <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Typography gutterBottom variant="caption" sx={{ fontSize: '0.7rem', mb: 0.25 }}>
+                  Stroke: {panelTexts[textEditingPanel]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}px
+                </Typography>
+                <Slider
+                  value={panelTexts[textEditingPanel]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
+                  onChange={(e, value) => handleTextChange(textEditingPanel, 'strokeWidth', value)}
+                  min={0}
+                  max={10}
+                  step={0.5}
+                  size="small"
+                  sx={{ 
+                    height: 6,
+                    '& .MuiSlider-track': {
+                      height: 3,
+                    },
+                    '& .MuiSlider-rail': {
+                      height: 3,
+                    },
+                    '& .MuiSlider-thumb': {
+                      height: 12,
+                      width: 12,
+                      '&:before': {
+                        boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
+                      },
+                      '&:hover, &.Mui-focusVisible': {
+                        boxShadow: '0px 0px 0px 6px rgb(25 118 210 / 16%)'
+                      }
+                    }
+                  }}
+                />
+              </Box>
+            )}
             
-            {/* Font weight */}
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Font Weight</InputLabel>
-              <Select
-                value={panelTexts[textEditingPanel]?.fontWeight || lastUsedTextSettings.fontWeight || '700'}
-                onChange={(e) => handleTextChange(textEditingPanel, 'fontWeight', e.target.value)}
-                label="Font Weight"
-              >
-                <MenuItem value="normal">Normal</MenuItem>
-                <MenuItem value="bold">Bold</MenuItem>
-                <MenuItem value="lighter">Light</MenuItem>
-                <MenuItem value="100">100</MenuItem>
-                <MenuItem value="200">200</MenuItem>
-                <MenuItem value="300">300</MenuItem>
-                <MenuItem value="400">400</MenuItem>
-                <MenuItem value="500">500</MenuItem>
-                <MenuItem value="600">600</MenuItem>
-                <MenuItem value="700">700</MenuItem>
-                <MenuItem value="800">800</MenuItem>
-                <MenuItem value="900">900</MenuItem>
-              </Select>
-            </FormControl>
+            {activeTextSetting === 'fontWeight' && (
+              <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'background.default', borderRadius: 1 }}>
+                <FormControl fullWidth size="small">
+                  <Select
+                    value={panelTexts[textEditingPanel]?.fontWeight || lastUsedTextSettings.fontWeight || '700'}
+                    onChange={(e) => handleTextChange(textEditingPanel, 'fontWeight', e.target.value)}
+                    displayEmpty
+                    sx={{ '& .MuiSelect-select': { py: 0.5 } }}
+                  >
+                    <MenuItem value="normal">Normal</MenuItem>
+                    <MenuItem value="bold">Bold</MenuItem>
+                    <MenuItem value="lighter">Light</MenuItem>
+                    <MenuItem value="400">400</MenuItem>
+                    <MenuItem value="500">500</MenuItem>
+                    <MenuItem value="600">600</MenuItem>
+                    <MenuItem value="700">700</MenuItem>
+                    <MenuItem value="800">800</MenuItem>
+                    <MenuItem value="900">900</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            )}
             
-            {/* Font family */}
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Font Family</InputLabel>
-              <Select
-                value={panelTexts[textEditingPanel]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial'}
-                onChange={(e) => handleTextChange(textEditingPanel, 'fontFamily', e.target.value)}
-                label="Font Family"
-              >
-                {fonts.map((font) => (
-                  <MenuItem key={font} value={font}>
-                    {font}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            {/* Text color */}
-            <Box sx={{ mb: 2 }}>
-              <Typography gutterBottom>Text Color</Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'].map((color) => (
-                  <Button
-                    key={color}
-                    onClick={() => handleTextChange(textEditingPanel, 'color', color)}
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      minWidth: 40,
-                      backgroundColor: color,
-                      border: (panelTexts[textEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff') === color ? '3px solid #2196F3' : '1px solid #ccc',
-                      '&:hover': {
-                        backgroundColor: color,
-                        opacity: 0.8,
+            {activeTextSetting === 'fontFamily' && (
+              <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'background.default', borderRadius: 1 }}>
+                <FormControl fullWidth size="small">
+                  <Select
+                    value={panelTexts[textEditingPanel]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial'}
+                    onChange={(e) => handleTextChange(textEditingPanel, 'fontFamily', e.target.value)}
+                    displayEmpty
+                    sx={{ '& .MuiSelect-select': { py: 0.5 } }}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: { maxHeight: 150 } // Even more compact on mobile
                       }
                     }}
-                  />
-                ))}
+                  >
+                    {fonts.map((font) => (
+                      <MenuItem key={font} value={font}>
+                        {font}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
-              <TextField
-                fullWidth
+            )}
+            
+            {activeTextSetting === 'color' && (
+              <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Box sx={{ display: 'flex', gap: 0.25, flexWrap: 'wrap', mb: 0.5 }}>
+                  {['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'].map((color) => (
+                    <Button
+                      key={color}
+                      onClick={() => handleTextChange(textEditingPanel, 'color', color)}
+                      sx={{
+                        width: 20,
+                        height: 20,
+                        minWidth: 20,
+                        p: 0,
+                        backgroundColor: color,
+                        border: (panelTexts[textEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff') === color ? '2px solid #2196F3' : '1px solid #ccc',
+                        '&:hover': {
+                          backgroundColor: color,
+                          opacity: 0.8,
+                        }
+                      }}
+                    />
+                  ))}
+                </Box>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="#ffffff"
+                  value={panelTexts[textEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff'}
+                  onChange={(e) => handleTextChange(textEditingPanel, 'color', e.target.value)}
+                  sx={{ '& .MuiInputBase-input': { py: 0.5, fontSize: '0.8rem' } }}
+                />
+              </Box>
+            )}
+            
+            {/* Setting icons */}
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: 0.5,
+              borderTop: 1,
+              borderColor: 'divider',
+              pt: 1
+            }}>
+              <IconButton
                 size="small"
-                label="Custom Color (hex)"
-                value={panelTexts[textEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff'}
-                onChange={(e) => handleTextChange(textEditingPanel, 'color', e.target.value)}
-                sx={{ mt: 2 }}
-                placeholder="#ffffff"
-              />
+                onClick={() => setActiveTextSetting(activeTextSetting === 'fontSize' ? null : 'fontSize')}
+                sx={{
+                  width: 28,
+                  height: 28,
+                  backgroundColor: activeTextSetting === 'fontSize' ? 'primary.main' : 'transparent',
+                  color: activeTextSetting === 'fontSize' ? 'primary.contrastText' : 'text.primary',
+                  '&:hover': {
+                    backgroundColor: activeTextSetting === 'fontSize' ? 'primary.dark' : 'action.hover',
+                  },
+                  '& .MuiSvgIcon-root': { fontSize: '1rem' }
+                }}
+                title="Font Size"
+              >
+                <FormatSize />
+              </IconButton>
+              
+              <IconButton
+                size="small"
+                onClick={() => setActiveTextSetting(activeTextSetting === 'strokeWidth' ? null : 'strokeWidth')}
+                sx={{
+                  width: 28,
+                  height: 28,
+                  backgroundColor: activeTextSetting === 'strokeWidth' ? 'primary.main' : 'transparent',
+                  color: activeTextSetting === 'strokeWidth' ? 'primary.contrastText' : 'text.primary',
+                  '&:hover': {
+                    backgroundColor: activeTextSetting === 'strokeWidth' ? 'primary.dark' : 'action.hover',
+                  },
+                  '& .MuiSvgIcon-root': { fontSize: '1rem' }
+                }}
+                title="Stroke Width"
+              >
+                <BorderOuter />
+              </IconButton>
+              
+              <IconButton
+                size="small"
+                onClick={() => setActiveTextSetting(activeTextSetting === 'fontWeight' ? null : 'fontWeight')}
+                sx={{
+                  width: 28,
+                  height: 28,
+                  backgroundColor: activeTextSetting === 'fontWeight' ? 'primary.main' : 'transparent',
+                  color: activeTextSetting === 'fontWeight' ? 'primary.contrastText' : 'text.primary',
+                  '&:hover': {
+                    backgroundColor: activeTextSetting === 'fontWeight' ? 'primary.dark' : 'action.hover',
+                  },
+                  '& .MuiSvgIcon-root': { fontSize: '1rem' }
+                }}
+                title="Font Weight"
+              >
+                <FormatBold />
+              </IconButton>
+              
+              <IconButton
+                size="small"
+                onClick={() => setActiveTextSetting(activeTextSetting === 'fontFamily' ? null : 'fontFamily')}
+                sx={{
+                  width: 28,
+                  height: 28,
+                  backgroundColor: activeTextSetting === 'fontFamily' ? 'primary.main' : 'transparent',
+                  color: activeTextSetting === 'fontFamily' ? 'primary.contrastText' : 'text.primary',
+                  '&:hover': {
+                    backgroundColor: activeTextSetting === 'fontFamily' ? 'primary.dark' : 'action.hover',
+                  },
+                  '& .MuiSvgIcon-root': { fontSize: '1rem' }
+                }}
+                title="Font Family"
+              >
+                <FontDownload />
+              </IconButton>
+              
+              <IconButton
+                size="small"
+                onClick={() => setActiveTextSetting(activeTextSetting === 'color' ? null : 'color')}
+                sx={{
+                  width: 28,
+                  height: 28,
+                  backgroundColor: activeTextSetting === 'color' ? 'primary.main' : 'transparent',
+                  color: activeTextSetting === 'color' ? 'primary.contrastText' : 'text.primary',
+                  '&:hover': {
+                    backgroundColor: activeTextSetting === 'color' ? 'primary.dark' : 'action.hover',
+                  },
+                  '& .MuiSvgIcon-root': { fontSize: '1rem' }
+                }}
+                title="Text Color"
+              >
+                <FormatColorText />
+              </IconButton>
             </Box>
           </Box>
         )}

@@ -568,12 +568,8 @@ export const useCollageState = () => {
       }
     }));
     
-    // Update last used settings (excluding content which is panel-specific)
-    const { content, autoAssigned, subtitleShowing, ...settingsOnly } = textConfig;
-    setLastUsedTextSettings(prev => ({
-      ...prev,
-      ...settingsOnly
-    }));
+    // Note: We don't update lastUsedTextSettings here to ensure text settings
+    // only affect the specific caption being edited, not other captions
     
     if (DEBUG_MODE) {
       console.log(`Updating text for panel ${panelId}:`, textConfig);
