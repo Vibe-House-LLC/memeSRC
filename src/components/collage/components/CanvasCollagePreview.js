@@ -1350,7 +1350,7 @@ const CanvasCollagePreview = ({
             )}
             
                         {/* Caption prompt - only show when no captions exist AND not in transform mode */}
-            {(!panelTexts[panelId]?.content || panelTexts[panelId]?.content.trim() === '') && !isInTransformMode?.[panelId] && (
+            {(!panelTexts[panelId]?.content || panelTexts[panelId]?.content.trim() === '') && !isTransformMode?.[panelId] && (
               <TextField
                 size="small"
                 placeholder="Add Captions"
@@ -1399,7 +1399,7 @@ const CanvasCollagePreview = ({
             )}
             
             {/* Caption edit area - clickable overlay when captions exist AND not in transform mode */}
-            {(panelTexts[panelId]?.content && panelTexts[panelId]?.content.trim() !== '') && !isInTransformMode?.[panelId] && (() => {
+            {(panelTexts[panelId]?.content && panelTexts[panelId]?.content.trim() !== '') && !isTransformMode?.[panelId] && (() => {
               // Calculate text dimensions for proper overlay sizing
               const panelText = panelTexts[panelId] || {};
               const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
