@@ -404,6 +404,7 @@ export default function CollagePage() {
           pb: !showResultDialog && hasImages && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
+          overflowY: 'visible', // Allow vertical overflow for caption editor
           minHeight: '100vh',
           bgcolor: 'background.default'
         }}>
@@ -412,7 +413,8 @@ export default function CollagePage() {
             sx={{ 
               pt: isMobile ? 1 : 1.5,
               px: isMobile ? 1 : 2,
-              width: '100%'
+              width: '100%',
+              overflow: 'visible' // Allow caption editor to overflow container bounds
             }}
             disableGutters={isMobile}
           >
