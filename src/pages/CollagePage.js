@@ -61,7 +61,7 @@ const getCollagePreferenceKey = (user) => {
 
 const getCollagePreference = (user) => {
   const key = getCollagePreferenceKey(user);
-  return localStorage.getItem(key) || 'new'; // Default to new version
+  return localStorage.getItem(key) || 'new';
 };
 
 export default function CollagePage() {
