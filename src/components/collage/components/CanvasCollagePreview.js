@@ -316,9 +316,12 @@ const CanvasCollagePreview = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [textEditingPanel, setTextEditingPanel] = useState(null);
   const [textEditAnchor, setTextEditAnchor] = useState(null);
+  const anchorElementRef = useRef(null);
   const [activeTextSetting, setActiveTextSetting] = useState(null);
   const [touchStartDistance, setTouchStartDistance] = useState(null);
   const [touchStartScale, setTouchStartScale] = useState(1);
+  const scrollTimeoutRef = useRef(null);
+  const scrollListenerRef = useRef(null);
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
@@ -1234,6 +1237,39 @@ const CanvasCollagePreview = ({
     }
   }, [getCanvasBlob]);
 
+  // Cleanup anchor element and scroll listeners on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up scroll listeners and timeouts
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      if (scrollListenerRef.current) {
+        window.removeEventListener('scroll', scrollListenerRef.current);
+      }
+      
+      // Clean up anchor element
+      if (anchorElementRef.current && anchorElementRef.current.parentNode) {
+        anchorElementRef.current.parentNode.removeChild(anchorElementRef.current);
+      }
+    };
+  }, []);
+
+  // Update anchor position when canvas moves or editing panel changes
+  useEffect(() => {
+    if (textEditingPanel && anchorElementRef.current && canvasRef.current) {
+      const panelRect = panelRects.find(rect => rect.panelId === textEditingPanel);
+      if (panelRect) {
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        const anchorLeft = canvasRect.left + panelRect.x + (panelRect.width / 2);
+        const anchorTop = canvasRect.top + panelRect.y + panelRect.height + window.pageYOffset;
+        
+        anchorElementRef.current.style.left = `${anchorLeft}px`;
+        anchorElementRef.current.style.top = `${anchorTop}px`;
+      }
+    }
+  }, [textEditingPanel, panelRects, componentWidth, componentHeight]);
+
   // Handle text editing
   const handleTextEdit = useCallback((panelId, event) => {
     setTextEditingPanel(panelId);
@@ -1246,18 +1282,111 @@ const CanvasCollagePreview = ({
       if (canvasElement) {
         const canvasRect = canvasElement.getBoundingClientRect();
         
-        // Create a virtual anchor element positioned at the bottom center of the specific frame
-        const virtualAnchor = {
-          getBoundingClientRect: () => ({
-            top: canvasRect.top + panelRect.y + panelRect.height,
-            left: canvasRect.left + panelRect.x + (panelRect.width / 2),
-            right: canvasRect.left + panelRect.x + (panelRect.width / 2),
-            bottom: canvasRect.top + panelRect.y + panelRect.height,
-            width: 0,
-            height: 0,
-          }),
+        // Create the anchor element if it doesn't exist
+        if (!anchorElementRef.current) {
+          anchorElementRef.current = document.createElement('div');
+          anchorElementRef.current.style.position = 'absolute';
+          anchorElementRef.current.style.width = '1px';
+          anchorElementRef.current.style.height = '1px';
+          anchorElementRef.current.style.pointerEvents = 'none';
+          anchorElementRef.current.style.zIndex = '-1';
+          document.body.appendChild(anchorElementRef.current);
+        }
+        
+        // Function to position anchor and set it after scrolling is complete
+        const positionAnchorAndOpen = () => {
+          // Get the final canvas position after any scrolling
+          const finalCanvasRect = canvasElement.getBoundingClientRect();
+          const anchorLeft = finalCanvasRect.left + panelRect.x + (panelRect.width / 2);
+          const anchorTop = finalCanvasRect.top + panelRect.y + panelRect.height + window.pageYOffset;
+          
+          anchorElementRef.current.style.left = `${anchorLeft}px`;
+          anchorElementRef.current.style.top = `${anchorTop}px`;
+          
+          setTextEditAnchor(anchorElementRef.current);
         };
-        setTextEditAnchor(virtualAnchor);
+        
+        // Check if we need to scroll first
+        const frameAnchorTop = canvasRect.top + panelRect.y + panelRect.height;
+        const viewportHeight = window.innerHeight;
+        const popoverHeight = 280; // Estimated height of the popover
+        const padding = 20; // Extra padding for visual comfort
+        const headerOffset = 80; // Account for any fixed headers
+        
+        // Calculate available space below the anchor point
+        const spaceBelow = viewportHeight - frameAnchorTop - headerOffset;
+        
+        // Check if we need to scroll to make room for the popover
+        if (spaceBelow < popoverHeight + padding) {
+          // Calculate how much we need to scroll down
+          const scrollAmount = (popoverHeight + padding) - spaceBelow;
+          
+          // Ensure the frame itself is visible after scrolling
+          const frameTop = canvasRect.top + panelRect.y;
+          const minScrollAmount = Math.max(0, frameTop - 100); // Keep some frame visible
+          
+          // Start scrolling
+          window.scrollBy({
+            top: Math.max(scrollAmount, minScrollAmount),
+            behavior: 'smooth'
+          });
+          
+          // Wait for scroll to complete before positioning anchor
+          // Use both timeout and scroll event listener to ensure completion
+          let lastScrollTop = window.pageYOffset;
+          let scrollStableCount = 0;
+          
+          const checkScrollComplete = () => {
+            const currentScrollTop = window.pageYOffset;
+            
+            if (Math.abs(currentScrollTop - lastScrollTop) < 1) {
+              scrollStableCount += 1;
+              if (scrollStableCount >= 3) {
+                // Scroll has been stable for 3 checks, consider it complete
+                if (scrollTimeoutRef.current) {
+                  clearTimeout(scrollTimeoutRef.current);
+                  scrollTimeoutRef.current = null;
+                }
+                if (scrollListenerRef.current) {
+                  window.removeEventListener('scroll', scrollListenerRef.current);
+                  scrollListenerRef.current = null;
+                }
+                setTimeout(positionAnchorAndOpen, 50); // Small delay to ensure everything is settled
+                return;
+              }
+            } else {
+              scrollStableCount = 0;
+            }
+            
+            lastScrollTop = currentScrollTop;
+            scrollTimeoutRef.current = setTimeout(checkScrollComplete, 50);
+          };
+          
+          // Store references for cleanup
+          scrollListenerRef.current = checkScrollComplete;
+          
+          // Start checking for scroll completion
+          window.addEventListener('scroll', checkScrollComplete, { passive: true });
+          scrollTimeoutRef.current = setTimeout(checkScrollComplete, 100);
+          
+          // Fallback: if scroll doesn't seem to complete within 2 seconds, proceed anyway
+          setTimeout(() => {
+            if (scrollTimeoutRef.current) {
+              clearTimeout(scrollTimeoutRef.current);
+              scrollTimeoutRef.current = null;
+            }
+            if (scrollListenerRef.current) {
+              window.removeEventListener('scroll', scrollListenerRef.current);
+              scrollListenerRef.current = null;
+            }
+            if (!textEditAnchor) {
+              positionAnchorAndOpen();
+            }
+          }, 2000);
+        } else {
+          // No scrolling needed, position anchor immediately
+          positionAnchorAndOpen();
+        }
       } else {
         setTextEditAnchor(event.currentTarget);
       }
@@ -1265,12 +1394,28 @@ const CanvasCollagePreview = ({
       // Fallback to the original element if panel rect not found
       setTextEditAnchor(event.currentTarget);
     }
-  }, [panelRects]);
+  }, [panelRects, textEditAnchor]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
     setTextEditAnchor(null);
     setActiveTextSetting(null);
+    
+    // Clean up scroll listeners and timeouts
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+    if (scrollListenerRef.current) {
+      window.removeEventListener('scroll', scrollListenerRef.current);
+      scrollListenerRef.current = null;
+    }
+    
+    // Clean up the anchor element
+    if (anchorElementRef.current && anchorElementRef.current.parentNode) {
+      anchorElementRef.current.parentNode.removeChild(anchorElementRef.current);
+      anchorElementRef.current = null;
+    }
   }, []);
 
   const handleTextChange = useCallback((panelId, property, value) => {
@@ -1568,8 +1713,15 @@ const CanvasCollagePreview = ({
           sx: {
             maxWidth: '90vw', // Prevent overflow on mobile
             width: { xs: '240px', sm: '280px' }, // More compact width
+            mt: 1, // Add small margin to separate from frame
           }
         }}
+        TransitionProps={{
+          timeout: 300,
+        }}
+        disableAutoFocus={false}
+        disableEnforceFocus={false}
+        disableRestoreFocus={false}
       >
         {textEditingPanel && (
           <Box sx={{ p: 1.5 }}>
