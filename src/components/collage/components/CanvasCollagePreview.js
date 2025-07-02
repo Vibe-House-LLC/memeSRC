@@ -514,6 +514,11 @@ const CanvasCollagePreview = ({
       if (panelText.content && panelText.content.trim()) {
         ctx.save();
         
+        // Clip text to panel boundaries to prevent overflow into adjacent frames
+        ctx.beginPath();
+        ctx.rect(x, y, width, height);
+        ctx.clip();
+        
         // Set text properties (use last used settings as defaults)
         const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
         const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
@@ -545,7 +550,7 @@ const CanvasCollagePreview = ({
         const textY = y + height - textPadding;
         const lineHeight = fontSize * 1.2;
         
-        // Helper function to wrap text
+        // Helper function to wrap text with aggressive character-level fallback
         const wrapText = (text, maxWidth) => {
           const lines = [];
           const manualLines = text.split('\n'); // Handle manual line breaks first
@@ -563,16 +568,51 @@ const CanvasCollagePreview = ({
                 const testLine = currentLine ? `${currentLine} ${word}` : word;
                 const testWidth = ctx.measureText(testLine).width;
                 
-                                 if (testWidth <= maxWidth) {
-                   currentLine = testLine;
-                 } else if (currentLine) {
-                   // Current line is full, start a new line
-                   lines.push(currentLine);
-                   currentLine = word;
-                 } else {
-                   // Single word is too long, force it on its own line
-                   lines.push(word);
-                 }
+                if (testWidth <= maxWidth) {
+                  currentLine = testLine;
+                } else if (currentLine) {
+                  // Current line is full, start a new line
+                  lines.push(currentLine);
+                  currentLine = word;
+                  
+                  // Check if the single word is still too long
+                  if (ctx.measureText(word).width > maxWidth) {
+                    // Break the word character by character
+                    let charLine = '';
+                    for (let i = 0; i < word.length; i += 1) {
+                      const testChar = charLine + word[i];
+                      if (ctx.measureText(testChar).width <= maxWidth) {
+                        charLine = testChar;
+                      } else {
+                        if (charLine) {
+                          lines.push(charLine);
+                        }
+                        charLine = word[i];
+                      }
+                    }
+                    if (charLine) {
+                      lines.push(charLine);
+                    }
+                    currentLine = '';
+                  }
+                } else {
+                  // Single word is too long, break it character by character
+                  let charLine = '';
+                  for (let i = 0; i < word.length; i += 1) {
+                    const testChar = charLine + word[i];
+                    if (ctx.measureText(testChar).width <= maxWidth) {
+                      charLine = testChar;
+                    } else {
+                      if (charLine) {
+                        lines.push(charLine);
+                      }
+                      charLine = word[i];
+                    }
+                  }
+                  if (charLine) {
+                    lines.push(charLine);
+                  }
+                }
               });
               
               // Add the last line if it has content
@@ -1291,7 +1331,7 @@ const CanvasCollagePreview = ({
                 sx={{
                   position: 'absolute',
                   top: rect.y + 8,
-                  left: rect.x + rect.width - 56,
+                  left: rect.x + rect.width - 48, // Simplified positioning
                   width: 40,
                   height: 40,
                   backgroundColor: isInTransformMode ? '#4CAF50' : '#2196F3',
@@ -1302,36 +1342,151 @@ const CanvasCollagePreview = ({
                     backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
                     transform: 'scale(1.1)',
                   },
-                  zIndex: 10,
+                  zIndex: 12, // Higher than caption overlay to ensure interactivity
                 }}
               >
                 {isInTransformMode ? <Check sx={{ fontSize: 20 }} /> : <OpenWith sx={{ fontSize: 16 }} />}
               </IconButton>
             )}
             
-            {/* Text edit button */}
-            <IconButton
-              size="small"
-              onClick={(e) => handleTextEdit(panelId, e)}
-              sx={{
-                position: 'absolute',
-                top: rect.y + 8,
-                left: rect.x + rect.width - (hasImage ? 104 : 56),
-                width: 40,
-                height: 40,
-                backgroundColor: '#FF9800',
-                color: '#ffffff',
-                border: '2px solid #ffffff',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                '&:hover': {
-                  backgroundColor: '#F57C00',
-                  transform: 'scale(1.1)',
-                },
-                zIndex: 10,
-              }}
-            >
-              <TextFields sx={{ fontSize: 16 }} />
-            </IconButton>
+                        {/* Caption prompt - only show when no captions exist AND not in transform mode */}
+            {(!panelTexts[panelId]?.content || panelTexts[panelId]?.content.trim() === '') && !isInTransformMode?.[panelId] && (
+              <TextField
+                size="small"
+                placeholder="Add Captions"
+                value="" // Always empty - this is just a visual prompt
+                onClick={(e) => handleTextEdit(panelId, e)}
+                readOnly // Prevent actual text input
+                sx={{
+                  position: 'absolute',
+                  top: rect.y + rect.height - 32, // Position at bottom of frame
+                  left: rect.x + 8, // Small padding from left edge
+                  width: rect.width - 16, // Full width minus padding
+                  zIndex: 8, // Lower than transform button to avoid interference
+                  cursor: 'pointer', // Show it's clickable
+                  '& .MuiInputBase-root': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.1)', // Transparent background
+                    border: '1px solid rgba(255, 255, 255, 0.3)', // Faint outline
+                    borderRadius: '4px',
+                    color: '#ffffff',
+                    fontSize: '14px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.5)',
+                    },
+                    '&.Mui-focused': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                      border: '1px solid rgba(255, 255, 255, 0.7)',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    textAlign: 'center',
+                    padding: '4px 8px',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    '&::placeholder': {
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      opacity: 1,
+                    },
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    border: 'none', // Remove default outline
+                  },
+                }}
+              />
+            )}
+            
+            {/* Caption edit area - clickable overlay when captions exist AND not in transform mode */}
+            {(panelTexts[panelId]?.content && panelTexts[panelId]?.content.trim() !== '') && !isInTransformMode?.[panelId] && (() => {
+              // Calculate text dimensions for proper overlay sizing
+              const panelText = panelTexts[panelId] || {};
+              const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+              const lineHeight = fontSize * 1.2;
+              const textPadding = 10; // Canvas text padding (keep same for consistency)
+              const overlayPadding = 4; // Tighter padding for the clickable overlay
+              const maxTextWidth = rect.width - (textPadding * 2);
+              
+              // Estimate number of lines (simplified calculation for overlay sizing)
+              const textContent = panelText.content || '';
+              const manualLines = textContent.split('\n');
+              let totalLines = 0;
+              
+              // Rough character width estimation (varies by font, but good enough for overlay)
+              const avgCharWidth = fontSize * 0.6;
+              const maxCharsPerLine = Math.floor(maxTextWidth / avgCharWidth);
+              
+              manualLines.forEach(line => {
+                if (line.length <= maxCharsPerLine) {
+                  totalLines += 1;
+                } else {
+                  // More accurate estimate that accounts for character-level wrapping
+                  const words = line.split(' ');
+                  let currentLineLength = 0;
+                  let linesForThisManualLine = 1;
+                  
+                  words.forEach(word => {
+                    // Check if single word is longer than max line
+                    if (word.length > maxCharsPerLine) {
+                      // Add current line if it has content
+                      if (currentLineLength > 0) {
+                        linesForThisManualLine += 1;
+                        currentLineLength = 0;
+                      }
+                      // Calculate lines needed for character wrapping
+                      const wordLines = Math.ceil(word.length / maxCharsPerLine);
+                      linesForThisManualLine += wordLines - 1; // -1 because we already count the current line
+                      currentLineLength = word.length % maxCharsPerLine || maxCharsPerLine;
+                    } else if (currentLineLength + word.length + 1 > maxCharsPerLine) {
+                      linesForThisManualLine += 1;
+                      currentLineLength = word.length;
+                    } else {
+                      currentLineLength += word.length + 1; // +1 for space
+                    }
+                  });
+                  
+                  totalLines += linesForThisManualLine;
+                }
+              });
+              
+              // Calculate total text height with tighter padding for overlay
+              const textHeight = Math.max(lineHeight, totalLines * lineHeight);
+              const overlayHeight = textHeight + (overlayPadding * 2); // Add tighter padding top and bottom
+              
+              // Ensure overlay stays within frame boundaries
+              const proposedTop = rect.y + rect.height - overlayHeight;
+              const boundedTop = Math.max(rect.y, proposedTop); // Don't go above frame top
+              const boundedHeight = Math.min(overlayHeight, rect.height - (boundedTop - rect.y)); // Clip height if needed
+              const boundedLeft = Math.max(rect.x, rect.x + textPadding); // Don't go left of frame
+              const boundedWidth = Math.min(rect.width - (textPadding * 2), rect.width - (boundedLeft - rect.x)); // Don't exceed frame width
+              
+              return (
+                <Box
+                  onClick={(e) => handleTextEdit(panelId, e)}
+                  sx={{
+                    position: 'absolute',
+                    top: boundedTop, // Constrained to frame boundaries
+                    left: boundedLeft, // Constrained to frame boundaries
+                    width: boundedWidth, // Constrained to frame boundaries
+                    height: boundedHeight, // Constrained to frame boundaries
+                    zIndex: 8, // Lower than transform button to avoid interference
+                    overflow: 'hidden', // Clip any content that might still overflow
+                    cursor: 'pointer',
+                    backgroundColor: 'transparent',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)', // Subtle hover effect
+                      borderRadius: '4px',
+                    },
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'center',
+                    paddingBottom: `${overlayPadding}px`, // Match the calculated overlay padding
+                  }}
+                  title="Click to edit captions" // Tooltip hint
+                />
+              );
+            })()}
           </Box>
         );
       })}
