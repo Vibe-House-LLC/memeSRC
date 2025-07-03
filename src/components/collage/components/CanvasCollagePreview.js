@@ -1380,9 +1380,11 @@ const CanvasCollagePreview = ({
                   sx={{
                     position: 'absolute',
                     top: textEditingPanel === panelId ? rect.y + rect.height : rect.y + rect.height - collapsedHeight,
-                    left: rect.x + sidePadding,
-                    width: rect.width - (sidePadding * 2),
-                    height: textEditingPanel === panelId ? expandedHeight : collapsedHeight,
+                    // When collapsed: frame-specific positioning, when expanded: canvas-wide positioning
+                    left: textEditingPanel === panelId ? sidePadding : rect.x + sidePadding,
+                    // When collapsed: frame-specific width, when expanded: canvas-wide width
+                    width: textEditingPanel === panelId ? componentWidth - (sidePadding * 2) : rect.width - (sidePadding * 2),
+                    height: textEditingPanel === panelId ? 'auto' : collapsedHeight,
                     zIndex: 20, // Above everything else including transform buttons
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
                     borderRadius: `${borderRadius}px`,
