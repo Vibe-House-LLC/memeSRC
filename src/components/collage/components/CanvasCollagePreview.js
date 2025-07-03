@@ -318,6 +318,7 @@ const CanvasCollagePreview = ({
   const [activeTextSetting, setActiveTextSetting] = useState(null);
   const [touchStartDistance, setTouchStartDistance] = useState(null);
   const [touchStartScale, setTouchStartScale] = useState(1);
+  const textFieldRefs = useRef({});
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
@@ -663,6 +664,73 @@ const CanvasCollagePreview = ({
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
+
+  // Focus text field when caption editor opens
+  useEffect(() => {
+    if (textEditingPanel && activeTextSetting === 'content') {
+      // Small delay to ensure the text field is rendered
+      setTimeout(() => {
+        // Find the text field for the specific panel
+        const textField = textFieldRefs.current[textEditingPanel];
+        if (textField) {
+          // Try multiple ways to find the input element
+          let inputElement = textField.querySelector('textarea') || 
+                            textField.querySelector('input') ||
+                            textField.querySelector('[role="textbox"]');
+          
+          // If MUI structure, try going through the input base
+          if (!inputElement) {
+            const inputBase = textField.querySelector('.MuiInputBase-input');
+            if (inputBase) {
+              inputElement = inputBase;
+            }
+          }
+          
+          if (inputElement) {
+            // Focus the element
+            inputElement.focus();
+            
+            // Position cursor at the end of existing text
+            const textLength = inputElement.value.length;
+            
+            // Use setTimeout to ensure focus is complete before setting selection
+            setTimeout(() => {
+              inputElement.setSelectionRange(textLength, textLength);
+              
+              // For mobile: additional steps to ensure keyboard appears
+              if ('ontouchstart' in window) {
+                inputElement.click();
+                // Double-check cursor position on mobile
+                setTimeout(() => {
+                  inputElement.setSelectionRange(textLength, textLength);
+                }, 100);
+              }
+            }, 50);
+          }
+        }
+      }, 300); // Even longer delay to ensure complete rendering
+    }
+  }, [textEditingPanel, activeTextSetting]);
+
+  // Handle cursor positioning when text field auto-focuses
+  useEffect(() => {
+    if (textEditingPanel && activeTextSetting === 'content') {
+      setTimeout(() => {
+        const textField = textFieldRefs.current[textEditingPanel];
+        if (textField) {
+          // Find the actual input element and position cursor at end
+          const inputElement = textField.querySelector('textarea') || 
+                              textField.querySelector('input') ||
+                              textField.querySelector('.MuiInputBase-input');
+          
+          if (inputElement && document.activeElement === inputElement) {
+            const textLength = inputElement.value.length;
+            inputElement.setSelectionRange(textLength, textLength);
+          }
+        }
+      }, 100);
+    }
+  }, [textEditingPanel, activeTextSetting, panelTexts]);
 
   // Handle mouse events
   const handleMouseMove = useCallback((e) => {
@@ -1241,7 +1309,13 @@ const CanvasCollagePreview = ({
 
   // Handle text editing
   const handleTextEdit = useCallback((panelId, event) => {
+    const isOpening = textEditingPanel !== panelId;
     setTextEditingPanel(textEditingPanel === panelId ? null : panelId);
+    
+    // Always set to content tab when opening
+    if (isOpening) {
+      setActiveTextSetting('content');
+    }
   }, [textEditingPanel]);
 
   const handleTextClose = useCallback(() => {
@@ -1374,8 +1448,8 @@ const CanvasCollagePreview = ({
               </IconButton>
             )}
             
-            {/* Caption editing area - show when not in transform mode */}
-            {!isTransformMode?.[panelId] && (
+            {/* Caption editing area - show when not in transform mode and has image */}
+            {!isTransformMode?.[panelId] && hasImage && (
                 <Box
                   sx={{
                     position: 'absolute',
@@ -1398,7 +1472,6 @@ const CanvasCollagePreview = ({
                     <Box
                       onClick={(e) => {
                         handleTextEdit(panelId, e);
-                        setActiveTextSetting('content'); // Default to content tab when opening
                       }}
                       sx={{
                         width: '100%',
@@ -1582,6 +1655,12 @@ const CanvasCollagePreview = ({
                             placeholder="Add Captions"
                             value={panelTexts[panelId]?.content || ''}
                             onChange={(e) => handleTextChange(panelId, 'content', e.target.value)}
+                            inputRef={(el) => {
+                              if (el) {
+                                textFieldRefs.current[panelId] = el;
+                              }
+                            }}
+                            autoFocus={textEditingPanel === panelId && activeTextSetting === 'content'}
                             sx={{
                               '& .MuiInputBase-root': {
                                 backgroundColor: 'transparent',
