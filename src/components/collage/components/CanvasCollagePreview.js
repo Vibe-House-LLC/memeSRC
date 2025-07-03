@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button } from "@mui/material";
+import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
@@ -1565,123 +1565,62 @@ const CanvasCollagePreview = ({
                   {/* Expanded editing controls - only show when this panel is being edited */}
                   {textEditingPanel === panelId && (
                     <Box sx={{ p: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding)), pt: 0 }}>
-                      {/* Setting icons row - always visible */}
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'center', 
-                        gap: Math.max(isMobileSize ? 0.375 : 0.25, Math.min(0.5, sidePadding * 0.5)), // Compact but touch-friendly
-                        mb: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding * 0.75)),
-                        flexWrap: 'wrap', // Allow wrapping on very small panels
-                        px: isMobileSize ? 0.25 : 0, // Minimal padding on mobile
-                      }}>
-                        <IconButton
-                          size="small"
-                          onClick={() => setActiveTextSetting(activeTextSetting === 'content' ? null : 'content')}
-                          sx={{
-                            width: tabSize,
-                            height: tabSize,
-                            backgroundColor: activeTextSetting === 'content' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                            color: '#ffffff',
-                            '&:hover': {
-                              backgroundColor: activeTextSetting === 'content' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                            },
-                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
-                          }}
+                      {/* Setting tabs - always visible */}
+                      <Tabs
+                        value={activeTextSetting ? ['content', 'fontSize', 'strokeWidth', 'fontWeight', 'fontFamily', 'color'].indexOf(activeTextSetting) : false}
+                        onChange={(event, newValue) => {
+                          const settings = ['content', 'fontSize', 'strokeWidth', 'fontWeight', 'fontFamily', 'color'];
+                          const newSetting = settings[newValue];
+                          // Toggle behavior: if clicking the same tab, deselect it
+                          setActiveTextSetting(activeTextSetting === newSetting ? null : newSetting);
+                        }}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        allowScrollButtonsMobile
+                        sx={{
+                          mb: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding * 0.75)),
+                          '& .MuiTab-root': {
+                            minHeight: 36, // Make tabs shorter
+                          },
+                        }}
+                      >
+                        <Tab
+                          icon={<Edit />}
+                          iconPosition="start"
+                          label="Text"
                           title="Edit Text"
-                        >
-                          <Edit />
-                        </IconButton>
-                        
-                        <IconButton
-                          size="small"
-                          onClick={() => setActiveTextSetting(activeTextSetting === 'fontSize' ? null : 'fontSize')}
-                          sx={{
-                            width: tabSize,
-                            height: tabSize,
-                            backgroundColor: activeTextSetting === 'fontSize' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                            color: '#ffffff',
-                            '&:hover': {
-                              backgroundColor: activeTextSetting === 'fontSize' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                            },
-                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
-                          }}
+                        />
+                        <Tab
+                          icon={<FormatSize />}
+                          iconPosition="start"
+                          label="Size"
                           title="Font Size"
-                        >
-                          <FormatSize />
-                        </IconButton>
-                        
-                        <IconButton
-                          size="small"
-                          onClick={() => setActiveTextSetting(activeTextSetting === 'strokeWidth' ? null : 'strokeWidth')}
-                          sx={{
-                            width: tabSize,
-                            height: tabSize,
-                            backgroundColor: activeTextSetting === 'strokeWidth' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                            color: '#ffffff',
-                            '&:hover': {
-                              backgroundColor: activeTextSetting === 'strokeWidth' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                            },
-                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
-                          }}
+                        />
+                        <Tab
+                          icon={<BorderOuter />}
+                          iconPosition="start"
+                          label="Stroke"
                           title="Stroke Width"
-                        >
-                          <BorderOuter />
-                        </IconButton>
-                        
-                        <IconButton
-                          size="small"
-                          onClick={() => setActiveTextSetting(activeTextSetting === 'fontWeight' ? null : 'fontWeight')}
-                          sx={{
-                            width: tabSize,
-                            height: tabSize,
-                            backgroundColor: activeTextSetting === 'fontWeight' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                            color: '#ffffff',
-                            '&:hover': {
-                              backgroundColor: activeTextSetting === 'fontWeight' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                            },
-                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
-                          }}
+                        />
+                        <Tab
+                          icon={<FormatBold />}
+                          iconPosition="start"
+                          label="Weight"
                           title="Font Weight"
-                        >
-                          <FormatBold />
-                        </IconButton>
-                        
-                        <IconButton
-                          size="small"
-                          onClick={() => setActiveTextSetting(activeTextSetting === 'fontFamily' ? null : 'fontFamily')}
-                          sx={{
-                            width: tabSize,
-                            height: tabSize,
-                            backgroundColor: activeTextSetting === 'fontFamily' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                            color: '#ffffff',
-                            '&:hover': {
-                              backgroundColor: activeTextSetting === 'fontFamily' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                            },
-                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
-                          }}
+                        />
+                        <Tab
+                          icon={<FontDownload />}
+                          iconPosition="start"
+                          label="Font"
                           title="Font Family"
-                        >
-                          <FontDownload />
-                        </IconButton>
-                        
-                        <IconButton
-                          size="small"
-                          onClick={() => setActiveTextSetting(activeTextSetting === 'color' ? null : 'color')}
-                          sx={{
-                            width: tabSize,
-                            height: tabSize,
-                            backgroundColor: activeTextSetting === 'color' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                            color: '#ffffff',
-                            '&:hover': {
-                              backgroundColor: activeTextSetting === 'color' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                            },
-                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
-                          }}
+                        />
+                        <Tab
+                          icon={<FormatColorText />}
+                          iconPosition="start"
+                          label="Color"
                           title="Text Color"
-                        >
-                          <FormatColorText />
-                        </IconButton>
-                      </Box>
+                        />
+                      </Tabs>
 
                       {/* Active setting panel - appears below the tabs */}
                       {activeTextSetting === 'content' && (
