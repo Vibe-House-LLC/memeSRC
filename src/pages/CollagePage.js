@@ -411,6 +411,7 @@ export default function CollagePage() {
           <Container 
             maxWidth="xl" 
             sx={{ 
+              mb: 15,
               pt: isMobile ? 1 : 1.5,
               px: isMobile ? 1 : 2,
               width: '100%',

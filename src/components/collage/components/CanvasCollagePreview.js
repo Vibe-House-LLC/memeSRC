@@ -1338,33 +1338,27 @@ const CanvasCollagePreview = ({
           const containerRect = container.getBoundingClientRect();
           
           // Calculate the bottom position of the expanded editor
-          const editorHeight = 150; // Approximate height of expanded editor
+          const editorHeight = 185; // Moderate height estimate for expanded editor
           const editorBottom = panel.y + panel.height + editorHeight;
           
           // Account for mobile keyboard - it typically takes up 250-350px on mobile devices
           const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
           const keyboardHeight = isMobileDevice ? 300 : 0; // Conservative estimate for mobile keyboard
-          const minPadding = isMobileDevice ? 10 : 5; // Very minimal padding
+          const extraPadding = isMobileDevice ? 55 : 43; // Moderate padding for comfortable viewing
           const availableHeight = containerRect.height - keyboardHeight;
           
           // Only scroll if a significant portion of the editor would be cut off
           const cutoffAmount = editorBottom - availableHeight;
-          const significantCutoff = 50; // Only scroll if more than 50px would be cut off
+          const significantCutoff = 40; // Moderate threshold for scrolling sensitivity
           
           if (cutoffAmount > significantCutoff) {
-            // Calculate minimal scroll needed to show the editor above the keyboard
-            const minScrollNeeded = cutoffAmount + minPadding;
+            // Calculate scroll needed to show the editor comfortably above the keyboard
+            const scrollNeeded = cutoffAmount + extraPadding;
             
-            // But don't scroll more than necessary - keep the panel in view if possible
-            const panelTop = panel.y;
-            const maxScrollAllowed = Math.max(0, panelTop - 30); // Keep more of the panel visible
-            
-            const scrollTarget = Math.min(minScrollNeeded, maxScrollAllowed);
-            
-            // Only scroll if we actually need to and it's a reasonable amount
-            if (scrollTarget > 0 && scrollTarget < 200) { // Cap at 200px max scroll
+            // Allow more generous scrolling for caption editor
+            if (scrollNeeded > 0) {
               window.scrollTo({
-                top: window.scrollY + scrollTarget,
+                top: window.scrollY + scrollNeeded,
                 behavior: 'smooth'
               });
             }
