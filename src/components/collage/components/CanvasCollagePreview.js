@@ -1622,26 +1622,6 @@ const CanvasCollagePreview = ({
                         >
                           <FormatColorText />
                         </IconButton>
-
-                        {/* Close button */}
-                        <IconButton
-                          size="small"
-                          onClick={handleTextClose}
-                          sx={{
-                            width: tabSize,
-                            height: tabSize,
-                            backgroundColor: 'transparent',
-                            color: '#ffffff',
-                            marginLeft: Math.max(isMobileSize ? 0.375 : 0.25, Math.min(0.5, sidePadding * 0.5)), // Compact margin for mobile
-                            '&:hover': {
-                              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            },
-                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
-                          }}
-                          title="Close Editor"
-                        >
-                          <Close />
-                        </IconButton>
                       </Box>
 
                       {/* Active setting panel - appears below the tabs */}
@@ -1900,6 +1880,38 @@ const CanvasCollagePreview = ({
                         />
                       </Box>
                     )}
+                    
+                    {/* Done button at the bottom */}
+                    <Box sx={{ mt: Math.max(isMobileSize ? 0.75 : 0.5, Math.min(1, sidePadding)), px: 0.5 }}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleTextClose}
+                        sx={{
+                          height: Math.max(isMobileSize ? 36 : 32, Math.min(44, fontSize * 2.2)),
+                          backgroundColor: '#4CAF50', // Green color
+                          color: '#ffffff',
+                          fontSize: `${fontSize}px`,
+                          fontWeight: '600',
+                          textTransform: 'none',
+                          borderRadius: `${borderRadius}px`,
+                          border: 'none',
+                          boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
+                          '&:hover': {
+                            backgroundColor: '#45a049',
+                            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)',
+                            transform: 'translateY(-1px)',
+                          },
+                          '&:active': {
+                            transform: 'translateY(0)',
+                            boxShadow: '0 2px 6px rgba(76, 175, 80, 0.3)',
+                          },
+                          transition: 'all 0.2s ease-in-out',
+                        }}
+                      >
+                        Done
+                      </Button>
+                    </Box>
                   </Box>
                 )}
               </Box>
