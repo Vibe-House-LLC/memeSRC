@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Add, OpenWith, Check, TextFields, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload } from '@mui/icons-material';
+import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import fonts from '../../../utils/fonts';
 
@@ -1326,6 +1326,26 @@ const CanvasCollagePreview = ({
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
         const isInTransformMode = isTransformMode[panelId];
         
+        // Calculate responsive dimensions based on panel size with mobile-friendly minimums
+        const minPanelSize = Math.min(rect.width, rect.height);
+        const isMobileSize = minPanelSize < 200; // Detect mobile-sized panels
+        
+        // Use larger minimums for mobile touch targets
+        const collapsedHeight = Math.max(isMobileSize ? 28 : 24, Math.min(40, minPanelSize * 0.15));
+        const sidePadding = Math.max(isMobileSize ? 6 : 4, Math.min(12, rect.width * 0.02));
+        const tabSize = Math.max(isMobileSize ? 28 : 22, Math.min(32, minPanelSize * 0.12)); // Slightly smaller but still touch-friendly
+        const fontSize = Math.max(isMobileSize ? 11 : 10, Math.min(14, minPanelSize * 0.08));
+        const borderRadius = Math.max(3, Math.min(8, minPanelSize * 0.02));
+        
+        // Calculate dynamic expanded height based on content needs
+        const tabRowHeight = tabSize + (isMobileSize ? 12 : 8); // Tab height + margin
+        const contentAreaHeight = isMobileSize ? 80 : 65; // More space for content (text field, sliders, etc.)
+        const containerPadding = (isMobileSize ? 12 : 8); // Top/bottom padding
+        const expandedHeight = Math.max(
+          tabRowHeight + contentAreaHeight + containerPadding,
+          isMobileSize ? 120 : 100 // Ensure minimum usable height
+        );
+        
         return (
           <Box key={`controls-${panelId}`}>
             {/* Transform control button */}
@@ -1354,157 +1374,324 @@ const CanvasCollagePreview = ({
               </IconButton>
             )}
             
-                        {/* Caption editing area - show when not in transform mode */}
+            {/* Caption editing area - show when not in transform mode */}
             {!isTransformMode?.[panelId] && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: textEditingPanel === panelId ? rect.y + rect.height : rect.y + rect.height - 32, // Editor below frame when active
-                  left: rect.x + 8,
-                  width: rect.width - 16,
-                  height: textEditingPanel === panelId ? 150 : 32, // Expand height when editing
-                  zIndex: 20, // Above everything else including transform buttons
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  transition: 'all 0.3s ease-in-out', // Smooth expand/collapse
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Main text input/display */}
-              <TextField
-                size="small"
-                placeholder="Add Captions"
-                  value={panelTexts[panelId]?.content || ''}
-                  onChange={(e) => handleTextChange(panelId, 'content', e.target.value)}
-                  onClick={(e) => {
-                    if (textEditingPanel !== panelId) {
-                      handleTextEdit(panelId, e);
-                    }
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: textEditingPanel === panelId ? rect.y + rect.height : rect.y + rect.height - collapsedHeight,
+                    left: rect.x + sidePadding,
+                    width: rect.width - (sidePadding * 2),
+                    height: textEditingPanel === panelId ? expandedHeight : collapsedHeight,
+                    zIndex: 20, // Above everything else including transform buttons
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    borderRadius: `${borderRadius}px`,
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    transition: 'all 0.3s ease-in-out', // Smooth expand/collapse
+                    overflow: 'hidden',
                   }}
-                  multiline={textEditingPanel === panelId}
-                  rows={textEditingPanel === panelId ? 2 : 1}
-                sx={{
-                    width: '100%',
-                  '& .MuiInputBase-root': {
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                    color: '#ffffff',
-                      fontSize: textEditingPanel === panelId ? '14px' : '12px',
-                    '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    },
-                    '&.Mui-focused': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    textAlign: 'center',
-                    padding: '4px 8px',
-                    color: '#ffffff',
-                      cursor: textEditingPanel === panelId ? 'text' : 'pointer',
-                    '&::placeholder': {
-                      color: 'rgba(255, 255, 255, 0.5)',
-                      opacity: 1,
-                    },
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                      border: 'none',
-                  },
-                }}
-              />
+                >
+                                  {/* Collapsed state - show clickable area to expand */}
+                  {textEditingPanel !== panelId && (
+                    <Box
+                      onClick={(e) => {
+                        handleTextEdit(panelId, e);
+                        setActiveTextSetting('content'); // Default to content tab when opening
+                      }}
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        },
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: panelTexts[panelId]?.content ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+                          fontSize: `${fontSize}px`,
+                          textAlign: 'center',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '100%',
+                          px: 1,
+                        }}
+                      >
+                        {panelTexts[panelId]?.content || 'Add Captions'}
+                      </Typography>
+                    </Box>
+                  )}
 
-                {/* Expanded editing controls - only show when this panel is being edited */}
-                {textEditingPanel === panelId && (
-                  <Box sx={{ p: 1, pt: 0 }}>
-            {/* Active setting panel */}
-            {activeTextSetting === 'fontSize' && (
-                      <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
-                        <Typography gutterBottom variant="caption" sx={{ fontSize: '0.7rem', mb: 0.25, color: '#ffffff' }}>
+                  {/* Expanded editing controls - only show when this panel is being edited */}
+                  {textEditingPanel === panelId && (
+                    <Box sx={{ p: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding)), pt: 0 }}>
+                      {/* Setting icons row - always visible */}
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        gap: Math.max(isMobileSize ? 0.375 : 0.25, Math.min(0.5, sidePadding * 0.5)), // Compact but touch-friendly
+                        mb: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding * 0.75)),
+                        flexWrap: 'wrap', // Allow wrapping on very small panels
+                        px: isMobileSize ? 0.25 : 0, // Minimal padding on mobile
+                      }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => setActiveTextSetting(activeTextSetting === 'content' ? null : 'content')}
+                          sx={{
+                            width: tabSize,
+                            height: tabSize,
+                            backgroundColor: activeTextSetting === 'content' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
+                            color: '#ffffff',
+                            '&:hover': {
+                              backgroundColor: activeTextSetting === 'content' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
+                            },
+                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
+                          }}
+                          title="Edit Text"
+                        >
+                          <Edit />
+                        </IconButton>
+                        
+                        <IconButton
+                          size="small"
+                          onClick={() => setActiveTextSetting(activeTextSetting === 'fontSize' ? null : 'fontSize')}
+                          sx={{
+                            width: tabSize,
+                            height: tabSize,
+                            backgroundColor: activeTextSetting === 'fontSize' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
+                            color: '#ffffff',
+                            '&:hover': {
+                              backgroundColor: activeTextSetting === 'fontSize' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
+                            },
+                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
+                          }}
+                          title="Font Size"
+                        >
+                          <FormatSize />
+                        </IconButton>
+                        
+                        <IconButton
+                          size="small"
+                          onClick={() => setActiveTextSetting(activeTextSetting === 'strokeWidth' ? null : 'strokeWidth')}
+                          sx={{
+                            width: tabSize,
+                            height: tabSize,
+                            backgroundColor: activeTextSetting === 'strokeWidth' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
+                            color: '#ffffff',
+                            '&:hover': {
+                              backgroundColor: activeTextSetting === 'strokeWidth' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
+                            },
+                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
+                          }}
+                          title="Stroke Width"
+                        >
+                          <BorderOuter />
+                        </IconButton>
+                        
+                        <IconButton
+                          size="small"
+                          onClick={() => setActiveTextSetting(activeTextSetting === 'fontWeight' ? null : 'fontWeight')}
+                          sx={{
+                            width: tabSize,
+                            height: tabSize,
+                            backgroundColor: activeTextSetting === 'fontWeight' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
+                            color: '#ffffff',
+                            '&:hover': {
+                              backgroundColor: activeTextSetting === 'fontWeight' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
+                            },
+                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
+                          }}
+                          title="Font Weight"
+                        >
+                          <FormatBold />
+                        </IconButton>
+                        
+                        <IconButton
+                          size="small"
+                          onClick={() => setActiveTextSetting(activeTextSetting === 'fontFamily' ? null : 'fontFamily')}
+                          sx={{
+                            width: tabSize,
+                            height: tabSize,
+                            backgroundColor: activeTextSetting === 'fontFamily' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
+                            color: '#ffffff',
+                            '&:hover': {
+                              backgroundColor: activeTextSetting === 'fontFamily' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
+                            },
+                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
+                          }}
+                          title="Font Family"
+                        >
+                          <FontDownload />
+                        </IconButton>
+                        
+                        <IconButton
+                          size="small"
+                          onClick={() => setActiveTextSetting(activeTextSetting === 'color' ? null : 'color')}
+                          sx={{
+                            width: tabSize,
+                            height: tabSize,
+                            backgroundColor: activeTextSetting === 'color' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
+                            color: '#ffffff',
+                            '&:hover': {
+                              backgroundColor: activeTextSetting === 'color' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
+                            },
+                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
+                          }}
+                          title="Text Color"
+                        >
+                          <FormatColorText />
+                        </IconButton>
+
+                        {/* Close button */}
+                        <IconButton
+                          size="small"
+                          onClick={handleTextClose}
+                          sx={{
+                            width: tabSize,
+                            height: tabSize,
+                            backgroundColor: 'transparent',
+                            color: '#ffffff',
+                            marginLeft: Math.max(isMobileSize ? 0.375 : 0.25, Math.min(0.5, sidePadding * 0.5)), // Compact margin for mobile
+                            '&:hover': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            },
+                            '& .MuiSvgIcon-root': { fontSize: `${fontSize * 0.9}px` }
+                          }}
+                          title="Close Editor"
+                        >
+                          <Close />
+                        </IconButton>
+                      </Box>
+
+                      {/* Active setting panel - appears below the tabs */}
+                      {activeTextSetting === 'content' && (
+                        <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                          <TextField
+                            fullWidth
+                            multiline
+                            rows={isMobileSize ? 2 : 3} // Fixed rows for consistent sizing
+                            size="small"
+                            placeholder="Add Captions"
+                            value={panelTexts[panelId]?.content || ''}
+                            onChange={(e) => handleTextChange(panelId, 'content', e.target.value)}
+                            sx={{
+                              '& .MuiInputBase-root': {
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                color: '#ffffff',
+                                fontSize: `${fontSize}px`,
+                              },
+                              '& .MuiInputBase-input': {
+                                textAlign: 'center',
+                                padding: `${Math.max(4, Math.min(8, sidePadding))}px`,
+                                color: '#ffffff',
+                                '&::placeholder': {
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  opacity: 1,
+                                },
+                              },
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                border: 'none',
+                              },
+                            }}
+                          />
+                        </Box>
+                      )}
+                    
+                    {activeTextSetting === 'fontSize' && (
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                        <Typography gutterBottom variant="caption" sx={{ fontSize: `${fontSize * 0.9}px`, mb: 0.375, color: '#ffffff' }}>
                           Size: {panelTexts[panelId]?.fontSize || lastUsedTextSettings.fontSize || 26}px
-                </Typography>
-                <Slider
+                        </Typography>
+                        <Slider
                           value={panelTexts[panelId]?.fontSize || lastUsedTextSettings.fontSize || 26}
                           onChange={(e, value) => handleTextChange(panelId, 'fontSize', value)}
-                  min={8}
-                  max={72}
-                  step={1}
-                  size="small"
-                  sx={{ 
-                    height: 6,
+                          min={8}
+                          max={72}
+                          step={1}
+                          size="small"
+                          sx={{ 
+                            height: Math.max(isMobileSize ? 8 : 6, Math.min(12, fontSize * 0.8)),
                             color: '#ffffff',
-                    '& .MuiSlider-track': {
-                      height: 3,
-                    },
-                    '& .MuiSlider-rail': {
-                      height: 3,
+                            '& .MuiSlider-track': {
+                              height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                            },
+                            '& .MuiSlider-rail': {
+                              height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
                               color: 'rgba(255, 255, 255, 0.3)',
-                    },
-                    '& .MuiSlider-thumb': {
-                      height: 12,
-                      width: 12,
+                            },
+                            '& .MuiSlider-thumb': {
+                              height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
+                              width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                               color: '#ffffff',
-                      '&:before': {
-                        boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
-                      },
-                      '&:hover, &.Mui-focusVisible': {
+                              '&:before': {
+                                boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
+                              },
+                              '&:hover, &.Mui-focusVisible': {
                                 boxShadow: '0px 0px 0px 6px rgb(255 255 255 / 16%)'
-                      }
-                    }
-                  }}
-                />
-              </Box>
-            )}
-            
-            {activeTextSetting === 'strokeWidth' && (
-                      <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
-                        <Typography gutterBottom variant="caption" sx={{ fontSize: '0.7rem', mb: 0.25, color: '#ffffff' }}>
+                              }
+                            }
+                          }}
+                        />
+                      </Box>
+                    )}
+                    
+                    {activeTextSetting === 'strokeWidth' && (
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                        <Typography gutterBottom variant="caption" sx={{ fontSize: `${fontSize * 0.9}px`, mb: 0.375, color: '#ffffff' }}>
                           Stroke: {panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}px
-                </Typography>
-                <Slider
+                        </Typography>
+                        <Slider
                           value={panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
                           onChange={(e, value) => handleTextChange(panelId, 'strokeWidth', value)}
-                  min={0}
-                  max={10}
-                  step={0.5}
-                  size="small"
-                  sx={{ 
-                    height: 6,
+                          min={0}
+                          max={10}
+                          step={0.5}
+                          size="small"
+                          sx={{ 
+                            height: Math.max(isMobileSize ? 8 : 6, Math.min(12, fontSize * 0.8)),
                             color: '#ffffff',
-                    '& .MuiSlider-track': {
-                      height: 3,
-                    },
-                    '& .MuiSlider-rail': {
-                      height: 3,
+                            '& .MuiSlider-track': {
+                              height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                            },
+                            '& .MuiSlider-rail': {
+                              height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
                               color: 'rgba(255, 255, 255, 0.3)',
-                    },
-                    '& .MuiSlider-thumb': {
-                      height: 12,
-                      width: 12,
+                            },
+                            '& .MuiSlider-thumb': {
+                              height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
+                              width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                               color: '#ffffff',
-                      '&:before': {
-                        boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
-                      },
-                      '&:hover, &.Mui-focusVisible': {
+                              '&:before': {
+                                boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
+                              },
+                              '&:hover, &.Mui-focusVisible': {
                                 boxShadow: '0px 0px 0px 6px rgb(255 255 255 / 16%)'
-                      }
-                    }
-                  }}
-                />
-              </Box>
-            )}
-            
-            {activeTextSetting === 'fontWeight' && (
-                      <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
-                <FormControl fullWidth size="small">
-                  <Select
+                              }
+                            }
+                          }}
+                        />
+                      </Box>
+                    )}
+                    
+                    {activeTextSetting === 'fontWeight' && (
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                        <FormControl fullWidth size="small">
+                          <Select
                             value={panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || '700'}
                             onChange={(e) => handleTextChange(panelId, 'fontWeight', e.target.value)}
-                    displayEmpty
+                            displayEmpty
                             sx={{ 
                               '& .MuiSelect-select': { 
-                                py: 0.5, 
+                                py: Math.max(0.25, Math.min(0.5, sidePadding * 0.5)), 
                                 color: '#ffffff',
+                                fontSize: `${fontSize}px`,
                                 '&:focus': {
                                   backgroundColor: 'transparent',
                                 }
@@ -1522,36 +1709,38 @@ const CanvasCollagePreview = ({
                                   bgcolor: 'rgba(0, 0, 0, 0.9)',
                                   '& .MuiMenuItem-root': {
                                     color: '#ffffff',
+                                    fontSize: `${fontSize}px`,
                                   }
                                 }
                               }
                             }}
-                  >
-                    <MenuItem value="normal">Normal</MenuItem>
-                    <MenuItem value="bold">Bold</MenuItem>
-                    <MenuItem value="lighter">Light</MenuItem>
-                    <MenuItem value="400">400</MenuItem>
-                    <MenuItem value="500">500</MenuItem>
-                    <MenuItem value="600">600</MenuItem>
-                    <MenuItem value="700">700</MenuItem>
-                    <MenuItem value="800">800</MenuItem>
-                    <MenuItem value="900">900</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
-            )}
-            
-            {activeTextSetting === 'fontFamily' && (
-                      <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
-                <FormControl fullWidth size="small">
-                  <Select
+                          >
+                            <MenuItem value="normal">Normal</MenuItem>
+                            <MenuItem value="bold">Bold</MenuItem>
+                            <MenuItem value="lighter">Light</MenuItem>
+                            <MenuItem value="400">400</MenuItem>
+                            <MenuItem value="500">500</MenuItem>
+                            <MenuItem value="600">600</MenuItem>
+                            <MenuItem value="700">700</MenuItem>
+                            <MenuItem value="800">800</MenuItem>
+                            <MenuItem value="900">900</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )}
+                    
+                    {activeTextSetting === 'fontFamily' && (
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                        <FormControl fullWidth size="small">
+                          <Select
                             value={panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial'}
                             onChange={(e) => handleTextChange(panelId, 'fontFamily', e.target.value)}
-                    displayEmpty
+                            displayEmpty
                             sx={{ 
                               '& .MuiSelect-select': { 
-                                py: 0.5, 
+                                py: Math.max(0.25, Math.min(0.5, sidePadding * 0.5)), 
                                 color: '#ffffff',
+                                fontSize: `${fontSize}px`,
                                 '&:focus': {
                                   backgroundColor: 'transparent',
                                 }
@@ -1563,60 +1752,61 @@ const CanvasCollagePreview = ({
                                 color: '#ffffff',
                               }
                             }}
-                    MenuProps={{
-                      PaperProps: {
+                            MenuProps={{
+                              PaperProps: {
                                 sx: { 
-                                  maxHeight: 150,
+                                  maxHeight: Math.max(120, Math.min(200, expandedHeight * 0.8)),
                                   bgcolor: 'rgba(0, 0, 0, 0.9)',
                                   '& .MuiMenuItem-root': {
                                     color: '#ffffff',
+                                    fontSize: `${fontSize}px`,
                                   }
                                 }
-                      }
-                    }}
-                  >
-                    {fonts.map((font) => (
-                      <MenuItem key={font} value={font}>
-                        {font}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-            )}
-            
-            {activeTextSetting === 'color' && (
-                      <Box sx={{ mb: 1, px: 1, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
-                <Box sx={{ display: 'flex', gap: 0.25, flexWrap: 'wrap', mb: 0.5 }}>
-                  {['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'].map((color) => (
-                    <Button
-                      key={color}
+                              }
+                            }}
+                          >
+                            {fonts.map((font) => (
+                              <MenuItem key={font} value={font}>
+                                {font}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )}
+                    
+                    {activeTextSetting === 'color' && (
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                        <Box sx={{ display: 'flex', gap: Math.max(0.125, Math.min(0.25, sidePadding * 0.25)), flexWrap: 'wrap', mb: 0.375 }}>
+                          {['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'].map((color) => (
+                            <Button
+                              key={color}
                               onClick={() => handleTextChange(panelId, 'color', color)}
-                      sx={{
-                        width: 20,
-                        height: 20,
-                        minWidth: 20,
-                        p: 0,
-                        backgroundColor: color,
+                              sx={{
+                                width: Math.max(isMobileSize ? 18 : 16, Math.min(22, fontSize * 1.1)),
+                                height: Math.max(isMobileSize ? 18 : 16, Math.min(22, fontSize * 1.1)),
+                                minWidth: Math.max(isMobileSize ? 18 : 16, Math.min(22, fontSize * 1.1)),
+                                p: 0,
+                                backgroundColor: color,
                                 border: (panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === color ? '2px solid #2196F3' : '1px solid #ccc',
-                        '&:hover': {
-                          backgroundColor: color,
-                          opacity: 0.8,
-                        }
-                      }}
-                    />
-                  ))}
-                </Box>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="#ffffff"
+                                '&:hover': {
+                                  backgroundColor: color,
+                                  opacity: 0.8,
+                                }
+                              }}
+                            />
+                          ))}
+                        </Box>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          placeholder="#ffffff"
                           value={panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff'}
                           onChange={(e) => handleTextChange(panelId, 'color', e.target.value)}
                           sx={{ 
                             '& .MuiInputBase-input': { 
-                              py: 0.5, 
-                              fontSize: '0.8rem',
+                              py: Math.max(0.25, Math.min(0.5, sidePadding * 0.5)), 
+                              fontSize: `${fontSize * 0.8}px`,
                               color: '#ffffff',
                             },
                             '& .MuiInputBase-root': {
@@ -1626,131 +1816,11 @@ const CanvasCollagePreview = ({
                               border: 'none',
                             },
                           }}
-                />
-              </Box>
-            )}
-            
-                    {/* Setting icons row */}
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              gap: 0.5,
-              borderTop: 1,
-                      borderColor: 'rgba(255, 255, 255, 0.2)',
-              pt: 1
-            }}>
-              <IconButton
-                size="small"
-                onClick={() => setActiveTextSetting(activeTextSetting === 'fontSize' ? null : 'fontSize')}
-                sx={{
-                          width: 24,
-                          height: 24,
-                          backgroundColor: activeTextSetting === 'fontSize' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                          color: '#ffffff',
-                  '&:hover': {
-                            backgroundColor: activeTextSetting === 'fontSize' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                  },
-                          '& .MuiSvgIcon-root': { fontSize: '0.9rem' }
-                }}
-                title="Font Size"
-              >
-                <FormatSize />
-              </IconButton>
-              
-              <IconButton
-                size="small"
-                onClick={() => setActiveTextSetting(activeTextSetting === 'strokeWidth' ? null : 'strokeWidth')}
-                sx={{
-                          width: 24,
-                          height: 24,
-                          backgroundColor: activeTextSetting === 'strokeWidth' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                          color: '#ffffff',
-                  '&:hover': {
-                            backgroundColor: activeTextSetting === 'strokeWidth' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                  },
-                          '& .MuiSvgIcon-root': { fontSize: '0.9rem' }
-                }}
-                title="Stroke Width"
-              >
-                <BorderOuter />
-              </IconButton>
-              
-              <IconButton
-                size="small"
-                onClick={() => setActiveTextSetting(activeTextSetting === 'fontWeight' ? null : 'fontWeight')}
-                sx={{
-                          width: 24,
-                          height: 24,
-                          backgroundColor: activeTextSetting === 'fontWeight' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                          color: '#ffffff',
-                  '&:hover': {
-                            backgroundColor: activeTextSetting === 'fontWeight' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                  },
-                          '& .MuiSvgIcon-root': { fontSize: '0.9rem' }
-                }}
-                title="Font Weight"
-              >
-                <FormatBold />
-              </IconButton>
-              
-              <IconButton
-                size="small"
-                onClick={() => setActiveTextSetting(activeTextSetting === 'fontFamily' ? null : 'fontFamily')}
-                sx={{
-                          width: 24,
-                          height: 24,
-                          backgroundColor: activeTextSetting === 'fontFamily' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                          color: '#ffffff',
-                  '&:hover': {
-                            backgroundColor: activeTextSetting === 'fontFamily' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                  },
-                          '& .MuiSvgIcon-root': { fontSize: '0.9rem' }
-                }}
-                title="Font Family"
-              >
-                <FontDownload />
-              </IconButton>
-              
-              <IconButton
-                size="small"
-                onClick={() => setActiveTextSetting(activeTextSetting === 'color' ? null : 'color')}
-                sx={{
-                          width: 24,
-                          height: 24,
-                          backgroundColor: activeTextSetting === 'color' ? 'rgba(33, 150, 243, 0.8)' : 'transparent',
-                          color: '#ffffff',
-                  '&:hover': {
-                            backgroundColor: activeTextSetting === 'color' ? 'rgba(33, 150, 243, 1)' : 'rgba(255, 255, 255, 0.1)',
-                  },
-                          '& .MuiSvgIcon-root': { fontSize: '0.9rem' }
-                }}
-                title="Text Color"
-              >
-                <FormatColorText />
-              </IconButton>
-
-                      {/* Close button */}
-                      <IconButton
-                        size="small"
-                        onClick={handleTextClose}
-                        sx={{
-                          width: 24,
-                          height: 24,
-                          backgroundColor: 'transparent',
-                          color: '#ffffff',
-                          marginLeft: 0.5,
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          },
-                          '& .MuiSvgIcon-root': { fontSize: '0.9rem' }
-                        }}
-                        title="Close Editor"
-                      >
-                        <Close />
-                      </IconButton>
-            </Box>
-          </Box>
-        )}
+                        />
+                      </Box>
+                    )}
+                  </Box>
+                )}
               </Box>
             )}
             
