@@ -38,6 +38,7 @@ const CollagePreview = ({
   panelTexts,
   updatePanelText,
   lastUsedTextSettings,
+  isCreatingCollage = false,
 }) => {
   const theme = useTheme();
   const fileInputRef = useRef(null);
@@ -230,6 +231,7 @@ const CollagePreview = ({
         panelTexts={panelTexts}
         updatePanelText={updatePanelText}
         lastUsedTextSettings={lastUsedTextSettings}
+        isGeneratingCollage={isCreatingCollage}
       />
       
       {/* Hidden file input */}

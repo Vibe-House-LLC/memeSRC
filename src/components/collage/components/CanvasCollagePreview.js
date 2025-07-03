@@ -301,6 +301,7 @@ const CanvasCollagePreview = ({
   panelTexts = {},
   updatePanelText,
   lastUsedTextSettings = {},
+  isGeneratingCollage = false, // New prop to exclude placeholder text during export
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -511,74 +512,104 @@ const CanvasCollagePreview = ({
         ctx.stroke();
       }
       
-      // Draw text at the bottom of the panel
-      if (panelText.content && panelText.content.trim()) {
-        ctx.save();
+      // Draw text at the bottom of the panel (or placeholder if no text and has image)
+      if (hasImage) {
+        const hasActualText = panelText.content && panelText.content.trim();
+        const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
         
-        // Clip text to panel boundaries to prevent overflow into adjacent frames
-        ctx.beginPath();
-        ctx.rect(x, y, width, height);
-        ctx.clip();
-        
-        // Set text properties (use last used settings as defaults)
-        const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
-        const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
-        const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
-        const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
-        const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
-        
-        ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-        ctx.fillStyle = textColor;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        
-        // Set stroke properties
-        ctx.strokeStyle = '#000000'; // Black stroke for contrast
-        ctx.lineWidth = strokeWidth;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        
-        // Add text shadow for better readability
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-        ctx.shadowBlur = 3;
-        
-        // Calculate available text area (with padding on sides and bottom)
-        const textPadding = 10;
-        const maxTextWidth = width - (textPadding * 2);
-        const textX = x + width / 2;
-        const textY = y + height - textPadding;
-        const lineHeight = fontSize * 1.2;
-        
-        // Helper function to wrap text with aggressive character-level fallback
-        const wrapText = (text, maxWidth) => {
-          const lines = [];
-          const manualLines = text.split('\n'); // Handle manual line breaks first
+        if (hasActualText || shouldShowPlaceholder) {
+          ctx.save();
           
-          manualLines.forEach(line => {
-            if (ctx.measureText(line).width <= maxWidth) {
-              // Line fits within width
-              lines.push(line);
-            } else {
-              // Line needs to be wrapped
-              const words = line.split(' ');
-              let currentLine = '';
-              
-              words.forEach(word => {
-                const testLine = currentLine ? `${currentLine} ${word}` : word;
-                const testWidth = ctx.measureText(testLine).width;
+          // Clip text to panel boundaries to prevent overflow into adjacent frames
+          ctx.beginPath();
+          ctx.rect(x, y, width, height);
+          ctx.clip();
+          
+          // Set text properties (use last used settings as defaults)
+          const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+          const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
+          const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
+          const textColor = hasActualText 
+            ? (panelText.color || lastUsedTextSettings.color || '#ffffff')
+            : 'rgba(255, 255, 255, 0.5)'; // 50% opacity for placeholder
+          const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
+          
+          ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+          ctx.fillStyle = textColor;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          
+          // Set stroke properties (only for actual text, not placeholder)
+          if (hasActualText) {
+            ctx.strokeStyle = '#000000'; // Black stroke for contrast
+            ctx.lineWidth = strokeWidth;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            
+            // Add text shadow for better readability
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowOffsetX = 1;
+            ctx.shadowOffsetY = 1;
+            ctx.shadowBlur = 3;
+          }
+          
+          // Calculate available text area (with padding on sides and bottom)
+          const textPadding = 10;
+          const maxTextWidth = width - (textPadding * 2);
+          const textX = x + width / 2;
+          const textY = y + height - textPadding;
+          const lineHeight = fontSize * 1.2;
+          
+          // Use actual text or placeholder text
+          const displayText = hasActualText ? panelText.content : 'Add Caption';
+          
+          // Helper function to wrap text with aggressive character-level fallback
+          const wrapText = (text, maxWidth) => {
+            const lines = [];
+            const manualLines = text.split('\n'); // Handle manual line breaks first
+            
+            manualLines.forEach(line => {
+              if (ctx.measureText(line).width <= maxWidth) {
+                // Line fits within width
+                lines.push(line);
+              } else {
+                // Line needs to be wrapped
+                const words = line.split(' ');
+                let currentLine = '';
                 
-                if (testWidth <= maxWidth) {
-                  currentLine = testLine;
-                } else if (currentLine) {
-                  // Current line is full, start a new line
-                  lines.push(currentLine);
-                  currentLine = word;
+                words.forEach(word => {
+                  const testLine = currentLine ? `${currentLine} ${word}` : word;
+                  const testWidth = ctx.measureText(testLine).width;
                   
-                  // Check if the single word is still too long
-                  if (ctx.measureText(word).width > maxWidth) {
-                    // Break the word character by character
+                  if (testWidth <= maxWidth) {
+                    currentLine = testLine;
+                  } else if (currentLine) {
+                    // Current line is full, start a new line
+                    lines.push(currentLine);
+                    currentLine = word;
+                    
+                    // Check if the single word is still too long
+                    if (ctx.measureText(word).width > maxWidth) {
+                      // Break the word character by character
+                      let charLine = '';
+                      for (let i = 0; i < word.length; i += 1) {
+                        const testChar = charLine + word[i];
+                        if (ctx.measureText(testChar).width <= maxWidth) {
+                          charLine = testChar;
+                        } else {
+                          if (charLine) {
+                            lines.push(charLine);
+                          }
+                          charLine = word[i];
+                        }
+                      }
+                      if (charLine) {
+                        lines.push(charLine);
+                      }
+                      currentLine = '';
+                    }
+                  } else {
+                    // Single word is too long, break it character by character
                     let charLine = '';
                     for (let i = 0; i < word.length; i += 1) {
                       const testChar = charLine + word[i];
@@ -594,55 +625,37 @@ const CanvasCollagePreview = ({
                     if (charLine) {
                       lines.push(charLine);
                     }
-                    currentLine = '';
                   }
-                } else {
-                  // Single word is too long, break it character by character
-                  let charLine = '';
-                  for (let i = 0; i < word.length; i += 1) {
-                    const testChar = charLine + word[i];
-                    if (ctx.measureText(testChar).width <= maxWidth) {
-                      charLine = testChar;
-                    } else {
-                      if (charLine) {
-                        lines.push(charLine);
-                      }
-                      charLine = word[i];
-                    }
-                  }
-                  if (charLine) {
-                    lines.push(charLine);
-                  }
+                });
+                
+                // Add the last line if it has content
+                if (currentLine) {
+                  lines.push(currentLine);
                 }
-              });
-              
-              // Add the last line if it has content
-              if (currentLine) {
-                lines.push(currentLine);
               }
+            });
+            
+            return lines;
+          };
+          
+          // Get wrapped lines
+          const wrappedLines = wrapText(displayText, maxTextWidth);
+          
+          // Draw each line
+          wrappedLines.forEach((line, lineIndex) => {
+            const lineY = textY - (wrappedLines.length - 1 - lineIndex) * lineHeight;
+            
+            // Draw stroke first if stroke width > 0 and it's actual text
+            if (strokeWidth > 0 && hasActualText) {
+              ctx.strokeText(line, textX, lineY);
             }
+            
+            // Then draw the fill text on top
+            ctx.fillText(line, textX, lineY);
           });
           
-          return lines;
-        };
-        
-        // Get wrapped lines
-        const wrappedLines = wrapText(panelText.content, maxTextWidth);
-        
-        // Draw each line
-        wrappedLines.forEach((line, lineIndex) => {
-          const lineY = textY - (wrappedLines.length - 1 - lineIndex) * lineHeight;
-          
-          // Draw stroke first if stroke width > 0
-          if (strokeWidth > 0) {
-            ctx.strokeText(line, textX, lineY);
-          }
-          
-          // Then draw the fill text on top
-          ctx.fillText(line, textX, lineY);
-        });
-        
-        ctx.restore();
+          ctx.restore();
+        }
       }
     });
   }, [
@@ -657,8 +670,120 @@ const CanvasCollagePreview = ({
     selectedPanel, 
     isTransformMode,
     panelTexts,
-    theme.palette.mode
+    lastUsedTextSettings,
+    theme.palette.mode,
+    isGeneratingCollage
   ]);
+
+  // Helper function to calculate text area dimensions for a panel
+  const getTextAreaBounds = useCallback((panel, panelText) => {
+    if (!panel) return null;
+    
+    // Get text properties (same as in drawCanvas)
+    const fontSize = panelText?.fontSize || lastUsedTextSettings.fontSize || 26;
+    const textPadding = 10; // Visual padding for text rendering
+    const activationPadding = 1; // Extremely tight padding for activation area
+    const lineHeight = fontSize * 1.2;
+    
+    // Determine display text (actual text or placeholder)
+    const hasActualText = panelText?.content && panelText.content.trim();
+    const displayText = hasActualText ? panelText.content : 'Add Caption';
+    
+    // Calculate number of lines and actual text width
+    const maxTextWidth = panel.width - (textPadding * 2);
+    const avgCharWidth = fontSize * 0.6; // Rough estimation for character width
+    const charsPerLine = Math.floor(maxTextWidth / avgCharWidth);
+    const estimatedLines = Math.ceil(displayText.length / charsPerLine);
+    const actualLines = Math.max(1, Math.min(estimatedLines, 3)); // Limit to reasonable range
+    
+    // Estimate actual text width (more precise for tighter bounds)
+    const longestLine = displayText.split('\n').reduce((longest, line) => 
+      line.length > longest.length ? line : longest, '');
+    const estimatedTextWidth = Math.min(longestLine.length * avgCharWidth, maxTextWidth);
+    
+    // Calculate actual text dimensions
+    const actualTextHeight = actualLines * lineHeight;
+    
+    // Calculate extremely tight activation area bounds
+    const activationAreaHeight = actualTextHeight + (activationPadding * 2);
+    const activationAreaY = panel.y + panel.height - textPadding - actualTextHeight - activationPadding;
+    const activationAreaWidth = estimatedTextWidth + (activationPadding * 2);
+    
+    // Center the activation area horizontally on the text
+    const textCenterX = panel.x + panel.width / 2;
+    const activationAreaX = textCenterX - (activationAreaWidth / 2);
+    
+    return {
+      x: Math.max(panel.x, activationAreaX), // Don't go outside panel bounds
+      y: Math.max(panel.y, activationAreaY), // Don't go above panel top
+      width: Math.min(activationAreaWidth, panel.width), // Don't exceed panel width
+      height: Math.min(activationAreaHeight, panel.height), // Don't exceed panel height
+      actualTextY: panel.y + panel.height - textPadding,
+      actualTextHeight
+    };
+  }, [lastUsedTextSettings]);
+
+  // Handle text editing
+  const handleTextEdit = useCallback((panelId, event) => {
+    const isOpening = textEditingPanel !== panelId;
+    setTextEditingPanel(textEditingPanel === panelId ? null : panelId);
+    
+    // Always set to content tab when opening
+    if (isOpening) {
+      setActiveTextSetting('content');
+      
+      // Auto-scroll to show the caption editor after it opens
+      setTimeout(() => {
+        const panel = panelRects.find(p => p.panelId === panelId);
+        if (panel && containerRef.current) {
+          const container = containerRef.current;
+          const containerRect = container.getBoundingClientRect();
+          
+          // Calculate the bottom position of the expanded editor
+          const editorHeight = 185; // Moderate height estimate for expanded editor
+          const editorBottom = panel.y + panel.height + editorHeight;
+          
+          // Account for mobile keyboard - it typically takes up 250-350px on mobile devices
+          const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          const keyboardHeight = isMobileDevice ? 300 : 0; // Conservative estimate for mobile keyboard
+          const extraPadding = isMobileDevice ? 55 : 43; // Moderate padding for comfortable viewing
+          const availableHeight = containerRect.height - keyboardHeight;
+          
+          // Only scroll if a significant portion of the editor would be cut off
+          const cutoffAmount = editorBottom - availableHeight;
+          const significantCutoff = 40; // Moderate threshold for scrolling sensitivity
+          
+          if (cutoffAmount > significantCutoff) {
+            // Calculate scroll needed to show the editor comfortably above the keyboard
+            const scrollNeeded = cutoffAmount + extraPadding;
+            
+            // Allow more generous scrolling for caption editor
+            if (scrollNeeded > 0) {
+              window.scrollTo({
+                top: window.scrollY + scrollNeeded,
+                behavior: 'smooth'
+              });
+            }
+          }
+        }
+      }, 100); // Small delay to ensure editor is rendered
+    }
+  }, [textEditingPanel, panelRects]);
+
+  const handleTextClose = useCallback(() => {
+    setTextEditingPanel(null);
+    setActiveTextSetting(null);
+  }, []);
+
+  const handleTextChange = useCallback((panelId, property, value) => {
+    if (updatePanelText) {
+      const currentText = panelTexts[panelId] || {};
+      updatePanelText(panelId, {
+        ...currentText,
+        [property]: value
+      });
+    }
+  }, [panelTexts, updatePanelText]);
 
   // Redraw canvas when dependencies change
   useEffect(() => {
@@ -714,9 +839,71 @@ const CanvasCollagePreview = ({
       y >= panel.y && y <= panel.y + panel.height
     );
     
+    // Check if mouse is over text area (actual text area bounds)
+    let isOverTextArea = false;
+    if (hoveredPanelIndex >= 0) {
+      const panel = panelRects[hoveredPanelIndex];
+      const imageIndex = panelImageMapping[panel.panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      const panelText = panelTexts[panel.panelId] || {};
+      const hasTextOrPlaceholder = hasImage;
+      const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+      
+      // Only check text area if no panel is in transform mode
+      if (hasTextOrPlaceholder && !anyPanelInTransformMode) {
+        // Get precise text area bounds
+        const textAreaBounds = getTextAreaBounds(panel, panelText);
+        if (textAreaBounds) {
+          isOverTextArea = x >= textAreaBounds.x && 
+                          x <= textAreaBounds.x + textAreaBounds.width &&
+                          y >= textAreaBounds.y && 
+                          y <= textAreaBounds.y + textAreaBounds.height;
+        }
+      }
+    }
+    
     if (hoveredPanelIndex !== hoveredPanel) {
       setHoveredPanel(hoveredPanelIndex >= 0 ? hoveredPanelIndex : null);
-      canvas.style.cursor = hoveredPanelIndex >= 0 ? 'pointer' : 'default';
+      
+      // Determine cursor based on interaction state
+      let cursor = 'default';
+      if (hoveredPanelIndex >= 0) {
+        const panel = panelRects[hoveredPanelIndex];
+        const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+        
+        if (anyPanelInTransformMode) {
+          // Only show interactive cursor for the panel that's actually in transform mode
+          if (isTransformMode[panel.panelId]) {
+            cursor = 'grab'; // Transform mode cursor
+          } else {
+            cursor = 'default'; // Non-interactive cursor for other panels
+          }
+        } else {
+          // Normal mode - show appropriate cursor
+          cursor = isOverTextArea ? 'text' : 'pointer';
+        }
+      }
+      
+      canvas.style.cursor = cursor;
+    } else if (hoveredPanelIndex >= 0) {
+      // Update cursor for text area even when staying on same panel
+      const panel = panelRects[hoveredPanelIndex];
+      const anyPanelInTransformModeLocal = Object.values(isTransformMode).some(enabled => enabled);
+      
+      let cursor = 'default';
+      if (anyPanelInTransformModeLocal) {
+        // Only show interactive cursor for the panel that's actually in transform mode
+        if (isTransformMode[panel.panelId]) {
+          cursor = 'grab'; // Transform mode cursor
+        } else {
+          cursor = 'default'; // Non-interactive cursor for other panels
+        }
+      } else {
+        // Normal mode - show appropriate cursor
+        cursor = isOverTextArea ? 'text' : 'pointer';
+      }
+      
+      canvas.style.cursor = cursor;
     }
     
     // Handle dragging for transform mode
@@ -803,7 +990,7 @@ const CanvasCollagePreview = ({
         setDragStart({ x, y });
       }
     }
-  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform]);
+  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds]);
 
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -820,9 +1007,43 @@ const CanvasCollagePreview = ({
     
     if (clickedPanelIndex >= 0) {
       const clickedPanel = panelRects[clickedPanelIndex];
+      const imageIndex = panelImageMapping[clickedPanel.panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+      
+      // Check if click is in text area (actual text area bounds)
+      let isTextAreaClick = false;
+      if (hasImage && !anyPanelInTransformMode) {
+        const panelText = panelTexts[clickedPanel.panelId] || {};
+        const textAreaBounds = getTextAreaBounds(clickedPanel, panelText);
+        if (textAreaBounds) {
+          isTextAreaClick = x >= textAreaBounds.x && 
+                           x <= textAreaBounds.x + textAreaBounds.width &&
+                           y >= textAreaBounds.y && 
+                           y <= textAreaBounds.y + textAreaBounds.height;
+        }
+      }
+      
+      // If clicking on text area, open caption editor
+      if (isTextAreaClick) {
+        handleTextEdit(clickedPanel.panelId, e);
+        return;
+      }
       
       // If a caption editor is open and this is not the panel being edited, ignore the click
       if (textEditingPanel !== null && textEditingPanel !== clickedPanel.panelId) {
+        return;
+      }
+      
+      // If any panel is in transform mode, only allow interaction with that specific panel
+      if (anyPanelInTransformMode) {
+        // Only allow transform interactions on the panel that's actually in transform mode
+        if (isTransformMode[clickedPanel.panelId]) {
+          setSelectedPanel(clickedPanelIndex);
+          setIsDragging(true);
+          setDragStart({ x, y });
+        }
+        // Ignore clicks on other panels when any panel is in transform mode
         return;
       }
       
@@ -837,7 +1058,7 @@ const CanvasCollagePreview = ({
         onPanelClick(clickedPanel.index, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel]);
+  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -1014,10 +1235,45 @@ const CanvasCollagePreview = ({
         const clickedPanel = panelRects[clickedPanelIndex];
         const imageIndex = panelImageMapping[clickedPanel.panelId];
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+        const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+        
+        // Check if touch is in text area (actual text area bounds)
+        let isTextAreaTouch = false;
+        if (hasImage && !anyPanelInTransformMode) {
+          const panelText = panelTexts[clickedPanel.panelId] || {};
+          const textAreaBounds = getTextAreaBounds(clickedPanel, panelText);
+          if (textAreaBounds) {
+            isTextAreaTouch = x >= textAreaBounds.x && 
+                             x <= textAreaBounds.x + textAreaBounds.width &&
+                             y >= textAreaBounds.y && 
+                             y <= textAreaBounds.y + textAreaBounds.height;
+          }
+        }
+        
+        // If touching on text area, open caption editor
+        if (isTextAreaTouch) {
+          handleTextEdit(clickedPanel.panelId, e);
+          return;
+        }
         
         // If a caption editor is open and this is not the panel being edited, allow normal scrolling
         if (textEditingPanel !== null && textEditingPanel !== clickedPanel.panelId) {
           // Don't preventDefault - allow normal page scrolling
+          return;
+        }
+        
+        // If any panel is in transform mode, only allow interaction with that specific panel
+        if (anyPanelInTransformMode) {
+          // Only allow transform interactions on the panel that's actually in transform mode
+          if (hasImage && isTransformMode[clickedPanel.panelId]) {
+            // Prevent page scrolling only when touching an image in transform mode
+            e.preventDefault();
+            e.stopPropagation();
+            setSelectedPanel(clickedPanelIndex);
+            setIsDragging(true);
+            setDragStart({ x, y });
+          }
+          // Ignore touches on other panels when any panel is in transform mode
           return;
         }
         
@@ -1030,16 +1286,10 @@ const CanvasCollagePreview = ({
           e.stopPropagation();
           setIsDragging(true);
           setDragStart({ x, y });
-        } else {
+        } else if (onPanelClick) {
           // Allow normal touch behavior for panels not in transform mode
-          if (anyPanelInTransformMode) {
-            // If any panel is in transform mode, we need to manually allow scrolling
-            // Don't preventDefault here to allow normal page scrolling
-          }
-          if (onPanelClick) {
-            // Regular panel click
-            onPanelClick(clickedPanel.index, clickedPanel.panelId);
-          }
+          // Regular panel click
+          onPanelClick(clickedPanel.index, clickedPanel.panelId);
         }
       } else if (textEditingPanel !== null) {
         // When touched outside any panel and caption editor is open, explicitly allow normal scrolling
@@ -1063,7 +1313,7 @@ const CanvasCollagePreview = ({
         setIsDragging(false); // Stop any ongoing drag
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1268,12 +1518,175 @@ const CanvasCollagePreview = ({
     return new Promise((resolve) => {
       const canvas = canvasRef.current;
       if (canvas) {
-        canvas.toBlob(resolve, 'image/png');
+        // Temporarily set the generating flag to exclude placeholder text
+        const originalGenerating = isGeneratingCollage;
+        
+        // Create a temporary canvas for export without placeholder text
+        const exportCanvas = document.createElement('canvas');
+        const exportCtx = exportCanvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        
+        exportCanvas.width = componentWidth * dpr;
+        exportCanvas.height = componentHeight * dpr;
+        exportCtx.scale(dpr, dpr);
+        
+        // Clear canvas
+        exportCtx.clearRect(0, 0, componentWidth, componentHeight);
+        
+        // Draw background (border color if borders are enabled)
+        if (borderPixels > 0) {
+          exportCtx.fillStyle = borderColor;
+          exportCtx.fillRect(0, 0, componentWidth, componentHeight);
+        }
+        
+        // Draw panels without placeholder text
+        panelRects.forEach((rect) => {
+          const { x, y, width, height, panelId } = rect;
+          const imageIndex = panelImageMapping[panelId];
+          const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+          const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+          const panelText = panelTexts[panelId] || {};
+          
+          // Draw panel background
+          exportCtx.fillStyle = hasImage 
+            ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
+            : 'rgba(0,0,0,0.3)';
+          exportCtx.fillRect(x, y, width, height);
+          
+          if (hasImage) {
+            const img = loadedImages[imageIndex];
+            if (img) {
+              exportCtx.save();
+              
+              // Clip to panel bounds
+              exportCtx.beginPath();
+              exportCtx.rect(x, y, width, height);
+              exportCtx.clip();
+              
+              // Calculate initial scale to cover the panel
+              const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+              const panelAspectRatio = width / height;
+              
+              let initialScale;
+              if (imageAspectRatio > panelAspectRatio) {
+                initialScale = height / img.naturalHeight;
+              } else {
+                initialScale = width / img.naturalWidth;
+              }
+              
+              const finalScale = initialScale * transform.scale;
+              const scaledWidth = img.naturalWidth * finalScale;
+              const scaledHeight = img.naturalHeight * finalScale;
+              
+              const centerOffsetX = (width - scaledWidth) / 2;
+              const centerOffsetY = (height - scaledHeight) / 2;
+              
+              const finalOffsetX = centerOffsetX + transform.positionX;
+              const finalOffsetY = centerOffsetY + transform.positionY;
+              
+              exportCtx.drawImage(
+                img,
+                x + finalOffsetX,
+                y + finalOffsetY,
+                scaledWidth,
+                scaledHeight
+              );
+              
+              exportCtx.restore();
+            }
+          } else {
+            // Draw add icon for empty panels
+            const iconSize = Math.min(width, height) * 0.3;
+            const iconX = x + (width - iconSize) / 2;
+            const iconY = y + (height - iconSize) / 2;
+            
+            exportCtx.fillStyle = '#2196F3';
+            exportCtx.beginPath();
+            exportCtx.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI * 2);
+            exportCtx.fill();
+            
+            exportCtx.strokeStyle = '#ffffff';
+            exportCtx.lineWidth = 3;
+            exportCtx.beginPath();
+            exportCtx.moveTo(iconX + iconSize * 0.25, iconY + iconSize/2);
+            exportCtx.lineTo(iconX + iconSize * 0.75, iconY + iconSize/2);
+            exportCtx.moveTo(iconX + iconSize/2, iconY + iconSize * 0.25);
+            exportCtx.lineTo(iconX + iconSize/2, iconY + iconSize * 0.75);
+            exportCtx.stroke();
+          }
+          
+          // Draw only actual text (not placeholder) for export
+          if (hasImage && panelText.content && panelText.content.trim()) {
+            exportCtx.save();
+            
+            exportCtx.beginPath();
+            exportCtx.rect(x, y, width, height);
+            exportCtx.clip();
+            
+            const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+            const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
+            const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
+            const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
+            const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
+            
+            exportCtx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+            exportCtx.fillStyle = textColor;
+            exportCtx.textAlign = 'center';
+            exportCtx.textBaseline = 'bottom';
+            exportCtx.strokeStyle = '#000000';
+            exportCtx.lineWidth = strokeWidth;
+            exportCtx.lineJoin = 'round';
+            exportCtx.lineCap = 'round';
+            exportCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            exportCtx.shadowOffsetX = 1;
+            exportCtx.shadowOffsetY = 1;
+            exportCtx.shadowBlur = 3;
+            
+            const textPadding = 10;
+            const maxTextWidth = width - (textPadding * 2);
+            const textX = x + width / 2;
+            const textY = y + height - textPadding;
+            const lineHeight = fontSize * 1.2;
+            
+            // Simple text wrapping for export
+            const words = panelText.content.split(' ');
+            const lines = [];
+            let currentLine = '';
+            
+            words.forEach(word => {
+              const testLine = currentLine ? `${currentLine} ${word}` : word;
+              if (exportCtx.measureText(testLine).width <= maxTextWidth) {
+                currentLine = testLine;
+              } else {
+                if (currentLine) {
+                  lines.push(currentLine);
+                }
+                currentLine = word;
+              }
+            });
+            
+            if (currentLine) {
+              lines.push(currentLine);
+            }
+            
+            lines.forEach((line, lineIndex) => {
+              const lineY = textY - (lines.length - 1 - lineIndex) * lineHeight;
+              if (strokeWidth > 0) {
+                exportCtx.strokeText(line, textX, lineY);
+              }
+              exportCtx.fillText(line, textX, lineY);
+            });
+            
+            exportCtx.restore();
+          }
+        });
+        
+        exportCanvas.toBlob(resolve, 'image/png');
       } else {
         resolve(null);
       }
     });
-  }, []);
+  }, [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {
@@ -1281,74 +1694,6 @@ const CanvasCollagePreview = ({
       canvasRef.current.getCanvasBlob = getCanvasBlob;
     }
   }, [getCanvasBlob]);
-
-
-
-
-
-
-
-  // Handle text editing
-  const handleTextEdit = useCallback((panelId, event) => {
-    const isOpening = textEditingPanel !== panelId;
-    setTextEditingPanel(textEditingPanel === panelId ? null : panelId);
-    
-    // Always set to content tab when opening
-    if (isOpening) {
-      setActiveTextSetting('content');
-      
-      // Auto-scroll to show the caption editor after it opens
-      setTimeout(() => {
-        const panel = panelRects.find(p => p.panelId === panelId);
-        if (panel && containerRef.current) {
-          const container = containerRef.current;
-          const containerRect = container.getBoundingClientRect();
-          
-          // Calculate the bottom position of the expanded editor
-          const editorHeight = 185; // Moderate height estimate for expanded editor
-          const editorBottom = panel.y + panel.height + editorHeight;
-          
-          // Account for mobile keyboard - it typically takes up 250-350px on mobile devices
-          const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-          const keyboardHeight = isMobileDevice ? 300 : 0; // Conservative estimate for mobile keyboard
-          const extraPadding = isMobileDevice ? 55 : 43; // Moderate padding for comfortable viewing
-          const availableHeight = containerRect.height - keyboardHeight;
-          
-          // Only scroll if a significant portion of the editor would be cut off
-          const cutoffAmount = editorBottom - availableHeight;
-          const significantCutoff = 40; // Moderate threshold for scrolling sensitivity
-          
-          if (cutoffAmount > significantCutoff) {
-            // Calculate scroll needed to show the editor comfortably above the keyboard
-            const scrollNeeded = cutoffAmount + extraPadding;
-            
-            // Allow more generous scrolling for caption editor
-            if (scrollNeeded > 0) {
-              window.scrollTo({
-                top: window.scrollY + scrollNeeded,
-                behavior: 'smooth'
-              });
-            }
-          }
-        }
-      }, 100); // Small delay to ensure editor is rendered
-    }
-  }, [textEditingPanel, panelRects]);
-
-  const handleTextClose = useCallback(() => {
-    setTextEditingPanel(null);
-    setActiveTextSetting(null);
-  }, []);
-
-  const handleTextChange = useCallback((panelId, property, value) => {
-    if (updatePanelText) {
-      const currentText = panelTexts[panelId] || {};
-      updatePanelText(panelId, {
-        ...currentText,
-        [property]: value
-      });
-    }
-  }, [panelTexts, updatePanelText]);
 
   if (!selectedTemplate || !layoutConfig) {
     return (
@@ -1443,7 +1788,8 @@ const CanvasCollagePreview = ({
         return (
           <Box key={`controls-${panelId}`}>
             {/* Transform control button */}
-            {hasImage && (textEditingPanel === null || textEditingPanel === panelId) && (
+            {hasImage && (textEditingPanel === null || textEditingPanel === panelId) && 
+             (!anyPanelInTransformMode || isInTransformMode) && (
               <IconButton
                 size="small"
                 onClick={() => toggleTransformMode(panelId)}
@@ -1473,12 +1819,14 @@ const CanvasCollagePreview = ({
                 <Box
                   sx={{
                     position: 'absolute',
-                    top: textEditingPanel === panelId ? rect.y + rect.height : rect.y + rect.height - collapsedHeight,
-                    // When collapsed: frame-specific positioning, when expanded: canvas-wide positioning
+                    top: textEditingPanel === panelId ? rect.y + rect.height : rect.y + rect.height, // Always position at bottom
+                    // When collapsed: hidden, when expanded: canvas-wide positioning
                     left: textEditingPanel === panelId ? sidePadding : rect.x + sidePadding,
-                    // When collapsed: frame-specific width, when expanded: canvas-wide width
-                    width: textEditingPanel === panelId ? componentWidth - (sidePadding * 2) : rect.width - (sidePadding * 2),
-                    height: textEditingPanel === panelId ? 'auto' : collapsedHeight,
+                    // When collapsed: hidden, when expanded: canvas-wide width
+                    width: textEditingPanel === panelId ? componentWidth - (sidePadding * 2) : 0,
+                    height: textEditingPanel === panelId ? 'auto' : 0,
+                    opacity: textEditingPanel === panelId ? 1 : 0,
+                    visibility: textEditingPanel === panelId ? 'visible' : 'hidden',
                     zIndex: 20, // Above everything else including transform buttons
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
                     borderRadius: `${borderRadius}px`,
@@ -1487,42 +1835,6 @@ const CanvasCollagePreview = ({
                     overflow: 'hidden',
                   }}
                 >
-                                  {/* Collapsed state - show clickable area to expand */}
-                  {textEditingPanel !== panelId && (
-                    <Box
-                      onClick={(e) => {
-                        handleTextEdit(panelId, e);
-                      }}
-                      sx={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                        },
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: panelTexts[panelId]?.content ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-                          fontSize: `${fontSize}px`,
-                          textAlign: 'center',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          maxWidth: '100%',
-                          px: 1,
-                        }}
-                      >
-                        {panelTexts[panelId]?.content || 'Add Captions'}
-                      </Typography>
-                    </Box>
-                  )}
-
                   {/* Expanded editing controls - only show when this panel is being edited */}
                   {textEditingPanel === panelId && (
                     <Box sx={{ p: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding)), pt: 0 }}>
@@ -1591,7 +1903,7 @@ const CanvasCollagePreview = ({
                             multiline
                             rows={isMobileSize ? 2 : 3} // Fixed rows for consistent sizing
                             size="small"
-                            placeholder="Add Captions"
+                            placeholder="Add Caption"
                             value={panelTexts[panelId]?.content || ''}
                             onChange={(e) => handleTextChange(panelId, 'content', e.target.value)}
                             inputRef={(el) => {

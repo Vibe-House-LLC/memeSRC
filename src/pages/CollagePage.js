@@ -375,6 +375,7 @@ export default function CollagePage() {
     bulkUploadSectionOpen: true, // Always true since we don't manage collapse state anymore
     onBulkUploadSectionToggle: () => {}, // No-op since BulkUploadSection is hidden when images are present
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
+    isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
   };
 
   // Log mapping changes for debugging
