@@ -853,6 +853,12 @@ const CanvasCollagePreview = ({
     
     if (clickedPanelIndex >= 0) {
       const clickedPanel = panelRects[clickedPanelIndex];
+      
+      // If a caption editor is open and this is not the panel being edited, ignore the click
+      if (textEditingPanel !== null && textEditingPanel !== clickedPanel.panelId) {
+        return;
+      }
+      
       setSelectedPanel(clickedPanelIndex);
       
       // Check if this panel is in transform mode
@@ -864,7 +870,7 @@ const CanvasCollagePreview = ({
         onPanelClick(clickedPanel.index, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick]);
+  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -1042,6 +1048,12 @@ const CanvasCollagePreview = ({
         const imageIndex = panelImageMapping[clickedPanel.panelId];
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
         
+        // If a caption editor is open and this is not the panel being edited, allow normal scrolling
+        if (textEditingPanel !== null && textEditingPanel !== clickedPanel.panelId) {
+          // Don't preventDefault - allow normal page scrolling
+          return;
+        }
+        
         setSelectedPanel(clickedPanelIndex);
         
         // Check if this specific panel is in transform mode
@@ -1062,8 +1074,10 @@ const CanvasCollagePreview = ({
             onPanelClick(clickedPanel.index, clickedPanel.panelId);
           }
         }
+      } else if (textEditingPanel !== null) {
+        // When touched outside any panel and caption editor is open, explicitly allow normal scrolling
+        // Don't preventDefault - allow normal page scrolling when caption editor is open
       }
-      // Note: When touched outside any panel, we allow normal scrolling by not calling preventDefault
     } else if (touches.length === 2 && selectedPanel !== null) {
       // Two touches - prepare for pinch zoom
       const panel = panelRects[selectedPanel];
@@ -1082,7 +1096,7 @@ const CanvasCollagePreview = ({
         setIsDragging(false); // Stop any ongoing drag
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1315,8 +1329,50 @@ const CanvasCollagePreview = ({
     // Always set to content tab when opening
     if (isOpening) {
       setActiveTextSetting('content');
+      
+      // Auto-scroll to show the caption editor after it opens
+      setTimeout(() => {
+        const panel = panelRects.find(p => p.panelId === panelId);
+        if (panel && containerRef.current) {
+          const container = containerRef.current;
+          const containerRect = container.getBoundingClientRect();
+          
+          // Calculate the bottom position of the expanded editor
+          const editorHeight = 150; // Approximate height of expanded editor
+          const editorBottom = panel.y + panel.height + editorHeight;
+          
+          // Account for mobile keyboard - it typically takes up 250-350px on mobile devices
+          const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          const keyboardHeight = isMobileDevice ? 300 : 0; // Conservative estimate for mobile keyboard
+          const minPadding = isMobileDevice ? 10 : 5; // Very minimal padding
+          const availableHeight = containerRect.height - keyboardHeight;
+          
+          // Only scroll if a significant portion of the editor would be cut off
+          const cutoffAmount = editorBottom - availableHeight;
+          const significantCutoff = 50; // Only scroll if more than 50px would be cut off
+          
+          if (cutoffAmount > significantCutoff) {
+            // Calculate minimal scroll needed to show the editor above the keyboard
+            const minScrollNeeded = cutoffAmount + minPadding;
+            
+            // But don't scroll more than necessary - keep the panel in view if possible
+            const panelTop = panel.y;
+            const maxScrollAllowed = Math.max(0, panelTop - 30); // Keep more of the panel visible
+            
+            const scrollTarget = Math.min(minScrollNeeded, maxScrollAllowed);
+            
+            // Only scroll if we actually need to and it's a reasonable amount
+            if (scrollTarget > 0 && scrollTarget < 200) { // Cap at 200px max scroll
+              window.scrollTo({
+                top: window.scrollY + scrollTarget,
+                behavior: 'smooth'
+              });
+            }
+          }
+        }
+      }, 100); // Small delay to ensure editor is rendered
     }
-  }, [textEditingPanel]);
+  }, [textEditingPanel, panelRects]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
@@ -1370,6 +1426,9 @@ const CanvasCollagePreview = ({
 
   // Check if any panel has transform mode enabled for dynamic touch behavior
   const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+  
+  // Allow scrolling when caption editor is open or no panels are in transform mode
+  const shouldAllowScrolling = textEditingPanel !== null || !anyPanelInTransformMode;
 
   return (
     <Box ref={containerRef} sx={{ position: 'relative', width: '100%', overflow: 'visible' }}>
@@ -1389,7 +1448,7 @@ const CanvasCollagePreview = ({
           width: '100%',
           height: 'auto',
           border: `1px solid ${theme.palette.divider}`,
-          touchAction: anyPanelInTransformMode ? 'none' : 'auto', // Dynamic touch behavior
+          touchAction: shouldAllowScrolling ? 'auto' : 'none', // Allow scrolling when caption editor is open
         }}
       />
       
@@ -1423,7 +1482,7 @@ const CanvasCollagePreview = ({
         return (
           <Box key={`controls-${panelId}`}>
             {/* Transform control button */}
-            {hasImage && (
+            {hasImage && (textEditingPanel === null || textEditingPanel === panelId) && (
               <IconButton
                 size="small"
                 onClick={() => toggleTransformMode(panelId)}
@@ -1448,8 +1507,8 @@ const CanvasCollagePreview = ({
               </IconButton>
             )}
             
-            {/* Caption editing area - show when not in transform mode and has image */}
-            {!isTransformMode?.[panelId] && hasImage && (
+            {/* Caption editing area - show when not in transform mode and has image, and no other panel is being edited */}
+            {!isTransformMode?.[panelId] && hasImage && (textEditingPanel === null || textEditingPanel === panelId) && (
                 <Box
                   sx={{
                     position: 'absolute',
