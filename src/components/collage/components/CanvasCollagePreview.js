@@ -670,67 +670,34 @@ const CanvasCollagePreview = ({
     if (textEditingPanel && activeTextSetting === 'content') {
       // Small delay to ensure the text field is rendered
       setTimeout(() => {
-        // Find the text field for the specific panel
-        const textField = textFieldRefs.current[textEditingPanel];
-        if (textField) {
-          // Try multiple ways to find the input element
-          let inputElement = textField.querySelector('textarea') || 
-                            textField.querySelector('input') ||
-                            textField.querySelector('[role="textbox"]');
+        // Get the input element directly from the inputRef
+        const inputElement = textFieldRefs.current[textEditingPanel];
+        if (inputElement) {
+          // Focus the element
+          inputElement.focus();
           
-          // If MUI structure, try going through the input base
-          if (!inputElement) {
-            const inputBase = textField.querySelector('.MuiInputBase-input');
-            if (inputBase) {
-              inputElement = inputBase;
+          // Position cursor at the end of existing text
+          const textLength = inputElement.value.length;
+          
+          // Use setTimeout to ensure focus is complete before setting selection
+          setTimeout(() => {
+            inputElement.setSelectionRange(textLength, textLength);
+            
+            // For mobile: additional steps to ensure keyboard appears
+            if ('ontouchstart' in window) {
+              inputElement.click();
+              // Double-check cursor position on mobile
+              setTimeout(() => {
+                inputElement.setSelectionRange(textLength, textLength);
+              }, 100);
             }
-          }
-          
-          if (inputElement) {
-            // Focus the element
-            inputElement.focus();
-            
-            // Position cursor at the end of existing text
-            const textLength = inputElement.value.length;
-            
-            // Use setTimeout to ensure focus is complete before setting selection
-            setTimeout(() => {
-              inputElement.setSelectionRange(textLength, textLength);
-              
-              // For mobile: additional steps to ensure keyboard appears
-              if ('ontouchstart' in window) {
-                inputElement.click();
-                // Double-check cursor position on mobile
-                setTimeout(() => {
-                  inputElement.setSelectionRange(textLength, textLength);
-                }, 100);
-              }
-            }, 50);
-          }
+          }, 50);
         }
       }, 300); // Even longer delay to ensure complete rendering
     }
   }, [textEditingPanel, activeTextSetting]);
 
-  // Handle cursor positioning when text field auto-focuses
-  useEffect(() => {
-    if (textEditingPanel && activeTextSetting === 'content') {
-      setTimeout(() => {
-        const textField = textFieldRefs.current[textEditingPanel];
-        if (textField) {
-          // Find the actual input element and position cursor at end
-          const inputElement = textField.querySelector('textarea') || 
-                              textField.querySelector('input') ||
-                              textField.querySelector('.MuiInputBase-input');
-          
-          if (inputElement && document.activeElement === inputElement) {
-            const textLength = inputElement.value.length;
-            inputElement.setSelectionRange(textLength, textLength);
-          }
-        }
-      }, 100);
-    }
-  }, [textEditingPanel, activeTextSetting, panelTexts]);
+
 
   // Handle mouse events
   const handleMouseMove = useCallback((e) => {
@@ -1632,7 +1599,7 @@ const CanvasCollagePreview = ({
                                 textFieldRefs.current[panelId] = el;
                               }
                             }}
-                            autoFocus={textEditingPanel === panelId && activeTextSetting === 'content'}
+                            autoFocus={false}
                             sx={{
                               '& .MuiInputBase-root': {
                                 backgroundColor: 'transparent',
