@@ -739,28 +739,131 @@ const CanvasCollagePreview = ({
           const container = containerRef.current;
           const containerRect = container.getBoundingClientRect();
           
-          // Calculate the bottom position of the expanded editor
-          const editorHeight = 185; // Moderate height estimate for expanded editor
-          const editorBottom = panel.y + panel.height + editorHeight;
+          // Calculate the expanded editor dimensions
+          const editorHeight = 185; // Height estimate for expanded editor
+          const editorTop = panel.y + panel.height; // Editor starts at bottom of panel
+          const editorBottom = editorTop + editorHeight;
           
-          // Account for mobile keyboard - it typically takes up 250-350px on mobile devices
+          // Get current viewport dimensions
+          const viewportHeight = window.innerHeight;
+          const currentScrollY = window.scrollY;
+          
+          // Account for mobile keyboard
           const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-          const keyboardHeight = isMobileDevice ? 300 : 0; // Conservative estimate for mobile keyboard
-          const extraPadding = isMobileDevice ? 55 : 43; // Moderate padding for comfortable viewing
-          const availableHeight = containerRect.height - keyboardHeight;
+          const keyboardHeight = isMobileDevice ? 300 : 0;
           
-          // Only scroll if a significant portion of the editor would be cut off
-          const cutoffAmount = editorBottom - availableHeight;
-          const significantCutoff = 40; // Moderate threshold for scrolling sensitivity
+          // Account for fixed bottom "Generate Collage" button
+          let bottomBarHeight = 0;
           
-          if (cutoffAmount > significantCutoff) {
-            // Calculate scroll needed to show the editor comfortably above the keyboard
-            const scrollNeeded = cutoffAmount + extraPadding;
+          // Look for fixed positioned elements at the bottom of the viewport
+          const allElements = document.querySelectorAll('*');
+          allElements.forEach(el => {
+            const computedStyle = window.getComputedStyle(el);
+            if (computedStyle.position === 'fixed') {
+              const rect = el.getBoundingClientRect();
+              // Check if element is positioned at or near the bottom of the viewport
+              if (rect.bottom >= viewportHeight - 5 && rect.top > viewportHeight * 0.7) {
+                // Element spans across most of the width (likely a bottom bar)
+                if (rect.width > viewportHeight * 0.5) {
+                  bottomBarHeight = Math.max(bottomBarHeight, rect.height);
+                }
+              }
+            }
+          });
+          
+          // If no bottom bar detected but we can find a "Generate Collage" button, assume standard height
+          if (bottomBarHeight === 0) {
+            // Look for buttons with "Generate" text
+            const buttons = document.querySelectorAll('button');
+            let generateButton = null;
+            buttons.forEach(btn => {
+              if (btn.textContent && btn.textContent.toLowerCase().includes('generate')) {
+                generateButton = btn;
+              }
+            });
             
-            // Allow more generous scrolling for caption editor
-            if (scrollNeeded > 0) {
+            if (generateButton) {
+              // Check if the button or its container is fixed positioned
+              let element = generateButton;
+              while (element && element !== document.body) {
+                const style = window.getComputedStyle(element);
+                if (style.position === 'fixed') {
+                  const rect = element.getBoundingClientRect();
+                  if (rect.bottom >= viewportHeight - 20) {
+                    bottomBarHeight = Math.max(bottomBarHeight, rect.height + 20); // Add some padding
+                    break;
+                  }
+                }
+                element = element.parentElement;
+              }
+            }
+          }
+          
+          const extraPadding = isMobileDevice ? 60 : 50; // Padding for comfortable viewing
+          const availableViewportHeight = viewportHeight - keyboardHeight - bottomBarHeight;
+          
+          // Calculate absolute positions relative to the page
+          const containerOffsetTop = containerRect.top + currentScrollY;
+          const absoluteEditorTop = containerOffsetTop + editorTop;
+          const absoluteEditorBottom = containerOffsetTop + editorBottom;
+          
+          // Calculate visible viewport bounds
+          const viewportTop = currentScrollY;
+          const viewportBottom = currentScrollY + availableViewportHeight;
+          
+          // Check if the entire editor is visible in the viewport
+          const editorTopVisible = absoluteEditorTop >= viewportTop;
+          const editorBottomVisible = absoluteEditorBottom <= viewportBottom;
+          const entireEditorVisible = editorTopVisible && editorBottomVisible;
+          
+          // Calculate how much of the editor is cut off
+          const editorTopCutoff = Math.max(0, viewportTop - absoluteEditorTop);
+          const editorBottomCutoff = Math.max(0, absoluteEditorBottom - viewportBottom);
+          const totalCutoff = editorTopCutoff + editorBottomCutoff;
+          
+          // On mobile, be more conservative about scrolling to preserve collage visibility
+          // But ensure we can always show the Done button above the Generate Collage button
+          const maxScrollDistance = isMobileDevice ? viewportHeight * 0.3 : viewportHeight * 0.6;
+          const minVisibleCutoff = isMobileDevice ? 40 : 20; // Minimum cutoff before we bother scrolling
+          
+          // If the entire editor is not visible and cutoff is significant, scroll to make it visible
+          if (!entireEditorVisible && totalCutoff > minVisibleCutoff) {
+            let targetScrollY = currentScrollY;
+            
+            // Prioritize showing the bottom (action buttons) since that's most important
+            if (editorBottomCutoff > minVisibleCutoff) {
+              // Calculate scroll needed to show bottom with padding
+              const scrollToShowBottom = absoluteEditorBottom - availableViewportHeight + extraPadding;
+              const scrollDistance = scrollToShowBottom - currentScrollY;
+              
+              // Limit scroll distance on mobile to preserve top content
+              if (Math.abs(scrollDistance) <= maxScrollDistance) {
+                targetScrollY = scrollToShowBottom;
+              } else {
+                // Compromise: scroll part way to show some of the editor
+                targetScrollY = currentScrollY + (scrollDistance > 0 ? maxScrollDistance : -maxScrollDistance);
+              }
+            }
+            // If only the top is cut off (and bottom is visible), scroll up slightly
+            else if (editorTopCutoff > minVisibleCutoff) {
+              const scrollToShowTop = absoluteEditorTop - extraPadding;
+              const scrollDistance = scrollToShowTop - currentScrollY;
+              
+              if (Math.abs(scrollDistance) <= maxScrollDistance) {
+                targetScrollY = scrollToShowTop;
+              } else {
+                // Compromise: scroll part way
+                targetScrollY = currentScrollY + (scrollDistance > 0 ? maxScrollDistance : -maxScrollDistance);
+              }
+            }
+            
+            // Ensure we don't scroll to negative values
+            targetScrollY = Math.max(0, targetScrollY);
+            
+            // Only scroll if there's a meaningful change
+            if (Math.abs(targetScrollY - currentScrollY) > 10) {
               window.scrollTo({
-                top: window.scrollY + scrollNeeded,
+                top: targetScrollY,
                 behavior: 'smooth'
               });
             }
@@ -1011,6 +1114,11 @@ const CanvasCollagePreview = ({
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
       
+            // If a caption editor is open and this is not the panel being edited, ignore the click
+      if (textEditingPanel !== null && textEditingPanel !== clickedPanel.panelId) {
+        return;
+      }
+      
       // Check if click is in text area (actual text area bounds)
       let isTextAreaClick = false;
       if (hasImage && !anyPanelInTransformMode) {
@@ -1027,11 +1135,6 @@ const CanvasCollagePreview = ({
       // If clicking on text area, open caption editor
       if (isTextAreaClick) {
         handleTextEdit(clickedPanel.panelId, e);
-        return;
-      }
-      
-      // If a caption editor is open and this is not the panel being edited, ignore the click
-      if (textEditingPanel !== null && textEditingPanel !== clickedPanel.panelId) {
         return;
       }
       
@@ -1237,6 +1340,12 @@ const CanvasCollagePreview = ({
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
         const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
         
+        // If a caption editor is open and this is not the panel being edited, allow normal scrolling
+        if (textEditingPanel !== null && textEditingPanel !== clickedPanel.panelId) {
+          // Don't preventDefault - allow normal page scrolling
+          return;
+        }
+        
         // Check if touch is in text area (actual text area bounds)
         let isTextAreaTouch = false;
         if (hasImage && !anyPanelInTransformMode) {
@@ -1253,12 +1362,6 @@ const CanvasCollagePreview = ({
         // If touching on text area, open caption editor
         if (isTextAreaTouch) {
           handleTextEdit(clickedPanel.panelId, e);
-          return;
-        }
-        
-        // If a caption editor is open and this is not the panel being edited, allow normal scrolling
-        if (textEditingPanel !== null && textEditingPanel !== clickedPanel.panelId) {
-          // Don't preventDefault - allow normal page scrolling
           return;
         }
         
