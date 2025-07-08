@@ -1828,7 +1828,7 @@ const CanvasCollagePreview = ({
                     opacity: textEditingPanel === panelId ? 1 : 0,
                     visibility: textEditingPanel === panelId ? 'visible' : 'hidden',
                     zIndex: 20, // Above everything else including transform buttons
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.97)',
                     borderRadius: `${borderRadius}px`,
                     border: '1px solid rgba(255, 255, 255, 0.3)',
                     transition: 'all 0.3s ease-in-out', // Smooth expand/collapse
@@ -1897,7 +1897,7 @@ const CanvasCollagePreview = ({
 
                       {/* Active setting panel - appears below the tabs */}
                       {activeTextSetting === 'content' && (
-                        <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                        <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
                           <TextField
                             fullWidth
                             multiline
@@ -1937,7 +1937,7 @@ const CanvasCollagePreview = ({
                       )}
                     
                     {activeTextSetting === 'fontSize' && (
-                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
                         <Typography gutterBottom variant="caption" sx={{ fontSize: `${fontSize * 0.9}px`, mb: 0.375, color: '#ffffff' }}>
                           Size: {panelTexts[panelId]?.fontSize || lastUsedTextSettings.fontSize || 26}px
                         </Typography>
@@ -1975,7 +1975,7 @@ const CanvasCollagePreview = ({
                     )}
                     
                     {activeTextSetting === 'strokeWidth' && (
-                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
                         <Typography gutterBottom variant="caption" sx={{ fontSize: `${fontSize * 0.9}px`, mb: 0.375, color: '#ffffff' }}>
                           Stroke: {panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}px
                         </Typography>
@@ -2013,7 +2013,7 @@ const CanvasCollagePreview = ({
                     )}
                     
                     {activeTextSetting === 'fontWeight' && (
-                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
                         <FormControl fullWidth size="small">
                           <Select
                             value={panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || '700'}
@@ -2062,7 +2062,7 @@ const CanvasCollagePreview = ({
                     )}
                     
                     {activeTextSetting === 'fontFamily' && (
-                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
                         <FormControl fullWidth size="small">
                           <Select
                             value={panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial'}
@@ -2108,7 +2108,7 @@ const CanvasCollagePreview = ({
                     )}
                     
                     {activeTextSetting === 'color' && (
-                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }}>
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
                         <Box sx={{ display: 'flex', gap: Math.max(0.125, Math.min(0.25, sidePadding * 0.25)), flexWrap: 'wrap', mb: 0.375 }}>
                           {['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'].map((color) => (
                             <Button
@@ -2142,7 +2142,7 @@ const CanvasCollagePreview = ({
                               color: '#ffffff',
                             },
                             '& .MuiInputBase-root': {
-                              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                              backgroundColor: 'rgba(255, 255, 255, 0.35)',
                             },
                             '& .MuiOutlinedInput-notchedOutline': {
                               border: 'none',
@@ -2201,8 +2201,8 @@ const CanvasCollagePreview = ({
         const isHovered = hoveredPanel === index;
         const isInTransformMode = isTransformMode[panelId];
         
-        // Only show hover overlay when actually hovered and not in transform mode
-        if (!isHovered || isInTransformMode) return null;
+        // Only show hover overlay when actually hovered and not in transform mode and not editing text
+        if (!isHovered || isInTransformMode || textEditingPanel !== null) return null;
         
         return (
           <Box
@@ -2219,6 +2219,32 @@ const CanvasCollagePreview = ({
               pointerEvents: 'none', // Don't interfere with mouse events
               transition: 'backgroundColor 0.2s ease-in-out',
               zIndex: 5, // Above canvas, below control buttons
+            }}
+          />
+        );
+      })}
+
+      {/* Caption editing focus overlays - darken and blur non-editing panels */}
+      {textEditingPanel !== null && panelRects.map((rect, index) => {
+        const { panelId } = rect;
+        
+        // Only show overlay on panels that are NOT being edited
+        if (panelId === textEditingPanel) return null;
+        
+        return (
+          <Box
+            key={`focus-overlay-${panelId}`}
+            sx={{
+              position: 'absolute',
+              top: rect.y,
+              left: rect.x,
+              width: rect.width,
+              height: rect.height,
+              backgroundColor: 'rgba(0, 0, 0, 0.85)', // Heavy darkening
+              backdropFilter: 'blur(3px)', // Blur effect
+              pointerEvents: 'none', // Don't interfere with mouse events
+              transition: 'all 0.35s ease-out', // Clearly noticeable fade
+              zIndex: 15, // Above hover overlays, below caption editor controls
             }}
           />
         );
