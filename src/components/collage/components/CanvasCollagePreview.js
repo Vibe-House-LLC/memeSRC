@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload } from '@mui/icons-material';
+import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload, ControlCamera } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import fonts from '../../../utils/fonts';
 
@@ -533,11 +533,13 @@ const CanvasCollagePreview = ({
             ? (panelText.color || lastUsedTextSettings.color || '#ffffff')
             : 'rgba(255, 255, 255, 0.5)'; // 50% opacity for placeholder
           const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
+          const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
+          const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 75); // Default to near bottom
           
           ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
           ctx.fillStyle = textColor;
           ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
+          ctx.textBaseline = 'middle'; // Change to middle for better positioning control
           
           // Set stroke properties (only for actual text, not placeholder)
           if (hasActualText) {
@@ -556,8 +558,12 @@ const CanvasCollagePreview = ({
           // Calculate available text area (with padding on sides and bottom)
           const textPadding = 10;
           const maxTextWidth = width - (textPadding * 2);
-          const textX = x + width / 2;
-          const textY = y + height - textPadding;
+          
+          // Calculate text position based on position settings
+          // textPositionX: -100 (left) to 100 (right), 0 = center
+          // textPositionY: -100 (top) to 100 (bottom), 0 = center
+          const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
+          const textY = y + (height / 2) + (textPositionY / 100) * (height / 2 - textPadding);
           const lineHeight = fontSize * 1.2;
           
           // Use actual text or placeholder text
@@ -641,9 +647,12 @@ const CanvasCollagePreview = ({
           // Get wrapped lines
           const wrappedLines = wrapText(displayText, maxTextWidth);
           
-          // Draw each line
+          // Draw each line (center them around the textY position)
+          const totalTextHeight = wrappedLines.length * lineHeight;
+          const startY = textY - (totalTextHeight / 2) + (lineHeight / 2); // Start from top of text block
+          
           wrappedLines.forEach((line, lineIndex) => {
-            const lineY = textY - (wrappedLines.length - 1 - lineIndex) * lineHeight;
+            const lineY = startY + lineIndex * lineHeight;
             
             // Draw stroke first if stroke width > 0 and it's actual text
             if (strokeWidth > 0 && hasActualText) {
@@ -684,6 +693,8 @@ const CanvasCollagePreview = ({
     const textPadding = 10; // Visual padding for text rendering
     const activationPadding = 1; // Extremely tight padding for activation area
     const lineHeight = fontSize * 1.2;
+    const textPositionX = panelText?.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
+    const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 75);
     
     // Determine display text (actual text or placeholder)
     const hasActualText = panelText?.content && panelText.content.trim();
@@ -704,21 +715,24 @@ const CanvasCollagePreview = ({
     // Calculate actual text dimensions
     const actualTextHeight = actualLines * lineHeight;
     
-    // Calculate extremely tight activation area bounds
+    // Calculate text position based on position settings (same as drawCanvas)
+    const textX = panel.x + (panel.width / 2) + (textPositionX / 100) * (panel.width / 2 - textPadding);
+    const textY = panel.y + (panel.height / 2) + (textPositionY / 100) * (panel.height / 2 - textPadding);
+    
+    // Calculate extremely tight activation area bounds around the positioned text
     const activationAreaHeight = actualTextHeight + (activationPadding * 2);
-    const activationAreaY = panel.y + panel.height - textPadding - actualTextHeight - activationPadding;
     const activationAreaWidth = estimatedTextWidth + (activationPadding * 2);
     
-    // Center the activation area horizontally on the text
-    const textCenterX = panel.x + panel.width / 2;
-    const activationAreaX = textCenterX - (activationAreaWidth / 2);
+    // Center the activation area around the positioned text
+    const activationAreaX = textX - (activationAreaWidth / 2);
+    const activationAreaY = textY - (activationAreaHeight / 2);
     
     return {
-      x: Math.max(panel.x, activationAreaX), // Don't go outside panel bounds
-      y: Math.max(panel.y, activationAreaY), // Don't go above panel top
+      x: Math.max(panel.x, Math.min(panel.x + panel.width - activationAreaWidth, activationAreaX)), // Keep within panel bounds
+      y: Math.max(panel.y, Math.min(panel.y + panel.height - activationAreaHeight, activationAreaY)), // Keep within panel bounds
       width: Math.min(activationAreaWidth, panel.width), // Don't exceed panel width
       height: Math.min(activationAreaHeight, panel.height), // Don't exceed panel height
-      actualTextY: panel.y + panel.height - textPadding,
+      actualTextY: textY,
       actualTextHeight
     };
   }, [lastUsedTextSettings]);
@@ -1731,11 +1745,13 @@ const CanvasCollagePreview = ({
             const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
             const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
             const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
+            const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
+            const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 75);
             
             exportCtx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
             exportCtx.fillStyle = textColor;
             exportCtx.textAlign = 'center';
-            exportCtx.textBaseline = 'bottom';
+            exportCtx.textBaseline = 'middle';
             exportCtx.strokeStyle = '#000000';
             exportCtx.lineWidth = strokeWidth;
             exportCtx.lineJoin = 'round';
@@ -1747,8 +1763,8 @@ const CanvasCollagePreview = ({
             
             const textPadding = 10;
             const maxTextWidth = width - (textPadding * 2);
-            const textX = x + width / 2;
-            const textY = y + height - textPadding;
+            const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
+            const textY = y + (height / 2) + (textPositionY / 100) * (height / 2 - textPadding);
             const lineHeight = fontSize * 1.2;
             
             // Simple text wrapping for export
@@ -1772,8 +1788,12 @@ const CanvasCollagePreview = ({
               lines.push(currentLine);
             }
             
+            // Center the lines around the textY position
+            const totalTextHeight = lines.length * lineHeight;
+            const startY = textY - (totalTextHeight / 2) + (lineHeight / 2);
+            
             lines.forEach((line, lineIndex) => {
-              const lineY = textY - (lines.length - 1 - lineIndex) * lineHeight;
+              const lineY = startY + lineIndex * lineHeight;
               if (strokeWidth > 0) {
                 exportCtx.strokeText(line, textX, lineY);
               }
@@ -1943,9 +1963,9 @@ const CanvasCollagePreview = ({
                     <Box sx={{ p: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding)), pt: 0 }}>
                       {/* Setting tabs - always visible */}
                       <Tabs
-                        value={activeTextSetting ? ['content', 'fontSize', 'strokeWidth', 'fontWeight', 'fontFamily', 'color'].indexOf(activeTextSetting) : false}
+                        value={activeTextSetting ? ['content', 'fontSize', 'strokeWidth', 'fontWeight', 'fontFamily', 'color', 'position'].indexOf(activeTextSetting) : false}
                         onChange={(event, newValue) => {
-                          const settings = ['content', 'fontSize', 'strokeWidth', 'fontWeight', 'fontFamily', 'color'];
+                          const settings = ['content', 'fontSize', 'strokeWidth', 'fontWeight', 'fontFamily', 'color', 'position'];
                           const newSetting = settings[newValue];
                           // Toggle behavior: if clicking the same tab, deselect it
                           setActiveTextSetting(activeTextSetting === newSetting ? null : newSetting);
@@ -1995,6 +2015,12 @@ const CanvasCollagePreview = ({
                           iconPosition="start"
                           label="Color"
                           title="Text Color"
+                        />
+                        <Tab
+                          icon={<ControlCamera />}
+                          iconPosition="start"
+                          label="Position"
+                          title="Text Position"
                         />
                       </Tabs>
 
@@ -2251,6 +2277,78 @@ const CanvasCollagePreview = ({
                             '& .MuiOutlinedInput-notchedOutline': {
                               border: 'none',
                             },
+                          }}
+                        />
+                      </Box>
+                    )}
+                    
+                    {activeTextSetting === 'position' && (
+                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
+                        <Typography gutterBottom variant="caption" sx={{ fontSize: `${fontSize * 0.9}px`, mb: 0.375, color: '#ffffff' }}>
+                          Horizontal: {panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}%
+                        </Typography>
+                        <Slider
+                          value={panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}
+                          onChange={(e, value) => handleTextChange(panelId, 'textPositionX', value)}
+                          min={-100}
+                          max={100}
+                          step={5}
+                          size="small"
+                          sx={{ 
+                            height: Math.max(isMobileSize ? 8 : 6, Math.min(12, fontSize * 0.8)),
+                            color: '#ffffff',
+                            '& .MuiSlider-track': {
+                              height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                            },
+                            '& .MuiSlider-rail': {
+                              height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                              color: 'rgba(255, 255, 255, 0.3)',
+                            },
+                            '& .MuiSlider-thumb': {
+                              height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
+                              width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
+                              color: '#ffffff',
+                              '&:before': {
+                                boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
+                              },
+                              '&:hover, &.Mui-focusVisible': {
+                                boxShadow: '0px 0px 0px 6px rgb(255 255 255 / 16%)'
+                              }
+                            }
+                          }}
+                        />
+                        
+                        <Typography gutterBottom variant="caption" sx={{ fontSize: `${fontSize * 0.9}px`, mb: 0.375, mt: 1, color: '#ffffff' }}>
+                          Vertical: {panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 75)}%
+                        </Typography>
+                        <Slider
+                          value={panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 75)}
+                          onChange={(e, value) => handleTextChange(panelId, 'textPositionY', value)}
+                          min={-100}
+                          max={100}
+                          step={5}
+                          size="small"
+                          sx={{ 
+                            height: Math.max(isMobileSize ? 8 : 6, Math.min(12, fontSize * 0.8)),
+                            color: '#ffffff',
+                            '& .MuiSlider-track': {
+                              height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                            },
+                            '& .MuiSlider-rail': {
+                              height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                              color: 'rgba(255, 255, 255, 0.3)',
+                            },
+                            '& .MuiSlider-thumb': {
+                              height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
+                              width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
+                              color: '#ffffff',
+                              '&:before': {
+                                boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
+                              },
+                              '&:hover, &.Mui-focusVisible': {
+                                boxShadow: '0px 0px 0px 6px rgb(255 255 255 / 16%)'
+                              }
+                            }
                           }}
                         />
                       </Box>
