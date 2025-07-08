@@ -397,6 +397,53 @@ const CanvasCollagePreview = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, [aspectRatioValue, layoutConfig, panelCount, borderPixels]);
 
+  // Helper function to calculate optimal font size for text to fit in panel
+  const calculateOptimalFontSize = useCallback((text, panelWidth, panelHeight) => {
+    if (!text || !text.trim()) return 26; // Default size for empty text
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const textPadding = 10;
+    const maxTextWidth = panelWidth - (textPadding * 2);
+    const maxTextHeight = panelHeight * 0.4; // Use up to 40% of panel height for text
+    
+    // Start with a reasonable size and work down
+    for (let fontSize = 72; fontSize >= 8; fontSize -= 2) {
+      ctx.font = `700 ${fontSize}px Arial`; // Use bold Arial as baseline
+      
+      // Simple word wrapping to estimate lines
+      const words = text.split(' ');
+      const lines = [];
+      let currentLine = '';
+      
+      words.forEach(word => {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        if (ctx.measureText(testLine).width <= maxTextWidth) {
+          currentLine = testLine;
+        } else {
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+          currentLine = word;
+        }
+      });
+      
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      
+      // Check if text fits within height constraints
+      const lineHeight = fontSize * 1.2;
+      const totalTextHeight = lines.length * lineHeight;
+      
+      if (totalTextHeight <= maxTextHeight) {
+        return Math.max(fontSize, 12); // Minimum font size of 12
+      }
+    }
+    
+    return 12; // Fallback minimum size
+  }, []);
+
   // Draw the canvas
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -529,12 +576,18 @@ const CanvasCollagePreview = ({
           ctx.clip();
           
           // Set text properties (use last used settings as defaults)
-          const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+          let fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+          
+          // Auto-calculate optimal font size if no explicit size is set and there's actual text
+          if (hasActualText && !panelText.fontSize) {
+            const optimalSize = calculateOptimalFontSize(panelText.content, width, height);
+            fontSize = optimalSize;
+          }
           const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
           const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
           const textColor = hasActualText 
             ? (panelText.color || lastUsedTextSettings.color || '#ffffff')
-            : 'rgba(255, 255, 255, 0.5)'; // 50% opacity for placeholder
+            : 'rgba(255, 255, 255, 0.25)'; // 25% opacity for placeholder
           const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
           const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
           const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
@@ -686,7 +739,8 @@ const CanvasCollagePreview = ({
     panelTexts,
     lastUsedTextSettings,
     theme.palette.mode,
-    isGeneratingCollage
+    isGeneratingCollage,
+    calculateOptimalFontSize
   ]);
 
   // Helper function to calculate text area dimensions for a panel
@@ -905,52 +959,7 @@ const CanvasCollagePreview = ({
     setActiveTextSetting(null);
   }, []);
 
-  // Helper function to calculate optimal font size for text to fit in panel
-  const calculateOptimalFontSize = useCallback((text, panelWidth, panelHeight) => {
-    if (!text || !text.trim()) return 26; // Default size for empty text
-    
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const textPadding = 10;
-    const maxTextWidth = panelWidth - (textPadding * 2);
-    const maxTextHeight = panelHeight * 0.4; // Use up to 40% of panel height for text
-    
-    // Start with a reasonable size and work down
-    for (let fontSize = 72; fontSize >= 8; fontSize -= 2) {
-      ctx.font = `700 ${fontSize}px Arial`; // Use bold Arial as baseline
-      
-      // Simple word wrapping to estimate lines
-      const words = text.split(' ');
-      const lines = [];
-      let currentLine = '';
-      
-      words.forEach(word => {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        if (ctx.measureText(testLine).width <= maxTextWidth) {
-          currentLine = testLine;
-        } else {
-          if (currentLine) {
-            lines.push(currentLine);
-          }
-          currentLine = word;
-        }
-      });
-      
-      if (currentLine) {
-        lines.push(currentLine);
-      }
-      
-      // Check if text fits within height constraints
-      const lineHeight = fontSize * 1.2;
-      const totalTextHeight = lines.length * lineHeight;
-      
-      if (totalTextHeight <= maxTextHeight) {
-        return Math.max(fontSize, 12); // Minimum font size of 12
-      }
-    }
-    
-    return 12; // Fallback minimum size
-  }, []);
+
 
   const handleTextChange = useCallback((panelId, property, value) => {
     if (updatePanelText) {
@@ -1992,7 +2001,13 @@ const CanvasCollagePreview = ({
             exportCtx.rect(x, y, width, height);
             exportCtx.clip();
             
-            const fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+            let fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+            
+            // Auto-calculate optimal font size if no explicit size is set and there's actual text
+            if (panelText.content && panelText.content.trim() && !panelText.fontSize) {
+              const optimalSize = calculateOptimalFontSize(panelText.content, width, height);
+              fontSize = optimalSize;
+            }
             const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
             const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
             const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
@@ -2063,7 +2078,7 @@ const CanvasCollagePreview = ({
         resolve(null);
       }
     });
-  }, [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode]);
+  }, [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {
@@ -2338,7 +2353,21 @@ const CanvasCollagePreview = ({
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
                           <FormatSize sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
                           <Slider
-                            value={panelTexts[panelId]?.fontSize || lastUsedTextSettings.fontSize || 26}
+                            value={(() => {
+                              // Show actual font size being used (including auto-calculated)
+                              const panelText = panelTexts[panelId] || {};
+                              const hasActualText = panelText.content && panelText.content.trim();
+                              
+                              if (hasActualText && !panelText.fontSize) {
+                                // Auto-calculate optimal font size for display
+                                const panel = panelRects.find(p => p.panelId === panelId);
+                                if (panel) {
+                                  return calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+                                }
+                              }
+                              
+                              return panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+                            })()}
                             onChange={(e, value) => handleTextChange(panelId, 'fontSize', value)}
                             min={8}
                             max={72}
@@ -2369,7 +2398,21 @@ const CanvasCollagePreview = ({
                             }}
                           />
                           <Typography variant="caption" sx={{ color: '#ffffff', ml: 1, fontSize: `${fontSize * 0.8}px`, minWidth: 'fit-content' }}>
-                            {panelTexts[panelId]?.fontSize || lastUsedTextSettings.fontSize || 26}
+                            {(() => {
+                              // Show actual font size being used (including auto-calculated)
+                              const panelText = panelTexts[panelId] || {};
+                              const hasActualText = panelText.content && panelText.content.trim();
+                              
+                              if (hasActualText && !panelText.fontSize) {
+                                // Auto-calculate optimal font size for display
+                                const panel = panelRects.find(p => p.panelId === panelId);
+                                if (panel) {
+                                  return Math.round(calculateOptimalFontSize(panelText.content, panel.width, panel.height));
+                                }
+                              }
+                              
+                              return panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+                            })()}
                           </Typography>
                         </Box>
                         
@@ -2740,6 +2783,32 @@ const CanvasCollagePreview = ({
         return (
           <Box
             key={`focus-overlay-${panelId}`}
+            sx={{
+              position: 'absolute',
+              top: rect.y,
+              left: rect.x,
+              width: rect.width,
+              height: rect.height,
+              backgroundColor: 'rgba(0, 0, 0, 0.85)', // Heavy darkening
+              backdropFilter: 'blur(3px)', // Blur effect
+              pointerEvents: 'none', // Don't interfere with mouse events
+              transition: 'all 0.35s ease-out', // Clearly noticeable fade
+              zIndex: 15, // Above hover overlays, below caption editor controls
+            }}
+          />
+        );
+      })}
+
+      {/* Transform mode focus overlays - darken and blur non-transform panels */}
+      {Object.values(isTransformMode).some(enabled => enabled) && textEditingPanel === null && panelRects.map((rect, index) => {
+        const { panelId } = rect;
+        
+        // Only show overlay on panels that are NOT in transform mode
+        if (isTransformMode[panelId]) return null;
+        
+        return (
+          <Box
+            key={`transform-overlay-${panelId}`}
             sx={{
               position: 'absolute',
               top: rect.y,
