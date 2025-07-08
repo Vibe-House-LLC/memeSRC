@@ -2238,8 +2238,8 @@ const CanvasCollagePreview = ({
                           setActiveTextSetting(activeTextSetting === newSetting ? null : newSetting);
                         }}
                         variant="scrollable"
-                        scrollButtons={true}
-                        allowScrollButtonsMobile={true}
+                        scrollButtons
+                        allowScrollButtonsMobile
                         centered={!isMobileSize} // Only center on desktop, allow scrolling on mobile
                         sx={{
                           mb: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding * 0.75)),
