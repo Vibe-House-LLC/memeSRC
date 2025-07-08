@@ -1914,17 +1914,18 @@ const CanvasCollagePreview = ({
                             autoFocus={false}
                             sx={{
                               '& .MuiInputBase-root': {
-                                backgroundColor: 'transparent',
+                                backgroundColor: '#ffffff',
                                 border: 'none',
-                                color: '#ffffff',
+                                color: '#000000',
                                 fontSize: `${fontSize}px`,
+                                borderRadius: 1,
                               },
                               '& .MuiInputBase-input': {
                                 textAlign: 'center',
                                 padding: `${Math.max(4, Math.min(8, sidePadding))}px`,
-                                color: '#ffffff',
+                                color: '#000000',
                                 '&::placeholder': {
-                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  color: 'rgba(0, 0, 0, 0.5)',
                                   opacity: 1,
                                 },
                               },
