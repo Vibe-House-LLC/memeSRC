@@ -799,7 +799,7 @@ const CanvasCollagePreview = ({
           ctx.clip();
           
           // Set text properties (use last used settings as defaults)
-          let fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+          let fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 32;
           
           // Auto-calculate optimal font size if no explicit size is set and there's actual text
           if (hasActualText && !panelText.fontSize) {
