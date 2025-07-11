@@ -840,11 +840,9 @@ const CanvasCollagePreview = ({
           
           // Calculate text position based on position settings
           // textPositionX: -100 (left) to 100 (right), 0 = center
-          // textPositionY: -100 (bottom edge) to 100 (top edge), 0 = baseline bottom position
+          // textPositionY: -100 (bottom anchored) to 100 (top anchored), 0 = default bottom position
           const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
           
-          // Linear vertical positioning like horizontal - smooth and aggressive
-          const textY = y + (height * 0.75) + (textPositionY / 100) * (height * 0.8);
           const lineHeight = fontSize * 1.2;
           
           // Use actual text or placeholder text
@@ -928,9 +926,33 @@ const CanvasCollagePreview = ({
           // Get wrapped lines
           const wrappedLines = wrapText(displayText, maxTextWidth);
           
-          // Calculate text block positioning - always anchor from center
+          // Calculate text block positioning with proper anchoring
           const totalTextHeight = wrappedLines.length * lineHeight;
-          const startY = textY - totalTextHeight / 2 + (lineHeight / 2);
+          
+          // Improved vertical positioning logic:
+          // textPositionY = -100: bottom edge of text at bottom of panel (y + height - textPadding)
+          // textPositionY = 0: bottom edge of text at 85% of panel height (default position)
+          // textPositionY = 100: top edge of text at top of panel (y + textPadding)
+          
+          let textAnchorY;
+          if (textPositionY <= 0) {
+            // Position between default bottom (85%) and actual bottom (100%)
+            const defaultBottomPosition = y + (height * 0.85);
+            const actualBottomPosition = y + height - textPadding;
+            const t = Math.abs(textPositionY) / 100; // 0 to 1
+            textAnchorY = defaultBottomPosition + t * (actualBottomPosition - defaultBottomPosition);
+            // Text is anchored by its bottom edge
+          } else {
+            // Position between default bottom (85%) and top (textPadding)
+            const defaultBottomPosition = y + (height * 0.85);
+            const topPosition = y + textPadding + totalTextHeight;
+            const t = textPositionY / 100; // 0 to 1
+            textAnchorY = defaultBottomPosition + t * (topPosition - defaultBottomPosition);
+            // Text is anchored by its bottom edge
+          }
+          
+          // Calculate where the first line should start (top of text block)
+          const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
           
           wrappedLines.forEach((line, lineIndex) => {
             const lineY = startY + lineIndex * lineHeight;
@@ -1000,11 +1022,26 @@ const CanvasCollagePreview = ({
     // Calculate text position based on position settings (same as drawCanvas)
     const textX = panel.x + (panel.width / 2) + (textPositionX / 100) * (panel.width / 2 - textPadding);
     
-    // Linear vertical positioning like horizontal - smooth and aggressive
-    const textY = panel.y + (panel.height * 0.75) + (textPositionY / 100) * (panel.height * 0.8);
+    // Use the same improved vertical positioning logic as in drawCanvas
+    let textAnchorY;
+    if (textPositionY <= 0) {
+      // Position between default bottom (85%) and actual bottom (100%)
+      const defaultBottomPosition = panel.y + (panel.height * 0.85);
+      const actualBottomPosition = panel.y + panel.height - textPadding;
+      const t = Math.abs(textPositionY) / 100; // 0 to 1
+      textAnchorY = defaultBottomPosition + t * (actualBottomPosition - defaultBottomPosition);
+      // Text is anchored by its bottom edge
+    } else {
+      // Position between default bottom (85%) and top (textPadding)
+      const defaultBottomPosition = panel.y + (panel.height * 0.85);
+      const topPosition = panel.y + textPadding + actualTextHeight;
+      const t = textPositionY / 100; // 0 to 1
+      textAnchorY = defaultBottomPosition + t * (topPosition - defaultBottomPosition);
+      // Text is anchored by its bottom edge
+    }
     
-    // Calculate text block positioning - always anchor from center
-    const textBlockY = textY - actualTextHeight / 2;
+    // Calculate where the text block starts (top of text block)
+    const textBlockY = textAnchorY - actualTextHeight;
     
     // Calculate activation area bounds around the actual text block position
     const activationAreaHeight = actualTextHeight + (activationPadding * 2);
@@ -1019,7 +1056,7 @@ const CanvasCollagePreview = ({
       y: Math.max(panel.y, Math.min(panel.y + panel.height - activationAreaHeight, activationAreaY)), // Keep within panel bounds
       width: Math.min(activationAreaWidth, panel.width), // Don't exceed panel width
       height: Math.min(activationAreaHeight, panel.height), // Don't exceed panel height
-      actualTextY: textY,
+      actualTextY: textAnchorY,
       actualTextHeight
     };
   }, [lastUsedTextSettings]);
@@ -2296,8 +2333,6 @@ const CanvasCollagePreview = ({
             const maxTextWidth = width - (textPadding * 2);
             const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
             
-            // Linear vertical positioning like horizontal - smooth and aggressive
-            const textY = y + (height * 0.75) + (textPositionY / 100) * (height * 0.8);
             const lineHeight = fontSize * 1.2;
             
             // Simple text wrapping for export
@@ -2321,9 +2356,26 @@ const CanvasCollagePreview = ({
               lines.push(currentLine);
             }
             
-            // Calculate text block positioning - always anchor from center
+            // Calculate text block positioning with proper anchoring (same as drawCanvas)
             const totalTextHeight = lines.length * lineHeight;
-            const startY = textY - totalTextHeight / 2 + (lineHeight / 2);
+            
+            let textAnchorY;
+            if (textPositionY <= 0) {
+              // Position between default bottom (85%) and actual bottom (100%)
+              const defaultBottomPosition = y + (height * 0.85);
+              const actualBottomPosition = y + height - textPadding;
+              const t = Math.abs(textPositionY) / 100; // 0 to 1
+              textAnchorY = defaultBottomPosition + t * (actualBottomPosition - defaultBottomPosition);
+            } else {
+              // Position between default bottom (85%) and top (textPadding)
+              const defaultBottomPosition = y + (height * 0.85);
+              const topPosition = y + textPadding + totalTextHeight;
+              const t = textPositionY / 100; // 0 to 1
+              textAnchorY = defaultBottomPosition + t * (topPosition - defaultBottomPosition);
+            }
+            
+            // Calculate where the first line should start (top of text block)
+            const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
             
             lines.forEach((line, lineIndex) => {
               const lineY = startY + lineIndex * lineHeight;
