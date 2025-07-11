@@ -18,7 +18,7 @@ export const useCollageState = () => {
   const [panelTexts, setPanelTexts] = useState({});
   // lastUsedTextSettings to remember settings across panels
   const [lastUsedTextSettings, setLastUsedTextSettings] = useState({
-    fontSize: 32,
+    fontSize: 20,
     fontWeight: '700',
     fontFamily: 'Arial',
     color: '#ffffff',

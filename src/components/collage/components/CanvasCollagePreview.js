@@ -480,6 +480,14 @@ const CanvasCollagePreview = ({
   const touchStartRef = useRef(null);
   const textFieldRefs = useRef({});
 
+  // Base canvas size for text scaling calculations
+  const BASE_CANVAS_WIDTH = 400;
+  
+  // Calculate text scale factor based on current canvas size vs base size
+  const textScaleFactor = useMemo(() => {
+    return componentWidth / BASE_CANVAS_WIDTH;
+  }, [componentWidth]);
+
   // State for text color scroll indicators
   const [textColorLeftScroll, setTextColorLeftScroll] = useState(false);
   const [textColorRightScroll, setTextColorRightScroll] = useState(false);
@@ -799,13 +807,16 @@ const CanvasCollagePreview = ({
           ctx.clip();
           
           // Set text properties (use last used settings as defaults)
-          let fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 32;
+          let baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 32;
           
           // Auto-calculate optimal font size if no explicit size is set and there's actual text
           if (hasActualText && !panelText.fontSize) {
             const optimalSize = calculateOptimalFontSize(panelText.content, width, height);
-            fontSize = optimalSize;
+            baseFontSize = optimalSize;
           }
+          
+          // Scale font size based on canvas size
+          const fontSize = baseFontSize * textScaleFactor;
           const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
           const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
           const textColor = hasActualText 
@@ -985,7 +996,8 @@ const CanvasCollagePreview = ({
     lastUsedTextSettings,
     theme.palette.mode,
     isGeneratingCollage,
-    calculateOptimalFontSize
+    calculateOptimalFontSize,
+    textScaleFactor
   ]);
 
   // Helper function to calculate text area dimensions for a panel
@@ -993,10 +1005,11 @@ const CanvasCollagePreview = ({
     if (!panel) return null;
     
     // Get text properties (same as in drawCanvas)
-    const fontSize = panelText?.fontSize || lastUsedTextSettings.fontSize || 26;
+    const baseFontSize = panelText?.fontSize || lastUsedTextSettings.fontSize || 26;
+    const scaledFontSize = baseFontSize * textScaleFactor;
     const textPadding = 10; // Visual padding for text rendering
     const activationPadding = 1; // Extremely tight padding for activation area
-    const lineHeight = fontSize * 1.2;
+    const lineHeight = scaledFontSize * 1.2;
     const textPositionX = panelText?.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
               const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
     
@@ -1006,7 +1019,7 @@ const CanvasCollagePreview = ({
     
     // Calculate number of lines and actual text width
     const maxTextWidth = panel.width - (textPadding * 2);
-    const avgCharWidth = fontSize * 0.6; // Rough estimation for character width
+    const avgCharWidth = scaledFontSize * 0.6; // Rough estimation for character width
     const charsPerLine = Math.floor(maxTextWidth / avgCharWidth);
     const estimatedLines = Math.ceil(displayText.length / charsPerLine);
     const actualLines = Math.max(1, Math.min(estimatedLines, 3)); // Limit to reasonable range
@@ -1059,7 +1072,7 @@ const CanvasCollagePreview = ({
       actualTextY: textAnchorY,
       actualTextHeight
     };
-  }, [lastUsedTextSettings]);
+  }, [lastUsedTextSettings, textScaleFactor]);
 
   // Handle text editing
   const handleTextEdit = useCallback((panelId, event) => {
@@ -2302,13 +2315,16 @@ const CanvasCollagePreview = ({
             exportCtx.rect(x, y, width, height);
             exportCtx.clip();
             
-            let fontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+            let baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
             
             // Auto-calculate optimal font size if no explicit size is set and there's actual text
             if (panelText.content && panelText.content.trim() && !panelText.fontSize) {
               const optimalSize = calculateOptimalFontSize(panelText.content, width, height);
-              fontSize = optimalSize;
+              baseFontSize = optimalSize;
             }
+            
+            // Scale font size based on canvas size for export
+            const fontSize = baseFontSize * textScaleFactor;
             const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
             const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
             const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
@@ -2394,7 +2410,7 @@ const CanvasCollagePreview = ({
         resolve(null);
       }
     });
-  }, [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize]);
+  }, [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {
@@ -2674,19 +2690,29 @@ const CanvasCollagePreview = ({
                               const panelText = panelTexts[panelId] || {};
                               const hasActualText = panelText.content && panelText.content.trim();
                               
+                              let baseFontSize;
                               if (hasActualText && !panelText.fontSize) {
                                 // Auto-calculate optimal font size for display
                                 const panel = panelRects.find(p => p.panelId === panelId);
                                 if (panel) {
-                                  return calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+                                  baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+                                } else {
+                                  baseFontSize = lastUsedTextSettings.fontSize || 26;
                                 }
+                              } else {
+                                baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
                               }
                               
-                              return panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+                              // Return the scaled font size for display
+                              return Math.round(baseFontSize * textScaleFactor);
                             })()}
-                            onChange={(e, value) => handleTextChange(panelId, 'fontSize', value)}
-                            min={8}
-                            max={72}
+                            onChange={(e, value) => {
+                              // Convert scaled value back to base value for storage
+                              const baseFontSize = value / textScaleFactor;
+                              handleTextChange(panelId, 'fontSize', baseFontSize);
+                            }}
+                            min={Math.round(8 * textScaleFactor)}
+                            max={Math.round(72 * textScaleFactor)}
                             step={1}
                             size="small"
                             sx={{ 
@@ -2719,15 +2745,21 @@ const CanvasCollagePreview = ({
                               const panelText = panelTexts[panelId] || {};
                               const hasActualText = panelText.content && panelText.content.trim();
                               
+                              let baseFontSize;
                               if (hasActualText && !panelText.fontSize) {
                                 // Auto-calculate optimal font size for display
                                 const panel = panelRects.find(p => p.panelId === panelId);
                                 if (panel) {
-                                  return Math.round(calculateOptimalFontSize(panelText.content, panel.width, panel.height));
+                                  baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+                                } else {
+                                  baseFontSize = lastUsedTextSettings.fontSize || 26;
                                 }
+                              } else {
+                                baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
                               }
                               
-                              return panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+                              // Return the scaled font size for display
+                              return Math.round(baseFontSize * textScaleFactor);
                             })()}
                           </Typography>
                         </Box>
