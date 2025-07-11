@@ -2292,7 +2292,7 @@ const CanvasCollagePreview = ({
 
   // Toggle transform mode for a panel
   const toggleTransformMode = useCallback((panelId) => {
-    // Prevent toggle while scrolling
+    // Prevent toggling transform mode while scrolling
     if (isScrolling) return;
     
     setIsTransformMode(prev => ({
@@ -2613,33 +2613,69 @@ const CanvasCollagePreview = ({
              (!anyPanelInTransformMode || isInTransformMode) && (
                           <IconButton
               size="small"
-              disabled={isScrolling}
               onClick={() => toggleTransformMode(panelId)}
+              onTouchStart={(e) => {
+                // Track touch start for scroll detection on button
+                const touch = e.touches[0];
+                touchStartRef.current = {
+                  x: touch.clientX,
+                  y: touch.clientY,
+                  time: Date.now(),
+                  onButton: true // Flag to indicate touch started on button
+                };
+              }}
+              onTouchMove={(e) => {
+                // Detect scroll gesture starting on button
+                if (touchStartRef.current && touchStartRef.current.onButton) {
+                  const touch = e.touches[0];
+                  const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+                  const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+                  const deltaTime = Date.now() - touchStartRef.current.time;
+                  
+                  // If touch has moved significantly (especially vertically), consider it scrolling
+                  const isScrollingGesture = deltaY > 10 || 
+                                           (deltaY > 5 && deltaTime < 100) || // Fast vertical movement
+                                           (deltaX > 20 && deltaY > 5); // Large diagonal movement
+                  
+                  if (isScrollingGesture) {
+                    setIsScrolling(true);
+                    
+                    // Clear existing timeout
+                    if (scrollTimeoutRef.current) {
+                      clearTimeout(scrollTimeoutRef.current);
+                    }
+                    
+                    // Set timeout to re-enable interactions
+                    scrollTimeoutRef.current = setTimeout(() => {
+                      setIsScrolling(false);
+                    }, 300);
+                    
+                    // Clear touch start to avoid repeated triggers
+                    touchStartRef.current = null;
+                  }
+                }
+              }}
+              onTouchEnd={() => {
+                // Clear touch tracking when touch ends
+                if (touchStartRef.current && touchStartRef.current.onButton) {
+                  touchStartRef.current = null;
+                }
+              }}
               sx={{
                 position: 'absolute',
                 top: rect.y + 8,
                 left: rect.x + rect.width - 48, // Simplified positioning
                 width: 40,
                 height: 40,
-                backgroundColor: isScrolling 
-                  ? 'rgba(128, 128, 128, 0.6)' // Gray when disabled
-                  : isInTransformMode ? '#4CAF50' : '#2196F3',
-                color: isScrolling ? 'rgba(255, 255, 255, 0.5)' : '#ffffff',
+                backgroundColor: isInTransformMode ? '#4CAF50' : '#2196F3',
+                color: '#ffffff',
                 border: '2px solid #ffffff',
-                boxShadow: isScrolling 
-                  ? '0 2px 6px rgba(0, 0, 0, 0.2)' // Reduced shadow when disabled
-                  : '0 4px 12px rgba(0, 0, 0, 0.4)',
-                opacity: isScrolling ? 0.6 : 1,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                opacity: 1,
                 transition: 'all 0.2s ease-in-out',
                 '&:hover': {
-                  backgroundColor: isScrolling 
-                    ? 'rgba(128, 128, 128, 0.6)' // No hover effect when scrolling
-                    : isInTransformMode ? '#388E3C' : '#1976D2',
-                  transform: isScrolling ? 'none' : 'scale(1.1)',
-                },
-                '&.Mui-disabled': {
-                  backgroundColor: 'rgba(128, 128, 128, 0.6)',
-                  color: 'rgba(255, 255, 255, 0.5)',
+                  backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
+                  transform: 'scale(1.1)',
                 },
                 zIndex: 12, // Higher than caption overlay to ensure interactivity
               }}
