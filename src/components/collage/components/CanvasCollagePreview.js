@@ -1192,15 +1192,22 @@ const CanvasCollagePreview = ({
         [property]: value
       };
       
-      // Auto-scale font size when content changes
+      // Auto-scale font size only when first adding content to an empty text field
+      // This prevents font size from changing while the user is editing existing text
       if (property === 'content' && value && value.trim()) {
-        const panel = panelRects.find(p => p.panelId === panelId);
-        if (panel) {
-          const optimalSize = calculateOptimalFontSize(value, panel.width, panel.height);
-          updatedText = {
-            ...updatedText,
-            fontSize: optimalSize
-          };
+        const hadPreviousContent = currentText.content && currentText.content.trim();
+        const hasExplicitFontSize = currentText.fontSize !== undefined;
+        
+        // Only auto-scale if there was no previous content AND no explicit font size set
+        if (!hadPreviousContent && !hasExplicitFontSize) {
+          const panel = panelRects.find(p => p.panelId === panelId);
+          if (panel) {
+            const optimalSize = calculateOptimalFontSize(value, panel.width, panel.height);
+            updatedText = {
+              ...updatedText,
+              fontSize: optimalSize
+            };
+          }
         }
       }
       
