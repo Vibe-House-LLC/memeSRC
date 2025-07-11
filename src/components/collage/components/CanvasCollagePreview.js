@@ -1588,6 +1588,7 @@ const CanvasCollagePreview = ({
       
       // Determine cursor based on interaction state
       let cursor = 'default';
+      
       if (hoveredPanelIndex >= 0) {
         const panel = panelRects[hoveredPanelIndex];
         const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
@@ -1599,8 +1600,15 @@ const CanvasCollagePreview = ({
           } else {
             cursor = 'default'; // Non-interactive cursor for other panels
           }
+        } else if (textEditingPanel !== null) {
+          // When caption editor is open, only show interactive cursor for the panel being edited
+          if (panel.panelId === textEditingPanel) {
+            cursor = isOverTextArea ? 'text' : 'pointer';
+          } else {
+            cursor = 'default'; // Default cursor for inactive frames
+          }
         } else {
-          // Normal mode - show appropriate cursor
+          // Normal mode - show appropriate cursor for all panels
           cursor = isOverTextArea ? 'text' : 'pointer';
         }
       }
@@ -1619,8 +1627,15 @@ const CanvasCollagePreview = ({
         } else {
           cursor = 'default'; // Non-interactive cursor for other panels
         }
+      } else if (textEditingPanel !== null) {
+        // When caption editor is open, only show interactive cursor for the panel being edited
+        if (panel.panelId === textEditingPanel) {
+          cursor = isOverTextArea ? 'text' : 'pointer';
+        } else {
+          cursor = 'default'; // Default cursor for inactive frames
+        }
       } else {
-        // Normal mode - show appropriate cursor
+        // Normal mode - show appropriate cursor for all panels
         cursor = isOverTextArea ? 'text' : 'pointer';
       }
       
