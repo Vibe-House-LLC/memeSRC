@@ -942,23 +942,23 @@ const CanvasCollagePreview = ({
           
           // Improved vertical positioning logic:
           // textPositionY = -100: bottom edge of text at bottom of panel (y + height - textPadding)
-          // textPositionY = 0: bottom edge of text at 85% of panel height (default position)
+          // textPositionY = 0: bottom edge of text at 95% of panel height (default position)
           // textPositionY = 100: top edge of text at top of panel (y + textPadding)
           
           let textAnchorY;
           if (textPositionY <= 0) {
-            // Position between default bottom (85%) and actual bottom (100%)
-            const defaultBottomPosition = y + (height * 0.85);
-            const actualBottomPosition = y + height - textPadding;
+            // Position between default bottom (95%) and beyond frame bottom edge
+            const defaultBottomPosition = y + (height * 0.95);
+            const extendedBottomPosition = y + height + (height * 0.1); // Allow text to extend 10% beyond frame bottom
             const t = Math.abs(textPositionY) / 100; // 0 to 1
-            textAnchorY = defaultBottomPosition + t * (actualBottomPosition - defaultBottomPosition);
+            textAnchorY = defaultBottomPosition + t * (extendedBottomPosition - defaultBottomPosition);
             // Text is anchored by its bottom edge
           } else {
-            // Position between default bottom (85%) and top (textPadding)
-            const defaultBottomPosition = y + (height * 0.85);
-            const topPosition = y + textPadding + totalTextHeight;
+            // Position between default bottom (95%) and frame top edge (0%)
+            const defaultBottomPosition = y + (height * 0.95);
+            const frameTopPosition = y; // Allow text to extend to frame edge
             const t = textPositionY / 100; // 0 to 1
-            textAnchorY = defaultBottomPosition + t * (topPosition - defaultBottomPosition);
+            textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
             // Text is anchored by its bottom edge
           }
           
@@ -1038,18 +1038,18 @@ const CanvasCollagePreview = ({
     // Use the same improved vertical positioning logic as in drawCanvas
     let textAnchorY;
     if (textPositionY <= 0) {
-      // Position between default bottom (85%) and actual bottom (100%)
-      const defaultBottomPosition = panel.y + (panel.height * 0.85);
-      const actualBottomPosition = panel.y + panel.height - textPadding;
+      // Position between default bottom (95%) and beyond frame bottom edge
+      const defaultBottomPosition = panel.y + (panel.height * 0.95);
+      const extendedBottomPosition = panel.y + panel.height + (panel.height * 0.1); // Allow text to extend 10% beyond frame bottom
       const t = Math.abs(textPositionY) / 100; // 0 to 1
-      textAnchorY = defaultBottomPosition + t * (actualBottomPosition - defaultBottomPosition);
+      textAnchorY = defaultBottomPosition + t * (extendedBottomPosition - defaultBottomPosition);
       // Text is anchored by its bottom edge
     } else {
-      // Position between default bottom (85%) and top (textPadding)
-      const defaultBottomPosition = panel.y + (panel.height * 0.85);
-      const topPosition = panel.y + textPadding + actualTextHeight;
+      // Position between default bottom (95%) and frame top edge (0%)
+      const defaultBottomPosition = panel.y + (panel.height * 0.95);
+      const frameTopPosition = panel.y; // Allow text to extend to frame edge
       const t = textPositionY / 100; // 0 to 1
-      textAnchorY = defaultBottomPosition + t * (topPosition - defaultBottomPosition);
+      textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
       // Text is anchored by its bottom edge
     }
     
@@ -2377,17 +2377,17 @@ const CanvasCollagePreview = ({
             
             let textAnchorY;
             if (textPositionY <= 0) {
-              // Position between default bottom (85%) and actual bottom (100%)
-              const defaultBottomPosition = y + (height * 0.85);
-              const actualBottomPosition = y + height - textPadding;
+              // Position between default bottom (95%) and beyond frame bottom edge
+              const defaultBottomPosition = y + (height * 0.95);
+              const extendedBottomPosition = y + height + (height * 0.1); // Allow text to extend 10% beyond frame bottom
               const t = Math.abs(textPositionY) / 100; // 0 to 1
-              textAnchorY = defaultBottomPosition + t * (actualBottomPosition - defaultBottomPosition);
+              textAnchorY = defaultBottomPosition + t * (extendedBottomPosition - defaultBottomPosition);
             } else {
-              // Position between default bottom (85%) and top (textPadding)
-              const defaultBottomPosition = y + (height * 0.85);
-              const topPosition = y + textPadding + totalTextHeight;
+              // Position between default bottom (95%) and frame top edge (0%)
+              const defaultBottomPosition = y + (height * 0.95);
+              const frameTopPosition = y; // Allow text to extend to frame edge
               const t = textPositionY / 100; // 0 to 1
-              textAnchorY = defaultBottomPosition + t * (topPosition - defaultBottomPosition);
+              textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
             }
             
             // Calculate where the first line should start (top of text block)
@@ -3138,12 +3138,32 @@ const CanvasCollagePreview = ({
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <SwapVert sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
                           <Slider
-                            value={panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0)}
-                            onChange={(e, value) => handleTextChange(panelId, 'textPositionY', value)}
-                            min={-100}
+                            value={(() => {
+                              // Convert textPositionY to percentage from bottom for display
+                              const textPositionY = panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0);
+                              if (textPositionY <= 0) {
+                                // For negative values: 0% extends beyond frame bottom (-100) to 5% at default (0)
+                                return 5 + (textPositionY / 100) * 5;
+                              }
+                              // For positive values: 5% at default (0) to 100% at frame top edge (100)
+                              return 5 + (textPositionY / 100) * 95;
+                            })()}
+                                                         onChange={(e, value) => {
+                               // Convert slider value (percentage from bottom) back to textPositionY
+                               let textPositionY;
+                               if (value <= 5) {
+                                 // For values 0-5%: convert to -100 to 0 (extends beyond frame bottom to default)
+                                 textPositionY = ((value - 5) / 5) * 100;
+                               } else {
+                                 // For values 5-100%: convert to 0 to 100 (default to frame top edge)
+                                 textPositionY = ((value - 5) / 95) * 100;
+                               }
+                               handleTextChange(panelId, 'textPositionY', textPositionY);
+                             }}
+                            min={0}
                             max={100}
                             step={1}
-                            marks={[{ value: 0, label: '' }]}
+                            marks={[{ value: 5, label: '' }]}
                             size="small"
                             sx={{ 
                               height: Math.max(isMobileSize ? 8 : 6, Math.min(12, fontSize * 0.8)),
@@ -3177,7 +3197,14 @@ const CanvasCollagePreview = ({
                             }}
                           />
                           <Typography variant="caption" sx={{ color: '#ffffff', ml: 1, fontSize: `${fontSize * 0.8}px`, minWidth: 'fit-content' }}>
-                            {panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0)}%
+                            {(() => {
+                              // Show percentage from bottom for display
+                              const textPositionY = panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0);
+                              if (textPositionY <= 0) {
+                                return Math.round(5 + (textPositionY / 100) * 5);
+                              }
+                              return Math.round(5 + (textPositionY / 100) * 95);
+                            })()}%
                           </Typography>
                         </Box>
                       </Box>
