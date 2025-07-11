@@ -1792,8 +1792,8 @@ const CanvasCollagePreview = ({
       if (isTransformMode[clickedPanel.panelId]) {
         setIsDragging(true);
         setDragStart({ x, y });
-      } else if (onPanelClick) {
-        // Regular panel click
+      } else if (onPanelClick && textEditingPanel === null) {
+        // Regular panel click - only allow when no caption editor is open
         onPanelClick(clickedPanel.index, clickedPanel.panelId);
       }
     }
@@ -2040,9 +2040,9 @@ const CanvasCollagePreview = ({
           e.stopPropagation();
           setIsDragging(true);
           setDragStart({ x, y });
-        } else if (onPanelClick) {
+        } else if (onPanelClick && textEditingPanel === null) {
           // Allow normal touch behavior for panels not in transform mode
-          // Regular panel click
+          // Regular panel click - only allow when no caption editor is open
           onPanelClick(clickedPanel.index, clickedPanel.panelId);
         }
       } else if (textEditingPanel !== null) {
@@ -2609,7 +2609,7 @@ const CanvasCollagePreview = ({
         return (
           <Box key={`controls-${panelId}`}>
             {/* Transform control button */}
-            {hasImage && (textEditingPanel === null || textEditingPanel === panelId) && 
+            {hasImage && textEditingPanel === null && 
              (!anyPanelInTransformMode || isInTransformMode) && (
                           <IconButton
               size="small"
