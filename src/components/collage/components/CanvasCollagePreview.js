@@ -638,8 +638,12 @@ const CanvasCollagePreview = ({
     const maxTextWidth = panelWidth - (textPadding * 2);
     const maxTextHeight = panelHeight * 0.4; // Use up to 40% of panel height for text
     
+    // Calculate a reasonable maximum font size based on panel dimensions
+    // Use 15% of panel height as a reasonable upper bound, but cap at 48px
+    const reasonableMaxSize = Math.min(48, Math.max(16, panelHeight * 0.15));
+    
     // Start with a reasonable size and work down
-    for (let fontSize = 72; fontSize >= 8; fontSize -= 2) {
+    for (let fontSize = reasonableMaxSize; fontSize >= 8; fontSize -= 2) {
       ctx.font = `700 ${fontSize}px Arial`; // Use bold Arial as baseline
       
       // Simple word wrapping to estimate lines
@@ -1324,22 +1328,18 @@ const CanvasCollagePreview = ({
         [property]: value
       };
       
-      // Auto-scale font size only when first adding content to an empty text field
+      // Set default font size only when first adding content to an empty text field
       // This prevents font size from changing while the user is editing existing text
       if (property === 'content' && value && value.trim()) {
         const hadPreviousContent = currentText.content && currentText.content.trim();
         const hasExplicitFontSize = currentText.fontSize !== undefined;
         
-        // Only auto-scale if there was no previous content AND no explicit font size set
+        // Only set default font size if there was no previous content AND no explicit font size set
         if (!hadPreviousContent && !hasExplicitFontSize) {
-          const panel = panelRects.find(p => p.panelId === panelId);
-          if (panel) {
-            const optimalSize = calculateOptimalFontSize(value, panel.width, panel.height);
-            updatedText = {
-              ...updatedText,
-              fontSize: optimalSize
-            };
-          }
+          updatedText = {
+            ...updatedText,
+            fontSize: lastUsedTextSettings.fontSize || 26 // Use default font size
+          };
         }
       }
       
