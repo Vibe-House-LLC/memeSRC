@@ -1011,23 +1011,105 @@ const CanvasCollagePreview = ({
     const activationPadding = 1; // Extremely tight padding for activation area
     const lineHeight = scaledFontSize * 1.2;
     const textPositionX = panelText?.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
-              const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
+    const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
     
     // Determine display text (actual text or placeholder)
     const hasActualText = panelText?.content && panelText.content.trim();
     const displayText = hasActualText ? panelText.content : 'Add Caption';
     
-    // Calculate number of lines and actual text width
+    // Use the same accurate text measurement logic as drawCanvas
     const maxTextWidth = panel.width - (textPadding * 2);
-    const avgCharWidth = scaledFontSize * 0.6; // Rough estimation for character width
-    const charsPerLine = Math.floor(maxTextWidth / avgCharWidth);
-    const estimatedLines = Math.ceil(displayText.length / charsPerLine);
-    const actualLines = Math.max(1, Math.min(estimatedLines, 3)); // Limit to reasonable range
     
-    // Estimate actual text width (more precise for tighter bounds)
-    const longestLine = displayText.split('\n').reduce((longest, line) => 
-      line.length > longest.length ? line : longest, '');
-    const estimatedTextWidth = Math.min(longestLine.length * avgCharWidth, maxTextWidth);
+    // Create temporary canvas for accurate text measurement
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // Set font properties exactly like in drawCanvas
+    const fontWeight = panelText?.fontWeight || lastUsedTextSettings.fontWeight || '700';
+    const fontFamily = panelText?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
+    tempCtx.font = `${fontWeight} ${scaledFontSize}px ${fontFamily}`;
+    
+    // Helper function to wrap text with the same logic as drawCanvas
+    const wrapText = (text, maxWidth) => {
+      const lines = [];
+      const manualLines = text.split('\n'); // Handle manual line breaks first
+      
+      manualLines.forEach(line => {
+        if (tempCtx.measureText(line).width <= maxWidth) {
+          // Line fits within width
+          lines.push(line);
+        } else {
+          // Line needs to be wrapped
+          const words = line.split(' ');
+          let currentLine = '';
+          
+          words.forEach(word => {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const testWidth = tempCtx.measureText(testLine).width;
+            
+            if (testWidth <= maxWidth) {
+              currentLine = testLine;
+            } else if (currentLine) {
+              // Current line is full, start a new line
+              lines.push(currentLine);
+              currentLine = word;
+              
+              // Check if the single word is still too long
+              if (tempCtx.measureText(word).width > maxWidth) {
+                // Break the word character by character
+                let charLine = '';
+                for (let i = 0; i < word.length; i += 1) {
+                  const testChar = charLine + word[i];
+                  if (tempCtx.measureText(testChar).width <= maxWidth) {
+                    charLine = testChar;
+                  } else {
+                    if (charLine) {
+                      lines.push(charLine);
+                    }
+                    charLine = word[i];
+                  }
+                }
+                if (charLine) {
+                  lines.push(charLine);
+                }
+                currentLine = '';
+              }
+            } else {
+              // Single word is too long, break it character by character
+              let charLine = '';
+              for (let i = 0; i < word.length; i += 1) {
+                const testChar = charLine + word[i];
+                if (tempCtx.measureText(testChar).width <= maxWidth) {
+                  charLine = testChar;
+                } else {
+                  if (charLine) {
+                    lines.push(charLine);
+                  }
+                  charLine = word[i];
+                }
+              }
+              if (charLine) {
+                lines.push(charLine);
+              }
+            }
+          });
+          
+          // Add the last line if it has content
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+        }
+      });
+      
+      return lines;
+    };
+    
+    // Get wrapped lines using accurate measurement
+    const wrappedLines = wrapText(displayText, maxTextWidth);
+    const actualLines = wrappedLines.length;
+    
+    // Calculate actual text width from the wrapped lines
+    const actualTextWidth = Math.max(...wrappedLines.map(line => tempCtx.measureText(line).width));
     
     // Calculate actual text dimensions
     const actualTextHeight = actualLines * lineHeight;
@@ -1058,7 +1140,7 @@ const CanvasCollagePreview = ({
     
     // Calculate activation area bounds around the actual text block position
     const activationAreaHeight = actualTextHeight + (activationPadding * 2);
-    const activationAreaWidth = estimatedTextWidth + (activationPadding * 2);
+    const activationAreaWidth = actualTextWidth + (activationPadding * 2);
     
     // Position activation area around the actual text block
     const activationAreaX = textX - (activationAreaWidth / 2);
