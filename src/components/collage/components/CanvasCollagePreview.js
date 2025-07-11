@@ -3431,8 +3431,8 @@ const CanvasCollagePreview = ({
               left: rect.x,
               width: rect.width,
               height: rect.height,
-              backgroundColor: 'rgba(0, 0, 0, 0.85)', // Heavy darkening
-              backdropFilter: 'blur(3px)', // Blur effect
+              backgroundColor: 'rgba(0, 0, 0, 0.50)', // Heavy darkening
+              backdropFilter: 'blur(1px) grayscale(50%)', // Blur effect
               pointerEvents: 'none', // Don't interfere with mouse events
               transition: 'all 0.35s ease-out', // Clearly noticeable fade
               zIndex: 15, // Above hover overlays, below caption editor controls
