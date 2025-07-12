@@ -1711,11 +1711,6 @@ const CanvasCollagePreview = ({
       cursorY >= panel.y && cursorY <= panel.y + panel.height
     );
     
-    // Always prevent default if cursor is over canvas and any panel is in transform mode
-    // This prevents page scroll even if not directly over the transforming panel
-    e.preventDefault();
-    e.stopPropagation();
-    
     // Only proceed with zoom if cursor is over a panel with an image AND this specific panel has transform mode enabled
     if (hoveredPanelIndex >= 0) {
       const panel = panelRects[hoveredPanelIndex];
@@ -1723,6 +1718,9 @@ const CanvasCollagePreview = ({
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       
       if (hasImage && isTransformMode[panel.panelId]) {
+        // Only prevent default if cursor is over the specific panel that's in transform mode
+        e.preventDefault();
+        e.stopPropagation();
         // Auto-select this panel for zoom operation
         if (selectedPanel !== hoveredPanelIndex) {
           setSelectedPanel(hoveredPanelIndex);
