@@ -2631,14 +2631,8 @@ const CanvasCollagePreview = ({
                         variant="scrollable"
                         scrollButtons
                         allowScrollButtonsMobile
-                        centered={!isMobileSize} // Only center on desktop, allow scrolling on mobile
                         sx={{
                           mb: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding * 0.75)),
-                          display: 'flex',
-                          justifyContent: isMobileSize ? 'flex-start' : 'center',
-                          '& .MuiTabs-flexContainer': {
-                            justifyContent: isMobileSize ? 'flex-start' : 'center',
-                          },
                           '& .MuiTab-root': {
                             minHeight: 36, // Make tabs shorter
                             minWidth: isMobileSize ? 80 : 'auto', // Ensure minimum width on mobile
