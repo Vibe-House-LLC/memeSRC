@@ -3374,27 +3374,6 @@ const CanvasCollagePreview = ({
           />
         );
       })}
-      
-      {/* Scrolling overlay - indicates when interactions are disabled */}
-      {isScrolling && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-            zIndex: 25, // Above everything else
-            transition: 'opacity 0.2s ease-in-out',
-            borderRadius: 1,
-          }}
-        />
-      )}
 
       {/* Invisible backdrop for text editor - captures clicks outside the editor */}
       {textEditingPanel !== null && (
