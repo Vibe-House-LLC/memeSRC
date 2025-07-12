@@ -477,6 +477,7 @@ const CanvasCollagePreview = ({
   const [touchStartScale, setTouchStartScale] = useState(1);
   const textFieldRefs = useRef({});
   const lastInteractionTime = useRef(0);
+  const hoverTimeoutRef = useRef(null);
 
   // Base canvas size for text scaling calculations
   const BASE_CANVAS_WIDTH = 400;
@@ -1446,7 +1447,22 @@ const CanvasCollagePreview = ({
     }
     
     if (hoveredPanelIndex !== hoveredPanel) {
-      setHoveredPanel(hoveredPanelIndex >= 0 ? hoveredPanelIndex : null);
+      // Clear any existing hover timeout
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+      
+      // If we're leaving a panel (hovering over nothing), clear immediately
+      if (hoveredPanelIndex < 0) {
+        setHoveredPanel(null);
+      } else {
+        // If hovering over a panel, add a small delay to prevent hover during scroll
+        hoverTimeoutRef.current = setTimeout(() => {
+          setHoveredPanel(hoveredPanelIndex);
+          hoverTimeoutRef.current = null;
+        }, 50); // 50ms delay prevents hover during scroll but is fast enough for normal interaction
+      }
       
       // Determine cursor based on interaction state
       let cursor = 'default';
@@ -1663,6 +1679,11 @@ const CanvasCollagePreview = ({
   }, []);
 
   const handleMouseLeave = useCallback(() => {
+    // Clear any pending hover timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
     // Clear hover state when mouse leaves canvas
     setHoveredPanel(null);
     const canvas = canvasRef.current;
