@@ -3323,12 +3323,13 @@ const CanvasCollagePreview = ({
         );
       })}
 
-      {/* Caption editing focus overlays - darken and blur non-editing panels */}
-      {textEditingPanel !== null && panelRects.map((rect, index) => {
+      {/* Focus overlays - darken and blur inactive panels during editing modes */}
+      {(textEditingPanel !== null || Object.values(isTransformMode).some(enabled => enabled)) && 
+       panelRects.map((rect, index) => {
         const { panelId } = rect;
         
-        // Only show overlay on panels that are NOT being edited
-        if (panelId === textEditingPanel) return null;
+        // Skip overlay for active panels (being edited or in transform mode)
+        if (panelId === textEditingPanel || isTransformMode[panelId]) return null;
         
         return (
           <Box
@@ -3339,34 +3340,8 @@ const CanvasCollagePreview = ({
               left: rect.x,
               width: rect.width,
               height: rect.height,
-              backgroundColor: 'rgba(0, 0, 0, 0.50)', // Heavy darkening
-              backdropFilter: 'blur(1px) grayscale(50%)', // Blur effect
-              pointerEvents: 'none', // Don't interfere with mouse events
-              transition: 'all 0.35s ease-out', // Clearly noticeable fade
-              zIndex: 15, // Above hover overlays, below caption editor controls
-            }}
-          />
-        );
-      })}
-
-      {/* Transform mode focus overlays - darken and blur non-transform panels */}
-      {Object.values(isTransformMode).some(enabled => enabled) && textEditingPanel === null && panelRects.map((rect, index) => {
-        const { panelId } = rect;
-        
-        // Only show overlay on panels that are NOT in transform mode
-        if (isTransformMode[panelId]) return null;
-        
-        return (
-          <Box
-            key={`transform-overlay-${panelId}`}
-            sx={{
-              position: 'absolute',
-              top: rect.y,
-              left: rect.x,
-              width: rect.width,
-              height: rect.height,
-              backgroundColor: 'rgba(0, 0, 0, 0.50)', // Light darkening (same as text edit mode)
-              backdropFilter: 'blur(1px) grayscale(50%)', // Blur and grayscale effect (same as text edit mode)
+              backgroundColor: 'rgba(0, 0, 0, 0.50)', // Light darkening
+              backdropFilter: 'blur(1px) grayscale(50%)', // Blur and grayscale effect
               pointerEvents: 'none', // Don't interfere with mouse events
               transition: 'all 0.35s ease-out', // Clearly noticeable fade
               zIndex: 15, // Above hover overlays, below caption editor controls
