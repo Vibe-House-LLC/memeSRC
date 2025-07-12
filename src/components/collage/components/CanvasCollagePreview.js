@@ -1349,23 +1349,6 @@ const CanvasCollagePreview = ({
     drawCanvas();
   }, [drawCanvas]);
 
-  // Add wheel event listener with passive: false to ensure preventDefault works
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheelWithOptions = (e) => {
-      handleWheel(e);
-    };
-
-    // Add wheel listener with passive: false to allow preventDefault
-    canvas.addEventListener('wheel', handleWheelWithOptions, { passive: false });
-
-    return () => {
-      canvas.removeEventListener('wheel', handleWheelWithOptions);
-    };
-  }, [handleWheel]);
-
   // Text color scroll event handling
   useEffect(() => {
     const textColorElement = textColorScrollerRef.current;
@@ -1834,6 +1817,23 @@ const CanvasCollagePreview = ({
       }
     }
   }, [panelRects, panelImageMapping, loadedImages, selectedPanel, panelTransforms, updatePanelTransform, setSelectedPanel, isTransformMode]);
+
+  // Add wheel event listener with passive: false to ensure preventDefault works
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheelWithOptions = (e) => {
+      handleWheel(e);
+    };
+
+    // Add wheel listener with passive: false to allow preventDefault
+    canvas.addEventListener('wheel', handleWheelWithOptions, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('wheel', handleWheelWithOptions);
+    };
+  }, [handleWheel]);
 
   // Helper function to get distance between two touch points
   const getTouchDistance = useCallback((touches) => {
