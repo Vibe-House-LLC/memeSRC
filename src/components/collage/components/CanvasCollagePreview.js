@@ -1373,8 +1373,6 @@ const CanvasCollagePreview = ({
     };
   }, [textEditingPanel, activeTextSetting]);
 
-
-
   // Focus text field when caption editor opens
   useEffect(() => {
     if (textEditingPanel && activeTextSetting === 'content') {
@@ -1405,6 +1403,7 @@ const CanvasCollagePreview = ({
         }
       }, 300); // Even longer delay to ensure complete rendering
     }
+    // No cleanup needed for this effect
   }, [textEditingPanel, activeTextSetting]);
 
   // Cleanup hover timeout on unmount
@@ -2598,6 +2597,7 @@ const CanvasCollagePreview = ({
             {/* Caption editing area - show when not in transform mode and has image, and no other panel is being edited */}
             {!isTransformMode?.[panelId] && hasImage && (textEditingPanel === null || textEditingPanel === panelId) && (
                 <Box
+                  data-text-editor-container
                   sx={{
                     position: 'absolute',
                     top: textEditingPanel === panelId ? rect.y + rect.height : rect.y + rect.height, // Always position at bottom
@@ -3375,6 +3375,22 @@ const CanvasCollagePreview = ({
         );
       })}
 
+      {/* Invisible backdrop for text editor - captures clicks outside the editor */}
+      {textEditingPanel !== null && (
+        <Box
+          onClick={handleTextClose}
+          sx={{
+            position: 'fixed', // Fixed to cover entire viewport
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'transparent', // Completely invisible
+            zIndex: 15, // Below text editor (zIndex 20) but above everything else
+            cursor: 'default',
+          }}
+        />
+      )}
     </Box>
   );
 };
