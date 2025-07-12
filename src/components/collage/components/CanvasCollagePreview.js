@@ -475,10 +475,10 @@ const CanvasCollagePreview = ({
   const [activeTextSetting, setActiveTextSetting] = useState(null);
   const [touchStartDistance, setTouchStartDistance] = useState(null);
   const [touchStartScale, setTouchStartScale] = useState(1);
-  const [isScrolling, setIsScrolling] = useState(false);
-  const scrollTimeoutRef = useRef(null);
-  const touchStartRef = useRef(null);
   const textFieldRefs = useRef({});
+  const lastInteractionTime = useRef(0);
+  const hoverTimeoutRef = useRef(null);
+  const touchStartInfo = useRef(null);
 
   // Base canvas size for text scaling calculations
   const BASE_CANVAS_WIDTH = 400;
@@ -1162,9 +1162,6 @@ const CanvasCollagePreview = ({
 
   // Handle text editing
   const handleTextEdit = useCallback((panelId, event) => {
-    // Prevent opening caption editor while scrolling
-    if (isScrolling) return;
-    
     const isOpening = textEditingPanel !== panelId;
     setTextEditingPanel(textEditingPanel === panelId ? null : panelId);
     
@@ -1311,7 +1308,7 @@ const CanvasCollagePreview = ({
         }
       }, 100); // Small delay to ensure editor is rendered
     }
-  }, [textEditingPanel, panelRects, isScrolling]);
+  }, [textEditingPanel, panelRects]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
@@ -1376,140 +1373,7 @@ const CanvasCollagePreview = ({
     };
   }, [textEditingPanel, activeTextSetting]);
 
-  // Enhanced scroll detection for mobile and desktop
-  useEffect(() => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const scrollTimeout = isMobile ? 300 : 150; // Longer timeout for mobile
-    const touchThreshold = 10; // Pixels moved to consider it scrolling
 
-    const handleScroll = () => {
-      setIsScrolling(true);
-      
-      // Clear existing timeout
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-      
-      // Set timeout to re-enable interactions after scrolling stops
-      scrollTimeoutRef.current = setTimeout(() => {
-        setIsScrolling(false);
-      }, scrollTimeout);
-    };
-
-    const handleTouchStart = (e) => {
-      // Don't track touch starts on color picker elements
-      if (e.target.closest('[data-color-picker]')) {
-        return;
-      }
-      
-      // Only track touches outside the canvas area to avoid interfering with canvas interactions
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const rect = canvas.getBoundingClientRect();
-        const touch = e.touches[0];
-        const isInsideCanvas = touch.clientX >= rect.left && 
-                              touch.clientX <= rect.right && 
-                              touch.clientY >= rect.top && 
-                              touch.clientY <= rect.bottom;
-        
-        // Only track touch starts outside the canvas or when no canvas interaction is intended
-        if (!isInsideCanvas || textEditingPanel !== null) {
-          touchStartRef.current = {
-            x: touch.clientX,
-            y: touch.clientY,
-            time: Date.now()
-          };
-        }
-      } else {
-        touchStartRef.current = {
-          x: e.touches[0].clientX,
-          y: e.touches[0].clientY,
-          time: Date.now()
-        };
-      }
-    };
-
-    const handleTouchMove = (e) => {
-      // Don't track touch moves on color picker elements
-      if (e.target.closest('[data-color-picker]')) {
-        return;
-      }
-      
-      if (touchStartRef.current) {
-        const touch = e.touches[0];
-        const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
-        const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-        const deltaTime = Date.now() - touchStartRef.current.time;
-        
-        // If touch has moved significantly (especially vertically) or quickly, consider it scrolling
-        const isScrollingGesture = deltaY > touchThreshold || 
-                                 (deltaY > 5 && deltaTime < 100) || // Fast vertical movement
-                                 (deltaX > touchThreshold * 2 && deltaY > 5); // Large diagonal movement
-        
-        if (isScrollingGesture) {
-          setIsScrolling(true);
-          
-          // Clear existing timeout
-          if (scrollTimeoutRef.current) {
-            clearTimeout(scrollTimeoutRef.current);
-          }
-          
-          // Set timeout to re-enable interactions
-          scrollTimeoutRef.current = setTimeout(() => {
-            setIsScrolling(false);
-          }, scrollTimeout);
-          
-          // Clear touch start to avoid repeated triggers
-          touchStartRef.current = null;
-        }
-      }
-    };
-
-    const handleTouchEnd = () => {
-      // Clear touch tracking
-      touchStartRef.current = null;
-      
-      // If we were in a scrolling state, add a short delay before re-enabling
-      if (isScrolling) {
-        if (scrollTimeoutRef.current) {
-          clearTimeout(scrollTimeoutRef.current);
-        }
-        
-        scrollTimeoutRef.current = setTimeout(() => {
-          setIsScrolling(false);
-        }, scrollTimeout);
-      }
-    };
-
-    // Add scroll and touch listeners
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('scroll', handleScroll, { passive: true });
-    
-    // Add touch listeners for mobile scroll detection
-    if (isMobile) {
-      document.addEventListener('touchstart', handleTouchStart, { passive: true });
-      document.addEventListener('touchmove', handleTouchMove, { passive: true });
-      document.addEventListener('touchend', handleTouchEnd, { passive: true });
-      document.addEventListener('touchcancel', handleTouchEnd, { passive: true });
-    }
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('scroll', handleScroll);
-      
-      if (isMobile) {
-        document.removeEventListener('touchstart', handleTouchStart);
-        document.removeEventListener('touchmove', handleTouchMove);
-        document.removeEventListener('touchend', handleTouchEnd);
-        document.removeEventListener('touchcancel', handleTouchEnd);
-      }
-      
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, [isScrolling, textEditingPanel]);
 
   // Focus text field when caption editor opens
   useEffect(() => {
@@ -1542,6 +1406,16 @@ const CanvasCollagePreview = ({
       }, 300); // Even longer delay to ensure complete rendering
     }
   }, [textEditingPanel, activeTextSetting]);
+
+  // Cleanup hover timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
 
 
@@ -1584,7 +1458,22 @@ const CanvasCollagePreview = ({
     }
     
     if (hoveredPanelIndex !== hoveredPanel) {
-      setHoveredPanel(hoveredPanelIndex >= 0 ? hoveredPanelIndex : null);
+      // Clear any existing hover timeout
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+      
+      // If we're leaving a panel (hovering over nothing), clear immediately
+      if (hoveredPanelIndex < 0) {
+        setHoveredPanel(null);
+      } else {
+        // If hovering over a panel, add a small delay to prevent hover during scroll
+        hoverTimeoutRef.current = setTimeout(() => {
+          setHoveredPanel(hoveredPanelIndex);
+          hoverTimeoutRef.current = null;
+        }, 50); // 50ms delay prevents hover during scroll but is fast enough for normal interaction
+      }
       
       // Determine cursor based on interaction state
       let cursor = 'default';
@@ -1732,9 +1621,6 @@ const CanvasCollagePreview = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Prevent interactions while scrolling
-    if (isScrolling) return;
-    
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -1797,13 +1683,18 @@ const CanvasCollagePreview = ({
         onPanelClick(clickedPanel.index, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, isScrolling]);
+  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
+    // Clear any pending hover timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
     // Clear hover state when mouse leaves canvas
     setHoveredPanel(null);
     const canvas = canvasRef.current;
@@ -1815,6 +1706,10 @@ const CanvasCollagePreview = ({
   const handleWheel = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    
+    // If any panel is in transform mode, check if we're over it
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+    if (!anyPanelInTransformMode) return; // Allow normal scrolling if no transform mode
     
     const rect = canvas.getBoundingClientRect();
     const cursorX = e.clientX - rect.left;
@@ -1833,7 +1728,7 @@ const CanvasCollagePreview = ({
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       
       if (hasImage && isTransformMode[panel.panelId]) {
-        // Prevent page scrolling only when actually zooming an image in transform mode
+        // Only prevent default if cursor is over the specific panel that's in transform mode
         e.preventDefault();
         e.stopPropagation();
         // Auto-select this panel for zoom operation
@@ -1841,7 +1736,20 @@ const CanvasCollagePreview = ({
           setSelectedPanel(hoveredPanelIndex);
         }
         
-        const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
+        // Make zoom smoother by using actual delta values
+        // Normalize deltaY across different browsers/devices
+        let delta = e.deltaY;
+        if (e.deltaMode === 1) { // Line mode
+          delta *= 16; // Approximate pixels per line
+        } else if (e.deltaMode === 2) { // Page mode
+          delta *= 100; // Approximate pixels per page
+        }
+        
+        // Calculate smooth scale change based on delta
+        // Smaller values = smoother zoom
+        const zoomSpeed = 0.005; // Adjust this to control zoom sensitivity - increased for faster zooming
+        const scaleChange = Math.exp(-delta * zoomSpeed);
+        
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
         const img = loadedImages[imageIndex];
         
@@ -1931,6 +1839,26 @@ const CanvasCollagePreview = ({
     }
   }, [panelRects, panelImageMapping, loadedImages, selectedPanel, panelTransforms, updatePanelTransform, setSelectedPanel, isTransformMode]);
 
+  // Add wheel event listener with passive: false to ensure preventDefault works
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      // Return a no-op cleanup function to maintain consistency
+      return () => {};
+    }
+
+    const handleWheelWithOptions = (e) => {
+      handleWheel(e);
+    };
+
+    // Add wheel listener with passive: false to allow preventDefault
+    canvas.addEventListener('wheel', handleWheelWithOptions, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('wheel', handleWheelWithOptions);
+    };
+  }, [handleWheel]);
+
   // Helper function to get distance between two touch points
   const getTouchDistance = useCallback((touches) => {
     if (touches.length < 2) return 0;
@@ -1952,33 +1880,26 @@ const CanvasCollagePreview = ({
   }, []);
 
   // Touch event handlers
+  // eslint-disable-next-line consistent-return
   const handleTouchStart = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Prevent interactions while scrolling
-    if (isScrolling) return;
-    
-    // Store touch start position for scroll detection within canvas
     const rect = canvas.getBoundingClientRect();
     const touches = Array.from(e.touches);
-    
-    // On mobile, be extra careful about touch interactions
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile && touches.length === 1) {
-      touchStartRef.current = {
-        x: touches[0].clientX,
-        y: touches[0].clientY,
-        time: Date.now(),
-        withinCanvas: true
-      };
-    }
     
     if (touches.length === 1) {
       // Single touch - handle like mouse down
       const touch = touches[0];
       const x = touch.clientX - rect.left;
       const y = touch.clientY - rect.top;
+      
+      // Simple debounce: ignore rapid successive taps (likely from scroll momentum)
+      const now = Date.now();
+      if (now - lastInteractionTime.current < 100) {
+        return;
+      }
+      lastInteractionTime.current = now;
       
       const clickedPanelIndex = panelRects.findIndex(panel => 
         x >= panel.x && x <= panel.x + panel.width &&
@@ -2010,19 +1931,26 @@ const CanvasCollagePreview = ({
           }
         }
         
-        // If touching on text area, open caption editor
+        // If touching on text area, store info to check on touch end
+        // This allows us to differentiate between tap and scroll
         if (isTextAreaTouch) {
-          handleTextEdit(clickedPanel.panelId, e);
+          touchStartInfo.current = {
+            panelId: clickedPanel.panelId,
+            startX: touch.clientX,
+            startY: touch.clientY,
+            startTime: Date.now(),
+            isTextArea: true
+          };
           return;
         }
         
-        // If any panel is in transform mode, only allow interaction with that specific panel
+        // If any panel is in transform mode, prevent default to stop page scroll
         if (anyPanelInTransformMode) {
+          e.preventDefault();
+          e.stopPropagation();
+          
           // Only allow transform interactions on the panel that's actually in transform mode
           if (hasImage && isTransformMode[clickedPanel.panelId]) {
-            // Prevent page scrolling only when touching an image in transform mode
-            e.preventDefault();
-            e.stopPropagation();
             setSelectedPanel(clickedPanelIndex);
             setIsDragging(true);
             setDragStart({ x, y });
@@ -2048,59 +1976,64 @@ const CanvasCollagePreview = ({
       } else if (textEditingPanel !== null) {
         // When touched outside any panel and caption editor is open, explicitly allow normal scrolling
         // Don't preventDefault - allow normal page scrolling when caption editor is open
-      }
-    } else if (touches.length === 2 && selectedPanel !== null) {
-      // Two touches - prepare for pinch zoom
-      const panel = panelRects[selectedPanel];
-      const imageIndex = panelImageMapping[panel.panelId];
-      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-      
-      if (panel && hasImage && isTransformMode[panel.panelId]) {
-        // Only prevent page scrolling when performing pinch zoom on a panel in transform mode
+      } else if (anyPanelInTransformMode) {
+        // If touched outside panels but transform mode is active, prevent scrolling
         e.preventDefault();
         e.stopPropagation();
-        const distance = getTouchDistance(touches);
-        const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
+      }
+    } else if (touches.length === 2) {
+      // Two touches - prepare for pinch zoom
+      // If any panel is in transform mode, prevent default to stop page zoom
+      if (anyPanelInTransformMode) {
+        e.preventDefault();
+        e.stopPropagation();
         
-        setTouchStartDistance(distance);
-        setTouchStartScale(currentTransform.scale);
-        setIsDragging(false); // Stop any ongoing drag
+        if (selectedPanel !== null) {
+          const panel = panelRects[selectedPanel];
+          const imageIndex = panelImageMapping[panel.panelId];
+          const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+          
+          if (panel && hasImage && isTransformMode[panel.panelId]) {
+            const distance = getTouchDistance(touches);
+            const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
+            
+            setTouchStartDistance(distance);
+            setTouchStartScale(currentTransform.scale);
+            setIsDragging(false); // Stop any ongoing drag
+          }
+        }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, isScrolling]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Check if this looks like a scrolling gesture on mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile && touchStartRef.current && touchStartRef.current.withinCanvas) {
+    // If any panel is in transform mode, we need to handle this specially
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+    
+    // If we're tracking a potential text area tap, check for movement
+    if (touchStartInfo.current && touchStartInfo.current.isTextArea) {
       const touch = e.touches[0];
-      const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
-      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-      const deltaTime = Date.now() - touchStartRef.current.time;
+      const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
+      const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
       
-      // If this looks like a scroll gesture, disable interactions and return early
-      const looksLikeScroll = deltaY > 15 || // Significant vertical movement
-                             (deltaY > 8 && deltaTime < 150) || // Fast vertical movement  
-                             (deltaY > 5 && deltaX < 10); // Mostly vertical movement
-      
-      if (looksLikeScroll) {
-        setIsScrolling(true);
-        if (scrollTimeoutRef.current) {
-          clearTimeout(scrollTimeoutRef.current);
-        }
-        scrollTimeoutRef.current = setTimeout(() => {
-          setIsScrolling(false);
-        }, 300);
-        touchStartRef.current = null;
-        return; // Prevent any further canvas interactions
+      // If the touch has moved significantly, it's a scroll, not a tap
+      const scrollThreshold = 10; // pixels
+      if (deltaX > scrollThreshold || deltaY > scrollThreshold) {
+        touchStartInfo.current = null; // Cancel the potential tap
       }
     }
     
     const rect = canvas.getBoundingClientRect();
     const touches = Array.from(e.touches);
+    
+    // If any panel is in transform mode and we're interacting, prevent scrolling
+    if (anyPanelInTransformMode && (isDragging || touchStartDistance !== null)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     
     if (touches.length === 1 && isDragging && selectedPanel !== null) {
       // Single touch drag
@@ -2109,9 +2042,6 @@ const CanvasCollagePreview = ({
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       
       if (panel && hasImage && isTransformMode[panel.panelId]) {
-        // Prevent page scrolling only when dragging an image in transform mode
-        e.preventDefault();
-        e.stopPropagation();
         const touch = touches[0];
         const x = touch.clientX - rect.left;
         const y = touch.clientY - rect.top;
@@ -2185,9 +2115,6 @@ const CanvasCollagePreview = ({
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       
       if (panel && hasImage && isTransformMode[panel.panelId]) {
-        // Only prevent page scrolling when performing pinch zoom on a panel in transform mode
-        e.preventDefault();
-        e.stopPropagation();
         const currentDistance = getTouchDistance(touches);
         const scaleRatio = currentDistance / touchStartDistance;
         const newScale = touchStartScale * scaleRatio;
@@ -2284,22 +2211,34 @@ const CanvasCollagePreview = ({
     setTouchStartDistance(null);
     setTouchStartScale(1);
     
-    // Clear canvas touch tracking
-    if (touchStartRef.current && touchStartRef.current.withinCanvas) {
-      touchStartRef.current = null;
+    // Check if this was a tap on text area
+    if (touchStartInfo.current && touchStartInfo.current.isTextArea && e.changedTouches && e.changedTouches[0]) {
+      const touch = e.changedTouches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
+      const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
+      const deltaTime = Date.now() - touchStartInfo.current.startTime;
+      
+      // If the touch didn't move much and was quick, treat it as a tap
+      const maxMovement = 10; // pixels
+      const maxDuration = 500; // milliseconds
+      
+      if (deltaX < maxMovement && deltaY < maxMovement && deltaTime < maxDuration) {
+        // This was a tap, open the caption editor
+        handleTextEdit(touchStartInfo.current.panelId, e);
+      }
     }
-  }, []);
+    
+    // Always clear touchStartInfo
+    touchStartInfo.current = null;
+  }, [handleTextEdit]);
 
   // Toggle transform mode for a panel
   const toggleTransformMode = useCallback((panelId) => {
-    // Prevent toggling transform mode while scrolling
-    if (isScrolling) return;
-    
     setIsTransformMode(prev => ({
       ...prev,
       [panelId]: !prev[panelId]
     }));
-  }, [isScrolling]);
+  }, []);
 
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => {
@@ -2553,30 +2492,46 @@ const CanvasCollagePreview = ({
 
   // Check if any panel has transform mode enabled for dynamic touch behavior
   const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
-  
-  // Allow scrolling when caption editor is open or no panels are in transform mode
-  const shouldAllowScrolling = textEditingPanel !== null || !anyPanelInTransformMode;
 
   return (
-    <Box ref={containerRef} sx={{ position: 'relative', width: '100%', overflow: 'visible' }}>
-      <canvas
-        ref={canvasRef}
-        data-testid="canvas-collage-preview"
-        onMouseMove={handleMouseMove}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{
-          display: 'block',
-          width: '100%',
-          height: 'auto',
-          border: `1px solid ${theme.palette.divider}`,
-          touchAction: shouldAllowScrolling ? 'auto' : 'none', // Allow scrolling when caption editor is open
-        }}
+    <Box 
+      ref={containerRef} 
+      sx={{ 
+        position: 'relative', 
+        width: '100%', 
+        overflow: 'visible',
+        // Prevent text selection during drag operations
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        // Optimize touch interactions
+        WebkitTapHighlightColor: 'transparent',
+        // Visual feedback when in transform mode
+        ...(anyPanelInTransformMode && {
+          boxShadow: '0 0 0 2px #2196F3',
+          borderRadius: '4px',
+          transition: 'box-shadow 0.2s ease-in-out',
+        }),
+      }}
+    >
+              <canvas
+          ref={canvasRef}
+          data-testid="canvas-collage-preview"
+          onMouseMove={handleMouseMove}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+                  style={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            border: `1px solid ${theme.palette.divider}`,
+            // Dynamic touch action based on transform mode
+            touchAction: anyPanelInTransformMode ? 'none' : 'pan-y pinch-zoom', // Disable all touch gestures when in transform mode
+          }}
       />
       
       {/* Control panels positioned over canvas */}
@@ -2614,53 +2569,6 @@ const CanvasCollagePreview = ({
                           <IconButton
               size="small"
               onClick={() => toggleTransformMode(panelId)}
-              onTouchStart={(e) => {
-                // Track touch start for scroll detection on button
-                const touch = e.touches[0];
-                touchStartRef.current = {
-                  x: touch.clientX,
-                  y: touch.clientY,
-                  time: Date.now(),
-                  onButton: true // Flag to indicate touch started on button
-                };
-              }}
-              onTouchMove={(e) => {
-                // Detect scroll gesture starting on button
-                if (touchStartRef.current && touchStartRef.current.onButton) {
-                  const touch = e.touches[0];
-                  const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
-                  const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-                  const deltaTime = Date.now() - touchStartRef.current.time;
-                  
-                  // If touch has moved significantly (especially vertically), consider it scrolling
-                  const isScrollingGesture = deltaY > 10 || 
-                                           (deltaY > 5 && deltaTime < 100) || // Fast vertical movement
-                                           (deltaX > 20 && deltaY > 5); // Large diagonal movement
-                  
-                  if (isScrollingGesture) {
-                    setIsScrolling(true);
-                    
-                    // Clear existing timeout
-                    if (scrollTimeoutRef.current) {
-                      clearTimeout(scrollTimeoutRef.current);
-                    }
-                    
-                    // Set timeout to re-enable interactions
-                    scrollTimeoutRef.current = setTimeout(() => {
-                      setIsScrolling(false);
-                    }, 300);
-                    
-                    // Clear touch start to avoid repeated triggers
-                    touchStartRef.current = null;
-                  }
-                }
-              }}
-              onTouchEnd={() => {
-                // Clear touch tracking when touch ends
-                if (touchStartRef.current && touchStartRef.current.onButton) {
-                  touchStartRef.current = null;
-                }
-              }}
               sx={{
                 position: 'absolute',
                 top: rect.y + 8,
@@ -2677,6 +2585,9 @@ const CanvasCollagePreview = ({
                   backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
                   transform: 'scale(1.1)',
                 },
+                // Better touch handling
+                touchAction: 'manipulation', // Prevents double-tap zoom but allows scrolling
+                cursor: 'pointer',
                 zIndex: 12, // Higher than caption overlay to ensure interactivity
               }}
             >
@@ -2720,14 +2631,8 @@ const CanvasCollagePreview = ({
                         variant="scrollable"
                         scrollButtons
                         allowScrollButtonsMobile
-                        centered={!isMobileSize} // Only center on desktop, allow scrolling on mobile
                         sx={{
                           mb: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding * 0.75)),
-                          display: 'flex',
-                          justifyContent: isMobileSize ? 'flex-start' : 'center',
-                          '& .MuiTabs-flexContainer': {
-                            justifyContent: isMobileSize ? 'flex-start' : 'center',
-                          },
                           '& .MuiTab-root': {
                             minHeight: 36, // Make tabs shorter
                             minWidth: isMobileSize ? 80 : 'auto', // Ensure minimum width on mobile
@@ -3369,6 +3274,9 @@ const CanvasCollagePreview = ({
                             boxShadow: '0 2px 6px rgba(76, 175, 80, 0.3)',
                           },
                           transition: 'all 0.2s ease-in-out',
+                          // Better touch handling
+                          touchAction: 'manipulation',
+                          cursor: 'pointer',
                         }}
                       >
                         Done
@@ -3466,27 +3374,6 @@ const CanvasCollagePreview = ({
           />
         );
       })}
-
-      {/* Scrolling overlay - indicates when interactions are disabled */}
-      {isScrolling && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-            zIndex: 25, // Above everything else
-            transition: 'opacity 0.2s ease-in-out',
-            borderRadius: 1,
-          }}
-        />
-      )}
 
     </Box>
   );
