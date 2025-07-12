@@ -2299,6 +2299,7 @@ const CanvasCollagePreview = ({
       ...prev,
       [panelId]: !prev[panelId]
     }));
+    return;
   }, [isScrolling]);
 
   // Get final canvas for export
