@@ -1834,7 +1834,10 @@ const CanvasCollagePreview = ({
   // Add wheel event listener with passive: false to ensure preventDefault works
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      // Return a no-op cleanup function to maintain consistency
+      return () => {};
+    }
 
     const handleWheelWithOptions = (e) => {
       handleWheel(e);
