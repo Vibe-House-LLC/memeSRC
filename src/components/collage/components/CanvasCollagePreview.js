@@ -1728,7 +1728,20 @@ const CanvasCollagePreview = ({
           setSelectedPanel(hoveredPanelIndex);
         }
         
-        const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
+        // Make zoom smoother by using actual delta values
+        // Normalize deltaY across different browsers/devices
+        let delta = e.deltaY;
+        if (e.deltaMode === 1) { // Line mode
+          delta *= 16; // Approximate pixels per line
+        } else if (e.deltaMode === 2) { // Page mode
+          delta *= 100; // Approximate pixels per page
+        }
+        
+        // Calculate smooth scale change based on delta
+        // Smaller values = smoother zoom
+        const zoomSpeed = 0.002; // Adjust this to control zoom sensitivity
+        const scaleChange = Math.exp(-delta * zoomSpeed);
+        
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
         const img = loadedImages[imageIndex];
         
