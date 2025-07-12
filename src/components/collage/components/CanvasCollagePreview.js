@@ -1318,6 +1318,22 @@ const CanvasCollagePreview = ({
     setActiveTextSetting(null);
   }, []);
 
+  // Handle clicks outside the text editor to dismiss it
+  const handleClickOutside = useCallback((event) => {
+    if (textEditingPanel === null) return;
+    
+    // Check if the click is outside the text editor
+    const clickedElement = event.target;
+    
+    // Find the text editor container
+    const textEditorContainer = clickedElement.closest('[data-text-editor-container]');
+    
+    // If we didn't click inside the text editor, close it
+    if (!textEditorContainer) {
+      handleTextClose();
+    }
+  }, [textEditingPanel, handleTextClose]);
+
 
 
   const handleTextChange = useCallback((panelId, property, value) => {
@@ -1375,6 +1391,18 @@ const CanvasCollagePreview = ({
       window.removeEventListener('resize', handleResize);
     };
   }, [textEditingPanel, activeTextSetting]);
+
+  // Add click outside handler for text editor
+  useEffect(() => {
+    if (textEditingPanel !== null) {
+      // Add event listener when text editor is open
+      document.addEventListener('click', handleClickOutside, true);
+      
+      return () => {
+        document.removeEventListener('click', handleClickOutside, true);
+      };
+    }
+  }, [textEditingPanel, handleClickOutside]);
 
   // Enhanced scroll detection for mobile and desktop
   useEffect(() => {
@@ -2687,6 +2715,7 @@ const CanvasCollagePreview = ({
             {/* Caption editing area - show when not in transform mode and has image, and no other panel is being edited */}
             {!isTransformMode?.[panelId] && hasImage && (textEditingPanel === null || textEditingPanel === panelId) && (
                 <Box
+                  data-text-editor-container
                   sx={{
                     position: 'absolute',
                     top: textEditingPanel === panelId ? rect.y + rect.height : rect.y + rect.height, // Always position at bottom
