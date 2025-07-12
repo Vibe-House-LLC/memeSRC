@@ -479,7 +479,6 @@ const CanvasCollagePreview = ({
   const scrollTimeoutRef = useRef(null);
   const touchStartRef = useRef(null);
   const textFieldRefs = useRef({});
-  const textEditorInteractionRef = useRef(false);
 
   // Base canvas size for text scaling calculations
   const BASE_CANVAS_WIDTH = 400;
@@ -1317,95 +1316,7 @@ const CanvasCollagePreview = ({
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
     setActiveTextSetting(null);
-    // Clear interaction tracking when closing editor
-    textEditorInteractionRef.current = false;
   }, []);
-
-  // Handle clicks outside the text editor to dismiss it
-  const handleClickOutside = useCallback((event) => {
-    if (textEditingPanel === null) return;
-    
-    // Check if we're currently interacting with the text editor
-    if (textEditorInteractionRef.current) return;
-    
-    // Check if event.target exists to prevent TypeError
-    const clickedElement = event.target;
-    if (!clickedElement) return;
-    
-    // Find the text editor container
-    const textEditorContainer = clickedElement.closest('[data-text-editor-container]');
-    
-    // If we clicked inside the text editor, don't close it
-    if (textEditorContainer) return;
-    
-    // Comprehensive check for Material-UI components that render as portals
-    const muiPortalElements = clickedElement.closest([
-      '.MuiPaper-root',           // Select dropdown paper
-      '.MuiPopover-root',         // Popover components
-      '.MuiModal-root',           // Modal components  
-      '.MuiBackdrop-root',        // Backdrop components
-      '.MuiPopper-root',          // Popper components
-      '.MuiMenu-root',            // Menu components
-      '.MuiMenuItem-root',        // Menu item components
-      '.MuiList-root',            // List components in dropdowns
-      '.MuiSelect-root',          // Select components
-      '.MuiAutocomplete-root',    // Autocomplete components
-      '.MuiTooltip-root',         // Tooltip components
-      '.MuiDialog-root',          // Dialog components
-      '.MuiDrawer-root',          // Drawer components
-      '[role="presentation"]',    // Generic MUI portal container
-      '[role="dialog"]',          // Dialog role
-      '[role="menu"]',            // Menu role
-      '[role="listbox"]',         // Listbox role for selects
-      '[role="option"]',          // Option role for select items
-      '[data-popper-reference-hidden]', // Popper reference elements
-      '[data-popper-escaped]',    // Popper escaped elements
-      '.MuiPortal-root'           // Generic portal root
-    ].join(', '));
-    
-    if (muiPortalElements) return;
-    
-    // Check if click is on native color picker or color picker related elements
-    const colorPicker = clickedElement.closest('input[type="color"]') || 
-                       clickedElement.closest('[data-color-picker]') ||
-                       clickedElement.type === 'color';
-    if (colorPicker) return;
-    
-    // Check if click is on the canvas text area to prevent flicker
-    const canvasElement = clickedElement.closest('canvas');
-    if (canvasElement) {
-      // Don't close if we're clicking on canvas - let the canvas click handler manage this
-      return;
-    }
-    
-    // Additional check for any element that might be a portal-rendered component
-    // Check if the element is rendered directly under body (typical portal behavior)
-    let currentElement = clickedElement;
-    while (currentElement && currentElement !== document.body) {
-      // If we find an element that's a direct child of body and has MUI classes, it's likely a portal
-      if (currentElement.parentElement === document.body && 
-          currentElement.className && 
-          typeof currentElement.className === 'string' &&
-          currentElement.className.includes('Mui')) {
-        return;
-      }
-      currentElement = currentElement.parentElement;
-    }
-    
-    // Debug logging to help identify problem elements (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Dismissing editor due to click on:', {
-        element: clickedElement,
-        className: clickedElement.className,
-        tagName: clickedElement.tagName,
-        parentElement: clickedElement.parentElement,
-        path: event.composedPath ? event.composedPath().map(el => el.tagName || el.constructor.name) : 'N/A'
-      });
-    }
-    
-    // If we didn't click inside the text editor or any of the above exceptions, close it
-    handleTextClose();
-  }, [textEditingPanel, handleTextClose]);
 
 
 
@@ -1465,23 +1376,7 @@ const CanvasCollagePreview = ({
     };
   }, [textEditingPanel, activeTextSetting]);
 
-  // Add click outside handler for text editor
-  useEffect(() => {
-    if (textEditingPanel !== null) {
-      // Add event listener when text editor is open
-      document.addEventListener('click', handleClickOutside, true);
-      
-      return () => {
-        document.removeEventListener('click', handleClickOutside, true);
-        // Clear interaction tracking when removing event listener
-        textEditorInteractionRef.current = false;
-      };
-    }
-    // Clear interaction tracking when text editor is closed
-    textEditorInteractionRef.current = false;
-    // Return undefined for the case when textEditingPanel is null
-    return undefined;
-  }, [textEditingPanel, handleClickOutside]);
+
 
   // Enhanced scroll detection for mobile and desktop
   useEffect(() => {
@@ -2796,33 +2691,6 @@ const CanvasCollagePreview = ({
             {!isTransformMode?.[panelId] && hasImage && (textEditingPanel === null || textEditingPanel === panelId) && (
                 <Box
                   data-text-editor-container
-                  onMouseDown={() => {
-                    textEditorInteractionRef.current = true;
-                  }}
-                  onMouseUp={() => {
-                    // Delay clearing the interaction flag to allow for click events to process
-                    setTimeout(() => {
-                      textEditorInteractionRef.current = false;
-                    }, 100);
-                  }}
-                  onTouchStart={() => {
-                    textEditorInteractionRef.current = true;
-                  }}
-                  onTouchEnd={() => {
-                    // Delay clearing the interaction flag to allow for click events to process
-                    setTimeout(() => {
-                      textEditorInteractionRef.current = false;
-                    }, 100);
-                  }}
-                  onFocus={() => {
-                    textEditorInteractionRef.current = true;
-                  }}
-                  onBlur={() => {
-                    // Delay clearing the interaction flag to allow for other focus events
-                    setTimeout(() => {
-                      textEditorInteractionRef.current = false;
-                    }, 100);
-                  }}
                   sx={{
                     position: 'absolute',
                     top: textEditingPanel === panelId ? rect.y + rect.height : rect.y + rect.height, // Always position at bottom
@@ -3620,6 +3488,23 @@ const CanvasCollagePreview = ({
             zIndex: 25, // Above everything else
             transition: 'opacity 0.2s ease-in-out',
             borderRadius: 1,
+          }}
+        />
+      )}
+
+      {/* Invisible backdrop for text editor - captures clicks outside the editor */}
+      {textEditingPanel !== null && (
+        <Box
+          onClick={handleTextClose}
+          sx={{
+            position: 'fixed', // Fixed to cover entire viewport
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'transparent', // Completely invisible
+            zIndex: 15, // Below text editor (zIndex 20) but above everything else
+            cursor: 'default',
           }}
         />
       )}
