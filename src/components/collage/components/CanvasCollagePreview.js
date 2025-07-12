@@ -823,31 +823,59 @@ const CanvasCollagePreview = ({
           const fontSize = baseFontSize * textScaleFactor;
           const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
           const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
-          const textColor = hasActualText 
-            ? (panelText.color || lastUsedTextSettings.color || '#ffffff')
-            : 'rgba(255, 255, 255, 0.25)'; // 25% opacity for placeholder
+          const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
           const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
           const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
           const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
+          
+          // Apply different opacity for placeholder vs actual text
+          let textColor, strokeColor, shadowColor;
+          if (hasActualText) {
+            textColor = baseTextColor;
+            strokeColor = '#000000'; // Black stroke for contrast
+            shadowColor = 'rgba(0, 0, 0, 0.8)';
+          } else {
+            // For placeholder, use the same default styling but with reduced opacity
+            // Parse the base color to apply opacity
+            if (baseTextColor.startsWith('#')) {
+              // Convert hex to rgba with opacity
+              const hex = baseTextColor.slice(1);
+              const r = parseInt(hex.substr(0, 2), 16);
+              const g = parseInt(hex.substr(2, 2), 16);
+              const b = parseInt(hex.substr(4, 2), 16);
+              textColor = `rgba(${r}, ${g}, ${b}, 0.4)`; // 40% opacity for placeholder
+            } else if (baseTextColor.startsWith('rgb')) {
+              // Handle rgba/rgb colors
+              const rgbMatch = baseTextColor.match(/rgba?\(([^)]+)\)/);
+              if (rgbMatch) {
+                const values = rgbMatch[1].split(',').map(v => v.trim());
+                textColor = `rgba(${values[0]}, ${values[1]}, ${values[2]}, 0.4)`;
+              } else {
+                textColor = 'rgba(255, 255, 255, 0.4)'; // Fallback
+              }
+            } else {
+              textColor = 'rgba(255, 255, 255, 0.4)'; // Fallback
+            }
+            strokeColor = 'rgba(0, 0, 0, 0.4)'; // Same stroke color with reduced opacity
+            shadowColor = 'rgba(0, 0, 0, 0.3)'; // Same shadow color with reduced opacity
+          }
           
           ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
           ctx.fillStyle = textColor;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle'; // Change to middle for better positioning control
           
-          // Set stroke properties (only for actual text, not placeholder)
-          if (hasActualText) {
-            ctx.strokeStyle = '#000000'; // Black stroke for contrast
-            ctx.lineWidth = strokeWidth;
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-            
-            // Add text shadow for better readability
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            ctx.shadowOffsetX = 1;
-            ctx.shadowOffsetY = 1;
-            ctx.shadowBlur = 3;
-          }
+          // Set stroke properties for both actual text and placeholder
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = strokeWidth;
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          
+          // Add text shadow for better readability
+          ctx.shadowColor = shadowColor;
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
+          ctx.shadowBlur = 3;
           
           // Calculate available text area (with padding on sides and bottom)
           const textPadding = 10;
@@ -972,8 +1000,8 @@ const CanvasCollagePreview = ({
           wrappedLines.forEach((line, lineIndex) => {
             const lineY = startY + lineIndex * lineHeight;
             
-            // Draw stroke first if stroke width > 0 and it's actual text
-            if (strokeWidth > 0 && hasActualText) {
+            // Draw stroke first if stroke width > 0 (for both actual text and placeholder)
+            if (strokeWidth > 0) {
               ctx.strokeText(line, textX, lineY);
             }
             
