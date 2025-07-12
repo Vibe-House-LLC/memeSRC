@@ -829,7 +829,9 @@ const CanvasCollagePreview = ({
           const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
           
           // Apply different opacity for placeholder vs actual text
-          let textColor, strokeColor, shadowColor;
+          let textColor;
+          let strokeColor;
+          let shadowColor;
           if (hasActualText) {
             textColor = baseTextColor;
             strokeColor = '#000000'; // Black stroke for contrast
