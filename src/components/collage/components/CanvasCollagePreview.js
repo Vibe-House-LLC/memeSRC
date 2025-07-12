@@ -1407,6 +1407,16 @@ const CanvasCollagePreview = ({
     }
   }, [textEditingPanel, activeTextSetting]);
 
+  // Cleanup hover timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
 
 
   // Handle mouse events
@@ -1737,7 +1747,7 @@ const CanvasCollagePreview = ({
         
         // Calculate smooth scale change based on delta
         // Smaller values = smoother zoom
-        const zoomSpeed = 0.002; // Adjust this to control zoom sensitivity
+        const zoomSpeed = 0.005; // Adjust this to control zoom sensitivity - increased for faster zooming
         const scaleChange = Math.exp(-delta * zoomSpeed);
         
         const currentTransform = panelTransforms[panel.panelId] || { scale: 1, positionX: 0, positionY: 0 };
