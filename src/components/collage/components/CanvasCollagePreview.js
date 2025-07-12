@@ -1322,16 +1322,35 @@ const CanvasCollagePreview = ({
   const handleClickOutside = useCallback((event) => {
     if (textEditingPanel === null) return;
     
-    // Check if the click is outside the text editor
+    // Check if event.target exists to prevent TypeError
     const clickedElement = event.target;
+    if (!clickedElement) return;
     
     // Find the text editor container
     const textEditorContainer = clickedElement.closest('[data-text-editor-container]');
     
-    // If we didn't click inside the text editor, close it
-    if (!textEditorContainer) {
-      handleTextClose();
+    // If we clicked inside the text editor, don't close it
+    if (textEditorContainer) return;
+    
+    // Check if click is on Material-UI Select dropdown options (rendered as Portals)
+    const muiSelect = clickedElement.closest('.MuiPaper-root, .MuiPopover-root, .MuiModal-root, .MuiBackdrop-root');
+    if (muiSelect) return;
+    
+    // Check if click is on native color picker or color picker related elements
+    const colorPicker = clickedElement.closest('input[type="color"]') || 
+                       clickedElement.closest('[data-color-picker]') ||
+                       clickedElement.type === 'color';
+    if (colorPicker) return;
+    
+    // Check if click is on the canvas text area to prevent flicker
+    const canvasElement = clickedElement.closest('canvas');
+    if (canvasElement) {
+      // Don't close if we're clicking on canvas - let the canvas click handler manage this
+      return;
     }
+    
+    // If we didn't click inside the text editor or any of the above exceptions, close it
+    handleTextClose();
   }, [textEditingPanel, handleTextClose]);
 
 
@@ -1402,6 +1421,8 @@ const CanvasCollagePreview = ({
         document.removeEventListener('click', handleClickOutside, true);
       };
     }
+    // Return undefined for the case when textEditingPanel is null
+    return undefined;
   }, [textEditingPanel, handleClickOutside]);
 
   // Enhanced scroll detection for mobile and desktop
@@ -1569,6 +1590,7 @@ const CanvasCollagePreview = ({
         }
       }, 300); // Even longer delay to ensure complete rendering
     }
+    // No cleanup needed for this effect
   }, [textEditingPanel, activeTextSetting]);
 
 
