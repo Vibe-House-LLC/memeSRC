@@ -61,7 +61,7 @@ const getCollagePreferenceKey = (user) => {
 
 const getCollagePreference = (user) => {
   const key = getCollagePreferenceKey(user);
-  return localStorage.getItem(key) || 'new'; // Default to new version
+  return localStorage.getItem(key) || 'new';
 };
 
 export default function CollagePage() {
@@ -375,6 +375,7 @@ export default function CollagePage() {
     bulkUploadSectionOpen: true, // Always true since we don't manage collapse state anymore
     onBulkUploadSectionToggle: () => {}, // No-op since BulkUploadSection is hidden when images are present
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
+    isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
   };
 
   // Log mapping changes for debugging
@@ -404,15 +405,18 @@ export default function CollagePage() {
           pb: !showResultDialog && hasImages && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
+          overflowY: 'visible', // Allow vertical overflow for caption editor
           minHeight: '100vh',
           bgcolor: 'background.default'
         }}>
           <Container 
             maxWidth="xl" 
             sx={{ 
+              mb: 15,
               pt: isMobile ? 1 : 1.5,
               px: isMobile ? 1 : 2,
-              width: '100%'
+              width: '100%',
+              overflow: 'visible' // Allow caption editor to overflow container bounds
             }}
             disableGutters={isMobile}
           >

@@ -36,7 +36,8 @@ const CollageImagesStep = ({
   updatePanelText, // NEW: Receive text update function from centralized management
   setFinalImage, // <<< Keep this
   handleOpenExportDialog, // <<< Add handleOpenExportDialog prop
-  onCollageGenerated // <<< NEW: Handler for inline result display
+  onCollageGenerated, // <<< NEW: Handler for inline result display
+  isCreatingCollage // <<< NEW: Pass collage generation state to prevent placeholder text during export
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -224,6 +225,7 @@ const CollageImagesStep = ({
             setFinalImage={setFinalImage}
             handleOpenExportDialog={handleOpenExportDialog}
             onCollageGenerated={onCollageGenerated}
+            isCreatingCollage={isCreatingCollage}
           />
         </Box>
         

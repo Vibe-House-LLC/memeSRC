@@ -179,7 +179,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
             {/* Images Section */}
             <Box sx={{ 
               width: '100%',
-              overflow: 'hidden',
+              overflow: 'visible', // Allow caption editor to overflow
               '& #collage-preview-container': {
                 width: '100% !important',
                 maxWidth: '100% !important'
@@ -229,7 +229,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               <SectionHeading icon={PhotoLibrary} title="Your Collage" />
               <Box sx={{ 
                 width: '100%',
-                overflow: 'hidden',
+                overflow: 'visible', // Allow caption editor to overflow
                 '& #collage-preview-container': {
                   width: '100% !important',
                   maxWidth: '100% !important'

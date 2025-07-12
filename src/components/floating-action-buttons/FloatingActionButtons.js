@@ -117,8 +117,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
     const navigate = useNavigate();
     const { user } = useContext(UserContext);
     
-    // Check if user has access to collage tool (same logic as CollagePage.js)
-    const hasCollageAccess = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
+    // Check if user is an admin
+    const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
 
     console.log('showImageDrawer:', showImageDrawer, 'collageItems.length:', collageItems.length);
 
@@ -207,8 +207,8 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                 backgroundColor: '#ff4444',
                                 color: 'white',
                                 fontWeight: 'bold',
-                                top: '6px',
-                                right: '14px',
+                                top: '2px',
+                                right: '2px',
                                 border: '2px solid black',
                                 borderRadius: '10px',
                                 zIndex: 1301,

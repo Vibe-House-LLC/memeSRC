@@ -18,7 +18,7 @@ export const useCollageState = () => {
   const [panelTexts, setPanelTexts] = useState({});
   // lastUsedTextSettings to remember settings across panels
   const [lastUsedTextSettings, setLastUsedTextSettings] = useState({
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: '700',
     fontFamily: 'Arial',
     color: '#ffffff',
@@ -568,12 +568,8 @@ export const useCollageState = () => {
       }
     }));
     
-    // Update last used settings (excluding content which is panel-specific)
-    const { content, autoAssigned, subtitleShowing, ...settingsOnly } = textConfig;
-    setLastUsedTextSettings(prev => ({
-      ...prev,
-      ...settingsOnly
-    }));
+    // Note: We don't update lastUsedTextSettings here to ensure text settings
+    // only affect the specific caption being edited, not other captions
     
     if (DEBUG_MODE) {
       console.log(`Updating text for panel ${panelId}:`, textConfig);
