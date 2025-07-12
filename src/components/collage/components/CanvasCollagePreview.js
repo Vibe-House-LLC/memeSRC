@@ -1869,6 +1869,7 @@ const CanvasCollagePreview = ({
   }, []);
 
   // Touch event handlers
+  // eslint-disable-next-line consistent-return
   const handleTouchStart = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -2226,8 +2227,7 @@ const CanvasCollagePreview = ({
       ...prev,
       [panelId]: !prev[panelId]
     }));
-    return;
-  }, [isScrolling]);
+  }, []);
 
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => {
