@@ -478,6 +478,7 @@ const CanvasCollagePreview = ({
   const textFieldRefs = useRef({});
   const lastInteractionTime = useRef(0);
   const hoverTimeoutRef = useRef(null);
+  const touchStartInfo = useRef(null);
 
   // Base canvas size for text scaling calculations
   const BASE_CANVAS_WIDTH = 400;
@@ -1882,9 +1883,16 @@ const CanvasCollagePreview = ({
           }
         }
         
-        // If touching on text area, open caption editor
+        // If touching on text area, store info to check on touch end
+        // This allows us to differentiate between tap and scroll
         if (isTextAreaTouch) {
-          handleTextEdit(clickedPanel.panelId, e);
+          touchStartInfo.current = {
+            panelId: clickedPanel.panelId,
+            startX: touch.clientX,
+            startY: touch.clientY,
+            startTime: Date.now(),
+            isTextArea: true
+          };
           return;
         }
         
@@ -1944,6 +1952,19 @@ const CanvasCollagePreview = ({
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    
+    // If we're tracking a potential text area tap, check for movement
+    if (touchStartInfo.current && touchStartInfo.current.isTextArea) {
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
+      const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
+      
+      // If the touch has moved significantly, it's a scroll, not a tap
+      const scrollThreshold = 10; // pixels
+      if (deltaX > scrollThreshold || deltaY > scrollThreshold) {
+        touchStartInfo.current = null; // Cancel the potential tap
+      }
+    }
     
     const rect = canvas.getBoundingClientRect();
     const touches = Array.from(e.touches);
@@ -2129,7 +2150,27 @@ const CanvasCollagePreview = ({
     setIsDragging(false);
     setTouchStartDistance(null);
     setTouchStartScale(1);
-  }, []);
+    
+    // Check if this was a tap on text area
+    if (touchStartInfo.current && touchStartInfo.current.isTextArea && e.changedTouches && e.changedTouches[0]) {
+      const touch = e.changedTouches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
+      const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
+      const deltaTime = Date.now() - touchStartInfo.current.startTime;
+      
+      // If the touch didn't move much and was quick, treat it as a tap
+      const maxMovement = 10; // pixels
+      const maxDuration = 500; // milliseconds
+      
+      if (deltaX < maxMovement && deltaY < maxMovement && deltaTime < maxDuration) {
+        // This was a tap, open the caption editor
+        handleTextEdit(touchStartInfo.current.panelId, e);
+      }
+    }
+    
+    // Always clear touchStartInfo
+    touchStartInfo.current = null;
+  }, [handleTextEdit]);
 
   // Toggle transform mode for a panel
   const toggleTransformMode = useCallback((panelId) => {
@@ -2420,6 +2461,7 @@ const CanvasCollagePreview = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         style={{
           display: 'block',
           width: '100%',
