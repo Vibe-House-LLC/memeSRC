@@ -2816,29 +2816,6 @@ const CanvasCollagePreview = ({
                               }
                             }}
                           />
-                          <Typography variant="caption" sx={{ color: '#ffffff', ml: 1, fontSize: `${fontSize * 0.8}px`, minWidth: 'fit-content' }}>
-                            {(() => {
-                              // Show actual font size being used (including auto-calculated)
-                              const panelText = panelTexts[panelId] || {};
-                              const hasActualText = panelText.content && panelText.content.trim();
-                              
-                              let baseFontSize;
-                              if (hasActualText && !panelText.fontSize) {
-                                // Auto-calculate optimal font size for display
-                                const panel = panelRects.find(p => p.panelId === panelId);
-                                if (panel) {
-                                  baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
-                                } else {
-                                  baseFontSize = lastUsedTextSettings.fontSize || 26;
-                                }
-                              } else {
-                                baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
-                              }
-                              
-                              // Return the scaled font size for display
-                              return Math.round(baseFontSize * textScaleFactor);
-                            })()}
-                          </Typography>
                         </Box>
                         
                         {/* Stroke Width */}
@@ -2883,9 +2860,6 @@ const CanvasCollagePreview = ({
                               }
                             }}
                           />
-                          <Typography variant="caption" sx={{ color: '#ffffff', ml: 1, fontSize: `${fontSize * 0.8}px`, minWidth: 'fit-content' }}>
-                            {panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
-                          </Typography>
                         </Box>
                         
                         {/* Font Weight */}
@@ -3222,9 +3196,6 @@ const CanvasCollagePreview = ({
                               }
                             }}
                           />
-                          <Typography variant="caption" sx={{ color: '#ffffff', ml: 1, fontSize: `${fontSize * 0.8}px`, minWidth: 'fit-content' }}>
-                            {panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}%
-                          </Typography>
                         </Box>
                         
                         {/* Vertical Position */}
@@ -3295,16 +3266,6 @@ const CanvasCollagePreview = ({
                               }
                             }}
                           />
-                          <Typography variant="caption" sx={{ color: '#ffffff', ml: 1, fontSize: `${fontSize * 0.8}px`, minWidth: 'fit-content' }}>
-                            {(() => {
-                              // Show percentage from bottom for display
-                              const textPositionY = panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0);
-                              if (textPositionY <= 0) {
-                                return Math.round(5 + (textPositionY / 100) * 5);
-                              }
-                              return Math.round(5 + (textPositionY / 100) * 95);
-                            })()}%
-                          </Typography>
                         </Box>
                       </Box>
                     )}
