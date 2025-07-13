@@ -17,7 +17,7 @@ exports.handler = async (event) => {
 
     const subtitleIndex = parseInt(subtitle);
 
-    if (isNaN(subtitleIndex) || subtitleIndex < 0) {
+    if (Number.isNaN(subtitleIndex) || subtitleIndex < 0) {
       return {
         statusCode: 400,
         body: JSON.stringify('Invalid subtitle index'),
