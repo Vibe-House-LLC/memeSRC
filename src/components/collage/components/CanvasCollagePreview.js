@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab, Tooltip, useMediaQuery } from "@mui/material";
+import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab, Tooltip, useMediaQuery, ToggleButtonGroup, ToggleButton } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
-import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight, Palette, Brush } from '@mui/icons-material';
+import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FormatItalic, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight, Palette, Brush } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import fonts from '../../../utils/fonts';
 
@@ -841,7 +841,8 @@ const CanvasCollagePreview = ({
           
           // Scale font size based on canvas size
           const fontSize = baseFontSize * textScaleFactor;
-          const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
+          const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 700;
+          const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
           const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
           const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
           const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
@@ -882,7 +883,7 @@ const CanvasCollagePreview = ({
             shadowColor = 'rgba(0, 0, 0, 0.3)'; // Same shadow color with reduced opacity
           }
           
-          ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+          ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
           ctx.fillStyle = textColor;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle'; // Change to middle for better positioning control
@@ -1079,9 +1080,10 @@ const CanvasCollagePreview = ({
     const tempCtx = tempCanvas.getContext('2d');
     
     // Set font properties exactly like in drawCanvas
-    const fontWeight = panelText?.fontWeight || lastUsedTextSettings.fontWeight || '700';
+    const fontWeight = panelText?.fontWeight || lastUsedTextSettings.fontWeight || 700;
+    const fontStyle = panelText?.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
     const fontFamily = panelText?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
-    tempCtx.font = `${fontWeight} ${scaledFontSize}px ${fontFamily}`;
+    tempCtx.font = `${fontStyle} ${fontWeight} ${scaledFontSize}px ${fontFamily}`;
     
     // Helper function to wrap text with the same logic as drawCanvas
     const wrapText = (text, maxWidth) => {
@@ -1374,6 +1376,23 @@ const CanvasCollagePreview = ({
         ...currentText,
         [property]: value
       };
+      
+      // Normalize font weight to numbers for better canvas compatibility
+      if (property === 'fontWeight') {
+        // Convert string weights to numbers for consistency
+        if (value === 'normal' || value === '400') {
+          updatedText[property] = 400;
+        } else if (value === 'bold' || value === '700') {
+          updatedText[property] = 700;
+        } else if (typeof value === 'string') {
+          // Convert other string numbers to actual numbers
+          const numValue = parseInt(value, 10);
+          updatedText[property] = isNaN(numValue) ? 400 : numValue;
+        } else {
+          // Already a number
+          updatedText[property] = value;
+        }
+      }
       
       // Set default font size only when first adding content to an empty text field
       // This prevents font size from changing while the user is editing existing text
@@ -2422,14 +2441,15 @@ const CanvasCollagePreview = ({
             
             // Scale font size based on canvas size for export
             const fontSize = baseFontSize * textScaleFactor;
-            const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || '700';
+            const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 700;
+            const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
             const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
             const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
             const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
             const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
             const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
             
-            exportCtx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+            exportCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
             exportCtx.fillStyle = textColor;
             exportCtx.textAlign = 'center';
             exportCtx.textBaseline = 'middle';
@@ -2827,49 +2847,7 @@ const CanvasCollagePreview = ({
                               {panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
                             </Typography>
                           </Box>
-                          
-                          {/* Font Weight */}
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <FormatBold sx={{ color: '#ffffff', mr: 1 }} />
-                            <FormControl fullWidth>
-                              <Select
-                                value={panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || '700'}
-                                onChange={(e) => handleTextChange(panelId, 'fontWeight', e.target.value)}
-                                sx={{ 
-                                  color: '#ffffff',
-                                  '& .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                                  },
-                                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'rgba(255, 255, 255, 0.5)',
-                                  },
-                                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: '#ffffff',
-                                  },
-                                  '& .MuiSvgIcon-root': {
-                                    color: '#ffffff',
-                                  }
-                                }}
-                                MenuProps={{
-                                  PaperProps: {
-                                    sx: { 
-                                      bgcolor: 'rgba(0, 0, 0, 0.9)',
-                                      '& .MuiMenuItem-root': {
-                                        color: '#ffffff',
-                                      }
-                                    }
-                                  }
-                                }}
-                              >
-                                <MenuItem value="normal">Normal</MenuItem>
-                                <MenuItem value="bold">Bold</MenuItem>
-                                <MenuItem value="lighter">Light</MenuItem>
-                                <MenuItem value="700">700</MenuItem>
-                                <MenuItem value="800">800</MenuItem>
-                                <MenuItem value="900">900</MenuItem>
-                              </Select>
-                            </FormControl>
-                          </Box>
+
                         </Box>
                       )}
                     
@@ -2878,14 +2856,82 @@ const CanvasCollagePreview = ({
                         <Box sx={{ mb: 2 }}>
                           {/* Font Family */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <FontDownload sx={{ color: '#ffffff', mr: 1 }} />
-                            <FormControl fullWidth>
+                            <ToggleButtonGroup
+                              value={(() => {
+                                // Normalize current weight to number for comparison
+                                const currentWeightRaw = panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || 700;
+                                let currentWeight;
+                                
+                                // Convert to number for consistent comparison
+                                if (currentWeightRaw === 'normal') {
+                                  currentWeight = 400;
+                                } else if (currentWeightRaw === 'bold') {
+                                  currentWeight = 700;
+                                } else if (typeof currentWeightRaw === 'string') {
+                                  currentWeight = parseInt(currentWeightRaw, 10) || 400;
+                                } else {
+                                  currentWeight = currentWeightRaw;
+                                }
+                                
+                                const currentStyle = panelTexts[panelId]?.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
+                                const result = [];
+                                
+                                // Consider weights 500 and above as bold (more inclusive)
+                                if (currentWeight >= 500) {
+                                  result.push('bold');
+                                }
+                                
+                                if (currentStyle === 'italic') {
+                                  result.push('italic');
+                                }
+                                
+                                return result;
+                              })()}
+                              onChange={(event, newFormats) => {
+                                const isBold = newFormats.includes('bold');
+                                const isItalic = newFormats.includes('italic');
+                                // Use numeric values for better canvas compatibility
+                                handleTextChange(panelId, 'fontWeight', isBold ? 700 : 300);
+                                handleTextChange(panelId, 'fontStyle', isItalic ? 'italic' : 'normal');
+                              }}
+                              aria-label="text formatting"
+                              sx={{ 
+                                flexShrink: 0,
+                                mr: 1,
+                                height: '42px', // Reduced height
+                                '& .MuiToggleButton-root': {
+                                  color: 'rgba(255, 255, 255, 0.7)',
+                                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                                  height: '42px', // Reduced height
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                  },
+                                  '&.Mui-selected': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                    color: '#ffffff',
+                                  },
+                                }
+                              }}
+                            >
+                              <ToggleButton size='small' value="bold" aria-label="bold">
+                                <FormatBold />
+                              </ToggleButton>
+                              <ToggleButton size='small' value="italic" aria-label="italic">
+                                <FormatItalic />
+                              </ToggleButton>
+                            </ToggleButtonGroup>
+                            <FormControl sx={{ flex: 1 }}>
                               <Select
                                 value={panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial'}
                                 onChange={(e) => handleTextChange(panelId, 'fontFamily', e.target.value)}
                                 sx={{ 
                                   color: '#ffffff',
                                   fontFamily: panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial', // Display selected font in its own font
+                                  height: '42px', // Reduced height to match toggle buttons
+                                  '& .MuiSelect-select': {
+                                    textAlign: 'left', // Left align the text
+                                    padding: '8px 14px', // Adjust padding for shorter height
+                                  },
                                   '& .MuiOutlinedInput-notchedOutline': {
                                     borderColor: 'rgba(255, 255, 255, 0.3)',
                                   },
@@ -2926,7 +2972,6 @@ const CanvasCollagePreview = ({
                           
                           {/* Text Color */}
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <FormatColorText sx={{ color: '#ffffff', mr: 1 }} />
                             <Box sx={{ flex: 1, position: 'relative' }}>
                               <ScrollButton 
                                 direction="left" 
