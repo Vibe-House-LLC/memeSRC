@@ -2892,7 +2892,6 @@ const CanvasCollagePreview = ({
                               <Box sx={{ 
                                 display: 'flex', 
                                 gap: 1, 
-                                mb: 1, 
                                 flexWrap: 'wrap',
                                 alignItems: 'center'
                               }}>
@@ -2935,30 +2934,6 @@ const CanvasCollagePreview = ({
                                   />
                                 ))}
                               </Box>
-                              
-                              {/* Manual color input */}
-                              <TextField
-                                fullWidth
-                                size="small"
-                                placeholder="#ffffff"
-                                value={panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff'}
-                                onChange={(e) => handleTextChange(panelId, 'color', e.target.value)}
-                                sx={{ 
-                                  '& .MuiInputBase-root': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                    color: '#ffffff',
-                                  },
-                                  '& .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                                  },
-                                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'rgba(255, 255, 255, 0.5)',
-                                  },
-                                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: '#ffffff',
-                                  },
-                                }}
-                              />
                             </Box>
                           </Box>
                         </Box>
