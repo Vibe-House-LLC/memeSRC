@@ -2661,6 +2661,7 @@ const CanvasCollagePreview = ({
                           setActiveTextSetting(activeTextSetting === newSetting ? null : newSetting);
                         }}
                         variant="fullWidth"
+                        centered
                         sx={{
                           mb: 2,
                           '& .MuiTabs-indicator': {
@@ -2669,6 +2670,7 @@ const CanvasCollagePreview = ({
                           '& .MuiTab-root': {
                             color: 'rgba(255, 255, 255, 0.7)',
                             minHeight: 44,
+                            minWidth: 0, // Allow tabs to shrink as small as needed
                             '&.Mui-selected': {
                               color: '#ffffff',
                             },
@@ -2976,7 +2978,7 @@ const CanvasCollagePreview = ({
                               min={-100}
                               max={100}
                               step={5}
-                              marks={[{ value: 0, label: 'Center' }]}
+                              marks={[{ value: 0 }]}
                               sx={{ 
                                 flex: 1,
                                 color: '#ffffff',
@@ -3011,7 +3013,7 @@ const CanvasCollagePreview = ({
                               min={0}
                               max={100}
                               step={1}
-                              marks={[{ value: 5, label: 'Default' }]}
+                              marks={[{ value: 5 }]}
                               sx={{ 
                                 flex: 1,
                                 color: '#ffffff',
