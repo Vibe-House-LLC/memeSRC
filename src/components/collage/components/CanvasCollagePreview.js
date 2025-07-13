@@ -2766,6 +2766,9 @@ const CanvasCollagePreview = ({
                                 return Math.round(baseFontSize * textScaleFactor);
                               })()}
                               onChange={(e, value) => {
+                                if (e.type === 'mousedown') {
+                                  return;
+                                }
                                 const baseFontSize = value / textScaleFactor;
                                 handleTextChange(panelId, 'fontSize', baseFontSize);
                               }}
@@ -2806,6 +2809,9 @@ const CanvasCollagePreview = ({
                             <Slider
                               value={panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
                               onChange={(e, value) => {
+                                if (e.type === 'mousedown') {
+                                  return;
+                                }
                                 handleTextChange(panelId, 'strokeWidth', value);
                               }}
                               min={0}
@@ -3058,6 +3064,9 @@ const CanvasCollagePreview = ({
                             <Slider
                               value={panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}
                               onChange={(e, value) => {
+                                if (e.type === 'mousedown') {
+                                  return;
+                                }
                                 handleTextChange(panelId, 'textPositionX', value);
                               }}
                               min={-100}
@@ -3087,6 +3096,9 @@ const CanvasCollagePreview = ({
                                 return 5 + (textPositionY / 100) * 95;
                               })()}
                               onChange={(e, value) => {
+                                if (e.type === 'mousedown') {
+                                  return;
+                                }
                                 let textPositionY;
                                 if (value <= 5) {
                                   textPositionY = ((value - 5) / 5) * 100;
