@@ -2651,230 +2651,77 @@ const CanvasCollagePreview = ({
                 >
                   {/* Expanded editing controls - only show when this panel is being edited */}
                   {textEditingPanel === panelId && (
-                    <Box sx={{ p: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding)), pt: 0 }}>
-                      {/* Setting tabs - always visible */}
+                    <Box sx={{ p: 1 }}>
+                      {/* Setting tabs */}
                       <Tabs
-                        value={activeTextSetting ? ['content', 'format', 'placement', 'fontStyle'].indexOf(activeTextSetting) : false}
+                        value={activeTextSetting ? ['content', 'format', 'placement', 'fontStyle'].indexOf(activeTextSetting) : 0}
                         onChange={(event, newValue) => {
                           const settings = ['content', 'format', 'placement', 'fontStyle'];
                           const newSetting = settings[newValue];
-                          // Toggle behavior: if clicking the same tab, deselect it
                           setActiveTextSetting(activeTextSetting === newSetting ? null : newSetting);
                         }}
-                        centered
-                        scrollButtons
-                        allowScrollButtonsMobile
+                        variant="fullWidth"
                         sx={{
-                          mb: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding * 0.75)),
-                          '& .MuiTab-root': {
-                            minHeight: 36, // Make tabs shorter
-                            minWidth: isMobileSize ? 10 : 'auto', // Ensure minimum width on mobile
-                            fontSize: isMobileSize ? '0.75rem' : '0.875rem', // Smaller text on mobile
-                          },
-                          '& .MuiTabs-scrollButtons': {
-                            color: '#ffffff',
-                            '&.Mui-disabled': {
-                              opacity: 0.3,
-                            },
-                          },
+                          mb: 2,
                           '& .MuiTabs-indicator': {
                             backgroundColor: '#ffffff',
                           },
+                          '& .MuiTab-root': {
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            minHeight: 44,
+                            '&.Mui-selected': {
+                              color: '#ffffff',
+                            },
+                          },
                         }}
                       >
-                        <Tab
-                          icon={<Edit />}
-                          iconPosition="start"
-                        
-                          title="Edit Text"
-                        />
-                        <Tab
-                          icon={<FormatSize />}
-                          iconPosition="start"
-                        
-                          title="Format Text"
-                        />
-                        <Tab
-                          icon={<ControlCamera />}
-                          iconPosition="start"
-                      
-                          title="Text Placement"
-                        />
-                        <Tab
-                          icon={<Palette />}
-                          iconPosition="start"
-                    
-                          title="Font Style"
-                        />
+                        <Tab icon={<Edit />} />
+                        <Tab icon={<FormatSize />} />
+                        <Tab icon={<ControlCamera />} />
+                        <Tab icon={<Palette />} />
                       </Tabs>
 
-                      {/* Active setting panel - appears below the tabs */}
-                                            {activeTextSetting === 'content' && (
-                        <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'transparent', borderRadius: 1 }}>
+                      {/* Content Tab */}
+                      {activeTextSetting === 'content' && (
+                        <Box sx={{ mb: 2 }}>
                           <TextField
-                          fullWidth
-                          multiline
-                          rows={isMobileSize ? 2 : 3} // Fixed rows for consistent sizing
-                          size="small"
-                          placeholder="Add Caption"
-                          value={panelTexts[panelId]?.content || ''}
-                          onChange={(e) => handleTextChange(panelId, 'content', e.target.value)}
-                          inputRef={(el) => {
-                            if (el) {
-                              textFieldRefs.current[panelId] = el;
-                            }
-                          }}
-                          autoFocus={false}
-                                                     sx={{
-                             '& .MuiInputBase-root': {
-                               backgroundColor: '#ffffff !important',
-                               border: 'none !important',
-                               color: '#000000',
-                               fontSize: `${fontSize}px`,
-                               borderRadius: '8px !important',
-                               outline: 'none !important',
-                               boxShadow: 'none !important',
-                              '&:hover': {
-                                border: 'none !important',
-                                outline: 'none !important',
-                                boxShadow: 'none !important',
+                            fullWidth
+                            multiline
+                            rows={3}
+                            placeholder="Add Caption"
+                            value={panelTexts[panelId]?.content || ''}
+                            onChange={(e) => handleTextChange(panelId, 'content', e.target.value)}
+                            inputRef={(el) => {
+                              if (el) {
+                                textFieldRefs.current[panelId] = el;
+                              }
+                            }}
+                            sx={{
+                              '& .MuiInputBase-root': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                color: '#000000',
                               },
-                              '&:focus': {
-                                border: 'none !important',
-                                outline: 'none !important',
-                                boxShadow: 'none !important',
+                              '& .MuiInputBase-input': {
+                                textAlign: 'center',
                               },
-                              '&.Mui-focused': {
-                                border: 'none !important',
-                                outline: 'none !important',
-                                boxShadow: 'none !important',
-                              },
-                            },
-                            '& .MuiInputBase-input': {
-                              textAlign: 'center',
-                              padding: `${Math.max(4, Math.min(8, sidePadding))}px`,
-                              color: '#000000',
-                              border: 'none !important',
-                              outline: 'none !important',
-                              boxShadow: 'none !important',
-                              '&::placeholder': {
-                                color: 'rgba(0, 0, 0, 0.5)',
-                                opacity: 1,
-                              },
-                              '&:hover': {
-                                border: 'none !important',
-                                outline: 'none !important',
-                                boxShadow: 'none !important',
-                              },
-                              '&:focus': {
-                                border: 'none !important',
-                                outline: 'none !important',
-                                boxShadow: 'none !important',
-                              },
-                            },
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              border: 'none !important',
-                              outline: 'none !important',
-                              boxShadow: 'none !important',
-                            },
-                            '& .MuiOutlinedInput-root': {
-                              '& fieldset': {
-                                border: 'none !important',
-                                outline: 'none !important',
-                                boxShadow: 'none !important',
-                              },
-                              '&:hover fieldset': {
-                                border: 'none !important',
-                                outline: 'none !important',
-                                boxShadow: 'none !important',
-                              },
-                              '&.Mui-focused fieldset': {
-                                border: 'none !important',
-                                outline: 'none !important',
-                                boxShadow: 'none !important',
-                              },
-                            },
-                          }}
-                        />
+                            }}
+                          />
                         </Box>
                       )}
                     
-                    {activeTextSetting === 'format' && (
-                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
-                        {/* Font Size */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                          <FormatSize sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
-                          <Slider
-                            value={(() => {
-                              // Show actual font size being used (including auto-calculated)
-                              const panelText = panelTexts[panelId] || {};
-                              const hasActualText = panelText.content && panelText.content.trim();
-                              
-                              let baseFontSize;
-                              if (hasActualText && !panelText.fontSize) {
-                                // Auto-calculate optimal font size for display
-                                const panel = panelRects.find(p => p.panelId === panelId);
-                                if (panel) {
-                                  baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
-                                } else {
-                                  baseFontSize = lastUsedTextSettings.fontSize || 26;
-                                }
-                              } else {
-                                baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
-                              }
-                              
-                              // Return the scaled font size for display
-                              return Math.round(baseFontSize * textScaleFactor);
-                            })()}
-                            onChange={(e, value) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              // Convert scaled value back to base value for storage
-                              const baseFontSize = value / textScaleFactor;
-                              handleTextChange(panelId, 'fontSize', baseFontSize);
-                            }}
-                            min={Math.round(8 * textScaleFactor)}
-                            max={Math.round(72 * textScaleFactor)}
-                            step={1}
-                            size="small"
-                            sx={{ 
-                              height: Math.max(isMobileSize ? 8 : 6, Math.min(12, fontSize * 0.8)),
-                              color: '#ffffff',
-                              flex: 1,
-                              '& .MuiSlider-track': {
-                                height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
-                                ...(isMobile && { pointerEvents: 'none' }),
-                              },
-                              '& .MuiSlider-rail': {
-                                height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
-                                color: 'rgba(255, 255, 255, 0.3)',
-                                ...(isMobile && { pointerEvents: 'none' }),
-                              },
-                              '& .MuiSlider-thumb': {
-                                height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
-                                width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
-                                color: '#ffffff',
-                                ...(isMobile && { pointerEvents: 'auto' }),
-                                '&:before': {
-                                  boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
-                                },
-                                '&:hover, &.Mui-focusVisible': {
-                                  boxShadow: '0px 0px 0px 6px rgb(255 255 255 / 16%)'
-                                }
-                              }
-                            }}
-                          />
-                          <Box sx={{ ml: 1, minWidth: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) + 8, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <Typography variant="caption" sx={{ color: '#ffffff', fontSize: `${fontSize * 0.8}px`, textAlign: 'center' }}>
-                              {(() => {
-                                // Show actual font size being used (including auto-calculated)
+                      {/* Format Tab */}
+                      {activeTextSetting === 'format' && (
+                        <Box sx={{ mb: 2 }}>
+                          {/* Font Size */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <FormatSize sx={{ color: '#ffffff', mr: 1 }} />
+                            <Slider
+                              value={(() => {
                                 const panelText = panelTexts[panelId] || {};
                                 const hasActualText = panelText.content && panelText.content.trim();
                                 
                                 let baseFontSize;
                                 if (hasActualText && !panelText.fontSize) {
-                                  // Auto-calculate optimal font size for display
                                   const panel = panelRects.find(p => p.panelId === panelId);
                                   if (panel) {
                                     baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
@@ -2885,475 +2732,294 @@ const CanvasCollagePreview = ({
                                   baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
                                 }
                                 
-                                // Return the scaled font size for display
+                                return Math.round(baseFontSize * textScaleFactor);
+                              })()}
+                              onChange={(e, value) => {
+                                const baseFontSize = value / textScaleFactor;
+                                handleTextChange(panelId, 'fontSize', baseFontSize);
+                              }}
+                              min={Math.round(8 * textScaleFactor)}
+                              max={Math.round(72 * textScaleFactor)}
+                              step={1}
+                              sx={{ 
+                                flex: 1,
+                                color: '#ffffff',
+                                mx: 1,
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 30 }}>
+                              {(() => {
+                                const panelText = panelTexts[panelId] || {};
+                                const hasActualText = panelText.content && panelText.content.trim();
+                                
+                                let baseFontSize;
+                                if (hasActualText && !panelText.fontSize) {
+                                  const panel = panelRects.find(p => p.panelId === panelId);
+                                  if (panel) {
+                                    baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+                                  } else {
+                                    baseFontSize = lastUsedTextSettings.fontSize || 26;
+                                  }
+                                } else {
+                                  baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+                                }
+                                
                                 return Math.round(baseFontSize * textScaleFactor);
                               })()}
                             </Typography>
                           </Box>
-                        </Box>
-                        
-                        {/* Stroke Width */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                          <BorderOuter sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
-                          <Slider
-                            value={panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
-                            onChange={(e, value) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              handleTextChange(panelId, 'strokeWidth', value);
-                            }}
-                            min={0}
-                            max={10}
-                            step={0.5}
-                            size="small"
-                            sx={{ 
-                              height: Math.max(isMobileSize ? 8 : 6, Math.min(12, fontSize * 0.8)),
-                              color: '#ffffff',
-                              flex: 1,
-                              '& .MuiSlider-track': {
-                                height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
-                                ...(isMobile && { pointerEvents: 'none' }),
-                              },
-                              '& .MuiSlider-rail': {
-                                height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
-                                color: 'rgba(255, 255, 255, 0.3)',
-                                ...(isMobile && { pointerEvents: 'none' }),
-                              },
-                              '& .MuiSlider-thumb': {
-                                height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
-                                width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
+                          
+                          {/* Stroke Width */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <BorderOuter sx={{ color: '#ffffff', mr: 1 }} />
+                            <Slider
+                              value={panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
+                              onChange={(e, value) => {
+                                handleTextChange(panelId, 'strokeWidth', value);
+                              }}
+                              min={0}
+                              max={10}
+                              step={0.5}
+                              sx={{ 
+                                flex: 1,
                                 color: '#ffffff',
-                                ...(isMobile && { pointerEvents: 'auto' }),
-                                '&:before': {
-                                  boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
-                                },
-                                '&:hover, &.Mui-focusVisible': {
-                                  boxShadow: '0px 0px 0px 6px rgb(255 255 255 / 16%)'
-                                }
-                              }
-                            }}
-                          />
-                          <Box sx={{ ml: 1, minWidth: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) + 8, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <Typography variant="caption" sx={{ color: '#ffffff', fontSize: `${fontSize * 0.8}px`, textAlign: 'center' }}>
+                                mx: 1,
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 30 }}>
                               {panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
                             </Typography>
                           </Box>
-                        </Box>
-                        
-                        {/* Font Weight */}
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <FormatBold sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
-                          <FormControl fullWidth size="small">
-                            <Select
-                              value={panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || '700'}
-                              onChange={(e) => handleTextChange(panelId, 'fontWeight', e.target.value)}
-                              displayEmpty
-                              sx={{ 
-                                '& .MuiSelect-select': { 
-                                  py: Math.max(0.25, Math.min(0.5, sidePadding * 0.5)), 
+                          
+                          {/* Font Weight */}
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <FormatBold sx={{ color: '#ffffff', mr: 1 }} />
+                            <FormControl fullWidth>
+                              <Select
+                                value={panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || '700'}
+                                onChange={(e) => handleTextChange(panelId, 'fontWeight', e.target.value)}
+                                sx={{ 
                                   color: '#ffffff',
-                                  fontSize: `${fontSize}px`,
-                                  '&:focus': {
-                                    backgroundColor: 'transparent',
-                                  }
-                                },
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                  border: 'none',
-                                },
-                                '& .MuiSvgIcon-root': {
-                                  color: '#ffffff',
-                                }
-                              }}
-                              MenuProps={{
-                                PaperProps: {
-                                  sx: { 
-                                    bgcolor: 'rgba(0, 0, 0, 0.9)',
-                                    '& .MuiMenuItem-root': {
-                                      color: '#ffffff',
-                                      fontSize: `${fontSize}px`,
-                                    }
-                                  }
-                                }
-                              }}
-                            >
-                              <MenuItem value="normal">Normal</MenuItem>
-                              <MenuItem value="bold">Bold</MenuItem>
-                              <MenuItem value="lighter">Light</MenuItem>
-                              <MenuItem value="400">400</MenuItem>
-                              <MenuItem value="500">500</MenuItem>
-                              <MenuItem value="600">600</MenuItem>
-                              <MenuItem value="700">700</MenuItem>
-                              <MenuItem value="800">800</MenuItem>
-                              <MenuItem value="900">900</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </Box>
-                      </Box>
-                    )}
-                    
-                    {activeTextSetting === 'fontStyle' && (
-                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
-                        {/* Font Family */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                          <FontDownload sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
-                          <FormControl fullWidth size="small">
-                            <Select
-                              value={panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial'}
-                              onChange={(e) => handleTextChange(panelId, 'fontFamily', e.target.value)}
-                              displayEmpty
-                              sx={{ 
-                                '& .MuiSelect-select': { 
-                                  py: Math.max(0.25, Math.min(0.5, sidePadding * 0.5)), 
-                                  color: '#ffffff',
-                                  fontSize: `${fontSize}px`,
-                                  '&:focus': {
-                                    backgroundColor: 'transparent',
-                                  }
-                                },
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                  border: 'none',
-                                },
-                                '& .MuiSvgIcon-root': {
-                                  color: '#ffffff',
-                                }
-                              }}
-                              MenuProps={{
-                                PaperProps: {
-                                  sx: { 
-                                    maxHeight: Math.max(120, Math.min(200, expandedHeight * 0.8)),
-                                    bgcolor: 'rgba(0, 0, 0, 0.9)',
-                                    '& .MuiMenuItem-root': {
-                                      color: '#ffffff',
-                                      fontSize: `${fontSize}px`,
-                                    }
-                                  }
-                                }
-                              }}
-                            >
-                              {fonts.map((font) => (
-                                <MenuItem key={font} value={font}>
-                                  {font}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </Box>
-                        
-                        {/* Text Color */}
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                          <FormatColorText sx={{ color: '#ffffff', mr: 1, mt: 0.5, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            {/* Collage-style scrollable color picker */}
-                            <Box 
-                              data-color-picker
-                              sx={{ 
-                                position: 'relative', 
-                                mb: 0.375,
-                                width: '100%',
-                                maxWidth: '100%',
-                                overflow: 'visible', // Changed from hidden to visible
-                                boxSizing: 'border-box',
-                              }}>
-                              <TextColorScrollButton
-                                direction="left"
-                                onClick={scrollTextColorLeft}
-                                size="small"
-                                sx={{
-                                  display: 'flex',
-                                  visibility: textColorLeftScroll ? 'visible' : 'hidden',
-                                  opacity: textColorLeftScroll ? 1 : 0,
-                                }}
-                              >
-                                <ChevronLeft fontSize="small" />
-                              </TextColorScrollButton>
-                              
-                              <TextColorScrollButton
-                                direction="right"
-                                onClick={scrollTextColorRight}
-                                size="small"
-                                sx={{
-                                  display: 'flex',
-                                  visibility: textColorRightScroll ? 'visible' : 'hidden',
-                                  opacity: textColorRightScroll ? 1 : 0,
-                                }}
-                              >
-                                <ChevronRight fontSize="small" />
-                              </TextColorScrollButton>
-                              
-                              <TextColorScroller
-                                ref={textColorScrollerRef}
-                                data-color-picker
-                                onScroll={handleTextColorScroll}
-                                onTouchStart={(e) => {
-                                  // Prevent scroll detection from interfering with color picker scrolling
-                                  e.stopPropagation();
-                                }}
-                                onTouchMove={(e) => {
-                                  // Prevent scroll detection from interfering with color picker scrolling
-                                  e.stopPropagation();
-                                }}
-                                sx={{
-                                  px: 0.5, // Increase padding to ensure content is not cut off
-                                  py: 0.5,
-                                  minHeight: isMobileSize ? 32 : 36,
-                                  maxHeight: isMobileSize ? 36 : 40,
-                                  width: '100%',
-                                  maxWidth: '100%',
-                                  boxSizing: 'border-box',
-                                  position: 'relative',
-                                  // Ensure smooth scrolling like the tabs
-                                  scrollbarWidth: 'none',
-                                  msOverflowStyle: 'none',
-                                  '&::-webkit-scrollbar': {
-                                    display: 'none',
+                                  '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(255, 255, 255, 0.3)',
                                   },
-                                  // Enhanced mobile touch scrolling
-                                  overflowX: 'auto',
-                                  overflowY: 'hidden',
-                                  WebkitOverflowScrolling: 'touch',
-                                  overscrollBehavior: 'contain auto',
-                                  touchAction: 'pan-x', // Allow horizontal panning only
-                                  // Ensure proper containment within parent
-                                  contain: 'layout style',
-                                  // Force hardware acceleration for smooth scrolling
-                                  willChange: 'scroll-position',
-                                  transform: 'translateZ(0)', // Force hardware acceleration
+                                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                                  },
+                                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: '#ffffff',
+                                  },
+                                  '& .MuiSvgIcon-root': {
+                                    color: '#ffffff',
+                                  }
+                                }}
+                                MenuProps={{
+                                  PaperProps: {
+                                    sx: { 
+                                      bgcolor: 'rgba(0, 0, 0, 0.9)',
+                                      '& .MuiMenuItem-root': {
+                                        color: '#ffffff',
+                                      }
+                                    }
+                                  }
                                 }}
                               >
-                                {/* Custom color picker - first option */}
-                                <Tooltip title="Pick Custom Color" arrow>
-                                  <Box sx={{ 
-                                    position: 'relative', 
-                                    display: 'flex', 
-                                    alignItems: 'center'
-                                  }}>
-                                    <ColorSwatch
-                                      size={isMobileSize ? 'small' : 'medium'}
-                                      onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
-                                      selected={false}
-                                      sx={{ 
-                                        position: 'relative',
-                                        backgroundColor: savedCustomTextColor,
-                                        backgroundImage: 'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
-                                        backgroundSize: isMobileSize ? '6px 6px' : '8px 8px',
-                                        backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
-                                      }}
-                                    >
-                                      <Colorize fontSize={isMobileSize ? 'small' : 'medium'} sx={{ color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
-                                    </ColorSwatch>
-                                    <input
-                                      type="color"
-                                      value={savedCustomTextColor}
-                                      onChange={handleCustomTextColorChange}
-                                      ref={textColorPickerRef}
-                                      style={{ 
-                                        position: 'absolute',
-                                        opacity: 0,
-                                        width: '100%',
-                                        height: '100%',
-                                        cursor: 'pointer'
-                                      }}
-                                    />
-                                  </Box>
-                                </Tooltip>
-                                
-                                {/* Show saved custom color if different from presets */}
-                                {savedCustomTextColor && !TEXT_COLOR_PRESETS.some(c => c.color === savedCustomTextColor) && (
-                                  <Tooltip title="Custom Color" arrow>
-                                    <ColorSwatch
-                                      size={isMobileSize ? 'small' : 'medium'}
-                                      onClick={() => handleTextChange(panelId, 'color', savedCustomTextColor)}
-                                      selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === savedCustomTextColor}
-                                      sx={{ backgroundColor: savedCustomTextColor }}
-                                    />
-                                  </Tooltip>
-                                )}
+                                <MenuItem value="normal">Normal</MenuItem>
+                                <MenuItem value="bold">Bold</MenuItem>
+                                <MenuItem value="lighter">Light</MenuItem>
+                                <MenuItem value="700">700</MenuItem>
+                                <MenuItem value="800">800</MenuItem>
+                                <MenuItem value="900">900</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </Box>
+                        </Box>
+                      )}
+                    
+                      {/* Font Style Tab */}
+                      {activeTextSetting === 'fontStyle' && (
+                        <Box sx={{ mb: 2 }}>
+                          {/* Font Family */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <FontDownload sx={{ color: '#ffffff', mr: 1 }} />
+                            <FormControl fullWidth>
+                              <Select
+                                value={panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial'}
+                                onChange={(e) => handleTextChange(panelId, 'fontFamily', e.target.value)}
+                                sx={{ 
+                                  color: '#ffffff',
+                                  '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                                  },
+                                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                                  },
+                                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: '#ffffff',
+                                  },
+                                  '& .MuiSvgIcon-root': {
+                                    color: '#ffffff',
+                                  }
+                                }}
+                                MenuProps={{
+                                  PaperProps: {
+                                    sx: { 
+                                      maxHeight: 200,
+                                      bgcolor: 'rgba(0, 0, 0, 0.9)',
+                                      '& .MuiMenuItem-root': {
+                                        color: '#ffffff',
+                                      }
+                                    }
+                                  }
+                                }}
+                              >
+                                {fonts.map((font) => (
+                                  <MenuItem key={font} value={font}>
+                                    {font}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Box>
+                          
+                          {/* Text Color */}
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <FormatColorText sx={{ color: '#ffffff', mr: 1 }} />
+                            <Box sx={{ flex: 1 }}>
+                              {/* Color swatches */}
+                              <Box sx={{ 
+                                display: 'flex', 
+                                gap: 1, 
+                                mb: 1, 
+                                flexWrap: 'wrap',
+                                alignItems: 'center'
+                              }}>
+                                {/* Custom color picker */}
+                                <Box sx={{ position: 'relative' }}>
+                                  <ColorSwatch
+                                    onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
+                                    selected={false}
+                                    sx={{ 
+                                      backgroundColor: savedCustomTextColor,
+                                      position: 'relative',
+                                    }}
+                                  >
+                                    <Colorize sx={{ color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
+                                  </ColorSwatch>
+                                  <input
+                                    type="color"
+                                    value={savedCustomTextColor}
+                                    onChange={handleCustomTextColorChange}
+                                    ref={textColorPickerRef}
+                                    style={{ 
+                                      position: 'absolute',
+                                      opacity: 0,
+                                      width: '100%',
+                                      height: '100%',
+                                      cursor: 'pointer',
+                                      top: 0,
+                                      left: 0,
+                                    }}
+                                  />
+                                </Box>
                                 
                                 {/* Preset colors */}
                                 {TEXT_COLOR_PRESETS.map((colorOption) => (
-                                  <Tooltip key={colorOption.color} title={colorOption.name} arrow>
-                                    <ColorSwatch
-                                      size={isMobileSize ? 'small' : 'medium'}
-                                      onClick={() => handleTextChange(panelId, 'color', colorOption.color)}
-                                      selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
-                                      sx={{ backgroundColor: colorOption.color }}
-                                    />
-                                  </Tooltip>
+                                  <ColorSwatch
+                                    key={colorOption.color}
+                                    onClick={() => handleTextChange(panelId, 'color', colorOption.color)}
+                                    selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
+                                    sx={{ backgroundColor: colorOption.color }}
+                                  />
                                 ))}
-                                
-                                {/* Spacer for proper scrolling */}
-                                <Box sx={{ minWidth: 4, flexShrink: 0 }} />
-                              </TextColorScroller>
+                              </Box>
                               
-                              <TextColorScrollIndicator 
-                                direction="left" 
-                                isVisible={textColorLeftScroll}
-                              />
-                              
-                              <TextColorScrollIndicator 
-                                direction="right" 
-                                isVisible={textColorRightScroll}
+                              {/* Manual color input */}
+                              <TextField
+                                fullWidth
+                                size="small"
+                                placeholder="#ffffff"
+                                value={panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff'}
+                                onChange={(e) => handleTextChange(panelId, 'color', e.target.value)}
+                                sx={{ 
+                                  '& .MuiInputBase-root': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    color: '#ffffff',
+                                  },
+                                  '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                                  },
+                                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                                  },
+                                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: '#ffffff',
+                                  },
+                                }}
                               />
                             </Box>
-                            
-                            {/* Text input for manual color entry */}
-                            <TextField
-                              fullWidth
-                              size="small"
-                              placeholder="#ffffff"
-                              value={panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff'}
-                              onChange={(e) => handleTextChange(panelId, 'color', e.target.value)}
-                              sx={{ 
-                                '& .MuiInputBase-input': { 
-                                  py: Math.max(0.25, Math.min(0.5, sidePadding * 0.5)), 
-                                  fontSize: `${fontSize * 0.8}px`,
-                                  color: '#ffffff',
-                                },
-                                '& .MuiInputBase-root': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.35)',
-                                },
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                  border: 'none',
-                                },
-                              }}
-                            />
                           </Box>
                         </Box>
-                      </Box>
-                    )}
+                      )}
                     
-                    {activeTextSetting === 'placement' && (
-                      <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
-                        {/* Horizontal Position */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                          <SwapHoriz sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
-                          <Slider
-                            value={panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}
-                            onChange={(e, value) => {
-                              if (e.type === 'mousedown') {
-                                return;
-                              }
-                              handleTextChange(panelId, 'textPositionX', value);
-                            }}
-                            min={-100}
-                            max={100}
-                            step={5}
-                            marks={[{ value: 0, label: '' }]}
-                            size="small"
-                            sx={{ 
-                              height: Math.max(isMobileSize ? 8 : 6, Math.min(12, fontSize * 0.8)),
-                              color: '#ffffff',
-                              flex: 1,
-                              '& .MuiSlider-track': {
-                                height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
-                                ...(isMobile && { pointerEvents: 'none' }),
-                              },
-                              '& .MuiSlider-rail': {
-                                height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
-                                color: 'rgba(255, 255, 255, 0.3)',
-                                ...(isMobile && { pointerEvents: 'none' }),
-                              },
-                              '& .MuiSlider-mark': {
-                                backgroundColor: '#ffffff',
-                                height: Math.max(isMobileSize ? 12 : 10, Math.min(16, fontSize)),
-                                width: 2,
-                                borderRadius: 1,
-                                opacity: 0.8,
-                              },
-                              '& .MuiSlider-thumb': {
-                                height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
-                                width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
+                      {/* Placement Tab */}
+                      {activeTextSetting === 'placement' && (
+                        <Box sx={{ mb: 2 }}>
+                          {/* Horizontal Position */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <SwapHoriz sx={{ color: '#ffffff', mr: 1 }} />
+                            <Slider
+                              value={panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}
+                              onChange={(e, value) => {
+                                handleTextChange(panelId, 'textPositionX', value);
+                              }}
+                              min={-100}
+                              max={100}
+                              step={5}
+                              marks={[{ value: 0, label: 'Center' }]}
+                              sx={{ 
+                                flex: 1,
                                 color: '#ffffff',
-                                ...(isMobile && { pointerEvents: 'auto' }),
-                                '&:before': {
-                                  boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
-                                },
-                                '&:hover, &.Mui-focusVisible': {
-                                  boxShadow: '0px 0px 0px 6px rgb(255 255 255 / 16%)'
-                                }
-                              }
-                            }}
-                          />
-                          <Box sx={{ ml: 1, minWidth: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) + 8, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <Typography variant="caption" sx={{ color: '#ffffff', fontSize: `${fontSize * 0.8}px`, textAlign: 'center' }}>
+                                mx: 1,
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40 }}>
                               {panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}%
                             </Typography>
                           </Box>
-                        </Box>
-                        
-                        {/* Vertical Position */}
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <SwapVert sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
-                          <Slider
-                            value={(() => {
-                              // Convert textPositionY to percentage from bottom for display
-                              const textPositionY = panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0);
-                              if (textPositionY <= 0) {
-                                // For negative values: 0% extends beyond frame bottom (-100) to 5% at default (0)
-                                return 5 + (textPositionY / 100) * 5;
-                              }
-                              // For positive values: 5% at default (0) to 100% at frame top edge (100)
-                              return 5 + (textPositionY / 100) * 95;
-                            })()}
-                                                         onChange={(e, value) => {
-                               if (e.type === 'mousedown') {
-                                 return;
-                               }
-                               // Convert slider value (percentage from bottom) back to textPositionY
-                               let textPositionY;
-                               if (value <= 5) {
-                                 // For values 0-5%: convert to -100 to 0 (extends beyond frame bottom to default)
-                                 textPositionY = ((value - 5) / 5) * 100;
-                               } else {
-                                 // For values 5-100%: convert to 0 to 100 (default to frame top edge)
-                                 textPositionY = ((value - 5) / 95) * 100;
-                               }
-                               handleTextChange(panelId, 'textPositionY', textPositionY);
-                             }}
-                            min={0}
-                            max={100}
-                            step={1}
-                            marks={[{ value: 5, label: '' }]}
-                            size="small"
-                            sx={{ 
-                              height: Math.max(isMobileSize ? 8 : 6, Math.min(12, fontSize * 0.8)),
-                              color: '#ffffff',
-                              flex: 1,
-                              '& .MuiSlider-track': {
-                                height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
-                                ...(isMobile && { pointerEvents: 'none' }),
-                              },
-                              '& .MuiSlider-rail': {
-                                height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
-                                color: 'rgba(255, 255, 255, 0.3)',
-                                ...(isMobile && { pointerEvents: 'none' }),
-                              },
-                              '& .MuiSlider-mark': {
-                                backgroundColor: '#ffffff',
-                                height: Math.max(isMobileSize ? 12 : 10, Math.min(16, fontSize)),
-                                width: 2,
-                                borderRadius: 1,
-                                opacity: 0.8,
-                              },
-                              '& .MuiSlider-thumb': {
-                                height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
-                                width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
-                                color: '#ffffff',
-                                ...(isMobile && { pointerEvents: 'auto' }),
-                                '&:before': {
-                                  boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
-                                },
-                                '&:hover, &.Mui-focusVisible': {
-                                  boxShadow: '0px 0px 0px 6px rgb(255 255 255 / 16%)'
+                          
+                          {/* Vertical Position */}
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <SwapVert sx={{ color: '#ffffff', mr: 1 }} />
+                            <Slider
+                              value={(() => {
+                                const textPositionY = panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0);
+                                if (textPositionY <= 0) {
+                                  return 5 + (textPositionY / 100) * 5;
                                 }
-                              }
-                            }}
-                          />
-                          <Box sx={{ ml: 1, minWidth: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) + 8, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <Typography variant="caption" sx={{ color: '#ffffff', fontSize: `${fontSize * 0.8}px`, textAlign: 'center' }}>
+                                return 5 + (textPositionY / 100) * 95;
+                              })()}
+                              onChange={(e, value) => {
+                                let textPositionY;
+                                if (value <= 5) {
+                                  textPositionY = ((value - 5) / 5) * 100;
+                                } else {
+                                  textPositionY = ((value - 5) / 95) * 100;
+                                }
+                                handleTextChange(panelId, 'textPositionY', textPositionY);
+                              }}
+                              min={0}
+                              max={100}
+                              step={1}
+                              marks={[{ value: 5, label: 'Default' }]}
+                              sx={{ 
+                                flex: 1,
+                                color: '#ffffff',
+                                mx: 1,
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40 }}>
                               {(() => {
-                                // Show percentage from bottom for display
                                 const textPositionY = panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0);
                                 if (textPositionY <= 0) {
                                   return Math.round(5 + (textPositionY / 100) * 5);
@@ -3363,45 +3029,24 @@ const CanvasCollagePreview = ({
                             </Typography>
                           </Box>
                         </Box>
-                      </Box>
-                    )}
+                      )}
                     
-                    {/* Done button at the bottom */}
-                    <Box sx={{ mt: Math.max(isMobileSize ? 0.75 : 0.5, Math.min(1, sidePadding)), px: 0.5 }}>
+                      {/* Done button */}
                       <Button
                         fullWidth
                         variant="contained"
                         onClick={handleTextClose}
                         sx={{
-                          height: Math.max(isMobileSize ? 36 : 32, Math.min(44, fontSize * 2.2)),
-                          backgroundColor: '#4CAF50', // Green color
-                          color: '#ffffff',
-                          fontSize: `${fontSize}px`,
-                          fontWeight: '600',
-                          textTransform: 'none',
-                          borderRadius: `${borderRadius}px`,
-                          border: 'none',
-                          boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
+                          backgroundColor: '#4CAF50',
                           '&:hover': {
                             backgroundColor: '#45a049',
-                            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)',
-                            transform: 'translateY(-1px)',
                           },
-                          '&:active': {
-                            transform: 'translateY(0)',
-                            boxShadow: '0 2px 6px rgba(76, 175, 80, 0.3)',
-                          },
-                          transition: 'all 0.2s ease-in-out',
-                          // Better touch handling
-                          touchAction: 'manipulation',
-                          cursor: 'pointer',
                         }}
                       >
                         Done
                       </Button>
                     </Box>
-                  </Box>
-                )}
+                  )}
               </Box>
             )}
             
@@ -3488,4 +3133,4 @@ const CanvasCollagePreview = ({
   );
 };
 
-export default CanvasCollagePreview; 
+export default CanvasCollagePreview;
