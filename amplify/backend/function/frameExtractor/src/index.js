@@ -36,7 +36,7 @@ exports.handler = async (event) => {
 
     const frameNumber = parseInt(frame);
 
-    if (Number.isNaN(frameNumber) || frameNumber < 1) {
+    if (isNaN(frameNumber) || frameNumber < 1) {
       return {
         statusCode: 400,
         body: JSON.stringify('Invalid frame number'),
