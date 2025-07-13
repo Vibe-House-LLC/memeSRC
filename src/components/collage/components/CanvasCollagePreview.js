@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab, Tooltip, useMediaQuery } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
-import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight, Palette, Brush } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import fonts from '../../../utils/fonts';
 
@@ -2661,14 +2661,14 @@ const CanvasCollagePreview = ({
                           // Toggle behavior: if clicking the same tab, deselect it
                           setActiveTextSetting(activeTextSetting === newSetting ? null : newSetting);
                         }}
-                        variant="scrollable"
+                        centered
                         scrollButtons
                         allowScrollButtonsMobile
                         sx={{
                           mb: Math.max(isMobileSize ? 0.5 : 0.375, Math.min(0.75, sidePadding * 0.75)),
                           '& .MuiTab-root': {
                             minHeight: 36, // Make tabs shorter
-                            minWidth: isMobileSize ? 80 : 'auto', // Ensure minimum width on mobile
+                            minWidth: isMobileSize ? 10 : 'auto', // Ensure minimum width on mobile
                             fontSize: isMobileSize ? '0.75rem' : '0.875rem', // Smaller text on mobile
                           },
                           '& .MuiTabs-scrollButtons': {
@@ -2685,25 +2685,25 @@ const CanvasCollagePreview = ({
                         <Tab
                           icon={<Edit />}
                           iconPosition="start"
-                          label="Text"
+                        
                           title="Edit Text"
                         />
                         <Tab
                           icon={<FormatSize />}
                           iconPosition="start"
-                          label="Format"
+                        
                           title="Format Text"
                         />
                         <Tab
                           icon={<ControlCamera />}
                           iconPosition="start"
-                          label="Placement"
+                      
                           title="Text Placement"
                         />
                         <Tab
-                          icon={<FontDownload />}
+                          icon={<Palette />}
                           iconPosition="start"
-                          label="Font Style"
+                    
                           title="Font Style"
                         />
                       </Tabs>
