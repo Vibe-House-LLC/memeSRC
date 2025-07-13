@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab, Tooltip } from "@mui/material";
+import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab, Tooltip, useMediaQuery } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
 import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
@@ -479,6 +479,9 @@ const CanvasCollagePreview = ({
   const lastInteractionTime = useRef(0);
   const hoverTimeoutRef = useRef(null);
   const touchStartInfo = useRef(null);
+
+  // Mobile detection for slider fix
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
   // Base canvas size for text scaling calculations
   const BASE_CANVAS_WIDTH = 400;
@@ -2775,6 +2778,9 @@ const CanvasCollagePreview = ({
                               return Math.round(baseFontSize * textScaleFactor);
                             })()}
                             onChange={(e, value) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
                               // Convert scaled value back to base value for storage
                               const baseFontSize = value / textScaleFactor;
                               handleTextChange(panelId, 'fontSize', baseFontSize);
@@ -2789,15 +2795,18 @@ const CanvasCollagePreview = ({
                               flex: 1,
                               '& .MuiSlider-track': {
                                 height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                                ...(isMobile && { pointerEvents: 'none' }),
                               },
                               '& .MuiSlider-rail': {
                                 height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
                                 color: 'rgba(255, 255, 255, 0.3)',
+                                ...(isMobile && { pointerEvents: 'none' }),
                               },
                               '& .MuiSlider-thumb': {
                                 height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                                 width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                                 color: '#ffffff',
+                                ...(isMobile && { pointerEvents: 'auto' }),
                                 '&:before': {
                                   boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
                                 },
@@ -2837,7 +2846,12 @@ const CanvasCollagePreview = ({
                           <BorderOuter sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
                           <Slider
                             value={panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
-                            onChange={(e, value) => handleTextChange(panelId, 'strokeWidth', value)}
+                            onChange={(e, value) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              handleTextChange(panelId, 'strokeWidth', value);
+                            }}
                             min={0}
                             max={10}
                             step={0.5}
@@ -2848,15 +2862,18 @@ const CanvasCollagePreview = ({
                               flex: 1,
                               '& .MuiSlider-track': {
                                 height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                                ...(isMobile && { pointerEvents: 'none' }),
                               },
                               '& .MuiSlider-rail': {
                                 height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
                                 color: 'rgba(255, 255, 255, 0.3)',
+                                ...(isMobile && { pointerEvents: 'none' }),
                               },
                               '& .MuiSlider-thumb': {
                                 height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                                 width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                                 color: '#ffffff',
+                                ...(isMobile && { pointerEvents: 'auto' }),
                                 '&:before': {
                                   boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
                                 },
@@ -3160,7 +3177,12 @@ const CanvasCollagePreview = ({
                           <SwapHoriz sx={{ color: '#ffffff', mr: 1, fontSize: Math.max(isMobileSize ? 20 : 18, Math.min(24, fontSize * 1.2)) }} />
                           <Slider
                             value={panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}
-                            onChange={(e, value) => handleTextChange(panelId, 'textPositionX', value)}
+                            onChange={(e, value) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              handleTextChange(panelId, 'textPositionX', value);
+                            }}
                             min={-100}
                             max={100}
                             step={5}
@@ -3172,10 +3194,12 @@ const CanvasCollagePreview = ({
                               flex: 1,
                               '& .MuiSlider-track': {
                                 height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                                ...(isMobile && { pointerEvents: 'none' }),
                               },
                               '& .MuiSlider-rail': {
                                 height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
                                 color: 'rgba(255, 255, 255, 0.3)',
+                                ...(isMobile && { pointerEvents: 'none' }),
                               },
                               '& .MuiSlider-mark': {
                                 backgroundColor: '#ffffff',
@@ -3188,6 +3212,7 @@ const CanvasCollagePreview = ({
                                 height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                                 width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                                 color: '#ffffff',
+                                ...(isMobile && { pointerEvents: 'auto' }),
                                 '&:before': {
                                   boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
                                 },
@@ -3217,6 +3242,9 @@ const CanvasCollagePreview = ({
                               return 5 + (textPositionY / 100) * 95;
                             })()}
                                                          onChange={(e, value) => {
+                               if (e.type === 'mousedown') {
+                                 return;
+                               }
                                // Convert slider value (percentage from bottom) back to textPositionY
                                let textPositionY;
                                if (value <= 5) {
@@ -3239,10 +3267,12 @@ const CanvasCollagePreview = ({
                               flex: 1,
                               '& .MuiSlider-track': {
                                 height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
+                                ...(isMobile && { pointerEvents: 'none' }),
                               },
                               '& .MuiSlider-rail': {
                                 height: Math.max(isMobileSize ? 4 : 3, Math.min(6, fontSize * 0.4)),
                                 color: 'rgba(255, 255, 255, 0.3)',
+                                ...(isMobile && { pointerEvents: 'none' }),
                               },
                               '& .MuiSlider-mark': {
                                 backgroundColor: '#ffffff',
@@ -3255,6 +3285,7 @@ const CanvasCollagePreview = ({
                                 height: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                                 width: Math.max(isMobileSize ? 16 : 12, Math.min(22, fontSize * 1.2)),
                                 color: '#ffffff',
+                                ...(isMobile && { pointerEvents: 'auto' }),
                                 '&:before': {
                                   boxShadow: '0 2px 4px 0 rgb(0 0 0 / 20%)'
                                 },
