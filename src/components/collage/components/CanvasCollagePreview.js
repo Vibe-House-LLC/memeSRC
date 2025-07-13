@@ -2709,44 +2709,93 @@ const CanvasCollagePreview = ({
                       </Tabs>
 
                       {/* Active setting panel - appears below the tabs */}
-                      {activeTextSetting === 'content' && (
-                        <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'rgba(255, 255, 255, 0.35)', borderRadius: 1 }}>
+                                            {activeTextSetting === 'content' && (
+                        <Box sx={{ mb: 0.5, px: 0.75, py: 0.25, bgcolor: 'transparent', borderRadius: 1 }}>
                           <TextField
-                            fullWidth
-                            multiline
-                            rows={isMobileSize ? 2 : 3} // Fixed rows for consistent sizing
-                            size="small"
-                            placeholder="Add Caption"
-                            value={panelTexts[panelId]?.content || ''}
-                            onChange={(e) => handleTextChange(panelId, 'content', e.target.value)}
-                            inputRef={(el) => {
-                              if (el) {
-                                textFieldRefs.current[panelId] = el;
-                              }
-                            }}
-                            autoFocus={false}
-                            sx={{
-                              '& .MuiInputBase-root': {
-                                backgroundColor: '#ffffff',
-                                border: 'none',
-                                color: '#000000',
-                                fontSize: `${fontSize}px`,
-                                borderRadius: 1,
+                          fullWidth
+                          multiline
+                          rows={isMobileSize ? 2 : 3} // Fixed rows for consistent sizing
+                          size="small"
+                          placeholder="Add Caption"
+                          value={panelTexts[panelId]?.content || ''}
+                          onChange={(e) => handleTextChange(panelId, 'content', e.target.value)}
+                          inputRef={(el) => {
+                            if (el) {
+                              textFieldRefs.current[panelId] = el;
+                            }
+                          }}
+                          autoFocus={false}
+                                                     sx={{
+                             '& .MuiInputBase-root': {
+                               backgroundColor: '#ffffff !important',
+                               border: 'none !important',
+                               color: '#000000',
+                               fontSize: `${fontSize}px`,
+                               borderRadius: '8px !important',
+                               outline: 'none !important',
+                               boxShadow: 'none !important',
+                              '&:hover': {
+                                border: 'none !important',
+                                outline: 'none !important',
+                                boxShadow: 'none !important',
                               },
-                              '& .MuiInputBase-input': {
-                                textAlign: 'center',
-                                padding: `${Math.max(4, Math.min(8, sidePadding))}px`,
-                                color: '#000000',
-                                '&::placeholder': {
-                                  color: 'rgba(0, 0, 0, 0.5)',
-                                  opacity: 1,
-                                },
+                              '&:focus': {
+                                border: 'none !important',
+                                outline: 'none !important',
+                                boxShadow: 'none !important',
                               },
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                border: 'none',
+                              '&.Mui-focused': {
+                                border: 'none !important',
+                                outline: 'none !important',
+                                boxShadow: 'none !important',
                               },
-                            }}
-                          />
+                            },
+                            '& .MuiInputBase-input': {
+                              textAlign: 'center',
+                              padding: `${Math.max(4, Math.min(8, sidePadding))}px`,
+                              color: '#000000',
+                              border: 'none !important',
+                              outline: 'none !important',
+                              boxShadow: 'none !important',
+                              '&::placeholder': {
+                                color: 'rgba(0, 0, 0, 0.5)',
+                                opacity: 1,
+                              },
+                              '&:hover': {
+                                border: 'none !important',
+                                outline: 'none !important',
+                                boxShadow: 'none !important',
+                              },
+                              '&:focus': {
+                                border: 'none !important',
+                                outline: 'none !important',
+                                boxShadow: 'none !important',
+                              },
+                            },
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              border: 'none !important',
+                              outline: 'none !important',
+                              boxShadow: 'none !important',
+                            },
+                            '& .MuiOutlinedInput-root': {
+                              '& fieldset': {
+                                border: 'none !important',
+                                outline: 'none !important',
+                                boxShadow: 'none !important',
+                              },
+                              '&:hover fieldset': {
+                                border: 'none !important',
+                                outline: 'none !important',
+                                boxShadow: 'none !important',
+                              },
+                              '&.Mui-focused fieldset': {
+                                border: 'none !important',
+                                outline: 'none !important',
+                                boxShadow: 'none !important',
+                              },
+                            },
+                          }}
+                        />
                         </Box>
                       )}
                     
