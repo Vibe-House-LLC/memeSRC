@@ -17,6 +17,112 @@ const TEXT_COLOR_PRESETS = [
   { color: '#00ffff', name: 'Cyan' },
 ];
 
+// Horizontal scrollable container for horizontal scrolling sections
+const HorizontalScroller = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  overflowX: 'auto',
+  overflowY: 'hidden', // Explicitly prevent vertical scrolling
+  scrollbarWidth: 'none',  // Firefox
+  '&::-webkit-scrollbar': {
+    display: 'none',  // Chrome, Safari, Opera
+  },
+  msOverflowStyle: 'none',  // IE, Edge
+  gap: theme.spacing(1),
+  padding: theme.spacing(0.75, 0),
+  position: 'relative',
+  scrollBehavior: 'smooth',
+  alignItems: 'center',  // Center items vertically
+  justifyContent: 'flex-start',  // Start alignment for consistent scrolling
+  minHeight: 32,
+  maxWidth: '100%', // Ensure it doesn't exceed container width
+  width: '100%', // Take full width of parent
+  boxSizing: 'border-box', // Include padding in width calculation
+  // Contain content to prevent layout shift
+  contain: 'layout style',
+  // Smoother momentum scrolling (for Safari)
+  WebkitOverflowScrolling: 'touch',
+  // Show that content is scrollable on mobile
+  overscrollBehavior: 'contain',
+  // Prevent accidental touch interactions
+  touchAction: 'pan-x', // Allow horizontal panning only
+  // Ensure proper mobile touch scrolling
+  '@media (hover: none)': {
+    // Mobile-specific styles
+    overflowX: 'scroll', // Force scroll on mobile
+    '-webkit-overflow-scrolling': 'touch',
+    scrollSnapType: 'x mandatory',
+    scrollSnapAlign: 'start',
+  },
+}));
+
+// Improved ScrollButton for consistent appearance
+const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  zIndex: 10,
+  // Consistent styling across all devices
+  backgroundColor: theme.palette.mode === 'dark' 
+    ? alpha(theme.palette.background.paper, 0.9)
+    : alpha(theme.palette.background.paper, 0.95),
+  // Better shadow for depth without overwhelming the UI
+  boxShadow: `0 2px 6px ${theme.palette.mode === 'dark' 
+    ? 'rgba(0,0,0,0.3)' 
+    : 'rgba(0,0,0,0.15)'}`,
+  // Clean border
+  border: `1px solid ${theme.palette.mode === 'dark'
+    ? alpha(theme.palette.divider, 0.5)
+    : theme.palette.divider}`,
+  // Primary color for better visibility
+  color: theme.palette.primary.main,
+  '&:hover': {
+    backgroundColor: theme.palette.mode === 'dark' 
+      ? alpha(theme.palette.background.paper, 0.95)
+      : alpha(theme.palette.background.default, 0.98),
+    color: theme.palette.primary.dark,
+    transform: 'translateY(-50%) scale(1.05)',
+    boxShadow: `0 3px 8px ${theme.palette.mode === 'dark' 
+      ? 'rgba(0,0,0,0.4)' 
+      : 'rgba(0,0,0,0.2)'}`,
+  },
+  // Consistent positioning for both directions
+  ...(direction === 'left' ? { left: -4 } : { right: -4 }),
+  // Consistent sizing across devices
+  width: 24,
+  height: 24,
+  minWidth: 'unset',
+  padding: 0,
+  // Consistent circular shape on all devices
+  borderRadius: '50%',
+  // Better transition for hover states
+  transition: theme.transitions.create(
+    ['background-color', 'color', 'box-shadow', 'transform', 'opacity'], 
+    { duration: theme.transitions.duration.shorter }
+  ),
+}));
+
+// Improved ScrollIndicator with subtle gradient
+const ScrollIndicator = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'isVisible'
+})(({ theme, direction, isVisible }) => ({
+  position: 'absolute',
+  top: 0,
+  bottom: 0,
+  width: 30,
+  pointerEvents: 'none',
+  zIndex: 2,
+  opacity: isVisible ? 1 : 0,
+  transition: 'opacity 0.3s ease',
+  background: direction === 'left'
+    ? `linear-gradient(90deg, ${theme.palette.mode === 'dark' 
+        ? 'rgba(0,0,0,0.9)' 
+        : 'rgba(255,255,255,0.9)'} 0%, transparent 100%)`
+    : `linear-gradient(270deg, ${theme.palette.mode === 'dark' 
+        ? 'rgba(0,0,0,0.9)' 
+        : 'rgba(255,255,255,0.9)'} 0%, transparent 100%)`,
+  ...(direction === 'left' ? { left: 0 } : { right: 0 })
+}));
+
 // Create a color swatch component for text color selection
 const ColorSwatch = styled(Box)(({ theme, selected, size = 'medium' }) => {
   const sizeMap = {
@@ -53,99 +159,7 @@ const ColorSwatch = styled(Box)(({ theme, selected, size = 'medium' }) => {
   };
 });
 
-// Horizontal scrollable container for text colors
-const TextColorScroller = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  overflowX: 'auto',
-  overflowY: 'hidden',
-  scrollbarWidth: 'none',
-  '&::-webkit-scrollbar': {
-    display: 'none',
-  },
-  msOverflowStyle: 'none',
-  gap: theme.spacing(0.75),
-  padding: theme.spacing(0.75, 0),
-  position: 'relative',
-  scrollBehavior: 'smooth',
-  alignItems: 'center',
-  justifyContent: 'flex-start',
-  minHeight: 32,
-  maxWidth: '100%',
-  width: '100%',
-  boxSizing: 'border-box',
-  contain: 'layout style',
-  WebkitOverflowScrolling: 'touch',
-  overscrollBehavior: 'contain',
-  touchAction: 'pan-x', // Allow horizontal panning only
-  // Ensure proper mobile touch scrolling
-  '@media (hover: none)': {
-    // Mobile-specific styles
-    overflowX: 'scroll', // Force scroll on mobile
-    '-webkit-overflow-scrolling': 'touch',
-    scrollSnapType: 'x mandatory',
-    scrollSnapAlign: 'start',
-  },
-}));
 
-// Scroll button for text color picker
-const TextColorScrollButton = styled(IconButton)(({ theme, direction }) => ({
-  position: 'absolute',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  zIndex: 10,
-  backgroundColor: theme.palette.mode === 'dark' 
-    ? alpha(theme.palette.background.paper, 0.9)
-    : alpha(theme.palette.background.paper, 0.95),
-  boxShadow: `0 2px 6px ${theme.palette.mode === 'dark' 
-    ? 'rgba(0,0,0,0.3)' 
-    : 'rgba(0,0,0,0.15)'}`,
-  border: `1px solid ${theme.palette.mode === 'dark'
-    ? alpha(theme.palette.divider, 0.5)
-    : theme.palette.divider}`,
-  color: theme.palette.primary.main,
-  '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' 
-      ? alpha(theme.palette.background.paper, 0.95)
-      : alpha(theme.palette.background.default, 0.98),
-    color: theme.palette.primary.dark,
-    transform: 'translateY(-50%) scale(1.05)',
-    boxShadow: `0 3px 8px ${theme.palette.mode === 'dark' 
-      ? 'rgba(0,0,0,0.4)' 
-      : 'rgba(0,0,0,0.2)'}`,
-  },
-  ...(direction === 'left' ? { left: -4 } : { right: -4 }),
-  width: 24,
-  height: 24,
-  minWidth: 'unset',
-  padding: 0,
-  borderRadius: '50%',
-  transition: theme.transitions.create(
-    ['background-color', 'color', 'box-shadow', 'transform', 'opacity'], 
-    { duration: theme.transitions.duration.shorter }
-  ),
-}));
-
-// Scroll indicator for text color picker
-const TextColorScrollIndicator = styled(Box, {
-  shouldForwardProp: (prop) => prop !== 'isVisible'
-})(({ theme, direction, isVisible }) => ({
-  position: 'absolute',
-  top: 0,
-  bottom: 0,
-  width: 30,
-  pointerEvents: 'none',
-  zIndex: 2,
-  opacity: isVisible ? 1 : 0,
-  transition: 'opacity 0.3s ease',
-  background: direction === 'left'
-    ? `linear-gradient(90deg, ${theme.palette.mode === 'dark' 
-        ? 'rgba(0,0,0,0.9)' 
-        : 'rgba(255,255,255,0.9)'} 0%, transparent 100%)`
-    : `linear-gradient(270deg, ${theme.palette.mode === 'dark' 
-        ? 'rgba(0,0,0,0.9)' 
-        : 'rgba(255,255,255,0.9)'} 0%, transparent 100%)`,
-  ...(direction === 'left' ? { left: 0 } : { right: 0 })
-}));
 
 // Helper function to determine if a color is dark (for contrast)
 const isDarkColor = (hexColor) => {
@@ -505,6 +519,9 @@ const CanvasCollagePreview = ({
     return storedColor || '#ffffff';
   });
 
+  // Check if there's a saved custom color that's different from preset colors
+  const hasSavedCustomTextColor = savedCustomTextColor && !TEXT_COLOR_PRESETS.some(c => c.color === savedCustomTextColor);
+
   // Get layout configuration
   const layoutConfig = useMemo(() => {
     return selectedTemplate ? createLayoutConfig(selectedTemplate, panelCount) : null;
@@ -513,30 +530,30 @@ const CanvasCollagePreview = ({
   // Calculate border pixels
   const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
 
-  // Text color scroll handling functions
+  // Text color scroll handling functions - using the same pattern as CollageSettingsStep.js
   const scrollTextColorLeft = () => {
     if (textColorScrollerRef.current) {
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const scrollDistance = isMobileDevice 
-        ? Math.min(textColorScrollerRef.current.clientWidth * 0.6, 150) // Smaller scroll distance for mobile
-        : Math.min(textColorScrollerRef.current.clientWidth * 0.5, 200);
+      // Calculate a consistent scroll distance based on container width
+      const scrollDistance = Math.min(textColorScrollerRef.current.clientWidth * 0.5, 200);
       textColorScrollerRef.current.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
+      
+      // Update scroll indicators after scrolling
       setTimeout(() => {
         handleTextColorScroll();
-      }, 300);
+      }, 350); // Slightly longer timeout to ensure scroll completes
     }
   };
 
   const scrollTextColorRight = () => {
     if (textColorScrollerRef.current) {
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const scrollDistance = isMobileDevice 
-        ? Math.min(textColorScrollerRef.current.clientWidth * 0.6, 150) // Smaller scroll distance for mobile
-        : Math.min(textColorScrollerRef.current.clientWidth * 0.5, 200);
+      // Calculate a consistent scroll distance based on container width
+      const scrollDistance = Math.min(textColorScrollerRef.current.clientWidth * 0.5, 200);
       textColorScrollerRef.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
+      
+      // Update scroll indicators after scrolling
       setTimeout(() => {
         handleTextColorScroll();
-      }, 300);
+      }, 350); // Slightly longer timeout to ensure scroll completes
     }
   };
 
@@ -544,8 +561,8 @@ const CanvasCollagePreview = ({
     if (!textColorScrollerRef.current) return;
     
     const { scrollLeft, scrollWidth, clientWidth } = textColorScrollerRef.current;
-    const hasLeft = scrollLeft > 5;
-    const hasRight = scrollLeft < scrollWidth - clientWidth - 5;
+    const hasLeft = scrollLeft > 5; // Use a small threshold to detect left scrollability
+    const hasRight = scrollLeft < scrollWidth - clientWidth - 5; // Use a small threshold to detect right scrollability
     
     setTextColorLeftScroll(hasLeft);
     setTextColorRightScroll(hasRight);
@@ -1405,6 +1422,18 @@ const CanvasCollagePreview = ({
       window.removeEventListener('resize', handleResize);
     };
   }, [textEditingPanel, activeTextSetting]);
+
+  // Effect to update localStorage when custom text color changes
+  useEffect(() => {
+    // Check if current text color is a custom color (not in the preset colors)
+    const currentTextColor = panelTexts[textEditingPanel]?.color || lastUsedTextSettings.color || '#ffffff';
+    const isCustomTextColor = !TEXT_COLOR_PRESETS.some(c => c.color === currentTextColor);
+    
+    if (isCustomTextColor && textEditingPanel) {
+      setSavedCustomTextColor(currentTextColor);
+      localStorage.setItem('memeTextCustomColor', currentTextColor);
+    }
+  }, [panelTexts, lastUsedTextSettings, textEditingPanel]);
 
   // Focus text field when caption editor opens
   useEffect(() => {
@@ -2887,53 +2916,129 @@ const CanvasCollagePreview = ({
                           {/* Text Color */}
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <FormatColorText sx={{ color: '#ffffff', mr: 1 }} />
-                            <Box sx={{ flex: 1 }}>
-                              {/* Color swatches */}
-                              <Box sx={{ 
-                                display: 'flex', 
-                                gap: 1, 
-                                flexWrap: 'wrap',
-                                alignItems: 'center'
-                              }}>
-                                {/* Custom color picker */}
-                                <Box sx={{ position: 'relative' }}>
-                                  <ColorSwatch
-                                    onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
-                                    selected={false}
-                                    sx={{ 
-                                      backgroundColor: savedCustomTextColor,
-                                      position: 'relative',
-                                    }}
-                                  >
-                                    <Colorize sx={{ color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
-                                  </ColorSwatch>
-                                  <input
-                                    type="color"
-                                    value={savedCustomTextColor}
-                                    onChange={handleCustomTextColorChange}
-                                    ref={textColorPickerRef}
-                                    style={{ 
-                                      position: 'absolute',
-                                      opacity: 0,
-                                      width: '100%',
-                                      height: '100%',
-                                      cursor: 'pointer',
-                                      top: 0,
-                                      left: 0,
-                                    }}
-                                  />
-                                </Box>
+                            <Box sx={{ flex: 1, position: 'relative' }}>
+                              <ScrollButton 
+                                direction="left" 
+                                onClick={scrollTextColorLeft}
+                                size="small"
+                                aria-label="Scroll left"
+                                sx={{ 
+                                  display: 'flex',
+                                  visibility: textColorLeftScroll ? 'visible' : 'hidden',
+                                  opacity: textColorLeftScroll ? 1 : 0,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                }}
+                              >
+                                <ChevronLeft fontSize="small" />
+                              </ScrollButton>
+                              
+                              <ScrollButton 
+                                direction="right" 
+                                onClick={scrollTextColorRight}
+                                size="small"
+                                aria-label="Scroll right"
+                                sx={{ 
+                                  display: 'flex',
+                                  visibility: textColorRightScroll ? 'visible' : 'hidden',
+                                  opacity: textColorRightScroll ? 1 : 0,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                }}
+                              >
+                                <ChevronRight fontSize="small" />
+                              </ScrollButton>
+
+                              <HorizontalScroller 
+                                ref={textColorScrollerRef}
+                                onScroll={handleTextColorScroll}
+                                sx={{ 
+                                  pt: 0, 
+                                  mt: 0, 
+                                  pb: 0, 
+                                  pr: 2,
+                                  minHeight: 50,
+                                  gap: theme.spacing(1),
+                                  maxWidth: '300px', // Force constraint to ensure scrolling
+                                  width: '300px', // Fixed width
+                                }}
+                              >
+                                {/* Custom color picker - as first option, always using saved custom color */}
+                                <Tooltip title="Pick Custom Color" arrow>
+                                  <Box sx={{ 
+                                    position: 'relative', 
+                                    display: 'flex', 
+                                    alignItems: 'center',
+                                    height: '60%' // Match the height of the color swatches
+                                  }}>
+                                    <ColorSwatch
+                                      onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
+                                      selected={false} // Never show this as selected
+                                      sx={{ 
+                                        position: 'relative',
+                                        flexShrink: 0, // Prevent shrinking for scrolling
+                                        // Always use the saved custom color from localStorage as background
+                                        backgroundColor: savedCustomTextColor,
+                                        // Add subtle checkerboard pattern for the color picker
+                                        backgroundImage: 'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                                        backgroundSize: '8px 8px',
+                                        backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                                      }}
+                                    >
+                                      <Colorize fontSize="small" sx={{ color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
+                                    </ColorSwatch>
+                                    <input
+                                      type="color"
+                                      value={savedCustomTextColor}
+                                      onChange={handleCustomTextColorChange}
+                                      ref={textColorPickerRef}
+                                      style={{ 
+                                        position: 'absolute',
+                                        opacity: 0,
+                                        width: '100%',
+                                        height: '100%',
+                                        cursor: 'pointer'
+                                      }}
+                                    />
+                                  </Box>
+                                </Tooltip>
+                                
+                                {/* Show the saved custom color as second option if it exists and is different from presets */}
+                                {hasSavedCustomTextColor && (
+                                  <Tooltip title="Custom Color" arrow>
+                                    <ColorSwatch
+                                      onClick={() => handleTextChange(panelId, 'color', savedCustomTextColor)}
+                                      selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === savedCustomTextColor}
+                                      sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
+                                    />
+                                  </Tooltip>
+                                )}
                                 
                                 {/* Preset colors */}
                                 {TEXT_COLOR_PRESETS.map((colorOption) => (
-                                  <ColorSwatch
-                                    key={colorOption.color}
-                                    onClick={() => handleTextChange(panelId, 'color', colorOption.color)}
-                                    selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
-                                    sx={{ backgroundColor: colorOption.color }}
-                                  />
+                                  <Tooltip key={colorOption.color} title={colorOption.name} arrow>
+                                    <ColorSwatch
+                                      onClick={() => handleTextChange(panelId, 'color', colorOption.color)}
+                                      selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
+                                      sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
+                                    />
+                                  </Tooltip>
                                 ))}
-                              </Box>
+                                
+                                {/* Spacer to ensure last items can be centered when scrolled fully */}
+                                <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+                              </HorizontalScroller>
+                              
+                              {/* Visual indicators for scrolling */}
+                              <ScrollIndicator 
+                                direction="left" 
+                                isVisible={textColorLeftScroll}
+                              />
+                              
+                              <ScrollIndicator 
+                                direction="right" 
+                                isVisible={textColorRightScroll}
+                              />
                             </Box>
                           </Box>
                         </Box>
