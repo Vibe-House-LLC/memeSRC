@@ -2879,6 +2879,7 @@ const CanvasCollagePreview = ({
                                 onChange={(e) => handleTextChange(panelId, 'fontFamily', e.target.value)}
                                 sx={{ 
                                   color: '#ffffff',
+                                  fontFamily: panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial', // Display selected font in its own font
                                   '& .MuiOutlinedInput-notchedOutline': {
                                     borderColor: 'rgba(255, 255, 255, 0.3)',
                                   },
@@ -2905,7 +2906,11 @@ const CanvasCollagePreview = ({
                                 }}
                               >
                                 {fonts.map((font) => (
-                                  <MenuItem key={font} value={font}>
+                                  <MenuItem 
+                                    key={font} 
+                                    value={font}
+                                    sx={{ fontFamily: font }} // Display each font name in its own font
+                                  >
                                     {font}
                                   </MenuItem>
                                 ))}
