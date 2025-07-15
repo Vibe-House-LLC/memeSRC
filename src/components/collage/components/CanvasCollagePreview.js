@@ -3174,32 +3174,6 @@ const CanvasCollagePreview = ({
                       {/* Placement Tab */}
                       {activeTextSetting === 'placement' && (
                         <Box sx={{ mb: 2 }}>
-                          {/* Horizontal Position */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <SwapHoriz sx={{ color: '#ffffff', mr: 1 }} />
-                            <Slider
-                              value={panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}
-                              onChange={(e, value) => {
-                                if (e.type === 'mousedown') {
-                                  return;
-                                }
-                                handleTextChange(panelId, 'textPositionX', value);
-                              }}
-                              min={-100}
-                              max={100}
-                              step={5}
-                              marks={[{ value: 0 }]}
-                              sx={{ 
-                                flex: 1,
-                                color: '#ffffff',
-                                mx: 1,
-                              }}
-                            />
-                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40 }}>
-                              {panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}%
-                            </Typography>
-                          </Box>
-                          
                           {/* Vertical Position */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             <SwapVert sx={{ color: '#ffffff', mr: 1 }} />
@@ -3225,7 +3199,7 @@ const CanvasCollagePreview = ({
                               }}
                               min={0}
                               max={100}
-                              step={1}
+                              step={0.5}
                               marks={[{ value: 5 }]}
                               sx={{ 
                                 flex: 1,
@@ -3244,6 +3218,32 @@ const CanvasCollagePreview = ({
                             </Typography>
                           </Box>
                           
+                          {/* Horizontal Position */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <SwapHoriz sx={{ color: '#ffffff', mr: 1 }} />
+                            <Slider
+                              value={panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}
+                              onChange={(e, value) => {
+                                if (e.type === 'mousedown') {
+                                  return;
+                                }
+                                handleTextChange(panelId, 'textPositionX', value);
+                              }}
+                              min={-100}
+                              max={100}
+                              step={2.5}
+                              marks={[{ value: 0 }]}
+                              sx={{ 
+                                flex: 1,
+                                color: '#ffffff',
+                                mx: 1,
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40 }}>
+                              {panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}%
+                            </Typography>
+                          </Box>
+                          
                           {/* Rotation */}
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <RotateLeft sx={{ color: '#ffffff', mr: 1 }} />
@@ -3257,7 +3257,7 @@ const CanvasCollagePreview = ({
                               }}
                               min={-180}
                               max={180}
-                              step={5}
+                              step={2.5}
                               marks={[{ value: 0 }]}
                               sx={{ 
                                 flex: 1,
