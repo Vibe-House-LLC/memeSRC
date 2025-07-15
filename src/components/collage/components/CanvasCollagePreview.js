@@ -3404,7 +3404,7 @@ const CanvasCollagePreview = ({
             right: 0,
             bottom: 0,
             backgroundColor: 'transparent', // Completely invisible
-            zIndex: 10, // Below panels but above everything else
+            zIndex: 1, // Behind canvas but above page content
             cursor: 'default',
           }}
         />
