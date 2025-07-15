@@ -1751,6 +1751,11 @@ const CanvasCollagePreview = ({
     }
   }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds]);
 
+  // Function to dismiss transform mode for all panels
+  const dismissTransformMode = useCallback(() => {
+    setIsTransformMode({});
+  }, []);
+
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -2406,11 +2411,6 @@ const CanvasCollagePreview = ({
       ...prev,
       [panelId]: !prev[panelId]
     }));
-  }, []);
-
-  // Function to dismiss transform mode for all panels
-  const dismissTransformMode = useCallback(() => {
-    setIsTransformMode({});
   }, []);
 
   // Get final canvas for export
