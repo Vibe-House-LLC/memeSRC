@@ -491,6 +491,7 @@ const CanvasCollagePreview = ({
   const [touchStartScale, setTouchStartScale] = useState(1);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
+  const [activeSlider, setActiveSlider] = useState(null); // Track which slider is being controlled
   const textFieldRefs = useRef({});
   const lastInteractionTime = useRef(0);
   const hoverTimeoutRef = useRef(null);
@@ -1512,6 +1513,81 @@ const CanvasCollagePreview = ({
   const handleResetCancel = useCallback(() => {
     setResetDialogOpen(false);
     setResetDialogData({ type: null, panelId: null, propertyName: null });
+  }, []);
+
+  // Helper function to check if a value matches its default
+  const isValueAtDefault = useCallback((panelId, propertyName) => {
+    const defaultValues = {
+      fontSize: undefined, // fontSize default is calculated, so we check if it's undefined
+      strokeWidth: 2,
+      textPositionX: 0,
+      textPositionY: 0,
+      textRotation: 0
+    };
+
+    const currentValue = panelTexts[panelId]?.[propertyName];
+    
+    if (propertyName === 'fontSize') {
+      // For fontSize, check if it's undefined (using calculated default) or matches lastUsedTextSettings
+      return currentValue === undefined || currentValue === (lastUsedTextSettings.fontSize || 26);
+    }
+    
+    return currentValue === defaultValues[propertyName] || (currentValue === undefined && defaultValues[propertyName] === 0);
+  }, [panelTexts, lastUsedTextSettings]);
+
+  // Helper function to get current value for display
+  const getCurrentValue = useCallback((panelId, propertyName) => {
+    const currentValue = panelTexts[panelId]?.[propertyName];
+    
+    if (propertyName === 'fontSize') {
+      const panelText = panelTexts[panelId] || {};
+      const hasActualText = panelText.content && panelText.content.trim();
+      
+      let baseFontSize;
+      if (hasActualText && !panelText.fontSize) {
+        const panel = panelRects.find(p => p.panelId === panelId);
+        if (panel) {
+          baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+        } else {
+          baseFontSize = lastUsedTextSettings.fontSize || 26;
+        }
+      } else {
+        baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+      }
+      
+      return Math.round(baseFontSize * textScaleFactor);
+    }
+    
+    if (propertyName === 'strokeWidth') {
+      return currentValue || lastUsedTextSettings.strokeWidth || 2;
+    }
+    
+    if (propertyName === 'textPositionX') {
+      return currentValue !== undefined ? currentValue : (lastUsedTextSettings.textPositionX || 0);
+    }
+    
+    if (propertyName === 'textPositionY') {
+      const textPositionY = currentValue !== undefined ? currentValue : (lastUsedTextSettings.textPositionY || 0);
+      if (textPositionY <= 0) {
+        return Math.round(5 + (textPositionY / 100) * 5) + '%';
+      }
+      return Math.round(5 + (textPositionY / 100) * 95) + '%';
+    }
+    
+    if (propertyName === 'textRotation') {
+      return (currentValue !== undefined ? currentValue : (lastUsedTextSettings.textRotation || 0)) + '°';
+    }
+    
+    return currentValue || 0;
+  }, [panelTexts, lastUsedTextSettings, panelRects, calculateOptimalFontSize, textScaleFactor]);
+
+  // Slider interaction handlers
+  const handleSliderMouseDown = useCallback((panelId, propertyName) => {
+    setActiveSlider(`${panelId}-${propertyName}`);
+  }, []);
+
+  const handleSliderMouseUp = useCallback(() => {
+    setActiveSlider(null);
   }, []);
 
   // Redraw canvas when dependencies change
@@ -2955,6 +3031,10 @@ const CanvasCollagePreview = ({
                                 const baseFontSize = value / textScaleFactor;
                                 handleTextChange(panelId, 'fontSize', baseFontSize);
                               }}
+                              onMouseDown={() => handleSliderMouseDown(panelId, 'fontSize')}
+                              onMouseUp={handleSliderMouseUp}
+                              onTouchStart={() => handleSliderMouseDown(panelId, 'fontSize')}
+                              onTouchEnd={handleSliderMouseUp}
                               min={Math.round(8 * textScaleFactor)}
                               max={Math.round(72 * textScaleFactor)}
                               step={1}
@@ -2964,20 +3044,30 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <IconButton
-                              size="small"
-                              onClick={() => handleResetClick('format', panelId, 'fontSize')}
-                              sx={{ 
-                                color: '#ffffff', 
-                                ml: 1,
-                                p: 0.5,
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                }
-                              }}
-                            >
-                              <Restore fontSize="small" />
-                            </IconButton>
+                            {activeSlider === `${panelId}-fontSize` ? (
+                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 30, ml: 1 }}>
+                                {getCurrentValue(panelId, 'fontSize')}
+                              </Typography>
+                            ) : (
+                              <IconButton
+                                size="small"
+                                onClick={() => handleResetClick('format', panelId, 'fontSize')}
+                                disabled={isValueAtDefault(panelId, 'fontSize')}
+                                sx={{ 
+                                  color: '#ffffff', 
+                                  ml: 1,
+                                  p: 0.5,
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                  },
+                                  '&.Mui-disabled': {
+                                    color: 'rgba(255, 255, 255, 0.3)',
+                                  }
+                                }}
+                              >
+                                <Restore fontSize="small" />
+                              </IconButton>
+                            )}
                           </Box>
                           
                           {/* Stroke Width */}
@@ -2995,6 +3085,10 @@ const CanvasCollagePreview = ({
                                 }
                                 handleTextChange(panelId, 'strokeWidth', value);
                               }}
+                              onMouseDown={() => handleSliderMouseDown(panelId, 'strokeWidth')}
+                              onMouseUp={handleSliderMouseUp}
+                              onTouchStart={() => handleSliderMouseDown(panelId, 'strokeWidth')}
+                              onTouchEnd={handleSliderMouseUp}
                               min={0}
                               max={10}
                               step={0.5}
@@ -3004,20 +3098,30 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <IconButton
-                              size="small"
-                              onClick={() => handleResetClick('format', panelId, 'strokeWidth')}
-                              sx={{ 
-                                color: '#ffffff', 
-                                ml: 1,
-                                p: 0.5,
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                }
-                              }}
-                            >
-                              <Restore fontSize="small" />
-                            </IconButton>
+                            {activeSlider === `${panelId}-strokeWidth` ? (
+                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 30, ml: 1 }}>
+                                {getCurrentValue(panelId, 'strokeWidth')}
+                              </Typography>
+                            ) : (
+                              <IconButton
+                                size="small"
+                                onClick={() => handleResetClick('format', panelId, 'strokeWidth')}
+                                disabled={isValueAtDefault(panelId, 'strokeWidth')}
+                                sx={{ 
+                                  color: '#ffffff', 
+                                  ml: 1,
+                                  p: 0.5,
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                  },
+                                  '&.Mui-disabled': {
+                                    color: 'rgba(255, 255, 255, 0.3)',
+                                  }
+                                }}
+                              >
+                                <Restore fontSize="small" />
+                              </IconButton>
+                            )}
                           </Box>
 
                         </Box>
@@ -3302,6 +3406,10 @@ const CanvasCollagePreview = ({
                                 }
                                 handleTextChange(panelId, 'textPositionY', textPositionY);
                               }}
+                              onMouseDown={() => handleSliderMouseDown(panelId, 'textPositionY')}
+                              onMouseUp={handleSliderMouseUp}
+                              onTouchStart={() => handleSliderMouseDown(panelId, 'textPositionY')}
+                              onTouchEnd={handleSliderMouseUp}
                               min={0}
                               max={100}
                               step={1}
@@ -3312,20 +3420,30 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <IconButton
-                              size="small"
-                              onClick={() => handleResetClick('placement', panelId, 'textPositionY')}
-                              sx={{ 
-                                color: '#ffffff', 
-                                ml: 1,
-                                p: 0.5,
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                }
-                              }}
-                            >
-                              <Restore fontSize="small" />
-                            </IconButton>
+                            {activeSlider === `${panelId}-textPositionY` ? (
+                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40, ml: 1 }}>
+                                {getCurrentValue(panelId, 'textPositionY')}
+                              </Typography>
+                            ) : (
+                              <IconButton
+                                size="small"
+                                onClick={() => handleResetClick('placement', panelId, 'textPositionY')}
+                                disabled={isValueAtDefault(panelId, 'textPositionY')}
+                                sx={{ 
+                                  color: '#ffffff', 
+                                  ml: 1,
+                                  p: 0.5,
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                  },
+                                  '&.Mui-disabled': {
+                                    color: 'rgba(255, 255, 255, 0.3)',
+                                  }
+                                }}
+                              >
+                                <Restore fontSize="small" />
+                              </IconButton>
+                            )}
                           </Box>
                           
                           {/* Horizontal Position */}
@@ -3343,6 +3461,10 @@ const CanvasCollagePreview = ({
                                 }
                                 handleTextChange(panelId, 'textPositionX', value);
                               }}
+                              onMouseDown={() => handleSliderMouseDown(panelId, 'textPositionX')}
+                              onMouseUp={handleSliderMouseUp}
+                              onTouchStart={() => handleSliderMouseDown(panelId, 'textPositionX')}
+                              onTouchEnd={handleSliderMouseUp}
                               min={-100}
                               max={100}
                               step={1}
@@ -3353,20 +3475,30 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <IconButton
-                              size="small"
-                              onClick={() => handleResetClick('placement', panelId, 'textPositionX')}
-                              sx={{ 
-                                color: '#ffffff', 
-                                ml: 1,
-                                p: 0.5,
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                }
-                              }}
-                            >
-                              <Restore fontSize="small" />
-                            </IconButton>
+                            {activeSlider === `${panelId}-textPositionX` ? (
+                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40, ml: 1 }}>
+                                {getCurrentValue(panelId, 'textPositionX')}%
+                              </Typography>
+                            ) : (
+                              <IconButton
+                                size="small"
+                                onClick={() => handleResetClick('placement', panelId, 'textPositionX')}
+                                disabled={isValueAtDefault(panelId, 'textPositionX')}
+                                sx={{ 
+                                  color: '#ffffff', 
+                                  ml: 1,
+                                  p: 0.5,
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                  },
+                                  '&.Mui-disabled': {
+                                    color: 'rgba(255, 255, 255, 0.3)',
+                                  }
+                                }}
+                              >
+                                <Restore fontSize="small" />
+                              </IconButton>
+                            )}
                           </Box>
                           
                           {/* Rotation */}
@@ -3384,6 +3516,10 @@ const CanvasCollagePreview = ({
                                 }
                                 handleTextChange(panelId, 'textRotation', value);
                               }}
+                              onMouseDown={() => handleSliderMouseDown(panelId, 'textRotation')}
+                              onMouseUp={handleSliderMouseUp}
+                              onTouchStart={() => handleSliderMouseDown(panelId, 'textRotation')}
+                              onTouchEnd={handleSliderMouseUp}
                               min={-180}
                               max={180}
                               step={1}
@@ -3394,20 +3530,30 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <IconButton
-                              size="small"
-                              onClick={() => handleResetClick('placement', panelId, 'textRotation')}
-                              sx={{ 
-                                color: '#ffffff', 
-                                ml: 1,
-                                p: 0.5,
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                }
-                              }}
-                            >
-                              <Restore fontSize="small" />
-                            </IconButton>
+                            {activeSlider === `${panelId}-textRotation` ? (
+                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40, ml: 1 }}>
+                                {getCurrentValue(panelId, 'textRotation')}
+                              </Typography>
+                            ) : (
+                              <IconButton
+                                size="small"
+                                onClick={() => handleResetClick('placement', panelId, 'textRotation')}
+                                disabled={isValueAtDefault(panelId, 'textRotation')}
+                                sx={{ 
+                                  color: '#ffffff', 
+                                  ml: 1,
+                                  p: 0.5,
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                  },
+                                  '&.Mui-disabled': {
+                                    color: 'rgba(255, 255, 255, 0.3)',
+                                  }
+                                }}
+                              >
+                                <Restore fontSize="small" />
+                              </IconButton>
+                            )}
                           </Box>
                         </Box>
                       )}
