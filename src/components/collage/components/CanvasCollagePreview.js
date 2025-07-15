@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab, Tooltip, useMediaQuery, ToggleButtonGroup, ToggleButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
-import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FormatItalic, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight, Palette, Brush, RotateLeft } from '@mui/icons-material';
+import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FormatItalic, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight, Palette, Brush, RotateLeft, Restore } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import fonts from '../../../utils/fonts';
 
@@ -1487,13 +1487,27 @@ const CanvasCollagePreview = ({
       textRotation: 0
     };
     
-    if (defaultValues.hasOwnProperty(propertyName)) {
-      handleTextChange(panelId, propertyName, defaultValues[propertyName]);
+    if (Object.prototype.hasOwnProperty.call(defaultValues, propertyName)) {
+      if (propertyName === 'fontSize') {
+        // For font size, we need to clear the explicit fontSize and let the system recalculate
+        const currentText = panelTexts[panelId] || {};
+        const hasActualText = currentText.content && currentText.content.trim();
+        
+        if (hasActualText) {
+          // Clear explicit fontSize to let optimal size be recalculated
+          handleTextChange(panelId, propertyName, undefined);
+        } else {
+          // Use default size for empty text
+          handleTextChange(panelId, propertyName, lastUsedTextSettings.fontSize || 26);
+        }
+      } else {
+        handleTextChange(panelId, propertyName, defaultValues[propertyName]);
+      }
     }
     
     setResetDialogOpen(false);
     setResetDialogData({ type: null, panelId: null, propertyName: null });
-  }, [resetDialogData, handleTextChange]);
+  }, [resetDialogData, handleTextChange, panelTexts, lastUsedTextSettings]);
 
   const handleResetCancel = useCallback(() => {
     setResetDialogOpen(false);
@@ -2910,20 +2924,11 @@ const CanvasCollagePreview = ({
                         <Box sx={{ mb: 2 }}>
                           {/* Font Size */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleResetClick('format', panelId, 'fontSize')}
-                              sx={{ 
-                                color: '#ffffff', 
-                                mr: 1,
-                                p: 0.5,
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                }
-                              }}
-                            >
-                              <FormatSize />
-                            </IconButton>
+                            <Tooltip title="Font Size" placement="left">
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <FormatSize sx={{ color: '#ffffff', mr: 1 }} />
+                              </Box>
+                            </Tooltip>
                             <Slider
                               value={(() => {
                                 const panelText = panelTexts[panelId] || {};
@@ -2959,44 +2964,29 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 30 }}>
-                              {(() => {
-                                const panelText = panelTexts[panelId] || {};
-                                const hasActualText = panelText.content && panelText.content.trim();
-                                
-                                let baseFontSize;
-                                if (hasActualText && !panelText.fontSize) {
-                                  const panel = panelRects.find(p => p.panelId === panelId);
-                                  if (panel) {
-                                    baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
-                                  } else {
-                                    baseFontSize = lastUsedTextSettings.fontSize || 26;
-                                  }
-                                } else {
-                                  baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
-                                }
-                                
-                                return Math.round(baseFontSize * textScaleFactor);
-                              })()}
-                            </Typography>
-                          </Box>
-                          
-                          {/* Stroke Width */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             <IconButton
                               size="small"
-                              onClick={() => handleResetClick('format', panelId, 'strokeWidth')}
+                              onClick={() => handleResetClick('format', panelId, 'fontSize')}
                               sx={{ 
                                 color: '#ffffff', 
-                                mr: 1,
+                                ml: 1,
                                 p: 0.5,
                                 '&:hover': {
                                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
                                 }
                               }}
                             >
-                              <BorderOuter />
+                              <Restore fontSize="small" />
                             </IconButton>
+                          </Box>
+                          
+                          {/* Stroke Width */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <Tooltip title="Stroke Width" placement="left">
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <BorderOuter sx={{ color: '#ffffff', mr: 1 }} />
+                              </Box>
+                            </Tooltip>
                             <Slider
                               value={panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
                               onChange={(e, value) => {
@@ -3014,9 +3004,20 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 30 }}>
-                              {panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
-                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleResetClick('format', panelId, 'strokeWidth')}
+                              sx={{ 
+                                color: '#ffffff', 
+                                ml: 1,
+                                p: 0.5,
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                }
+                              }}
+                            >
+                              <Restore fontSize="small" />
+                            </IconButton>
                           </Box>
 
                         </Box>
@@ -3276,20 +3277,11 @@ const CanvasCollagePreview = ({
                         <Box sx={{ mb: 2 }}>
                           {/* Vertical Position */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleResetClick('placement', panelId, 'textPositionY')}
-                              sx={{ 
-                                color: '#ffffff', 
-                                mr: 1,
-                                p: 0.5,
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                }
-                              }}
-                            >
-                              <SwapVert />
-                            </IconButton>
+                            <Tooltip title="Vertical Position" placement="left">
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <SwapVert sx={{ color: '#ffffff', mr: 1 }} />
+                              </Box>
+                            </Tooltip>
                             <Slider
                               value={(() => {
                                 const textPositionY = panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0);
@@ -3320,33 +3312,29 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40 }}>
-                              {(() => {
-                                const textPositionY = panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0);
-                                if (textPositionY <= 0) {
-                                  return Math.round(5 + (textPositionY / 100) * 5);
-                                }
-                                return Math.round(5 + (textPositionY / 100) * 95);
-                              })()}%
-                            </Typography>
-                          </Box>
-                          
-                          {/* Horizontal Position */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             <IconButton
                               size="small"
-                              onClick={() => handleResetClick('placement', panelId, 'textPositionX')}
+                              onClick={() => handleResetClick('placement', panelId, 'textPositionY')}
                               sx={{ 
                                 color: '#ffffff', 
-                                mr: 1,
+                                ml: 1,
                                 p: 0.5,
                                 '&:hover': {
                                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
                                 }
                               }}
                             >
-                              <SwapHoriz />
+                              <Restore fontSize="small" />
                             </IconButton>
+                          </Box>
+                          
+                          {/* Horizontal Position */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <Tooltip title="Horizontal Position" placement="left">
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <SwapHoriz sx={{ color: '#ffffff', mr: 1 }} />
+                              </Box>
+                            </Tooltip>
                             <Slider
                               value={panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}
                               onChange={(e, value) => {
@@ -3365,27 +3353,29 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40 }}>
-                              {panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}%
-                            </Typography>
-                          </Box>
-                          
-                          {/* Rotation */}
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <IconButton
                               size="small"
-                              onClick={() => handleResetClick('placement', panelId, 'textRotation')}
+                              onClick={() => handleResetClick('placement', panelId, 'textPositionX')}
                               sx={{ 
                                 color: '#ffffff', 
-                                mr: 1,
+                                ml: 1,
                                 p: 0.5,
                                 '&:hover': {
                                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
                                 }
                               }}
                             >
-                              <RotateLeft />
+                              <Restore fontSize="small" />
                             </IconButton>
+                          </Box>
+                          
+                          {/* Rotation */}
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Tooltip title="Rotation" placement="left">
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <RotateLeft sx={{ color: '#ffffff', mr: 1 }} />
+                              </Box>
+                            </Tooltip>
                             <Slider
                               value={panelTexts[panelId]?.textRotation !== undefined ? panelTexts[panelId].textRotation : (lastUsedTextSettings.textRotation || 0)}
                               onChange={(e, value) => {
@@ -3404,9 +3394,20 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40 }}>
-                              {panelTexts[panelId]?.textRotation !== undefined ? panelTexts[panelId].textRotation : (lastUsedTextSettings.textRotation || 0)}°
-                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleResetClick('placement', panelId, 'textRotation')}
+                              sx={{ 
+                                color: '#ffffff', 
+                                ml: 1,
+                                p: 0.5,
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                }
+                              }}
+                            >
+                              <Restore fontSize="small" />
+                            </IconButton>
                           </Box>
                         </Box>
                       )}
