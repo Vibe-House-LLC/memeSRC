@@ -1479,31 +1479,21 @@ const CanvasCollagePreview = ({
   const handleResetConfirm = useCallback(() => {
     const { type, panelId, propertyName } = resetDialogData;
     
-    // Define default values for each property
-    const defaultValues = {
-      fontSize: 26,
-      strokeWidth: 2,
-      textPositionX: 0,
-      textPositionY: 0,
-      textRotation: 0
-    };
-    
-    if (Object.prototype.hasOwnProperty.call(defaultValues, propertyName)) {
-      if (propertyName === 'fontSize') {
-        // For font size, we need to clear the explicit fontSize and let the system recalculate
-        const currentText = panelTexts[panelId] || {};
-        const hasActualText = currentText.content && currentText.content.trim();
-        
-        if (hasActualText) {
-          // Clear explicit fontSize to let optimal size be recalculated
-          handleTextChange(panelId, propertyName, undefined);
-        } else {
-          // Use default size for empty text
-          handleTextChange(panelId, propertyName, lastUsedTextSettings.fontSize || 26);
-        }
+    if (propertyName === 'fontSize') {
+      // For font size, we need to clear the explicit fontSize and let the system recalculate
+      const currentText = panelTexts[panelId] || {};
+      const hasActualText = currentText.content && currentText.content.trim();
+      
+      if (hasActualText) {
+        // Clear explicit fontSize to let optimal size be recalculated
+        handleTextChange(panelId, propertyName, undefined);
       } else {
-        handleTextChange(panelId, propertyName, defaultValues[propertyName]);
+        // Use default size for empty text
+        handleTextChange(panelId, propertyName, lastUsedTextSettings.fontSize || 26);
       }
+    } else {
+      // For all other properties, set to undefined to use default fallback logic
+      handleTextChange(panelId, propertyName, undefined);
     }
     
     setResetDialogOpen(false);
@@ -1517,14 +1507,6 @@ const CanvasCollagePreview = ({
 
   // Helper function to check if a value matches its default
   const isValueAtDefault = useCallback((panelId, propertyName) => {
-    const defaultValues = {
-      fontSize: undefined, // fontSize default is calculated, so we check if it's undefined
-      strokeWidth: 2,
-      textPositionX: 0,
-      textPositionY: 0,
-      textRotation: 0
-    };
-
     const currentValue = panelTexts[panelId]?.[propertyName];
     
     if (propertyName === 'fontSize') {
@@ -1532,7 +1514,28 @@ const CanvasCollagePreview = ({
       return currentValue === undefined || currentValue === (lastUsedTextSettings.fontSize || 26);
     }
     
-    return currentValue === defaultValues[propertyName] || (currentValue === undefined && defaultValues[propertyName] === 0);
+    if (propertyName === 'strokeWidth') {
+      // For strokeWidth, use the same logic as the rendering code
+      const defaultStrokeWidth = lastUsedTextSettings.strokeWidth || 2;
+      return currentValue === undefined || currentValue === defaultStrokeWidth;
+    }
+    
+    if (propertyName === 'textPositionX') {
+      const defaultPositionX = lastUsedTextSettings.textPositionX || 0;
+      return currentValue === undefined || currentValue === defaultPositionX;
+    }
+    
+    if (propertyName === 'textPositionY') {
+      const defaultPositionY = lastUsedTextSettings.textPositionY || 0;
+      return currentValue === undefined || currentValue === defaultPositionY;
+    }
+    
+    if (propertyName === 'textRotation') {
+      const defaultRotation = lastUsedTextSettings.textRotation || 0;
+      return currentValue === undefined || currentValue === defaultRotation;
+    }
+    
+    return false;
   }, [panelTexts, lastUsedTextSettings]);
 
   // Helper function to get current value for display
@@ -3001,8 +3004,8 @@ const CanvasCollagePreview = ({
                           {/* Font Size */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             <Tooltip title="Font Size" placement="left">
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <FormatSize sx={{ color: '#ffffff', mr: 1 }} />
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                                <FormatSize sx={{ color: '#ffffff' }} />
                               </Box>
                             </Tooltip>
                             <Slider
@@ -3044,37 +3047,38 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            {activeSlider === `${panelId}-fontSize` ? (
-                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 30, ml: 1 }}>
-                                {getCurrentValue(panelId, 'fontSize')}
-                              </Typography>
-                            ) : (
-                              <IconButton
-                                size="small"
-                                onClick={() => handleResetClick('format', panelId, 'fontSize')}
-                                disabled={isValueAtDefault(panelId, 'fontSize')}
-                                sx={{ 
-                                  color: '#ffffff', 
-                                  ml: 1,
-                                  p: 0.5,
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                  },
-                                  '&.Mui-disabled': {
-                                    color: 'rgba(255, 255, 255, 0.3)',
-                                  }
-                                }}
-                              >
-                                <Restore fontSize="small" />
-                              </IconButton>
-                            )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                              {activeSlider === `${panelId}-fontSize` ? (
+                                <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
+                                  {getCurrentValue(panelId, 'fontSize')}
+                                </Typography>
+                              ) : (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleResetClick('format', panelId, 'fontSize')}
+                                  disabled={isValueAtDefault(panelId, 'fontSize')}
+                                  sx={{ 
+                                    color: '#ffffff', 
+                                    p: 0.5,
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    },
+                                    '&.Mui-disabled': {
+                                      color: 'rgba(255, 255, 255, 0.3)',
+                                    }
+                                  }}
+                                >
+                                  <Restore fontSize="small" />
+                                </IconButton>
+                              )}
+                            </Box>
                           </Box>
                           
                           {/* Stroke Width */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             <Tooltip title="Stroke Width" placement="left">
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <BorderOuter sx={{ color: '#ffffff', mr: 1 }} />
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                                <BorderOuter sx={{ color: '#ffffff' }} />
                               </Box>
                             </Tooltip>
                             <Slider
@@ -3098,30 +3102,31 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            {activeSlider === `${panelId}-strokeWidth` ? (
-                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 30, ml: 1 }}>
-                                {getCurrentValue(panelId, 'strokeWidth')}
-                              </Typography>
-                            ) : (
-                              <IconButton
-                                size="small"
-                                onClick={() => handleResetClick('format', panelId, 'strokeWidth')}
-                                disabled={isValueAtDefault(panelId, 'strokeWidth')}
-                                sx={{ 
-                                  color: '#ffffff', 
-                                  ml: 1,
-                                  p: 0.5,
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                  },
-                                  '&.Mui-disabled': {
-                                    color: 'rgba(255, 255, 255, 0.3)',
-                                  }
-                                }}
-                              >
-                                <Restore fontSize="small" />
-                              </IconButton>
-                            )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                              {activeSlider === `${panelId}-strokeWidth` ? (
+                                <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
+                                  {getCurrentValue(panelId, 'strokeWidth')}
+                                </Typography>
+                              ) : (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleResetClick('format', panelId, 'strokeWidth')}
+                                  disabled={isValueAtDefault(panelId, 'strokeWidth')}
+                                  sx={{ 
+                                    color: '#ffffff', 
+                                    p: 0.5,
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    },
+                                    '&.Mui-disabled': {
+                                      color: 'rgba(255, 255, 255, 0.3)',
+                                    }
+                                  }}
+                                >
+                                  <Restore fontSize="small" />
+                                </IconButton>
+                              )}
+                            </Box>
                           </Box>
 
                         </Box>
@@ -3382,8 +3387,8 @@ const CanvasCollagePreview = ({
                           {/* Vertical Position */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             <Tooltip title="Vertical Position" placement="left">
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <SwapVert sx={{ color: '#ffffff', mr: 1 }} />
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                                <SwapVert sx={{ color: '#ffffff' }} />
                               </Box>
                             </Tooltip>
                             <Slider
@@ -3420,37 +3425,38 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            {activeSlider === `${panelId}-textPositionY` ? (
-                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40, ml: 1 }}>
-                                {getCurrentValue(panelId, 'textPositionY')}
-                              </Typography>
-                            ) : (
-                              <IconButton
-                                size="small"
-                                onClick={() => handleResetClick('placement', panelId, 'textPositionY')}
-                                disabled={isValueAtDefault(panelId, 'textPositionY')}
-                                sx={{ 
-                                  color: '#ffffff', 
-                                  ml: 1,
-                                  p: 0.5,
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                  },
-                                  '&.Mui-disabled': {
-                                    color: 'rgba(255, 255, 255, 0.3)',
-                                  }
-                                }}
-                              >
-                                <Restore fontSize="small" />
-                              </IconButton>
-                            )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                              {activeSlider === `${panelId}-textPositionY` ? (
+                                <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
+                                  {getCurrentValue(panelId, 'textPositionY')}
+                                </Typography>
+                              ) : (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleResetClick('placement', panelId, 'textPositionY')}
+                                  disabled={isValueAtDefault(panelId, 'textPositionY')}
+                                  sx={{ 
+                                    color: '#ffffff', 
+                                    p: 0.5,
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    },
+                                    '&.Mui-disabled': {
+                                      color: 'rgba(255, 255, 255, 0.3)',
+                                    }
+                                  }}
+                                >
+                                  <Restore fontSize="small" />
+                                </IconButton>
+                              )}
+                            </Box>
                           </Box>
                           
                           {/* Horizontal Position */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             <Tooltip title="Horizontal Position" placement="left">
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <SwapHoriz sx={{ color: '#ffffff', mr: 1 }} />
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                                <SwapHoriz sx={{ color: '#ffffff' }} />
                               </Box>
                             </Tooltip>
                             <Slider
@@ -3475,37 +3481,38 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            {activeSlider === `${panelId}-textPositionX` ? (
-                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40, ml: 1 }}>
-                                {getCurrentValue(panelId, 'textPositionX')}%
-                              </Typography>
-                            ) : (
-                              <IconButton
-                                size="small"
-                                onClick={() => handleResetClick('placement', panelId, 'textPositionX')}
-                                disabled={isValueAtDefault(panelId, 'textPositionX')}
-                                sx={{ 
-                                  color: '#ffffff', 
-                                  ml: 1,
-                                  p: 0.5,
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                  },
-                                  '&.Mui-disabled': {
-                                    color: 'rgba(255, 255, 255, 0.3)',
-                                  }
-                                }}
-                              >
-                                <Restore fontSize="small" />
-                              </IconButton>
-                            )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                              {activeSlider === `${panelId}-textPositionX` ? (
+                                <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
+                                  {getCurrentValue(panelId, 'textPositionX')}%
+                                </Typography>
+                              ) : (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleResetClick('placement', panelId, 'textPositionX')}
+                                  disabled={isValueAtDefault(panelId, 'textPositionX')}
+                                  sx={{ 
+                                    color: '#ffffff', 
+                                    p: 0.5,
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    },
+                                    '&.Mui-disabled': {
+                                      color: 'rgba(255, 255, 255, 0.3)',
+                                    }
+                                  }}
+                                >
+                                  <Restore fontSize="small" />
+                                </IconButton>
+                              )}
+                            </Box>
                           </Box>
                           
                           {/* Rotation */}
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <Tooltip title="Rotation" placement="left">
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <RotateLeft sx={{ color: '#ffffff', mr: 1 }} />
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                                <RotateLeft sx={{ color: '#ffffff' }} />
                               </Box>
                             </Tooltip>
                             <Slider
@@ -3530,30 +3537,31 @@ const CanvasCollagePreview = ({
                                 mx: 1,
                               }}
                             />
-                            {activeSlider === `${panelId}-textRotation` ? (
-                              <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40, ml: 1 }}>
-                                {getCurrentValue(panelId, 'textRotation')}
-                              </Typography>
-                            ) : (
-                              <IconButton
-                                size="small"
-                                onClick={() => handleResetClick('placement', panelId, 'textRotation')}
-                                disabled={isValueAtDefault(panelId, 'textRotation')}
-                                sx={{ 
-                                  color: '#ffffff', 
-                                  ml: 1,
-                                  p: 0.5,
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                  },
-                                  '&.Mui-disabled': {
-                                    color: 'rgba(255, 255, 255, 0.3)',
-                                  }
-                                }}
-                              >
-                                <Restore fontSize="small" />
-                              </IconButton>
-                            )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                              {activeSlider === `${panelId}-textRotation` ? (
+                                <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
+                                  {getCurrentValue(panelId, 'textRotation')}
+                                </Typography>
+                              ) : (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleResetClick('placement', panelId, 'textRotation')}
+                                  disabled={isValueAtDefault(panelId, 'textRotation')}
+                                  sx={{ 
+                                    color: '#ffffff', 
+                                    p: 0.5,
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    },
+                                    '&.Mui-disabled': {
+                                      color: 'rgba(255, 255, 255, 0.3)',
+                                    }
+                                  }}
+                                >
+                                  <Restore fontSize="small" />
+                                </IconButton>
+                              )}
+                            </Box>
                           </Box>
                         </Box>
                       )}
