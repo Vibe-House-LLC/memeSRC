@@ -1751,6 +1751,11 @@ const CanvasCollagePreview = ({
     }
   }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds]);
 
+  // Function to dismiss transform mode for all panels
+  const dismissTransformMode = useCallback(() => {
+    setIsTransformMode({});
+  }, []);
+
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1801,8 +1806,10 @@ const CanvasCollagePreview = ({
           setSelectedPanel(clickedPanelIndex);
           setIsDragging(true);
           setDragStart({ x, y });
+        } else {
+          // Clicked on a different panel while in transform mode - dismiss transform mode
+          dismissTransformMode();
         }
-        // Ignore clicks on other panels when any panel is in transform mode
         return;
       }
       
@@ -2088,8 +2095,16 @@ const CanvasCollagePreview = ({
             setSelectedPanel(clickedPanelIndex);
             setIsDragging(true);
             setDragStart({ x, y });
+          } else {
+            // Touched on a different panel while in transform mode - store info to dismiss on touch end
+            touchStartInfo.current = {
+              panelId: clickedPanel.panelId,
+              startX: touch.clientX,
+              startY: touch.clientY,
+              startTime: Date.now(),
+              dismissTransformMode: true
+            };
           }
-          // Ignore touches on other panels when any panel is in transform mode
           return;
         }
         
@@ -2111,9 +2126,16 @@ const CanvasCollagePreview = ({
         // When touched outside any panel and caption editor is open, explicitly allow normal scrolling
         // Don't preventDefault - allow normal page scrolling when caption editor is open
       } else if (anyPanelInTransformMode) {
-        // If touched outside panels but transform mode is active, prevent scrolling
+        // If touched outside panels but transform mode is active, store info to dismiss on touch end
         e.preventDefault();
         e.stopPropagation();
+        touchStartInfo.current = {
+          panelId: null,
+          startX: touch.clientX,
+          startY: touch.clientY,
+          startTime: Date.now(),
+          dismissTransformMode: true
+        };
       }
     } else if (touches.length === 2) {
       // Two touches - prepare for pinch zoom
@@ -2362,9 +2384,26 @@ const CanvasCollagePreview = ({
       }
     }
     
+    // Check if this was a tap to dismiss transform mode
+    if (touchStartInfo.current && touchStartInfo.current.dismissTransformMode && e.changedTouches && e.changedTouches[0]) {
+      const touch = e.changedTouches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
+      const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
+      const deltaTime = Date.now() - touchStartInfo.current.startTime;
+      
+      // If the touch didn't move much and was quick, treat it as a tap
+      const maxMovement = 10; // pixels
+      const maxDuration = 500; // milliseconds
+      
+      if (deltaX < maxMovement && deltaY < maxMovement && deltaTime < maxDuration) {
+        // This was a tap on a non-active frame, dismiss transform mode
+        dismissTransformMode();
+      }
+    }
+    
     // Always clear touchStartInfo
     touchStartInfo.current = null;
-  }, [handleTextEdit]);
+  }, [handleTextEdit, dismissTransformMode]);
 
   // Toggle transform mode for a panel
   const toggleTransformMode = useCallback((panelId) => {
@@ -2681,6 +2720,8 @@ const CanvasCollagePreview = ({
             width: '100%',
             height: 'auto',
             border: `1px solid ${theme.palette.divider}`,
+            position: 'relative',
+            zIndex: 2, // Above backdrop to allow interactions
             // Dynamic touch action based on transform mode
             touchAction: anyPanelInTransformMode ? 'none' : 'pan-y pinch-zoom', // Disable all touch gestures when in transform mode
           }}
@@ -3353,6 +3394,23 @@ const CanvasCollagePreview = ({
           />
         );
       })}
+
+      {/* Invisible backdrop for transform mode - captures clicks outside the canvas */}
+      {Object.values(isTransformMode).some(enabled => enabled) && (
+        <Box
+          onClick={dismissTransformMode}
+          sx={{
+            position: 'fixed', // Fixed to cover entire viewport
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'transparent', // Completely invisible
+            zIndex: 1, // Behind canvas but above page content
+            cursor: 'default',
+          }}
+        />
+      )}
 
       {/* Invisible backdrop for text editor - captures clicks outside the editor */}
       {textEditingPanel !== null && (
