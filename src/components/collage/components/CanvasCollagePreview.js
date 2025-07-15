@@ -1441,7 +1441,6 @@ const CanvasCollagePreview = ({
         } else if (typeof value === 'string') {
           // Convert other string numbers to actual numbers
           const numValue = parseInt(value, 10);
-          // Unexpected use of 'isNaN'. Use Number.isNaN instead 
           updatedText[property] = Number.isNaN(numValue) ? 400 : numValue;
         } else {
           // Already a number
@@ -3200,7 +3199,7 @@ const CanvasCollagePreview = ({
                               }}
                               min={0}
                               max={100}
-                              step={0.5}
+                              step={1}
                               marks={[{ value: 5 }]}
                               sx={{ 
                                 flex: 1,
@@ -3232,7 +3231,7 @@ const CanvasCollagePreview = ({
                               }}
                               min={-100}
                               max={100}
-                              step={2.5}
+                              step={1}
                               marks={[{ value: 0 }]}
                               sx={{ 
                                 flex: 1,
@@ -3258,7 +3257,7 @@ const CanvasCollagePreview = ({
                               }}
                               min={-180}
                               max={180}
-                              step={2.5}
+                              step={1}
                               marks={[{ value: 0 }]}
                               sx={{ 
                                 flex: 1,

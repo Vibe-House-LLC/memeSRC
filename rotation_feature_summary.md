@@ -17,8 +17,10 @@ I have successfully added a rotation slider to the subtitle editor settings cont
 ### 3. Updated UI Components
 - Added rotation slider to the "Placement" tab (alongside vertical and horizontal positioning)
 - Used `RotateLeft` icon from Material-UI for better visual representation
-- Slider range: -180° to +180° with 5° increments
+- Slider range: -180° to +180° with 1° increments
 - Shows current rotation value in degrees
+- **Slider Order**: Vertical Position → Horizontal Position → Rotation
+- **Step Values**: All sliders use 1-unit steps (1%, 1%, 1°) for smooth control
 
 ### 4. Updated Text Area Bounds Calculation
 - Modified `getTextAreaBounds` function to calculate correct bounding box for rotated text
