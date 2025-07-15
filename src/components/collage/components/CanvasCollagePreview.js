@@ -2720,6 +2720,8 @@ const CanvasCollagePreview = ({
             width: '100%',
             height: 'auto',
             border: `1px solid ${theme.palette.divider}`,
+            position: 'relative',
+            zIndex: 2, // Above backdrop to allow interactions
             // Dynamic touch action based on transform mode
             touchAction: anyPanelInTransformMode ? 'none' : 'pan-y pinch-zoom', // Disable all touch gestures when in transform mode
           }}
