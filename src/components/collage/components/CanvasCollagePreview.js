@@ -1801,8 +1801,10 @@ const CanvasCollagePreview = ({
           setSelectedPanel(clickedPanelIndex);
           setIsDragging(true);
           setDragStart({ x, y });
+        } else {
+          // Clicked on a different panel while in transform mode - dismiss transform mode
+          dismissTransformMode();
         }
-        // Ignore clicks on other panels when any panel is in transform mode
         return;
       }
       
@@ -2088,8 +2090,16 @@ const CanvasCollagePreview = ({
             setSelectedPanel(clickedPanelIndex);
             setIsDragging(true);
             setDragStart({ x, y });
+          } else {
+            // Touched on a different panel while in transform mode - store info to dismiss on touch end
+            touchStartInfo.current = {
+              panelId: clickedPanel.panelId,
+              startX: touch.clientX,
+              startY: touch.clientY,
+              startTime: Date.now(),
+              dismissTransformMode: true
+            };
           }
-          // Ignore touches on other panels when any panel is in transform mode
           return;
         }
         
@@ -2111,9 +2121,16 @@ const CanvasCollagePreview = ({
         // When touched outside any panel and caption editor is open, explicitly allow normal scrolling
         // Don't preventDefault - allow normal page scrolling when caption editor is open
       } else if (anyPanelInTransformMode) {
-        // If touched outside panels but transform mode is active, prevent scrolling
+        // If touched outside panels but transform mode is active, store info to dismiss on touch end
         e.preventDefault();
         e.stopPropagation();
+        touchStartInfo.current = {
+          panelId: null,
+          startX: touch.clientX,
+          startY: touch.clientY,
+          startTime: Date.now(),
+          dismissTransformMode: true
+        };
       }
     } else if (touches.length === 2) {
       // Two touches - prepare for pinch zoom
@@ -2362,9 +2379,26 @@ const CanvasCollagePreview = ({
       }
     }
     
+    // Check if this was a tap to dismiss transform mode
+    if (touchStartInfo.current && touchStartInfo.current.dismissTransformMode && e.changedTouches && e.changedTouches[0]) {
+      const touch = e.changedTouches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
+      const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
+      const deltaTime = Date.now() - touchStartInfo.current.startTime;
+      
+      // If the touch didn't move much and was quick, treat it as a tap
+      const maxMovement = 10; // pixels
+      const maxDuration = 500; // milliseconds
+      
+      if (deltaX < maxMovement && deltaY < maxMovement && deltaTime < maxDuration) {
+        // This was a tap on a non-active frame, dismiss transform mode
+        dismissTransformMode();
+      }
+    }
+    
     // Always clear touchStartInfo
     touchStartInfo.current = null;
-  }, [handleTextEdit]);
+  }, [handleTextEdit, dismissTransformMode]);
 
   // Toggle transform mode for a panel
   const toggleTransformMode = useCallback((panelId) => {
@@ -2372,6 +2406,11 @@ const CanvasCollagePreview = ({
       ...prev,
       [panelId]: !prev[panelId]
     }));
+  }, []);
+
+  // Function to dismiss transform mode for all panels
+  const dismissTransformMode = useCallback(() => {
+    setIsTransformMode({});
   }, []);
 
   // Get final canvas for export
@@ -3353,6 +3392,23 @@ const CanvasCollagePreview = ({
           />
         );
       })}
+
+      {/* Invisible backdrop for transform mode - captures clicks outside the canvas */}
+      {Object.values(isTransformMode).some(enabled => enabled) && (
+        <Box
+          onClick={dismissTransformMode}
+          sx={{
+            position: 'fixed', // Fixed to cover entire viewport
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'transparent', // Completely invisible
+            zIndex: 10, // Below panels but above everything else
+            cursor: 'default',
+          }}
+        />
+      )}
 
       {/* Invisible backdrop for text editor - captures clicks outside the editor */}
       {textEditingPanel !== null && (
