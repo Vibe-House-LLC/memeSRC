@@ -1572,13 +1572,13 @@ const CanvasCollagePreview = ({
     if (propertyName === 'textPositionY') {
       const textPositionY = currentValue !== undefined ? currentValue : (lastUsedTextSettings.textPositionY || 0);
       if (textPositionY <= 0) {
-        return Math.round(5 + (textPositionY / 100) * 5) + '%';
+        return `${Math.round(5 + (textPositionY / 100) * 5)}%`;
       }
-      return Math.round(5 + (textPositionY / 100) * 95) + '%';
+      return `${Math.round(5 + (textPositionY / 100) * 95)}%`;
     }
     
     if (propertyName === 'textRotation') {
-      return (currentValue !== undefined ? currentValue : (lastUsedTextSettings.textRotation || 0)) + '°';
+      return `${currentValue !== undefined ? currentValue : (lastUsedTextSettings.textRotation || 0)}°`;
     }
     
     return currentValue || 0;
