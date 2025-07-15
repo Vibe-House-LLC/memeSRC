@@ -1441,7 +1441,8 @@ const CanvasCollagePreview = ({
         } else if (typeof value === 'string') {
           // Convert other string numbers to actual numbers
           const numValue = parseInt(value, 10);
-          updatedText[property] = isNaN(numValue) ? 400 : numValue;
+          // Unexpected use of 'isNaN'. Use Number.isNaN instead 
+          updatedText[property] = Number.isNaN(numValue) ? 400 : numValue;
         } else {
           // Already a number
           updatedText[property] = value;
