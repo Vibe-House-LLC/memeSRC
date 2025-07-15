@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab, Tooltip, useMediaQuery, ToggleButtonGroup, ToggleButton } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
-import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FormatItalic, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight, Palette, Brush } from '@mui/icons-material';
+import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FormatItalic, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight, Palette, Brush, RotateLeft } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import fonts from '../../../utils/fonts';
 
@@ -848,6 +848,7 @@ const CanvasCollagePreview = ({
           const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
           const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
           const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
+          const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
           
           // Apply different opacity for placeholder vs actual text
           let textColor;
@@ -1020,6 +1021,17 @@ const CanvasCollagePreview = ({
           // Calculate where the first line should start (top of text block)
           const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
           
+          // Apply rotation transformation if needed
+          if (textRotation !== 0) {
+            ctx.save();
+            // Translate to the center of the text block
+            const textCenterX = textX;
+            const textCenterY = textAnchorY - totalTextHeight / 2;
+            ctx.translate(textCenterX, textCenterY);
+            ctx.rotate((textRotation * Math.PI) / 180);
+            ctx.translate(-textCenterX, -textCenterY);
+          }
+          
           wrappedLines.forEach((line, lineIndex) => {
             const lineY = startY + lineIndex * lineHeight;
             
@@ -1031,6 +1043,11 @@ const CanvasCollagePreview = ({
             // Then draw the fill text on top
             ctx.fillText(line, textX, lineY);
           });
+          
+          // Restore transformation if rotation was applied
+          if (textRotation !== 0) {
+            ctx.restore();
+          }
           
           ctx.restore();
         }
@@ -1067,6 +1084,7 @@ const CanvasCollagePreview = ({
     const lineHeight = scaledFontSize * 1.2;
     const textPositionX = panelText?.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
     const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
+    const textRotation = panelText?.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
     
     // Determine display text (actual text or placeholder)
     const hasActualText = panelText?.content && panelText.content.trim();
@@ -1195,12 +1213,48 @@ const CanvasCollagePreview = ({
     const textBlockY = textAnchorY - actualTextHeight;
     
     // Calculate activation area bounds around the actual text block position
-    const activationAreaHeight = actualTextHeight + (activationPadding * 2);
-    const activationAreaWidth = actualTextWidth + (activationPadding * 2);
+    let activationAreaHeight = actualTextHeight + (activationPadding * 2);
+    let activationAreaWidth = actualTextWidth + (activationPadding * 2);
+    let activationAreaX = textX - (activationAreaWidth / 2);
+    let activationAreaY = textBlockY - activationPadding;
     
-    // Position activation area around the actual text block
-    const activationAreaX = textX - (activationAreaWidth / 2);
-    const activationAreaY = textBlockY - activationPadding;
+    // If rotation is applied, calculate rotated bounds
+    if (textRotation !== 0) {
+      const textCenterX = textX;
+      const textCenterY = textAnchorY - actualTextHeight / 2;
+      const radians = (textRotation * Math.PI) / 180;
+      const cos = Math.cos(radians);
+      const sin = Math.sin(radians);
+      
+      // Calculate corners of unrotated text box
+      const corners = [
+        { x: activationAreaX, y: activationAreaY },
+        { x: activationAreaX + activationAreaWidth, y: activationAreaY },
+        { x: activationAreaX + activationAreaWidth, y: activationAreaY + activationAreaHeight },
+        { x: activationAreaX, y: activationAreaY + activationAreaHeight }
+      ];
+      
+      // Rotate corners around text center
+      const rotatedCorners = corners.map(corner => {
+        const dx = corner.x - textCenterX;
+        const dy = corner.y - textCenterY;
+        return {
+          x: textCenterX + dx * cos - dy * sin,
+          y: textCenterY + dx * sin + dy * cos
+        };
+      });
+      
+      // Calculate bounding box of rotated text
+      const minX = Math.min(...rotatedCorners.map(c => c.x));
+      const maxX = Math.max(...rotatedCorners.map(c => c.x));
+      const minY = Math.min(...rotatedCorners.map(c => c.y));
+      const maxY = Math.max(...rotatedCorners.map(c => c.y));
+      
+      activationAreaX = minX;
+      activationAreaY = minY;
+      activationAreaWidth = maxX - minX;
+      activationAreaHeight = maxY - minY;
+    }
     
     return {
       x: Math.max(panel.x, Math.min(panel.x + panel.width - activationAreaWidth, activationAreaX)), // Keep within panel bounds
@@ -2448,6 +2502,7 @@ const CanvasCollagePreview = ({
             const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
             const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
             const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
+            const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
             
             exportCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
             exportCtx.fillStyle = textColor;
@@ -2510,6 +2565,17 @@ const CanvasCollagePreview = ({
             // Calculate where the first line should start (top of text block)
             const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
             
+            // Apply rotation transformation if needed
+            if (textRotation !== 0) {
+              exportCtx.save();
+              // Translate to the center of the text block
+              const textCenterX = textX;
+              const textCenterY = textAnchorY - totalTextHeight / 2;
+              exportCtx.translate(textCenterX, textCenterY);
+              exportCtx.rotate((textRotation * Math.PI) / 180);
+              exportCtx.translate(-textCenterX, -textCenterY);
+            }
+            
             lines.forEach((line, lineIndex) => {
               const lineY = startY + lineIndex * lineHeight;
               if (strokeWidth > 0) {
@@ -2517,6 +2583,11 @@ const CanvasCollagePreview = ({
               }
               exportCtx.fillText(line, textX, lineY);
             });
+            
+            // Restore transformation if rotation was applied
+            if (textRotation !== 0) {
+              exportCtx.restore();
+            }
             
             exportCtx.restore();
           }
@@ -3130,7 +3201,7 @@ const CanvasCollagePreview = ({
                           </Box>
                           
                           {/* Vertical Position */}
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                             <SwapVert sx={{ color: '#ffffff', mr: 1 }} />
                             <Slider
                               value={(() => {
@@ -3170,6 +3241,32 @@ const CanvasCollagePreview = ({
                                 }
                                 return Math.round(5 + (textPositionY / 100) * 95);
                               })()}%
+                            </Typography>
+                          </Box>
+                          
+                          {/* Rotation */}
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <RotateLeft sx={{ color: '#ffffff', mr: 1 }} />
+                            <Slider
+                              value={panelTexts[panelId]?.textRotation !== undefined ? panelTexts[panelId].textRotation : (lastUsedTextSettings.textRotation || 0)}
+                              onChange={(e, value) => {
+                                if (e.type === 'mousedown') {
+                                  return;
+                                }
+                                handleTextChange(panelId, 'textRotation', value);
+                              }}
+                              min={-180}
+                              max={180}
+                              step={5}
+                              marks={[{ value: 0 }]}
+                              sx={{ 
+                                flex: 1,
+                                color: '#ffffff',
+                                mx: 1,
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#ffffff', minWidth: 40 }}>
+                              {panelTexts[panelId]?.textRotation !== undefined ? panelTexts[panelId].textRotation : (lastUsedTextSettings.textRotation || 0)}°
                             </Typography>
                           </Box>
                         </Box>
