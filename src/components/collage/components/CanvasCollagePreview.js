@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab, Tooltip, useMediaQuery, ToggleButtonGroup, ToggleButton } from "@mui/material";
+import { Box, IconButton, Typography, TextField, Slider, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab, Tooltip, useMediaQuery, ToggleButtonGroup, ToggleButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
 import { Add, OpenWith, Check, Edit, FormatColorText, Close, FormatSize, BorderOuter, FormatBold, FormatItalic, FontDownload, ControlCamera, SwapHoriz, SwapVert, Colorize, ChevronLeft, ChevronRight, Palette, Brush, RotateLeft } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
@@ -489,6 +489,8 @@ const CanvasCollagePreview = ({
   const [activeTextSetting, setActiveTextSetting] = useState(null);
   const [touchStartDistance, setTouchStartDistance] = useState(null);
   const [touchStartScale, setTouchStartScale] = useState(1);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
   const textFieldRefs = useRef({});
   const lastInteractionTime = useRef(0);
   const hoverTimeoutRef = useRef(null);
@@ -1466,6 +1468,37 @@ const CanvasCollagePreview = ({
       updatePanelText(panelId, updatedText);
     }
   }, [panelTexts, updatePanelText, panelRects, calculateOptimalFontSize]);
+
+  // Reset dialog handlers
+  const handleResetClick = useCallback((type, panelId, propertyName) => {
+    setResetDialogData({ type, panelId, propertyName });
+    setResetDialogOpen(true);
+  }, []);
+
+  const handleResetConfirm = useCallback(() => {
+    const { type, panelId, propertyName } = resetDialogData;
+    
+    // Define default values for each property
+    const defaultValues = {
+      fontSize: 26,
+      strokeWidth: 2,
+      textPositionX: 0,
+      textPositionY: 0,
+      textRotation: 0
+    };
+    
+    if (defaultValues.hasOwnProperty(propertyName)) {
+      handleTextChange(panelId, propertyName, defaultValues[propertyName]);
+    }
+    
+    setResetDialogOpen(false);
+    setResetDialogData({ type: null, panelId: null, propertyName: null });
+  }, [resetDialogData, handleTextChange]);
+
+  const handleResetCancel = useCallback(() => {
+    setResetDialogOpen(false);
+    setResetDialogData({ type: null, panelId: null, propertyName: null });
+  }, []);
 
   // Redraw canvas when dependencies change
   useEffect(() => {
@@ -2877,7 +2910,20 @@ const CanvasCollagePreview = ({
                         <Box sx={{ mb: 2 }}>
                           {/* Font Size */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <FormatSize sx={{ color: '#ffffff', mr: 1 }} />
+                            <IconButton
+                              size="small"
+                              onClick={() => handleResetClick('format', panelId, 'fontSize')}
+                              sx={{ 
+                                color: '#ffffff', 
+                                mr: 1,
+                                p: 0.5,
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                }
+                              }}
+                            >
+                              <FormatSize />
+                            </IconButton>
                             <Slider
                               value={(() => {
                                 const panelText = panelTexts[panelId] || {};
@@ -2937,7 +2983,20 @@ const CanvasCollagePreview = ({
                           
                           {/* Stroke Width */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <BorderOuter sx={{ color: '#ffffff', mr: 1 }} />
+                            <IconButton
+                              size="small"
+                              onClick={() => handleResetClick('format', panelId, 'strokeWidth')}
+                              sx={{ 
+                                color: '#ffffff', 
+                                mr: 1,
+                                p: 0.5,
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                }
+                              }}
+                            >
+                              <BorderOuter />
+                            </IconButton>
                             <Slider
                               value={panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
                               onChange={(e, value) => {
@@ -3217,7 +3276,20 @@ const CanvasCollagePreview = ({
                         <Box sx={{ mb: 2 }}>
                           {/* Vertical Position */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <SwapVert sx={{ color: '#ffffff', mr: 1 }} />
+                            <IconButton
+                              size="small"
+                              onClick={() => handleResetClick('placement', panelId, 'textPositionY')}
+                              sx={{ 
+                                color: '#ffffff', 
+                                mr: 1,
+                                p: 0.5,
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                }
+                              }}
+                            >
+                              <SwapVert />
+                            </IconButton>
                             <Slider
                               value={(() => {
                                 const textPositionY = panelTexts[panelId]?.textPositionY !== undefined ? panelTexts[panelId].textPositionY : (lastUsedTextSettings.textPositionY || 0);
@@ -3261,7 +3333,20 @@ const CanvasCollagePreview = ({
                           
                           {/* Horizontal Position */}
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <SwapHoriz sx={{ color: '#ffffff', mr: 1 }} />
+                            <IconButton
+                              size="small"
+                              onClick={() => handleResetClick('placement', panelId, 'textPositionX')}
+                              sx={{ 
+                                color: '#ffffff', 
+                                mr: 1,
+                                p: 0.5,
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                }
+                              }}
+                            >
+                              <SwapHoriz />
+                            </IconButton>
                             <Slider
                               value={panelTexts[panelId]?.textPositionX !== undefined ? panelTexts[panelId].textPositionX : (lastUsedTextSettings.textPositionX || 0)}
                               onChange={(e, value) => {
@@ -3287,7 +3372,20 @@ const CanvasCollagePreview = ({
                           
                           {/* Rotation */}
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <RotateLeft sx={{ color: '#ffffff', mr: 1 }} />
+                            <IconButton
+                              size="small"
+                              onClick={() => handleResetClick('placement', panelId, 'textRotation')}
+                              sx={{ 
+                                color: '#ffffff', 
+                                mr: 1,
+                                p: 0.5,
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                }
+                              }}
+                            >
+                              <RotateLeft />
+                            </IconButton>
                             <Slider
                               value={panelTexts[panelId]?.textRotation !== undefined ? panelTexts[panelId].textRotation : (lastUsedTextSettings.textRotation || 0)}
                               onChange={(e, value) => {
@@ -3428,6 +3526,35 @@ const CanvasCollagePreview = ({
           }}
         />
       )}
+
+      {/* Reset Confirmation Dialog */}
+      <Dialog
+        open={resetDialogOpen}
+        onClose={handleResetCancel}
+        PaperProps={{
+          sx: {
+            backgroundColor: '#1e1e1e',
+            color: '#ffffff',
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: '#ffffff' }}>
+          Reset to Default
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: '#ffffff' }}>
+            Are you sure you want to reset this setting to its default value? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleResetCancel} sx={{ color: '#ffffff' }}>
+            Cancel
+          </Button>
+          <Button onClick={handleResetConfirm} sx={{ color: '#ffffff' }} autoFocus>
+            Reset
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
