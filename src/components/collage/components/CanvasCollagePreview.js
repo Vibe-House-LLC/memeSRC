@@ -2711,26 +2711,83 @@ const CanvasCollagePreview = ({
             
             const lineHeight = fontSize * 1.2;
             
-            // Simple text wrapping for export
-            const words = panelText.content.split(' ');
-            const lines = [];
-            let currentLine = '';
-            
-            words.forEach(word => {
-              const testLine = currentLine ? `${currentLine} ${word}` : word;
-              if (exportCtx.measureText(testLine).width <= maxTextWidth) {
-                currentLine = testLine;
-              } else {
-                if (currentLine) {
-                  lines.push(currentLine);
+            // Use the same text wrapping logic as the preview to ensure consistency
+            const wrapText = (text, maxWidth) => {
+              const lines = [];
+              const manualLines = text.split('\n'); // Handle manual line breaks first
+              
+              manualLines.forEach(line => {
+                if (exportCtx.measureText(line).width <= maxWidth) {
+                  // Line fits within width
+                  lines.push(line);
+                } else {
+                  // Line needs to be wrapped
+                  const words = line.split(' ');
+                  let currentLine = '';
+                  
+                  words.forEach(word => {
+                    const testLine = currentLine ? `${currentLine} ${word}` : word;
+                    const testWidth = exportCtx.measureText(testLine).width;
+                    
+                    if (testWidth <= maxWidth) {
+                      currentLine = testLine;
+                    } else if (currentLine) {
+                      // Current line is full, start a new line
+                      lines.push(currentLine);
+                      currentLine = word;
+                      
+                      // Check if the single word is still too long
+                      if (exportCtx.measureText(word).width > maxWidth) {
+                        // Break the word character by character
+                        let charLine = '';
+                        for (let i = 0; i < word.length; i += 1) {
+                          const testChar = charLine + word[i];
+                          if (exportCtx.measureText(testChar).width <= maxWidth) {
+                            charLine = testChar;
+                          } else {
+                            if (charLine) {
+                              lines.push(charLine);
+                            }
+                            charLine = word[i];
+                          }
+                        }
+                        if (charLine) {
+                          lines.push(charLine);
+                        }
+                        currentLine = '';
+                      }
+                    } else {
+                      // Single word is too long, break it character by character
+                      let charLine = '';
+                      for (let i = 0; i < word.length; i += 1) {
+                        const testChar = charLine + word[i];
+                        if (exportCtx.measureText(testChar).width <= maxWidth) {
+                          charLine = testChar;
+                        } else {
+                          if (charLine) {
+                            lines.push(charLine);
+                          }
+                          charLine = word[i];
+                        }
+                      }
+                      if (charLine) {
+                        lines.push(charLine);
+                      }
+                    }
+                  });
+                  
+                  // Add the last line if it has content
+                  if (currentLine) {
+                    lines.push(currentLine);
+                  }
                 }
-                currentLine = word;
-              }
-            });
+              });
+              
+              return lines;
+            };
             
-            if (currentLine) {
-              lines.push(currentLine);
-            }
+            // Get wrapped lines using the same logic as preview
+            const lines = wrapText(panelText.content, maxTextWidth);
             
             // Calculate text block positioning with proper anchoring (same as drawCanvas)
             const totalTextHeight = lines.length * lineHeight;
