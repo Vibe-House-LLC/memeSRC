@@ -560,20 +560,29 @@ const CanvasCollagePreview = ({
     }
   };
 
-  const checkTextColorScrollPosition = () => {
+  const checkTextColorScrollPosition = useCallback(() => {
     if (!textColorScrollerRef.current) return;
     
-    const { scrollLeft, scrollWidth, clientWidth } = textColorScrollerRef.current;
-    const hasLeft = scrollLeft > 5; // Use a small threshold to detect left scrollability
-    const hasRight = scrollLeft < scrollWidth - clientWidth - 5; // Use a small threshold to detect right scrollability
+    const container = textColorScrollerRef.current;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
     
+    // Use a small threshold to detect scrollability
+    const threshold = 5;
+    
+    // Check if we can scroll left (not at the beginning)
+    const hasLeft = scrollLeft > threshold;
+    
+    // Check if we can scroll right (not at the end)
+    const hasRight = scrollLeft < scrollWidth - clientWidth - threshold;
+    
+    // Update state directly - the optimization was causing issues
     setTextColorLeftScroll(hasLeft);
     setTextColorRightScroll(hasRight);
-  };
+  }, []);
 
-  const handleTextColorScroll = () => {
+  const handleTextColorScroll = useCallback(() => {
     checkTextColorScrollPosition();
-  };
+  }, [checkTextColorScrollPosition]);
 
   // Handle custom text color selection
   const handleCustomTextColorChange = (e) => {
@@ -1606,8 +1615,10 @@ const CanvasCollagePreview = ({
     
     if (textColorElement) {
       textColorElement.addEventListener('scroll', handleTextColorScroll);
-      // Check initial scroll position
-      handleTextColorScroll();
+      // Check initial scroll position with a small delay to ensure content is rendered
+      setTimeout(() => {
+        handleTextColorScroll();
+      }, 100);
     }
     
     const handleResize = () => {
@@ -1622,7 +1633,17 @@ const CanvasCollagePreview = ({
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, [textEditingPanel, activeTextSetting]);
+  }, [textEditingPanel, activeTextSetting, handleTextColorScroll]);
+
+  // Check scroll position when fontStyle tab becomes active
+  useEffect(() => {
+    if (activeTextSetting === 'fontStyle' && textColorScrollerRef.current) {
+      // Multiple checks to ensure the scroll position is detected
+      setTimeout(() => handleTextColorScroll(), 50);
+      setTimeout(() => handleTextColorScroll(), 200);
+      setTimeout(() => handleTextColorScroll(), 500);
+    }
+  }, [activeTextSetting, handleTextColorScroll]);
 
   // Effect to update localStorage when custom text color changes
   useEffect(() => {
@@ -3265,128 +3286,128 @@ const CanvasCollagePreview = ({
                           </Box>
                           
                           {/* Text Color */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
-                              <Box sx={{ flex: 1, position: 'relative' }}>
-                                <ScrollButton 
-                                  direction="left" 
-                                  onClick={scrollTextColorLeft}
-                                  size="small"
-                                  aria-label="Scroll left"
-                                  sx={{ 
-                                    display: 'flex',
-                                    visibility: textColorLeftScroll ? 'visible' : 'hidden',
-                                    opacity: textColorLeftScroll ? 1 : 0,
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                  }}
-                                >
-                                  <ChevronLeft fontSize="small" />
-                                </ScrollButton>
-                                
-                                <ScrollButton 
-                                  direction="right" 
-                                  onClick={scrollTextColorRight}
-                                  size="small"
-                                  aria-label="Scroll right"
-                                  sx={{ 
-                                    display: 'flex',
-                                    visibility: textColorRightScroll ? 'visible' : 'hidden',
-                                    opacity: textColorRightScroll ? 1 : 0,
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                  }}
-                                >
-                                  <ChevronRight fontSize="small" />
-                                </ScrollButton>
-
-                                <HorizontalScroller 
-                                  ref={textColorScrollerRef}
-                                  onScroll={handleTextColorScroll}
-                                  sx={{ 
-                                    pt: 0, 
-                                    mt: 0, 
-                                    pb: 0, 
-                                    pr: 2,
-                                    minHeight: 50,
-                                    gap: theme.spacing(1),
-                                  }}
-                                >
-                                  {/* Custom color picker - as first option, always using saved custom color */}
-                                  <Tooltip title="Pick Custom Color" arrow>
-                                    <Box sx={{ 
-                                      position: 'relative', 
-                                      display: 'flex', 
-                                      alignItems: 'center',
-                                      height: '60%' // Match the height of the color swatches
-                                    }}>
-                                      <ColorSwatch
-                                        onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
-                                        selected={false} // Never show this as selected
-                                        sx={{ 
-                                          position: 'relative',
-                                          flexShrink: 0, // Prevent shrinking for scrolling
-                                          // Always use the saved custom color from localStorage as background
-                                          backgroundColor: savedCustomTextColor,
-                                          // Add subtle checkerboard pattern for the color picker
-                                          backgroundImage: 'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
-                                          backgroundSize: '8px 8px',
-                                          backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
-                                        }}
-                                      >
-                                        <Colorize fontSize="small" sx={{ color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
-                                      </ColorSwatch>
-                                      <input
-                                        type="color"
-                                        value={savedCustomTextColor}
-                                        onChange={handleCustomTextColorChange}
-                                        ref={textColorPickerRef}
-                                        style={{ 
-                                          position: 'absolute',
-                                          opacity: 0,
-                                          width: '100%',
-                                          height: '100%',
-                                          cursor: 'pointer'
-                                        }}
-                                      />
-                                    </Box>
-                                  </Tooltip>
-                                  
-                                  {/* Show the saved custom color as second option if it exists and is different from presets */}
-                                  {hasSavedCustomTextColor && (
-                                    <Tooltip title="Custom Color" arrow>
-                                      <ColorSwatch
-                                        onClick={() => handleTextChange(panelId, 'color', savedCustomTextColor)}
-                                        selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === savedCustomTextColor}
-                                        sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
-                                      />
-                                    </Tooltip>
-                                  )}
-                                  
-                                  {/* Preset colors */}
-                                  {TEXT_COLOR_PRESETS.map((colorOption) => (
-                                    <Tooltip key={colorOption.color} title={colorOption.name} arrow>
-                                      <ColorSwatch
-                                        onClick={() => handleTextChange(panelId, 'color', colorOption.color)}
-                                        selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
-                                        sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
-                                      />
-                                    </Tooltip>
-                                  ))}
-                                  
-                                  {/* Spacer to ensure last items can be centered when scrolled fully */}
-                                  <Box sx={{ minWidth: 4, flexShrink: 0 }} />
-                                </HorizontalScroller>
-                                
-                                {/* Visual indicators for scrolling */}
-                                <ScrollIndicator 
-                                  direction="left" 
-                                  isVisible={textColorLeftScroll}
-                                />
-                                
-                                <ScrollIndicator 
-                                  direction="right" 
-                                  isVisible={textColorRightScroll}
-                                />
+                          <Box sx={{ position: 'relative' }}>
+                              <ScrollButton 
+                                direction="left" 
+                                onClick={scrollTextColorLeft}
+                                size="small"
+                                aria-label="Scroll left"
+                                sx={{ 
+                                  display: 'flex',
+                                  visibility: textColorLeftScroll ? 'visible' : 'hidden',
+                                  opacity: textColorLeftScroll ? 1 : 0,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                }}
+                              >
+                                <ChevronLeft fontSize="small" />
+                              </ScrollButton>
+                              
+                              <ScrollButton 
+                                direction="right" 
+                                onClick={scrollTextColorRight}
+                                size="small"
+                                aria-label="Scroll right"
+                                sx={{ 
+                                  display: 'flex',
+                                  visibility: textColorRightScroll ? 'visible' : 'hidden',
+                                  opacity: textColorRightScroll ? 1 : 0,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                }}
+                              >
+                                <ChevronRight fontSize="small" />
+                              </ScrollButton>
+                              <Box ref={textColorScrollerRef} sx={{ display: 'flex', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', overflowY: 'hidden', position: 'relative' }}>
+                                  <Box sx={{ flex: 1, position: 'relative' }}>
+                                    <HorizontalScroller 
+                                      onScroll={handleTextColorScroll}
+                                      sx={{ 
+                                        pt: 0, 
+                                        mt: 0, 
+                                        pb: 0, 
+                                        pr: 2,
+                                        minHeight: 50,
+                                        gap: theme.spacing(1),
+                                      }}
+                                    >
+                                      {/* Custom color picker - as first option, always using saved custom color */}
+                                      <Tooltip title="Pick Custom Color" arrow>
+                                        <Box sx={{ 
+                                          position: 'relative', 
+                                          display: 'flex', 
+                                          alignItems: 'center',
+                                          height: '60%' // Match the height of the color swatches
+                                        }}>
+                                          <ColorSwatch
+                                            onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
+                                            selected={false} // Never show this as selected
+                                            sx={{ 
+                                              position: 'relative',
+                                              flexShrink: 0, // Prevent shrinking for scrolling
+                                              // Always use the saved custom color from localStorage as background
+                                              backgroundColor: savedCustomTextColor,
+                                              // Add subtle checkerboard pattern for the color picker
+                                              backgroundImage: 'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                                              backgroundSize: '8px 8px',
+                                              backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                                            }}
+                                          >
+                                            <Colorize fontSize="small" sx={{ color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
+                                          </ColorSwatch>
+                                          <input
+                                            type="color"
+                                            value={savedCustomTextColor}
+                                            onChange={handleCustomTextColorChange}
+                                            ref={textColorPickerRef}
+                                            style={{ 
+                                              position: 'absolute',
+                                              opacity: 0,
+                                              width: '100%',
+                                              height: '100%',
+                                              cursor: 'pointer'
+                                            }}
+                                          />
+                                        </Box>
+                                      </Tooltip>
+                                      
+                                      {/* Show the saved custom color as second option if it exists and is different from presets */}
+                                      {hasSavedCustomTextColor && (
+                                        <Tooltip title="Custom Color" arrow>
+                                          <ColorSwatch
+                                            onClick={() => handleTextChange(panelId, 'color', savedCustomTextColor)}
+                                            selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === savedCustomTextColor}
+                                            sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
+                                          />
+                                        </Tooltip>
+                                      )}
+                                      
+                                      {/* Preset colors */}
+                                      {TEXT_COLOR_PRESETS.map((colorOption) => (
+                                        <Tooltip key={colorOption.color} title={colorOption.name} arrow>
+                                          <ColorSwatch
+                                            onClick={() => handleTextChange(panelId, 'color', colorOption.color)}
+                                            selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
+                                            sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
+                                          />
+                                        </Tooltip>
+                                      ))}
+                                      
+                                      {/* Spacer to ensure last items can be centered when scrolled fully */}
+                                      <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+                                    </HorizontalScroller>
+                                    
+                                    {/* Visual indicators for scrolling */}
+                                    <ScrollIndicator 
+                                      direction="left" 
+                                      isVisible={textColorLeftScroll}
+                                    />
+                                    
+                                    <ScrollIndicator 
+                                      direction="right" 
+                                      isVisible={textColorRightScroll}
+                                    />
+                                  </Box>
                               </Box>
                           </Box>
                         </Box>
