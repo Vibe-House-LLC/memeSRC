@@ -844,7 +844,7 @@ const CanvasCollagePreview = ({
           
           // Scale font size based on canvas size
           const fontSize = baseFontSize * textScaleFactor;
-          const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 700;
+          const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 400;
           const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
           const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
           const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
@@ -1101,7 +1101,7 @@ const CanvasCollagePreview = ({
     const tempCtx = tempCanvas.getContext('2d');
     
     // Set font properties exactly like in drawCanvas
-    const fontWeight = panelText?.fontWeight || lastUsedTextSettings.fontWeight || 700;
+    const fontWeight = panelText?.fontWeight || lastUsedTextSettings.fontWeight || 400;
     const fontStyle = panelText?.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
     const fontFamily = panelText?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
     tempCtx.font = `${fontStyle} ${fontWeight} ${scaledFontSize}px ${fontFamily}`;
@@ -1449,6 +1449,8 @@ const CanvasCollagePreview = ({
           // Already a number
           updatedText[property] = value;
         }
+        
+
       }
       
       // Set default font size only when first adding content to an empty text field
@@ -2660,7 +2662,7 @@ const CanvasCollagePreview = ({
             
             // Scale font size based on canvas size for export
             const fontSize = baseFontSize * textScaleFactor;
-            const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 700;
+            const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 400;
             const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
             const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
             const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
@@ -3140,7 +3142,7 @@ const CanvasCollagePreview = ({
                             <ToggleButtonGroup
                               value={(() => {
                                 // Normalize current weight to number for comparison
-                                const currentWeightRaw = panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || 700;
+                                const currentWeightRaw = panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || 400;
                                 let currentWeight;
                                 
                                 // Convert to number for consistent comparison
@@ -3166,14 +3168,25 @@ const CanvasCollagePreview = ({
                                   result.push('italic');
                                 }
                                 
+
+                                
                                 return result;
                               })()}
                               onChange={(event, newFormats) => {
                                 const isBold = newFormats.includes('bold');
                                 const isItalic = newFormats.includes('italic');
-                                // Use numeric values for better canvas compatibility
-                                handleTextChange(panelId, 'fontWeight', isBold ? 700 : 300);
-                                handleTextChange(panelId, 'fontStyle', isItalic ? 'italic' : 'normal');
+                                
+                                // Update both properties in a single call to avoid timing issues
+                                const currentText = panelTexts[panelId] || {};
+                                const updatedText = {
+                                  ...currentText,
+                                  fontWeight: isBold ? 700 : 400,
+                                  fontStyle: isItalic ? 'italic' : 'normal'
+                                };
+                                
+                                if (updatePanelText) {
+                                  updatePanelText(panelId, updatedText);
+                                }
                               }}
                               aria-label="text formatting"
                               sx={{ 

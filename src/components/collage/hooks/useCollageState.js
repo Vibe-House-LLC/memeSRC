@@ -19,7 +19,7 @@ export const useCollageState = () => {
   // lastUsedTextSettings to remember settings across panels
   const [lastUsedTextSettings, setLastUsedTextSettings] = useState({
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: 400,
     fontFamily: 'Arial',
     color: '#ffffff',
     strokeWidth: 2
