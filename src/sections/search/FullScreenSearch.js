@@ -17,6 +17,7 @@ import FavoriteToggle from '../../components/FavoriteToggle';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import Logo from '../../logo/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
+import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 
 /* --------------------------------- GraphQL -------------------------------- */
 
@@ -390,42 +391,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Grid>
           }
         </Grid>
-        <StyledFooter position="left" className="bottomBtn">
-          <a
-            href="/support"
-            style={{ color: 'white', textDecoration: 'none' }}
-          >
-            <Fab
-              color="primary"
-              aria-label="feedback"
-              style={{ margin: '0 10px 0 0', backgroundColor: 'black', zIndex: '1300' }}
-              size="medium"
-            >
-              <MapsUgc color="white" />
-            </Fab>
-          </a>
-          <a
-            href="https://memesrc.com/donate"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: 'white', textDecoration: 'none' }}
-          >
-            <Fab color="primary" aria-label="donate" style={{ backgroundColor: 'black', zIndex: '1300' }} size="medium">
-              <Favorite />
-            </Fab>
-          </a>
-        </StyledFooter>
-        <StyledFooter position="right" className="bottomBtn">
-          <StyledButton
-            onClick={() => { loadRandomFrame(show) }}
-            loading={loadingRandom}
-            startIcon={<Shuffle />}
-            variant="contained"
-            style={{ backgroundColor: 'black', marginLeft: 'auto', zIndex: '1300' }}
-          >
-            Random
-          </StyledButton>
-        </StyledFooter>
+       <FloatingActionButtons shows={show} />
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>

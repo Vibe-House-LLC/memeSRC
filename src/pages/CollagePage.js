@@ -6,9 +6,9 @@ import { Dashboard, Save } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
+import { useCollage } from "../contexts/CollageContext";
 import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
-import WelcomeMessage from "../components/collage/components/WelcomeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
@@ -17,37 +17,9 @@ import CollageResultDialog from "../components/collage/components/CollageResultD
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
-// Development utility - make resetWelcome available globally for testing
-if (DEBUG_MODE && typeof window !== 'undefined') {
-  window.resetCollageWelcome = () => {
-    localStorage.removeItem('memeSRC-collage-v2.7-welcome-seen');
-    console.log('Collage welcome screen reset - refresh page to see welcome again');
-  };
-}
+// Development utility removed - welcome screen is no longer shown for users with access
 
-/**
- * Helper function to crop canvas by removing pixels from edges
- */
-const cropCanvas = (originalCanvas, cropAmount = 10) => {
-  const croppedCanvas = document.createElement('canvas');
-  const ctx = croppedCanvas.getContext('2d');
-  
-  // Calculate new dimensions (remove cropAmount pixels from each edge)
-  const newWidth = Math.max(1, originalCanvas.width - (cropAmount * 2));
-  const newHeight = Math.max(1, originalCanvas.height - (cropAmount * 2));
-  
-  croppedCanvas.width = newWidth;
-  croppedCanvas.height = newHeight;
-  
-  // Draw the cropped portion of the original canvas
-  ctx.drawImage(
-    originalCanvas,
-    cropAmount, cropAmount, newWidth, newHeight, // Source coordinates and dimensions
-    0, 0, newWidth, newHeight // Destination coordinates and dimensions
-  );
-  
-  return croppedCanvas;
-};
+
 
 /**
  * Helper function to get numeric border thickness percentage value from string/option
@@ -89,7 +61,7 @@ const getCollagePreferenceKey = (user) => {
 
 const getCollagePreference = (user) => {
   const key = getCollagePreferenceKey(user);
-  return localStorage.getItem(key) || 'new'; // Default to new version
+  return localStorage.getItem(key) || 'new';
 };
 
 export default function CollagePage() {
@@ -97,6 +69,7 @@ export default function CollagePage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
+  const { clearAll } = useCollage();
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
   
   const navigate = useNavigate();
@@ -108,14 +81,7 @@ export default function CollagePage() {
   // State to control button animation
   const [showAnimatedButton, setShowAnimatedButton] = useState(false);
   
-  // State to control welcome screen for existing Pro users
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => {
-    // Only show for authorized users who haven't seen the v2.7 welcome yet
-    if (!authorized) return false;
-    const hasSeenWelcome = localStorage.getItem('memeSRC-collage-v2.7-welcome-seen');
-    debugLog(`[WELCOME DEBUG] authorized=${authorized}, hasSeenWelcome=${hasSeenWelcome}, showWelcome=${!hasSeenWelcome}`);
-    return !hasSeenWelcome;
-  });
+
 
 
 
@@ -126,6 +92,8 @@ export default function CollagePage() {
     selectedImages, 
     panelImageMapping,
     panelTransforms,
+    panelTexts,
+    lastUsedTextSettings,
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio,
@@ -148,6 +116,7 @@ export default function CollagePage() {
     clearImages,
     updatePanelImageMapping,
     updatePanelTransform,
+    updatePanelText,
   } = useCollageState();
 
   // Check if all panels have images assigned (same logic as CollageImagesStep)
@@ -182,7 +151,7 @@ export default function CollagePage() {
 
   // Animate button in with delay when ready
   useEffect(() => {
-    if (hasImages && allPanelsHaveImages && !showResultDialog && !showWelcomeScreen) {
+    if (hasImages && allPanelsHaveImages && !showResultDialog) {
       const timer = setTimeout(() => {
         setShowAnimatedButton(true);
       }, 800); // 800ms delay for dramatic effect
@@ -192,7 +161,7 @@ export default function CollagePage() {
     
     setShowAnimatedButton(false);
     return undefined; // Consistent return for all code paths
-  }, [hasImages, allPanelsHaveImages, showResultDialog, showWelcomeScreen]);
+  }, [hasImages, allPanelsHaveImages, showResultDialog]);
 
 
 
@@ -204,11 +173,69 @@ export default function CollagePage() {
       const isForced = searchParams.get('force') === 'new';
       
       // Only auto-forward if not forced to new version
-      if (preference === 'legacy' && !isForced && !showWelcomeScreen) {
+      if (preference === 'legacy' && !isForced) {
         navigate('/collage-legacy');
       }
     }
-  }, [user, navigate, location.search, authorized, showWelcomeScreen]);
+  }, [user, navigate, location.search, authorized]);
+
+  // Handle images passed from collage
+  useEffect(() => {
+    if (location.state?.fromCollage && location.state?.images) {
+      debugLog('Loading images from collage:', location.state.images);
+      
+      // Transform images to the expected format, preserving subtitle data
+      const transformedImages = location.state.images.map(item => {
+        if (typeof item === 'string') {
+          return item; // Already a URL
+        }
+        // Return the complete item with subtitle data preserved
+        return {
+          originalUrl: item.originalUrl || item.displayUrl || item,
+          displayUrl: item.displayUrl || item.originalUrl || item,
+          subtitle: item.subtitle || '',
+          subtitleShowing: item.subtitleShowing || false,
+          metadata: item.metadata || {}
+        };
+      });
+      
+      debugLog('Transformed collage images with subtitle data:', transformedImages);
+      addMultipleImages(transformedImages);
+      
+      // Auto-assign images to panels like bulk upload does
+      setTimeout(() => {
+        // First adjust panel count if needed to accommodate all images
+        const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
+        debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
+        debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
+        
+        if (transformedImages.length > panelCount && setPanelCount) {
+          setPanelCount(desiredPanelCount);
+          debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
+        }
+        
+        // Wait a bit more for template to update if panel count changed
+        setTimeout(() => {
+          debugLog(`[PANEL DEBUG] Template after panel count change:`, selectedTemplate);
+          
+          // Then assign images to panels using the updated panel count
+          const newMapping = {};
+          const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
+          
+          for (let i = 0; i < imagesToAssign; i += 1) {
+            const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
+            newMapping[panelId] = i;
+          }
+          
+          debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
+          updatePanelImageMapping(newMapping);
+        }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
+      }, 100); // Small delay to ensure images are added first
+      
+      // Clear the navigation state to prevent re-loading on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
 
   // Note: BulkUploadSection auto-collapse logic removed since section is now hidden when images are present
 
@@ -217,94 +244,74 @@ export default function CollagePage() {
     setShowResultDialog(false);
   };
 
-  // Handler to continue from welcome screen
-  const handleContinueFromWelcome = () => {
-    debugLog('[WELCOME DEBUG] User clicked continue, marking welcome as seen');
-    localStorage.setItem('memeSRC-collage-v2.7-welcome-seen', 'true');
-    setShowWelcomeScreen(false);
-    
-    // Use requestAnimationFrame to ensure the DOM has updated before scrolling
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        window.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
-      }, 100); // Small delay to ensure the UI transition has started
-    });
-  };
+
 
   // Handler for floating button - triggers collage generation
   const handleFloatingButtonClick = async () => {
     debugLog('Floating button: Generating collage...');
     setIsCreatingCollage(true);
     
-    const collagePreviewElement = document.querySelector('[data-testid="dynamic-collage-preview-root"]');
+    // Find the canvas element instead of the HTML element
+    const canvasElement = document.querySelector('[data-testid="canvas-collage-preview"]');
 
-    if (!collagePreviewElement) {
-      console.error('Collage preview element not found.');
+    if (!canvasElement) {
+      console.error('Canvas collage preview element not found.');
       setIsCreatingCollage(false);
       return;
     }
 
-    // Temporarily hide control icons by adding a CSS class
-    collagePreviewElement.classList.add('export-mode');
-
     try {
-      const html2canvasModule = await import('html2canvas');
-      const html2canvas = html2canvasModule.default;
-      
-      const canvas = await html2canvas(collagePreviewElement, {
-        useCORS: true,
-        allowTaint: true,
-        logging: DEBUG_MODE,
-        scale: window.devicePixelRatio * 2,
-        onclone: (clonedDoc) => {
-          try {
-            const root = clonedDoc.querySelector('[data-testid="dynamic-collage-preview-root"]');
-            if (!root) return;
-
-            root.querySelectorAll('img').forEach((img) => {
-              const computed = clonedDoc.defaultView.getComputedStyle(img);
-              if (computed.getPropertyValue('object-fit') !== 'cover') return;
-
-              const src = img.getAttribute('src');
-              if (!src) return;
-
-              const replacement = clonedDoc.createElement('div');
-              replacement.style.width = '100%';
-              replacement.style.height = '100%';
-              replacement.style.backgroundImage = `url('${src}')`;
-              replacement.style.backgroundSize = 'cover';
-              replacement.style.backgroundPosition = 'center center';
-              replacement.style.backgroundRepeat = 'no-repeat';
-
-              const transform = computed.getPropertyValue('transform');
-              if (transform && transform !== 'none') {
-                replacement.style.transform = transform;
-              }
-
-              img.parentNode.replaceChild(replacement, img);
-            });
-          } catch (cloneErr) {
-            console.error('onclone processing failed', cloneErr);
+      // Get the canvas blob directly - no need for html2canvas
+      if (canvasElement.getCanvasBlob) {
+        const blob = await canvasElement.getCanvasBlob();
+        if (blob) {
+          setFinalImage(blob);
+          setShowResultDialog(true);
+          debugLog("Floating button: Collage generated directly from canvas.");
+          
+          // Clear the collage items since the collage has been successfully generated
+          clearAll();
+        } else {
+          console.error('Failed to generate canvas blob.');
+        }
+      } else {
+        // Fallback: use canvas toBlob method directly
+        canvasElement.toBlob((blob) => {
+          if (blob) {
+            setFinalImage(blob);
+            setShowResultDialog(true);
+            debugLog("Floating button: Collage generated directly from canvas (fallback method).");
+            
+            // Clear the collage items since the collage has been successfully generated
+            clearAll();
+          } else {
+            console.error('Failed to generate canvas blob using fallback method.');
           }
-        },
-      });
-      
-      const croppedCanvas = cropCanvas(canvas, 3);
-      croppedCanvas.toBlob((blob) => {
-        setFinalImage(blob);
-        setShowResultDialog(true);
-        debugLog("Floating button: Collage generated, cropped, and inline result shown.");
-      }, 'image/png');
-
+        }, 'image/png');
+      }
     } catch (err) {
       console.error('Error generating collage:', err);
     } finally {
-      collagePreviewElement.classList.remove('export-mode');
       setIsCreatingCollage(false);
     }
+  };
+
+  // Helper function to convert aspect ratio string to number
+  const getAspectRatioValue = (aspectRatio) => {
+    if (typeof aspectRatio === 'number') return aspectRatio;
+    
+    // If it's a string like "16:9", convert to decimal
+    if (typeof aspectRatio === 'string' && aspectRatio.includes(':')) {
+      const [width, height] = aspectRatio.split(':').map(Number);
+      return width / height;
+    }
+    
+    // Find in presets if it's a preset name
+    const preset = aspectRatioPresets.find(p => 
+      p.label === aspectRatio || p.value === aspectRatio
+    );
+    
+    return preset ? preset.value : parseFloat(aspectRatio) || 1;
   };
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
@@ -312,7 +319,7 @@ export default function CollagePage() {
     selectedImageCount: selectedImages.length, // Pass count instead of full array
     selectedTemplate,
     setSelectedTemplate,
-    selectedAspectRatio,
+    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
     setSelectedAspectRatio,
     panelCount,
     setPanelCount,
@@ -341,14 +348,17 @@ export default function CollagePage() {
 
   // Props for images step (pass the correct state and actions)
   const imagesStepProps = {
-    selectedImages, // Pass the array of objects [{ originalUrl, displayUrl }, ...]
+            selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
     panelImageMapping,
     panelTransforms,
+    panelTexts,
+    lastUsedTextSettings,
     updatePanelImageMapping,
     updatePanelTransform,
+    updatePanelText,
     panelCount,
     selectedTemplate,
-    selectedAspectRatio,
+    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
     borderThickness: borderThicknessValue, // Pass the numeric value
     borderColor,
     borderThicknessOptions,
@@ -365,6 +375,7 @@ export default function CollagePage() {
     bulkUploadSectionOpen: true, // Always true since we don't manage collapse state anymore
     onBulkUploadSectionToggle: () => {}, // No-op since BulkUploadSection is hidden when images are present
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
+    isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
   };
 
   // Log mapping changes for debugging
@@ -388,26 +399,24 @@ export default function CollagePage() {
 
       {!authorized ? (
         <UpgradeMessage openSubscriptionDialog={openSubscriptionDialog} previewImage="/assets/images/products/collage-tool.png" />
-      ) : showWelcomeScreen ? (
-        <WelcomeMessage 
-          onContinue={handleContinueFromWelcome} 
-          previewImage="/assets/images/products/collage-tool.png" 
-        />
       ) : (
         <Box component="main" sx={{ 
           flexGrow: 1,
-          pb: !showResultDialog && !showWelcomeScreen && hasImages && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
+          pb: !showResultDialog && hasImages && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
+          overflowY: 'visible', // Allow vertical overflow for caption editor
           minHeight: '100vh',
           bgcolor: 'background.default'
         }}>
           <Container 
             maxWidth="xl" 
             sx={{ 
+              mb: 15,
               pt: isMobile ? 1 : 1.5,
               px: isMobile ? 1 : 2,
-              width: '100%'
+              width: '100%',
+              overflow: 'visible' // Allow caption editor to overflow container bounds
             }}
             disableGutters={isMobile}
           >
@@ -449,7 +458,7 @@ export default function CollagePage() {
             />
 
             {/* Bottom Action Bar */}
-            {!showResultDialog && !showWelcomeScreen && hasImages && allPanelsHaveImages && (
+            {!showResultDialog && hasImages && allPanelsHaveImages && (
               <Slide direction="up" in={showAnimatedButton} timeout={600}>
                 <Box
                   sx={{

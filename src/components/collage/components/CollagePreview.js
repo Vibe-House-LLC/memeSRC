@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Menu, MenuItem, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { aspectRatioPresets } from '../config/CollageConfig';
-import DynamicCollagePreview from './DynamicCollagePreview';
+import CanvasCollagePreview from './CanvasCollagePreview';
 
 /**
  * Get the aspect ratio value from the presets
@@ -35,6 +35,10 @@ const CollagePreview = ({
   borderColor = '#000000',
   panelTransforms,
   updatePanelTransform,
+  panelTexts,
+  updatePanelText,
+  lastUsedTextSettings,
+  isCreatingCollage = false,
 }) => {
   const theme = useTheme();
   const fileInputRef = useRef(null);
@@ -211,7 +215,7 @@ const CollagePreview = ({
 
   return (
     <Box sx={{ position: 'relative' }}>
-      <DynamicCollagePreview
+      <CanvasCollagePreview
         selectedTemplate={selectedTemplate}
         selectedAspectRatio={selectedAspectRatio}
         panelCount={panelCount}
@@ -224,6 +228,10 @@ const CollagePreview = ({
         borderColor={borderColor}
         panelTransforms={panelTransforms}
         updatePanelTransform={updatePanelTransform}
+        panelTexts={panelTexts}
+        updatePanelText={updatePanelText}
+        lastUsedTextSettings={lastUsedTextSettings}
+        isGeneratingCollage={isCreatingCollage}
       />
       
       {/* Hidden file input */}

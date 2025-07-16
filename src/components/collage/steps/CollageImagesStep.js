@@ -13,9 +13,9 @@ const debugWarn = (...args) => { if (DEBUG_MODE) console.warn(...args); };
 const logError = (...args) => { console.error(...args); };
 
 const CollageImagesStep = ({
-  selectedImages, // Now [{ originalUrl, displayUrl }, ...]
-  addImage, // Adds new object { original, display }
-  addMultipleImages, // Adds multiple objects { original, display }
+  selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
+  addImage, // Adds new object { original, display, subtitle?, subtitleShowing?, metadata? }
+  addMultipleImages, // Adds multiple objects { original, display, subtitle?, subtitleShowing?, metadata? }
   removeImage, // Removes object, updates mapping
   updateImage, // Updates ONLY displayUrl (for crop result)
   replaceImage, // <-- NEW: Updates BOTH urls (for replacing upload)
@@ -31,9 +31,13 @@ const CollageImagesStep = ({
   updatePanelImageMapping, // Updates mapping directly
   panelTransforms, // Receive new state
   updatePanelTransform, // Receive new function
+  panelTexts, // NEW: Receive text state from centralized management
+  lastUsedTextSettings, // NEW: Receive text settings from centralized management
+  updatePanelText, // NEW: Receive text update function from centralized management
   setFinalImage, // <<< Keep this
   handleOpenExportDialog, // <<< Add handleOpenExportDialog prop
-  onCollageGenerated // <<< NEW: Handler for inline result display
+  onCollageGenerated, // <<< NEW: Handler for inline result display
+  isCreatingCollage // <<< NEW: Pass collage generation state to prevent placeholder text during export
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -48,7 +52,8 @@ const CollageImagesStep = ({
     borderThickness,
     borderColor,
     panelImageMapping,
-    panelTransforms
+    panelTransforms,
+    panelTexts
   });
 
   // Track which panel the user is currently trying to edit
@@ -213,10 +218,14 @@ const CollageImagesStep = ({
             updatePanelImageMapping={updatePanelImageMapping}
             panelTransforms={panelTransforms || {}}
             updatePanelTransform={updatePanelTransform}
+            panelTexts={panelTexts}
+            updatePanelText={updatePanelText}
+            lastUsedTextSettings={lastUsedTextSettings}
             onEditRequest={handleEditRequest}
             setFinalImage={setFinalImage}
             handleOpenExportDialog={handleOpenExportDialog}
             onCollageGenerated={onCollageGenerated}
+            isCreatingCollage={isCreatingCollage}
           />
         </Box>
         

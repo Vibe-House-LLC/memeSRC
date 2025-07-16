@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 
 import { Backdrop, CircularProgress } from '@mui/material';
 import { SearchDetailsProvider } from './contexts/SearchDetailsProvider';
+import { CollageProvider } from './contexts/CollageContext';
 // routes
 import Router from './routes';
 // theme
@@ -39,9 +40,11 @@ export default function App() {
           }>
             {/* <FeaturePopover> */}
             <SearchDetailsProvider>
-              {/* <FeatureSectionPopover> */}
-                <Router />
-              {/* </FeatureSectionPopover> */}
+              <CollageProvider>
+                {/* <FeatureSectionPopover> */}
+                  <Router />
+                {/* </FeatureSectionPopover> */}
+              </CollageProvider>
             </SearchDetailsProvider>
             {/* </FeaturePopover> */}
           </Suspense>

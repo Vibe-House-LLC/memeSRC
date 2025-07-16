@@ -47,7 +47,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff, Collections } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
@@ -57,6 +57,7 @@ import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+import { useCollage } from '../contexts/CollageContext';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -108,6 +109,24 @@ export default function FramePage({ shows = [] }) {
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
+  const { addItem, isItemInCollage, collageItems, count } = useCollage();
+
+  // Function to add current frame to collage
+  const handleAddToCollage = () => {
+    const currentItem = {
+      cid: confirmedCid,
+      season: parseInt(season, 10),
+      episode: parseInt(episode, 10),
+      frame: parseInt(frame, 10),
+      subtitle: loadedSubtitle || '',
+      subtitleShowing: showText && (loadedSubtitle || '').trim() !== '',
+      frameImage: displayImage || frameData?.frame_image,
+      showTitle: showTitle || frameData?.showTitle,
+      timestamp: frameToTimeCode(frame)
+    };
+    addItem(currentItem);
+    setCollageSnackbarOpen(true);
+  };
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
@@ -154,6 +173,7 @@ export default function FramePage({ shows = [] }) {
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
+  const [collageSnackbarOpen, setCollageSnackbarOpen] = useState(false);
 
   const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => {
     return sessionStorage.getItem('alertDismissed-98ruio') !== 'true';
@@ -167,6 +187,10 @@ export default function FramePage({ shows = [] }) {
 
   const handleSnackbarClose = () => {
     setSnackBarOpen(false);
+  }
+
+  const handleCollageSnackbarClose = () => {
+    setCollageSnackbarOpen(false);
   }
 
   /* ---------------------------- Subtitle Function --------------------------- */
@@ -386,6 +410,7 @@ export default function FramePage({ shows = [] }) {
           setFrameData(initialInfo);
           setDisplayImage(initialInfo.frame_image);
           setLoadedSubtitle(initialInfo.subtitle);
+          setOriginalSubtitle(initialInfo.subtitle);
           setLoadedSeason(season);
           setLoadedEpisode(episode);
           if (initialInfo.fontFamily && fonts.includes(initialInfo.fontFamily)) {
@@ -449,6 +474,8 @@ export default function FramePage({ shows = [] }) {
       setFrameData(null);
       setDisplayImage(null);
       setLoadedSubtitle(null);
+      setOriginalSubtitle('');
+      setSubtitleUserInteracted(false);
       setSelectedFrameIndex(5);
       setFineTuningFrames([]);
       setFrames([]);
@@ -555,6 +582,8 @@ useEffect(() => {
   const [loadingCsv, setLoadingCsv] = useState();
   const [frames, setFrames] = useState();
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
+  const [originalSubtitle, setOriginalSubtitle] = useState(''); // Track original subtitle from server
+  const [subtitleUserInteracted, setSubtitleUserInteracted] = useState(false); // Track if user interacted with subtitle UI
   const [loadedSeason, setLoadedSeason] = useState('');  // TODO
   const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
   const [formats, setFormats] = useState(() => ['bold', 'italic']);
@@ -1015,9 +1044,15 @@ useEffect(() => {
                           size="small"
                           placeholder="Type a caption..."
                           value={loadedSubtitle}
-                          onMouseDown={() => setShowText(true)}
+                          onMouseDown={() => {
+                            setShowText(true);
+                            setSubtitleUserInteracted(true);
+                          }}
                           onChange={(e) => setLoadedSubtitle(e.target.value)}
-                          onFocus={() => setTextFieldFocused(true)}
+                          onFocus={() => {
+                            setTextFieldFocused(true);
+                            setSubtitleUserInteracted(true);
+                          }}
                           onBlur={() => setTextFieldFocused(false)}
                           InputProps={{
                             style: {
@@ -1309,7 +1344,8 @@ useEffect(() => {
               sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
               // startIcon={<Edit />}
               onClick={() => {
-                setShowText(true)
+                setShowText(true);
+                setSubtitleUserInteracted(true);
               }}
             >
               Make A Meme
@@ -1326,6 +1362,30 @@ useEffect(() => {
                 startIcon={<Edit />}
               >
                 Advanced Editor
+              </Button>
+
+              <Button
+                size="medium"
+                fullWidth
+                variant="outlined"
+                onClick={handleAddToCollage}
+                disabled={!confirmedCid}
+                sx={{ 
+                  mb: 2, 
+                  borderColor: '#2196F3', 
+                  color: '#2196F3',
+                  '&:hover': { 
+                    borderColor: '#1976D2', 
+                    backgroundColor: 'rgba(33, 150, 243, 0.04)' 
+                  },
+                  '&.Mui-disabled': {
+                    borderColor: '#ccc',
+                    color: '#ccc'
+                  }
+                }}
+                startIcon={<Collections />}
+              >
+                Add to Collage
               </Button>
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
@@ -1450,6 +1510,17 @@ useEffect(() => {
           >
             <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
               Copied to clipboard!
+            </Alert>
+          </Snackbar>
+
+          <Snackbar
+            open={collageSnackbarOpen}
+            autoHideDuration={3000}
+            onClose={handleCollageSnackbarClose}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert onClose={handleCollageSnackbarClose} severity="success" sx={{ width: '100%' }}>
+              Frame added to collage! ({count} items)
             </Alert>
           </Snackbar>
 
