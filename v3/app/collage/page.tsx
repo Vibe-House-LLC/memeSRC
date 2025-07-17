@@ -1,4 +1,7 @@
+import CollagePage from "./components/CollagePage";
 
-export default function CollagePage() {
-  return <div>CollagePage</div>;
+export default function CollagePageWrapper() {
+  return (
+    <CollagePage />
+  )
 }
