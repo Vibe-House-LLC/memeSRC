@@ -4171,12 +4171,11 @@ const CanvasCollagePreview = ({
             width: zone.width,
             height: zone.height,
             cursor: zone.cursor,
-            // More visible background for debugging
             backgroundColor: isDraggingBorder && draggedBorder === zone 
               ? 'rgba(33, 150, 243, 0.4)' 
               : hoveredBorder === zone 
                 ? 'rgba(33, 150, 243, 0.2)' 
-                : 'rgba(255, 0, 0, 0.1)', // Red tint for debugging - remove later
+                : 'transparent',
             transition: 'background-color 0.2s ease',
             zIndex: 10, // Above canvas and overlays, below text editor
             pointerEvents: 'auto',
@@ -4184,8 +4183,6 @@ const CanvasCollagePreview = ({
             '&:hover': {
               backgroundColor: 'rgba(33, 150, 243, 0.25)',
             },
-            // Add border for better visibility during development
-            border: '1px dashed rgba(33, 150, 243, 0.3)',
             // Touch-friendly styling
             touchAction: 'none', // Prevent default touch behaviors
             userSelect: 'none', // Prevent text selection
