@@ -363,7 +363,7 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
   // Create vertical border zones (between columns) - only if we have multiple columns
   if (columnSizes.length > 1) {
     let currentX = borderPixels;
-    for (let i = 0; i < columnSizes.length - 1; i++) {
+    for (let i = 0; i < columnSizes.length - 1; i += 1) {
       currentX += columnSizes[i] * columnFrUnit;
       
       zones.push({
@@ -385,7 +385,7 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
   // Create horizontal border zones (between rows) - only if we have multiple rows
   if (rowSizes.length > 1) {
     let currentY = borderPixels;
-    for (let i = 0; i < rowSizes.length - 1; i++) {
+    for (let i = 0; i < rowSizes.length - 1; i += 1) {
       currentY += rowSizes[i] * rowFrUnit;
       
       zones.push({
@@ -786,8 +786,8 @@ const CanvasCollagePreview = ({
     const columnFrUnit = availableWidth / totalColumnFr;
     const rowFrUnit = availableHeight / totalRowFr;
     
-    let newColumnSizes = [...columnSizes];
-    let newRowSizes = [...rowSizes];
+    const newColumnSizes = [...columnSizes];
+    const newRowSizes = [...rowSizes];
     let changed = false;
     
     if (borderZone.type === 'vertical') {
@@ -4169,7 +4169,7 @@ const CanvasCollagePreview = ({
        textEditingPanel === null && 
        borderZones.map((zone, index) => (
         <Box
-          key={`border-zone-${zone.id || zone.type + '-' + zone.index}`}
+          key={`border-zone-${zone.id || `${zone.type}-${zone.index}`}`}
           onMouseDown={(e) => {
             console.log('Border zone mouse down:', zone);
             e.preventDefault();
