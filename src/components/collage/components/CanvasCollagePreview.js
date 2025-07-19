@@ -299,7 +299,8 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
   if (!layoutConfig) return [];
   
   const zones = [];
-  const threshold = Math.max(8, borderPixels); // Minimum 8px hit area, or border size if larger
+  // Make threshold larger for mobile - minimum 16px hit area for better touch interaction
+  const threshold = Math.max(16, borderPixels * 2);
   
   // Parse grid columns and rows to get track sizes
   let columnSizes = [1];
@@ -341,6 +342,11 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
     }
   }
   
+  // Only create zones if we have multiple columns or rows
+  if (columnSizes.length <= 1 && rowSizes.length <= 1) {
+    return [];
+  }
+  
   // Calculate positions of grid lines
   const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
   const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
@@ -354,44 +360,51 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
   const columnFrUnit = availableWidth / totalColumnFr;
   const rowFrUnit = availableHeight / totalRowFr;
   
-  // Create vertical border zones (between columns)
-  let currentX = borderPixels;
-  for (let i = 0; i < columnSizes.length - 1; i++) {
-    currentX += columnSizes[i] * columnFrUnit;
-    
-    zones.push({
-      type: 'vertical',
-      index: i,
-      x: currentX - threshold / 2,
-      y: 0,
-      width: threshold,
-      height: containerHeight,
-      centerX: currentX,
-      cursor: 'col-resize'
-    });
-    
-    currentX += borderPixels;
+  // Create vertical border zones (between columns) - only if we have multiple columns
+  if (columnSizes.length > 1) {
+    let currentX = borderPixels;
+    for (let i = 0; i < columnSizes.length - 1; i++) {
+      currentX += columnSizes[i] * columnFrUnit;
+      
+      zones.push({
+        type: 'vertical',
+        index: i,
+        x: currentX - threshold / 2,
+        y: 0,
+        width: threshold,
+        height: containerHeight,
+        centerX: currentX,
+        cursor: 'col-resize',
+        id: `vertical-${i}` // Add ID for debugging
+      });
+      
+      currentX += borderPixels;
+    }
   }
   
-  // Create horizontal border zones (between rows)
-  let currentY = borderPixels;
-  for (let i = 0; i < rowSizes.length - 1; i++) {
-    currentY += rowSizes[i] * rowFrUnit;
-    
-    zones.push({
-      type: 'horizontal',
-      index: i,
-      x: 0,
-      y: currentY - threshold / 2,
-      width: containerWidth,
-      height: threshold,
-      centerY: currentY,
-      cursor: 'row-resize'
-    });
-    
-    currentY += borderPixels;
+  // Create horizontal border zones (between rows) - only if we have multiple rows
+  if (rowSizes.length > 1) {
+    let currentY = borderPixels;
+    for (let i = 0; i < rowSizes.length - 1; i++) {
+      currentY += rowSizes[i] * rowFrUnit;
+      
+      zones.push({
+        type: 'horizontal',
+        index: i,
+        x: 0,
+        y: currentY - threshold / 2,
+        width: containerWidth,
+        height: threshold,
+        centerY: currentY,
+        cursor: 'row-resize',
+        id: `horizontal-${i}` // Add ID for debugging
+      });
+      
+      currentY += borderPixels;
+    }
   }
   
+  console.log('Border zones created:', zones); // Debug logging
   return zones;
 };
 
@@ -712,7 +725,12 @@ const CanvasCollagePreview = ({
 
   // Border dragging helper functions
   const updateLayoutWithBorderDrag = useCallback((borderZone, deltaX, deltaY) => {
-    if (!layoutConfig) return;
+    if (!layoutConfig) {
+      console.log('No layout config available for border drag');
+      return;
+    }
+    
+    console.log('Border drag update:', { borderZone, deltaX, deltaY });
     
     // Parse current grid configuration
     let columnSizes = [1];
@@ -754,6 +772,8 @@ const CanvasCollagePreview = ({
       }
     }
     
+    console.log('Current sizes:', { columnSizes, rowSizes });
+    
     // Calculate available space for adjustment
     const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
     const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
@@ -768,6 +788,7 @@ const CanvasCollagePreview = ({
     
     let newColumnSizes = [...columnSizes];
     let newRowSizes = [...rowSizes];
+    let changed = false;
     
     if (borderZone.type === 'vertical') {
       // Adjust column sizes
@@ -778,8 +799,8 @@ const CanvasCollagePreview = ({
         // Convert pixel delta to fractional unit delta
         const frDelta = deltaX / columnFrUnit;
         
-        // Minimum size constraint (10% of average size)
-        const minSize = totalColumnFr / columnSizes.length * 0.1;
+        // More generous minimum size constraint (5% of average size)
+        const minSize = totalColumnFr / columnSizes.length * 0.05;
         
         // Calculate new sizes
         const newLeftSize = Math.max(minSize, newColumnSizes[leftIndex] + frDelta);
@@ -789,6 +810,8 @@ const CanvasCollagePreview = ({
         if (newLeftSize >= minSize && newRightSize >= minSize) {
           newColumnSizes[leftIndex] = newLeftSize;
           newColumnSizes[rightIndex] = newRightSize;
+          changed = true;
+          console.log('Column sizes updated:', { leftIndex, rightIndex, newLeftSize, newRightSize });
         }
       }
     } else if (borderZone.type === 'horizontal') {
@@ -800,8 +823,8 @@ const CanvasCollagePreview = ({
         // Convert pixel delta to fractional unit delta
         const frDelta = deltaY / rowFrUnit;
         
-        // Minimum size constraint (10% of average size)
-        const minSize = totalRowFr / rowSizes.length * 0.1;
+        // More generous minimum size constraint (5% of average size)
+        const minSize = totalRowFr / rowSizes.length * 0.05;
         
         // Calculate new sizes
         const newTopSize = Math.max(minSize, newRowSizes[topIndex] + frDelta);
@@ -811,25 +834,32 @@ const CanvasCollagePreview = ({
         if (newTopSize >= minSize && newBottomSize >= minSize) {
           newRowSizes[topIndex] = newTopSize;
           newRowSizes[bottomIndex] = newBottomSize;
+          changed = true;
+          console.log('Row sizes updated:', { topIndex, bottomIndex, newTopSize, newBottomSize });
         }
       }
     }
     
-    // Create new layout config with updated sizes
-    const newLayoutConfig = {
-      ...layoutConfig,
-      gridTemplateColumns: newColumnSizes.map(size => `${size}fr`).join(' '),
-      gridTemplateRows: newRowSizes.map(size => `${size}fr`).join(' ')
-    };
-    
-    setCustomLayoutConfig(newLayoutConfig);
+    // Only update if something actually changed
+    if (changed) {
+      // Create new layout config with updated sizes
+      const newLayoutConfig = {
+        ...layoutConfig,
+        gridTemplateColumns: newColumnSizes.map(size => `${size}fr`).join(' '),
+        gridTemplateRows: newRowSizes.map(size => `${size}fr`).join(' ')
+      };
+      
+      console.log('Setting new layout config:', newLayoutConfig);
+      setCustomLayoutConfig(newLayoutConfig);
+    }
   }, [layoutConfig, borderPixels, componentWidth, componentHeight]);
 
   const findBorderZone = useCallback((x, y) => {
-    return borderZones.find(zone => 
+    const found = borderZones.find(zone => 
       x >= zone.x && x <= zone.x + zone.width &&
       y >= zone.y && y <= zone.y + zone.height
     );
+    return found;
   }, [borderZones]);
 
   // Load images when they change
@@ -1936,6 +1966,72 @@ const CanvasCollagePreview = ({
     setCustomLayoutConfig(null);
   }, [selectedTemplate]);
 
+  // Global mouse/touch handlers for border dragging
+  useEffect(() => {
+    const handleGlobalMouseMove = (e) => {
+      if (isDraggingBorder && draggedBorder && containerRef.current) {
+        e.preventDefault();
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const deltaX = x - borderDragStart.x;
+        const deltaY = y - borderDragStart.y;
+        
+        console.log('Global mouse move - border drag:', { deltaX, deltaY, draggedBorder });
+        
+        updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
+        setBorderDragStart({ x, y });
+      }
+    };
+
+    const handleGlobalTouchMove = (e) => {
+      if (isDraggingBorder && draggedBorder && containerRef.current && e.touches.length === 1) {
+        e.preventDefault();
+        const rect = containerRef.current.getBoundingClientRect();
+        const touch = e.touches[0];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        const deltaX = x - borderDragStart.x;
+        const deltaY = y - borderDragStart.y;
+        
+        console.log('Global touch move - border drag:', { deltaX, deltaY, draggedBorder });
+        
+        updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
+        setBorderDragStart({ x, y });
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (isDraggingBorder) {
+        console.log('Global mouse up - ending border drag');
+        setIsDraggingBorder(false);
+        setDraggedBorder(null);
+      }
+    };
+
+    const handleGlobalTouchEnd = () => {
+      if (isDraggingBorder) {
+        console.log('Global touch end - ending border drag');
+        setIsDraggingBorder(false);
+        setDraggedBorder(null);
+      }
+    };
+
+    if (isDraggingBorder) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+      document.addEventListener('touchend', handleGlobalTouchEnd);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('touchmove', handleGlobalTouchMove);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+    };
+  }, [isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
+
   // Cleanup hover timeout on unmount
   useEffect(() => {
     return () => {
@@ -1961,6 +2057,9 @@ const CanvasCollagePreview = ({
     if (isDraggingBorder && draggedBorder) {
       const deltaX = x - borderDragStart.x;
       const deltaY = y - borderDragStart.y;
+      
+      console.log('Mouse move - border drag:', { deltaX, deltaY, draggedBorder });
+      
       updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
       setBorderDragStart({ x, y });
       return;
@@ -2156,8 +2255,11 @@ const CanvasCollagePreview = ({
     const borderZone = findBorderZone(x, y);
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     
+    console.log('Mouse down - border zone found:', borderZone, 'at position:', { x, y });
+    
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
       // Start border dragging
+      console.log('Starting border drag for zone:', borderZone);
       setIsDraggingBorder(true);
       setDraggedBorder(borderZone);
       setBorderDragStart({ x, y });
@@ -2454,8 +2556,11 @@ const CanvasCollagePreview = ({
       const borderZone = findBorderZone(x, y);
       const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
       
+      console.log('Touch start - border zone found:', borderZone, 'at position:', { x, y });
+      
       if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
         // Start border dragging
+        console.log('Starting border drag for zone:', borderZone);
         e.preventDefault();
         e.stopPropagation();
         setIsDraggingBorder(true);
@@ -2618,6 +2723,9 @@ const CanvasCollagePreview = ({
       
       const deltaX = x - borderDragStart.x;
       const deltaY = y - borderDragStart.y;
+      
+      console.log('Touch move - border drag:', { deltaX, deltaY, draggedBorder });
+      
       updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
       setBorderDragStart({ x, y });
       return;
@@ -4061,7 +4169,32 @@ const CanvasCollagePreview = ({
        textEditingPanel === null && 
        borderZones.map((zone, index) => (
         <Box
-          key={`border-zone-${zone.type}-${zone.index}`}
+          key={`border-zone-${zone.id || zone.type + '-' + zone.index}`}
+          onMouseDown={(e) => {
+            console.log('Border zone mouse down:', zone);
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDraggingBorder(true);
+            setDraggedBorder(zone);
+            const rect = containerRef.current.getBoundingClientRect();
+            setBorderDragStart({ 
+              x: e.clientX - rect.left, 
+              y: e.clientY - rect.top 
+            });
+          }}
+          onTouchStart={(e) => {
+            console.log('Border zone touch start:', zone);
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDraggingBorder(true);
+            setDraggedBorder(zone);
+            const rect = containerRef.current.getBoundingClientRect();
+            const touch = e.touches[0];
+            setBorderDragStart({ 
+              x: touch.clientX - rect.left, 
+              y: touch.clientY - rect.top 
+            });
+          }}
           sx={{
             position: 'absolute',
             top: zone.y,
@@ -4069,18 +4202,24 @@ const CanvasCollagePreview = ({
             width: zone.width,
             height: zone.height,
             cursor: zone.cursor,
-            backgroundColor: hoveredBorder === zone ? 'rgba(33, 150, 243, 0.2)' : 'transparent',
+            // More visible background for debugging
+            backgroundColor: isDraggingBorder && draggedBorder === zone 
+              ? 'rgba(33, 150, 243, 0.4)' 
+              : hoveredBorder === zone 
+                ? 'rgba(33, 150, 243, 0.2)' 
+                : 'rgba(255, 0, 0, 0.1)', // Red tint for debugging - remove later
             transition: 'background-color 0.2s ease',
             zIndex: 10, // Above canvas and overlays, below text editor
             pointerEvents: 'auto',
             // Add a subtle visual indicator on hover
             '&:hover': {
-              backgroundColor: 'rgba(33, 150, 243, 0.15)',
+              backgroundColor: 'rgba(33, 150, 243, 0.25)',
             },
-            // Visual feedback during drag
-            ...(isDraggingBorder && draggedBorder === zone && {
-              backgroundColor: 'rgba(33, 150, 243, 0.3)',
-            }),
+            // Add border for better visibility during development
+            border: '1px dashed rgba(33, 150, 243, 0.3)',
+            // Touch-friendly styling
+            touchAction: 'none', // Prevent default touch behaviors
+            userSelect: 'none', // Prevent text selection
           }}
         />
       ))}
