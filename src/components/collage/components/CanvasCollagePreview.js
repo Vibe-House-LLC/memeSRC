@@ -191,8 +191,6 @@ const getBorderPixelSize = (borderThickness, componentWidth = 400) => {
 const createLayoutConfig = (template, panelCount) => {
   if (!template) return null;
   
-  console.log("Creating layout config for template:", template);
-  
   try {
     // Look up the original layout in the layout definitions
     const panelCountKey = Math.max(2, Math.min(panelCount, 5));
@@ -214,12 +212,10 @@ const createLayoutConfig = (template, panelCount) => {
       }, null);
       
       if (foundLayout) {
-        console.log("Found layout, getting config:", foundLayout);
         return foundLayout.getLayoutConfig();
       }
     }
     
-    console.log("No layout found, using default grid");
     // Fallback to a basic grid layout in case of error
     return {
       gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
@@ -404,7 +400,6 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
     }
   }
   
-  console.log('Border zones created:', zones); // Debug logging
   return zones;
 };
 
@@ -726,11 +721,8 @@ const CanvasCollagePreview = ({
   // Border dragging helper functions
   const updateLayoutWithBorderDrag = useCallback((borderZone, deltaX, deltaY) => {
     if (!layoutConfig) {
-      console.log('No layout config available for border drag');
       return;
     }
-    
-    console.log('Border drag update:', { borderZone, deltaX, deltaY });
     
     // Parse current grid configuration
     let columnSizes = [1];
@@ -772,8 +764,6 @@ const CanvasCollagePreview = ({
       }
     }
     
-    console.log('Current sizes:', { columnSizes, rowSizes });
-    
     // Calculate available space for adjustment
     const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
     const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
@@ -811,7 +801,6 @@ const CanvasCollagePreview = ({
           newColumnSizes[leftIndex] = newLeftSize;
           newColumnSizes[rightIndex] = newRightSize;
           changed = true;
-          console.log('Column sizes updated:', { leftIndex, rightIndex, newLeftSize, newRightSize });
         }
       }
     } else if (borderZone.type === 'horizontal') {
@@ -835,7 +824,6 @@ const CanvasCollagePreview = ({
           newRowSizes[topIndex] = newTopSize;
           newRowSizes[bottomIndex] = newBottomSize;
           changed = true;
-          console.log('Row sizes updated:', { topIndex, bottomIndex, newTopSize, newBottomSize });
         }
       }
     }
@@ -849,7 +837,6 @@ const CanvasCollagePreview = ({
         gridTemplateRows: newRowSizes.map(size => `${size}fr`).join(' ')
       };
       
-      console.log('Setting new layout config:', newLayoutConfig);
       setCustomLayoutConfig(newLayoutConfig);
     }
   }, [layoutConfig, borderPixels, componentWidth, componentHeight]);
@@ -1977,8 +1964,6 @@ const CanvasCollagePreview = ({
         const deltaX = x - borderDragStart.x;
         const deltaY = y - borderDragStart.y;
         
-        console.log('Global mouse move - border drag:', { deltaX, deltaY, draggedBorder });
-        
         updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
         setBorderDragStart({ x, y });
       }
@@ -1994,8 +1979,6 @@ const CanvasCollagePreview = ({
         const deltaX = x - borderDragStart.x;
         const deltaY = y - borderDragStart.y;
         
-        console.log('Global touch move - border drag:', { deltaX, deltaY, draggedBorder });
-        
         updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
         setBorderDragStart({ x, y });
       }
@@ -2003,7 +1986,6 @@ const CanvasCollagePreview = ({
 
     const handleGlobalMouseUp = () => {
       if (isDraggingBorder) {
-        console.log('Global mouse up - ending border drag');
         setIsDraggingBorder(false);
         setDraggedBorder(null);
       }
@@ -2011,7 +1993,6 @@ const CanvasCollagePreview = ({
 
     const handleGlobalTouchEnd = () => {
       if (isDraggingBorder) {
-        console.log('Global touch end - ending border drag');
         setIsDraggingBorder(false);
         setDraggedBorder(null);
       }
@@ -2057,8 +2038,6 @@ const CanvasCollagePreview = ({
     if (isDraggingBorder && draggedBorder) {
       const deltaX = x - borderDragStart.x;
       const deltaY = y - borderDragStart.y;
-      
-      console.log('Mouse move - border drag:', { deltaX, deltaY, draggedBorder });
       
       updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
       setBorderDragStart({ x, y });
@@ -2255,11 +2234,8 @@ const CanvasCollagePreview = ({
     const borderZone = findBorderZone(x, y);
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     
-    console.log('Mouse down - border zone found:', borderZone, 'at position:', { x, y });
-    
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
       // Start border dragging
-      console.log('Starting border drag for zone:', borderZone);
       setIsDraggingBorder(true);
       setDraggedBorder(borderZone);
       setBorderDragStart({ x, y });
@@ -2556,11 +2532,8 @@ const CanvasCollagePreview = ({
       const borderZone = findBorderZone(x, y);
       const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
       
-      console.log('Touch start - border zone found:', borderZone, 'at position:', { x, y });
-      
       if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
         // Start border dragging
-        console.log('Starting border drag for zone:', borderZone);
         e.preventDefault();
         e.stopPropagation();
         setIsDraggingBorder(true);
@@ -2723,8 +2696,6 @@ const CanvasCollagePreview = ({
       
       const deltaX = x - borderDragStart.x;
       const deltaY = y - borderDragStart.y;
-      
-      console.log('Touch move - border drag:', { deltaX, deltaY, draggedBorder });
       
       updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
       setBorderDragStart({ x, y });
@@ -4171,7 +4142,6 @@ const CanvasCollagePreview = ({
         <Box
           key={`border-zone-${zone.id || `${zone.type}-${zone.index}`}`}
           onMouseDown={(e) => {
-            console.log('Border zone mouse down:', zone);
             e.preventDefault();
             e.stopPropagation();
             setIsDraggingBorder(true);
@@ -4183,7 +4153,6 @@ const CanvasCollagePreview = ({
             });
           }}
           onTouchStart={(e) => {
-            console.log('Border zone touch start:', zone);
             e.preventDefault();
             e.stopPropagation();
             setIsDraggingBorder(true);
