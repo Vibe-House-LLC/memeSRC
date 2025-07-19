@@ -404,7 +404,6 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
     }
   }
   
-  console.log('Border zones created:', zones); // Debug logging
   return zones;
 };
 
@@ -620,6 +619,7 @@ const CanvasCollagePreview = ({
   const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(null);
+  const [isResizeMode, setIsResizeMode] = useState(false);
 
   // Mobile detection for slider fix
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
@@ -861,6 +861,48 @@ const CanvasCollagePreview = ({
     );
     return found;
   }, [borderZones]);
+
+  // Toggle resize mode
+  const toggleResizeMode = useCallback(() => {
+    setIsResizeMode(prev => !prev);
+    // Clear any existing drag state when toggling
+    setIsDraggingBorder(false);
+    setDraggedBorder(null);
+    setHoveredBorder(null);
+  }, []);
+
+  // Handle border zone tap - either enable resize mode or start dragging
+  const handleBorderZoneInteraction = useCallback((zone, e, isTouch = false) => {
+    console.log('Border zone interaction:', { zone, isResizeMode });
+    
+    if (!isResizeMode) {
+      // First tap - enable resize mode
+      setIsResizeMode(true);
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    // Already in resize mode - start dragging
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingBorder(true);
+    setDraggedBorder(zone);
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    if (isTouch && e.touches && e.touches[0]) {
+      const touch = e.touches[0];
+      setBorderDragStart({ 
+        x: touch.clientX - rect.left, 
+        y: touch.clientY - rect.top 
+      });
+    } else {
+      setBorderDragStart({ 
+        x: e.clientX - rect.left, 
+        y: e.clientY - rect.top 
+      });
+    }
+  }, [isResizeMode]);
 
   // Load images when they change
   useEffect(() => {
@@ -1966,10 +2008,19 @@ const CanvasCollagePreview = ({
     setCustomLayoutConfig(null);
   }, [selectedTemplate]);
 
+  // Exit resize mode when other interactions happen
+  useEffect(() => {
+    if (textEditingPanel !== null || Object.values(isTransformMode).some(enabled => enabled)) {
+      setIsResizeMode(false);
+      setIsDraggingBorder(false);
+      setDraggedBorder(null);
+    }
+  }, [textEditingPanel, isTransformMode]);
+
   // Global mouse/touch handlers for border dragging
   useEffect(() => {
     const handleGlobalMouseMove = (e) => {
-      if (isDraggingBorder && draggedBorder && containerRef.current) {
+      if (isDraggingBorder && draggedBorder && isResizeMode && containerRef.current) {
         e.preventDefault();
         const rect = containerRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -1985,7 +2036,7 @@ const CanvasCollagePreview = ({
     };
 
     const handleGlobalTouchMove = (e) => {
-      if (isDraggingBorder && draggedBorder && containerRef.current && e.touches.length === 1) {
+      if (isDraggingBorder && draggedBorder && isResizeMode && containerRef.current && e.touches.length === 1) {
         e.preventDefault();
         const rect = containerRef.current.getBoundingClientRect();
         const touch = e.touches[0];
@@ -2017,7 +2068,7 @@ const CanvasCollagePreview = ({
       }
     };
 
-    if (isDraggingBorder) {
+    if (isDraggingBorder && isResizeMode) {
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
       document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
@@ -2030,7 +2081,7 @@ const CanvasCollagePreview = ({
       document.removeEventListener('touchmove', handleGlobalTouchMove);
       document.removeEventListener('touchend', handleGlobalTouchEnd);
     };
-  }, [isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
+  }, [isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag, isResizeMode]);
 
   // Cleanup hover timeout on unmount
   useEffect(() => {
@@ -2053,17 +2104,7 @@ const CanvasCollagePreview = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Handle border dragging
-    if (isDraggingBorder && draggedBorder) {
-      const deltaX = x - borderDragStart.x;
-      const deltaY = y - borderDragStart.y;
-      
-      console.log('Mouse move - border drag:', { deltaX, deltaY, draggedBorder });
-      
-      updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-      setBorderDragStart({ x, y });
-      return;
-    }
+
     
     // Check for border zones first (they have priority)
     const borderZone = findBorderZone(x, y);
@@ -2251,20 +2292,7 @@ const CanvasCollagePreview = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Check for border zone clicks first
-    const borderZone = findBorderZone(x, y);
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
-    
-    console.log('Mouse down - border zone found:', borderZone, 'at position:', { x, y });
-    
-    if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
-      // Start border dragging
-      console.log('Starting border drag for zone:', borderZone);
-      setIsDraggingBorder(true);
-      setDraggedBorder(borderZone);
-      setBorderDragStart({ x, y });
-      return;
-    }
     
     const clickedPanelIndex = panelRects.findIndex(panel => 
       x >= panel.x && x <= panel.x + panel.width &&
@@ -2330,8 +2358,6 @@ const CanvasCollagePreview = ({
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-    setIsDraggingBorder(false);
-    setDraggedBorder(null);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
@@ -2552,22 +2578,7 @@ const CanvasCollagePreview = ({
         y >= panel.y && y <= panel.y + panel.height
       );
       
-      // Check for border zone touches first
-      const borderZone = findBorderZone(x, y);
       const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
-      
-      console.log('Touch start - border zone found:', borderZone, 'at position:', { x, y });
-      
-      if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
-        // Start border dragging
-        console.log('Starting border drag for zone:', borderZone);
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDraggingBorder(true);
-        setDraggedBorder(borderZone);
-        setBorderDragStart({ x, y });
-        return;
-      }
 
       if (clickedPanelIndex >= 0) {
         const clickedPanel = panelRects[clickedPanelIndex];
@@ -2712,24 +2723,7 @@ const CanvasCollagePreview = ({
       e.stopPropagation();
     }
 
-    // Handle border dragging
-    if (isDraggingBorder && draggedBorder && touches.length === 1) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const touch = touches[0];
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      
-      const deltaX = x - borderDragStart.x;
-      const deltaY = y - borderDragStart.y;
-      
-      console.log('Touch move - border drag:', { deltaX, deltaY, draggedBorder });
-      
-      updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-      setBorderDragStart({ x, y });
-      return;
-    }
+
     
     if (touches.length === 1 && isDragging && selectedPanel !== null) {
       // Single touch drag
@@ -2904,8 +2898,6 @@ const CanvasCollagePreview = ({
 
   const handleTouchEnd = useCallback((e) => {
     setIsDragging(false);
-    setIsDraggingBorder(false);
-    setDraggedBorder(null);
     setTouchStartDistance(null);
     setTouchStartScale(1);
     
@@ -4167,62 +4159,146 @@ const CanvasCollagePreview = ({
       {/* Border drag zones - only visible when not in transform mode or text editing */}
       {!Object.values(isTransformMode).some(enabled => enabled) && 
        textEditingPanel === null && 
-       borderZones.map((zone, index) => (
+       borderZones.map((zone, index) => {
+         // Calculate handle position (center of the border zone)
+         const handleSize = 24;
+         const handleX = zone.x + (zone.width / 2) - (handleSize / 2);
+         const handleY = zone.y + (zone.height / 2) - (handleSize / 2);
+         
+         return (
+           <React.Fragment key={`border-zone-${zone.id || zone.type + '-' + zone.index}`}>
+             {/* Invisible full border zone for interaction */}
+             <Box
+               onMouseDown={(e) => handleBorderZoneInteraction(zone, e, false)}
+               onTouchStart={(e) => handleBorderZoneInteraction(zone, e, true)}
+               sx={{
+                 position: 'absolute',
+                 top: zone.y,
+                 left: zone.x,
+                 width: zone.width,
+                 height: zone.height,
+                 cursor: isResizeMode ? zone.cursor : 'pointer',
+                 // Only show background when in resize mode or dragging
+                 backgroundColor: isDraggingBorder && draggedBorder === zone 
+                   ? 'rgba(33, 150, 243, 0.3)' 
+                   : isResizeMode 
+                     ? 'rgba(33, 150, 243, 0.1)' 
+                     : 'transparent',
+                 transition: 'background-color 0.2s ease',
+                 zIndex: 10,
+                 pointerEvents: 'auto',
+                 touchAction: 'none',
+                 userSelect: 'none',
+               }}
+             />
+             
+             {/* Visible handle - only show when not in resize mode (to indicate tappable) or when in resize mode */}
+             <Box
+               sx={{
+                 position: 'absolute',
+                 top: handleY,
+                 left: handleX,
+                 width: handleSize,
+                 height: handleSize,
+                 borderRadius: '50%',
+                 backgroundColor: isResizeMode 
+                   ? theme.palette.primary.main 
+                   : 'rgba(33, 150, 243, 0.7)',
+                 border: `2px solid ${theme.palette.background.paper}`,
+                 boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                 cursor: isResizeMode ? zone.cursor : 'pointer',
+                 zIndex: 11, // Above the zone
+                 pointerEvents: 'none', // Let clicks pass through to the zone
+                 transition: 'all 0.2s ease',
+                 transform: isDraggingBorder && draggedBorder === zone 
+                   ? 'scale(1.2)' 
+                   : isResizeMode 
+                     ? 'scale(1)' 
+                     : 'scale(0.8)',
+                 opacity: isResizeMode || (!isResizeMode && hoveredBorder === zone) ? 1 : 0.6,
+                 // Add resize icon inside handle
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 '&::before': {
+                   content: '""',
+                   width: zone.type === 'vertical' ? '2px' : '8px',
+                   height: zone.type === 'vertical' ? '8px' : '2px',
+                   backgroundColor: theme.palette.background.paper,
+                   borderRadius: '1px',
+                   position: 'absolute',
+                   transform: zone.type === 'vertical' ? 'translateX(-2px)' : 'translateY(-2px)',
+                 },
+                 '&::after': {
+                   content: '""',
+                   width: zone.type === 'vertical' ? '2px' : '8px',
+                   height: zone.type === 'vertical' ? '8px' : '2px',
+                   backgroundColor: theme.palette.background.paper,
+                   borderRadius: '1px',
+                   position: 'absolute',
+                   transform: zone.type === 'vertical' ? 'translateX(2px)' : 'translateY(2px)',
+                 }
+               }}
+             />
+           </React.Fragment>
+         );
+               })}
+
+      {/* Resize Mode Exit Button */}
+      {isResizeMode && (
         <Box
-          key={`border-zone-${zone.id || zone.type + '-' + zone.index}`}
-          onMouseDown={(e) => {
-            console.log('Border zone mouse down:', zone);
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDraggingBorder(true);
-            setDraggedBorder(zone);
-            const rect = containerRef.current.getBoundingClientRect();
-            setBorderDragStart({ 
-              x: e.clientX - rect.left, 
-              y: e.clientY - rect.top 
-            });
-          }}
-          onTouchStart={(e) => {
-            console.log('Border zone touch start:', zone);
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDraggingBorder(true);
-            setDraggedBorder(zone);
-            const rect = containerRef.current.getBoundingClientRect();
-            const touch = e.touches[0];
-            setBorderDragStart({ 
-              x: touch.clientX - rect.left, 
-              y: touch.clientY - rect.top 
-            });
-          }}
           sx={{
             position: 'absolute',
-            top: zone.y,
-            left: zone.x,
-            width: zone.width,
-            height: zone.height,
-            cursor: zone.cursor,
-            // More visible background for debugging
-            backgroundColor: isDraggingBorder && draggedBorder === zone 
-              ? 'rgba(33, 150, 243, 0.4)' 
-              : hoveredBorder === zone 
-                ? 'rgba(33, 150, 243, 0.2)' 
-                : 'rgba(255, 0, 0, 0.1)', // Red tint for debugging - remove later
-            transition: 'background-color 0.2s ease',
-            zIndex: 10, // Above canvas and overlays, below text editor
-            pointerEvents: 'auto',
-            // Add a subtle visual indicator on hover
-            '&:hover': {
-              backgroundColor: 'rgba(33, 150, 243, 0.25)',
-            },
-            // Add border for better visibility during development
-            border: '1px dashed rgba(33, 150, 243, 0.3)',
-            // Touch-friendly styling
-            touchAction: 'none', // Prevent default touch behaviors
-            userSelect: 'none', // Prevent text selection
+            top: 8,
+            right: 8,
+            zIndex: 20,
           }}
-        />
-      ))}
+        >
+          <Button
+            variant="contained"
+            size="small"
+            onClick={toggleResizeMode}
+            sx={{
+              backgroundColor: theme.palette.primary.main,
+              color: theme.palette.primary.contrastText,
+              minWidth: 'auto',
+              px: 2,
+              py: 0.5,
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              borderRadius: 2,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.dark,
+              },
+            }}
+          >
+            Done
+          </Button>
+        </Box>
+      )}
+
+      {/* Resize Mode Instructions */}
+      {!isResizeMode && borderZones.length > 0 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            zIndex: 15,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            px: 2,
+            py: 1,
+            borderRadius: 1,
+            fontSize: '0.75rem',
+            opacity: 0.8,
+            pointerEvents: 'none',
+          }}
+        >
+          Tap border handles to resize panels
+        </Box>
+      )}
 
       {/* Reset Confirmation Dialog */}
       <Dialog
