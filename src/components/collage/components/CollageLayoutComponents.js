@@ -13,7 +13,6 @@ import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
 import BulkUploadSection from "./BulkUploadSection";
 import { SectionHeading } from './CollageUIComponents';
-import ExportDialog from './ExportDialog';
 import DisclosureCard from './DisclosureCard';
 
 /**
@@ -245,12 +244,6 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
           </Box>
         )}
       </Box>
-
-      <ExportDialog 
-        open={isExportDialogOpen} 
-        onClose={handleCloseExportDialog} 
-        finalImage={finalImage} 
-      />
     </>
   );
 };
