@@ -3026,34 +3026,6 @@ const CanvasCollagePreview = ({
         />
       ))}
 
-      {/* Reset Confirmation Dialog */}
-      <Dialog
-        open={resetDialogOpen}
-        onClose={handleResetCancel}
-        PaperProps={{
-          sx: {
-            backgroundColor: '#1e1e1e',
-            color: '#ffffff',
-          }
-        }}
-      >
-        <DialogTitle sx={{ color: '#ffffff' }}>
-          Reset to Default
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: '#ffffff' }}>
-            Are you sure you want to reset this setting to its default value? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleResetCancel} sx={{ color: '#ffffff' }}>
-            Cancel
-          </Button>
-          <Button onClick={handleResetConfirm} sx={{ color: '#ffffff' }} autoFocus>
-            Reset
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };
