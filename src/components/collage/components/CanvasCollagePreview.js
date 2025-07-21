@@ -2828,7 +2828,8 @@ const CanvasCollagePreview = ({
           <Box key={`controls-${panelId}`}>
             {/* Transform control button */}
             {hasImage && textEditingPanel === null && 
-             (!anyPanelInTransformMode || isInTransformMode) && (
+             (!anyPanelInTransformMode || isInTransformMode) && 
+             !isDraggingBorder && (
                           <IconButton
               size="small"
               onClick={() => toggleTransformMode(panelId)}
