@@ -23,8 +23,6 @@ const getBorderPixelSize = (borderThickness, componentWidth = 400) => {
 const createLayoutConfig = (template, panelCount) => {
   if (!template) return null;
   
-  console.log("Creating layout config for template:", template);
-  
   try {
     // Look up the original layout in the layout definitions
     const panelCountKey = Math.max(2, Math.min(panelCount, 5));
@@ -46,12 +44,10 @@ const createLayoutConfig = (template, panelCount) => {
       }, null);
       
       if (foundLayout) {
-        console.log("Found layout, getting config:", foundLayout);
         return foundLayout.getLayoutConfig();
       }
     }
     
-    console.log("No layout found, using default grid");
     // Fallback to a basic grid layout in case of error
     return {
       gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(panelCount))}, 1fr)`,
@@ -122,6 +118,121 @@ const parseGridTemplateAreas = (gridTemplateAreas) => {
   });
   
   return areas;
+};
+
+/**
+ * Helper function to detect draggable border zones
+ */
+const detectBorderZones = (layoutConfig, containerWidth, containerHeight, borderPixels) => {
+  if (!layoutConfig) return [];
+  
+  const zones = [];
+  // Make threshold larger for mobile - minimum 16px hit area for better touch interaction
+  const threshold = Math.max(16, borderPixels * 2);
+  
+  // Parse grid columns and rows to get track sizes
+  let columnSizes = [1];
+  let rowSizes = [1];
+  
+  if (layoutConfig.gridTemplateColumns) {
+    if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
+      const repeatMatch = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
+      if (repeatMatch) {
+        const count = parseInt(repeatMatch[1], 10);
+        columnSizes = Array(count).fill(1);
+      }
+    } else {
+      const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
+      if (frMatches) {
+        columnSizes = frMatches.map(match => {
+          const value = match.replace('fr', '');
+          return value === '' ? 1 : parseFloat(value);
+        });
+      }
+    }
+  }
+  
+  if (layoutConfig.gridTemplateRows) {
+    if (layoutConfig.gridTemplateRows.includes('repeat(')) {
+      const repeatMatch = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
+      if (repeatMatch) {
+        const count = parseInt(repeatMatch[1], 10);
+        rowSizes = Array(count).fill(1);
+      }
+    } else {
+      const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
+      if (frMatches) {
+        rowSizes = frMatches.map(match => {
+          const value = match.replace('fr', '');
+          return value === '' ? 1 : parseFloat(value);
+        });
+      }
+    }
+  }
+  
+  // Only create zones if we have multiple columns or rows
+  if (columnSizes.length <= 1 && rowSizes.length <= 1) {
+    return [];
+  }
+  
+  // Calculate positions of grid lines
+  const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
+  const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
+  
+  const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
+  const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
+  
+  const availableWidth = containerWidth - (borderPixels * 2) - horizontalGaps;
+  const availableHeight = containerHeight - (borderPixels * 2) - verticalGaps;
+  
+  const columnFrUnit = availableWidth / totalColumnFr;
+  const rowFrUnit = availableHeight / totalRowFr;
+  
+  // Create vertical border zones (between columns) - only if we have multiple columns
+  if (columnSizes.length > 1) {
+    let currentX = borderPixels;
+    for (let i = 0; i < columnSizes.length - 1; i += 1) {
+      currentX += columnSizes[i] * columnFrUnit;
+      
+      zones.push({
+        type: 'vertical',
+        index: i,
+        x: currentX - threshold / 2,
+        y: 0,
+        width: threshold,
+        height: containerHeight,
+        centerX: currentX,
+        cursor: 'col-resize',
+        id: `vertical-${i}` // Add ID for debugging
+      });
+      
+      currentX += borderPixels;
+    }
+  }
+  
+  // Create horizontal border zones (between rows) - only if we have multiple rows
+  if (rowSizes.length > 1) {
+    let currentY = borderPixels;
+    for (let i = 0; i < rowSizes.length - 1; i += 1) {
+      currentY += rowSizes[i] * rowFrUnit;
+      
+      zones.push({
+        type: 'horizontal',
+        index: i,
+        x: 0,
+        y: currentY - threshold / 2,
+        width: containerWidth,
+        height: threshold,
+        centerY: currentY,
+        cursor: 'row-resize',
+        id: `horizontal-${i}` // Add ID for debugging
+      });
+      
+      currentY += borderPixels;
+    }
+  }
+  
+  return zones;
 };
 
 /**
@@ -324,6 +435,14 @@ const CanvasCollagePreview = ({
   const hoverTimeoutRef = useRef(null);
   const touchStartInfo = useRef(null);
 
+  // Border dragging state
+  const [borderZones, setBorderZones] = useState([]);
+  const [isDraggingBorder, setIsDraggingBorder] = useState(false);
+  const [draggedBorder, setDraggedBorder] = useState(null);
+  const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
+  const [hoveredBorder, setHoveredBorder] = useState(null);
+  const [customLayoutConfig, setCustomLayoutConfig] = useState(null);
+
   // Mobile detection for slider fix
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
@@ -337,13 +456,148 @@ const CanvasCollagePreview = ({
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
+    // Use custom layout if available, otherwise create from template
+    if (customLayoutConfig) {
+      return customLayoutConfig;
+    }
     return selectedTemplate ? createLayoutConfig(selectedTemplate, panelCount) : null;
-  }, [selectedTemplate, panelCount]);
+  }, [selectedTemplate, panelCount, customLayoutConfig]);
 
   // Calculate border pixels
   const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
 
 
+
+  // Border dragging helper functions
+  const updateLayoutWithBorderDrag = useCallback((borderZone, deltaX, deltaY) => {
+    if (!layoutConfig) {
+      return;
+    }
+    
+    // Parse current grid configuration
+    let columnSizes = [1];
+    let rowSizes = [1];
+    
+    if (layoutConfig.gridTemplateColumns) {
+      if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
+        const repeatMatch = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
+        if (repeatMatch) {
+          const count = parseInt(repeatMatch[1], 10);
+          columnSizes = Array(count).fill(1);
+        }
+      } else {
+        const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
+        if (frMatches) {
+          columnSizes = frMatches.map(match => {
+            const value = match.replace('fr', '');
+            return value === '' ? 1 : parseFloat(value);
+          });
+        }
+      }
+    }
+    
+    if (layoutConfig.gridTemplateRows) {
+      if (layoutConfig.gridTemplateRows.includes('repeat(')) {
+        const repeatMatch = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
+        if (repeatMatch) {
+          const count = parseInt(repeatMatch[1], 10);
+          rowSizes = Array(count).fill(1);
+        }
+      } else {
+        const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
+        if (frMatches) {
+          rowSizes = frMatches.map(match => {
+            const value = match.replace('fr', '');
+            return value === '' ? 1 : parseFloat(value);
+          });
+        }
+      }
+    }
+    
+    // Calculate available space for adjustment
+    const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
+    const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
+    const availableWidth = componentWidth - (borderPixels * 2) - horizontalGaps;
+    const availableHeight = componentHeight - (borderPixels * 2) - verticalGaps;
+    
+    const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
+    const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
+    
+    const columnFrUnit = availableWidth / totalColumnFr;
+    const rowFrUnit = availableHeight / totalRowFr;
+    
+    const newColumnSizes = [...columnSizes];
+    const newRowSizes = [...rowSizes];
+    let changed = false;
+    
+    if (borderZone.type === 'vertical') {
+      // Adjust column sizes
+      const leftIndex = borderZone.index;
+      const rightIndex = borderZone.index + 1;
+      
+      if (leftIndex < newColumnSizes.length && rightIndex < newColumnSizes.length) {
+        // Convert pixel delta to fractional unit delta
+        const frDelta = deltaX / columnFrUnit;
+        
+        // More generous minimum size constraint (5% of average size)
+        const minSize = totalColumnFr / columnSizes.length * 0.05;
+        
+        // Calculate new sizes
+        const newLeftSize = Math.max(minSize, newColumnSizes[leftIndex] + frDelta);
+        const newRightSize = Math.max(minSize, newColumnSizes[rightIndex] - frDelta);
+        
+        // Only apply if both sizes are above minimum
+        if (newLeftSize >= minSize && newRightSize >= minSize) {
+          newColumnSizes[leftIndex] = newLeftSize;
+          newColumnSizes[rightIndex] = newRightSize;
+          changed = true;
+        }
+      }
+    } else if (borderZone.type === 'horizontal') {
+      // Adjust row sizes
+      const topIndex = borderZone.index;
+      const bottomIndex = borderZone.index + 1;
+      
+      if (topIndex < newRowSizes.length && bottomIndex < newRowSizes.length) {
+        // Convert pixel delta to fractional unit delta
+        const frDelta = deltaY / rowFrUnit;
+        
+        // More generous minimum size constraint (5% of average size)
+        const minSize = totalRowFr / rowSizes.length * 0.05;
+        
+        // Calculate new sizes
+        const newTopSize = Math.max(minSize, newRowSizes[topIndex] + frDelta);
+        const newBottomSize = Math.max(minSize, newRowSizes[bottomIndex] - frDelta);
+        
+        // Only apply if both sizes are above minimum
+        if (newTopSize >= minSize && newBottomSize >= minSize) {
+          newRowSizes[topIndex] = newTopSize;
+          newRowSizes[bottomIndex] = newBottomSize;
+          changed = true;
+        }
+      }
+    }
+    
+    // Only update if something actually changed
+    if (changed) {
+      // Create new layout config with updated sizes
+      const newLayoutConfig = {
+        ...layoutConfig,
+        gridTemplateColumns: newColumnSizes.map(size => `${size}fr`).join(' '),
+        gridTemplateRows: newRowSizes.map(size => `${size}fr`).join(' ')
+      };
+      
+      setCustomLayoutConfig(newLayoutConfig);
+    }
+  }, [layoutConfig, borderPixels, componentWidth, componentHeight]);
+
+  const findBorderZone = useCallback((x, y) => {
+    const found = borderZones.find(zone => 
+      x >= zone.x && x <= zone.x + zone.width &&
+      y >= zone.y && y <= zone.y + zone.height
+    );
+    return found;
+  }, [borderZones]);
 
   // Load images when they change
   useEffect(() => {
@@ -400,6 +654,10 @@ const CanvasCollagePreview = ({
         if (layoutConfig) {
           const rects = parseGridToRects(layoutConfig, width, height, panelCount, borderPixels);
           setPanelRects(rects);
+          
+          // Update border zones for dragging
+          const zones = detectBorderZones(layoutConfig, width, height, borderPixels);
+          setBorderZones(zones);
         }
       }
     };
@@ -1190,6 +1448,71 @@ const CanvasCollagePreview = ({
 
 
 
+  // Reset custom layout when template changes
+  useEffect(() => {
+    setCustomLayoutConfig(null);
+  }, [selectedTemplate]);
+
+  // Global mouse/touch handlers for border dragging
+  useEffect(() => {
+    const handleGlobalMouseMove = (e) => {
+      if (isDraggingBorder && draggedBorder && containerRef.current) {
+        e.preventDefault();
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const deltaX = x - borderDragStart.x;
+        const deltaY = y - borderDragStart.y;
+        
+        updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
+        setBorderDragStart({ x, y });
+      }
+    };
+
+    const handleGlobalTouchMove = (e) => {
+      if (isDraggingBorder && draggedBorder && containerRef.current && e.touches.length === 1) {
+        e.preventDefault();
+        const rect = containerRef.current.getBoundingClientRect();
+        const touch = e.touches[0];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        const deltaX = x - borderDragStart.x;
+        const deltaY = y - borderDragStart.y;
+        
+        updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
+        setBorderDragStart({ x, y });
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (isDraggingBorder) {
+        setIsDraggingBorder(false);
+        setDraggedBorder(null);
+      }
+    };
+
+    const handleGlobalTouchEnd = () => {
+      if (isDraggingBorder) {
+        setIsDraggingBorder(false);
+        setDraggedBorder(null);
+      }
+    };
+
+    if (isDraggingBorder) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+      document.addEventListener('touchend', handleGlobalTouchEnd);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('touchmove', handleGlobalTouchMove);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+    };
+  }, [isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
+
   // Cleanup hover timeout on unmount
   useEffect(() => {
     return () => {
@@ -1210,6 +1533,20 @@ const CanvasCollagePreview = ({
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    // Handle border dragging
+    if (isDraggingBorder && draggedBorder) {
+      const deltaX = x - borderDragStart.x;
+      const deltaY = y - borderDragStart.y;
+      
+      updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
+      setBorderDragStart({ x, y });
+      return;
+    }
+    
+    // Check for border zones first (they have priority)
+    const borderZone = findBorderZone(x, y);
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     
     // Find which panel is under the mouse
     const hoveredPanelIndex = panelRects.findIndex(panel => 
@@ -1219,15 +1556,14 @@ const CanvasCollagePreview = ({
     
     // Check if mouse is over text area (actual text area bounds)
     let isOverTextArea = false;
-    if (hoveredPanelIndex >= 0) {
+    if (hoveredPanelIndex >= 0 && !borderZone) {
       const panel = panelRects[hoveredPanelIndex];
       const imageIndex = panelImageMapping[panel.panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       const panelText = panelTexts[panel.panelId] || {};
       const hasTextOrPlaceholder = hasImage;
-      const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
       
-      // Only check text area if no panel is in transform mode
+      // Only check text area if no panel is in transform mode and not over a border
       if (hasTextOrPlaceholder && !anyPanelInTransformMode) {
         // Get precise text area bounds
         const textAreaBounds = getTextAreaBounds(panel, panelText);
@@ -1240,6 +1576,11 @@ const CanvasCollagePreview = ({
       }
     }
     
+    // Update border hover state
+    if (borderZone !== hoveredBorder) {
+      setHoveredBorder(borderZone);
+    }
+
     if (hoveredPanelIndex !== hoveredPanel) {
       // Clear any existing hover timeout
       if (hoverTimeoutRef.current) {
@@ -1257,42 +1598,18 @@ const CanvasCollagePreview = ({
           hoverTimeoutRef.current = null;
         }, 50); // 50ms delay prevents hover during scroll but is fast enough for normal interaction
       }
-      
-      // Determine cursor based on interaction state
-      let cursor = 'default';
-      
-      if (hoveredPanelIndex >= 0) {
-        const panel = panelRects[hoveredPanelIndex];
-        const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
-        
-        if (anyPanelInTransformMode) {
-          // Only show interactive cursor for the panel that's actually in transform mode
-          if (isTransformMode[panel.panelId]) {
-            cursor = 'grab'; // Transform mode cursor
-          } else {
-            cursor = 'default'; // Non-interactive cursor for other panels
-          }
-        } else if (textEditingPanel !== null) {
-          // When caption editor is open, only show interactive cursor for the panel being edited
-          if (panel.panelId === textEditingPanel) {
-            cursor = isOverTextArea ? 'text' : 'pointer';
-          } else {
-            cursor = 'default'; // Default cursor for inactive frames
-          }
-        } else {
-          // Normal mode - show appropriate cursor for all panels
-          cursor = isOverTextArea ? 'text' : 'pointer';
-        }
-      }
-      
-      canvas.style.cursor = cursor;
-    } else if (hoveredPanelIndex >= 0) {
-      // Update cursor for text area even when staying on same panel
+    }
+    
+    // Determine cursor based on interaction state
+    let cursor = 'default';
+    
+    // Border zones have highest priority for cursor
+    if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
+      cursor = borderZone.cursor;
+    } else if (hoveredPanelIndex >= 0 && !borderZone) {
       const panel = panelRects[hoveredPanelIndex];
-      const anyPanelInTransformModeLocal = Object.values(isTransformMode).some(enabled => enabled);
       
-      let cursor = 'default';
-      if (anyPanelInTransformModeLocal) {
+      if (anyPanelInTransformMode) {
         // Only show interactive cursor for the panel that's actually in transform mode
         if (isTransformMode[panel.panelId]) {
           cursor = 'grab'; // Transform mode cursor
@@ -1310,9 +1627,9 @@ const CanvasCollagePreview = ({
         // Normal mode - show appropriate cursor for all panels
         cursor = isOverTextArea ? 'text' : 'pointer';
       }
-      
-      canvas.style.cursor = cursor;
     }
+    
+    canvas.style.cursor = cursor;
     
     // Handle dragging for transform mode
     if (isDragging && selectedPanel !== null) {
@@ -1398,7 +1715,7 @@ const CanvasCollagePreview = ({
         setDragStart({ x, y });
       }
     }
-  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds]);
+  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds, findBorderZone, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag, hoveredBorder, textEditingPanel]);
 
   // Function to dismiss transform mode for all panels
   const dismissTransformMode = useCallback(() => {
@@ -1412,6 +1729,18 @@ const CanvasCollagePreview = ({
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    
+    // Check for border zone clicks first
+    const borderZone = findBorderZone(x, y);
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+    
+    if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
+      // Start border dragging
+      setIsDraggingBorder(true);
+      setDraggedBorder(borderZone);
+      setBorderDragStart({ x, y });
+      return;
+    }
     
     const clickedPanelIndex = panelRects.findIndex(panel => 
       x >= panel.x && x <= panel.x + panel.width &&
@@ -1473,10 +1802,12 @@ const CanvasCollagePreview = ({
         onPanelClick(clickedPanel.index, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds]);
+  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
+    setIsDraggingBorder(false);
+    setDraggedBorder(null);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
@@ -1487,6 +1818,7 @@ const CanvasCollagePreview = ({
     }
     // Clear hover state when mouse leaves canvas
     setHoveredPanel(null);
+    setHoveredBorder(null);
     const canvas = canvasRef.current;
     if (canvas) {
       canvas.style.cursor = 'default';
@@ -1696,11 +2028,24 @@ const CanvasCollagePreview = ({
         y >= panel.y && y <= panel.y + panel.height
       );
       
+      // Check for border zone touches first
+      const borderZone = findBorderZone(x, y);
+      const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+      
+      if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
+        // Start border dragging
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingBorder(true);
+        setDraggedBorder(borderZone);
+        setBorderDragStart({ x, y });
+        return;
+      }
+
       if (clickedPanelIndex >= 0) {
         const clickedPanel = panelRects[clickedPanelIndex];
         const imageIndex = panelImageMapping[clickedPanel.panelId];
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-        const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
         
         // If a caption editor is open and this is not the panel being edited, allow normal scrolling
         if (textEditingPanel !== null && textEditingPanel !== clickedPanel.panelId) {
@@ -1809,7 +2154,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -1838,6 +2183,23 @@ const CanvasCollagePreview = ({
     if (anyPanelInTransformMode && (isDragging || touchStartDistance !== null)) {
       e.preventDefault();
       e.stopPropagation();
+    }
+
+    // Handle border dragging
+    if (isDraggingBorder && draggedBorder && touches.length === 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const touch = touches[0];
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      
+      const deltaX = x - borderDragStart.x;
+      const deltaY = y - borderDragStart.y;
+      
+      updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
+      setBorderDragStart({ x, y });
+      return;
     }
     
     if (touches.length === 1 && isDragging && selectedPanel !== null) {
@@ -2009,10 +2371,12 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter]);
+  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
 
   const handleTouchEnd = useCallback((e) => {
     setIsDragging(false);
+    setIsDraggingBorder(false);
+    setDraggedBorder(null);
     setTouchStartDistance(null);
     setTouchStartScale(1);
     
@@ -2464,7 +2828,8 @@ const CanvasCollagePreview = ({
           <Box key={`controls-${panelId}`}>
             {/* Transform control button */}
             {hasImage && textEditingPanel === null && 
-             (!anyPanelInTransformMode || isInTransformMode) && (
+             (!anyPanelInTransformMode || isInTransformMode) && 
+             !isDraggingBorder && (
                           <IconButton
               size="small"
               onClick={() => toggleTransformMode(panelId)}
@@ -2606,6 +2971,61 @@ const CanvasCollagePreview = ({
           }}
         />
       )}
+
+      {/* Border drag zones - only visible when not in transform mode or text editing */}
+      {!Object.values(isTransformMode).some(enabled => enabled) && 
+       textEditingPanel === null && 
+       borderZones.map((zone, index) => (
+        <Box
+          key={`border-zone-${zone.id || `${zone.type}-${zone.index}`}`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDraggingBorder(true);
+            setDraggedBorder(zone);
+            const rect = containerRef.current.getBoundingClientRect();
+            setBorderDragStart({ 
+              x: e.clientX - rect.left, 
+              y: e.clientY - rect.top 
+            });
+          }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDraggingBorder(true);
+            setDraggedBorder(zone);
+            const rect = containerRef.current.getBoundingClientRect();
+            const touch = e.touches[0];
+            setBorderDragStart({ 
+              x: touch.clientX - rect.left, 
+              y: touch.clientY - rect.top 
+            });
+          }}
+          sx={{
+            position: 'absolute',
+            top: zone.y,
+            left: zone.x,
+            width: zone.width,
+            height: zone.height,
+            cursor: zone.cursor,
+            backgroundColor: isDraggingBorder && draggedBorder === zone 
+              ? 'rgba(33, 150, 243, 0.4)' 
+              : hoveredBorder === zone 
+                ? 'rgba(33, 150, 243, 0.2)' 
+                : 'transparent',
+            transition: 'background-color 0.2s ease',
+            zIndex: 10, // Above canvas and overlays, below text editor
+            pointerEvents: 'auto',
+            // Add a subtle visual indicator on hover
+            '&:hover': {
+              backgroundColor: 'rgba(33, 150, 243, 0.25)',
+            },
+            // Touch-friendly styling
+            touchAction: 'none', // Prevent default touch behaviors
+            userSelect: 'none', // Prevent text selection
+          }}
+        />
+      ))}
 
     </Box>
   );
