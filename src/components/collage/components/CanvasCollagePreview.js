@@ -1295,7 +1295,8 @@ const CanvasCollagePreview = ({
   const handleTextEdit = useCallback((panelId, event) => {
     // Cancel reorder mode when opening text editor
     if (isReorderMode) {
-      cancelReorderMode();
+      setIsReorderMode(false);
+      setReorderSourcePanel(null);
     }
     
     const isOpening = textEditingPanel !== panelId;
@@ -1441,7 +1442,7 @@ const CanvasCollagePreview = ({
         }
       }, 100); // Small delay to ensure editor is rendered
     }
-  }, [textEditingPanel, panelRects, isReorderMode, cancelReorderMode]);
+  }, [textEditingPanel, panelRects, isReorderMode]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
@@ -2445,18 +2446,11 @@ const CanvasCollagePreview = ({
     touchStartInfo.current = null;
   }, [handleTextEdit, dismissTransformMode]);
 
-  // Toggle transform mode for a panel
-  const toggleTransformMode = useCallback((panelId) => {
-    // Cancel reorder mode when entering transform mode
-    if (isReorderMode) {
-      cancelReorderMode();
-    }
-    
-    setIsTransformMode(prev => ({
-      ...prev,
-      [panelId]: !prev[panelId]
-    }));
-  }, [isReorderMode, cancelReorderMode]);
+  // Cancel reorder mode
+  const cancelReorderMode = useCallback(() => {
+    setIsReorderMode(false);
+    setReorderSourcePanel(null);
+  }, []);
 
   // Start reorder mode for a panel
   const startReorderMode = useCallback((panelId) => {
@@ -2468,11 +2462,19 @@ const CanvasCollagePreview = ({
     setReorderSourcePanel(panelId);
   }, []);
 
-  // Cancel reorder mode
-  const cancelReorderMode = useCallback(() => {
-    setIsReorderMode(false);
-    setReorderSourcePanel(null);
-  }, []);
+  // Toggle transform mode for a panel
+  const toggleTransformMode = useCallback((panelId) => {
+    // Cancel reorder mode when entering transform mode
+    if (isReorderMode) {
+      setIsReorderMode(false);
+      setReorderSourcePanel(null);
+    }
+    
+    setIsTransformMode(prev => ({
+      ...prev,
+      [panelId]: !prev[panelId]
+    }));
+  }, [isReorderMode]);
 
   // Handle destination selection during reorder
   const handleReorderDestination = useCallback((destinationPanelId) => {
@@ -2498,8 +2500,9 @@ const CanvasCollagePreview = ({
     }
 
     updatePanelImageMapping(newMapping);
-    cancelReorderMode();
-  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, cancelReorderMode]);
+    setIsReorderMode(false);
+    setReorderSourcePanel(null);
+  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping]);
 
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => {
