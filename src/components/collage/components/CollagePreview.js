@@ -224,6 +224,7 @@ const CollagePreview = ({
         onMenuOpen={handleMenuOpen}
         aspectRatioValue={aspectRatioValue}
         panelImageMapping={panelImageMapping}
+        updatePanelImageMapping={updatePanelImageMapping}
         borderThickness={borderThickness}
         borderColor={borderColor}
         panelTransforms={panelTransforms}

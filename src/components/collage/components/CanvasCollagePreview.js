@@ -407,6 +407,7 @@ const CanvasCollagePreview = ({
   onMenuOpen,
   aspectRatioValue = 1,
   panelImageMapping = {},
+  updatePanelImageMapping,
   borderThickness = 0,
   borderColor = '#000000',
   panelTransforms = {},
@@ -2459,6 +2460,10 @@ const CanvasCollagePreview = ({
 
   // Start reorder mode for a panel
   const startReorderMode = useCallback((panelId) => {
+    if (!panelId) {
+      console.warn('Invalid panel ID for reorder mode:', panelId);
+      return;
+    }
     setIsReorderMode(true);
     setReorderSourcePanel(panelId);
   }, []);
@@ -2471,7 +2476,8 @@ const CanvasCollagePreview = ({
 
   // Handle destination selection during reorder
   const handleReorderDestination = useCallback((destinationPanelId) => {
-    if (!reorderSourcePanel || !panelImageMapping || !updatePanelImageMapping) {
+    if (!reorderSourcePanel || !panelImageMapping || !updatePanelImageMapping || !destinationPanelId) {
+      console.warn('Invalid reorder destination selection:', { reorderSourcePanel, panelImageMapping: !!panelImageMapping, updatePanelImageMapping: !!updatePanelImageMapping, destinationPanelId });
       return;
     }
 
@@ -2485,12 +2491,10 @@ const CanvasCollagePreview = ({
       // Swap images between source and destination
       newMapping[reorderSourcePanel] = destinationImageIndex;
       newMapping[destinationPanelId] = sourceImageIndex;
-    } else {
+    } else if (sourceImageIndex !== undefined) {
       // Move image from source to destination (destination was empty)
-      if (sourceImageIndex !== undefined) {
-        newMapping[destinationPanelId] = sourceImageIndex;
-        delete newMapping[reorderSourcePanel];
-      }
+      newMapping[destinationPanelId] = sourceImageIndex;
+      delete newMapping[reorderSourcePanel];
     }
 
     updatePanelImageMapping(newMapping);
@@ -2873,7 +2877,7 @@ const CanvasCollagePreview = ({
           }}
         >
           <Typography variant="body2" sx={{ fontSize: '14px', fontWeight: 'bold' }}>
-            Click a frame to move "{reorderSourcePanel}" here, or click outside to cancel
+            Click a frame to move image here, or click outside to cancel
           </Typography>
         </Box>
       )}
