@@ -49,6 +49,11 @@ export async function generateMetadata({ params }: FramePageProps): Promise<Meta
 export default async function FramePage({ params }: FramePageProps) {
   const { showId, season, episode, frameNumber } = params;
   
+  // Validate and parse frame number
+  const parsedFrameNumber = parseInt(frameNumber, 10);
+  const isValidFrameNumber = !isNaN(parsedFrameNumber) && parsedFrameNumber > 0;
+  const currentFrame = isValidFrameNumber ? parsedFrameNumber : 1;
+  
   // Fetch search indexes to get show metadata
   const searchIndexes = await getSearchIndexes();
   const showData = searchIndexes.find((index) => index.id === showId);
@@ -64,7 +69,7 @@ export default async function FramePage({ params }: FramePageProps) {
   };
   
   const metadata = showData?.v2ContentMetadata || defaultMetadata;
-  const frameImageUrl = `https://v2-beta.memesrc.com/frame/${showId}/${season}/${episode}/${frameNumber}`;
+  const frameImageUrl = `https://v2-beta.memesrc.com/frame/${showId}/${season}/${episode}/${currentFrame}`;
   
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -102,7 +107,7 @@ export default async function FramePage({ params }: FramePageProps) {
               <div className="relative aspect-video bg-black">
                 <Image
                   src={frameImageUrl}
-                  alt={`Frame ${frameNumber} from ${metadata.title}`}
+                  alt={`Frame ${currentFrame} from ${metadata.title}`}
                   fill
                   className="object-contain"
                   priority
@@ -113,12 +118,12 @@ export default async function FramePage({ params }: FramePageProps) {
             {/* Frame Navigation */}
             <div className="flex items-center justify-between mt-4">
               <Link 
-                href={`/frame/${showId}/${season}/${episode}/${Math.max(1, parseInt(frameNumber) - 1)}`}
-                className={parseInt(frameNumber) <= 1 ? 'pointer-events-none opacity-50' : ''}
+                href={`/frame/${showId}/${season}/${episode}/${Math.max(1, currentFrame - 1)}`}
+                className={currentFrame <= 1 ? 'pointer-events-none opacity-50' : ''}
               >
                 <Button 
                   variant="outline" 
-                  disabled={parseInt(frameNumber) <= 1}
+                  disabled={currentFrame <= 1}
                   className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -128,10 +133,10 @@ export default async function FramePage({ params }: FramePageProps) {
               
               <div className="text-center">
                 <div className="text-sm text-gray-400">Frame</div>
-                <div className="text-lg font-mono">{frameNumber}</div>
+                <div className="text-lg font-mono">{currentFrame}</div>
               </div>
               
-              <Link href={`/frame/${showId}/${season}/${episode}/${parseInt(frameNumber) + 1}`}>
+              <Link href={`/frame/${showId}/${season}/${episode}/${currentFrame + 1}`}>
                 <Button 
                   variant="outline"
                   className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
@@ -163,7 +168,7 @@ export default async function FramePage({ params }: FramePageProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Frame:</span>
-                  <span>{frameNumber}</span>
+                  <span>{currentFrame}</span>
                 </div>
               </div>
             </div>
