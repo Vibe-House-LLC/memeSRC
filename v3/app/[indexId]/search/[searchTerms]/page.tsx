@@ -4,6 +4,7 @@ import PaginatedResults from './PaginatedResults';
 import SearchForm from '@/app/components/SearchForm';
 import { getSearchIndexes } from '@/app/SearchPage';
 import Background from '@/app/components/Background';
+import FavoritesStar from '@/components/FavoritesStar';
 import { Metadata } from 'next';
 
 // Update the V2ContentMetadata interface
@@ -70,21 +71,31 @@ export default async function ResultsPage({ params }: { params: { indexId: strin
 
           {/* Apply text color directly to elements that need it */}
           <h1
-            className={`text-base mb-6 ${
+            className={`text-base mb-6 flex items-center gap-2 ${
               selectedIndex.id === '_universal' ? 'text-black dark:text-white' : ''
             }`}
             style={selectedIndex.id !== '_universal' ? { color: secondaryColor } : undefined}
           >
-            "<strong>{searchTerm}</strong>" in&nbsp;
-            <a
-              href={`/${selectedIndex.id}`}
-              className={`font-bold underline ${
-                selectedIndex.id === '_universal' ? 'text-black dark:text-white' : ''
-              }`}
-              style={selectedIndex.id !== '_universal' ? { color: secondaryColor } : undefined}
-            >
-              {selectedIndex.v2ContentMetadata.title}
-            </a>
+            <span>
+              "<strong>{searchTerm}</strong>" in&nbsp;
+              <a
+                href={`/${selectedIndex.id}`}
+                className={`font-bold underline ${
+                  selectedIndex.id === '_universal' ? 'text-black dark:text-white' : ''
+                }`}
+                style={selectedIndex.id !== '_universal' ? { color: secondaryColor } : undefined}
+              >
+                {selectedIndex.v2ContentMetadata.title}
+              </a>
+            </span>
+            {selectedIndex.id !== '_universal' && (
+              <FavoritesStar
+                showId={selectedIndex.id}
+                showTitle={selectedIndex.v2ContentMetadata.title}
+                showEmoji={selectedIndex.v2ContentMetadata.emoji || '📺'}
+                size="small"
+              />
+            )}
           </h1>
 
           <PaginatedResults initialResults={results} />

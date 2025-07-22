@@ -2,6 +2,7 @@ import MemeSRCLogo from '@/components/MemeSRCLogo';
 import SearchForm from './components/SearchForm'
 import RainbowBackground from './components/RainbowBackground'
 import ErrorPage404 from './components/ErrorPage404'
+import FavoritesStar from '@/components/FavoritesStar';
 
 interface SearchIndex {
   id: string;
@@ -92,12 +93,22 @@ export default async function SearchPage({ indexId }: SearchPageProps) {
           <div className="w-[160px] h-[64px] relative mb-2 flex justify-center items-center">
             <MemeSRCLogo color={secondaryColor} />
           </div>
-          <h1 
-            className="text-3xl sm:text-4xl font-bold drop-shadow-sm text-center"
-            style={{ color: secondaryColor }}
-          >
-            {pageTitle}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 
+              className="text-3xl sm:text-4xl font-bold drop-shadow-sm text-center"
+              style={{ color: secondaryColor }}
+            >
+              {pageTitle}
+            </h1>
+            {selectedIndex.id !== '_universal' && (
+              <FavoritesStar
+                showId={selectedIndex.id}
+                showTitle={selectedIndex.v2ContentMetadata.title}
+                showEmoji={selectedIndex.v2ContentMetadata.emoji}
+                size="medium"
+              />
+            )}
+          </div>
         </div>
 
         <SearchForm indexId={indexId} searchIndexes={allIndexes} size="large" />
