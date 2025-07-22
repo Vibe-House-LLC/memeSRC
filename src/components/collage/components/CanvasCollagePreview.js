@@ -1856,7 +1856,7 @@ const CanvasCollagePreview = ({
         onPanelClick(clickedPanel.index, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone]);
+  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -2216,7 +2216,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
