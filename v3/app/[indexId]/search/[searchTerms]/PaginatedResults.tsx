@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { SearchResult } from '@/app/api/getSearchResults';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,7 +30,11 @@ export default function PaginatedResults({ initialResults }: PaginatedResultsPro
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {visibleResults.map((result: SearchResult, index: number) => (
-          <div key={index} className="relative group">
+          <Link 
+            key={index} 
+            href={`/frame/${result.cid}/${result.season}/${result.episode}/${result.start_frame}`}
+            className="relative group block hover:scale-105 transition-transform duration-200"
+          >
             <Image
               src={`https://v2-beta.memesrc.com/frame/${result.cid}/${result.season}/${result.episode}/${result.start_frame}`}
               alt={`Frame from ${result.cid} S${result.season} E${result.episode}`}
@@ -55,7 +60,7 @@ export default function PaginatedResults({ initialResults }: PaginatedResultsPro
                 Season {result.season}, Episode {result.episode}
               </p>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
       {visibleResults.length < initialResults.length && (

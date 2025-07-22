@@ -23,16 +23,39 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ChevronDown } from "lucide-react";
+import FavoritesStar from "@/components/FavoritesStar";
 
 type Option = {
   value: string;
   label: string;
+  metadata?: {
+    title: string;
+    emoji: string;
+  };
 };
+
+type OptionGroup = {
+  label: string;
+  options: Option[];
+};
+
+// Helper function to check if options are grouped
+function isGroupedOptions(options: Option[] | OptionGroup[]): options is OptionGroup[] {
+  return options.length > 0 && 'label' in options[0] && 'options' in options[0];
+}
+
+// Helper function to flatten grouped options to a simple array
+function flattenOptions(options: Option[] | OptionGroup[]): Option[] {
+  if (isGroupedOptions(options)) {
+    return options.flatMap(group => group.options);
+  }
+  return options;
+}
 
 interface DropdownSearchableProps {
   value: string;
   onChange: (value: string) => void;
-  options: Option[];
+  options: Option[] | OptionGroup[];
   placeholder?: string;
   size?: 'small' | 'large';
 }
@@ -46,12 +69,13 @@ export function DropdownSearchable({
 }: DropdownSearchableProps) {
   const [open, setOpen] = React.useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const flatOptions = flattenOptions(options);
   const [selectedOption, setSelectedOption] = React.useState<Option | null>(
-    options.find((option) => option.value === value) || null
+    flatOptions.find((option) => option.value === value) || null
   );
 
   const handleSelect = (val: string) => {
-    const selected = options.find((option) => option.value === val) || null;
+    const selected = flatOptions.find((option) => option.value === val) || null;
     setSelectedOption(selected);
     onChange(val);
     setOpen(false);
@@ -123,7 +147,7 @@ export function DropdownSearchable({
 }
 
 interface OptionListProps {
-  options: Option[];
+  options: Option[] | OptionGroup[];
   onSelect: (value: string) => void;
   value: string;
   open: boolean;
@@ -132,6 +156,7 @@ interface OptionListProps {
 function OptionList({ options, onSelect, value, open }: OptionListProps) {
   const listRef = React.useRef<HTMLDivElement>(null);
   const selectedRef = React.useRef<HTMLDivElement>(null);
+  const flatOptions = flattenOptions(options);
 
   // Focus the selected item when the dropdown opens
   React.useEffect(() => {
@@ -157,7 +182,35 @@ function OptionList({ options, onSelect, value, open }: OptionListProps) {
     }
   }, [value]);
 
-  const itemClasses = "py-2 text-base" // Consistent font size
+  const itemClasses = "py-2 text-base"; // Consistent font size
+
+  const renderOption = (option: Option) => (
+    <CommandItem
+      key={option.value}
+      value={option.value}
+      onSelect={(selectedValue) => onSelect(selectedValue)}
+      ref={option.value === value ? selectedRef : null}
+      className={cn(
+        itemClasses,
+        "flex items-center justify-between",
+        option.value === value
+          ? "bg-accent text-accent-foreground"
+          : ""
+      )}
+      tabIndex={option.value === value ? 0 : -1}
+    >
+      <span className="flex-1 truncate">{option.label}</span>
+      {option.metadata && option.value !== '_universal' && (
+        <FavoritesStar
+          showId={option.value}
+          showTitle={option.metadata.title}
+          showEmoji={option.metadata.emoji}
+          size="small"
+          className="ml-2"
+        />
+      )}
+    </CommandItem>
+  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -169,25 +222,19 @@ function OptionList({ options, onSelect, value, open }: OptionListProps) {
         />
         <CommandList className="flex-1 overflow-y-auto" ref={listRef}>
           <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup>
-            {options.map((option) => (
-              <CommandItem
-                key={option.value}
-                value={option.value}
-                onSelect={(selectedValue) => onSelect(selectedValue)}
-                ref={option.value === value ? selectedRef : null}
-                className={cn(
-                  itemClasses,
-                  option.value === value
-                    ? "bg-accent text-accent-foreground"
-                    : ""
-                )}
-                tabIndex={option.value === value ? 0 : -1}
-              >
-                {option.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
+          {isGroupedOptions(options) ? (
+            // Render grouped options
+            options.map((group) => (
+              <CommandGroup key={group.label} heading={group.label}>
+                {group.options.map(renderOption)}
+              </CommandGroup>
+            ))
+          ) : (
+            // Render ungrouped options
+            <CommandGroup>
+              {options.map(renderOption)}
+            </CommandGroup>
+          )}
         </CommandList>
       </Command>
     </div>
