@@ -1,7 +1,7 @@
 "use client";
 
 import { Star } from 'lucide-react';
-import { useFavorites } from '@/hooks/useFavorites';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import { cn } from '@/lib/utils';
 
 interface FavoritesStarProps {

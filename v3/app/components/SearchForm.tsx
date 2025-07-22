@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { DropdownSearchable } from '@/components/ui/dropdown-searchable'
 import { Search, X, Loader2 } from 'lucide-react'
+import { useFavorites } from '@/contexts/FavoritesContext'
 
 interface SearchIndex {
   id: string;
@@ -32,7 +33,8 @@ export default function SearchForm({
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState<string>(initialSearchTerm)
   const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [inputFocused, setInputFocused] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false)
+  const { favorites, isLoaded } = useFavorites();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -57,15 +59,50 @@ export default function SearchForm({
     setSearchTerm('')
   }
 
-  // Map searchIndexes to DropdownSearchable's Option type
-  const options = searchIndexes.map(index => ({
-    value: index.id,
-    label: `${index.v2ContentMetadata.emoji} ${index.v2ContentMetadata.title}`,
-    metadata: {
-      title: index.v2ContentMetadata.title,
-      emoji: index.v2ContentMetadata.emoji,
-    },
-  }))
+  // Create options with favorites grouped at the top
+  const createOptions = () => {
+    const allOptions = searchIndexes.map(index => ({
+      value: index.id,
+      label: `${index.v2ContentMetadata.emoji} ${index.v2ContentMetadata.title}`,
+      metadata: {
+        title: index.v2ContentMetadata.title,
+        emoji: index.v2ContentMetadata.emoji,
+      },
+    }));
+
+    // If favorites aren't loaded yet or there are no favorites, return ungrouped options
+    if (!isLoaded || favorites.length === 0) {
+      return allOptions;
+    }
+
+    // Get favorited options (excluding universal)
+    const favoriteIds = new Set(favorites.map(fav => fav.id));
+    const favoriteOptions = allOptions.filter(option => 
+      option.value !== '_universal' && favoriteIds.has(option.value)
+    );
+    const nonFavoriteOptions = allOptions.filter(option => 
+      option.value === '_universal' || !favoriteIds.has(option.value)
+    );
+
+    // If no actual favorites found, return ungrouped
+    if (favoriteOptions.length === 0) {
+      return allOptions;
+    }
+
+    // Return grouped options
+    return [
+      {
+        label: "⭐ Favorites",
+        options: favoriteOptions,
+      },
+      {
+        label: "All Shows",
+        options: nonFavoriteOptions,
+      },
+    ];
+  };
+
+  const options = createOptions();
 
   // Updated gap classes:
   // - `gap-6` for stacking (small screens)
