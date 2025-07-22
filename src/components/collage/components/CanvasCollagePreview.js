@@ -439,6 +439,7 @@ const CanvasCollagePreview = ({
   // Reorder state
   const [isReorderMode, setIsReorderMode] = useState(false);
   const [reorderSourcePanel, setReorderSourcePanel] = useState(null);
+  const [hoveredDestinationPanel, setHoveredDestinationPanel] = useState(null);
 
   // Border dragging state
   const [borderZones, setBorderZones] = useState([]);
@@ -1291,12 +1292,30 @@ const CanvasCollagePreview = ({
     };
   }, [lastUsedTextSettings, textScaleFactor]);
 
+  // Handle keyboard events for reorder mode
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && isReorderMode) {
+        event.preventDefault();
+        cancelReorderMode();
+      }
+    };
+
+    if (isReorderMode) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+
+    return undefined;
+  }, [isReorderMode, cancelReorderMode]);
+
   // Handle text editing
   const handleTextEdit = useCallback((panelId, event) => {
     // Cancel reorder mode when opening text editor
     if (isReorderMode) {
       setIsReorderMode(false);
       setReorderSourcePanel(null);
+      setHoveredDestinationPanel(null);
     }
     
     const isOpening = textEditingPanel !== panelId;
@@ -2450,6 +2469,7 @@ const CanvasCollagePreview = ({
   const cancelReorderMode = useCallback(() => {
     setIsReorderMode(false);
     setReorderSourcePanel(null);
+    setHoveredDestinationPanel(null);
   }, []);
 
   // Start reorder mode for a panel
@@ -2460,6 +2480,7 @@ const CanvasCollagePreview = ({
     }
     setIsReorderMode(true);
     setReorderSourcePanel(panelId);
+    setHoveredDestinationPanel(null);
   }, []);
 
   // Toggle transform mode for a panel
@@ -2502,6 +2523,7 @@ const CanvasCollagePreview = ({
     updatePanelImageMapping(newMapping);
     setIsReorderMode(false);
     setReorderSourcePanel(null);
+    setHoveredDestinationPanel(null);
   }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping]);
 
   // Get final canvas for export
@@ -2997,6 +3019,7 @@ const CanvasCollagePreview = ({
                   cursor: 'pointer',
                   zIndex: 12,
                 }}
+                title="Reorder this image"
               >
                 <SwapHoriz sx={{ fontSize: 16 }} />
               </IconButton>
@@ -3016,6 +3039,8 @@ const CanvasCollagePreview = ({
                   justifyContent: 'center',
                   zIndex: 20,
                 }}
+                onMouseEnter={() => setHoveredDestinationPanel(panelId)}
+                onMouseLeave={() => setHoveredDestinationPanel(null)}
               >
                 <IconButton
                   size="large"
@@ -3023,17 +3048,31 @@ const CanvasCollagePreview = ({
                   sx={{
                     width: 50,
                     height: 50,
-                    backgroundColor: reorderSourcePanel === panelId ? '#4CAF50' : '#2196F3',
+                    backgroundColor: reorderSourcePanel === panelId 
+                      ? '#4CAF50' 
+                      : hoveredDestinationPanel === panelId 
+                        ? '#1976D2' 
+                        : '#2196F3',
                     color: '#ffffff',
                     border: '3px solid #ffffff',
-                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.5)',
+                    boxShadow: reorderSourcePanel === panelId 
+                      ? '0 6px 16px rgba(76, 175, 80, 0.6)' 
+                      : hoveredDestinationPanel === panelId 
+                        ? '0 8px 20px rgba(33, 150, 243, 0.7)' 
+                        : '0 6px 16px rgba(0, 0, 0, 0.5)',
+                    transition: 'all 0.2s ease-in-out',
                     '&:hover': {
-                      backgroundColor: reorderSourcePanel === panelId ? '#388E3C' : '#1976D2',
+                      backgroundColor: reorderSourcePanel === panelId ? '#388E3C' : '#1565C0',
                       transform: 'scale(1.1)',
                     },
                     touchAction: 'manipulation',
                     cursor: 'pointer',
                   }}
+                  title={reorderSourcePanel === panelId 
+                    ? "Cancel reorder" 
+                    : hasImage 
+                      ? "Swap images" 
+                      : "Move image here"}
                 >
                   {reorderSourcePanel === panelId ? (
                     <SwapHoriz sx={{ fontSize: 24 }} />
@@ -3101,8 +3140,8 @@ const CanvasCollagePreview = ({
        panelRects.map((rect, index) => {
         const { panelId } = rect;
         
-        // Skip overlay for active panels (being edited, in transform mode, or source panel during reorder)
-        if (panelId === textEditingPanel || isTransformMode[panelId] || (isReorderMode && panelId === reorderSourcePanel)) return null;
+        // Skip overlay for active panels (being edited, in transform mode)
+        if (panelId === textEditingPanel || isTransformMode[panelId]) return null;
         
         return (
           <Box
@@ -3113,12 +3152,37 @@ const CanvasCollagePreview = ({
               left: rect.x,
               width: rect.width,
               height: rect.height,
-              backgroundColor: 'rgba(0, 0, 0, 0.50)', // Light darkening
+              backgroundColor: isReorderMode 
+                ? (panelId === reorderSourcePanel ? 'rgba(76, 175, 80, 0.15)' : 'rgba(0, 0, 0, 0.60)')
+                : 'rgba(0, 0, 0, 0.50)', // Light darkening
               backdropFilter: 'blur(1px) grayscale(50%)', // Blur and grayscale effect
               pointerEvents: isReorderMode ? 'auto' : 'none', // Allow clicks during reorder mode
               transition: 'all 0.35s ease-out', // Clearly noticeable fade
               zIndex: 15, // Above hover overlays, below caption editor controls
               cursor: isReorderMode ? 'pointer' : 'default',
+              border: isReorderMode && panelId === reorderSourcePanel 
+                ? '2px solid #4CAF50' 
+                : 'none',
+              borderRadius: isReorderMode && panelId === reorderSourcePanel 
+                ? '8px' 
+                : '0',
+              animation: isReorderMode && panelId === reorderSourcePanel 
+                ? 'pulse 2s ease-in-out infinite' 
+                : 'none',
+              '@keyframes pulse': {
+                '0%': {
+                  borderColor: '#4CAF50',
+                  backgroundColor: 'rgba(76, 175, 80, 0.15)',
+                },
+                '50%': {
+                  borderColor: '#66BB6A',
+                  backgroundColor: 'rgba(76, 175, 80, 0.25)',
+                },
+                '100%': {
+                  borderColor: '#4CAF50',
+                  backgroundColor: 'rgba(76, 175, 80, 0.15)',
+                },
+              },
             }}
           />
         );
@@ -3158,7 +3222,7 @@ const CanvasCollagePreview = ({
         />
       )}
 
-      {/* Invisible backdrop for reorder mode - captures clicks outside panels to cancel */}
+      {/* Backdrop for reorder mode - captures clicks outside panels to cancel */}
       {isReorderMode && (
         <Box
           onClick={cancelReorderMode}
@@ -3168,11 +3232,40 @@ const CanvasCollagePreview = ({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'transparent', // Completely invisible
+            backgroundColor: 'rgba(0, 0, 0, 0.1)', // Subtle dark overlay
             zIndex: 10, // Below reorder buttons but above everything else
             cursor: 'default',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            pt: 4,
           }}
-        />
+        >
+          <Box
+            onClick={(e) => e.stopPropagation()} // Prevent backdrop click
+            sx={{
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              color: '#ffffff',
+              px: 3,
+              py: 1.5,
+              borderRadius: 2,
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              maxWidth: '300px',
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+              {reorderSourcePanel ? 'Choose destination panel' : 'Reorder Mode'}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+              {reorderSourcePanel 
+                ? 'Click a panel to move the image, or press Esc to cancel' 
+                : 'Click a panel to move the image, or click outside to cancel'}
+            </Typography>
+          </Box>
+        </Box>
       )}
 
       {/* Border drag zones - only visible when not in transform mode, text editing, or reorder mode */}
