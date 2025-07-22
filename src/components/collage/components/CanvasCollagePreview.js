@@ -2864,32 +2864,7 @@ const CanvasCollagePreview = ({
         }),
       }}
     >
-      {/* Reorder mode notification */}
-      {isReorderMode && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: -40,
-            left: 0,
-            right: 0,
-            height: 32,
-            backgroundColor: '#FF9800',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '4px 4px 0 0',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            zIndex: 25,
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-          }}
-        >
-          <Typography variant="body2" sx={{ fontSize: '14px', fontWeight: 'bold' }}>
-            Click a frame to move image here, or click outside to cancel
-          </Typography>
-        </Box>
-      )}
+
               <canvas
           ref={canvasRef}
           data-testid="canvas-collage-preview"
@@ -3038,35 +3013,7 @@ const CanvasCollagePreview = ({
               </IconButton>
             )}
 
-            {/* Reorder destination button (shown during reorder mode) */}
-            {isReorderMode && reorderSourcePanel !== panelId && (
-              <IconButton
-                size="small"
-                onClick={() => handleReorderDestination(panelId)}
-                sx={{
-                  position: 'absolute',
-                  top: rect.y + 8,
-                  left: rect.x + rect.width - 48, // Same position as other control buttons
-                  width: 40,
-                  height: 40,
-                  backgroundColor: '#2196F3',
-                  color: '#ffffff',
-                  border: '2px solid #ffffff',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                  opacity: 1,
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    backgroundColor: '#1976D2',
-                    transform: 'scale(1.1)',
-                  },
-                  touchAction: 'manipulation',
-                  cursor: 'pointer',
-                  zIndex: 20, // Higher than focus overlay (15) to ensure clickability
-                }}
-              >
-                <Place sx={{ fontSize: 16 }} />
-              </IconButton>
-            )}
+
             
             {/* Caption editing area - show when not in transform mode and has image, and no other panel is being edited */}
             {!isTransformMode?.[panelId] && hasImage && textEditingPanel === panelId && (
@@ -3145,6 +3092,65 @@ const CanvasCollagePreview = ({
               cursor: isReorderMode ? 'pointer' : 'default',
             }}
           />
+        );
+      })}
+
+      {/* "Move Here" overlays for destination panels in reorder mode */}
+      {isReorderMode && panelRects.map((rect, index) => {
+        const { panelId } = rect;
+        
+        // Only show on destination panels (not the source panel)
+        if (panelId === reorderSourcePanel) return null;
+        
+        return (
+          <Box
+            key={`move-here-overlay-${panelId}`}
+            onClick={() => handleReorderDestination(panelId)}
+            sx={{
+              position: 'absolute',
+              top: rect.y,
+              left: rect.x,
+              width: rect.width,
+              height: rect.height,
+              backgroundColor: 'rgba(33, 150, 243, 0.3)', // Blue with transparency
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 16, // Above focus overlays
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(33, 150, 243, 0.4)',
+              }
+            }}
+          >
+                         {/* Destination place icon */}
+             <Place
+               sx={{
+                 fontSize: `clamp(30px, ${Math.min(rect.width, rect.height) * 0.25}px, 60px)`,
+                 color: 'white',
+                 marginBottom: 1,
+                 filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.8))',
+               }}
+             />
+            
+            {/* "Move Here" text */}
+            <Box
+              component="span"
+              sx={{
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: Math.min(rect.width, rect.height) * 0.08,
+                minFontSize: '12px',
+                maxFontSize: '18px',
+                textShadow: '1px 1px 3px rgba(0,0,0,0.8)',
+                userSelect: 'none',
+              }}
+            >
+              Move Here
+            </Box>
+          </Box>
         );
       })}
 
