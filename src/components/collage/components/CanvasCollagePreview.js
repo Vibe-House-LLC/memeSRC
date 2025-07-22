@@ -750,6 +750,10 @@ const CanvasCollagePreview = ({
       ctx.fillRect(0, 0, componentWidth, componentHeight);
     }
     
+    // Check if any panel is in transform mode or reorder mode to hide all captions
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+    const shouldHideCaptions = anyPanelInTransformMode || isReorderMode;
+    
     // Draw panels
     panelRects.forEach((rect) => {
       const { x, y, width, height, panelId, index } = rect;
@@ -847,7 +851,8 @@ const CanvasCollagePreview = ({
         const hasActualText = panelText.content && panelText.content.trim();
         const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
         
-        if (hasActualText || shouldShowPlaceholder) {
+        // Hide all captions when any panel is in transform mode or reorder mode
+        if ((hasActualText || shouldShowPlaceholder) && !shouldHideCaptions) {
           ctx.save();
           
           // Clip text to frame boundaries - text beyond frame is hidden (window effect)
@@ -1089,6 +1094,7 @@ const CanvasCollagePreview = ({
     borderColor, 
     selectedPanel, 
     isTransformMode,
+    isReorderMode,
     panelTexts,
     lastUsedTextSettings,
     theme.palette.mode,
