@@ -110,6 +110,9 @@ export default function FramePage({ shows = [] }) {
 
   const { user } = useContext(UserContext);
   const { addItem, isItemInCollage, collageItems, count } = useCollage();
+  
+  // Check if user is an admin (same logic as FloatingActionButtons)
+  const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
 
   // Function to add current frame to collage
   const handleAddToCollage = () => {
@@ -1364,29 +1367,31 @@ useEffect(() => {
                 Advanced Editor
               </Button>
 
-              <Button
-                size="medium"
-                fullWidth
-                variant="outlined"
-                onClick={handleAddToCollage}
-                disabled={!confirmedCid}
-                sx={{ 
-                  mb: 2, 
-                  borderColor: '#2196F3', 
-                  color: '#2196F3',
-                  '&:hover': { 
-                    borderColor: '#1976D2', 
-                    backgroundColor: 'rgba(33, 150, 243, 0.04)' 
-                  },
-                  '&.Mui-disabled': {
-                    borderColor: '#ccc',
-                    color: '#ccc'
-                  }
-                }}
-                startIcon={<Collections />}
-              >
-                Add to Collage
-              </Button>
+              {hasCollageAccess && (
+                <Button
+                  size="medium"
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleAddToCollage}
+                  disabled={!confirmedCid}
+                  sx={{ 
+                    mb: 2, 
+                    borderColor: '#2196F3', 
+                    color: '#2196F3',
+                    '&:hover': { 
+                      borderColor: '#1976D2', 
+                      backgroundColor: 'rgba(33, 150, 243, 0.04)' 
+                    },
+                    '&.Mui-disabled': {
+                      borderColor: '#ccc',
+                      color: '#ccc'
+                    }
+                  }}
+                  startIcon={<Collections />}
+                >
+                  Add to Collage
+                </Button>
+              )}
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} my={1}>
