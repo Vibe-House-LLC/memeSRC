@@ -19,7 +19,7 @@ export default function FrameActions({ showId, frameImageUrl }: FrameActionsProp
     <div className="bg-gray-800 rounded-lg p-4">
       <h3 className="text-lg font-semibold mb-3">Actions</h3>
       <div className="space-y-2">
-        <Link href={`/${showId}/search/`} className="block">
+        <Link href={`/${showId}`} className="block">
           <Button variant="outline" className="w-full bg-transparent border-gray-600 text-white hover:bg-gray-700">
             Search Show
           </Button>
