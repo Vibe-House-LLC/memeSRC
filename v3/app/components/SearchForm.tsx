@@ -61,6 +61,10 @@ export default function SearchForm({
   const options = searchIndexes.map(index => ({
     value: index.id,
     label: `${index.v2ContentMetadata.emoji} ${index.v2ContentMetadata.title}`,
+    metadata: {
+      title: index.v2ContentMetadata.title,
+      emoji: index.v2ContentMetadata.emoji,
+    },
   }))
 
   // Updated gap classes:

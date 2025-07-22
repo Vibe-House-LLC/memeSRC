@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { getSearchIndexes } from '@/app/SearchPage';
 import { Metadata } from 'next';
 import FrameActions from './FrameActions';
+import FavoritesStar from '@/components/FavoritesStar';
 
 interface FramePageProps {
   params: {
@@ -81,6 +82,13 @@ export default async function FramePage({ params }: FramePageProps) {
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <span>{metadata.emoji}</span>
             <span>{metadata.title}</span>
+            <FavoritesStar
+              showId={showId}
+              showTitle={metadata.title}
+              showEmoji={metadata.emoji}
+              size="small"
+              className="ml-1"
+            />
             <span>•</span>
             <span>S{season} E{episode}</span>
           </div>

@@ -23,10 +23,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ChevronDown } from "lucide-react";
+import FavoritesStar from "@/components/FavoritesStar";
 
 type Option = {
   value: string;
   label: string;
+  metadata?: {
+    title: string;
+    emoji: string;
+  };
 };
 
 interface DropdownSearchableProps {
@@ -178,13 +183,23 @@ function OptionList({ options, onSelect, value, open }: OptionListProps) {
                 ref={option.value === value ? selectedRef : null}
                 className={cn(
                   itemClasses,
+                  "flex items-center justify-between",
                   option.value === value
                     ? "bg-accent text-accent-foreground"
                     : ""
                 )}
                 tabIndex={option.value === value ? 0 : -1}
               >
-                {option.label}
+                <span className="flex-1 truncate">{option.label}</span>
+                {option.metadata && option.value !== '_universal' && (
+                  <FavoritesStar
+                    showId={option.value}
+                    showTitle={option.metadata.title}
+                    showEmoji={option.metadata.emoji}
+                    size="small"
+                    className="ml-2"
+                  />
+                )}
               </CommandItem>
             ))}
           </CommandGroup>
