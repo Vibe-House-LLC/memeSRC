@@ -3142,8 +3142,6 @@ const CanvasCollagePreview = ({
                 color: 'white',
                 fontWeight: 'bold',
                 fontSize: Math.min(rect.width, rect.height) * 0.08,
-                minFontSize: '12px',
-                maxFontSize: '18px',
                 textShadow: '1px 1px 3px rgba(0,0,0,0.8)',
                 userSelect: 'none',
               }}
