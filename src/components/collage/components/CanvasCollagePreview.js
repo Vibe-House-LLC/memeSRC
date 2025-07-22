@@ -1742,6 +1742,34 @@ const CanvasCollagePreview = ({
     setIsTransformMode({});
   }, []);
 
+  // Handle destination selection during reorder
+  const handleReorderDestination = useCallback((destinationPanelId) => {
+    if (!reorderSourcePanel || !panelImageMapping || !updatePanelImageMapping || !destinationPanelId) {
+      console.warn('Invalid reorder destination selection:', { reorderSourcePanel, panelImageMapping: !!panelImageMapping, updatePanelImageMapping: !!updatePanelImageMapping, destinationPanelId });
+      return;
+    }
+
+    const sourceImageIndex = panelImageMapping[reorderSourcePanel];
+    const destinationImageIndex = panelImageMapping[destinationPanelId];
+
+    // Create new mapping with swapped images
+    const newMapping = { ...panelImageMapping };
+    
+    if (destinationImageIndex !== undefined) {
+      // Swap images between source and destination
+      newMapping[reorderSourcePanel] = destinationImageIndex;
+      newMapping[destinationPanelId] = sourceImageIndex;
+    } else if (sourceImageIndex !== undefined) {
+      // Move image from source to destination (destination was empty)
+      newMapping[destinationPanelId] = sourceImageIndex;
+      delete newMapping[reorderSourcePanel];
+    }
+
+    updatePanelImageMapping(newMapping);
+    setIsReorderMode(false);
+    setReorderSourcePanel(null);
+  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping]);
+
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -2481,34 +2509,6 @@ const CanvasCollagePreview = ({
       [panelId]: !prev[panelId]
     }));
   }, [isReorderMode]);
-
-  // Handle destination selection during reorder
-  const handleReorderDestination = useCallback((destinationPanelId) => {
-    if (!reorderSourcePanel || !panelImageMapping || !updatePanelImageMapping || !destinationPanelId) {
-      console.warn('Invalid reorder destination selection:', { reorderSourcePanel, panelImageMapping: !!panelImageMapping, updatePanelImageMapping: !!updatePanelImageMapping, destinationPanelId });
-      return;
-    }
-
-    const sourceImageIndex = panelImageMapping[reorderSourcePanel];
-    const destinationImageIndex = panelImageMapping[destinationPanelId];
-
-    // Create new mapping with swapped images
-    const newMapping = { ...panelImageMapping };
-    
-    if (destinationImageIndex !== undefined) {
-      // Swap images between source and destination
-      newMapping[reorderSourcePanel] = destinationImageIndex;
-      newMapping[destinationPanelId] = sourceImageIndex;
-    } else if (sourceImageIndex !== undefined) {
-      // Move image from source to destination (destination was empty)
-      newMapping[destinationPanelId] = sourceImageIndex;
-      delete newMapping[reorderSourcePanel];
-    }
-
-    updatePanelImageMapping(newMapping);
-    setIsReorderMode(false);
-    setReorderSourcePanel(null);
-  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping]);
 
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => {
