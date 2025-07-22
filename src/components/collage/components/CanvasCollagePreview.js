@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, IconButton, Typography, useMediaQuery } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
-import { Add, OpenWith, Check } from '@mui/icons-material';
+import { Add, OpenWith, Check, SwapHoriz, Place } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 
@@ -407,6 +407,7 @@ const CanvasCollagePreview = ({
   onMenuOpen,
   aspectRatioValue = 1,
   panelImageMapping = {},
+  updatePanelImageMapping,
   borderThickness = 0,
   borderColor = '#000000',
   panelTransforms = {},
@@ -434,6 +435,10 @@ const CanvasCollagePreview = ({
   const lastInteractionTime = useRef(0);
   const hoverTimeoutRef = useRef(null);
   const touchStartInfo = useRef(null);
+
+  // Reorder state
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [reorderSourcePanel, setReorderSourcePanel] = useState(null);
 
   // Border dragging state
   const [borderZones, setBorderZones] = useState([]);
@@ -745,6 +750,10 @@ const CanvasCollagePreview = ({
       ctx.fillRect(0, 0, componentWidth, componentHeight);
     }
     
+    // Check if any panel is in transform mode or reorder mode to hide all captions
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+    const shouldHideCaptions = anyPanelInTransformMode || isReorderMode;
+    
     // Draw panels
     panelRects.forEach((rect) => {
       const { x, y, width, height, panelId, index } = rect;
@@ -842,7 +851,8 @@ const CanvasCollagePreview = ({
         const hasActualText = panelText.content && panelText.content.trim();
         const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
         
-        if (hasActualText || shouldShowPlaceholder) {
+        // Hide all captions when any panel is in transform mode or reorder mode
+        if ((hasActualText || shouldShowPlaceholder) && !shouldHideCaptions) {
           ctx.save();
           
           // Clip text to frame boundaries - text beyond frame is hidden (window effect)
@@ -1084,6 +1094,7 @@ const CanvasCollagePreview = ({
     borderColor, 
     selectedPanel, 
     isTransformMode,
+    isReorderMode,
     panelTexts,
     lastUsedTextSettings,
     theme.palette.mode,
@@ -1288,6 +1299,12 @@ const CanvasCollagePreview = ({
 
   // Handle text editing
   const handleTextEdit = useCallback((panelId, event) => {
+    // Cancel reorder mode when opening text editor
+    if (isReorderMode) {
+      setIsReorderMode(false);
+      setReorderSourcePanel(null);
+    }
+    
     const isOpening = textEditingPanel !== panelId;
     setTextEditingPanel(textEditingPanel === panelId ? null : panelId);
     
@@ -1431,7 +1448,7 @@ const CanvasCollagePreview = ({
         }
       }, 100); // Small delay to ensure editor is rendered
     }
-  }, [textEditingPanel, panelRects]);
+  }, [textEditingPanel, panelRects, isReorderMode]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
@@ -1604,12 +1621,15 @@ const CanvasCollagePreview = ({
     let cursor = 'default';
     
     // Border zones have highest priority for cursor
-    if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
+    if (borderZone && !anyPanelInTransformMode && textEditingPanel === null && !isReorderMode) {
       cursor = borderZone.cursor;
     } else if (hoveredPanelIndex >= 0 && !borderZone) {
       const panel = panelRects[hoveredPanelIndex];
       
-      if (anyPanelInTransformMode) {
+      if (isReorderMode) {
+        // In reorder mode, show pointer cursor for all panels
+        cursor = 'pointer';
+      } else if (anyPanelInTransformMode) {
         // Only show interactive cursor for the panel that's actually in transform mode
         if (isTransformMode[panel.panelId]) {
           cursor = 'grab'; // Transform mode cursor
@@ -1722,6 +1742,34 @@ const CanvasCollagePreview = ({
     setIsTransformMode({});
   }, []);
 
+  // Handle destination selection during reorder
+  const handleReorderDestination = useCallback((destinationPanelId) => {
+    if (!reorderSourcePanel || !panelImageMapping || !updatePanelImageMapping || !destinationPanelId) {
+      console.warn('Invalid reorder destination selection:', { reorderSourcePanel, panelImageMapping: !!panelImageMapping, updatePanelImageMapping: !!updatePanelImageMapping, destinationPanelId });
+      return;
+    }
+
+    const sourceImageIndex = panelImageMapping[reorderSourcePanel];
+    const destinationImageIndex = panelImageMapping[destinationPanelId];
+
+    // Create new mapping with swapped images
+    const newMapping = { ...panelImageMapping };
+    
+    if (destinationImageIndex !== undefined) {
+      // Swap images between source and destination
+      newMapping[reorderSourcePanel] = destinationImageIndex;
+      newMapping[destinationPanelId] = sourceImageIndex;
+    } else if (sourceImageIndex !== undefined) {
+      // Move image from source to destination (destination was empty)
+      newMapping[destinationPanelId] = sourceImageIndex;
+      delete newMapping[reorderSourcePanel];
+    }
+
+    updatePanelImageMapping(newMapping);
+    setIsReorderMode(false);
+    setReorderSourcePanel(null);
+  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping]);
+
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1793,6 +1841,12 @@ const CanvasCollagePreview = ({
       
       setSelectedPanel(clickedPanelIndex);
       
+      // Check if we're in reorder mode
+      if (isReorderMode) {
+        handleReorderDestination(clickedPanel.panelId);
+        return;
+      }
+      
       // Check if this panel is in transform mode
       if (isTransformMode[clickedPanel.panelId]) {
         setIsDragging(true);
@@ -1802,7 +1856,7 @@ const CanvasCollagePreview = ({
         onPanelClick(clickedPanel.index, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone]);
+  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -2104,6 +2158,14 @@ const CanvasCollagePreview = ({
         
         setSelectedPanel(clickedPanelIndex);
         
+        // Check if we're in reorder mode
+        if (isReorderMode) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleReorderDestination(clickedPanel.panelId);
+          return;
+        }
+        
         // Check if this specific panel is in transform mode
         if (hasImage && isTransformMode[clickedPanel.panelId]) {
           // Prevent page scrolling only when touching an image in transform mode
@@ -2154,7 +2216,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -2418,13 +2480,35 @@ const CanvasCollagePreview = ({
     touchStartInfo.current = null;
   }, [handleTextEdit, dismissTransformMode]);
 
+  // Cancel reorder mode
+  const cancelReorderMode = useCallback(() => {
+    setIsReorderMode(false);
+    setReorderSourcePanel(null);
+  }, []);
+
+  // Start reorder mode for a panel
+  const startReorderMode = useCallback((panelId) => {
+    if (!panelId) {
+      console.warn('Invalid panel ID for reorder mode:', panelId);
+      return;
+    }
+    setIsReorderMode(true);
+    setReorderSourcePanel(panelId);
+  }, []);
+
   // Toggle transform mode for a panel
   const toggleTransformMode = useCallback((panelId) => {
+    // Cancel reorder mode when entering transform mode
+    if (isReorderMode) {
+      setIsReorderMode(false);
+      setReorderSourcePanel(null);
+    }
+    
     setIsTransformMode(prev => ({
       ...prev,
       [panelId]: !prev[panelId]
     }));
-  }, []);
+  }, [isReorderMode]);
 
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => {
@@ -2772,8 +2856,15 @@ const CanvasCollagePreview = ({
           borderRadius: '4px',
           transition: 'box-shadow 0.2s ease-in-out',
         }),
+        // Visual feedback when in reorder mode
+        ...(isReorderMode && {
+          boxShadow: '0 0 0 2px #FF9800',
+          borderRadius: '4px',
+          transition: 'box-shadow 0.2s ease-in-out',
+        }),
       }}
     >
+
               <canvas
           ref={canvasRef}
           data-testid="canvas-collage-preview"
@@ -2829,7 +2920,7 @@ const CanvasCollagePreview = ({
             {/* Transform control button */}
             {hasImage && textEditingPanel === null && 
              (!anyPanelInTransformMode || isInTransformMode) && 
-             !isDraggingBorder && (
+             !isDraggingBorder && !isReorderMode && (
                           <IconButton
               size="small"
               onClick={() => toggleTransformMode(panelId)}
@@ -2858,6 +2949,71 @@ const CanvasCollagePreview = ({
                 {isInTransformMode ? <Check sx={{ fontSize: 20 }} /> : <OpenWith sx={{ fontSize: 16 }} />}
               </IconButton>
             )}
+
+            {/* Reorder control button */}
+            {hasImage && textEditingPanel === null && 
+             !anyPanelInTransformMode && 
+             !isDraggingBorder && !isReorderMode && (
+              <IconButton
+                size="small"
+                onClick={() => startReorderMode(panelId)}
+                sx={{
+                  position: 'absolute',
+                  top: rect.y + 8,
+                  left: rect.x + rect.width - 96, // Position to the left of transform button
+                  width: 40,
+                  height: 40,
+                  backgroundColor: '#FF9800',
+                  color: '#ffffff',
+                  border: '2px solid #ffffff',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                  opacity: 1,
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor: '#F57C00',
+                    transform: 'scale(1.1)',
+                  },
+                  // Better touch handling
+                  touchAction: 'manipulation',
+                  cursor: 'pointer',
+                  zIndex: 12,
+                }}
+              >
+                <SwapHoriz sx={{ fontSize: 16 }} />
+              </IconButton>
+            )}
+
+            {/* Check icon for the frame being moved in reorder mode */}
+            {isReorderMode && reorderSourcePanel === panelId && (
+              <IconButton
+                size="small"
+                onClick={cancelReorderMode}
+                sx={{
+                  position: 'absolute',
+                  top: rect.y + 8,
+                  left: rect.x + rect.width - 48, // Same position as transform button
+                  width: 40,
+                  height: 40,
+                  backgroundColor: '#4CAF50',
+                  color: '#ffffff',
+                  border: '2px solid #ffffff',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                  opacity: 1,
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor: '#388E3C',
+                    transform: 'scale(1.1)',
+                  },
+                  touchAction: 'manipulation',
+                  cursor: 'pointer',
+                  zIndex: 12,
+                }}
+              >
+                <Check sx={{ fontSize: 20 }} />
+              </IconButton>
+            )}
+
+
             
             {/* Caption editing area - show when not in transform mode and has image, and no other panel is being edited */}
             {!isTransformMode?.[panelId] && hasImage && textEditingPanel === panelId && (
@@ -2912,12 +3068,12 @@ const CanvasCollagePreview = ({
       })}
 
       {/* Focus overlays - darken and blur inactive panels during editing modes */}
-      {(textEditingPanel !== null || Object.values(isTransformMode).some(enabled => enabled)) && 
+      {(textEditingPanel !== null || Object.values(isTransformMode).some(enabled => enabled) || isReorderMode) && 
        panelRects.map((rect, index) => {
         const { panelId } = rect;
         
-        // Skip overlay for active panels (being edited or in transform mode)
-        if (panelId === textEditingPanel || isTransformMode[panelId]) return null;
+        // Skip overlay for active panels (being edited, in transform mode, or source panel during reorder)
+        if (panelId === textEditingPanel || isTransformMode[panelId] || (isReorderMode && panelId === reorderSourcePanel)) return null;
         
         return (
           <Box
@@ -2930,11 +3086,69 @@ const CanvasCollagePreview = ({
               height: rect.height,
               backgroundColor: 'rgba(0, 0, 0, 0.50)', // Light darkening
               backdropFilter: 'blur(1px) grayscale(50%)', // Blur and grayscale effect
-              pointerEvents: 'none', // Don't interfere with mouse events
+              pointerEvents: isReorderMode ? 'auto' : 'none', // Allow clicks during reorder mode
               transition: 'all 0.35s ease-out', // Clearly noticeable fade
               zIndex: 15, // Above hover overlays, below caption editor controls
+              cursor: isReorderMode ? 'pointer' : 'default',
             }}
           />
+        );
+      })}
+
+      {/* "Move Here" overlays for destination panels in reorder mode */}
+      {isReorderMode && panelRects.map((rect, index) => {
+        const { panelId } = rect;
+        
+        // Only show on destination panels (not the source panel)
+        if (panelId === reorderSourcePanel) return null;
+        
+        return (
+          <Box
+            key={`move-here-overlay-${panelId}`}
+            onClick={() => handleReorderDestination(panelId)}
+            sx={{
+              position: 'absolute',
+              top: rect.y,
+              left: rect.x,
+              width: rect.width,
+              height: rect.height,
+              backgroundColor: 'rgba(33, 150, 243, 0.3)', // Blue with transparency
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 16, // Above focus overlays
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(33, 150, 243, 0.4)',
+              }
+            }}
+          >
+                         {/* Destination place icon */}
+             <Place
+               sx={{
+                 fontSize: `clamp(30px, ${Math.min(rect.width, rect.height) * 0.25}px, 60px)`,
+                 color: 'white',
+                 marginBottom: 1,
+                 filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.8))',
+               }}
+             />
+            
+            {/* "Move Here" text */}
+            <Box
+              component="span"
+              sx={{
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: Math.min(rect.width, rect.height) * 0.08,
+                textShadow: '1px 1px 3px rgba(0,0,0,0.8)',
+                userSelect: 'none',
+              }}
+            >
+              Move Here
+            </Box>
+          </Box>
         );
       })}
 
@@ -2972,9 +3186,27 @@ const CanvasCollagePreview = ({
         />
       )}
 
-      {/* Border drag zones - only visible when not in transform mode or text editing */}
+      {/* Invisible backdrop for reorder mode - captures clicks outside panels to cancel */}
+      {isReorderMode && (
+        <Box
+          onClick={cancelReorderMode}
+          sx={{
+            position: 'fixed', // Fixed to cover entire viewport
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'transparent', // Completely invisible
+            zIndex: 10, // Below reorder buttons but above everything else
+            cursor: 'default',
+          }}
+        />
+      )}
+
+      {/* Border drag zones - only visible when not in transform mode, text editing, or reorder mode */}
       {!Object.values(isTransformMode).some(enabled => enabled) && 
        textEditingPanel === null && 
+       !isReorderMode &&
        borderZones.map((zone, index) => (
         <Box
           key={`border-zone-${zone.id || `${zone.type}-${zone.index}`}`}
