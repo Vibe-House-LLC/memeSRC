@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, IconButton, Typography, useMediaQuery } from "@mui/material";
-import { useTheme, styled, alpha } from "@mui/material/styles";
-import { Add, OpenWith, Check, SwapHoriz, Place } from '@mui/icons-material';
+import { Box, IconButton, Typography, useMediaQuery, Menu, MenuItem, ListItemIcon } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 
@@ -439,6 +439,10 @@ const CanvasCollagePreview = ({
   // Reorder state
   const [isReorderMode, setIsReorderMode] = useState(false);
   const [reorderSourcePanel, setReorderSourcePanel] = useState(null);
+
+  // Action menu state for per-panel controls
+  const [actionMenuAnchorEl, setActionMenuAnchorEl] = useState(null);
+  const [actionMenuPanelId, setActionMenuPanelId] = useState(null);
 
   // Border dragging state
   const [borderZones, setBorderZones] = useState([]);
@@ -2503,12 +2507,39 @@ const CanvasCollagePreview = ({
       setIsReorderMode(false);
       setReorderSourcePanel(null);
     }
-    
+
     setIsTransformMode(prev => ({
       ...prev,
       [panelId]: !prev[panelId]
     }));
   }, [isReorderMode]);
+
+  // Open the action menu anchored to a panel's button
+  const handleActionMenuOpen = useCallback((event, panelId) => {
+    event.stopPropagation();
+    setActionMenuAnchorEl(event.currentTarget);
+    setActionMenuPanelId(panelId);
+  }, []);
+
+  // Close the action menu
+  const handleActionMenuClose = useCallback(() => {
+    setActionMenuAnchorEl(null);
+    setActionMenuPanelId(null);
+  }, []);
+
+  const handleMenuTransform = useCallback(() => {
+    if (actionMenuPanelId) {
+      toggleTransformMode(actionMenuPanelId);
+    }
+    handleActionMenuClose();
+  }, [actionMenuPanelId, toggleTransformMode, handleActionMenuClose]);
+
+  const handleMenuReorder = useCallback(() => {
+    if (actionMenuPanelId) {
+      startReorderMode(actionMenuPanelId);
+    }
+    handleActionMenuClose();
+  }, [actionMenuPanelId, startReorderMode, handleActionMenuClose]);
 
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => {
@@ -2917,69 +2948,44 @@ const CanvasCollagePreview = ({
         
         return (
           <Box key={`controls-${panelId}`}>
-            {/* Transform control button */}
-            {hasImage && textEditingPanel === null && 
-             (!anyPanelInTransformMode || isInTransformMode) && 
-             !isDraggingBorder && !isReorderMode && (
-                          <IconButton
-              size="small"
-              onClick={() => toggleTransformMode(panelId)}
-              sx={{
-                position: 'absolute',
-                top: rect.y + 8,
-                left: rect.x + rect.width - 48, // Simplified positioning
-                width: 40,
-                height: 40,
-                backgroundColor: isInTransformMode ? '#4CAF50' : '#2196F3',
-                color: '#ffffff',
-                border: '2px solid #ffffff',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                opacity: 1,
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                  backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
-                  transform: 'scale(1.1)',
-                },
-                // Better touch handling
-                touchAction: 'manipulation', // Prevents double-tap zoom but allows scrolling
-                cursor: 'pointer',
-                zIndex: 12, // Higher than caption overlay to ensure interactivity
-              }}
-            >
-                {isInTransformMode ? <Check sx={{ fontSize: 20 }} /> : <OpenWith sx={{ fontSize: 16 }} />}
-              </IconButton>
-            )}
-
-            {/* Reorder control button */}
-            {hasImage && textEditingPanel === null && 
-             !anyPanelInTransformMode && 
+            {/* Single control button with action menu */}
+            {hasImage && textEditingPanel === null &&
+             (!anyPanelInTransformMode || isInTransformMode) &&
              !isDraggingBorder && !isReorderMode && (
               <IconButton
                 size="small"
-                onClick={() => startReorderMode(panelId)}
+                onClick={(e) =>
+                  isInTransformMode
+                    ? toggleTransformMode(panelId)
+                    : handleActionMenuOpen(e, panelId)
+                }
                 sx={{
                   position: 'absolute',
                   top: rect.y + 8,
-                  left: rect.x + rect.width - 96, // Position to the left of transform button
+                  left: rect.x + rect.width - 48, // Simplified positioning
                   width: 40,
                   height: 40,
-                  backgroundColor: '#FF9800',
+                  backgroundColor: isInTransformMode ? '#4CAF50' : '#2196F3',
                   color: '#ffffff',
                   border: '2px solid #ffffff',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                   opacity: 1,
                   transition: 'all 0.2s ease-in-out',
                   '&:hover': {
-                    backgroundColor: '#F57C00',
+                    backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
                     transform: 'scale(1.1)',
                   },
                   // Better touch handling
-                  touchAction: 'manipulation',
+                  touchAction: 'manipulation', // Prevents double-tap zoom but allows scrolling
                   cursor: 'pointer',
-                  zIndex: 12,
+                  zIndex: 12, // Higher than caption overlay to ensure interactivity
                 }}
               >
-                <SwapHoriz sx={{ fontSize: 16 }} />
+                {isInTransformMode ? (
+                  <Check sx={{ fontSize: 20 }} />
+                ) : (
+                  <OpenWith sx={{ fontSize: 16 }} />
+                )}
               </IconButton>
             )}
 
@@ -3258,6 +3264,26 @@ const CanvasCollagePreview = ({
           }}
         />
       ))}
+
+      {/* Action menu for panel controls */}
+      <Menu
+        anchorEl={actionMenuAnchorEl}
+        open={Boolean(actionMenuAnchorEl)}
+        onClose={handleActionMenuClose}
+      >
+        <MenuItem onClick={handleMenuTransform}>
+          <ListItemIcon>
+            <Crop fontSize="small" />
+          </ListItemIcon>
+          Crop & Zoom
+        </MenuItem>
+        <MenuItem onClick={handleMenuReorder}>
+          <ListItemIcon>
+            <DragIndicator fontSize="small" />
+          </ListItemIcon>
+          Rearrange
+        </MenuItem>
+      </Menu>
 
     </Box>
   );
