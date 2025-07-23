@@ -3271,8 +3271,8 @@ const CanvasCollagePreview = ({
         open={Boolean(actionMenuAnchorEl)}
         onClose={handleActionMenuClose}
       >
-        <MenuItem onClick={handleMenuTransform}>Transform</MenuItem>
-        <MenuItem onClick={handleMenuReorder}>Reorder</MenuItem>
+        <MenuItem onClick={handleMenuTransform}>Crop & Zoom</MenuItem>
+        <MenuItem onClick={handleMenuReorder}>Rearrange</MenuItem>
       </Menu>
 
     </Box>
