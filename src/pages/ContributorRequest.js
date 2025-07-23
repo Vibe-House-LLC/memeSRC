@@ -17,7 +17,7 @@ const headerMarkdownContent = `
   
   ## Getting started
   
-  You're in! You've been accepted to test an **extremely early version** of this feature, so expect a bit of confusion and beware of bugs. In order to index your data for search, memeSRC requires it be prepared in a particular way. These instructions will get you started, and feel free to reach out if you have quetsions.
+  You're in! You've been accepted to test an **extremely early version** of this feature, so expect a bit of confusion and beware of bugs. In order to index your data for search, memeSRC requires it be prepared in a particular way. These instructions will get you started, and feel free to reach out if you have questions.
 
   ## #1: Prepare your data
 
@@ -62,7 +62,7 @@ const headerMarkdownContent = `
 const bodyMarkdownContent = `
   ## #4: Upload your data
 
-  Once you've selected your series, upload your zip file bundle. Your submission will be reviewed for data structure or innappropriate content. If approved, it will be processed and indexed to search and you'll recieve a notification.
+  Once you've selected your series, upload your zip file bundle. Your submission will be reviewed for data structure or inappropriate content. If approved, it will be processed and indexed to search and you'll receive a notification.
 
   ### Terms of Service
 
