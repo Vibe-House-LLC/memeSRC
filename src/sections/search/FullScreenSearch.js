@@ -117,7 +117,7 @@ const StyledGridContainer = styled(Grid)`
     padding-top: ${NAVBAR_HEIGHT * 2}px;
     /* Allow a little room at the bottom so floating buttons don't
        overlap short pages without making the layout feel top heavy */
-    padding-bottom: ${NAVBAR_HEIGHT}px;
+    padding-bottom: ${NAVBAR_HEIGHT / 2}px;
     box-sizing: border-box;
   `}
 `;
