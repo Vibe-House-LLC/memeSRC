@@ -20,6 +20,11 @@ function LoadingBackdrop({ open, duration = 20 }) {
         "Hang tight, wrapping up...",
     ], []);
 
+    // Calculate the percentage intervals at which to change messages, excluding the last message
+    const messagePercentages = useMemo(() => 
+        Array.from({ length: messages.length - 2 }, (_, index) => (index + 1) * (100 / (messages.length - 1)))
+    , [messages.length]);
+
     useEffect(() => {
         if (open) {
             setProgress(0);
@@ -28,7 +33,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
         }
     }, [open]);
 
-    // Progress bar effect
+    // Progress bar effect with synchronized message progression
     useEffect(() => {
         if (!open) return () => { };
 
@@ -41,7 +46,14 @@ function LoadingBackdrop({ open, duration = 20 }) {
 
                 if (newProgress >= 100) {
                     setProgressVariant('indeterminate');
+                    setMessageIndex(messages.length - 1);  // Set the last message
                     return 100;
+                }
+
+                // Check if we've reached or passed the next message percentage
+                const currentMessageIndex = messageIndex;
+                if (currentMessageIndex < messagePercentages.length && newProgress >= messagePercentages[currentMessageIndex]) {
+                    setMessageIndex((prevIndex) => prevIndex + 1);
                 }
 
                 return newProgress;
@@ -51,20 +63,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
         return () => {
             clearInterval(progressTimer);
         };
-    }, [duration, open]);
-
-    // Message progression effect (independent of progress)
-    useEffect(() => {
-        if (!open) return () => { };
-
-        const messageInterval = setInterval(() => {
-            setMessageIndex(prev => prev < messages.length - 1 ? prev + 1 : prev);
-        }, (duration * 1000) / messages.length);
-
-        return () => {
-            clearInterval(messageInterval);
-        };
-    }, [open, duration, messages]);
+    }, [duration, open, messagePercentages, messages.length, messageIndex]);
 
     return (
         <Backdrop
