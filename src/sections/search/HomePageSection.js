@@ -8,9 +8,10 @@ import { useNavigate } from "react-router-dom";
 // Create a grid container component
 const StyledGridContainer = styled(Grid)`
   /* Prefer dynamic viewport units for mobile browsers while
-     keeping a fallback for older ones */
-  height: 100vh;
-  height: 100dvh;
+     keeping a fallback for older ones. Use min-height so
+     content isn't clipped on short viewports */
+  min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
 `;
 
