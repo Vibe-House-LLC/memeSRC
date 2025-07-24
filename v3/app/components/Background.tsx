@@ -27,7 +27,8 @@ export default function Background({ mainColor }: BackgroundProps) {
   const backgroundStyle = mainColor
     ? {
         background: `linear-gradient(to bottom, ${mainColor} 10%, ${endColor} 100%)`,
-        backgroundSize: '100% 100vh',
+        // Use dynamic viewport height to properly size on mobile browsers
+        backgroundSize: '100% 100dvh',
         backgroundRepeat: 'no-repeat',
         backgroundColor: endColor,
       }
