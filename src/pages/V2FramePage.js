@@ -559,25 +559,33 @@ useEffect(() => {
   // Fetch episode name from TVDB when show title, season or episode changes
   useEffect(() => {
     const fetchEpisodeName = async () => {
+      let fetchedName = '';
       try {
-        if (!showTitle) return;
-        const searchResults = await API.get('publicapi', '/tvdb/search', {
-          queryStringParameters: { query: showTitle },
-        });
-        if (Array.isArray(searchResults) && searchResults.length > 0) {
-          const seriesId = searchResults[0].tvdb_id;
-          const seriesData = await API.get('publicapi', `/tvdb/series/${seriesId}/extended`);
-          const seasonObj = seriesData?.seasons?.find((s) => s.number === parseInt(season, 10));
-          if (seasonObj) {
-            const seasonData = await API.get('publicapi', `/tvdb/seasons/${seasonObj.id}/extended`);
-            const episodeObj = seasonData?.episodes?.find((e) => e.number === parseInt(episode, 10));
-            if (episodeObj?.name) {
-              setEpisodeName(episodeObj.name);
+        if (showTitle) {
+          const searchResults = await API.get('publicapi', '/tvdb/search', {
+            queryStringParameters: { query: showTitle },
+          });
+          if (Array.isArray(searchResults) && searchResults.length > 0) {
+            const seriesId = searchResults[0].tvdb_id;
+            const seriesData = await API.get('publicapi', `/tvdb/series/${seriesId}/extended`);
+            const seasonObj = seriesData?.seasons?.find((s) => s.number === parseInt(season, 10));
+            if (seasonObj) {
+              const seasonData = await API.get('publicapi', `/tvdb/seasons/${seasonObj.id}/extended`);
+              const episodeObj = seasonData?.episodes?.find((e) => e.number === parseInt(episode, 10));
+              if (episodeObj?.name) {
+                fetchedName = episodeObj.name;
+              }
             }
           }
         }
       } catch (err) {
         console.error('Failed to fetch episode name:', err);
+      } finally {
+        if (fetchedName) {
+          setEpisodeName(fetchedName);
+        } else {
+          setEpisodeName('Episode name unavailable');
+        }
       }
     };
     fetchEpisodeName();
@@ -951,7 +959,7 @@ useEffect(() => {
             <Chip
               size='small'
               icon={<OpenInNew />}
-              label={episodeName ? `${episodeName} (S${season}E${episode})` : `Season ${season} / Episode ${episode}`}
+              label={episodeName && episodeName !== 'Episode name unavailable' ? `${episodeName} (S${season}E${episode})` : `Episode name unavailable (S${season}E${episode})`}
               onClick={() => {
                 const frameRate = 10;
                 const totalSeconds = Math.round(frame / frameRate);
