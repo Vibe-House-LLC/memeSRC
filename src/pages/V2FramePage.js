@@ -92,6 +92,7 @@ export default function FramePage({ shows = [] }) {
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('16/9');
   const [showTitle, setShowTitle] = useState('');
+  const [episodeName, setEpisodeName] = useState('');
   const [imgSrc, setImgSrc] = useState();
   const [showText, setShowText] = useState(false);
   const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
@@ -416,9 +417,10 @@ export default function FramePage({ shows = [] }) {
           setOriginalSubtitle(initialInfo.subtitle);
           setLoadedSeason(season);
           setLoadedEpisode(episode);
+          setShowTitle(initialInfo.series_name || '');
           if (initialInfo.fontFamily && fonts.includes(initialInfo.fontFamily)) {
             setFontFamily(initialInfo.fontFamily);
-          }        
+          }
         } catch (error) {
           console.error("Failed to fetch initial frame info:", error);
         } finally {
@@ -553,6 +555,33 @@ useEffect(() => {
   }
 
 }, [fineTuningBlobs]);
+
+  // Fetch episode name from TVDB when show title, season or episode changes
+  useEffect(() => {
+    const fetchEpisodeName = async () => {
+      try {
+        if (!showTitle) return;
+        const searchResults = await API.get('publicapi', '/tvdb/search', {
+          queryStringParameters: { query: showTitle },
+        });
+        if (Array.isArray(searchResults) && searchResults.length > 0) {
+          const seriesId = searchResults[0].tvdb_id;
+          const seriesData = await API.get('publicapi', `/tvdb/series/${seriesId}/extended`);
+          const seasonObj = seriesData?.seasons?.find((s) => s.number === parseInt(season, 10));
+          if (seasonObj) {
+            const seasonData = await API.get('publicapi', `/tvdb/seasons/${seasonObj.id}/extended`);
+            const episodeObj = seasonData?.episodes?.find((e) => e.number === parseInt(episode, 10));
+            if (episodeObj?.name) {
+              setEpisodeName(episodeObj.name);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch episode name:', err);
+      }
+    };
+    fetchEpisodeName();
+  }, [showTitle, season, episode]);
 
 
   function frameToTimeCode(frame, frameRate = 10) {
@@ -922,7 +951,7 @@ useEffect(() => {
             <Chip
               size='small'
               icon={<OpenInNew />}
-              label={`Season ${season} / Episode ${episode}`}
+              label={episodeName ? `${episodeName} (S${season}E${episode})` : `Season ${season} / Episode ${episode}`}
               onClick={() => {
                 const frameRate = 10;
                 const totalSeconds = Math.round(frame / frameRate);
