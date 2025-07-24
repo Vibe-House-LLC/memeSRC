@@ -397,7 +397,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Grid>
           }
         </Grid>
-       <FloatingActionButtons shows={show} />
+        {/* Spacer to ensure content above the floating buttons isn't hidden */}
+        <Box sx={{ height: `${2 * 45}px`, width: '100%' }} />
+        <FloatingActionButtons shows={show} />
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
