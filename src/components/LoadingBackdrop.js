@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { Backdrop, Typography, Stack, LinearProgress, Box } from '@mui/material';
 import Logo from './logo';
 import MagicToolsLoadingAd from '../ads/MagicToolsLoadingAd';
@@ -9,14 +10,14 @@ function LoadingBackdrop({ open, duration = 20 }) {
     const [progress, setProgress] = useState(0);
     const [progressVariant, setProgressVariant] = useState('determinate');
     const [messageIndex, setMessageIndex] = useState(0);
-    const messages = [
+    const messages = useMemo(() => [
         "Generating 2 results...",
         "This will take a few seconds...",
         "Magic is hard work, you know?",
         "Just about done!",
         // "I'm gettin' too old for this shit.",
         "Hang tight, wrapping up...",
-    ];
+    ], []);
 
     // Calculate the percentage intervals at which to change messages, excluding the last message
     const messagePercentages = Array.from({ length: messages.length - 2 }, (_, index) => (index + 1) * (100 / (messages.length - 1)));
@@ -57,7 +58,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
         return () => {
             clearInterval(progressTimer);
         };
-    }, [duration, open, messagePercentages, messages]);
+    }, [duration, open, messagePercentages, messages, messageIndex]);
 
     return (
         <Backdrop
@@ -101,5 +102,10 @@ function LoadingBackdrop({ open, duration = 20 }) {
         </Backdrop>
     );
 }
+
+LoadingBackdrop.propTypes = {
+    open: PropTypes.bool,
+    duration: PropTypes.number,
+};
 
 export default LoadingBackdrop;

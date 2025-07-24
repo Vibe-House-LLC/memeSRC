@@ -3,9 +3,10 @@ import { API } from 'aws-amplify';
 import { IconButton, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import { UserContext } from '../UserContext';
 
-const StyledIconButton = styled(IconButton)(({ theme, isFavorite }) => ({
+const StyledIconButton = styled(IconButton)(({ isFavorite }) => ({
   padding: '8px',
   borderRadius: '50%',
   transition: 'all 0.3s',
@@ -81,6 +82,11 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
       </IconContainer>
     </StyledIconButton>
   );
+};
+
+FavoriteToggle.propTypes = {
+  indexId: PropTypes.string.isRequired,
+  initialIsFavorite: PropTypes.bool,
 };
 
 export default FavoriteToggle;
