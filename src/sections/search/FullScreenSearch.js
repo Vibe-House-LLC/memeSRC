@@ -105,8 +105,8 @@ const StyledGridContainer = styled(Grid)`
   ${({ theme }) => `
     /* Use dynamic viewport height on supported browsers to avoid
        extra scroll space caused by mobile browser chrome */
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
     padding-left: ${theme.spacing(3)};
     padding-right: ${theme.spacing(3)};
   `}
