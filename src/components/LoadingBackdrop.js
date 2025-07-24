@@ -10,6 +10,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
     const [progress, setProgress] = useState(0);
     const [progressVariant, setProgressVariant] = useState('determinate');
     const [messageIndex, setMessageIndex] = useState(0);
+    
     const messages = useMemo(() => [
         "Generating 2 results...",
         "This will take a few seconds...",
@@ -19,9 +20,6 @@ function LoadingBackdrop({ open, duration = 20 }) {
         "Hang tight, wrapping up...",
     ], []);
 
-    // Calculate the percentage intervals at which to change messages, excluding the last message
-    const messagePercentages = Array.from({ length: messages.length - 2 }, (_, index) => (index + 1) * (100 / (messages.length - 1)));
-
     useEffect(() => {
         if (open) {
             setProgress(0);
@@ -30,6 +28,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
         }
     }, [open]);
 
+    // Progress bar effect
     useEffect(() => {
         if (!open) return () => { };
 
@@ -42,13 +41,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
 
                 if (newProgress >= 100) {
                     setProgressVariant('indeterminate');
-                    setMessageIndex(messages.length - 1);  // Set the last message
                     return 100;
-                }
-
-                // Check if we've reached or passed the next message percentage
-                if (messageIndex < messagePercentages.length && newProgress >= messagePercentages[messageIndex]) {
-                    setMessageIndex((prevIndex) => prevIndex + 1);
                 }
 
                 return newProgress;
@@ -58,7 +51,20 @@ function LoadingBackdrop({ open, duration = 20 }) {
         return () => {
             clearInterval(progressTimer);
         };
-    }, [duration, open, messagePercentages, messages, messageIndex]);
+    }, [duration, open]);
+
+    // Message progression effect (independent of progress)
+    useEffect(() => {
+        if (!open) return () => { };
+
+        const messageInterval = setInterval(() => {
+            setMessageIndex(prev => prev < messages.length - 1 ? prev + 1 : prev);
+        }, (duration * 1000) / messages.length);
+
+        return () => {
+            clearInterval(messageInterval);
+        };
+    }, [open, duration, messages]);
 
     return (
         <Backdrop
