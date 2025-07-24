@@ -218,6 +218,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       <StyledGridContainer container sx={currentThemeBackground}>
         <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
           <Grid container justifyContent="center">
+            {/* Spacer to keep the logo clear of the fixed navbar */}
+            <Box sx={{ height: `${2 * 45}px`, width: '100%' }} />
             <Grid item textAlign="center" marginBottom={2}>
               <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
                 <Box
