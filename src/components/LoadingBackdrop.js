@@ -50,11 +50,18 @@ function LoadingBackdrop({ open, duration = 20 }) {
                     return 100;
                 }
 
-                // Check if we've reached or passed the next message percentage
-                const currentMessageIndex = messageIndex;
-                if (currentMessageIndex < messagePercentages.length && newProgress >= messagePercentages[currentMessageIndex]) {
-                    setMessageIndex((prevIndex) => prevIndex + 1);
+                // Calculate which message should be shown based on current progress
+                let targetMessageIndex = 0;
+                for (let i = 0; i < messagePercentages.length; i+=1) {
+                    if (newProgress >= messagePercentages[i]) {
+                        targetMessageIndex = i + 1;
+                    } else {
+                        break;
+                    }
                 }
+                
+                // Update message index if it should change
+                setMessageIndex(targetMessageIndex);
 
                 return newProgress;
             });
@@ -63,7 +70,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
         return () => {
             clearInterval(progressTimer);
         };
-    }, [duration, open, messagePercentages, messages.length, messageIndex]);
+    }, [duration, open, messagePercentages, messages.length]);
 
     return (
         <Backdrop
