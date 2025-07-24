@@ -47,7 +47,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff, Collections } from '@mui/icons-material';
+import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff, Collections, Settings } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
@@ -93,6 +93,7 @@ export default function FramePage({ shows = [] }) {
   const [aspectRatio, setAspectRatio] = useState('16/9');
   const [showTitle, setShowTitle] = useState('');
   const [episodeName, setEpisodeName] = useState('');
+  const [tvdbIdOverride, setTvdbIdOverride] = useState('');
   const [imgSrc, setImgSrc] = useState();
   const [showText, setShowText] = useState(false);
   const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
@@ -174,6 +175,15 @@ export default function FramePage({ shows = [] }) {
     }).catch(error => {
       console.log(error)
     })
+  }, [cid]);
+
+  useEffect(() => {
+    if (cid) {
+      const storedId = localStorage.getItem(`tvdbId_${cid}`);
+      if (storedId) {
+        setTvdbIdOverride(storedId);
+      }
+    }
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
@@ -556,25 +566,29 @@ useEffect(() => {
 
 }, [fineTuningBlobs]);
 
-  // Fetch episode name from TVDB when show title, season or episode changes
+  // Fetch episode name from TVDB when identifiers change
   useEffect(() => {
     const fetchEpisodeName = async () => {
       let fetchedName = '';
       try {
-        if (showTitle) {
+        let seriesId = tvdbIdOverride;
+        if (!seriesId && showTitle) {
           const searchResults = await API.get('publicapi', '/tvdb/search', {
             queryStringParameters: { query: showTitle },
           });
           if (Array.isArray(searchResults) && searchResults.length > 0) {
-            const seriesId = searchResults[0].tvdb_id;
-            const seriesData = await API.get('publicapi', `/tvdb/series/${seriesId}/extended`);
-            const seasonObj = seriesData?.seasons?.find((s) => s.number === parseInt(season, 10));
-            if (seasonObj) {
-              const seasonData = await API.get('publicapi', `/tvdb/seasons/${seasonObj.id}/extended`);
-              const episodeObj = seasonData?.episodes?.find((e) => e.number === parseInt(episode, 10));
-              if (episodeObj?.name) {
-                fetchedName = episodeObj.name;
-              }
+            seriesId = searchResults[0].tvdb_id;
+          }
+        }
+
+        if (seriesId) {
+          const seriesData = await API.get('publicapi', `/tvdb/series/${seriesId}/extended`);
+          const seasonObj = seriesData?.seasons?.find((s) => s.number === parseInt(season, 10));
+          if (seasonObj) {
+            const seasonData = await API.get('publicapi', `/tvdb/seasons/${seasonObj.id}/extended`);
+            const episodeObj = seasonData?.episodes?.find((e) => e.number === parseInt(episode, 10));
+            if (episodeObj?.name) {
+              fetchedName = episodeObj.name;
             }
           }
         }
@@ -589,7 +603,7 @@ useEffect(() => {
       }
     };
     fetchEpisodeName();
-  }, [showTitle, season, episode]);
+  }, [showTitle, season, episode, tvdbIdOverride]);
 
 
   function frameToTimeCode(frame, frameRate = 10) {
@@ -956,23 +970,36 @@ useEffect(() => {
 
           <Grid item xs={12} md={6}>
 
-            <Chip
-              size='small'
-              icon={<OpenInNew />}
-              label={episodeName && episodeName !== 'Episode name unavailable' ? `${episodeName} (S${season}E${episode})` : `Episode name unavailable (S${season}E${episode})`}
-              onClick={() => {
-                const frameRate = 10;
-                const totalSeconds = Math.round(frame / frameRate);
-                const nearestSecondFrame = totalSeconds * frameRate;
-                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
-              }}
-              sx={{
-                marginBottom: '15px',
-                "& .MuiChip-label": {
-                  fontWeight: 'bold',
-                },
-              }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Chip
+                size='small'
+                icon={<OpenInNew />}
+                label={episodeName && episodeName !== 'Episode name unavailable' ? `${episodeName} (S${season}E${episode})` : `Episode name unavailable (S${season}E${episode})`}
+                onClick={() => {
+                  const frameRate = 10;
+                  const totalSeconds = Math.round(frame / frameRate);
+                  const nearestSecondFrame = totalSeconds * frameRate;
+                  navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
+                }}
+                sx={{
+                  marginBottom: '15px',
+                  "& .MuiChip-label": {
+                    fontWeight: 'bold',
+                  },
+                }}
+              />
+              <Tooltip title="Set TVDB ID" placement="top">
+                <IconButton size="small" onClick={() => {
+                  const newId = window.prompt('Enter TVDB series ID', tvdbIdOverride || '');
+                  if (newId !== null) {
+                    localStorage.setItem(`tvdbId_${cid}`, newId);
+                    setTvdbIdOverride(newId);
+                  }
+                }} sx={{ ml: 1, mb: '15px' }}>
+                  <Settings fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
             <Chip
               size='small'
               icon={<BrowseGallery />}

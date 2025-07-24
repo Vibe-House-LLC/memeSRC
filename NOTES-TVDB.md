@@ -1,7 +1,7 @@
 # TVDB Integration Notes
 
 ## Episode Titles on Frame Page
-The `/frame` page now attempts to fetch the episode name from the TVDB API using the `memesrcTVDB` Lambda. It searches for the series title from the frame metadata, loads the corresponding season and episode details, and displays the episode name if found.
+The `/frame` page now attempts to fetch the episode name from the TVDB API using the `memesrcTVDB` Lambda. It searches for the series title from the frame metadata, loads the corresponding season and episode details, and displays the episode name if found. A temporary settings button on the frame page allows manually entering a TVDB series ID, which is stored in local storage for future lookups.
 
 ## Future Improvements
 - **Expose TVDB IDs in Metadata**: The Amplify schema already stores a `tvdbid` for Series, Seasons and Episodes. Many of our existing `00_metadata.json` files do not surface this value, so the front-end must search by series name. Adding the id to the metadata (or exposing it via GraphQL) would avoid the initial search request.
