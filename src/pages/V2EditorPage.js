@@ -2,6 +2,7 @@
 /* eslint-disable no-unused-vars, func-names */
 
 import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import PropTypes from 'prop-types';
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { styled } from '@mui/material/styles';
@@ -2530,5 +2531,9 @@ const EditorPage = ({ shows }) => {
     </>
   );
 }
+
+EditorPage.propTypes = {
+  shows: PropTypes.array,
+};
 
 export default EditorPage

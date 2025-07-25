@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
@@ -1612,7 +1613,8 @@ const CanvasCollagePreview = ({
     
     // Border zones have highest priority for cursor
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null && !isReorderMode) {
-      cursor = borderZone.cursor;
+      const { cursor: borderCursor } = borderZone;
+      cursor = borderCursor;
     } else if (hoveredPanelIndex >= 0 && !borderZone) {
       const panel = panelRects[hoveredPanelIndex];
       
@@ -3272,6 +3274,24 @@ const CanvasCollagePreview = ({
 
     </Box>
   );
+};
+
+CanvasCollagePreview.propTypes = {
+  selectedTemplate: PropTypes.object,
+  panelCount: PropTypes.number,
+  images: PropTypes.arrayOf(PropTypes.string),
+  onPanelClick: PropTypes.func,
+  aspectRatioValue: PropTypes.number,
+  panelImageMapping: PropTypes.object,
+  updatePanelImageMapping: PropTypes.func,
+  borderThickness: PropTypes.number,
+  borderColor: PropTypes.string,
+  panelTransforms: PropTypes.object,
+  updatePanelTransform: PropTypes.func,
+  panelTexts: PropTypes.object,
+  updatePanelText: PropTypes.func,
+  lastUsedTextSettings: PropTypes.object,
+  isGeneratingCollage: PropTypes.bool,
 };
 
 export default CanvasCollagePreview;
