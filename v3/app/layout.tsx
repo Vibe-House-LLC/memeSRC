@@ -300,7 +300,7 @@ export default function RootLayout({
                 // Show Collage button for users with access
                 <div className="relative">
                   {count > 0 && (
-                    <div className="absolute -top-2 -right-2 z-[51] bg-red-500 text-white border-2 border-black min-w-[20px] h-5 text-xs font-bold flex items-center justify-center rounded-full px-1">
+                    <div className="absolute -top-2 -right-2 z-[51] bg-red-500 text-white border-2 border-gray-300 dark:border-black min-w-[20px] h-5 text-xs font-bold flex items-center justify-center rounded-full px-1">
                       {count > 99 ? '99+' : count}
                     </div>
                   )}
@@ -308,7 +308,7 @@ export default function RootLayout({
                     ref={buttonRef}
                     onClick={() => showImageDrawer ? handleClose() : handleOpen()}
                     variant="outline" 
-                    className="bg-black text-white border-gray-600 hover:bg-gray-800"
+                    className="bg-white dark:bg-black text-black dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
                   >
                     <Grid3X3 className="mr-2 h-4 w-4" />
                     Collage
@@ -318,12 +318,12 @@ export default function RootLayout({
                 // Show original donate + feedback buttons for users without access
                 <>
                   <Link href="/support">
-                    <Button size="icon" variant="outline" className="bg-black text-white border-gray-600 hover:bg-gray-800">
+                    <Button size="icon" variant="outline" className="bg-white dark:bg-black text-black dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
                       <MessageSquare className="h-4 w-4" />
                     </Button>
                   </Link>
                   <Link href="https://memesrc.com/donate" target="_blank">
-                    <Button size="icon" variant="outline" className="bg-black text-white border-gray-600 hover:bg-gray-800">
+                    <Button size="icon" variant="outline" className="bg-white dark:bg-black text-black dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
                       <Heart className="h-4 w-4" />
                     </Button>
                   </Link>
@@ -336,7 +336,7 @@ export default function RootLayout({
               <Button 
                 onClick={() => loadRandomFrame()} 
                 variant="outline" 
-                className="bg-black text-white border-gray-600 hover:bg-gray-800"
+                className="bg-white dark:bg-black text-black dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
                 disabled={loadingRandom}
               >
                 <RotateCw className={`mr-2 h-4 w-4 ${loadingRandom ? 'animate-spin' : ''}`} />
@@ -348,7 +348,7 @@ export default function RootLayout({
             {hasCollageAccess && (showImageDrawer || isClosing) && (
               <div 
                 ref={popupRef}
-                className={`fixed bottom-0 left-0 right-0 w-full bg-gradient-to-t from-black/90 via-black/60 to-black/40 p-5 pb-20 max-h-96 overflow-y-auto z-[51] backdrop-blur-lg border-t border-white/20 transition-all ease-out ${
+                className={`fixed bottom-0 left-0 right-0 w-full bg-gradient-to-t from-white/90 via-white/60 to-white/40 dark:from-black/90 dark:via-black/60 dark:to-black/40 p-5 pb-20 max-h-96 overflow-y-auto z-[51] backdrop-blur-lg border-t border-black/20 dark:border-white/20 transition-all ease-out ${
                   isClosing 
                     ? 'duration-400 transform translate-y-full opacity-0' 
                     : isOpening
@@ -358,21 +358,21 @@ export default function RootLayout({
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-white text-lg font-semibold text-center flex-1">
+                    <h3 className="text-black dark:text-white text-lg font-semibold text-center flex-1">
                       Collage Images ({count})
                     </h3>
                     <Button
                       onClick={handleClose}
                       size="icon"
                       variant="ghost"
-                      className="text-white hover:bg-white/10"
+                      className="text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10"
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                   
                   {collageItems.length === 0 ? (
-                    <p className="text-white/60 italic text-center py-5">
+                    <p className="text-black/60 dark:text-white/60 italic text-center py-5">
                       No images in collage
                     </p>
                   ) : (
@@ -380,7 +380,7 @@ export default function RootLayout({
                       {collageItems.map((item, index) => (
                         <div 
                           key={item.id}
-                          className="p-3 bg-white/8 rounded-lg border border-white/15"
+                          className="p-3 bg-black/8 dark:bg-white/8 rounded-lg border border-black/15 dark:border-white/15"
                         >
                           <div className="flex items-start space-x-3">
                             {/* Thumbnail */}
@@ -388,7 +388,7 @@ export default function RootLayout({
                               <img
                                 src={getImageUrl(item)}
                                 alt={`S${item.season}E${item.episode} Frame ${item.frame}`}
-                                className="w-20 h-11 object-cover rounded bg-white/10"
+                                className="w-20 h-11 object-cover rounded bg-black/10 dark:bg-white/10"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
                                   target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
@@ -402,17 +402,17 @@ export default function RootLayout({
                             
                             {/* Content */}
                             <div className="flex-1 min-w-0 space-y-1">
-                              <p className="text-white font-bold text-sm">
+                              <p className="text-black dark:text-white font-bold text-sm">
                                 S{item.season}E{item.episode} - Frame {item.frame}
                               </p>
                               {item.timestamp && (
-                                <p className="text-white/70 text-xs">
+                                <p className="text-black/70 dark:text-white/70 text-xs">
                                   {item.timestamp}
                                 </p>
                               )}
                               {item.subtitle && (
                                 <div className="flex items-start gap-1">
-                                  <p className="text-white/90 italic text-sm overflow-hidden text-ellipsis line-clamp-2 flex-1">
+                                  <p className="text-black/90 dark:text-white/90 italic text-sm overflow-hidden text-ellipsis line-clamp-2 flex-1">
                                     "{item.subtitle}"
                                   </p>
                                   {item.subtitleShowing && (
@@ -429,14 +429,14 @@ export default function RootLayout({
                               onClick={() => removeItem(item.id)}
                               size="icon"
                               variant="ghost"
-                              className="text-white/70 hover:text-white hover:bg-white/10 w-8 h-8"
+                              className="text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10 w-8 h-8"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                           
                           {index < collageItems.length - 1 && (
-                            <hr className="mt-3 border-white/10" />
+                            <hr className="mt-3 border-black/10 dark:border-white/10" />
                           )}
                         </div>
                       ))}
@@ -455,7 +455,7 @@ export default function RootLayout({
                       </Button>
                       
                       {count > 5 && (
-                        <p className="text-white/70 italic text-center text-sm">
+                        <p className="text-black/70 dark:text-white/70 italic text-center text-sm">
                           Maximum 5 images allowed for collage
                         </p>
                       )}
@@ -464,7 +464,7 @@ export default function RootLayout({
                         <Button 
                           onClick={clearAll}
                           variant="outline"
-                          className="w-full text-white border-white/30 hover:bg-white/10"
+                          className="w-full text-black dark:text-white border-black/30 dark:border-white/30 hover:bg-black/10 dark:hover:bg-white/10"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Clear All ({count})
