@@ -80,7 +80,6 @@
     "web-vitals": "^3.0.3"
   },
   "devDependencies": {
-    "react-scripts": "^5.0.1",
     "@babel/core": "^7.19.3",
     "@babel/eslint-parser": "^7.19.1",
     "@svgr/webpack": "^6.5.0",
@@ -95,7 +94,8 @@
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-react": "^7.31.10",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "prettier": "^2.7.1"
+    "prettier": "^2.7.1",
+    "react-scripts": "^5.0.1"
   },
   "overrides": {
     "@svgr/webpack": "^6.5.0",
@@ -103,7 +103,6 @@
     "image-size": ">=1.2.1",
     "axios": ">=1.8.2",
     "cross-spawn": ">=7.0.5",
-    "path-to-regexp": ">=0.1.12",
     "postcss": ">=8.4.31"
   }
 }
