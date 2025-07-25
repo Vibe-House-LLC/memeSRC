@@ -1756,23 +1756,50 @@ const CanvasCollagePreview = ({
     const sourceImageIndex = panelImageMapping[reorderSourcePanel];
     const destinationImageIndex = panelImageMapping[destinationPanelId];
 
+    const sourceText = panelTexts[reorderSourcePanel];
+    const destinationText = panelTexts[destinationPanelId];
+
     // Create new mapping with swapped images
     const newMapping = { ...panelImageMapping };
-    
+
     if (destinationImageIndex !== undefined) {
       // Swap images between source and destination
       newMapping[reorderSourcePanel] = destinationImageIndex;
       newMapping[destinationPanelId] = sourceImageIndex;
+
+      if (updatePanelText) {
+        if (sourceText) {
+          updatePanelText(destinationPanelId, { ...sourceText });
+        } else {
+          updatePanelText(destinationPanelId, { content: undefined });
+        }
+
+        if (destinationText) {
+          updatePanelText(reorderSourcePanel, { ...destinationText });
+        } else {
+          updatePanelText(reorderSourcePanel, { content: undefined });
+        }
+      }
     } else if (sourceImageIndex !== undefined) {
       // Move image from source to destination (destination was empty)
       newMapping[destinationPanelId] = sourceImageIndex;
       delete newMapping[reorderSourcePanel];
+
+      if (updatePanelText) {
+        if (sourceText) {
+          updatePanelText(destinationPanelId, { ...sourceText });
+        } else {
+          updatePanelText(destinationPanelId, { content: undefined });
+        }
+
+        updatePanelText(reorderSourcePanel, { content: undefined });
+      }
     }
 
     updatePanelImageMapping(newMapping);
     setIsReorderMode(false);
     setReorderSourcePanel(null);
-  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping]);
+  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, updatePanelText, panelTexts]);
 
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
