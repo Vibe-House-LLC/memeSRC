@@ -416,6 +416,8 @@ const CanvasCollagePreview = ({
   updatePanelText,
   lastUsedTextSettings = {},
   isGeneratingCollage = false, // New prop to exclude placeholder text during export
+  stickers = [],
+  setStickers = () => {},
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -451,6 +453,11 @@ const CanvasCollagePreview = ({
   const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(null);
+
+  // Sticker interaction state
+  const [selectedStickerId, setSelectedStickerId] = useState(null);
+  const [stickerDragStart, setStickerDragStart] = useState(null);
+  const [stickerScaleStart, setStickerScaleStart] = useState(null);
 
   // Mobile detection for slider fix
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
@@ -1798,10 +1805,12 @@ const CanvasCollagePreview = ({
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    setSelectedStickerId(null);
     
     // Check for border zone clicks first
     const borderZone = findBorderZone(x, y);
@@ -2073,19 +2082,105 @@ const CanvasCollagePreview = ({
   // Helper function to get center point between two touches
   const getTouchCenter = useCallback((touches) => {
     if (touches.length < 2) return { x: touches[0].clientX, y: touches[0].clientY };
-    
+
     return {
       x: (touches[0].clientX + touches[1].clientX) / 2,
       y: (touches[0].clientY + touches[1].clientY) / 2
     };
   }, []);
 
+  // Sticker interaction handlers
+  const handleStickerMouseDown = useCallback((id, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedStickerId(id);
+    setStickerDragStart({ id, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleStickerTouchStart = useCallback((id, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const touches = Array.from(e.touches);
+    if (touches.length === 1) {
+      const t = touches[0];
+      setSelectedStickerId(id);
+      setStickerDragStart({ id, x: t.clientX, y: t.clientY });
+    } else if (touches.length === 2) {
+      setSelectedStickerId(id);
+      setStickerScaleStart({
+        id,
+        distance: getTouchDistance(touches),
+        startScale: stickers.find(s => s.id === id)?.scale || 1,
+        x: getTouchCenter(touches).x,
+        y: getTouchCenter(touches).y,
+      });
+    }
+  }, [getTouchDistance, stickers]);
+
+  const handleStickerWheel = useCallback((id, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = -e.deltaY * 0.002;
+    setStickers((prev) => prev.map((s) => s.id === id ? { ...s, scale: Math.max(0.2, s.scale + delta) } : s));
+  }, [setStickers]);
+
+  const handleStickerMove = useCallback((clientX, clientY, pinchDistance) => {
+    if (stickerDragStart) {
+      setStickers((prev) => prev.map((s) =>
+        s.id === stickerDragStart.id ? { ...s, x: s.x + clientX - stickerDragStart.x, y: s.y + clientY - stickerDragStart.y } : s
+      ));
+      setStickerDragStart({ ...stickerDragStart, x: clientX, y: clientY });
+    } else if (stickerScaleStart) {
+      const dist = pinchDistance !== undefined ? pinchDistance : Math.hypot(clientX - stickerScaleStart.x, clientY - stickerScaleStart.y);
+      const scaleFactor = dist / stickerScaleStart.distance;
+      setStickers((prev) => prev.map((s) =>
+        s.id === stickerScaleStart.id ? { ...s, scale: Math.max(0.2, stickerScaleStart.startScale * scaleFactor) } : s
+      ));
+    }
+  }, [stickerDragStart, stickerScaleStart, setStickers]);
+
+  const handleGlobalMove = useCallback((e) => {
+    if (stickerDragStart || stickerScaleStart) {
+      if (e.touches && e.touches.length === 2 && stickerScaleStart) {
+        const distance = getTouchDistance(e.touches);
+        const center = getTouchCenter(e.touches);
+        handleStickerMove(center.x, center.y, distance);
+      } else {
+        const point = e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
+        handleStickerMove(point.x, point.y);
+      }
+      if (e.cancelable) e.preventDefault();
+    }
+  }, [handleStickerMove, stickerDragStart, stickerScaleStart, getTouchDistance, getTouchCenter]);
+
+  const handleGlobalUp = useCallback(() => {
+    if (stickerDragStart || stickerScaleStart) {
+      setStickerDragStart(null);
+      setStickerScaleStart(null);
+    }
+  }, [stickerDragStart, stickerScaleStart]);
+
+  useEffect(() => {
+    if (stickerDragStart || stickerScaleStart) {
+      document.addEventListener('mousemove', handleGlobalMove);
+      document.addEventListener('mouseup', handleGlobalUp);
+      document.addEventListener('touchmove', handleGlobalMove, { passive: false });
+      document.addEventListener('touchend', handleGlobalUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMove);
+      document.removeEventListener('mouseup', handleGlobalUp);
+      document.removeEventListener('touchmove', handleGlobalMove);
+      document.removeEventListener('touchend', handleGlobalUp);
+    };
+  }, [handleGlobalMove, handleGlobalUp, stickerDragStart, stickerScaleStart]);
+
   // Touch event handlers
   // eslint-disable-next-line consistent-return
   const handleTouchStart = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const rect = canvas.getBoundingClientRect();
     const touches = Array.from(e.touches);
     
@@ -2094,6 +2189,8 @@ const CanvasCollagePreview = ({
       const touch = touches[0];
       const x = touch.clientX - rect.left;
       const y = touch.clientY - rect.top;
+
+      setSelectedStickerId(null);
       
       // Simple debounce: ignore rapid successive taps (likely from scroll momentum)
       const now = Date.now();
@@ -2937,6 +3034,72 @@ const CanvasCollagePreview = ({
             touchAction: anyPanelInTransformMode ? 'none' : 'pan-y pinch-zoom', // Disable all touch gestures when in transform mode
           }}
       />
+
+      {/* Stickers */}
+      {stickers.map((sticker) => (
+        <Box
+          key={sticker.id}
+          onMouseDown={(e) => handleStickerMouseDown(sticker.id, e)}
+          onTouchStart={(e) => handleStickerTouchStart(sticker.id, e)}
+          onWheel={(e) => handleStickerWheel(sticker.id, e)}
+          sx={{
+            position: 'absolute',
+            top: sticker.y,
+            left: sticker.x,
+            transform: `translate(-50%, -50%) scale(${sticker.scale})`,
+            zIndex: 6,
+            touchAction: 'none',
+            cursor: 'grab',
+          }}
+        >
+          <Box
+            component="img"
+            src={sticker.src}
+            alt="sticker"
+            sx={{ display: 'block', width: 80, height: 'auto', pointerEvents: 'none' }}
+          />
+          {selectedStickerId === sticker.id && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                border: '2px dashed #2196F3',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+          {selectedStickerId === sticker.id && (
+            <Box
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setStickerScaleStart({ id: sticker.id, distance: 0, startScale: sticker.scale, x: e.clientX, y: e.clientY });
+              }}
+              onTouchStart={(e) => {
+                if (e.touches.length === 1) {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  const t = e.touches[0];
+                  setStickerScaleStart({ id: sticker.id, distance: 0, startScale: sticker.scale, x: t.clientX, y: t.clientY });
+                }
+              }}
+              sx={{
+                position: 'absolute',
+                width: 16,
+                height: 16,
+                right: -8,
+                bottom: -8,
+                backgroundColor: '#2196F3',
+                cursor: 'nwse-resize',
+                zIndex: 7,
+              }}
+            />
+          )}
+        </Box>
+      ))}
       
       {/* Control panels positioned over canvas */}
       {panelRects.map((rect) => {

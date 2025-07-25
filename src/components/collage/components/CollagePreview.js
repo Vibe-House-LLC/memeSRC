@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Menu, MenuItem, Box } from "@mui/material";
+import { Menu, MenuItem, Box, IconButton } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
+import { Add } from '@mui/icons-material';
 
 /**
  * Get the aspect ratio value from the presets
@@ -42,6 +43,9 @@ const CollagePreview = ({
 }) => {
   const theme = useTheme();
   const fileInputRef = useRef(null);
+  const stickerInputRef = useRef(null);
+
+  const [stickers, setStickers] = useState([]);
   
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
@@ -193,6 +197,29 @@ const CollagePreview = ({
     }
   };
 
+  // Handle sticker file selection
+  const handleStickerFileChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const newSticker = {
+        id: Date.now(),
+        src: e.target.result,
+        x: 50,
+        y: 50,
+        scale: 1,
+      };
+      setStickers((prev) => [...prev, newSticker]);
+    };
+    reader.readAsDataURL(files[0]);
+
+    if (event.target) {
+      event.target.value = null;
+    }
+  };
+
   // Determine if the active panel has an image (for menu options)
   const hasActiveImage = () => {
     if (activePanelIndex === null) return false;
@@ -213,6 +240,13 @@ const CollagePreview = ({
 
   return (
     <Box sx={{ position: 'relative' }}>
+      <IconButton
+        size="small"
+        onClick={() => stickerInputRef.current?.click()}
+        sx={{ position: 'absolute', top: 8, right: 8, zIndex: 20, backgroundColor: 'background.paper' }}
+      >
+        <Add fontSize="small" />
+      </IconButton>
       <CanvasCollagePreview
         selectedTemplate={selectedTemplate}
         selectedAspectRatio={selectedAspectRatio}
@@ -231,6 +265,8 @@ const CollagePreview = ({
         updatePanelText={updatePanelText}
         lastUsedTextSettings={lastUsedTextSettings}
         isGeneratingCollage={isCreatingCollage}
+        stickers={stickers}
+        setStickers={setStickers}
       />
       
       {/* Hidden file input */}
@@ -241,6 +277,15 @@ const CollagePreview = ({
         accept="image/*"
         multiple
         onChange={handleFileChange}
+      />
+
+      {/* Hidden file input for stickers */}
+      <input
+        type="file"
+        ref={stickerInputRef}
+        style={{ display: 'none' }}
+        accept="image/*"
+        onChange={handleStickerFileChange}
       />
       
       {/* Panel options menu */}
