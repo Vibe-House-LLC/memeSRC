@@ -7,7 +7,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import { styled } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
-import { Dialog, DialogActions, DialogContent, DialogTitle, Divider, Typography, useMediaQuery } from '@mui/material';
+import { Dialog, DialogActions, DialogContent, DialogTitle, Divider, Typography } from '@mui/material';
 import CidInput from './CidInput';
 import CreateIndex from './CreateIndex';
 
@@ -60,11 +60,13 @@ const IndexTable = () => {
     return savedLoading ? JSON.parse(savedLoading) : {};
   });
 
-  const isSm = useMediaQuery((theme) => theme.breakpoints.up('sm'));
 
   const handleDialogOpen = () => setIsDialogOpen(true);
   const handleDialogClose = () => setIsDialogOpen(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     sessionStorage.setItem('loadingCIDs', JSON.stringify(loadingCIDs));
   }, [loadingCIDs]);
@@ -106,11 +108,13 @@ const IndexTable = () => {
       });
   };
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     fetchAndUpdateRows(); // Initial fetch
     const interval = setInterval(fetchAndUpdateRows, 5000); // Set interval for periodic update
     return () => clearInterval(interval); // Cleanup on unmount
   }, []); // Dependencies are intentionally left blank to avoid re-triggering
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const togglePin = async (rowId, shouldPin) => {
     const row = rows.find((row) => row.id === rowId);
