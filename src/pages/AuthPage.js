@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { useContext } from 'react';
 import { styled } from '@mui/material/styles';
-import { Container, Typography } from '@mui/material';
+import { Container } from '@mui/material';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { LoginForm } from '../sections/auth/login';
@@ -30,15 +30,15 @@ const StyledContent = styled('div')(({ theme }) => ({
 
 // ----------------------------------------------------------------------
 
-export default function AuthPage(props) {
+export default function AuthPage({ method }) {
   // Set up the user context
   const { user, setUser } = useContext(UserContext)
 
   // Prep the auth page content depending on the situation
   // TODO: fix issue where you can get "stuck" verifying 
   // TODO: add auto-login functionality after confirmation
-  let formType = props.method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser} />
-  let formTitle = props.method === "signup" ? "Create Account" : "Sign in"
+  let formType = method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser} />
+  let formTitle = method === "signup" ? "Create Account" : "Sign in"
   if (user && user.userConfirmed === false) {
     formType = <VerifyForm username={user.username} />
     formTitle = "Verify Account"
@@ -64,7 +64,7 @@ export default function AuthPage(props) {
 
         <Container maxWidth="sm">
           <StyledContent>
-            {props.children}
+            {formType}
           </StyledContent>
         </Container>
       </StyledRoot>
@@ -72,6 +72,6 @@ export default function AuthPage(props) {
   );
 };
 
-// AuthPage.propTypes = {
-//   method: PropTypes.string.isRequired,
-// };
+AuthPage.propTypes = {
+  method: PropTypes.string.isRequired,
+};
