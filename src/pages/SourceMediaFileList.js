@@ -25,14 +25,9 @@ import { Auth, API, Storage } from 'aws-amplify';
 import { useNavigate, useParams } from 'react-router-dom';
 // components
 import Label from '../components/label';
-import Iconify from '../components/iconify';
 import Scrollbar from '../components/scrollbar';
 // sections
 import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
-import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
-// graphql
-import { listSourceMedias, listUserDetails } from '../graphql/queries';
-import { updateUserDetails } from '../graphql/mutations';
 // mock
 // import USERLIST from '../_mock/user';
 
