@@ -1,4 +1,5 @@
 // V2EditorPage.js
+/* eslint-disable no-unused-vars, func-names */
 
 import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric';
@@ -7,8 +8,8 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -355,7 +356,7 @@ const EditorPage = ({ shows }) => {
       }
       addToHistory();
     }
-  }, [editor]);
+  }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Function to handle image uploads and add them to the canvas
@@ -533,7 +534,7 @@ const EditorPage = ({ shows }) => {
         })
         .catch((err) => console.log(err));
     }
-  }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]);
+  }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Look up data for the fid and set defaults
   useEffect(() => {
