@@ -7,7 +7,6 @@ import { AutoFixHigh, Person } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { API, Auth } from 'aws-amplify';
 import { UserContext } from '../../../UserContext';
-import account from '../../../_mock/account';
 import { useSubscribeDialog } from '../../../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
 
@@ -108,9 +107,9 @@ export default function AccountPopover() {
             }),
           }}
         >
-          <Avatar 
-            src={userDetails?.user?.profilePhoto || account.photoURL} 
-            alt="photoURL" 
+          <Avatar
+            src={userDetails?.user?.profilePhoto || '/assets/images/avatars/avatar_default.jpg'}
+            alt="photoURL"
             sx={{ 
               width: 36, 
               height: 36 

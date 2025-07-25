@@ -4,7 +4,7 @@ import { MenuItem, TextField } from '@mui/material';
 
 // ----------------------------------------------------------------------
 
-BlogPostsSort.propTypes = {
+SeriesSort.propTypes = {
   options: PropTypes.array,
   onSort: PropTypes.func,
 };

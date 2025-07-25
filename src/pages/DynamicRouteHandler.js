@@ -3,7 +3,6 @@ import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { API, graphqlOperation } from 'aws-amplify';
 import { CircularProgress } from '@mui/material';
 import { getAlias, getContentMetadata, getV2ContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
-import SeriesPage from './SeriesPage';
 import HomePage from './HomePage';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import Page404 from './Page404';
@@ -115,7 +114,6 @@ const DynamicRouteHandler = () => {
   }
 
   if (metadata) {
-    // return <SeriesPage seriesData={seriesData} />; // Pass seriesData as prop to SeriesPage
     return <HomePage metadata={metadata} />
   }
 

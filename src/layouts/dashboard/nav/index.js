@@ -4,8 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 // @mui
 import { styled, alpha } from '@mui/material/styles';
 import { Box, Link, Button, Drawer, Typography, Avatar, Stack, Chip, Divider } from '@mui/material';
-// mock
-import account from '../../../_mock/account';
 // components
 import Logo from '../../../components/logo';
 import Scrollbar from '../../../components/scrollbar';
