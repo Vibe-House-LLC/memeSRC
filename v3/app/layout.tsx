@@ -152,6 +152,7 @@ export default function RootLayout({
   const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
   const [showImageDrawer, setShowImageDrawer] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
@@ -162,6 +163,18 @@ export default function RootLayout({
   // Check if user is an admin - replace with your actual logic
   const hasCollageAccess = user?.['cognito:groups']?.includes('admins') || true; // Set to true for demo
   
+  // Function to handle opening with animation
+  const handleOpen = () => {
+    setShowImageDrawer(true);
+    setIsOpening(true);
+    // Use requestAnimationFrame to ensure the element is rendered before starting animation
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsOpening(false);
+      });
+    });
+  };
+
   // Function to handle closing with animation
   const handleClose = () => {
     setIsClosing(true);
@@ -293,15 +306,7 @@ export default function RootLayout({
                   )}
                   <Button 
                     ref={buttonRef}
-                    onClick={() => {
-                      if (showImageDrawer) {
-                        handleClose();
-                      } else if (count > 0) {
-                        setShowImageDrawer(true);
-                      } else {
-                        handleNavigateToCollage();
-                      }
-                    }}
+                    onClick={() => showImageDrawer ? handleClose() : handleOpen()}
                     variant="outline" 
                     className="bg-black text-white border-gray-600 hover:bg-gray-800"
                   >
@@ -343,10 +348,12 @@ export default function RootLayout({
             {hasCollageAccess && (showImageDrawer || isClosing) && (
               <div 
                 ref={popupRef}
-                className={`fixed bottom-0 left-0 right-0 w-full bg-gradient-to-t from-black/90 via-black/60 to-black/40 p-5 pb-20 max-h-96 overflow-y-auto z-[51] backdrop-blur-lg border-t border-white/20 transition-all duration-400 ease-out ${
+                className={`fixed bottom-0 left-0 right-0 w-full bg-gradient-to-t from-black/90 via-black/60 to-black/40 p-5 pb-20 max-h-96 overflow-y-auto z-[51] backdrop-blur-lg border-t border-white/20 transition-all ease-out ${
                   isClosing 
-                    ? 'transform translate-y-full opacity-0' 
-                    : 'transform translate-y-0 opacity-100'
+                    ? 'duration-400 transform translate-y-full opacity-0' 
+                    : isOpening
+                    ? 'duration-300 transform translate-y-full opacity-0'
+                    : 'duration-300 transform translate-y-0 opacity-100'
                 }`}
               >
                 <div className="space-y-4">
