@@ -2,20 +2,16 @@
 
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
-import { Navigate, Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState, useContext, memo } from 'react';
-import { API } from 'aws-amplify';
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState, useContext, memo } from 'react';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
 import {
-  AppBar,
-  Toolbar,
   IconButton,
   Button,
   Typography,
   Container,
   Card,
-  CardContent,
   CardMedia,
   Grid,
   Chip,
@@ -34,21 +30,20 @@ import {
   List,
   useMediaQuery,
   Box,
-  Link,
   TextField,
   Snackbar,
   Alert,
   FormControl,
   FormLabel,
-  MenuItem, 
+  MenuItem,
   Select,
-  InputLabel,
   ToggleButtonGroup,
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff, Collections } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
+import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -77,31 +72,29 @@ const StyledCardMedia = styled('img')`
   background-color: black;
 `;
 
-export default function FramePage({ shows = [] }) {
-  const { setFrame, fineTuningFrame, setFineTuningFrame } = useSearchDetails();
+export default function FramePage() {
+  const { setFrame } = useSearchDetails();
   const navigate = useNavigate();
   const [frameData, setFrameData] = useState({});
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [surroundingFrames, setSurroundingFrames] = useState([]);
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { cid, season, episode, frame, fineTuningIndex = null, searchTerms } = useParams();
+  const { cid, season, episode, frame, fineTuningIndex = null } = useParams();
   const [confirmedCid, setConfirmedCid] = useState();
-  const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [displayImage, setDisplayImage] = useState();
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
-  const [aspectRatio, setAspectRatio] = useState('16/9');
-  const [showTitle, setShowTitle] = useState('');
+  const aspectRatio = '16/9';
+  const [showTitle] = useState('');
   const [imgSrc, setImgSrc] = useState();
   const [showText, setShowText] = useState(false);
   const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
   const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
-  const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(true);
   const [loadingFineTuning, setLoadingFineTuning] = useState(false);
   const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
 
   const [textFieldFocused, setTextFieldFocused] = useState(false);
@@ -109,7 +102,7 @@ export default function FramePage({ shows = [] }) {
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
-  const { addItem, isItemInCollage, collageItems, count } = useCollage();
+  const { addItem, count } = useCollage();
   
   // Check if user is an admin (same logic as FloatingActionButtons)
   const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
@@ -139,8 +132,7 @@ export default function FramePage({ shows = [] }) {
 
   /* -------------------------------------------------------------------------- */
 
-  const FontSelector = ({ selectedFont, onSelectFont }) => {
-    return (
+  const FontSelector = ({ selectedFont, onSelectFont }) => (
       <Select
         value={selectedFont}
         onChange={(e) => {
@@ -164,7 +156,11 @@ export default function FramePage({ shows = [] }) {
           <MenuItem key={font} value={font} sx={{ fontFamily: font }}>{font}</MenuItem>
         ))}
       </Select>
-    );
+  );
+
+  FontSelector.propTypes = {
+    selectedFont: PropTypes.string.isRequired,
+    onSelectFont: PropTypes.func.isRequired,
   };
 
   useEffect(() => {
@@ -178,9 +174,6 @@ export default function FramePage({ shows = [] }) {
   const [snackbarOpen, setSnackBarOpen] = useState(false);
   const [collageSnackbarOpen, setCollageSnackbarOpen] = useState(false);
 
-  const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => {
-    return sessionStorage.getItem('alertDismissed-98ruio') !== 'true';
-  });
 
   const theme = useTheme();
 
@@ -272,7 +265,7 @@ export default function FramePage({ shows = [] }) {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = displayImage;
-    img.onload = function () {
+    img.onload = () => {
       if (throttleTimeoutRef.current !== null) {
         clearTimeout(throttleTimeoutRef.current);
       }
@@ -444,9 +437,7 @@ export default function FramePage({ shows = [] }) {
           const surroundingFramePromises = fetchFramesSurroundingPromises(confirmedCid, season, episode, frame);
 
           // Initialize an array to keep track of the frames as they load
-          const surroundingFrames = [];
-
-          // Instead of waiting for all promises to resolve, handle each promise individually
+        // Instead of waiting for all promises to resolve, handle each promise individually
           surroundingFramePromises.forEach((promise, index) => {
             promise.then(resolvedFrame => {
               resolvedFrame.cid = confirmedCid;
@@ -484,7 +475,6 @@ export default function FramePage({ shows = [] }) {
       setFrames([]);
       setSurroundingSubtitles([]);
       setSurroundingFrames(new Array(9).fill('loading'));
-      setEnableFineTuningFrames(false)
       setImgSrc();
       setLoadingFineTuning(false)
       setFineTuningLoadStarted(false)
@@ -519,14 +509,13 @@ export default function FramePage({ shows = [] }) {
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
-      const blobPromises = fineTuningFrames.map((url) => {
-        return fetch(url)
+      const blobPromises = fineTuningFrames.map((url) =>
+        fetch(url)
           .then((response) => response.blob())
           .catch((error) => {
             console.error('Error fetching image:', error);
             return null;
-          });
-      });
+          }));
 
       // Wait for all blob promises to resolve
       Promise.all(blobPromises)
@@ -581,15 +570,13 @@ useEffect(() => {
     setSubtitlesExpanded(!subtitlesExpanded);
   };
 
-  const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
-  const [loadingCsv, setLoadingCsv] = useState();
+  const { selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [frames, setFrames] = useState();
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
-  const [originalSubtitle, setOriginalSubtitle] = useState(''); // Track original subtitle from server
-  const [subtitleUserInteracted, setSubtitleUserInteracted] = useState(false); // Track if user interacted with subtitle UI
-  const [loadedSeason, setLoadedSeason] = useState('');  // TODO
-  const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
-  const [formats, setFormats] = useState(() => ['bold', 'italic']);
+  const [, setOriginalSubtitle] = useState('');
+  const [, setSubtitleUserInteracted] = useState(false);
+  const [, setLoadedSeason] = useState('');
+  const [, setLoadedEpisode] = useState('');
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
   const [mainImageLoaded, setMainImageLoaded] = useState(false);
 
@@ -639,12 +626,6 @@ useEffect(() => {
 
   const textFieldRef = useRef(null);
 
-  const moveCursorToEnd = () => {
-    if (textFieldRef.current) {
-      const input = textFieldRef.current;
-      input.setSelectionRange(input.value.length, input.value.length);
-    }
-  };
 
   useEffect(() => {
     const moveCursorToEnd = () => {
@@ -705,8 +686,7 @@ useEffect(() => {
     setDisplayImage(fineTuningBlobs?.[newSliderValue] || null);
   };
 
-  const renderFineTuningFrames = (imgSrc) => {
-    return (
+  const renderFineTuningFrames = (imgSrc) => (
       <>
         <div style={{ position: 'relative' }}>
         {!mainImageLoaded && (
@@ -714,7 +694,7 @@ useEffect(() => {
         )}
         <CardMedia
           component={'img'}
-          alt={`Fine-tuning ${sliderValue}`}
+          alt={`Fine-tuning ${selectedFrameIndex}`}
           image={imgSrc}
           id='frameImage'
           onLoad={handleMainImageLoad}
@@ -877,9 +857,7 @@ useEffect(() => {
           </Stack>
         }
       </>
-
-    );
-  };
+  );
 
   const [imagesLoaded, setImagesLoaded] = useState({});
 
@@ -887,9 +865,6 @@ useEffect(() => {
     setImagesLoaded((prevState) => ({ ...prevState, [frameId]: true }));
   };
 
-  const handleProClick = () => {
-    navigate('/pro');
-  };
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 

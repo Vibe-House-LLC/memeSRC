@@ -1,17 +1,10 @@
 import PropTypes from 'prop-types';
 import { forwardRef } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
-// @mui
-// import { useTheme } from '@mui/material/styles';
-import { Box, Link } from '@mui/material';
+import { Box } from '@mui/material';
 
 // ----------------------------------------------------------------------
 
-// Notice: I remove the 'ref' since it was unused and linter was complaining. Originally:
-// const Logo = forwardRef(({ disabledLink = false, sx, ...other }, ref) => {
-
-const Logo = forwardRef((props, ref) => { // <-- include the ref here
-  const { disabledLink = false, sx, ...other } = props; // Destructure props inside the function
+const Logo = forwardRef(({ sx, ...other }, ref) => (
 
   // const theme = useTheme();
 
@@ -72,22 +65,17 @@ const Logo = forwardRef((props, ref) => { // <-- include the ref here
   //   </Box>
   // );
 
-  // if (disabledLink) {
-  //   return <>{logo}</>;
-  // }
 
-  return (
-    <Box
-      component="img"
-      src={`/assets/memeSRC${other.color === 'white' ? '-white' : '-color'}.svg`}
-      sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
-    />
-  );
-});
+  <Box
+    ref={ref}
+    component="img"
+    src={`/assets/memeSRC${other.color === 'white' ? '-white' : '-color'}.svg`}
+    sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
+  />
+));
 
 Logo.propTypes = {
   sx: PropTypes.object,
-  disabledLink: PropTypes.bool,
-};
+}; 
 
 export default Logo;

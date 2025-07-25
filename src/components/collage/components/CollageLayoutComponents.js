@@ -117,14 +117,8 @@ CollapsibleSettingsSection.propTypes = {
 export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, setFinalImage, isMobile }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-
   const handleOpenExportDialog = () => {
-    setIsExportDialogOpen(true);
-  };
-
-  const handleCloseExportDialog = () => {
-    setIsExportDialogOpen(false);
+    // CollageImagesStep handles the export dialog
   };
 
   // Check if user has added at least one image

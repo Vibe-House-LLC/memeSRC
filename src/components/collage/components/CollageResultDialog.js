@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
   Dialog,
@@ -22,7 +22,6 @@ import {
 export default function CollageResultDialog({ open, onClose, finalImage }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [imageUrl, setImageUrl] = useState(null);
 
@@ -54,9 +53,6 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
   const [touchEnd, setTouchEnd] = useState({ y: 0, time: 0 });
 
   // Show snackbar message
-  const showSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity });
-  };
 
   // Close snackbar
   const handleSnackbarClose = () => {

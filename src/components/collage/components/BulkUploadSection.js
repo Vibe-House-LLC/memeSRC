@@ -113,8 +113,6 @@ const BulkUploadSection = ({
   setPanelCount, // Add this prop to automatically adjust panel count
   removeImage, // Add removeImage function
   replaceImage, // Add replaceImage function
-  bulkUploadSectionOpen = true, // Add prop to control collapse state
-  onBulkUploadSectionToggle, // Add prop to handle toggle events
   onStartFromScratch, // Add prop to handle starting without images
 }) => {
   const theme = useTheme();
@@ -211,14 +209,12 @@ const BulkUploadSection = ({
     }
 
     // Helper function to load a single file and return a Promise with the data URL
-    const loadFile = (file) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (e) => reject(e);
-        reader.readAsDataURL(file);
-      });
-    };
+    const loadFile = (file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
 
     debugLog(`Bulk uploading ${files.length} files...`);
 
@@ -480,14 +476,12 @@ const BulkUploadSection = ({
     if (files.length === 0 || !selectedPanelForAction) return;
 
     // Helper function to load a single file and return a Promise with the data URL
-    const loadFile = (file) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    };
+    const loadFile = (file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
     debugLog(`Uploading ${files.length} files to specific panel: ${selectedPanelForAction.panelId}`);
 
@@ -844,8 +838,6 @@ BulkUploadSection.propTypes = {
   setPanelCount: PropTypes.func,
   removeImage: PropTypes.func,
   replaceImage: PropTypes.func,
-  bulkUploadSectionOpen: PropTypes.bool,
-  onBulkUploadSectionToggle: PropTypes.func,
   onStartFromScratch: PropTypes.func,
 };
 
