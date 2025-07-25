@@ -1,7 +1,8 @@
-import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack, Settings } from '@mui/icons-material';
-import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel, Fab, Stack } from '@mui/material';
+import { AutoFixHighRounded, Close, SupportAgent, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack } from '@mui/icons-material';
+import { Box, Button, Card, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, Typography, useMediaQuery, Stack } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
+import PropTypes from 'prop-types';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
@@ -35,20 +36,16 @@ export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isXs = useMediaQuery(theme => theme.breakpoints.down('sm'));
-  const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
   const isCompact = useMediaQuery('(max-width:850px)');
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(getInitialPlan());
   const [loading, setLoading] = useState(false);
   const { user } = useContext(UserContext);
   const [checkoutLink, setCheckoutLink] = useState();
-  const [billingAgreement, setBillingAgreement] = useState(false);
-
-  const [askedAboutCredits, setAskedAboutCredits] = useState(false);
 
   const [selectedTitleSubtitle, setSelectedTitleSubtitle] = useState(null);
 
-  const { countryCode, countryName } = useUserLocation();
+  const { countryCode } = useUserLocation();
 
   const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(!isCompact);
 
@@ -83,22 +80,16 @@ export const DialogProvider = ({ children }) => {
 
   const setSelectedPlanAndScroll = (plan) => {
     setSelectedPlan(plan);
-    setAskedAboutCredits(false);
     if (isCompact) {
       setCreditOptionsExpanded(false);
     }
     subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const openDialog = (content) => {
-    setSubscriptionDialogOpen(true);
-  };
-
   const closeDialog = () => {
     setSubscriptionDialogOpen(false);
     setLoading(false)
     setCheckoutLink()
-    setBillingAgreement(false)
   };
 
   const buySubscription = () => {
@@ -190,10 +181,6 @@ export const DialogProvider = ({ children }) => {
     }
   };
 
-  const getRandomTitleSubtitle = () => {
-    const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
-    return titleSubtitlePairs[randomIndex];
-  };
 
   const openSubscriptionDialog = () => {
     setSubscriptionDialogOpen(true)
@@ -986,4 +973,8 @@ export const DialogProvider = ({ children }) => {
       </Dialog>
     </SubscribeDialogContext.Provider>
   );
+};
+
+DialogProvider.propTypes = {
+  children: PropTypes.node
 };
