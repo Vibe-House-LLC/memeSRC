@@ -218,7 +218,7 @@ export default function IpfsSearchBar(props) {
                 sx={{ width: '100%' }}
                 value={search || ''} // Ensure value is never null
                 onChange={(e) => {
-                  let value = e.target.value;
+                  let {value} = e.target;
 
                   // Replace curly single quotes with straight single quotes
                   value = value.replace(/[\u2018\u2019]/g, "'");
@@ -360,9 +360,7 @@ export default function IpfsSearchBar(props) {
           </Box>
         </Container>
       }
-      {Children.map(props.children, (child) => {
-        return cloneElement(child, { shows });
-      })}
+      {Children.map(props.children, (child) => cloneElement(child, { shows }))}
       <FloatingActionButtons shows={cid} showAd={showAd} />
 
       {showAd && (

@@ -79,9 +79,7 @@ export default function ContributorRequest() {
   const [series, setSeries] = useState();
   const navigate = useNavigate()
 
-  const authorized = user?.['cognito:groups']?.some((element) => {
-    return element === 'admins' || element === 'contributors';
-  })
+  const authorized = user?.['cognito:groups']?.some((element) => element === 'admins' || element === 'contributors')
 
   const becomeContributor = () => {
     if (user) {
@@ -113,7 +111,7 @@ export default function ContributorRequest() {
       authMode: 'AMAZON_COGNITO_USER_POOLS',
     });
 
-    const items = response.data.listSeries.items;
+    const {items} = response.data.listSeries;
     result.push(...items);
 
     if (response.data.listSeries.nextToken) {

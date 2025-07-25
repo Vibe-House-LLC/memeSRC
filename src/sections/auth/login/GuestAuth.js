@@ -45,8 +45,7 @@ export default function GuestAuth(props) {
     setDefaultShow(show)
   }
 
-  const handleUpdateUserDetails = (newUserDetails) => {
-    return new Promise((resolve, reject) => {
+  const handleUpdateUserDetails = (newUserDetails) => new Promise((resolve, reject) => {
       const favorites = newUserDetails?.favorites ? JSON.parse(newUserDetails?.favorites) : [];
       getShowsWithFavorites(favorites)
         .then((loadedShows) => {
@@ -73,7 +72,6 @@ export default function GuestAuth(props) {
           reject(error);
         });
     });
-  };
 
   useEffect(() => {
     if (location.pathname !== 'login') {

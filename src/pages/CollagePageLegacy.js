@@ -800,8 +800,7 @@ export default function CollagePage() {
   const handleImageUpload = (event, index) => {
     const uploadedImages = Array.from(event.target.files);
   
-    const loadImage = (file) => {
-      return new Promise((resolve) => {
+    const loadImage = (file) => new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
           const img = new Image();
@@ -817,7 +816,6 @@ export default function CollagePage() {
         };
         reader.readAsDataURL(file);
       });
-    };
   
     Promise.all(uploadedImages.map(loadImage)).then((newImages) => {
       setImages((prevImages) => {
@@ -1051,7 +1049,7 @@ export default function CollagePage() {
   };
 
   const handleBorderColorChange = (event) => {
-    const value = event.target.value;
+    const {value} = event.target;
     if (value === 'custom') {
       setShowColorPicker(true);
     } else {

@@ -10,14 +10,12 @@ import reportWebVitals from './reportWebVitals';
 import './global.css';
 
 // Define a function to replace default exports with custom api domains
-const replaceEndpoints = (arr, dict) => {
-  return arr.map(obj => {
+const replaceEndpoints = (arr, dict) => arr.map(obj => {
     if (obj.name in dict) {
       return {...obj, endpoint: dict[obj.name]};
     }
     return obj;
   });
-};
 
 // Define the custom domain mappings for apis
 const mappings = {

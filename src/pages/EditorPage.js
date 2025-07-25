@@ -915,7 +915,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           body: data
         });
 
-        const magicResultId = response.magicResultId;
+        const {magicResultId} = response;
 
         const startTime = Date.now();
 
@@ -1041,7 +1041,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     try {
       // Save the current state of the canvas for local undo/redo before any scaling or modifications
       const serializedCanvas = JSON.stringify(editor.canvas);
-      const backgroundImage = editor.canvas.backgroundImage;
+      const {backgroundImage} = editor.canvas;
 
       setFutureStates([]);
       setBgFutureStates([]);

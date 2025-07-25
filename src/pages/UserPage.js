@@ -110,7 +110,7 @@ async function listUserDetailsGraphQL(limit, nextToken = null, result = []) {
     authMode: 'AMAZON_COGNITO_USER_POOLS',
   });
 
-  const items = response.data.listUserDetails.items;
+  const {items} = response.data.listUserDetails;
   result.push(...items);
 
   if (response.data.listUserDetails.nextToken) {

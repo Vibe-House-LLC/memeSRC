@@ -459,9 +459,7 @@ const CanvasCollagePreview = ({
   const BASE_CANVAS_WIDTH = 400;
   
   // Calculate text scale factor based on current canvas size vs base size
-  const textScaleFactor = useMemo(() => {
-    return componentWidth / BASE_CANVAS_WIDTH;
-  }, [componentWidth]);
+  const textScaleFactor = useMemo(() => componentWidth / BASE_CANVAS_WIDTH, [componentWidth]);
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
@@ -610,8 +608,7 @@ const CanvasCollagePreview = ({
 
   // Load images when they change
   useEffect(() => {
-    const loadImage = (src, key) => {
-      return new Promise((resolve) => {
+    const loadImage = (src, key) => new Promise((resolve) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve({ key, img });
@@ -623,7 +620,6 @@ const CanvasCollagePreview = ({
           img.src = src.displayUrl || src.originalUrl || '';
         }
       });
-    };
 
     const loadAllImages = async () => {
       const imagePromises = images.map((imageData, index) => 
@@ -1535,14 +1531,12 @@ const CanvasCollagePreview = ({
   }, [isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
 
   // Cleanup hover timeout on unmount
-  useEffect(() => {
-    return () => {
+  useEffect(() => () => {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
         hoverTimeoutRef.current = null;
       }
-    };
-  }, []);
+    }, []);
 
 
 
@@ -2569,8 +2563,7 @@ const CanvasCollagePreview = ({
   }, [actionMenuPanelId, startReorderMode, handleActionMenuClose]);
 
   // Get final canvas for export
-  const getCanvasBlob = useCallback(() => {
-    return new Promise((resolve) => {
+  const getCanvasBlob = useCallback(() => new Promise((resolve) => {
       const canvas = canvasRef.current;
       if (canvas) {
         // Temporarily set the generating flag to exclude placeholder text
@@ -2848,8 +2841,7 @@ const CanvasCollagePreview = ({
       } else {
         resolve(null);
       }
-    });
-  }, [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor]);
+    }), [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {

@@ -105,12 +105,10 @@ export default function DashboardAppPage() {
     )
     console.log(result)
     console.log(`POPULAR SHOWS: ${result.data.getAnalyticsMetrics.value}`)
-    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value).slice(1).map(row => {
-      return {
+    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value).slice(1).map(row => ({
         label: row[0],
         value: parseInt(row[1], 10)
-      };
-    });
+      }));
     const cleanedSorted = cleaned.sort((a, b) => {
       if (a.value < b.value) return 1;
       if (a.value > b.value) return -1;

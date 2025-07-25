@@ -88,14 +88,12 @@ const CollageImagesStep = ({
     if (files.length === 0) return;
 
     // Helper function to load a single file and return a Promise with the data URL
-    const loadFile = (file) => {
-      return new Promise((resolve, reject) => {
+    const loadFile = (file) => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target.result);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-    };
 
     debugLog(`Add Image button: uploading ${files.length} files...`);
 

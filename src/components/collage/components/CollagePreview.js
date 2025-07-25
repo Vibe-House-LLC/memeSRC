@@ -107,14 +107,12 @@ const CollagePreview = ({
     if (files.length === 0 || activePanelIndex === null) return;
 
     // Helper function to load a single file and return a Promise with the data URL
-    const loadFile = (file) => {
-      return new Promise((resolve, reject) => {
+    const loadFile = (file) => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target.result);
         reader.onerror = (e) => reject(e);
         reader.readAsDataURL(file);
       });
-    };
 
     // Debug selected template and active panel
     console.log("File upload for panel:", {

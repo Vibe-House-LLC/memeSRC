@@ -872,7 +872,7 @@ const EditorPage = ({ shows }) => {
           body: data
         });
 
-        const magicResultId = response.magicResultId;
+        const {magicResultId} = response;
 
         const startTime = Date.now();
 
@@ -1417,14 +1417,12 @@ const EditorPage = ({ shows }) => {
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
-      const blobPromises = fineTuningFrames.map((url) => {
-        return fetch(url)
+      const blobPromises = fineTuningFrames.map((url) => fetch(url)
           .then((response) => response.blob())
           .catch((error) => {
             console.error('Error fetching image:', error);
             return null;
-          });
-      });
+          }));
 
       // Wait for all blob promises to resolve
       Promise.all(blobPromises)

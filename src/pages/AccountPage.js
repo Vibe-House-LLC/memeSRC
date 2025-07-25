@@ -135,13 +135,11 @@ const AccountPage = () => {
     return <Navigate to="/login" replace />;
   }
 
-  const formatAmount = (amount, currency) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatAmount = (amount, currency) => new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || 'usd',
       minimumFractionDigits: 2,
     }).format(amount / 100);
-  };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 2 }}>

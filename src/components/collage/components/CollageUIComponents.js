@@ -8,8 +8,7 @@ import {
 /**
  * Header component for the collage page
  */
-export const PageHeader = ({ icon: Icon, title, isMobile }) => {
-  return (
+export const PageHeader = ({ icon: Icon, title, isMobile }) => (
     <Box>
       <Typography variant="h3" gutterBottom sx={{ 
         display: 'flex', 
@@ -33,7 +32,6 @@ export const PageHeader = ({ icon: Icon, title, isMobile }) => {
       </Typography>
     </Box>
   );
-};
 
 /**
  * Section heading with icon
