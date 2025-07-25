@@ -54,7 +54,6 @@ import { useContext, useState } from 'react';
 import { API } from "aws-amplify";
 import { useNavigate } from 'react-router-dom';
 import getSessionID from "./getSessionsId";
-import fetchShows from "./fetchShows";
 import getRandomIndex from "./getRandomIndex";
 import loadV2Csv from "./loadV2Csv";
 import findMidpoint from './findMidpoint';
@@ -65,14 +64,12 @@ function useLoadRandomFrame() {
     const [loadingRandom, setLoadingRandom] = useState(false);
     const { shows } = useContext(UserContext)
     const [error, setError] = useState(null);
-    const [frameData, setFrameData] = useState(null);
     const navigate = useNavigate();
     const { setShowObj } = useSearchDetailsV2();
 
     const loadRandomFrame = async (show = "_universal") => {
         setLoadingRandom(true);
         setError(null);
-        setFrameData(null);
 
         try {
             // const shows = await fetchShows();

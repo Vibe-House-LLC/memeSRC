@@ -1,12 +1,10 @@
 import { Storage } from "aws-amplify";
-import { V2SearchContext } from "../contexts/v2-search-context";
 import getV2Metadata from "./getV2Metadata";
 
 
 export default async function loadV2Csv(show) {
 
-    async function loadFile(cid, filename) {
-        const url = `https://img.memesrc.com/v2/${cid}/_docs.csv`;
+    async function loadFile(cid) {
         try {
             // const response = await fetch(url);
             // const text = await response.text();
@@ -39,8 +37,7 @@ export default async function loadV2Csv(show) {
             alert("Please enter a valid CID.");
             return null;
         }
-        const filename = "1-1.csv";
-        const lines = await loadFile(cid, filename);
+        const lines = await loadFile(cid);
         if (lines?.length > 0) {
             // Decode base64 subtitle and assign to a new property
             const decodedLines = lines.map(line => ({

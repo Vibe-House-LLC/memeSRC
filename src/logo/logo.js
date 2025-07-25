@@ -1,4 +1,3 @@
-import React from 'react';
 import { lighten, darken } from '@mui/material/styles';
 import colorToHex from '../utils/colorToHex';
 
