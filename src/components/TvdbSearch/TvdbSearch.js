@@ -1,18 +1,17 @@
 import { Close, Search } from "@mui/icons-material";
-import { Autocomplete, CircularProgress, Container, Grid, IconButton, Paper, Popover, Popper, TextField, Typography, styled } from "@mui/material";
+import { Container, IconButton, Paper, Popper, TextField, Typography, styled } from "@mui/material";
 import { API } from "aws-amplify";
 import { useRef, useState } from "react";
+import PropTypes from 'prop-types';
 
 const StyledList = styled('li')``
 
-export default function TvdbSearch({ onSelect = () => { }, onClear = () => { }, typeFilter }) {
+export default function TvdbSearch({ onSelect = () => {}, onClear = () => {}, typeFilter = [] }) {
     const [open, setOpen] = useState(false);
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [tvdbResponse, setTvdbResponse] = useState([]);
     const searchField = useRef();
     const [searchTerm, setSearchTerm] = useState('');
-    const [choice, setChoice] = useState();
 
     const handleSearch = async () => {
         if (searchTerm === "") {
@@ -39,7 +38,6 @@ export default function TvdbSearch({ onSelect = () => { }, onClear = () => { }, 
                 label: result.name,
                 fullResult: result
             }));
-            setTvdbResponse(filteredResults);
             setOptions(mappedResults);
         }
         setLoading(false);
@@ -48,7 +46,6 @@ export default function TvdbSearch({ onSelect = () => { }, onClear = () => { }, 
     const handleSelection = (selection) => {
         setOpen(false)
         onSelect(selection)
-        setChoice(selection)
     }
 
     const handleTextboxFocus = () => {
@@ -274,3 +271,9 @@ export default function TvdbSearch({ onSelect = () => { }, onClear = () => { }, 
         </>
     );
 }
+
+TvdbSearch.propTypes = {
+    onSelect: PropTypes.func,
+    onClear: PropTypes.func,
+    typeFilter: PropTypes.arrayOf(PropTypes.string),
+};

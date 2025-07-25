@@ -40,9 +40,7 @@ export default function UploadToSeriesPage({ seriesId }) {
 
   const handleUpload = async () => {
     setUploading(true);
-    if (user?.['cognito:groups']?.some((element) => {
-      return element === 'admins' || element === 'mods' || element === 'contributors';
-    })) {
+    if (user?.['cognito:groups']?.some((element) => element === 'admins' || element === 'mods' || element === 'contributors')) {
       try {
         const sourceMediaInput = {
           sourceMediaSeriesId: seriesId,

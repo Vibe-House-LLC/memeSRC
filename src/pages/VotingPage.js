@@ -597,7 +597,7 @@ export default function VotingPage() {
           const votesData = JSON.parse(votesResponse);
 
           votesData.forEach((item) => {
-            const seriesId = item.seriesId;
+            const {seriesId} = item;
             if (newVoteData[seriesId]) {
               newVoteData[seriesId].totalVotesUp = item.totalVotes.upvotes || 0;
               newVoteData[seriesId].totalVotesDown = item.totalVotes.downvotes || 0;
@@ -724,7 +724,7 @@ export default function VotingPage() {
             },
           });
 
-          const hits = response.hits;
+          const {hits} = response;
           
           // Store the ranks from search results
           const newSearchRanks = {};
@@ -1144,7 +1144,7 @@ export default function VotingPage() {
         setVoteData((prevVoteData) => {
           const updatedVoteData = { ...prevVoteData };
           votesArray.forEach((item) => {
-            const seriesId = item.seriesId;
+            const {seriesId} = item;
             const existingData = updatedVoteData[seriesId] || {};
             
             updatedVoteData[seriesId] = {

@@ -182,7 +182,7 @@ export default function SourceMediaFileList() {
       authMode: 'AMAZON_COGNITO_USER_POOLS',
     });
   
-    const items = response.data.getSourceMedia.files.items;
+    const {items} = response.data.getSourceMedia.files;
     console.log(response)
     result.push(...items);
   

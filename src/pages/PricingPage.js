@@ -1,15 +1,11 @@
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Container, Grid, Card, Typography, Stack, Box, Divider, ToggleButtonGroup, ToggleButton, Link, } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Container, Grid, Card, Typography, Stack, Divider, ToggleButtonGroup, ToggleButton, Link, } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { ArrowForward, ArrowRight, ArrowRightAlt, Check } from '@mui/icons-material';
-import { UserContext } from '../UserContext';
+import { ArrowForward, Check } from '@mui/icons-material';
 
 
 export default function PricingPage() {
-  const { user } = useContext(UserContext);
-  const navigate = useNavigate()
   const [billingPeriod, setBillingPeriod] = useState('yearly');
 
   const toggleBillingPeriod = () => {

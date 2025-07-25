@@ -108,7 +108,7 @@ const getImageUrl = (item) => {
 };
 
 export default function FloatingActionButtons({ shows, showAd }) {
-    const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
+    const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const { collageItems, clearAll, removeItem, count } = useCollage();
     const [showImageDrawer, setShowImageDrawer] = useState(false);
     const [isClosing, setIsClosing] = useState(false);

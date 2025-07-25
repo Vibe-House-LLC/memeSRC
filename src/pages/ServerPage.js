@@ -1,10 +1,9 @@
 // ServerPage.js
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import ServerInfo from '../sections/server/ServerInfo';
 
 
 const ServerPage = () => {
-    const [status, setStatus] = useState('loading...');
     useEffect(() => {
         
 

@@ -7,8 +7,7 @@ import AliasTableRow from "../components/alias-table-row/AliasTableRow";
 
 /* -------------------------------- Functions ------------------------------- */
 
-const getAllMetadataObjects = (nextToken = null) => {
-  return new Promise((resolve, reject) => {
+const getAllMetadataObjects = (nextToken = null) => new Promise((resolve, reject) => {
     API.graphql(
       graphqlOperation(listV2ContentMetadata, { nextToken })
     ).then(response => {
@@ -22,7 +21,6 @@ const getAllMetadataObjects = (nextToken = null) => {
       reject(error);
     });
   });
-};
 
 
 const listMetadataRecursive = async (nextToken = null, allItems = []) => {

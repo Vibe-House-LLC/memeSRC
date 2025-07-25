@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from 'react';
+import { useContext, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography, styled } from '@mui/material';
@@ -30,7 +30,6 @@ export default function LoginForm() {
 
   const [showPassword, setShowPassword] = useState(false);
 
-  const [staySignedIn, setStaySignedIn] = useState(false);
 
   const [username, setUsername] = useState(null);
 
@@ -43,7 +42,6 @@ export default function LoginForm() {
     password: false
   });
 
-  const loginForm = useRef();
 
   const { setUser, handleUpdateDefaultShow, setShows } = useContext(UserContext)
 
@@ -67,7 +65,7 @@ export default function LoginForm() {
 
     if (username && password) {
       Auth.signIn(username, password).then((x) => {
-        API.post('publicapi', '/user/update/status').then(response => {
+        API.post('publicapi', '/user/update/status').then(() => {
           getShowsWithFavorites().then(loadedShows => {
             setShows(loadedShows)
             window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
@@ -186,14 +184,7 @@ export default function LoginForm() {
 
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ my: 2 }}>
         <FormControlLabel
-          control={
-            <Checkbox
-              name="remember"
-              onChange={(event) => setStaySignedIn(event.target.checked)}
-              disabled
-              checked
-            />
-          }
+          control={<Checkbox name="remember" checked disabled />}
           label="Remember me"
         />
         <Link variant="subtitle2" underline="hover" sx={{ cursor: 'pointer' }} onClick={() => { navigate('/forgotpassword') }}>

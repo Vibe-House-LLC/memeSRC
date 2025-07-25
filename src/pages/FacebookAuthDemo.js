@@ -4,9 +4,7 @@ import { Typography, Container, Grid, Paper, Card, CardContent, Button, Alert } 
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 
-const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-};
+const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
 export default function FacebookAuthDemo() {
   const { user, setUser } = useContext(UserContext);

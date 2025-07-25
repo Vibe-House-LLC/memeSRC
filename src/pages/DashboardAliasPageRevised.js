@@ -74,8 +74,7 @@ const AliasFormDialog = ({ open, onClose, onSubmit, initialValues }) => {
 };
 
 
-const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => {
-  return (
+const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Confirm Delete</DialogTitle>
       <DialogContent>
@@ -87,7 +86,6 @@ const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => {
       </DialogActions>
     </Dialog>
   );
-};
 
 /* Main Component */
 

@@ -2,6 +2,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Amplify } from 'aws-amplify';
+// eslint-disable-next-line import/no-unresolved, import/extensions
 import awsExports from './aws-exports';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
@@ -9,14 +10,12 @@ import reportWebVitals from './reportWebVitals';
 import './global.css';
 
 // Define a function to replace default exports with custom api domains
-const replaceEndpoints = (arr, dict) => {
-  return arr.map(obj => {
+const replaceEndpoints = (arr, dict) => arr.map(obj => {
     if (obj.name in dict) {
       return {...obj, endpoint: dict[obj.name]};
     }
     return obj;
   });
-};
 
 // Define the custom domain mappings for apis
 const mappings = {

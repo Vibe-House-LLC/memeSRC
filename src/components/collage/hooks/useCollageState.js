@@ -174,8 +174,7 @@ export const useCollageState = () => {
   }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, resetPanelTexts, DEBUG_MODE]);
 
   // Clean up ObjectURLs when component unmounts or images change
-  useEffect(() => {
-    return () => {
+  useEffect(() => () => {
       selectedImages.forEach(imgObj => {
         if (imgObj.originalUrl && typeof imgObj.originalUrl === 'string' && imgObj.originalUrl.startsWith('blob:')) {
           URL.revokeObjectURL(imgObj.originalUrl);
@@ -185,8 +184,7 @@ export const useCollageState = () => {
           URL.revokeObjectURL(imgObj.displayUrl);
         }
       });
-    };
-  }, [selectedImages]);
+    }, [selectedImages]);
 
   /**
    * Add a new image to the collection.

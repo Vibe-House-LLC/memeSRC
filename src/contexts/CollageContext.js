@@ -67,9 +67,7 @@ export const CollageProvider = ({ children }) => {
   }, [collageItems]);
 
   const addItem = useCallback((item) => {
-    setCollageItems(prev => {
-      return [...prev, { ...item, id: Date.now() + Math.random() }];
-    });
+    setCollageItems(prev => [...prev, { ...item, id: Date.now() + Math.random() }]);
   }, []);
 
   const removeItem = useCallback((itemId) => {
@@ -80,14 +78,12 @@ export const CollageProvider = ({ children }) => {
     setCollageItems([]);
   }, []);
 
-  const isItemInCollage = useCallback((cid, season, episode, frame) => {
-    return collageItems.some(item => 
+  const isItemInCollage = useCallback((cid, season, episode, frame) => collageItems.some(item => 
       item.cid === cid && 
       item.season === season && 
       item.episode === episode && 
       item.frame === frame
-    );
-  }, [collageItems]);
+    ), [collageItems]);
 
   const value = {
     collageItems,

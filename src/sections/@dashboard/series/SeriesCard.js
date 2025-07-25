@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 // @mui
 import { alpha, styled } from '@mui/material/styles';
 import { Box, Link, Card, Grid, Avatar, Typography, CardContent, IconButton, List, ListItem, ListItemText, Popover, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Stack } from '@mui/material';
-import { MoreHoriz, MoreVert } from '@mui/icons-material';
+import { MoreVert } from '@mui/icons-material';
 import { useState } from 'react';
 // utils
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
@@ -71,7 +71,7 @@ SeriesCard.propTypes = {
 
 
 export default function SeriesCard({ post, isOverlay = false, isLarge = false, handleEdit, handleDelete }) {
-  const { cover, name, view, comment, share, author, createdAt, id, year, slug, statusText } = post;
+  const { cover, name, view, comment, share, author, createdAt, id, year, slug } = post;
   const [anchorEl, setAnchorEl] = useState(null);
   const [openConfirmation, setOpenConfirmation] = useState(false);
   const navigate = useNavigate();
@@ -92,8 +92,7 @@ export default function SeriesCard({ post, isOverlay = false, isLarge = false, h
 
   const open = Boolean(anchorEl);
   const popoverId = open ? 'simple-popover' : undefined;
-  const handleMoreVertClick = (event, itemIndex) => {
-    // setSelectedIndex(itemIndex);
+  const handleMoreVertClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
 

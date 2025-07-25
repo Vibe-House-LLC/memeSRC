@@ -30,31 +30,28 @@ export const getBaseGridStyle = (theme) => ({
 });
 
 // Shared render function for all layouts
-export const renderLayoutGrid = (layoutConfig, theme, imageCount) => {
-  return (
-    <div
-      style={{
-        ...getBaseGridStyle(theme),
-        gridTemplateColumns: layoutConfig.gridTemplateColumns,
-        gridTemplateRows: layoutConfig.gridTemplateRows,
-        gridTemplateAreas: layoutConfig.gridTemplateAreas,
-      }}
-    >
-      {layoutConfig.areas 
-        ? layoutConfig.areas.map((area, index) => (
-            <div key={index} style={{ gridArea: area }}>
-              <SimplePanel theme={theme} filled={imageCount > index} />
-            </div>
-          ))
-        : layoutConfig.items.map((item, index) => (
-            <div key={index} style={item}>
-              <SimplePanel theme={theme} filled={imageCount > index} />
-            </div>
-          ))
-      }
-    </div>
-  );
-};
+export const renderLayoutGrid = (layoutConfig, theme, imageCount) => (
+  <div
+    style={{
+      ...getBaseGridStyle(theme),
+      gridTemplateColumns: layoutConfig.gridTemplateColumns,
+      gridTemplateRows: layoutConfig.gridTemplateRows,
+      gridTemplateAreas: layoutConfig.gridTemplateAreas,
+    }}
+  >
+    {layoutConfig.areas
+      ? layoutConfig.areas.map((area, index) => (
+          <div key={index} style={{ gridArea: area }}>
+            <SimplePanel theme={theme} filled={imageCount > index} />
+          </div>
+        ))
+      : layoutConfig.items.map((item, index) => (
+          <div key={index} style={item}>
+            <SimplePanel theme={theme} filled={imageCount > index} />
+          </div>
+        ))}
+  </div>
+);
 
 /**
  * Helper function to determine aspect ratio category
@@ -63,7 +60,6 @@ export const getAspectRatioCategory = (aspectRatioId) => {
   // Group aspect ratios into three categories
   const wideAspects = ['landscape', 'classic', 'ratio-3-2'];
   const tallAspects = ['portrait', 'story', 'ratio-2-3'];
-  const squareAspects = ['square', 'custom'];
   
   if (wideAspects.includes(aspectRatioId)) return 'wide';
   if (tallAspects.includes(aspectRatioId)) return 'tall';
