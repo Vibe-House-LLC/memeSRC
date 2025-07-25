@@ -4,12 +4,11 @@ import {
   Box,
   Typography,
   Chip,
-  useMediaQuery,
   ListItemButton,
   ListItemIcon,
   ListItemText,
 } from '@mui/material';
-import { useTheme, styled } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import ScienceIcon from '@mui/icons-material/Science';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -101,7 +100,6 @@ const StyledTeaserNavItemIcon = styled(ListItemIcon)({
 });
 
 export default function CollageNavTeaser() {
-  const theme = useTheme();
   const location = useLocation();
   const { user } = useContext(UserContext);
   const isActive = location.pathname === '/collage';
