@@ -75,13 +75,17 @@ export default function SearchForm({
       return allOptions;
     }
 
+    // Separate universal option and other options
+    const universalOption = allOptions.find(option => option.value === '_universal');
+    const otherOptions = allOptions.filter(option => option.value !== '_universal');
+
     // Get favorited options (excluding universal)
     const favoriteIds = new Set(favorites.map(fav => fav.id));
-    const favoriteOptions = allOptions.filter(option => 
-      option.value !== '_universal' && favoriteIds.has(option.value)
+    const favoriteOptions = otherOptions.filter(option => 
+      favoriteIds.has(option.value)
     );
-    const nonFavoriteOptions = allOptions.filter(option => 
-      option.value === '_universal' || !favoriteIds.has(option.value)
+    const nonFavoriteOptions = otherOptions.filter(option => 
+      !favoriteIds.has(option.value)
     );
 
     // If no actual favorites found, return ungrouped
@@ -89,17 +93,30 @@ export default function SearchForm({
       return allOptions;
     }
 
-    // Return grouped options
-    return [
-      {
-        label: "⭐ Favorites",
-        options: favoriteOptions,
-      },
-      {
-        label: "All Shows",
-        options: nonFavoriteOptions,
-      },
-    ];
+    // Return structure with universal at top, then grouped favorites and remaining shows
+    const result = [];
+    
+    // Add universal option in its own group at the top
+    if (universalOption) {
+      result.push({
+        label: "Browse All",
+        options: [universalOption],
+      });
+    }
+    
+    // Add favorites group
+    result.push({
+      label: "⭐ Favorites",
+      options: favoriteOptions,
+    });
+    
+    // Add remaining shows group
+    result.push({
+      label: "All Shows",
+      options: nonFavoriteOptions,
+    });
+
+    return result;
   };
 
   const options = createOptions();
