@@ -1,5 +1,6 @@
 import { API } from 'aws-amplify';
 import React, { useState, useCallback, useEffect, useContext, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
@@ -67,3 +68,7 @@ export default function SearchPage({ metadata }) {
     </>
   );
 }
+
+SearchPage.propTypes = {
+  metadata: PropTypes.array,
+};
