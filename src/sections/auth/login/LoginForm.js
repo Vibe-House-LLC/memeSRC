@@ -183,6 +183,10 @@ export default function LoginForm() {
       </form>
 
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ my: 2 }}>
+        <FormControlLabel
+          control={<Checkbox name="remember" checked disabled />}
+          label="Remember me"
+        />
         <Link variant="subtitle2" underline="hover" sx={{ cursor: 'pointer' }} onClick={() => { navigate('/forgotpassword') }}>
           Forgot your password?
         </Link>
