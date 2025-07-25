@@ -192,23 +192,23 @@ function OptionList({ options, onSelect, value, open }: OptionListProps) {
       ref={option.value === value ? selectedRef : null}
       className={cn(
         itemClasses,
-        "flex items-center justify-between",
+        "flex items-center",
         option.value === value
           ? "bg-accent text-accent-foreground"
           : ""
       )}
       tabIndex={option.value === value ? 0 : -1}
     >
-      <span className="flex-1 truncate">{option.label}</span>
       {option.metadata && option.value !== '_universal' && (
         <FavoritesStar
           showId={option.value}
           showTitle={option.metadata.title}
           showEmoji={option.metadata.emoji}
           size="small"
-          className="ml-2"
+          className="mr-2"
         />
       )}
+      <span className="flex-1 truncate">{option.label}</span>
     </CommandItem>
   );
 

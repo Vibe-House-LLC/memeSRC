@@ -94,12 +94,6 @@ export default async function SearchPage({ indexId }: SearchPageProps) {
             <MemeSRCLogo color={secondaryColor} />
           </div>
           <div className="flex items-center gap-3">
-            <h1 
-              className="text-3xl sm:text-4xl font-bold drop-shadow-sm text-center"
-              style={{ color: secondaryColor }}
-            >
-              {pageTitle}
-            </h1>
             {selectedIndex.id !== '_universal' && (
               <FavoritesStar
                 showId={selectedIndex.id}
@@ -108,6 +102,12 @@ export default async function SearchPage({ indexId }: SearchPageProps) {
                 size="medium"
               />
             )}
+            <h1 
+              className="text-3xl sm:text-4xl font-bold drop-shadow-sm text-center"
+              style={{ color: secondaryColor }}
+            >
+              {pageTitle}
+            </h1>
           </div>
         </div>
 

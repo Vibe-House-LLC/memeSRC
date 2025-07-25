@@ -78,6 +78,15 @@ export default async function ResultsPage({ params }: { params: { indexId: strin
           >
             <span>
               "<strong>{searchTerm}</strong>" in&nbsp;
+              {selectedIndex.id !== '_universal' && (
+                <FavoritesStar
+                  showId={selectedIndex.id}
+                  showTitle={selectedIndex.v2ContentMetadata.title}
+                  showEmoji={selectedIndex.v2ContentMetadata.emoji || '📺'}
+                  size="small"
+                  className="mr-1"
+                />
+              )}
               <a
                 href={`/${selectedIndex.id}`}
                 className={`font-bold underline ${
@@ -88,14 +97,6 @@ export default async function ResultsPage({ params }: { params: { indexId: strin
                 {selectedIndex.v2ContentMetadata.title}
               </a>
             </span>
-            {selectedIndex.id !== '_universal' && (
-              <FavoritesStar
-                showId={selectedIndex.id}
-                showTitle={selectedIndex.v2ContentMetadata.title}
-                showEmoji={selectedIndex.v2ContentMetadata.emoji || '📺'}
-                size="small"
-              />
-            )}
           </h1>
 
           <PaginatedResults initialResults={results} />

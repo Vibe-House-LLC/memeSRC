@@ -86,14 +86,14 @@ export default async function FramePage({ params }: FramePageProps) {
           
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <span>{metadata.emoji}</span>
-            <span>{metadata.title}</span>
             <FavoritesStar
               showId={showId}
               showTitle={metadata.title}
               showEmoji={metadata.emoji}
               size="small"
-              className="ml-1"
+              className="mr-1"
             />
+            <span>{metadata.title}</span>
             <span>•</span>
             <span>S{season} E{episode}</span>
           </div>
