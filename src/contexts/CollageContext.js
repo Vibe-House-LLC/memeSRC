@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import PropTypes from 'prop-types';
 
 const CollageContext = createContext();
 const STORAGE_KEY = 'memeSRC_collageItems';
@@ -99,6 +100,10 @@ export const CollageProvider = ({ children }) => {
       {children}
     </CollageContext.Provider>
   );
+};
+
+CollageProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export default CollageContext;

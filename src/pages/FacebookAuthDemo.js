@@ -61,7 +61,7 @@ export default function FacebookAuthDemo() {
         facebookAccessToken: response.authResponse.accessToken,
         facebookUserId: response.authResponse.userID,
       });
-      fetchProfileInfo(response.authResponse.accessToken);
+      fetchProfileInfo();
       fetchGroupPosts(response.authResponse.userID, response.authResponse.accessToken);
     } else {
       // User is not logged into Facebook or your app
@@ -88,7 +88,7 @@ export default function FacebookAuthDemo() {
     }, loginOptions);
   };
 
-  const fetchProfileInfo = (accessToken) => {
+  const fetchProfileInfo = () => {
     window.FB.api('/me', { fields: 'id,name,first_name,last_name,picture.type(large)' }, (response) => {
       if (response && !response.error) {
         setProfileInfo(response);

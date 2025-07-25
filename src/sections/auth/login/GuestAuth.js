@@ -1,22 +1,23 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { API, Auth } from 'aws-amplify';
-import { PropTypes } from "prop-types";
+import PropTypes from "prop-types";
 import { UserContext } from '../../../UserContext';
 import { getShowsWithFavorites } from "../../../utils/fetchShowsRevised";
+
+/* eslint-disable react-hooks/exhaustive-deps */
 
 GuestAuth.propTypes = {
   children: PropTypes.object
 }
 
 export default function GuestAuth(props) {
-  const navigate = useNavigate();
-  const [content, setContent] = useState(null);
   const [user, setUser] = useState(null);
   const [shows, setShows] = useState(JSON.parse(window.localStorage.getItem('memeSRCShows')) || []);
   const [defaultShow, setDefaultShow] = useState();
   const location = useLocation();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (location.pathname !== 'login') {
       // console.log(user)
@@ -73,6 +74,7 @@ export default function GuestAuth(props) {
         });
     });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (location.pathname !== 'login') {
       const localStorageUser = JSON.parse(window.localStorage.getItem('memeSRCUserDetails'))
@@ -142,3 +144,5 @@ export default function GuestAuth(props) {
     </UserContext.Provider>
   )
 }
+
+/* eslint-enable react-hooks/exhaustive-deps */

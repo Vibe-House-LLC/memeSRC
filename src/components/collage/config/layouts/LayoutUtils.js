@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 // Simple Panel component
 export const SimplePanel = ({ filled, theme }) => (
@@ -15,6 +16,15 @@ export const SimplePanel = ({ filled, theme }) => (
     }}
   />
 );
+
+SimplePanel.propTypes = {
+  filled: PropTypes.bool,
+  theme: PropTypes.shape({
+    palette: PropTypes.shape({
+      mode: PropTypes.string,
+    }),
+  }),
+};
 
 // Grid container style
 export const getBaseGridStyle = (theme) => ({

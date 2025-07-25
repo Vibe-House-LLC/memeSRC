@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
 import { 
   Box, 
@@ -11,12 +12,10 @@ import {
   useMediaQuery,
   Chip
 } from "@mui/material";
-import { 
+import {
   Dashboard,
-  Stars,
   LockOpen,
   CheckCircle,
-  Rocket
 } from "@mui/icons-material";
 
 // Define keyframes for animations
@@ -129,14 +128,13 @@ const floatingAnimation = {
  * @param {string} props.previewImage - Path to preview image (default: "/assets/images/products/collage-tool.png")
  * @returns {JSX.Element} - The rendered component
  */
-const UpgradeMessage = ({ 
-  openSubscriptionDialog, 
+const UpgradeMessage = ({
+  openSubscriptionDialog,
   featureName = "Collage Tool",
   previewImage = "/assets/images/collage-tool.png"
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isSmall = useMediaQuery(theme.breakpoints.down('md'));
   const isStacked = useMediaQuery(theme.breakpoints.down('md')); // Elements are stacked when below md breakpoint
   
@@ -580,6 +578,12 @@ const UpgradeMessage = ({
       </Container>
     </Box>
   );
+};
+
+UpgradeMessage.propTypes = {
+  openSubscriptionDialog: PropTypes.func.isRequired,
+  featureName: PropTypes.string,
+  previewImage: PropTypes.string,
 };
 
 export default UpgradeMessage;

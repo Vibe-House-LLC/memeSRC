@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { Container, Box, Typography, useMediaQuery } from '@mui/material';
-import { Favorite, Star, AccessTime, LocationOn, Bolt, SupportAgent, AutoFixHighRounded, GitHub, Check } from '@mui/icons-material';
+import { Bolt, SupportAgent, AutoFixHighRounded, Check } from '@mui/icons-material';
 
 export default function MemeSrcPro({ backgroundColor, textColor, large }) {
     const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))

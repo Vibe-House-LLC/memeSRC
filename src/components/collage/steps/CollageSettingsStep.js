@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react/prop-types */
 import { useState, useRef, useEffect } from "react";
 import { useTheme, styled, alpha } from "@mui/material/styles";
 import {

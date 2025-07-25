@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import PropTypes from 'prop-types';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
 import {
   Container,
@@ -40,10 +39,9 @@ import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
 import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
 import { debounce } from 'lodash';
-import MuiAlert from '@mui/material/Alert';
 import match from 'autosuggest-highlight/match';
 import parse from 'autosuggest-highlight/parse';
-import { listSeries, getSeries } from '../graphql/queries';
+import { getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
@@ -199,10 +197,6 @@ const ShimmerWrapper = styled('div')(({ enabled }) => ({
   },
 }));
 
-// Define the Alert component for consistent styling
-const Alert = React.forwardRef((props, ref) => (
-  <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />
-));
 
 export default function VotingPage() {
   const { shows: searchableShows } = useShows();  // Add this line
@@ -258,12 +252,10 @@ export default function VotingPage() {
   // Add cache variables
   const seriesCache = useRef({});
 
-  const [allSeriesData, setAllSeriesData] = useState(null); // State to store all series data
 
   const [loadedImages, setLoadedImages] = useState({});
 
   // Initialize with true to load the top list first
-  const [isTopList, setIsTopList] = useState(true);
 
   const [originalRanks, setOriginalRanks] = useState({});
 
@@ -302,8 +294,8 @@ export default function VotingPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Add this debounced search function after other function declarations
-  const debouncedSearch = useCallback(
-    debounce(async (searchValue) => {
+  const debouncedSearch = useMemo(
+    () => debounce(async (searchValue) => {
       if (!searchValue) {
         setSearchOptions([]);
         return;
@@ -635,79 +627,7 @@ export default function VotingPage() {
     [user, fetchSeriesData]
   );
 
-  const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
-    try {
-      if (!data) return;
 
-      const searchFilteredShows = data.filter(
-        (show) => show.name.toLowerCase().includes(searchText.toLowerCase())
-      );
-
-      const sortedShows = [...searchFilteredShows];
-
-      if (sortedShows.length > 0) {
-        switch (rankMethod) {
-          case 'combined':
-            sortedShows.sort((a, b) => {
-              const voteDiffA = (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
-              const voteDiffB = (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
-              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
-            });
-            break;
-          case 'downvotes':
-            sortedShows.sort((a, b) => {
-              const downvoteDiff = (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
-              return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
-            });
-            break;
-          default: // Upvotes
-            sortedShows.sort((a, b) => {
-              const upvoteDiff = (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
-              return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
-            });
-        }
-      }
-
-      setCurrentPage(0);
-
-      // Update seriesMetadata with existing ranks
-      setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: originalRanks[show.id] || null })));
-    } catch (error) {
-      console.error('Error in filterAndSortSeriesData:', error);
-      setSeriesMetadata([]);
-    }
-  }, [allSeriesData, searchText, rankMethod, voteData, originalRanks, safeCompareSeriesTitles]);
-
-  const fetchAllSeriesData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
-        const result = await API.graphql({
-          ...graphqlOperation(listSeries, { nextToken, limit: 1000 }),
-          authMode: 'API_KEY',
-        });
-        const items = accumulatedItems.concat(result.data.listSeries.items);
-        if (result.data.listSeries.nextToken) {
-          return fetchSeries(result.data.listSeries.nextToken, items);
-        }
-        return items;
-      };
-
-      const fetchedSeriesData = await fetchSeries();
-
-      // Add all series to cache
-      fetchedSeriesData.forEach((show) => {
-        seriesCache.current[show.id] = show;
-      });
-
-      setAllSeriesData(fetchedSeriesData);
-      filterAndSortSeriesData(fetchedSeriesData);
-    } catch (error) {
-      console.error('Error fetching all series data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [filterAndSortSeriesData]);
 
   // Update the useEffect that handles search to store the ranks
   useEffect(() => {
@@ -960,11 +880,6 @@ export default function VotingPage() {
     }
   };
 
-  const handleMagicVoteMultiplierChange = (event, newMultiplier) => {
-    if (newMultiplier !== null) {
-      setMagicVoteMultiplier(newMultiplier);
-    }
-  };
 
   // Update handleUpvote and handleDownvote functions to use handleVote
   const handleUpvote = (seriesId) => {

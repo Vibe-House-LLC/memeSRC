@@ -1,4 +1,4 @@
-import { Autocomplete, Button, CircularProgress, Grid, TextField, Typography } from "@mui/material";
+import { Autocomplete, CircularProgress, Grid, TextField, Typography } from "@mui/material";
 import { API, graphqlOperation } from "aws-amplify";
 import { useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
@@ -10,7 +10,6 @@ export default function AddSeries() {
     const navigate = useNavigate();
     const [tvdbResults, setTvdbResults] = useState([]);
     const [tvdbResultsLoading, setTvdbResultsLoading] = useState(true);
-    const [tvdbSeriesData, setTvdbSeriesData] = useState();
     const [tvdbSearchQuery, setTvdbSearchQuery] = useState('');
     const [tvdbSearchOpen, setTvdbSearchOpen] = useState();
     const [tvdbid, setTvdbid] = useState('');
@@ -38,7 +37,7 @@ export default function AddSeries() {
 
         API.graphql(
             graphqlOperation(createSeries, { input: seriesData })
-        ).then((result) => {
+        ).then(() => {
             navigate('/dashboard/series');
         }).catch((error) => {
             console.log(error);
@@ -228,7 +227,7 @@ export default function AddSeries() {
             </Grid>
             {seriesSeasons && seriesSeasons.map((season) =>
                 (season.type.id === 1) ?
-                    <Grid item xs={6} md={2}>
+                    <Grid key={season.id || season.number} item xs={6} md={2}>
                         <img src={season.image} alt='season artwork' style={{ width: '100%', height: 'auto' }} />
                         <Typography component='h6' variant='h6'>
                             Season {season.number}

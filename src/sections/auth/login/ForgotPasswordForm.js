@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify';
 import { useContext, useState } from 'react';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -16,15 +16,15 @@ input:-webkit-autofill:active  {
     background-clip: content-box !important;
 `;
 
-export default function ResetPasswordForm(props) {
+export default function ResetPasswordForm() {
   const navigate = useNavigate();
-  const { user, setUser } = useContext(UserContext);
+  useContext(UserContext);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
   const [username, setUsername] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [backdropOpen, setBackdropOpen] = useState(false);
+  const [backdropOpen] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
   const handleResetPassword = () => {

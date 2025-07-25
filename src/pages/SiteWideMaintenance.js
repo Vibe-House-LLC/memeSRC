@@ -1,14 +1,9 @@
 import { Helmet } from 'react-helmet-async';
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import { Container, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
-import { Link } from 'react-router-dom';
 import { API, graphqlOperation } from 'aws-amplify';
-import Logo from '../components/logo';
-import VerifyForm from '../sections/auth/login/VerifyForm';
-import SignupForm from '../sections/auth/login/SignupForm';
-import { UserContext } from '../UserContext';
 import { getWebsiteSetting } from '../graphql/queries';
 
 // ----------------------------------------------------------------------
@@ -96,6 +91,10 @@ export default function SiteWideMaintenance({ children }) {
       }
     </>
   );
+};
+
+SiteWideMaintenance.propTypes = {
+  children: PropTypes.node,
 };
 
 // AuthPage.propTypes = {

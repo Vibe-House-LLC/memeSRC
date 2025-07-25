@@ -17,7 +17,7 @@ export const useCollageState = () => {
   // panelTexts maps: { panelId: { content: string, fontSize: number, fontWeight: string, fontFamily: string, color: string, strokeWidth: number } }
   const [panelTexts, setPanelTexts] = useState({});
   // lastUsedTextSettings to remember settings across panels
-  const [lastUsedTextSettings, setLastUsedTextSettings] = useState({
+  const [lastUsedTextSettings] = useState({
     fontSize: 20,
     fontWeight: 400,
     fontFamily: 'Arial',
@@ -64,7 +64,7 @@ export const useCollageState = () => {
   const resetPanelTransforms = useCallback(() => {
     setPanelTransforms({});
     if (DEBUG_MODE) console.log("Reset all panel transforms due to layout change");
-  }, [DEBUG_MODE]);
+  }, []);
 
   /**
    * Reset all panel texts to defaults.
@@ -73,7 +73,7 @@ export const useCollageState = () => {
   const resetPanelTexts = useCallback(() => {
     setPanelTexts({});
     if (DEBUG_MODE) console.log("Reset all panel texts due to layout change");
-  }, [DEBUG_MODE]);
+  }, []);
 
   // Initialize template on mount
   useEffect(() => {
@@ -99,7 +99,7 @@ export const useCollageState = () => {
       }
     }
     prevBorderThickness.current = borderThickness;
-  }, [borderThickness, resetPanelTransforms, DEBUG_MODE]);
+  }, [borderThickness, resetPanelTransforms]);
 
   // Select the most suitable template when panel count or aspect ratio changes
   useEffect(() => {
@@ -171,7 +171,7 @@ export const useCollageState = () => {
       selectedTemplate
     };
 
-  }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, resetPanelTexts, DEBUG_MODE]);
+  }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, resetPanelTexts]);
 
   // Clean up ObjectURLs when component unmounts or images change
   useEffect(() => () => {
@@ -214,7 +214,7 @@ export const useCollageState = () => {
     
     setSelectedImages(prev => [...prev, newImageObject]);
     if (DEBUG_MODE) console.log("Added image:", newImageObject);
-  }, [DEBUG_MODE]);
+  }, []);
 
   /**
    * Add multiple images to the collection at once.
@@ -258,7 +258,7 @@ export const useCollageState = () => {
       setSelectedImages(prev => [...prev, ...newImageObjects]);
       if (DEBUG_MODE) console.log("Added multiple images:", newImageObjects);
     }
-  }, [DEBUG_MODE]);
+  }, []);
 
   /**
    * Remove an image object by index and update panel mapping.
@@ -280,7 +280,7 @@ export const useCollageState = () => {
 
     // Find the panelId(s) that used this image index
     const panelsToRemoveTransform = Object.entries(panelImageMapping)
-        .filter(([_, mappedIndex]) => mappedIndex === indexToRemove)
+        .filter(([, mappedIndex]) => mappedIndex === indexToRemove)
         .map(([panelId]) => panelId);
 
     // Update panel mapping
@@ -325,7 +325,7 @@ export const useCollageState = () => {
 
     if (DEBUG_MODE) console.log(`Removed image at index ${indexToRemove}, updated mapping`, newMapping);
 
-  }, [selectedImages, panelImageMapping, DEBUG_MODE]);
+  }, [selectedImages, panelImageMapping]);
 
   /**
    * Update only the displayUrl for an image at a specific index (after cropping).
@@ -353,7 +353,7 @@ export const useCollageState = () => {
     } else if (DEBUG_MODE) {
       console.warn(`Failed to update image display URL at index ${index}`);
     }
-  }, [selectedImages, DEBUG_MODE]);
+  }, [selectedImages]);
 
 
   /**
@@ -382,7 +382,7 @@ export const useCollageState = () => {
 
         // Find the panelId(s) that use this image index and reset their transforms
         const panelsToResetTransform = Object.entries(panelImageMapping)
-            .filter(([_, mappedIndex]) => mappedIndex === index)
+            .filter(([, mappedIndex]) => mappedIndex === index)
             .map(([panelId]) => panelId);
 
         // Reset transforms for the affected panels to default values
@@ -401,7 +401,7 @@ export const useCollageState = () => {
     } else if (DEBUG_MODE) {
       console.warn(`Failed to replace image at index ${index}`);
     }
-  }, [selectedImages, panelImageMapping, DEBUG_MODE]);
+  }, [selectedImages, panelImageMapping]);
 
 
   /**
@@ -419,7 +419,7 @@ export const useCollageState = () => {
     setPanelTransforms({}); // Clear transforms as well
     setPanelTexts({}); // Clear texts as well
     if (DEBUG_MODE) console.log("Cleared all images, mapping, transforms, and texts");
-  }, [selectedImages, DEBUG_MODE]);
+  }, [selectedImages]);
 
   /**
    * Update the mapping between panels and image indices, and auto-assign subtitles.
@@ -430,7 +430,7 @@ export const useCollageState = () => {
       console.log("Updating panel image mapping:", newMapping);
     }
     setPanelImageMapping(newMapping);
-  }, [DEBUG_MODE]);
+  }, []);
 
   /**
    * Auto-assign subtitles when both mapping and images are available
@@ -531,7 +531,7 @@ export const useCollageState = () => {
       });
       if (DEBUG_MODE) console.log("Auto-assigned subtitles to panels:", newPanelTexts);
     }
-  }, [panelImageMapping, selectedImages, lastUsedTextSettings, selectedTemplate?.id, DEBUG_MODE]);
+  }, [panelImageMapping, selectedImages, lastUsedTextSettings, selectedTemplate?.id]);
 
   /**
    * Update the transform state for a specific panel.
@@ -549,7 +549,7 @@ export const useCollageState = () => {
       }
       return newTransforms;
     });
-  }, [DEBUG_MODE]);
+  }, []);
 
   /**
    * Update the text configuration for a specific panel.
@@ -572,7 +572,7 @@ export const useCollageState = () => {
     if (DEBUG_MODE) {
       console.log(`Updating text for panel ${panelId}:`, textConfig);
     }
-  }, [DEBUG_MODE]);
+  }, []);
 
   return {
     // State

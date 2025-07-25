@@ -6,7 +6,6 @@ import { LoadingButton } from '@mui/lab';
 import { API, Auth } from 'aws-amplify';
 // utils
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import PropTypes from 'prop-types';
 import { SnackbarContext } from '../../../SnackbarContext';
 // components
 import Iconify from '../../../components/iconify';
@@ -24,7 +23,7 @@ input:-webkit-autofill:active  {
     background-clip: content-box !important;
 `;
 
-export default function SignupForm(props) {
+export default function SignupForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -346,6 +345,3 @@ export default function SignupForm(props) {
   );
 };
 
-SignupForm.propTypes = {
-  setUser: PropTypes.func.isRequired,
-};

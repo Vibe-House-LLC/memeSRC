@@ -3,7 +3,7 @@ import { ArrowDownward, ArrowUpward } from '@mui/icons-material';
 import { IconButton, Tooltip, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 
-const ImageEditorControls = ({ index, deleteLayer, moveLayerUp, moveLayerDown, src }) => (
+const ImageEditorControls = ({ index, moveLayerUp, moveLayerDown, src }) => (
   <>
     <Typography variant="h5" marginY={1}><b>Layer {index + 1} (image)</b></Typography>
     <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -32,7 +32,6 @@ const ImageEditorControls = ({ index, deleteLayer, moveLayerUp, moveLayerDown, s
 
 ImageEditorControls.propTypes = {
   index: PropTypes.number.isRequired,
-  deleteLayer: PropTypes.func,
   moveLayerUp: PropTypes.func.isRequired,
   moveLayerDown: PropTypes.func.isRequired,
   src: PropTypes.string.isRequired,

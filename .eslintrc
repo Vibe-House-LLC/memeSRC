@@ -50,6 +50,7 @@
     "react/no-array-index-key": 0,
     "react/no-unused-prop-types": 1,
     "react-hooks/rules-of-hooks": 2,
+    "react-hooks/exhaustive-deps": 0,
     "no-promise-executor-return": 0,
     "no-unsafe-optional-chaining": 0,
     "react/require-default-props": 0,

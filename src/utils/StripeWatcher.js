@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import { useContext, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SnackbarContext } from "../SnackbarContext";
@@ -22,3 +23,6 @@ export default function StripeWatcher({ children }) {
         </>
     )
 }
+StripeWatcher.propTypes = {
+    children: PropTypes.node,
+};

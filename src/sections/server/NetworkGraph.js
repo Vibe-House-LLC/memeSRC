@@ -1,4 +1,5 @@
 import React, { useEffect, useReducer } from 'react';
+import PropTypes from 'prop-types';
 import { LineChart } from '@mui/x-charts';
 import { Stack, Typography, Box } from '@mui/material';
 
@@ -84,6 +85,13 @@ const StatCard = ({ title, value, total, color }) => (
     </Typography>
   </Box>
 );
+
+StatCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  value: PropTypes.number.isRequired,
+  total: PropTypes.number.isRequired,
+  color: PropTypes.string.isRequired,
+};
 
 const formatBytes = (bytes) => {
   if (bytes === 0) return '0 Bytes';

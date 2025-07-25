@@ -1,30 +1,22 @@
-import MuiAlert from '@mui/material/Alert';
 import PropTypes from 'prop-types';
-import { forwardRef, useContext, useEffect, useRef, useState } from 'react';
-import { Box, Button, Chip, Divider, Fab, Popover, Stack, Typography, css, useTheme } from '@mui/material';
-import { AutoFixHighRounded, Close, SupervisedUserCircle, Verified } from '@mui/icons-material';
-import { API } from 'aws-amplify';
+import { useContext, useState } from 'react';
+import { Box, Chip, Divider, Fab, Popover, Stack, Typography, useTheme } from '@mui/material';
+import { AutoFixHighRounded, Close } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
 import { MagicPopupContext } from '../../MagicPopupContext';
-import { SnackbarContext } from '../../SnackbarContext';
 import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
-
-const Alert = forwardRef((props, ref) =>
-    <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />
-);
 
 MagicPopup.propTypes = {
     children: PropTypes.element
 }
 
 export default function MagicPopup({ children }) {
-    const location = useLocation();
     const navigate = useNavigate();
     const [magicToolsPopoverAnchorEl, setMagicToolsPopoverAnchorEl] = useState(null);
     const { user } = useContext(UserContext);
-    const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
+    const [loadingSubscriptionUrl] = useState(false);
     const theme = useTheme();
     const { openSubscriptionDialog } = useSubscribeDialog();
 

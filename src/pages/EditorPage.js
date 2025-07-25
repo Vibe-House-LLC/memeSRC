@@ -5,11 +5,12 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
+import PropTypes from 'prop-types';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
@@ -17,8 +18,6 @@ import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
-import { createEditorProject, updateEditorProject } from '../graphql/mutations';
-import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 
@@ -70,7 +69,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [hasFabricPaths, setHasFabricPaths] = useState(false);
   const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
   const [selectedNavItemFid, setSelectedNavItemFid] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
@@ -128,7 +127,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [futureStates, setFutureStates] = useState([]);
   const [bgEditorStates, setBgEditorStates] = useState([]);
   const [bgFutureStates, setBgFutureStates] = useState([]);
-  const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
   // const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
 
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
@@ -174,7 +172,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [shows, loadedSeriesTitle])
 
-  const { selectedObjects, editor, onReady } = useFabricJSEditor()
+  const { editor, onReady } = useFabricJSEditor()
 
   const StyledTwitterPicker = styled(TwitterPicker)`
     span div {
@@ -246,22 +244,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [updateEditorSize, imageLoaded])
 
-  const getSessionID = async () => {
-    let sessionID;
-    if ("sessionID" in sessionStorage) {
-      sessionID = sessionStorage.getItem("sessionID");
-      return Promise.resolve(sessionID);
-    }
-    return API.get('publicapi', '/uuid')
-      .then(generatedSessionID => {
-        sessionStorage.setItem("sessionID", generatedSessionID);
-        return generatedSessionID;
-      })
-      .catch(err => {
-        // console.log(`UUID Gen Fetch Error:  ${err}`);
-        throw err;
-      });
-  };
 
   const addText = useCallback((updatedText, append) => {
     const text = new fabric.Textbox(updatedText, {
@@ -299,67 +281,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
   // Function to handle image uploads and add them to the canvas
-  const addImageLayer = (imageFile) => {
-    const reader = new FileReader();
-    reader.onload = function (event) {
-      const imgObj = new Image();
-      imgObj.src = event.target.result;
-      imgObj.onload = function () {
-        const image = new fabric.Image(imgObj);
-
-        // Calculate the scale to fit the image within the canvas, maintaining the aspect ratio
-        const canvasWidth = editor.canvas.getWidth();
-        const canvasHeight = editor.canvas.getHeight();
-        // Introducing a padding factor of 0.9 for a 10% padding effect
-        const paddingFactor = 0.9;
-        const scale = Math.min(canvasWidth / imgObj.width, canvasHeight / imgObj.height) * paddingFactor;
-
-        // Set the image properties, including the scale
-        image.set({
-          angle: 0,
-          scaleX: scale,
-          scaleY: scale,
-          originX: 'center',
-          originY: 'center'
-        });
-
-        // Add the image to the canvas and set it as the active object
-        editor.canvas.add(image);
-        editor.canvas.setActiveObject(image); // Set the image as the active object
-
-        // Explicitly set the position of the image to the center of the canvas
-        image.set({
-          left: canvasWidth / 2,
-          top: canvasHeight / 2
-        });
-
-        // Update the image object and canvas state
-        image.setCoords();
-        editor.canvas.renderAll();
-
-        // Create a new canvas object for the image
-        const imageObject = {
-          type: 'image',
-          src: event.target.result,
-          scale,
-          angle: 0,
-          left: canvasWidth / 2 - (image.width * scale) / 2,
-          top: canvasHeight / 2 - (image.height * scale) / 2
-        };
-
-        // Update the canvasObjects state with the new image object
-        setCanvasObjects(prevObjects => [...prevObjects, imageObject]);
-      };
-    };
-    reader.readAsDataURL(imageFile);
-  };
 
 
 
 
 
 
-  const fileInputRef = useRef(null); // Define the ref
 
   const loadEditorDefaults = useCallback(async () => {
     setLoading(true);
@@ -798,13 +725,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // setDrawingMode((tool === 'magicEraser'))
   }
 
-  const downloadDataURL = (dataURL, fileName) => {
-    const link = document.createElement('a');
-    link.href = dataURL;
-    link.download = fileName;
-    // Simulate a click to start the download
-    link.click();
-  };
 
   const exportDrawing = async () => {
     setLoadingInpaintingResult(true)
@@ -1109,19 +1029,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   };
 
 
-  function dataURLtoBlob(dataurl) {
-    const arr = dataurl.split(',');
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch) throw new Error('Invalid data URL');
-    const mime = mimeMatch[1];
-    const bstr = atob(arr[1]);
-    const n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    for (let i = 0; i < n; i += 1) {
-      u8arr[i] = bstr.charCodeAt(i);
-    }
-    return new Blob([u8arr], { type: mime });
-  }
 
 
 
@@ -1269,14 +1176,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   //   console.log(editorStates)
   // }, [editorStates])
 
-  const loadFineTuningFrames = () => {
-    setLoadingFineTuningFrames(false)
-    // if (loadingFineTuningFrames) {
-    //   setTimeout(() => {
-    //     setLoadingFineTuningFrames(false)
-    //   }, [1000])
-    // }
-  }
 
   // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
   useEffect(() => {
@@ -2221,5 +2120,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     </>
   );
 }
+
+EditorPage.propTypes = {
+  setSeriesTitle: PropTypes.func.isRequired,
+  shows: PropTypes.array,
+};
 
 export default EditorPage

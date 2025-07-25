@@ -6,7 +6,7 @@ export async function extractVideoFrames(cid, season, episode, frameIndexes) {
   return frameUrls;
 }
 
-export async function extractFramesFromVideo(_videoUrl, _frameNumbers, _assumedFps = 10, _scaleFactor = 1.0) {
+export async function extractFramesFromVideo() {
   console.warn('extractFramesFromVideo is deprecated. Please use extractVideoFrames instead.');
   return [];
 }

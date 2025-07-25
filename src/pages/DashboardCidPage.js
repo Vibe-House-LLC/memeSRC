@@ -1,7 +1,6 @@
-import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import { Container, Divider, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import { API, graphqlOperation } from "aws-amplify";
 import { useEffect, useState } from "react";
-import { Add } from "@mui/icons-material";
 import { listV2ContentMetadata } from "../graphql/queries";
 import AliasTableRow from "../components/alias-table-row/AliasTableRow";
 
@@ -46,26 +45,21 @@ const headers = [
   // Add more header configurations here
 ];
 
-const data = [
-  { id: 1, name: 'John Doe', age: 30 },
-  { id: 2, name: 'Jane Doe', age: 25 },
-  // Add more data objects here
-];
-
-
 export default function DashboardCidPage() {
-  const [loading, setLoading] = useState(true);
   const [metadatas, setMetadatas] = useState([]);
 
-  useEffect(async () => {
-    listMetadataRecursive()
-      .then(allItems => {
-        setMetadatas(allItems)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const allItems = await listMetadataRecursive();
+        setMetadatas(allItems);
         console.log('All items:', allItems);
-      })
-      .catch(error => {
+      } catch (error) {
         console.error('Error fetching metadata:', error);
-      });
+      }
+    };
+
+    fetchData();
   }, []);
 
   return (
@@ -86,7 +80,7 @@ export default function DashboardCidPage() {
             </TableHead>
             <TableBody>
               {metadatas?.map((row) => (
-                <AliasTableRow row={row} />
+                <AliasTableRow key={row.id} row={row} />
               ))}
             </TableBody>
           </Table>

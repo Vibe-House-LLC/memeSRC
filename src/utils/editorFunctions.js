@@ -115,10 +115,10 @@ export const addText = (editor, text, append, canvasWidth, canvasHeight) => {
 // Add image layer to canvas
 export const addImageLayer = (editor, imageFile) => new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = function (event) {
+    reader.onload = (event) => {
       const imgObj = new Image();
       imgObj.src = event.target.result;
-      imgObj.onload = function () {
+      imgObj.onload = () => {
         const image = new fabric.Image(imgObj);
 
         const canvasWidth = editor.canvas.getWidth();

@@ -73,7 +73,7 @@ async function fetchShowsFromAPI() {
 }
 
 async function fetchFavorites() {
-  const currentUser = await Auth.currentAuthenticatedUser();
+  await Auth.currentAuthenticatedUser();
 
   let nextToken = null;
   let allFavorites = [];
@@ -86,8 +86,9 @@ async function fetchFavorites() {
       nextToken,
     }));
 
-    allFavorites = allFavorites.concat(result.data.listFavorites.items);
-    nextToken = result.data.listFavorites.nextToken;
+    const { items, nextToken: newNextToken } = result.data.listFavorites;
+    allFavorites = allFavorites.concat(items);
+    nextToken = newNextToken;
 
   } while (nextToken);
 
@@ -96,7 +97,7 @@ async function fetchFavorites() {
 
 async function updateCacheAndReturnData(data, cacheKey) {
   try {
-    const currentUser = await Auth.currentAuthenticatedUser();
+    await Auth.currentAuthenticatedUser();
     const favorites = await fetchFavorites();
     const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
 

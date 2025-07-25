@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { Dialog, DialogContent, DialogTitle, LinearProgress, Typography, Button } from '@mui/material';
 
 function ProcessingDialog({ isOpen, progress, metadata, onDismiss }) {
@@ -26,5 +27,15 @@ function ProcessingDialog({ isOpen, progress, metadata, onDismiss }) {
         </Dialog>
     );
 }
+
+ProcessingDialog.propTypes = {
+    isOpen: PropTypes.bool.isRequired,
+    progress: PropTypes.number.isRequired,
+    metadata: PropTypes.shape({
+        title: PropTypes.string,
+        description: PropTypes.string,
+    }).isRequired,
+    onDismiss: PropTypes.func.isRequired,
+};
 
 export default ProcessingDialog;

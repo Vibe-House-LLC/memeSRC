@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Chip } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide } from "@mui/material";
 import { Dashboard, Save } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
@@ -296,23 +296,6 @@ export default function CollagePage() {
     }
   };
 
-  // Helper function to convert aspect ratio string to number
-  const getAspectRatioValue = (aspectRatio) => {
-    if (typeof aspectRatio === 'number') return aspectRatio;
-    
-    // If it's a string like "16:9", convert to decimal
-    if (typeof aspectRatio === 'string' && aspectRatio.includes(':')) {
-      const [width, height] = aspectRatio.split(':').map(Number);
-      return width / height;
-    }
-    
-    // Find in presets if it's a preset name
-    const preset = aspectRatioPresets.find(p => 
-      p.label === aspectRatio || p.value === aspectRatio
-    );
-    
-    return preset ? preset.value : parseFloat(aspectRatio) || 1;
-  };
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
   const settingsStepProps = {

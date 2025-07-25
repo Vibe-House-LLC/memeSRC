@@ -1,24 +1,15 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Backdrop, Divider, LinearProgress } from '@mui/material';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ShareIcon from '@mui/icons-material/Share';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import Popover from '@mui/material/Popover';
-import { grey } from '@mui/material/colors';
-import CardActions from '@mui/material/CardActions';
-import { styled } from '@mui/material/styles';
+import { Container, Grid, Stack, Typography, Card, Divider, LinearProgress, CircularProgress, Backdrop } from '@mui/material';
+import { UploadFile } from '@mui/icons-material';
+import { LoadingButton } from '@mui/lab';
 // components
 import { useState, useEffect, useRef, useContext, Fragment } from 'react';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { useParams } from 'react-router-dom';
-import { UploadFile } from '@mui/icons-material';
 import Dropzone from 'react-dropzone';
-import { LoadingButton } from '@mui/lab';
 import { getSeries } from '../graphql/queries';
-import { createSourceMedia, createFile } from '../graphql/mutations';
-import Iconify from '../components/iconify';
+import { createSourceMedia } from '../graphql/mutations';
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 

@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { createContext, useMemo, useState } from 'react';
 // @mui
-import { CssBaseline, useMediaQuery } from '@mui/material';
+import { CssBaseline } from '@mui/material';
 import { ThemeProvider as MUIThemeProvider, createTheme, StyledEngineProvider } from '@mui/material/styles';
 //
 import paletteDark from './paletteDark';

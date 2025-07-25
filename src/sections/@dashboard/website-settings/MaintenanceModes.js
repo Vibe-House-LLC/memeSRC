@@ -2,10 +2,8 @@ import { Save } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import { Card, FormControlLabel, FormGroup, Grid, Stack, Switch, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
-import { useEffect, useState } from 'react';
 
 export default function MaintenanceModes({
-    currentSettings,
     saveFunction = () => {},
     saving,
     fullSiteMaintenance,
@@ -67,7 +65,6 @@ export default function MaintenanceModes({
 }
 
 MaintenanceModes.propTypes = {
-    currentSettings: PropTypes.object,
     saveFunction: PropTypes.func,
     saving: PropTypes.bool,
     fullSiteMaintenance: PropTypes.string,

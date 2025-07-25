@@ -1,9 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { Backdrop, CircularProgress, Link, Stack, TextField, Typography, styled } from '@mui/material';
+import { Link, Stack, TextField, Typography, styled } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { API, Auth } from 'aws-amplify';
+import { API } from 'aws-amplify';
 import { useContext, useState } from 'react';
-import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 import validateEmail from '../../../utils/validateEmail';
 
@@ -17,25 +16,21 @@ input:-webkit-autofill:active  {
     background-clip: content-box !important;
 `;
 
-export default function ResetPasswordForm(props) {
+export default function ResetPasswordForm() {
   const navigate = useNavigate();
-  const { user, setUser } = useContext(UserContext);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [backdropOpen, setBackdropOpen] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [invalidEmail, setInvalidEmail] = useState(false);
 
   const handleRecoverUsernameSubmit = () => {
     if (validateEmail(email)) {
       setLoading(true)
-      API.post('publicapi', '/forgotusername', { body: { email } }).then(response => {
+      API.post('publicapi', '/forgotusername', { body: { email } }).then(() => {
         setLoading(false);
         setResetSent(true);
-      }).catch(err => {
+      }).catch(() => {
         setLoading(false);
         setResetSent(true);
         setSeverity('error');
@@ -133,17 +128,6 @@ export default function ResetPasswordForm(props) {
         </>
       }
 
-      <Backdrop
-        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
-        open={backdropOpen}
-      >
-        <Stack alignItems='center' spacing={2}>
-          <CircularProgress color="inherit" />
-          <Typography variant='h6'>
-            Resending verification code...
-          </Typography>
-        </Stack>
-      </Backdrop>
     </>
   );
 }

@@ -3,25 +3,6 @@ import { Storage } from "aws-amplify";
 import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from './videoFrameExtractor';
 
-// Utility function to fetch JSON data from a given URL
-const fetchJSON = async (url) => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  return response.json();
-};
-
-// Utility function to fetch CSV data and parse it
-const fetchCSV = async (url) => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  const csvText = await response.text();
-  return csvText.split('\n').map((row) => row.split(','));
-};
-
 // Helper function to find subtitle info for a frame and decode base64 subtitle
 const findSubtitleForFrame = (csvData, season, episode, frame) => {
   // console.log('finding subtitle for ', season, episode, frame);

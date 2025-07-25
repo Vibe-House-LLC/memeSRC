@@ -1,7 +1,7 @@
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, IconButton, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
@@ -106,7 +106,7 @@ export default function SearchPage() {
   const [loadingCsv, setLoadingCsv] = useState(false);
 
   // ===== Upgraded Index Banner States ===== 
-  const [animationsEnabled, setAnimationsEnabled] = useState(false);
+  const [animationsEnabled] = useState(false);
   // const [animationsEnabled, setAnimationsEnabled] = useState(
   //   localStorage.getItem('animationsEnabled') === 'true' || false
   // );
@@ -122,11 +122,10 @@ export default function SearchPage() {
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
-  const [showBanner, setShowBanner] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
 
-  const [autoplay, setAutoplay] = useState(true);
+  const [autoplay] = useState(true);
 
   const videoRefs = useRef([]);
 
@@ -350,12 +349,6 @@ export default function SearchPage() {
   //   console.log(newResults);
   // }, [newResults]);
 
-  const ReportProblemButton = styled(IconButton)`
-    top: 10px;
-    right: 10px;
-    color: #fff;
-    z-index: 1;
-  `;
 
   const [indexFilterQuery, setIndexFilterQuery] = useState('');
 
@@ -367,22 +360,6 @@ export default function SearchPage() {
     show.title.toLowerCase().includes(indexFilterQuery.toLowerCase())
   );
 
-  const [isAdSticky, setIsAdSticky] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      const triggerPosition = 100; // Adjust this value as needed
-
-      setIsAdSticky(scrollPosition > triggerPosition);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
@@ -508,7 +485,7 @@ export default function SearchPage() {
                               muted
                               playsInline
                               preload="auto"
-                              onError={(e) => console.error('Error loading video:', JSON.stringify(result))}
+                              onError={() => console.error('Error loading video:', JSON.stringify(result))}
                               key={`${resultId}-video`}
                               style={{ display: isMediaLoaded ? 'block' : 'none' }}
                               onLoad={() => handleMediaLoad(resultId)}

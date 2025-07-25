@@ -1,13 +1,12 @@
 // ServerInfo.js
 
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Card, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, Stack, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Card, Container, Divider, Grid, Stack, Typography, useMediaQuery } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import PropTypes from 'prop-types';
 import NetworkGraph from './NetworkGraph';
 import IndexTable from './IndexTable';
 
-export default function ServerInfo({ details }) {
+export default function ServerInfo() {
     const isSm = useMediaQuery(theme => theme.breakpoints.up('sm'));
     const isLg = useMediaQuery(theme => theme.breakpoints.up('lg'));
     const [connected, setConnected] = useState(false);
@@ -128,6 +127,3 @@ export default function ServerInfo({ details }) {
     );
 }
 
-ServerInfo.propTypes = {
-    details: PropTypes.object,
-};

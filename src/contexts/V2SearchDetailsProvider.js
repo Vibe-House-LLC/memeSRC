@@ -1,15 +1,12 @@
 import PropTypes from 'prop-types';
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams } from 'react-router-dom';
-import { API } from 'aws-amplify';
 import { V2SearchContext } from "./v2-search-context";
-import { UserContext } from '../UserContext';
 
 
 
 export const V2SearchDetailsProvider = ({ children }) => {
     const { pathname } = useLocation();
-    const { user } = useContext(UserContext)
     const [show, setShow] = useState('_universal');
     const [cid, setCid] = useState();
     const [searchQuery, setSearchQuery] = useState('');
@@ -19,7 +16,7 @@ export const V2SearchDetailsProvider = ({ children }) => {
     const [savedCids, setSavedCids] = useState([]);
     const [showObj, setShowObj] = useState();
     const [selectedFrameIndex, setSelectedFrameIndex] = useState();
-    const [loadingSavedCids, setLoadingSavedCids] = useState(false);
+    const [loadingSavedCids] = useState(false);
     const { cid: seriesId } = useParams()
 
     useEffect(() => {

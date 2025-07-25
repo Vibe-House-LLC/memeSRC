@@ -1,15 +1,12 @@
 // FavoritesPage.js
 
 import React, { useState, useEffect, useContext } from 'react';
-import { API, graphqlOperation, Auth } from 'aws-amplify';
 import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Container from '@mui/material/Container';
 import { Link } from 'react-router-dom';
-import { listFavorites } from '../graphql/queries';
 import fetchShows from '../utils/fetchShows';
 import { UserContext } from '../UserContext';
-import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import FavoriteToggle from '../components/FavoriteToggle';
 
 const UpgradedIndexBanner = styled('div')(({ show }) => ({
@@ -104,25 +101,14 @@ const MinimizedBannerText = styled(Typography)`
   z-index: 1;
 `;
 
-const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
 
-async function getCacheKey() {
-  try {
-    const currentUser = await Auth.currentAuthenticatedUser();
-    return `showsCache-${currentUser.username}-${APP_VERSION}`;
-  } catch {
-    return `showsCache-${APP_VERSION}`;
-  }
-}
 
 const FavoritesPage = () => {
   const { user } = useContext(UserContext);
-  const { openSubscriptionDialog } = useSubscribeDialog();
   const [favorites, setFavorites] = useState([]);
   const [availableIndexes, setAvailableIndexes] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isBannerMinimized, setIsBannerMinimized] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
 
   const authorized = !!user; // Check if user is logged in
@@ -165,48 +151,6 @@ const FavoritesPage = () => {
     }
   };
 
-  const fetchFavorites = async () => {
-    try {
-      const currentUser = await Auth.currentAuthenticatedUser();
-
-      let nextToken = null;
-      let allFavorites = [];
-
-      do {
-        // eslint-disable-next-line no-await-in-loop
-        const result = await API.graphql(graphqlOperation(listFavorites, {
-          limit: 10,
-          nextToken,
-        }));
-
-        allFavorites = allFavorites.concat(result.data.listFavorites.items);
-        nextToken = result.data.listFavorites.nextToken;
-
-      } while (nextToken);
-
-      const enrichedFavorites = allFavorites.map(favorite => {
-        const match = availableIndexes.find(index => index.id === favorite.cid);
-        return match ? { ...favorite, alias: match } : favorite;
-      });
-
-      // Sort enrichedFavorites alphabetically by alias title
-      enrichedFavorites.sort((a, b) => {
-        const titleA = (a.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
-        const titleB = (b.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
-        return titleA.localeCompare(titleB);
-      });
-
-      setFavorites(enrichedFavorites);
-    } catch (err) {
-      console.error('Error fetching favorites:', err);
-      setError('Failed to fetch favorites.');
-    }
-  };
-
-  const clearSessionCache = async () => {
-    const cacheKey = await getCacheKey();
-    localStorage.removeItem(cacheKey);
-  };
 
   const filteredAvailableIndexes = availableIndexes.filter(
     index => !favorites.find(favorite => favorite.cid === index.id)
@@ -283,7 +227,6 @@ const FavoritesPage = () => {
                 <Button
                   variant="contained"
                   onClick={() => {
-                    setIsBannerMinimized(true);
                     setShowBanner(false);
                     localStorage.setItem(`dismissedBanner`, 'true');
                   }}
@@ -311,7 +254,6 @@ const FavoritesPage = () => {
         <MinimizedBanner
           onClick={() => {
             setShowBanner(true);
-            setIsBannerMinimized(false);
             localStorage.removeItem(`dismissedBanner`);
           }}
         >
