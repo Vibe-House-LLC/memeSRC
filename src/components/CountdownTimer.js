@@ -1,6 +1,7 @@
 import { Box, Typography } from '@mui/material';
 import { keyframes } from '@mui/system';
 import { useState, useEffect, useMemo, memo } from 'react';
+import PropTypes from 'prop-types';
 import { SALE_END_DATE, CURRENT_SALE } from '../constants/sales';
 
 export const Snowflake = memo(
@@ -40,6 +41,14 @@ export const Snowflake = memo(
     );
   }
 );
+
+Snowflake.propTypes = {
+  left: PropTypes.string.isRequired,
+  startingY: PropTypes.number.isRequired,
+  animationDelay: PropTypes.string.isRequired,
+  scale: PropTypes.number.isRequired,
+  duration: PropTypes.number.isRequired,
+};
 
 export const SnowEffect = () => {
   const snowflakes = useMemo(

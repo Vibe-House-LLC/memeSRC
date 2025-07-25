@@ -2,6 +2,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Amplify } from 'aws-amplify';
+// eslint-disable-next-line import/no-unresolved, import/extensions
 import awsExports from './aws-exports';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
