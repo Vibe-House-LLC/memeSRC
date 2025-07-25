@@ -64,9 +64,6 @@ const IndexTable = () => {
   const handleDialogOpen = () => setIsDialogOpen(true);
   const handleDialogClose = () => setIsDialogOpen(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     sessionStorage.setItem('loadingCIDs', JSON.stringify(loadingCIDs));
   }, [loadingCIDs]);
