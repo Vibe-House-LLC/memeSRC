@@ -13,7 +13,7 @@ export default function EditorNewProjectPage() {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = async function() {
+      reader.onloadend = async () => {
         const base64data = reader.result;
   
         // Create an EditorProject object in GraphQL with an empty state value

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
 import {
   Box,
@@ -184,4 +185,18 @@ const DisclosureCard = ({
   );
 };
 
-export default DisclosureCard; 
+DisclosureCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  icon: PropTypes.elementType,
+  children: PropTypes.node,
+  defaultOpen: PropTypes.bool,
+  open: PropTypes.bool,
+  subtitle: PropTypes.string,
+  onToggle: PropTypes.func,
+  sx: PropTypes.object,
+  contentSx: PropTypes.object,
+  isMobile: PropTypes.bool,
+  variant: PropTypes.string,
+};
+
+export default DisclosureCard;
