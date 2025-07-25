@@ -18,7 +18,6 @@ const DashboardCidPage = lazy(() => import('./pages/DashboardCidPage'));
 const DashboardAliasPageRevised = lazy(() => import('./pages/DashboardAliasPageRevised'));
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
 const DashboardLayout = lazy(() => import('./layouts/dashboard'));
-const BlogPage = lazy(() => import('./pages/BlogPage'));
 const LoginForm = lazy(() => import('./sections/auth/login/LoginForm'));
 const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
 const VerifyForm = lazy(() => import('./sections/auth/login/VerifyForm'));
@@ -44,7 +43,6 @@ const ContributorRequest = lazy(() => import('./pages/ContributorRequest'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const MagicPopup = lazy(() => import('./components/magic-popup/MagicPopup'));
 const DynamicRouteHandler = lazy(() => import('./pages/DynamicRouteHandler'));
-const ServerPage = lazy(() => import('./pages/ServerPage'));
 const IpfsSearchBar = lazy(() => import('./sections/search/ipfs-search-bar'));
 const V2FramePage = lazy(() => import('./pages/V2FramePage'));
 const V2EditorPage = lazy(() => import('./pages/V2EditorPage'));
@@ -59,6 +57,7 @@ const FacebookAuthDemo = lazy(() => import('./pages/FacebookAuthDemo'));
 const CollagePageLegacy = lazy(() => import('./pages/CollagePageLegacy'));
 const CollagePage = lazy(() => import('./pages/CollagePage'));
 const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
+const ServerPage = lazy(() => import('./pages/ServerPage'));
 
 const DonationRedirect = () => {
   window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
@@ -115,7 +114,6 @@ export default function Router() {
         { path: 'app', element: <DashboardAppPage /> },
         { path: 'user', element: <UserPage /> },
         { path: 'support', element: <ProSupportAdmin /> },
-        { path: 'blog', element: <BlogPage /> },
         { path: 'home', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },

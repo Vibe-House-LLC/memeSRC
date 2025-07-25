@@ -11,12 +11,6 @@ import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
 import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 import { DialogProvider } from './contexts/SubscribeDialog';
-// import FeatureSectionPopover from './components/v2-feature-section/v2-feature-section-popover';
-// import AutoAdWrapper from './ads/AutoAdWrapper';
-// import FeaturePopover from './components/features-popover/featurePopover';
-// components
-// import ScrollToTop from './components/scroll-to-top';
-// import { StyledChart } from './components/chart';
 
 
 // ----------------------------------------------------------------------
