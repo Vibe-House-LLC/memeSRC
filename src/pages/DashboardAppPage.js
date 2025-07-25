@@ -14,12 +14,8 @@ import {
   AppTasks,
   AppHomepageSectionsListPreview,
   AppOrderTimeline,
-  AppCurrentVisits,
-  AppWebsiteVisits,
   AppTrafficBySite,
   AppWidgetSummary,
-  AppCurrentSubject,
-  AppConversionRates,
 } from '../sections/@dashboard/app';
 
 // import { createGlobalMessage } from '../graphql/mutations';
@@ -226,28 +222,6 @@ export default function DashboardAppPage() {
               <AppWidgetSummary title={`API Sessions (${process.env.REACT_APP_USER_BRANCH})`} total={sessionsDaily} color="error" icon={'ant-design:bug-filled'} />
             </Grid>
 
-            <Grid item xs={12} md={6} lg={4}>
-              <AppCurrentVisits
-                title={`Popular shows (${process.env.REACT_APP_USER_BRANCH})`}
-                chartData={popularShows}
-                chartColors={[
-                  theme.palette.primary.main,
-                  theme.palette.info.main,
-                  theme.palette.warning.main,
-                  theme.palette.error.main,
-                  theme.palette.grey[500]
-                ]}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6} lg={8}>
-              <AppConversionRates
-                title={`Frame Views per show (${process.env.REACT_APP_USER_BRANCH})`}
-                subheader="all-time"
-                chartData={popularShows}
-              />
-            </Grid>
-
             <Grid item xs={12} md={6} lg={8}>
               <AppHomepageSectionsListPreview
                 title="Homepage Sections"
@@ -287,59 +261,6 @@ export default function DashboardAppPage() {
                     icon: <Iconify icon={'eva:twitter-fill'} color="#1C9CEA" width={32} />,
                   },
                 ]}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6} lg={8}>
-              <AppWebsiteVisits
-                title="Website Visits"
-                subheader="(+43%) than last year"
-                chartLabels={[
-                  '01/01/2003',
-                  '02/01/2003',
-                  '03/01/2003',
-                  '04/01/2003',
-                  '05/01/2003',
-                  '06/01/2003',
-                  '07/01/2003',
-                  '08/01/2003',
-                  '09/01/2003',
-                  '10/01/2003',
-                  '11/01/2003',
-                ]}
-                chartData={[
-                  {
-                    name: 'Team A',
-                    type: 'column',
-                    fill: 'solid',
-                    data: [23, 11, 22, 27, 13, 22, 37, 21, 44, 22, 30],
-                  },
-                  {
-                    name: 'Team B',
-                    type: 'area',
-                    fill: 'gradient',
-                    data: [44, 55, 41, 67, 22, 43, 21, 41, 56, 27, 43],
-                  },
-                  {
-                    name: 'Team C',
-                    type: 'line',
-                    fill: 'solid',
-                    data: [30, 25, 36, 30, 45, 35, 64, 52, 59, 36, 39],
-                  },
-                ]}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6} lg={4}>
-              <AppCurrentSubject
-                title="Current Subject"
-                chartLabels={['English', 'History', 'Physics', 'Geography', 'Chinese', 'Math']}
-                chartData={[
-                  { name: 'Series 1', data: [80, 50, 30, 40, 100, 20] },
-                  { name: 'Series 2', data: [20, 30, 40, 80, 20, 80] },
-                  { name: 'Series 3', data: [44, 76, 78, 13, 43, 10] },
-                ]}
-                chartColors={[...Array(6)].map(() => theme.palette.text.secondary)}
               />
             </Grid>
 

@@ -40,7 +40,6 @@ const EditorPage = lazy(() => import('./pages/EditorPage'));
 const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
 const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
-const HomepageSectionPage = lazy(() => import('./pages/HomepageSectionPage'));
 const ContributorRequest = lazy(() => import('./pages/ContributorRequest'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const MagicPopup = lazy(() => import('./components/magic-popup/MagicPopup'));
@@ -121,7 +120,6 @@ export default function Router() {
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
         { path: 'metadata', element: <MetadataPage /> },
-        { path: 'homepagesections', element: <HomepageSectionPage /> },
         { path: 'series', element: <DashboardSeriesPage /> },
         { path: 'cidmanagement', element: <DashboardCidPage /> },
         { path: 'aliasmanagement', element: <DashboardAliasPageRevised /> },

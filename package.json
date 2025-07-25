@@ -50,12 +50,11 @@
     "@mui/x-charts": "^6.19.1",
     "@mui/x-data-grid": "^6.19.2",
     "amplify": "^0.0.11",
-    "apexcharts": "^3.36.0",
     "autosuggest-highlight": "^3.3.4",
     "aws-amplify": "^5.3.18",
     "change-case": "^4.1.2",
     "date-fns": "^2.29.3",
-    "dompurify": "^2.4.3",
+    "dompurify": "^3.2.6",
     "fabric": "^5.2.4",
     "fabricjs-react": "^1.1.1",
     "history": "^5.3.0",
@@ -65,7 +64,6 @@
     "numeral": "^2.0.6",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
-    "react-apexcharts": "^1.4.0",
     "react-color": "^2.19.3",
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.2.3",
@@ -76,13 +74,13 @@
     "react-infinite-scroll-component": "^6.1.0",
     "react-markdown": "^8.0.7",
     "react-router-dom": "^6.4.2",
-    "react-scripts": "^5.0.1",
     "react-zoom-pan-pinch": "^3.7.0",
     "sanitize-html": "^2.13.0",
     "simplebar-react": "^2.4.3",
     "web-vitals": "^3.0.3"
   },
   "devDependencies": {
+    "react-scripts": "^5.0.1",
     "@babel/core": "^7.19.3",
     "@babel/eslint-parser": "^7.19.1",
     "@svgr/webpack": "^6.5.0",
@@ -100,6 +98,12 @@
     "prettier": "^2.7.1"
   },
   "overrides": {
-    "@svgr/webpack": "^6.5.0"
+    "@svgr/webpack": "^6.5.0",
+    "form-data": ">=4.0.4",
+    "image-size": ">=1.2.1",
+    "axios": ">=1.8.2",
+    "cross-spawn": ">=7.0.5",
+    "path-to-regexp": ">=0.1.12",
+    "postcss": ">=8.4.31"
   }
 }
