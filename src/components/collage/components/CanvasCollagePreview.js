@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Box, IconButton, Typography, useMediaQuery, Menu, MenuItem, ListItemIcon } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
+import { OpenWith, Check, Place, Crop, DragIndicator, Add } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 
@@ -454,6 +454,15 @@ const CanvasCollagePreview = ({
 
   // Mobile detection for slider fix
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
+
+  // Sticker state
+  const [stickers, setStickers] = useState([]);
+  const [selectedStickerId, setSelectedStickerId] = useState(null);
+  const [stickerDragStart, setStickerDragStart] = useState(null);
+  const [stickerPinchDistance, setStickerPinchDistance] = useState(null);
+  const [stickerStartScale, setStickerStartScale] = useState(1);
+  const [stickerScaleStart, setStickerScaleStart] = useState(null);
+  const stickerInputRef = useRef(null);
 
   // Base canvas size for text scaling calculations
   const BASE_CANVAS_WIDTH = 400;
@@ -2562,6 +2571,147 @@ const CanvasCollagePreview = ({
     handleActionMenuClose();
   }, [actionMenuPanelId, startReorderMode, handleActionMenuClose]);
 
+  // Sticker helpers
+  const handleStickerFileChange = useCallback((e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const src = ev.target.result;
+      setStickers((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          src,
+          x: componentWidth / 2,
+          y: componentHeight / 2,
+          scale: 1,
+        },
+      ]);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = null;
+  }, [componentWidth, componentHeight]);
+
+  const updateSticker = useCallback((id, patch) => {
+    setStickers((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }, []);
+
+  const handleStickerMouseDown = useCallback((id, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedStickerId(id);
+    setStickerDragStart({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleScaleStart = useCallback((id, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const sticker = stickers.find((s) => s.id === id);
+    setSelectedStickerId(id);
+    setStickerScaleStart({ x: clientX, y: clientY, scale: sticker?.scale || 1 });
+  }, [stickers]);
+
+  const handleStickerWheel = useCallback((id, e) => {
+    e.preventDefault();
+    const sticker = stickers.find((s) => s.id === id);
+    if (!sticker) return;
+    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+    updateSticker(id, { scale: Math.max(0.2, sticker.scale + delta) });
+  }, [stickers, updateSticker]);
+
+  const handleStickerTouchStart = useCallback((id, e) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      setSelectedStickerId(id);
+      setStickerDragStart({ x: touch.clientX, y: touch.clientY });
+    } else if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      setSelectedStickerId(id);
+      setStickerPinchDistance(dist);
+      const sticker = stickers.find((s) => s.id === id);
+      setStickerStartScale(sticker?.scale || 1);
+    }
+  }, [stickers]);
+
+  const handleStickerMouseMove = useCallback((e) => {
+    if (selectedStickerId && stickerDragStart) {
+      e.preventDefault();
+      const sticker = stickers.find((s) => s.id === selectedStickerId);
+      if (!sticker) return;
+      const dx = e.clientX - stickerDragStart.x;
+      const dy = e.clientY - stickerDragStart.y;
+      updateSticker(selectedStickerId, { x: sticker.x + dx, y: sticker.y + dy });
+      setStickerDragStart({ x: e.clientX, y: e.clientY });
+    } else if (selectedStickerId && stickerScaleStart) {
+      e.preventDefault();
+      const sticker = stickers.find((s) => s.id === selectedStickerId);
+      if (!sticker) return;
+      const dx = e.clientX - stickerScaleStart.x;
+      const newScale = Math.max(0.2, stickerScaleStart.scale + dx / 100);
+      updateSticker(selectedStickerId, { scale: newScale });
+    }
+  }, [selectedStickerId, stickerDragStart, stickerScaleStart, stickers, updateSticker]);
+
+  const handleStickerTouchMove = useCallback((e) => {
+    if (!selectedStickerId) return;
+    if (stickerPinchDistance && e.touches.length === 2) {
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      const ratio = dist / stickerPinchDistance;
+      updateSticker(selectedStickerId, { scale: Math.max(0.2, stickerStartScale * ratio) });
+    } else if (stickerDragStart && e.touches.length === 1) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const sticker = stickers.find((s) => s.id === selectedStickerId);
+      if (!sticker) return;
+      const dx = touch.clientX - stickerDragStart.x;
+      const dy = touch.clientY - stickerDragStart.y;
+      updateSticker(selectedStickerId, { x: sticker.x + dx, y: sticker.y + dy });
+      setStickerDragStart({ x: touch.clientX, y: touch.clientY });
+    } else if (stickerScaleStart && e.touches.length === 1) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const dx = touch.clientX - stickerScaleStart.x;
+      const newScale = Math.max(0.2, stickerScaleStart.scale + dx / 100);
+      updateSticker(selectedStickerId, { scale: newScale });
+    }
+  }, [selectedStickerId, stickerDragStart, stickerScaleStart, stickerPinchDistance, stickerStartScale, stickers, updateSticker]);
+
+  const handleGlobalMouseUp = useCallback(() => {
+    if (stickerDragStart || stickerPinchDistance) {
+      setStickerDragStart(null);
+      setStickerPinchDistance(null);
+    }
+    if (stickerScaleStart) {
+      setStickerScaleStart(null);
+    }
+  }, [stickerDragStart, stickerPinchDistance, stickerScaleStart]);
+
+  useEffect(() => {
+    if (stickerDragStart || stickerPinchDistance || stickerScaleStart) {
+      window.addEventListener('mousemove', handleStickerMouseMove);
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+      window.addEventListener('touchmove', handleStickerTouchMove, { passive: false });
+      window.addEventListener('touchend', handleGlobalMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleStickerMouseMove);
+        window.removeEventListener('mouseup', handleGlobalMouseUp);
+        window.removeEventListener('touchmove', handleStickerTouchMove);
+        window.removeEventListener('touchend', handleGlobalMouseUp);
+      };
+    }
+    return undefined;
+  }, [handleStickerMouseMove, handleGlobalMouseUp, handleStickerTouchMove, stickerDragStart, stickerPinchDistance, stickerScaleStart]);
+
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => new Promise((resolve) => {
       const canvas = canvasRef.current;
@@ -2889,11 +3039,11 @@ const CanvasCollagePreview = ({
   const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
 
   return (
-    <Box 
-      ref={containerRef} 
-      sx={{ 
-        position: 'relative', 
-        width: '100%', 
+    <Box
+      ref={containerRef}
+      sx={{
+        position: 'relative',
+        width: '100%',
         overflow: 'visible',
         // Prevent text selection during drag operations
         userSelect: 'none',
@@ -2913,7 +3063,60 @@ const CanvasCollagePreview = ({
           transition: 'box-shadow 0.2s ease-in-out',
         }),
       }}
+      onClick={() => setSelectedStickerId(null)}
     >
+
+      <IconButton
+        size="small"
+        onClick={() => stickerInputRef.current?.click()}
+        sx={{ position: 'absolute', top: 8, left: 8, zIndex: 20, backgroundColor: '#fff' }}
+      >
+        <Add fontSize="small" />
+      </IconButton>
+      <input
+        type="file"
+        ref={stickerInputRef}
+        style={{ display: 'none' }}
+        accept="image/*"
+        onChange={handleStickerFileChange}
+      />
+
+      {stickers.map((sticker) => (
+        <Box
+          key={sticker.id}
+          onMouseDown={(e) => handleStickerMouseDown(sticker.id, e)}
+          onTouchStart={(e) => handleStickerTouchStart(sticker.id, e)}
+          onWheel={(e) => handleStickerWheel(sticker.id, e)}
+          sx={{
+            position: 'absolute',
+            top: sticker.y,
+            left: sticker.x,
+            transform: `translate(-50%, -50%) scale(${sticker.scale})`,
+            zIndex: 5,
+            touchAction: selectedStickerId === sticker.id ? 'none' : 'manipulation',
+            cursor: 'move',
+          }}
+        >
+          <img src={sticker.src} alt="sticker" style={{ maxWidth: 120, pointerEvents: 'none' }} />
+          {selectedStickerId === sticker.id && (
+            <Box
+              onMouseDown={(e) => handleScaleStart(sticker.id, e)}
+              onTouchStart={(e) => handleScaleStart(sticker.id, e)}
+              sx={{
+                position: 'absolute',
+                bottom: -8,
+                right: -8,
+                width: 16,
+                height: 16,
+                backgroundColor: '#fff',
+                border: '1px solid #000',
+                cursor: 'nwse-resize',
+                zIndex: 6,
+              }}
+            />
+          )}
+        </Box>
+      ))}
 
               <canvas
           ref={canvasRef}
