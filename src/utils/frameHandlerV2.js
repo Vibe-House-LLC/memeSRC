@@ -1,26 +1,7 @@
-import { Buffer } from "buffer";
-import { Storage } from "aws-amplify";
+import { Buffer } from 'buffer';
+import { Storage } from 'aws-amplify';
 import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from './videoFrameExtractor';
-
-// Utility function to fetch JSON data from a given URL
-const fetchJSON = async (url) => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  return response.json();
-};
-
-// Utility function to fetch CSV data and parse it
-const fetchCSV = async (url) => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  const csvText = await response.text();
-  return csvText.split('\n').map((row) => row.split(','));
-};
 
 // Helper function to find subtitle info for a frame and decode base64 subtitle
 const findSubtitleForFrame = (csvData, season, episode, frame) => {
@@ -50,8 +31,17 @@ const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
   episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
 
-  const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
-  const csvData = await csvDownload.text().split('\n').map((row) => row.split(','));
+  const csvDownload = (
+    await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, {
+      level: 'public',
+      download: true,
+      customPrefix: { public: 'protected/' },
+    })
+  ).Body;
+  const csvData = await csvDownload
+    .text()
+    .split('\n')
+    .map((row) => row.split(','));
 
   const { subtitle } = findSubtitleForFrame(csvData, season, episode, frame);
   // Pass a single-element array with the frame
@@ -63,7 +53,6 @@ const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
     frame_image: mainFrameImage,
   };
 };
-
 
 // Function to fetch only the frames_fine_tuning array
 const fetchFramesFineTuning = async (cid, season, episode, frame) => {
@@ -84,18 +73,16 @@ const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
   const offsets = [-40, -30, -20, -10, 0, 10, 20, 30, 40];
   const scaleFactor = 0.2;
 
-  const surroundingFramePromises = offsets.map(offset => {
+  const surroundingFramePromises = offsets.map((offset) => {
     const surroundingFrameIndex = Math.round((frame + offset) / 10) * 10; // Round to the nearest whole second
-    return extractVideoFrames(cid, season, episode, [surroundingFrameIndex], 10, scaleFactor)
-      .then(frameImages => ({
-          frame: surroundingFrameIndex,
-          frameImage: frameImages.length > 0 ? frameImages[0] : 'No image available',
-        }));
+    return extractVideoFrames(cid, season, episode, [surroundingFrameIndex], 10, scaleFactor).then((frameImages) => ({
+      frame: surroundingFrameIndex,
+      frameImage: frameImages.length > 0 ? frameImages[0] : 'No image available',
+    }));
   });
 
   return surroundingFramePromises;
 };
-
 
 // Full implementation of fetchFrameInfo with conditional features
 const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
@@ -103,55 +90,62 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
     season = parseInt(season, 10);
     episode = parseInt(episode, 10);
     frame = parseInt(frame, 10);
-  
 
-    const metadataDownload = (await Storage.get(`src/${cid}/00_metadata.json`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+    const metadataDownload = (
+      await Storage.get(`src/${cid}/00_metadata.json`, {
+        level: 'public',
+        download: true,
+        customPrefix: { public: 'protected/' },
+      })
+    ).Body;
 
-    const metadata = JSON.parse((await metadataDownload.text()))
+    const metadata = JSON.parse(await metadataDownload.text());
 
     const seriesName = metadata.index_name;
 
-    const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
+    const csvDownload = (
+      await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, {
+        level: 'public',
+        download: true,
+        customPrefix: { public: 'protected/' },
+      })
+    ).Body;
     const csvData = (await csvDownload.text()).split('\n').map((row) => row.split(','));
-  
 
     const { subtitle: mainSubtitle, index: mainSubtitleIndex } = findSubtitleForFrame(csvData, season, episode, frame);
     let mainFrameImage = 'No image available';
     let framesFineTuning = [];
     const subtitlesSurrounding = [];
     let framesSurrounding = [];
-  
 
     // Fetch the main frame image and subtitle only if no specific options are set or the relevant option is true
     if (Object.keys(options).length === 0 || options.mainImage) {
       const mainFrameImages = await extractVideoFrames(cid, season, episode, [frame], 10);
       mainFrameImage = mainFrameImages.length > 0 ? mainFrameImages[0] : 'No image available';
     }
-  
 
     // Fetch frames_fine_tuning array if requested
     if (options.framesFineTuning) {
       framesFineTuning = await fetchFramesFineTuning(cid, season, episode, frame);
     }
-  
 
     // Fetch surrounding subtitles and images if requested
     if (options.subtitlesSurrounding) {
-      if (mainSubtitleIndex !== -1) { // Ensure mainSubtitleIndex was found      
+      if (mainSubtitleIndex !== -1) {
+        // Ensure mainSubtitleIndex was found
         const startIndex = Math.max(1, mainSubtitleIndex - 3);
         const endIndex = Math.min(csvData.length - 1, mainSubtitleIndex + 3);
         for (let i = startIndex; i <= endIndex; i += 1) {
           const [, , , encodedSubtitleText, startFrame, endFrame] = csvData[i];
           const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString();
-          const middleFrame = Math.round(((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2) / 10) * 10; // Round to the nearest whole second
-          subtitlesSurrounding.push(
-            {
-              subtitle: subtitleText, // Use decoded subtitle text
-              frame: middleFrame,
-            }
-          );
+          const middleFrame = Math.round((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2 / 10) * 10; // Round to the nearest whole second
+          subtitlesSurrounding.push({
+            subtitle: subtitleText, // Use decoded subtitle text
+            frame: middleFrame,
+          });
         }
-      } else { // If no current subtitle found, use the nearest subtitle for surrounding subtitles
+      } else {
+        // If no current subtitle found, use the nearest subtitle for surrounding subtitles
         let closestSubtitleIndex = -1;
         let minDistance = Infinity;
         for (let i = 1; i < csvData.length; i += 1) {
@@ -170,12 +164,10 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
             const [, , , encodedSubtitleText, startFrame, endFrame] = csvData[i];
             const subtitleText = Buffer.from(encodedSubtitleText, 'base64').toString();
             const middleFrame = Math.floor((parseInt(startFrame, 10) + parseInt(endFrame, 10)) / 2);
-            subtitlesSurrounding.push(
-              {
-                subtitle: subtitleText,
-                frame: middleFrame,
-              }
-            );
+            subtitlesSurrounding.push({
+              subtitle: subtitleText,
+              frame: middleFrame,
+            });
           }
         }
       }
@@ -206,9 +198,4 @@ const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
   }
 };
 
-export {
-  fetchFrameInfo,
-  fetchFrameSubtitleAndImage,
-  fetchFramesFineTuning,
-  fetchFramesSurroundingPromises,
-};
+export { fetchFrameInfo, fetchFrameSubtitleAndImage, fetchFramesFineTuning, fetchFramesSurroundingPromises };

@@ -1,14 +1,10 @@
 // fetchShows.js
 
-import { API, graphqlOperation, Auth } from "aws-amplify";
+import { API, graphqlOperation, Auth } from 'aws-amplify';
 import { listFavorites } from '../graphql/queries';
 
 const listAliasesQuery = /* GraphQL */ `
-  query ListAliases(
-    $filter: ModelAliasFilterInput
-    $limit: Int
-    $nextToken: String
-  ) {
+  query ListAliases($filter: ModelAliasFilterInput, $limit: Int, $nextToken: String) {
     listAliases(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
@@ -55,12 +51,12 @@ async function fetchShowsFromAPI() {
     authMode: 'API_KEY',
   });
 
-  const loadedV2Shows = aliases?.data?.listAliases?.items.filter(obj => obj?.v2ContentMetadata) || [];
+  const loadedV2Shows = aliases?.data?.listAliases?.items.filter((obj) => obj?.v2ContentMetadata) || [];
 
-  const finalShows = loadedV2Shows.map(v2Show => ({
+  const finalShows = loadedV2Shows.map((v2Show) => ({
     ...v2Show.v2ContentMetadata,
     id: v2Show.id,
-    cid: v2Show.v2ContentMetadata.id
+    cid: v2Show.v2ContentMetadata.id,
   }));
 
   const sortedMetadata = finalShows.sort((a, b) => {
@@ -73,7 +69,7 @@ async function fetchShowsFromAPI() {
 }
 
 async function fetchFavorites() {
-  const currentUser = await Auth.currentAuthenticatedUser();
+  await Auth.currentAuthenticatedUser();
 
   let nextToken = null;
   let allFavorites = [];
@@ -81,14 +77,16 @@ async function fetchFavorites() {
   do {
     // Disable ESLint check for await-in-loop
     // eslint-disable-next-line no-await-in-loop
-    const result = await API.graphql(graphqlOperation(listFavorites, {
-      limit: 10,
-      nextToken,
-    }));
+    const result = await API.graphql(
+      graphqlOperation(listFavorites, {
+        limit: 10,
+        nextToken,
+      })
+    );
 
-    allFavorites = allFavorites.concat(result.data.listFavorites.items);
-    nextToken = result.data.listFavorites.nextToken;
-
+    const { items, nextToken: newToken } = result.data.listFavorites;
+    allFavorites = allFavorites.concat(items);
+    nextToken = newToken;
   } while (nextToken);
 
   return allFavorites;
@@ -96,13 +94,13 @@ async function fetchFavorites() {
 
 async function updateCacheAndReturnData(data, cacheKey) {
   try {
-    const currentUser = await Auth.currentAuthenticatedUser();
+    await Auth.currentAuthenticatedUser();
     const favorites = await fetchFavorites();
-    const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
+    const favoriteShowIds = new Set(favorites.map((favorite) => favorite.cid));
 
-    data = data.map(show => ({
+    data = data.map((show) => ({
       ...show,
-      isFavorite: favoriteShowIds.has(show.id)
+      isFavorite: favoriteShowIds.has(show.id),
     }));
   } catch (error) {
     // If there's an error fetching favorites (likely due to not being authenticated), return data without favorites.
