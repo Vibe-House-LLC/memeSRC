@@ -1,5 +1,4 @@
 import React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { getSearchIndexes } from '@/app/SearchPage';
 import { Metadata } from 'next';
 import FrameActions from './FrameActions';
 import FavoritesStar from '@/components/FavoritesStar';
+import FrameDisplayWithSubtitles from './FrameDisplayWithSubtitles';
 
 interface FramePageProps {
   params: {
@@ -69,7 +69,6 @@ export default async function FramePage({ params }: FramePageProps) {
   };
   
   const metadata = showData?.v2ContentMetadata || defaultMetadata;
-  const frameImageUrl = `https://v2-beta.memesrc.com/frame/${showId}/${season}/${episode}/${currentFrame}`;
   
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -103,17 +102,12 @@ export default async function FramePage({ params }: FramePageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Frame Display */}
           <div className="lg:col-span-3">
-            <div className="bg-gray-800 rounded-lg overflow-hidden">
-              <div className="relative aspect-video bg-black">
-                <Image
-                  src={frameImageUrl}
-                  alt={`Frame ${currentFrame} from ${metadata.title}`}
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-            </div>
+            <FrameDisplayWithSubtitles
+              showId={showId}
+              season={season}
+              episode={episode}
+              frameNumber={frameNumber}
+            />
 
             {/* Frame Navigation */}
             <div className="flex items-center justify-between mt-4">
@@ -174,7 +168,7 @@ export default async function FramePage({ params }: FramePageProps) {
             </div>
 
             {/* Actions */}
-            <FrameActions showId={showId} frameImageUrl={frameImageUrl} />
+            <FrameActions showId={showId} frameImageUrl={`https://v2-beta.memesrc.com/frame/${showId}/${season}/${episode}/${currentFrame}`} />
           </div>
         </div>
       </div>
