@@ -35,17 +35,9 @@ import { TemplateCard } from "../styled/CollageStyled";
 
 // Import layout configuration
 import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../config/CollageConfig";
-
-// Color presets for border colors
-const COLOR_PRESETS = [
-  { color: '#FFFFFF', name: 'White' },
-  { color: '#000000', name: 'Black' },
-  { color: '#FF0000', name: 'Red' },
-  { color: '#0000FF', name: 'Blue' },
-  { color: '#FFFF00', name: 'Yellow' },
-  { color: '#00FF00', name: 'Green' }
-];
-
+import { BORDER_COLOR_PRESETS } from '../../../constants/collage';
+import { isDarkColor } from "../../../utils/colorUtils";
+import { getFriendlyAspectRatio } from "../../../utils/collageLayout";
 // Create a new styled component for aspect ratio cards
 const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   cursor: 'pointer',
@@ -235,27 +227,6 @@ const StepSectionHeading = styled(Box)(({ theme }) => ({
   paddingRight: theme.spacing(0.5),
 }));
 
-// Helper function to convert aspect ratio value to a friendly format
-const getFriendlyAspectRatio = (value) => {
-  if (value === 1) return '1:1';
-  
-  // Common aspect ratios with friendly names
-  if (Math.abs(value - 0.8) < 0.01) return '4:5';      // Portrait
-  if (Math.abs(value - 2/3) < 0.01) return '2:3';      // Added 2:3 ratio
-  if (Math.abs(value - 0.5625) < 0.01) return '9:16';  // Instagram Story
-  if (Math.abs(value - 1.33) < 0.01) return '4:3';     // Classic
-  if (Math.abs(value - 1.5) < 0.01) return '3:2';      // Added 3:2 ratio
-  if (Math.abs(value - 1.78) < 0.01) return '16:9';    // Landscape
-  
-  // For other values, find the closest simple fraction
-  if (value > 1) {
-    // Landscape orientation
-    return `${Math.round(value)}:1`;
-  }
-  // Portrait orientation
-  return `1:${Math.round(1/value)}`;
-};
-
 // Create a color swatch component for border color selection
 const ColorSwatch = styled(Box)(({ theme, selected }) => ({
   width: 36,
@@ -293,19 +264,6 @@ const ColorPickerInput = styled('input')(({ theme }) => ({
   width: 0,
 }));
 
-// Helper function to determine if a color is dark (for contrast)
-const isDarkColor = (hexColor) => {
-  // Convert hex to RGB
-  const r = parseInt(hexColor.substr(1, 2), 16);
-  const g = parseInt(hexColor.substr(3, 2), 16);
-  const b = parseInt(hexColor.substr(5, 2), 16);
-  
-  // Calculate brightness (YIQ formula)
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  
-  // Return true if color is dark
-  return brightness < 128;
-};
 
 // Renamed component to CollageLayoutSettings
 const CollageLayoutSettings = ({ 
@@ -685,10 +643,10 @@ const CollageLayoutSettings = ({
   });
   
   // Check if current color is a custom color (not in the preset colors)
-  const isCustomColor = !COLOR_PRESETS.some(c => c.color === borderColor);
+  const isCustomColor = !BORDER_COLOR_PRESETS.some(c => c.color === borderColor);
   
   // Check if there's a saved custom color that's different from preset colors
-  const hasSavedCustomColor = savedCustomColor && !COLOR_PRESETS.some(c => c.color === savedCustomColor);
+  const hasSavedCustomColor = savedCustomColor && !BORDER_COLOR_PRESETS.some(c => c.color === savedCustomColor);
   
   // Effect to update localStorage when custom color changes
   useEffect(() => {
@@ -1272,7 +1230,7 @@ const CollageLayoutSettings = ({
               )}
               
               {/* Preset colors */}
-              {COLOR_PRESETS.map((colorOption) => (
+              {BORDER_COLOR_PRESETS.map((colorOption) => (
                 <Tooltip key={colorOption.color} title={colorOption.name} arrow>
                   <ColorSwatch
                     onClick={() => setBorderColor(colorOption.color)}
