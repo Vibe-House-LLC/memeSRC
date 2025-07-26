@@ -1,14 +1,14 @@
 import { Suspense } from 'react';
 
 import { Backdrop, CircularProgress } from '@mui/material';
-import { SearchDetailsProvider } from './contexts/SearchDetailsProvider';
-import { CollageProvider } from './contexts/CollageContext';
+import { SearchDetailsProvider } from '../src/contexts/SearchDetailsProvider';
+import { CollageProvider } from '../src/contexts/CollageContext';
 // routes
-import Router from './routes';
+import Router from '../src/routes';
 // theme
-import ThemeProvider from './theme';
-import SnackBar from './utils/Snackbar';
-import StripeWatcher from './utils/StripeWatcher';
+import ThemeProvider from '../src/theme';
+import SnackBar from '../src/utils/Snackbar';
+import StripeWatcher from '../src/utils/StripeWatcher';
 
 
 // ----------------------------------------------------------------------
