@@ -5,8 +5,9 @@
   "version": "2.12.2",
   "private": false,
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint --ext .js,.jsx ./src",
@@ -76,7 +77,8 @@
     "react-zoom-pan-pinch": "^3.7.0",
     "sanitize-html": "^2.13.0",
     "simplebar-react": "^2.4.3",
-    "web-vitals": "^3.0.3"
+    "web-vitals": "^3.0.3",
+    "next": "^14.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.19.3",
@@ -93,8 +95,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-react": "^7.31.10",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "prettier": "^2.7.1",
-    "react-scripts": "^5.0.1"
+    "prettier": "^2.7.1"
   },
   "overrides": {
     "@svgr/webpack": "^6.5.0",
