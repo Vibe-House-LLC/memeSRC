@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
-import { MapsUgc, Favorite, Shuffle, Dashboard, Delete, Edit } from '@mui/icons-material';
+import MapsUgcIcon from '@mui/icons-material/MapsUgc';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import ShuffleIcon from '@mui/icons-material/Shuffle';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
@@ -221,7 +226,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                         <StyledButton 
                             ref={buttonRef}
                             onClick={() => showImageDrawer ? handleClose() : setShowImageDrawer(true)}
-                            startIcon={<Dashboard />} 
+                            startIcon={<DashboardIcon />}
                             variant="contained" 
                             style={{ backgroundColor: "black", zIndex: '1300' }}
                         >
@@ -233,19 +238,19 @@ export default function FloatingActionButtons({ shows, showAd }) {
                     <>
                         <a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
                             <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                                <MapsUgc color="white" />
+                                <MapsUgcIcon color="white" />
                             </Fab>
                         </a>
                         <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
                             <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
-                                <Favorite />
+                                <FavoriteIcon />
                             </Fab>
                         </a>
                     </>
                 )}
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn" hasAd={showAd}>
-                <StyledButton onClick={() => { loadRandomFrame(shows) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+                <StyledButton onClick={() => { loadRandomFrame(shows) }} loading={loadingRandom} startIcon={<ShuffleIcon />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
             
             {hasCollageAccess && (showImageDrawer || isClosing) && (
@@ -330,7 +335,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                                             "{item.subtitle}"
                                                         </Typography>
                                                         {item.subtitleShowing && (
-                                                            <Edit 
+                                                            <EditIcon
                                                                 style={{ 
                                                                     color: '#4CAF50', 
                                                                     fontSize: '14px',
@@ -357,7 +362,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                                     flexShrink: 0
                                                 }}
                                             >
-                                                <Delete fontSize="small" />
+                                                <DeleteIcon fontSize="small" />
                                             </Button>
                                         </Stack>
                                         
@@ -382,7 +387,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                         marginTop: '12px',
                                         fontWeight: 'bold'
                                     }}
-                                    startIcon={<Dashboard />}
+                                    startIcon={<DashboardIcon />}
                                 >
                                     Create Collage ({count} images)
                                 </Button>
@@ -413,7 +418,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                             borderColor: 'rgba(255, 255, 255, 0.3)',
                                             marginTop: '8px'
                                         }}
-                                        startIcon={<Delete />}
+                                        startIcon={<DeleteIcon />}
                                     >
                                         Clear All ({count})
                                     </Button>

@@ -248,6 +248,7 @@ export const DialogProvider = ({ children }) => {
             <img
               src="/assets/memeSRC-white.svg"
               alt="memeSRC logo"
+              loading="lazy"
               style={{ height: isCompact ? 24 : 36 }}
             />
             <Typography fontSize={isCompact ? 22 : 28} fontWeight={700}>

@@ -1,7 +1,8 @@
 import PropTypes from 'prop-types';
 import { useContext, useState } from 'react';
 import { Box, Chip, Divider, Fab, Popover, Stack, Typography, useTheme } from '@mui/material';
-import { AutoFixHighRounded, Close } from '@mui/icons-material';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import CloseIcon from '@mui/icons-material/Close';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
@@ -66,7 +67,7 @@ export default function MagicPopup({ children }) {
                         },
                     }}
                 >
-                    <Close />
+                    <CloseIcon />
                 </Fab>
                 <Box
                     m={3}
@@ -80,7 +81,7 @@ export default function MagicPopup({ children }) {
                         <>
                             <Stack justifyContent="center" spacing={3}>
                                 <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
-                                    <AutoFixHighRounded fontSize="large" />
+                                    <AutoFixHighRoundedIcon fontSize="large" />
                                     <Typography variant="h3">Magic Tools</Typography>
                                 </Stack>
 
@@ -138,7 +139,7 @@ export default function MagicPopup({ children }) {
                     {user?.userDetails?.magicSubscription === 'true' && (
                         <Stack justifyContent="center" spacing={3}>
                             <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
-                                <AutoFixHighRounded fontSize="large" />
+                                <AutoFixHighRoundedIcon fontSize="large" />
                                 <Typography variant="h3">Magic Tools</Typography>
                             </Stack>
 
@@ -217,7 +218,7 @@ export default function MagicPopup({ children }) {
                     {/* {(!user?.userDetails?.earlyAccessStatus || user?.userDetails?.earlyAccessStatus === 'requested') && (
                         <Stack justifyContent="center" spacing={3}>
                             <Stack direction="row" color="#54d62c" alignItems="center" justifyContent="left" spacing={1}>
-                                <AutoFixHighRounded fontSize="large" />
+                                <AutoFixHighRoundedIcon fontSize="large" />
                                 <Typography variant="h3">Magic Tools</Typography>
                             </Stack>
 

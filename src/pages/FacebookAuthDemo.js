@@ -164,6 +164,7 @@ export default function FacebookAuthDemo() {
                         <img
                           src={profileInfo.picture.data.url}
                           alt="Profile"
+                          loading="lazy"
                           style={{ width: '100px', height: '100px', borderRadius: '50%', marginBottom: '16px' }}
                         />
                       )}

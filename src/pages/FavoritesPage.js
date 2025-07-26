@@ -177,6 +177,7 @@ const FavoritesPage = () => {
             <img
               src="/assets/memeSRC-white.svg"
               alt="memeSRC logo"
+              loading="lazy"
               style={{ height: 48, marginBottom: -15 }}
             />
             <Typography variant="h3" textAlign="center">

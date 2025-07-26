@@ -30,11 +30,16 @@ export default function SearchPage({ metadata }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Make sure API functions are warm
-    API.get('publicapi', '/search', { queryStringParameters: { warmup: true } })
-    API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
-    // Prep sessionID for future use
-    prepSessionID()
+    const warmup = () => {
+      API.get('publicapi', '/search', { queryStringParameters: { warmup: true } })
+      API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
+      prepSessionID()
+    }
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(warmup)
+    } else {
+      setTimeout(warmup, 1000)
+    }
   }, [])
 
   const handleSearch = useCallback((e) => {

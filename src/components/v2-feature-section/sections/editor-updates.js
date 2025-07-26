@@ -1,6 +1,10 @@
 import PropTypes from 'prop-types';
 import { Container, Box, Typography, useMediaQuery } from '@mui/material';
-import { PhotoAlbum, OpenWith, Layers, FormatShapes, AutoFixHighRounded } from '@mui/icons-material';
+import PhotoAlbumIcon from '@mui/icons-material/PhotoAlbum';
+import OpenWithIcon from '@mui/icons-material/OpenWith';
+import LayersIcon from '@mui/icons-material/Layers';
+import FormatShapesIcon from '@mui/icons-material/FormatShapes';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
 
 export default function EditorUpdates({ backgroundColor, textColor, large }) {
     const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
@@ -53,7 +57,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <PhotoAlbum sx={{ color: backgroundColor }} />
+                        <PhotoAlbumIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Edit your own pictures
@@ -72,7 +76,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <OpenWith sx={{ color: backgroundColor }} />
+                        <OpenWithIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Freeform Placement
@@ -91,7 +95,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <Layers sx={{ color: backgroundColor }} />
+                        <LayersIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Layers
@@ -110,7 +114,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <FormatShapes sx={{ color: backgroundColor }} />
+                        <FormatShapesIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Formatting
@@ -129,7 +133,7 @@ export default function EditorUpdates({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <AutoFixHighRounded sx={{ color: backgroundColor }} />
+                        <AutoFixHighRoundedIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Magic Tools

@@ -211,6 +211,7 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
                 <img
                   src={imageUrl}
                   alt="Generated Collage"
+                  loading="lazy"
                   style={{
                     maxWidth: '100%',
                     maxHeight: '100%',

@@ -1,6 +1,10 @@
 import PropTypes from 'prop-types';
 import { Container, Box, Typography, useMediaQuery } from '@mui/material';
-import { HowToVote, Upload, Science, GitHub, Update } from '@mui/icons-material';
+import HowToVoteIcon from '@mui/icons-material/HowToVote';
+import UploadIcon from '@mui/icons-material/Upload';
+import ScienceIcon from '@mui/icons-material/Science';
+import GitHubIcon from '@mui/icons-material/GitHub';
+import UpdateIcon from '@mui/icons-material/Update';
 
 export default function PlatformUpdates({ backgroundColor, textColor, large }) {
     const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
@@ -53,7 +57,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <HowToVote sx={{ color: backgroundColor }} />
+                        <HowToVoteIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Voting
@@ -72,7 +76,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <Upload sx={{ color: backgroundColor }} />
+                        <UploadIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Index Uploads
@@ -91,7 +95,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <Science sx={{ color: backgroundColor }} />
+                        <ScienceIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Early Access
@@ -111,7 +115,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                             aspectRatio: '1/1'
                         }}
                     >
-                        <GitHub sx={{ color: backgroundColor }} />
+                        <GitHubIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Open Source
@@ -131,7 +135,7 @@ export default function PlatformUpdates({ backgroundColor, textColor, large }) {
                             aspectRatio: '1/1'
                         }}
                     >
-                        <Update sx={{ color: backgroundColor }} />
+                        <UpdateIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Faster, more resilient, and easier to build upon

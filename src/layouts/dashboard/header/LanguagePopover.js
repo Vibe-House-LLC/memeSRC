@@ -49,7 +49,7 @@ export default function LanguagePopover() {
           }),
         }}
       >
-        <img src={LANGS[0].icon} alt={LANGS[0].label} />
+        <img src={LANGS[0].icon} alt={LANGS[0].label} loading="lazy" />
       </IconButton>
 
       <Popover

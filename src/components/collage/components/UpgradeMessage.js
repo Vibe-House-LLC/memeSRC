@@ -310,10 +310,11 @@ const UpgradeMessage = ({
                   Early Access
                 </Box>
                 
-                <img 
-                  src={previewImage} 
-                  alt={`${featureName} Preview`} 
-                  style={{ 
+                <img
+                  src={previewImage}
+                  alt={`${featureName} Preview`}
+                  loading="lazy"
+                  style={{
                     width: '100%', 
                     height: 'auto',
                     display: 'block',
@@ -405,6 +406,7 @@ const UpgradeMessage = ({
                     <img
                       src="/assets/memeSRC-white.svg"
                       alt="memeSRC logo"
+                      loading="lazy"
                       style={{ height: isStacked ? 44 : 48 }}
                     />
                     <Box 

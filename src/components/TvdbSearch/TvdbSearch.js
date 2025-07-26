@@ -239,6 +239,7 @@ export default function TvdbSearch({ onSelect = () => {}, onClear = () => {}, ty
                                                 <img
                                                     src={option.fullResult.image_url}
                                                     alt={option.label}
+                                                    loading="lazy"
                                                     style={{ height: '100px', marginRight: '10px' }}
                                                 />
                                                 <div style={{ paddingLeft: 8 }}>

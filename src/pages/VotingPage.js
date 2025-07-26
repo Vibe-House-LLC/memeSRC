@@ -1440,6 +1440,7 @@ export default function VotingPage() {
                                       <img
                                         src={show.image || 'path/to/placeholder-image.jpg'}
                                         alt={show.name}
+                                        loading="lazy"
                                         style={{
                                           ...showImageStyle,
                                           display: loadedImages[show.id] ? 'block' : 'none',

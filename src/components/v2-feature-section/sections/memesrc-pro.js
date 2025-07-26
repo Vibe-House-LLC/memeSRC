@@ -1,6 +1,9 @@
 import PropTypes from 'prop-types';
 import { Container, Box, Typography, useMediaQuery } from '@mui/material';
-import { Bolt, SupportAgent, AutoFixHighRounded, Check } from '@mui/icons-material';
+import BoltIcon from '@mui/icons-material/Bolt';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import CheckIcon from '@mui/icons-material/Check';
 
 export default function MemeSrcPro({ backgroundColor, textColor, large }) {
     const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))
@@ -52,7 +55,7 @@ export default function MemeSrcPro({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <Check sx={{ color: backgroundColor }} />
+                        <CheckIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         No Ads
@@ -71,7 +74,7 @@ export default function MemeSrcPro({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <SupportAgent sx={{ color: backgroundColor }} />
+                        <SupportAgentIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Pro Support
@@ -90,7 +93,7 @@ export default function MemeSrcPro({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <Bolt sx={{ color: backgroundColor }} />
+                        <BoltIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Early Access Features
@@ -109,7 +112,7 @@ export default function MemeSrcPro({ backgroundColor, textColor, large }) {
                             mr: 2,
                         }}
                     >
-                        <AutoFixHighRounded sx={{ color: backgroundColor }} />
+                        <AutoFixHighRoundedIcon sx={{ color: backgroundColor }} />
                     </Box>
                     <Typography fontSize={18} fontWeight={500} sx={{ color: textColor }}>
                         Magic Tools

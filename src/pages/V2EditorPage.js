@@ -292,7 +292,14 @@ const EditorPage = ({ shows }) => {
 
   // Warm up the UUID function for faster save dialog response
   useEffect(() => {
-    API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    const warmup = () => {
+      API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    }
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(warmup)
+    } else {
+      setTimeout(warmup, 1000)
+    }
   }, [])
 
   useEffect(() => {
@@ -2334,6 +2341,7 @@ const EditorPage = ({ shows }) => {
                     src={`https://i${process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
                       }.memesrc.com/${generatedImageFilename}`}
                     alt="generated meme"
+                    loading="lazy"
                   />
                 )}
                 {imageUploading && (
@@ -2460,6 +2468,7 @@ const EditorPage = ({ shows }) => {
                   <img
                     src={image}
                     alt="placeholder"
+                    loading="lazy"
                     style={{
                       width: '100%',
                       aspectRatio: `${editorAspectRatio}/1`,
