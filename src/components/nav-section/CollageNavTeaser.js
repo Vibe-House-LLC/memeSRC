@@ -14,30 +14,7 @@ import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import { UserContext } from '../../UserContext';
 import { StyledNavItem, StyledNavItemIcon } from './styles';
-
-// Utility function to hash username for localStorage (same as in CollagePageLegacy)
-const hashString = (str) => {
-  let hash = 0;
-  if (str.length === 0) return hash;
-  for (let i = 0; i < str.length; i += 1) {
-    const char = str.charCodeAt(i);
-    hash = ((hash * 33) - hash) + char;
-    hash = Math.imul(hash, 1); // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString();
-};
-
-// Utility functions for localStorage preference management (same as in CollagePageLegacy)
-const getCollagePreferenceKey = (user) => {
-  if (!user?.userDetails?.email) return 'memeSRC-collage-preference-anonymous';
-  const hashedUsername = hashString(user.userDetails.email);
-  return `memeSRC-collage-preference-${hashedUsername}`;
-};
-
-const getCollagePreference = (user) => {
-  const key = getCollagePreferenceKey(user);
-  return localStorage.getItem(key) || 'new'; // Default to new version
-};
+import { getCollagePreference } from '../../features/collage/utils/preferences';
 
 const StyledCollageNavItem = styled(ListItemButton)(({ theme, isActive }) => ({
   ...theme.typography.body2,

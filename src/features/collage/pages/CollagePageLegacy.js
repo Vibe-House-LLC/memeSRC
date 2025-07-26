@@ -34,33 +34,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LoadingButton } from "@mui/lab";
 import { useTheme } from "@mui/material/styles";
 import { API } from 'aws-amplify';
-import BasePage from "./BasePage";
-import { UserContext } from "../UserContext";
-import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
-
-// Utility function to hash username for localStorage (same as in CollagePage)
-const hashString = (str) => {
-  let hash = 0;
-  if (str.length === 0) return hash;
-  for (let i = 0; i < str.length; i += 1) {
-    const char = str.charCodeAt(i);
-    hash = ((hash * 33) - hash) + char;
-    hash = Math.imul(hash, 1); // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString();
-};
-
-// Utility functions for localStorage preference management (same as in CollagePage)
-const getCollagePreferenceKey = (user) => {
-  if (!user?.userDetails?.email) return 'memeSRC-collage-preference-anonymous';
-  const hashedUsername = hashString(user.userDetails.email);
-  return `memeSRC-collage-preference-${hashedUsername}`;
-};
-
-const setCollagePreference = (user, preference) => {
-  const key = getCollagePreferenceKey(user);
-  localStorage.setItem(key, preference);
-};
+import BasePage from "../../../pages/BasePage";
+import { UserContext } from "../../../UserContext";
+import { useSubscribeDialog } from "../../../contexts/useSubscribeDialog";
+import { hashString, setCollagePreference } from "../utils/preferences";
 
 // Utility functions for managing banner dismiss timestamp
 const getBannerDismissKey = (user) => {
