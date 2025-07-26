@@ -4,6 +4,7 @@ import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon } from "@mui/
 import { useTheme } from "@mui/material/styles";
 import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
 import { getBorderPixelSize, createLayoutConfig, detectBorderZones, parseGridToRects } from '../../../utils/collageLayout';
+import { wrapText } from '../../../utils/wrapText';
 import CaptionEditor from './CaptionEditor';
 
 
@@ -549,83 +550,8 @@ const CanvasCollagePreview = ({
           // Use actual text or placeholder text
           const displayText = hasActualText ? panelText.content : 'Add Caption';
           
-          // Helper function to wrap text with aggressive character-level fallback
-          const wrapText = (text, maxWidth) => {
-            const lines = [];
-            const manualLines = text.split('\n'); // Handle manual line breaks first
-            
-            manualLines.forEach(line => {
-              if (ctx.measureText(line).width <= maxWidth) {
-                // Line fits within width
-                lines.push(line);
-              } else {
-                // Line needs to be wrapped
-                const words = line.split(' ');
-                let currentLine = '';
-                
-                words.forEach(word => {
-                  const testLine = currentLine ? `${currentLine} ${word}` : word;
-                  const testWidth = ctx.measureText(testLine).width;
-                  
-                  if (testWidth <= maxWidth) {
-                    currentLine = testLine;
-                  } else if (currentLine) {
-                    // Current line is full, start a new line
-                    lines.push(currentLine);
-                    currentLine = word;
-                    
-                    // Check if the single word is still too long
-                    if (ctx.measureText(word).width > maxWidth) {
-                      // Break the word character by character
-                      let charLine = '';
-                      for (let i = 0; i < word.length; i += 1) {
-                        const testChar = charLine + word[i];
-                        if (ctx.measureText(testChar).width <= maxWidth) {
-                          charLine = testChar;
-                        } else {
-                          if (charLine) {
-                            lines.push(charLine);
-                          }
-                          charLine = word[i];
-                        }
-                      }
-                      if (charLine) {
-                        lines.push(charLine);
-                      }
-                      currentLine = '';
-                    }
-                  } else {
-                    // Single word is too long, break it character by character
-                    let charLine = '';
-                    for (let i = 0; i < word.length; i += 1) {
-                      const testChar = charLine + word[i];
-                      if (ctx.measureText(testChar).width <= maxWidth) {
-                        charLine = testChar;
-                      } else {
-                        if (charLine) {
-                          lines.push(charLine);
-                        }
-                        charLine = word[i];
-                      }
-                    }
-                    if (charLine) {
-                      lines.push(charLine);
-                    }
-                  }
-                });
-                
-                // Add the last line if it has content
-                if (currentLine) {
-                  lines.push(currentLine);
-                }
-              }
-            });
-            
-            return lines;
-          };
-          
           // Get wrapped lines
-          const wrappedLines = wrapText(displayText, maxTextWidth);
+          const wrappedLines = wrapText(ctx, displayText, maxTextWidth);
           
           // Calculate text block positioning with proper anchoring
           const totalTextHeight = wrappedLines.length * lineHeight;
@@ -738,83 +664,8 @@ const CanvasCollagePreview = ({
     const fontFamily = panelText?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
     tempCtx.font = `${fontStyle} ${fontWeight} ${scaledFontSize}px ${fontFamily}`;
     
-    // Helper function to wrap text with the same logic as drawCanvas
-    const wrapText = (text, maxWidth) => {
-      const lines = [];
-      const manualLines = text.split('\n'); // Handle manual line breaks first
-      
-      manualLines.forEach(line => {
-        if (tempCtx.measureText(line).width <= maxWidth) {
-          // Line fits within width
-          lines.push(line);
-        } else {
-          // Line needs to be wrapped
-          const words = line.split(' ');
-          let currentLine = '';
-          
-          words.forEach(word => {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const testWidth = tempCtx.measureText(testLine).width;
-            
-            if (testWidth <= maxWidth) {
-              currentLine = testLine;
-            } else if (currentLine) {
-              // Current line is full, start a new line
-              lines.push(currentLine);
-              currentLine = word;
-              
-              // Check if the single word is still too long
-              if (tempCtx.measureText(word).width > maxWidth) {
-                // Break the word character by character
-                let charLine = '';
-                for (let i = 0; i < word.length; i += 1) {
-                  const testChar = charLine + word[i];
-                  if (tempCtx.measureText(testChar).width <= maxWidth) {
-                    charLine = testChar;
-                  } else {
-                    if (charLine) {
-                      lines.push(charLine);
-                    }
-                    charLine = word[i];
-                  }
-                }
-                if (charLine) {
-                  lines.push(charLine);
-                }
-                currentLine = '';
-              }
-            } else {
-              // Single word is too long, break it character by character
-              let charLine = '';
-              for (let i = 0; i < word.length; i += 1) {
-                const testChar = charLine + word[i];
-                if (tempCtx.measureText(testChar).width <= maxWidth) {
-                  charLine = testChar;
-                } else {
-                  if (charLine) {
-                    lines.push(charLine);
-                  }
-                  charLine = word[i];
-                }
-              }
-              if (charLine) {
-                lines.push(charLine);
-              }
-            }
-          });
-          
-          // Add the last line if it has content
-          if (currentLine) {
-            lines.push(currentLine);
-          }
-        }
-      });
-      
-      return lines;
-    };
-    
     // Get wrapped lines using accurate measurement
-    const wrappedLines = wrapText(displayText, maxTextWidth);
+    const wrappedLines = wrapText(tempCtx, displayText, maxTextWidth);
     const actualLines = wrappedLines.length;
     
     // Calculate actual text width from the wrapped lines
@@ -2308,83 +2159,8 @@ const CanvasCollagePreview = ({
             
             const lineHeight = fontSize * 1.2;
             
-            // Use the same text wrapping logic as the preview to ensure consistency
-            const wrapText = (text, maxWidth) => {
-              const lines = [];
-              const manualLines = text.split('\n'); // Handle manual line breaks first
-              
-              manualLines.forEach(line => {
-                if (exportCtx.measureText(line).width <= maxWidth) {
-                  // Line fits within width
-                  lines.push(line);
-                } else {
-                  // Line needs to be wrapped
-                  const words = line.split(' ');
-                  let currentLine = '';
-                  
-                  words.forEach(word => {
-                    const testLine = currentLine ? `${currentLine} ${word}` : word;
-                    const testWidth = exportCtx.measureText(testLine).width;
-                    
-                    if (testWidth <= maxWidth) {
-                      currentLine = testLine;
-                    } else if (currentLine) {
-                      // Current line is full, start a new line
-                      lines.push(currentLine);
-                      currentLine = word;
-                      
-                      // Check if the single word is still too long
-                      if (exportCtx.measureText(word).width > maxWidth) {
-                        // Break the word character by character
-                        let charLine = '';
-                        for (let i = 0; i < word.length; i += 1) {
-                          const testChar = charLine + word[i];
-                          if (exportCtx.measureText(testChar).width <= maxWidth) {
-                            charLine = testChar;
-                          } else {
-                            if (charLine) {
-                              lines.push(charLine);
-                            }
-                            charLine = word[i];
-                          }
-                        }
-                        if (charLine) {
-                          lines.push(charLine);
-                        }
-                        currentLine = '';
-                      }
-                    } else {
-                      // Single word is too long, break it character by character
-                      let charLine = '';
-                      for (let i = 0; i < word.length; i += 1) {
-                        const testChar = charLine + word[i];
-                        if (exportCtx.measureText(testChar).width <= maxWidth) {
-                          charLine = testChar;
-                        } else {
-                          if (charLine) {
-                            lines.push(charLine);
-                          }
-                          charLine = word[i];
-                        }
-                      }
-                      if (charLine) {
-                        lines.push(charLine);
-                      }
-                    }
-                  });
-                  
-                  // Add the last line if it has content
-                  if (currentLine) {
-                    lines.push(currentLine);
-                  }
-                }
-              });
-              
-              return lines;
-            };
-            
             // Get wrapped lines using the same logic as preview
-            const lines = wrapText(panelText.content, maxTextWidth);
+            const lines = wrapText(exportCtx, panelText.content, maxTextWidth);
             
             // Calculate text block positioning with proper anchoring (same as drawCanvas)
             const totalTextHeight = lines.length * lineHeight;
