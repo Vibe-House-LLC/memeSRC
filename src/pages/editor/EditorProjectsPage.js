@@ -3,8 +3,8 @@ import { Container, ImageList, ImageListItem, Button } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
-import BasePage from './BasePage';
-import { listEditorProjects } from '../graphql/queries';
+import BasePage from '../BasePage';
+import { listEditorProjects } from '../../graphql/queries';
 
 export default function EditorProjectsPage() {
   const [projects, setProjects] = useState([]);

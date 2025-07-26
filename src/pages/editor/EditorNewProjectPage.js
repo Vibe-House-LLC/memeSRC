@@ -4,7 +4,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
-import BasePage from './BasePage';
+import BasePage from '../BasePage';
 
 export default function EditorNewProjectPage() {
   const navigate = useNavigate();

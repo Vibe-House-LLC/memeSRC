@@ -38,20 +38,11 @@ import {
   RotateLeft,
   Restore
 } from '@mui/icons-material';
+import { TEXT_COLOR_PRESETS } from "../../../constants/collage";
+import { isDarkColor } from "../../../utils/colorUtils";
 import fonts from '../../../utils/fonts';
 
 // Color presets for text colors
-const TEXT_COLOR_PRESETS = [
-  { color: '#ffffff', name: 'White' },
-  { color: '#000000', name: 'Black' },
-  { color: '#ff0000', name: 'Red' },
-  { color: '#00ff00', name: 'Green' },
-  { color: '#0000ff', name: 'Blue' },
-  { color: '#ffff00', name: 'Yellow' },
-  { color: '#ff00ff', name: 'Magenta' },
-  { color: '#00ffff', name: 'Cyan' },
-];
-
 // Horizontal scrollable container for horizontal scrolling sections
 const HorizontalScroller = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -194,19 +185,6 @@ const ColorSwatch = styled(Box)(({ theme, selected, size = 'medium' }) => {
   };
 });
 
-// Helper function to determine if a color is dark (for contrast)
-const isDarkColor = (hexColor) => {
-  // Convert hex to RGB
-  const r = parseInt(hexColor.substr(1, 2), 16);
-  const g = parseInt(hexColor.substr(3, 2), 16);
-  const b = parseInt(hexColor.substr(5, 2), 16);
-  
-  // Calculate brightness (YIQ formula)
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  
-  // Return true if color is dark
-  return brightness < 128;
-};
 
 const CaptionEditor = ({
   panelId,
