@@ -30,7 +30,17 @@ export const useAdsenseLoader = () => {
     };
 
     if ('requestIdleCallback' in window) {
-      return requestIdleCallback(loadAds);
+      let cleanup;
+      const idleId = requestIdleCallback(() => {
+        cleanup = loadAds();
+      });
+      
+      return () => {
+        cancelIdleCallback(idleId);
+        if (cleanup) {
+          cleanup();
+        }
+      };
     }
 
     return loadAds();
