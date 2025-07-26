@@ -8,6 +8,7 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import reportWebVitals from './reportWebVitals';
 import './global.css';
+import 'simplebar-react/dist/simplebar.min.css';
 
 // Define a function to replace default exports with custom api domains
 const replaceEndpoints = (arr, dict) => arr.map(obj => {
