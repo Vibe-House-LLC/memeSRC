@@ -1,79 +1,52 @@
-import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
+// V2EditorPage.js
+/* eslint-disable no-unused-vars, func-names */
+
+import { Fragment, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import PropTypes from 'prop-types';
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { styled } from '@mui/material/styles';
-import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
-import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
-import PropTypes from 'prop-types';
-import TextEditorControls from '../components/TextEditorControls';
-import { SnackbarContext } from '../SnackbarContext';
-import { UserContext } from '../UserContext';
-import { MagicPopupContext } from '../MagicPopupContext';
-import useSearchDetails from '../hooks/useSearchDetails';
-import getFrame from '../utils/frameHandler';
-import LoadingBackdrop from '../components/LoadingBackdrop';
-import ImageEditorControls from '../components/ImageEditorControls';
-import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
+import TextEditorControls from '../../components/TextEditorControls';
+import { SnackbarContext } from '../../SnackbarContext';
+import { UserContext } from '../../UserContext';
+import { MagicPopupContext } from '../../MagicPopupContext';
+import useSearchDetails from '../../hooks/useSearchDetails';
+import getFrame from '../../utils/frameHandler';
+import LoadingBackdrop from '../../components/LoadingBackdrop';
+import ImageEditorControls from '../../components/ImageEditorControls';
+import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
+import EditorPageBottomBannerAd from '../../ads/EditorPageBottomBannerAd';
 
-const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
+import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../../utils/frameHandlerV2';
+import getV2Metadata from '../../utils/getV2Metadata';
+import HomePageBannerAd from '../../ads/HomePageBannerAd';
 
-const ParentContainer = styled('div')`
-    height: 100%;
-`;
+import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from '../../utils/editorFunctions';
+import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 
-const ColorPickerPopover = styled('div')({
-})
-
-const oImgBuild = path =>
-  new Promise(resolve => {
-    fabric.Image.fromURL(`https://memesrc.com${path}`, (oImg) => {
-      resolve(oImg);
-    }, { crossOrigin: "anonymous" });
-  });
-
-const loadImg = (paths, func) => Promise.all(paths.map(func));
-
-const StyledCard = styled(Card)`
-  
-  border: 3px solid transparent;
-  box-sizing: border-box;
-
-  &:hover {
-    border: 3px solid orange;
-  }
-`;
-
-const StyledLayerControlCard = styled(Card)`
-  width: 280px;
-  border: 3px solid transparent;
-  box-sizing: border-box;
-  padding: 10px 15px;
-`;
-
-const StyledCardMedia = styled('img')`
-  width: 100%;
-  height: auto;
-  background-color: black;
-`;
+import { Alert, ParentContainer, ColorPickerPopover, StyledCard, StyledLayerControlCard, StyledCardMedia } from './styles';
+import { oImgBuild, loadImg, downloadDataURL, checkMagicResult } from '../../utils/editorHelpers';
 
 
 
-const EditorPage = ({ setSeriesTitle, shows }) => {
+const EditorPage = ({ shows }) => {
   const searchDetails = useSearchDetails();
   const [hasFabricPaths, setHasFabricPaths] = useState(false);
   const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
   const [selectedNavItemFid, setSelectedNavItemFid] = useState(null);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get('searchTerm');
 
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
-  const { fid, editorProjectId } = useParams();
+  const { fid, editorProjectId, fineTuningIndex, searchTerms } = useParams();
   const { user, setUser } = useContext(UserContext);
   const [defaultFrame, setDefaultFrame] = useState(null);
   const [pickingColor, setPickingColor] = useState(false);
@@ -85,11 +58,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   });
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [canvasObjects, setCanvasObjects] = useState();
-  const [surroundingFrames, setSurroundingFrames] = useState();
+  const [surroundingFrames, setSurroundingFrames] = useState([]);
   const [selectedFid, setSelectedFid] = useState(fid);
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
-  const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
+  const [colorPickerAnchorEl, setColorPickerAnchorEl] = useState(null);
   const [colorPickerColor, setColorPickerColor] = useState({
     r: '0',
     g: '0',
@@ -100,12 +73,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [fontSizePickerAnchor, setFontSizePickerAnchor] = useState(null);
   const [selectedFontSize, setSelectedFontSize] = useState(100);
 
+  const [currentColorType, setCurrentColorType] = useState('text');
+
   const [editorAspectRatio, setEditorAspectRatio] = useState(1);
 
   const [loading, setLoading] = useState(true)
 
   const [fineTuningValue, setFineTuningValue] = useState(searchDetails.fineTuningFrame || 4);
-  const [episodeDetails, setEpisodeDetails] = useState();
   const [openDialog, setOpenDialog] = useState(false);
   const [imageUploading, setImageUploading] = useState();
   const [imageBlob, setImageBlob] = useState();
@@ -124,9 +98,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [showBrushSize, setShowBrushSize] = useState(false);
   const [editorLoaded, setEditorLoaded] = useState(false);
   const [editorStates, setEditorStates] = useState([]);
+  const [canvasSizes, setCanvasSizes] = useState([]);
   const [futureStates, setFutureStates] = useState([]);
+  const [futureCanvasSizes, setFutureCanvasSizes] = useState([]);
   const [bgEditorStates, setBgEditorStates] = useState([]);
   const [bgFutureStates, setBgFutureStates] = useState([]);
+  const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
   // const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
 
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
@@ -165,14 +142,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setFineTuningValue(searchDetails.fineTuningFrame);
   }, [searchDetails])
 
-  useEffect(() => {
-    if (shows?.length > 0) {
-      // console.log(loadedSeriesTitle);
-      setSeriesTitle(loadedSeriesTitle);
-    }
-  }, [shows, loadedSeriesTitle])
-
-  const { editor, onReady } = useFabricJSEditor()
+  const { selectedObjects, editor, onReady } = useFabricJSEditor()
 
   const StyledTwitterPicker = styled(TwitterPicker)`
     span div {
@@ -184,15 +154,70 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // console.log(`uploadedImage: ${location.state?.uploadedImage}`)
+  const saveCollageImage = () => {
+    const resultImage = editor.canvas.toDataURL({
+      format: 'jpeg',
+      quality: 1,
+      multiplier: imageScale || 1
+    });
+
+    fetch(resultImage)
+      .then(res => res.blob())
+      .then(blob => {
+        console.log('Location state:', location.state);
+
+        if (!location.state || !location.state.collageState) {
+          console.error('Collage state is missing');
+          return;
+        }
+
+        const { collageState } = location.state;
+        console.log('Collage state:', collageState);
+
+        if (!Array.isArray(collageState.images) || typeof collageState.editingImageIndex !== 'number') {
+          console.error('Invalid collage state structure');
+          return;
+        }
+
+        const updatedImages = [...collageState.images];
+        updatedImages[collageState.editingImageIndex] = {
+          ...updatedImages[collageState.editingImageIndex],
+          src: URL.createObjectURL(blob),
+          width: editor.canvas.width,
+          height: editor.canvas.height,
+        };
+
+        const updatedCollageState = {
+          ...collageState,
+          images: updatedImages,
+          editingImageIndex: null,
+        };
+
+        navigate('/collage', { state: { updatedCollageState } });
+      })
+      .catch(error => {
+        console.error('Error in saveCollageImage:', error);
+      });
+  };
 
   const handleClickDialogOpen = () => {
-    setOpenDialog(true);
-    saveImage();
+    if (location.state?.collageState) {
+      saveCollageImage();
+    } else {
+      setOpenDialog(true);
+      saveImage();
+    }
   };
 
   const handleDialogClose = () => {
     setOpenDialog(false);
+  };
+
+  const handleAlignment = (index, alignment) => {
+    const textObject = editor.canvas.item(index);
+    textObject.set({ textAlign: alignment });
+    editor?.canvas.renderAll();
+    addToHistory();
   };
 
   // Canvas resizing
@@ -244,6 +269,22 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [updateEditorSize, imageLoaded])
 
+  const getSessionID = async () => {
+    let sessionID;
+    if ("sessionID" in sessionStorage) {
+      sessionID = sessionStorage.getItem("sessionID");
+      return Promise.resolve(sessionID);
+    }
+    return API.get('publicapi', '/uuid')
+      .then(generatedSessionID => {
+        sessionStorage.setItem("sessionID", generatedSessionID);
+        return generatedSessionID;
+      })
+      .catch(err => {
+        // console.log(`UUID Gen Fetch Error:  ${err}`);
+        throw err;
+      });
+  };
 
   const addText = useCallback((updatedText, append) => {
     const text = new fabric.Textbox(updatedText, {
@@ -253,7 +294,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       width: editor?.canvas.getWidth() * 0.9,
       fontSize: editor?.canvas.getWidth() * 0.04,
       fontFamily: 'sans-serif',
-      fontWeight: 900,
+      fontWeight: 400,
       fill: 'white',
       stroke: 'black',
       strokeLineJoin: 'round',
@@ -277,54 +318,129 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       }
       addToHistory();
     }
-  }, [editor]);
+  }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Function to handle image uploads and add them to the canvas
+  const addImageLayer = (imageFile) => {
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      const imgObj = new Image();
+      imgObj.src = event.target.result;
+      imgObj.onload = function () {
+        const image = new fabric.Image(imgObj);
 
+        // Calculate the scale to fit the image within the canvas, maintaining the aspect ratio
+        const canvasWidth = editor.canvas.getWidth();
+        const canvasHeight = editor.canvas.getHeight();
+        const paddingFactor = 0.9;
+        const scale = Math.min(canvasWidth / imgObj.width, canvasHeight / imgObj.height) * paddingFactor;
 
+        // Set the image properties, including the scale
+        image.set({
+          angle: 0,
+          scaleX: scale,
+          scaleY: scale,
+          originX: 'center',
+          originY: 'center',
+          left: canvasWidth / 2,
+          top: canvasHeight / 2
+        });
 
+        // Add the image to the canvas and set it as the active object
+        editor.canvas.add(image);
+        editor.canvas.setActiveObject(image);
 
+        // Update the image object and canvas state
+        image.setCoords();
+        editor.canvas.renderAll();
 
+        // Create a new canvas object for the image
+        const imageObject = {
+          type: 'image',
+          src: event.target.result,
+          scale,
+          angle: 0,
+          left: canvasWidth / 2,
+          top: canvasHeight / 2
+        };
 
+        // Update the canvasObjects state with the new image object
+        setCanvasObjects(prevObjects => [...prevObjects, imageObject]);
+        addToHistory();
+      };
+    };
+    reader.readAsDataURL(imageFile);
+  };
+
+  const fileInputRef = useRef(null); // Define the ref
+
+  const handleDeleteLayer = (index) => {
+    deleteLayer(editor.canvas, index, setLayerFonts, setCanvasObjects);
+    addToHistory();
+  };
 
   const loadEditorDefaults = useCallback(async () => {
     setLoading(true);
     // Check if the uploadedImage exists in the location state
     const uploadedImage = location.state?.uploadedImage;
+    const fromCollage = location.state?.fromCollage;
 
-    if (uploadedImage && !defaultFrame) {
-      // Use the uploadedImage as the background instead of the default image
+    if (uploadedImage) {
       fabric.Image.fromURL(uploadedImage, (oImg) => {
         setDefaultFrame(oImg);
-        // You can set a default subtitle or any other properties here if needed
-        setLoadedSeriesTitle("");
-        setSurroundingFrames([]);
-        setEpisodeDetails([])
-        setDefaultSubtitle(false)
+
+        // Set the canvas size based on the image aspect ratio
+        const imageAspectRatio = oImg.width / oImg.height;
+        setEditorAspectRatio(imageAspectRatio);
+        const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+        setCanvasSize({ height: desiredHeight, width: desiredWidth });
+
+        // Scale the image to fit the canvas
+        oImg.scale(desiredWidth / oImg.width);
+
+        // Center the image within the canvas
+        oImg.set({ left: 0, top: 0 });
+        const minWidth = 750;
+        const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+        setImageScale(x / desiredWidth);
+        resizeCanvas(desiredWidth, desiredHeight);
+
+        editor?.canvas.setBackgroundImage(oImg);
+        setImageLoaded(true);
+
+        // Rendering the canvas after applying all changes
+        editor.canvas.renderAll();
         setLoading(false);
+
+        // If it's from the collage page, set some default states
+        if (fromCollage) {
+          setLoadedSeriesTitle("");
+          setSurroundingFrames([]);
+          setDefaultSubtitle(false);
+        }
       }, { crossOrigin: 'anonymous' });
     } else if (editorProjectId) {
       try {
         // Generate the file name/path based on the editorProjectId
         const fileName = `projects/${editorProjectId}.json`;
-
+  
         // Fetch the serialized canvas state from S3 under the user's protected folder
         const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
-
+  
         if (serializedCanvas) {
           // Fetch the actual content from S3. 
           // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
           const response = await fetch(serializedCanvas);
           const canvasStateJSON = await response.json();
-
+  
           editor?.canvas.loadFromJSON(canvasStateJSON, () => {
             const oImg = editor.canvas.backgroundImage;
             const imageAspectRatio = oImg.width / oImg.height;
             setEditorAspectRatio(imageAspectRatio);
             const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
             setCanvasSize({ height: desiredHeight, width: desiredWidth });
-
+  
             // Scale the image to fit the canvas
             const scale = desiredWidth / oImg.width;
             oImg.scale(desiredWidth / oImg.width);
@@ -333,21 +449,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               obj.top *= scale;
               obj.scaleY *= scale;
               obj.scaleX *= scale;
-            })
-
+            });
+  
             // Center the image within the canvas
             oImg.set({ left: 0, top: 0 });
             const minWidth = 750;
             const x = (oImg.width > minWidth) ? oImg.width : minWidth;
             setImageScale(x / desiredWidth);
             resizeCanvas(desiredWidth, desiredHeight);
-
+  
             editor?.canvas.setBackgroundImage(oImg);
             if (defaultSubtitle) {
-              addText(defaultSubtitle)
+              addText(defaultSubtitle);
             }
             setImageLoaded(true);
-
+  
             // Rendering the canvas after applying all changes
             editor.canvas.renderAll();
           });
@@ -361,17 +477,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       getFrame(selectedFid)
         .then((data) => {
           setLoadedSeriesTitle(data.series_name);
-          setSurroundingFrames(data.frames_surrounding);
-          const episodeDetails = selectedFid.split('-');
-          setEpisodeDetails(episodeDetails);
+          // loadSurroundingFrames();
+          // setSurroundingFrames(data.frames_surrounding);
           // Pre load fine tuning frames
           loadImg(data.frames_fine_tuning, oImgBuild).then((images) => {
             setFineTuningFrames(images);
           });
           // Background image from the given URL
           fabric.Image.fromURL(
-            `https://memesrc.com${(typeof searchDetails.fineTuningFrame === 'number') ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image
-            }`,
+            `https://memesrc.com${(typeof searchDetails.fineTuningFrame === 'number') ? data.frames_fine_tuning[searchDetails.fineTuningFrame] : data.frame_image}`,
             (oImg) => {
               setDefaultFrame(oImg);
               setDefaultSubtitle(data.subtitle);
@@ -382,60 +496,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         })
         .catch((err) => console.log(err));
     }
-  }, [resizeCanvas, selectedFid, editor, addText, location]);
-
-  //   const loadProjectFromS3 = async () => {
-  //     try {
-  //         // Generate the file name/path based on the editorProjectId
-  //         const fileName = `projects/${editorProjectId}.json`;
-
-  //         // Fetch the serialized canvas state from S3 under the user's protected folder
-  //         const serializedCanvas = await Storage.get(fileName, { level: 'protected' });
-
-  //         if (serializedCanvas) {
-  //             // Fetch the actual content from S3. 
-  //             // Storage.get provides a pre-signed URL, so we need to fetch the actual content.
-  //             const response = await fetch(serializedCanvas);
-  //             const canvasStateJSON = await response.json();
-
-  //             editor.canvas.loadFromJSON(canvasStateJSON, () => {
-  //                 const oImg = editor.canvas.backgroundImage;
-  //                 const imageAspectRatio = oImg.width / oImg.height;
-  //                 setEditorAspectRatio(imageAspectRatio);
-  //                 const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-  //                 setCanvasSize({ height: desiredHeight, width: desiredWidth });
-
-  //                 // Scale the image to fit the canvas
-  //                 const scale = desiredWidth / oImg.width;
-  //                 oImg.scale(desiredWidth / oImg.width);
-  //                 editor.canvas.forEachObject(obj => {
-  //                   obj.left *= scale;
-  //                   obj.top *= scale;
-  //                   obj.scaleY *= scale;
-  //                   obj.scaleX *= scale;
-  //                 })
-
-  //                 // Center the image within the canvas
-  //                 oImg.set({ left: 0, top: 0 });
-  //                 const minWidth = 750;
-  //                 const x = (oImg.width > minWidth) ? oImg.width : minWidth;
-  //                 setImageScale(x / desiredWidth);
-  //                 resizeCanvas(desiredWidth, desiredHeight);
-
-  //                 editor?.canvas.setBackgroundImage(oImg);
-  //                 addText(defaultSubtitle === false ? "Bottom Text" : defaultSubtitle, false);
-  //                 setImageLoaded(true);
-
-  //                 // Rendering the canvas after applying all changes
-  //                 editor.canvas.renderAll();
-  //             });
-  //         } else {
-  //             console.error('No saved editor state found for the project in S3.');
-  //         }
-  //     } catch (error) {
-  //         console.error('Failed to load editor state from S3:', error);
-  //     }
-  // };
+  }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -467,44 +528,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       resizeCanvas(desiredWidth, desiredHeight)
       editor?.canvas.setBackgroundImage(oImg);
       // if (defaultSubtitle) {
-      addText(defaultSubtitle || '')
+      // addText(defaultSubtitle || '')
       // }
       setImageLoaded(true)
     }
-  }, [defaultFrame, defaultSubtitle])
+  }, [defaultFrame])
 
-  // Calculate the desired editor size
-  const calculateEditorSize = (aspectRatio) => {
-    const containerElement = document.getElementById('canvas-container');
-    const availableWidth = containerElement.offsetWidth;
-    const calculatedWidth = availableWidth;
-    const calculatedHeight = availableWidth / aspectRatio;
-    return [calculatedHeight, calculatedWidth]
-  }
-
-  // Handle events
-  // const saveProject = () => {
-  //     const canvasJson = editor.canvas.toJSON(['hoverCursor', 'selectable']);
-  //     const key = selectedFid ? `project-${selectedFid}` : 'project-example';
-  //     localStorage.setItem(key, JSON.stringify(canvasJson));
-  // };
-
-  // const loadProject = () => {
-  //     const key = selectedFid ? `project-${selectedFid}` : 'project-example';
-  //     const canvasJson = localStorage.getItem(key);
-  //     editor.canvas.loadFromJSON(canvasJson, () => {
-  //         editor.canvas.backgroundImage.scaleToHeight(canvasSize.height);
-  //         editor.canvas.backgroundImage.scaleToWidth(canvasSize.width);
-  //         editor.canvas.renderAll();
-  //     });
-  //     updateEditorSize();
-  // };
-
-  // const addImage = () => {
-  //     fabric.Image.fromURL('/assets/illustrations/illustration_avatar.png', (oImg) => {
-  //         editor?.canvas.add(oImg);
-  //     })
-  // }
+  useEffect(() => {
+    if (defaultSubtitle) {
+      addText(defaultSubtitle || '')
+    }
+  }, [defaultSubtitle]);
 
   const saveImage = () => {
     setImageUploading(true);
@@ -542,28 +576,15 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             }
           });
 
-          // // Save protected version of the image
-          // const protectedFilename = `projects/${editorProjectId}-preview.jpg`;
-          // Storage.put(protectedFilename, blob, {
-          //   level: 'protected',
-          //   resumable: true,
-          //   contentType: "image/jpeg",
-          //   progressCallback: (progress) => {
-          //     console.log(`Uploaded protected version: ${progress.loaded}/${progress.total}`);
-          //   },
-          //   errorCallback: (err) => {
-          //     console.error('Unexpected error while uploading protected version', err);
-          //   }
-          // });
-
         }).catch(err => console.log(`UUID Gen Fetch Error: ${err}`));
       });
   }
 
-  const showColorPicker = (event, index) => {
+  const showColorPicker = (colorType, index, event) => {
     setPickingColor(index);
     setColorPickerShowing(index);
-    setColorPickerAnchor(event.target);
+    setCurrentColorType(colorType);
+    setColorPickerAnchorEl(event.currentTarget);
   }
 
   const showFontSizePicker = (event, index) => {
@@ -576,10 +597,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   const changeColor = (color, index) => {
     setColorPickerColor(color);
-    editor.canvas.item(index).set('fill', color.hex);
-    // console.log(`Length of object:  + ${selectedObjects.length}`)
-    setCanvasObjects([...editor.canvas._objects])
-    // console.log(editor.canvas.item(index));
+    const textObject = editor.canvas.item(index);
+  
+    if (currentColorType === 'text') {
+        textObject.set({
+            fill: color.hex,
+        });
+    } else if (currentColorType === 'stroke') {
+        textObject.set({
+            stroke: color.hex,
+            strokeWidth: editor?.canvas.getWidth() * 0.0025,
+            strokeUniform: false
+        });
+    }
+  
+    setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
     addToHistory();
@@ -588,6 +620,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleEdit = (event, index) => {
     // console.log(event)
     // console.log(index)
+    // setDefaultSubtitle(event.target.value)
     editor.canvas.item(index).set('text', event.target.value);
     // console.log(`Length of object:  + ${selectedObjects.length}`)
     setCanvasObjects([...editor.canvas._objects])
@@ -625,46 +658,34 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
   const handleStyle = (index, customStyles) => {
+    console.log("index, customStyles:", index, customStyles)
     // Select the item
     const item = editor.canvas.item(index);
     // Update the style
-    item.fontWeight = customStyles.includes('bold') ? 900 : 400
-    item.fontStyle = customStyles.includes('italic') ? 'italic' : 'normal'
-    item.underline = customStyles.includes('underlined')
+    item.set({
+      fontWeight: customStyles.includes('bold') ? 'bold' : 'normal',
+      fontStyle: customStyles.includes('italic') ? 'italic' : 'normal',
+      underline: customStyles.includes('underlined')
+    });
     // Update the canvas
-    editor.canvas.item(index).dirty = true;
+    item.dirty = true;
+    setCanvasObjects([...editor.canvas._objects]);
+    editor?.canvas.renderAll();
+    addToHistory();
+  }
+
+  const handleFontChange = (index, font) => {
+    // Select the item
+    const item = editor.canvas.item(index);
+    // Update the style
+    item.fontFamily = font || 'Arial'
+    // Update the canvas
+    item.dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
     // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
     addToHistory();
   }
-
-  const deleteLayer = (index) => {
-    editor.canvas.remove(editor.canvas.item(index));
-    setCanvasObjects([...editor.canvas._objects]);
-    editor?.canvas.renderAll();
-    addToHistory();
-  }
-
-  // Function to move a layer up in the stack
-  const moveLayerUp = (index) => {
-    if (index <= 0) return; // Already at the top or invalid index
-
-    const objectToMoveUp = editor.canvas.item(index);
-    if (!objectToMoveUp) return; // Object not found
-
-    // Move the object one step up in the canvas stack
-    editor.canvas.moveTo(objectToMoveUp, index - 1);
-    editor.canvas.renderAll();
-    addToHistory();
-
-    setCanvasObjects(prevCanvasObjects => {
-      const newCanvasObjects = [...prevCanvasObjects];
-      // Swap the positions of the index with the index above
-      [newCanvasObjects[index], newCanvasObjects[index - 1]] = [newCanvasObjects[index - 1], newCanvasObjects[index]];
-      return newCanvasObjects;
-    });
-  };
 
   // Function to move a layer down in the stack
   const moveLayerDown = (index) => {
@@ -691,20 +712,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const QUERY_INTERVAL = 1000; // Every second
   const TIMEOUT = 60 * 1000;   // 1 minute
 
-  async function checkMagicResult(id) {
-    try {
-      const result = await API.graphql(graphqlOperation(`query MyQuery {
-            getMagicResult(id: "${id}") {
-              results
-            }
-          }`));
-      return result.data.getMagicResult?.results;
-    } catch (error) {
-      console.error("Error fetching magic result:", error);
-      return null;
-    }
-  }
-
   const toggleDrawingMode = (tool) => {
     if (editor) {
       if (user && user?.userDetails?.credits > 0) {
@@ -725,6 +732,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // setDrawingMode((tool === 'magicEraser'))
   }
 
+  const downloadDataURL = (dataURL, fileName) => {
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = fileName;
+    // Simulate a click to start the download
+    link.click();
+  };
 
   const exportDrawing = async () => {
     setLoadingInpaintingResult(true)
@@ -736,16 +750,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const tempCanvasDrawing = new fabric.Canvas();
     tempCanvasDrawing.setWidth(1024);
     tempCanvasDrawing.setHeight(1024);
-
-    // const solidRect = new fabric.Rect({
-    //     left: 0,
-    //     top: 0,
-    //     width: tempCanvasDrawing.getWidth(),
-    //     height: tempCanvasDrawing.getHeight(),
-    //     fill: 'black',
-    //     selectable: false,
-    //     evented: false,
-    // });
 
     tempCanvasDrawing.backgroundColor = 'black'
 
@@ -803,15 +807,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     const dataURLBgImage = tempCanvasDrawing.toDataURL('image/png');
 
 
-    // Delay the downloads using setTimeout
-    // setTimeout(() => {
-    //     downloadDataURL(dataURLBgImage, 'background_image.png');
-    // }, 500);
-
-    // setTimeout(() => {
-    //     downloadDataURL(dataURLDrawing, 'drawing.png');
-    // }, 1000);
-
     if (dataURLBgImage && dataURLDrawing) {
       //   const dataURLBgImage = fabricImage.toDataURL('image/png');
 
@@ -820,15 +815,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
         mask: dataURLDrawing,
         prompt: magicPrompt,
       };
-
-      // Delay the downloads using setTimeout
-      //   setTimeout(() => {
-      //     downloadDataURL(dataURLBgImage, 'background_image.png');
-      //   }, 500);
-
-      //   setTimeout(() => {
-      //     downloadDataURL(dataURLDrawing, 'drawing.png');
-      //   }, 1000);
 
       try {
         const response = await API.post('publicapi', '/inpaint', {
@@ -961,67 +947,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     try {
       // Save the current state of the canvas for local undo/redo before any scaling or modifications
       const serializedCanvas = JSON.stringify(editor.canvas);
-      const {backgroundImage} = editor.canvas;
+      const currentCanvasSize = {
+        width: editor.canvas.width,
+        height: editor.canvas.height
+      };
 
       setFutureStates([]);
-      setBgFutureStates([]);
+      setFutureCanvasSizes([]);
 
       setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
-      setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
-
-      // TODO: clean up and re-enable this saving logic for projects / templates
-      // // Scale the image to fit the canvas
-      // const oImg = editor.canvas.backgroundImage;
-      // const imageAspectRatio = oImg.width / oImg.height;
-      // const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-      // const scale = desiredWidth / oImg.width;
-
-      // oImg.scale(scale);
-      // editor.canvas.forEachObject(obj => {
-      //   obj.left /= scale;
-      //   obj.top /= scale;
-      //   obj.scaleY /= scale;
-      //   obj.scaleX /= scale;
-      // });
-
-      // // Now, save the scaled state for the S3 storage
-      // const scaledSerializedCanvas = JSON.stringify(editor.canvas);
-
-      // // Revert the scaling to ensure local behavior remains consistent
-      // editor.canvas.forEachObject(obj => {
-      //   obj.left *= scale;
-      //   obj.top *= scale;
-      //   obj.scaleY *= scale;
-      //   obj.scaleX *= scale;
-      // });
-
-      // // Create a unique file name based on the editorProjectId for JSON state
-      // const stateFileName = `projects/${editorProjectId}.json`;
-
-      // // Upload the serialized (scaled) canvas state to S3 under the user's protected folder
-      // await Storage.put(stateFileName, scaledSerializedCanvas, {
-      //   level: 'protected',
-      //   contentType: 'application/json'
-      // });
-
-      // // Convert the canvas to a data URL with appropriate quality and multiplier settings
-      // const canvasDataURL = editor.canvas.toDataURL({
-      //   format: 'jpeg',
-      //   quality: 0.6,
-      //   multiplier: 1 / scale
-      // });
-
-      // // Convert the data URL to a Blob
-      // const canvasBlob = dataURLtoBlob(canvasDataURL);
-
-      // // Create a unique file name based on the editorProjectId for the canvas image
-      // const canvasImageFileName = `projects/${editorProjectId}-preview.jpg`;
-
-      // // Upload the canvas image to S3 under the user's protected folder
-      // await Storage.put(canvasImageFileName, canvasBlob, {
-      //   level: 'protected',
-      //   contentType: 'image/jpeg'
-      // });
+      setCanvasSizes(prevSizes => [...prevSizes, currentCanvasSize]);
 
     } catch (error) {
       console.error('Failed to update editor state or canvas image in S3:', error);
@@ -1039,19 +974,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     // Move the latest action to futureStates before going back
     setFutureStates(prevFuture => [editorStates[editorStates.length - 1], ...prevFuture]);
-    setBgFutureStates(prevFuture => [bgEditorStates[bgEditorStates.length - 1], ...prevFuture]);
+    setFutureCanvasSizes(prevFuture => [canvasSizes[canvasSizes.length - 1], ...prevFuture]);
 
     // Go back in history
     setEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
-    setBgEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
+    setCanvasSizes(prevSizes => prevSizes.slice(0, prevSizes.length - 1));
 
     // Load the previous state into the canvas
     editor.canvas.loadFromJSON(editorStates[editorStates.length - 2], () => {
-      // After loading the state, set the background image
-      editor.canvas.setBackgroundImage(bgEditorStates[bgEditorStates.length - 2], () => {
-        editor.canvas.renderAll.bind(editor.canvas)()
-        setCanvasObjects([...editor.canvas._objects]);
-      });
+      editor.canvas.setWidth(canvasSizes[canvasSizes.length - 2].width);
+      editor.canvas.setHeight(canvasSizes[canvasSizes.length - 2].height);
+      editor.canvas.renderAll();
+      setCanvasObjects([...editor.canvas._objects]);
+      setWhiteSpaceHeight(canvasSizes[canvasSizes.length - 2].height - canvasSize.height);
     });
   }
 
@@ -1060,19 +995,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
     // Move the first future state back to editorStates
     setEditorStates(prevHistory => [...prevHistory, futureStates[0]]);
-    setBgEditorStates(prevHistory => [...prevHistory, bgFutureStates[0]]);
+    setCanvasSizes(prevSizes => [...prevSizes, futureCanvasSizes[0]]);
 
     // Remove the state we've just moved from futureStates
     setFutureStates(prevFuture => prevFuture.slice(1));
-    setBgFutureStates(prevFuture => prevFuture.slice(1));
+    setFutureCanvasSizes(prevFuture => prevFuture.slice(1));
 
     // Load the restored state into the canvas
     editor.canvas.loadFromJSON(futureStates[0], () => {
-      // After loading the state, set the background image
-      editor.canvas.setBackgroundImage(bgFutureStates[0], () => {
-        editor.canvas.renderAll.bind(editor.canvas)()
-        setCanvasObjects([...editor.canvas._objects]);
-      });
+      editor.canvas.setWidth(futureCanvasSizes[0].width);
+      editor.canvas.setHeight(futureCanvasSizes[0].height);
+      editor.canvas.renderAll();
+      setCanvasObjects([...editor.canvas._objects]);
+      setWhiteSpaceHeight(futureCanvasSizes[0].height - canvasSize.height);
     });
   }
 
@@ -1176,6 +1111,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   //   console.log(editorStates)
   // }, [editorStates])
 
+  const loadFineTuningFrames = () => {
+    setLoadingFineTuningFrames(false)
+  }
 
   // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
   useEffect(() => {
@@ -1187,7 +1125,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }, [promptEnabled])
 
   useEffect(() => {
-
     if (searchParams.has('magicTools', 'true')) {
       if (!user || user?.userDetails?.credits <= 0) {
         setMagicToolsPopoverAnchorEl(magicToolsButtonRef.current);
@@ -1200,6 +1137,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   useEffect(() => {
     setPromptEnabled('erase')
     setMagicPrompt('Everyday scene as cinematic cinestill sample')
+    if (editorTool === 'fineTuning') {
+      loadFineTuningImages()
+    }
   }, [editorTool])
 
   useEffect(() => {
@@ -1213,18 +1153,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [editorLoaded]);
 
-
-  const handleOpenNavWithoutSavingDialog = (fid) => {
+  const handleOpenNavWithoutSavingDialog = (cid, season, episode, frame) => {
     if (editorStates.length > 1) {
-      setSelectedNavItemFid(fid);
+      setSelectedNavItemFid(frame);
       setOpenNavWithoutSavingDialog(true);
     } else {
-      handleNavigate(fid);
+      handleNavigate(cid, season, episode, frame);
     }
   };
 
-  const handleNavigate = (fid) => {
-    navigate(`/editor/${fid}`);
+  const handleNavigate = (cid, season, episode, frame) => {
+    navigate(`/editor/${cid}/${season}/${episode}/${frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
     setOpenNavWithoutSavingDialog(false);
     editor.canvas.discardActiveObject().requestRenderAll();
     setFutureStates([]);
@@ -1235,8 +1174,333 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // ------------------------------------------------------------------------
 
+  /* -------------------------------- New Stuff ------------------------------- */
 
-  // Outputs
+
+  const { cid, season, episode, frame } = useParams();
+  const [confirmedCid, setConfirmedCid] = useState();
+  const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
+  const [loadingCsv, setLoadingCsv] = useState();
+  const [frames, setFrames] = useState();
+  const params = useParams();
+  const [loadedSubtitle, setLoadedSubtitle] = useState('');
+  const [loadedSeason, setLoadedSeason] = useState('');
+  const [loadedEpisode, setLoadedEpisode] = useState('');
+  const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
+  const [loadingFineTuning, setLoadingFineTuning] = useState(false);
+  const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
+  const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
+  const [layerFonts, setLayerFonts] = useState({})
+
+  useEffect(() => {
+    getV2Metadata(cid).then(metadata => {
+      setConfirmedCid(metadata.id)
+    }).catch(error => {
+      console.log(error)
+    })
+  }, [cid]);
+
+  // setFrames
+  // setLoadedSubtitle
+  // setLoadedSeason
+  // setLoadedEpisode
+
+  /* -------------------------------------------------------------------------- */
+
+  useEffect(() => {
+    if (frames && frames.length > 0) {
+      console.log(frames.length)
+      console.log(Math.floor(frames.length / 2))
+      setSelectedFrameIndex(fineTuningIndex || Math.floor(frames.length / 2))
+
+      // Background image from the given URL
+      fabric.Image.fromURL(
+        fineTuningIndex ? frames[fineTuningIndex] : frames[Math.floor(frames.length / 2)],
+        (oImg) => {
+          setDefaultFrame(oImg);
+          setDefaultSubtitle(loadedSubtitle);
+          setLoading(false);
+        },
+        { crossOrigin: 'anonymous' }
+      );
+    }
+  }, [frames]);
+
+  const handleSliderChange = (newSliderValue) => {
+    setSelectedFrameIndex(newSliderValue);
+    fabric.Image.fromURL(
+      fineTuningBlobs[newSliderValue],
+      (oImg) => {
+        setDefaultFrame(oImg);
+        setLoading(false);
+      },
+      { crossOrigin: 'anonymous' }
+    );
+  };
+
+  useEffect(() => {
+    if (confirmedCid) {
+      // Reset whitespace-related state variables
+      setShowWhiteSpaceSlider(false);
+      setWhiteSpaceValue(10);
+      setWhiteSpaceHeight(0);
+
+      const loadInitialFrameInfo = async () => {
+        setLoading(true);
+        try {
+          // Fetch initial frame information including the main image and subtitle
+          const initialInfo = await fetchFrameInfo(confirmedCid, season, episode, frame, { mainImage: true });
+          console.log("initialInfo: ", initialInfo);
+          // setFrame(initialInfo.frame_image);
+          // setFrameData(initialInfo);
+          // setDisplayImage(initialInfo.frame_image);
+          setLoadedSubtitle(initialInfo.subtitle);
+          setLoadedSeason(season);
+          setLoadedEpisode(episode);
+        } catch (error) {
+          console.error("Failed to fetch initial frame info:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const loadFineTuningFrames = async () => {
+        try {
+          // Since fetchFramesFineTuning now expects an array, calculate the array of indexes for fine-tuning
+          const fineTuningImageUrls = await fetchFramesFineTuning(confirmedCid, season, episode, frame);
+
+          // Preload the images and convert them to blob URLs
+          // const fineTuningFrames = await Promise.all(
+          //   fineTuningImageUrls.map(async (url) => {
+          //     const response = await fetch(url);
+          //     const blob = await response.blob();
+          //     return URL.createObjectURL(blob);
+          //   })
+          // );
+
+          setFineTuningFrames(fineTuningImageUrls);
+          setFrames(fineTuningImageUrls);
+          console.log("Fine Tuning Frames: ", fineTuningImageUrls);
+        } catch (error) {
+          console.error("Failed to fetch fine tuning frames:", error);
+        }
+      };
+
+      const loadSurroundingSubtitles = async () => {
+        try {
+          // Fetch only the surrounding subtitles
+          const subtitlesSurrounding = (await fetchFrameInfo(confirmedCid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
+          console.log("setSurroundingSubtitles", subtitlesSurrounding)
+          setSurroundingSubtitles(subtitlesSurrounding);
+        } catch (error) {
+          console.error("Failed to fetch surrounding subtitles:", error);
+        }
+      };
+
+      const loadSurroundingFrames = async () => {
+        try {
+          // Fetch surrounding frames; these calls already assume fetching of images and possibly their subtitles
+          const surroundingFramePromises = fetchFramesSurroundingPromises(confirmedCid, season, episode, frame);
+
+          Promise.all(surroundingFramePromises).then(surroundingFrames => {
+            setSurroundingFrames(surroundingFrames.map(frame => ({
+              ...frame,
+              confirmedCid,
+              season: parseInt(season, 10),
+              episode: parseInt(episode, 10),
+            })));
+            console.log("Loaded Surrounding Frames: ", surroundingFrames);
+          }).catch(error => {
+            console.error("Failed to fetch surrounding frames:", error);
+          });
+        } catch (error) {
+          console.error("Failed to fetch surrounding frames:", error);
+        }
+      };
+
+      window.scrollTo(0, 0);
+
+      // Make sure the values are cleared before loading new ones: 
+      // TODO: make the 'main image' show a skeleton while loading (incl. between navigations)
+      setLoading(true);
+      // setFrame(null);
+      // setFrameData(null);
+      // setDisplayImage(null);
+      setLoadedSubtitle(null);
+      setSelectedFrameIndex(5);
+      setFineTuningFrames([]);
+      setFrames([]);
+      setSurroundingSubtitles([]);
+      setSurroundingFrames(new Array(9).fill('loading'));
+      setLoadingFineTuning(false)
+      setFineTuningLoadStarted(false)
+      setFineTuningBlobs([])
+      setEditorTool('captions')
+
+      // Sequentially call the functions to ensure loading states and data fetching are managed efficiently
+      loadInitialFrameInfo().then(() => {
+        loadFineTuningFrames(); // Load fine-tuning frames
+        loadSurroundingSubtitles(); // Separately load surrounding subtitles
+        loadSurroundingFrames(); // Load surrounding frames and their subtitles (if available)
+      });
+    }
+  }, [confirmedCid, season, episode, frame]);
+
+  const loadFineTuningImages = () => {
+    if (fineTuningFrames && !fineTuningLoadStarted) {
+      console.log('LOADING THE IMAGES');
+      setFineTuningLoadStarted(true);
+      setLoadingFineTuning(true);
+
+      // Create an array of promises for each image load
+      const blobPromises = fineTuningFrames.map((url) => fetch(url)
+          .then((response) => response.blob())
+          .catch((error) => {
+            console.error('Error fetching image:', error);
+            return null;
+          }));
+
+      // Wait for all blob promises to resolve
+      Promise.all(blobPromises)
+        .then((blobs) => {
+          // Filter out any null blobs (in case of errors)
+          const validBlobs = blobs.filter((blob) => blob !== null);
+
+          // Create blob URLs for each valid blob
+          const blobUrls = validBlobs.map((blob) => URL.createObjectURL(blob));
+
+          setFineTuningBlobs(blobUrls);
+          setLoadingFineTuning(false);
+        })
+        .catch((error) => {
+          console.error('Error loading fine-tuning images:', error);
+          setLoadingFineTuning(false);
+        });
+    }
+  };
+
+  // Add these state variables near the top of your component, with the other useState declarations
+  const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
+  const [whiteSpaceValue, setWhiteSpaceValue] = useState(20);
+  const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
+  const [whiteSpacePreview, setWhiteSpacePreview] = useState(0);
+  const [isSliding, setIsSliding] = useState(false);
+
+  // Add this function to handle white space changes
+  const handleWhiteSpaceChange = (newValue) => {
+    const newWhiteSpaceHeight = (newValue / 100) * canvasSize.height;
+    setWhiteSpacePreview(newWhiteSpaceHeight);
+  };
+
+  const startWhiteSpaceChange = () => {
+    setIsSliding(true);
+    // Remove whitespace from canvas and reposition elements
+    if (editor) {
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top - whiteSpaceHeight);
+      });
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top - whiteSpaceHeight);
+      }
+      editor.canvas.renderAll();
+    }
+  };
+
+  const applyWhiteSpace = () => {
+    setIsSliding(false);
+    const newHeight = canvasSize.height + whiteSpacePreview;
+    
+    if (editor) {
+      editor.canvas.setHeight(newHeight);
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top + whiteSpacePreview);
+      });
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + whiteSpacePreview);
+      }
+      editor.canvas.renderAll();
+    }
+
+    setWhiteSpaceHeight(whiteSpacePreview);
+    addToHistory();
+  };
+
+  const toggleWhiteSpaceSlider = () => {
+    if (!showWhiteSpaceSlider) {
+      setShowWhiteSpaceSlider(true);
+      const defaultWhiteSpaceValue = 20;
+      setWhiteSpaceValue(defaultWhiteSpaceValue);
+      const newWhiteSpaceHeight = (defaultWhiteSpaceValue / 100) * canvasSize.height;
+      setWhiteSpacePreview(newWhiteSpaceHeight);
+      
+      // Apply the default whitespace immediately
+      if (editor) {
+        const newHeight = canvasSize.height + newWhiteSpaceHeight;
+        editor.canvas.setHeight(newHeight);
+        editor.canvas.getObjects().forEach((obj) => {
+          obj.set('top', obj.top + newWhiteSpaceHeight);
+        });
+        if (editor.canvas.backgroundImage) {
+          editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + newWhiteSpaceHeight);
+        }
+        editor.canvas.renderAll();
+      }
+      setWhiteSpaceHeight(newWhiteSpaceHeight);
+      addToHistory();
+    } else {
+      setShowWhiteSpaceSlider(false);
+      if (editor) {
+        const newHeight = canvasSize.height - whiteSpaceHeight;
+        editor.canvas.setHeight(newHeight);
+        editor.canvas.getObjects().forEach((obj) => {
+          obj.set('top', obj.top - whiteSpaceHeight);
+        });
+        if (editor.canvas.backgroundImage) {
+          editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top - whiteSpaceHeight);
+        }
+        editor.canvas.renderAll();
+      }
+      setWhiteSpaceHeight(0);
+      setWhiteSpacePreview(0);
+      addToHistory();
+    }
+  };
+
+  const updateCanvasSize = useCallback((heightDifference) => {
+    if (editor && canvasSize) {
+      const newHeight = canvasSize.height + whiteSpaceHeight;
+      editor.canvas.setHeight(newHeight);
+      editor.canvas.setWidth(canvasSize.width);
+
+      // Move all objects by the height difference
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top + heightDifference);
+      });
+
+      // Move the background image
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + heightDifference);
+      }
+
+      editor.canvas.renderAll();
+    }
+  }, [editor, canvasSize, whiteSpaceHeight]);
+
+  useEffect(() => {
+    updateCanvasSize(0);
+  }, [whiteSpaceHeight, updateCanvasSize]);
+
+  // Add this near the top of the component, with other useEffects
+  useEffect(() => {
+    if (location.state?.fromCollage && location.state?.collageImageFile) {
+      const file = location.state.collageImageFile;
+      addImageLayer(file);
+    }
+  }, [location.state]);
+
+  // Add this state near other useState declarations
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+
   return (
     <>
       <Helmet>
@@ -1244,6 +1508,23 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       </Helmet>
       <Container maxWidth='xl' disableGutters>
         <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
+
+          {user?.userDetails?.subscriptionStatus !== 'active' && (
+            <Grid container>
+              <Grid item xs={12} mb={3}>
+                <center>
+                  <Box>
+                    {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                    <Link to="/pro" style={{ textDecoration: 'none' }}>
+                      <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                        ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                      </Typography>
+                    </Link>
+                  </Box>
+                </center>
+              </Grid>
+            </Grid>
+          )}
 
           <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
             <Grid container spacing={2}>
@@ -1253,48 +1534,91 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }}>
                 <Grid container item mb={1.5}>
                   <Grid item xs={12}>
-                    <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                    <Stack direction='column' width='100%' spacing={1}>
+                      <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                        <ButtonGroup variant="contained" size="small">
+                          <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                            <Undo />
+                          </IconButton>
+                          <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                            <Redo />
+                          </IconButton>
+                        </ButtonGroup>
 
-                      <ButtonGroup variant="contained" size="small">
-                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
-                          <Undo />
-                        </IconButton>
-                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
-                          <Redo />
-                        </IconButton>
-                      </ButtonGroup>
+                        <Button
+                          variant="contained"
+                          size="medium"
+                          startIcon={<Save />}
+                          onClick={handleClickDialogOpen}
+                          sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        >
+                          Save
+                        </Button>
+                      </Stack>
 
                       <Button
                         variant="contained"
-                        size="medium"
-                        startIcon={<Save />}
-                        onClick={handleClickDialogOpen}
-                        sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        fullWidth
+                        onClick={toggleWhiteSpaceSlider}
                       >
-                        Save/Copy/Share
+                        Add White Space
                       </Button>
 
+                      {showWhiteSpaceSlider && (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography>Whitespace</Typography>
+                          <Slider
+                            value={whiteSpacePreview / canvasSize.height * 100}
+                            onChange={(event, newValue) => handleWhiteSpaceChange(newValue)}
+                            onChangeCommitted={applyWhiteSpace}
+                            onMouseDown={startWhiteSpaceChange}
+                            onTouchStart={startWhiteSpaceChange}
+                            aria-labelledby="white-space-slider"
+                            valueLabelDisplay="auto"
+                            min={0}
+                            max={100}
+                            step={1}
+                            sx={{ flexGrow: 1, zIndex: 100 }}
+                            valueLabelFormat={(value) => `${Math.round(value)}%`}
+                          />
+                          <IconButton onClick={toggleWhiteSpaceSlider}>
+                            <Close />
+                          </IconButton>
+                        </Stack>
+                      )}
                     </Stack>
                   </Grid>
                 </Grid>
-                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
-                  <FabricJSCanvas onReady={onReady} />
-                  {showBrushSize &&
-                    <div style={{
-                      width: brushToolSize,
-                      height: brushToolSize,
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      borderRadius: '50%',
-                      background: 'red',
-                      borderColor: 'black',
-                      borderStyle: 'solid',
-                      borderWidth: '1px',
-                      boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
-                    }} />
-                  }
+                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }} id="canvas-container">
+                  {showWhiteSpaceSlider && isSliding && (
+                    <div 
+                      style={{
+                        width: '100%',
+                        height: `${whiteSpacePreview}px`,
+                        backgroundColor: 'white',
+                        transition: 'height 0.05s ease-out'
+                      }}
+                    />
+                  )}
+                  <div style={{ height: isSliding ? canvasSize.height : (canvasSize.height + whiteSpaceHeight) }}>
+                    <FabricJSCanvas onReady={onReady} />
+                    {showBrushSize &&
+                      <div style={{
+                        width: brushToolSize,
+                        height: brushToolSize,
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        borderRadius: '50%',
+                        background: 'red',
+                        borderColor: 'black',
+                        borderStyle: 'solid',
+                        borderWidth: '1px',
+                        boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
+                      }} />
+                    }
+                  </div>
                 </div>
 
 
@@ -1322,7 +1646,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       }
                     }}
                   >
-                    {fineTuningFrames.length > 0 &&
+                    {frames?.length > 0 &&
                       <Tab
                         style={{
                           opacity: editorTool === "fineTuning" ? 1 : 0.4,
@@ -1381,12 +1705,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                               <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
                                 <div style={{ display: 'inline', position: 'relative' }}>
                                   <TextEditorControls
-                                    showColorPicker={(event) => showColorPicker(event, index)}
+                                    showColorPicker={(colorType, index, event) => showColorPicker(colorType, index, event)}
                                     colorPickerShowing={colorPickerShowing}
                                     index={index}
                                     showFontSizePicker={(event) => showFontSizePicker(event, index)}
                                     fontSizePickerShowing={fontSizePickerShowing}
                                     handleStyle={handleStyle}
+                                    handleFontChange={handleFontChange}
+                                    layerFonts={layerFonts}
+                                    setLayerFonts={setLayerFonts}
+                                    layerColor={object.fill}
+                                    layerStrokeColor={object.stroke}
+                                    handleAlignment={handleAlignment}
                                   />
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
@@ -1400,6 +1730,11 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     onBlur={addToHistory}
                                     onChange={(event) => handleEdit(event, index)}
                                     placeholder='(type your caption)'
+                                    InputProps={{
+                                      style: {
+                                        fontFamily: layerFonts[index] || 'Arial',
+                                      },
+                                    }}
                                   />
                                   <Fab
                                     size="small"
@@ -1409,7 +1744,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                       backgroundColor: theme.palette.background.paper,
                                       boxShadow: 'none'
                                     }}
-                                    onClick={() => deleteLayer(index)}
+                                    onClick={() => handleDeleteLayer(index)}
                                   >
                                     <HighlightOffRounded color="error" />
                                   </Fab>
@@ -1425,7 +1760,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     {/* Implement ImageEditorControls according to your app's functionality */}
                                     <ImageEditorControls
                                       index={index}
-                                      deleteLayer={deleteLayer} // Implement this function to handle layer deletion
+                                      deleteLayer={handleDeleteLayer} // Implement this function to handle layer deletion
                                       moveLayerUp={moveLayerUp} // Implement this function to handle moving the layer up
                                       moveLayerDown={moveLayerDown} // Implement this function to handle moving the layer down
                                       src={object.src}
@@ -1440,7 +1775,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                       backgroundColor: theme.palette.background.paper,
                                       boxShadow: 'none'
                                     }}
-                                    onClick={() => deleteLayer(index)}
+                                    onClick={() => handleDeleteLayer(index)}
                                   >
                                     <HighlightOffRounded color="error" />
                                   </Fab>
@@ -1484,22 +1819,24 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
                   {editorTool === 'fineTuning' && (
-                    <Slider
-                      size="small"
-                      defaultValue={4}
-                      min={0}
-                      max={8}
-                      value={fineTuningValue}
-                      aria-label="Small"
-                      valueLabelDisplay="auto"
-                      onChange={(event, value) => {
-                        handleFineTuning(value);
-                        setFineTuningValue(value);
-                      }}
-                      valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
-                      marks
-                      track={false}
-                    />
+                    <>
+                      <Slider
+                        size="small"
+                        defaultValue={selectedFrameIndex || Math.floor(frames.length / 2)}
+                        min={0}
+                        max={frames.length - 1}
+                        value={selectedFrameIndex}
+                        step={1}
+                        onMouseDown={loadFineTuningImages}
+                        onTouchStart={loadFineTuningImages}
+                        onChange={(e, newValue) => handleSliderChange(newValue)}
+                        onChangeCommitted={(e, value) => {navigate(`/editor/${cid}/${season}/${episode}/${frame}/${value}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)}}
+                        valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
+                        marks
+                        disabled={loadingFineTuning}
+                      />
+                      {loadingFineTuning && <LinearProgress />}
+                    </>
                   )}
 
                   {editorTool === 'magicEraser' && (
@@ -1619,9 +1956,18 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     startIcon={<Share />}
                     size="large"
                   >
-                    Save/Copy/Share
+                    Save
                   </Button>
                 </Grid>
+
+                {user?.userDetails?.subscriptionStatus !== 'active' &&
+                  <Grid item xs={12} my={2}>
+                    <center>
+                        <FixedMobileBannerAd />
+                    </center>
+                  </Grid>
+                }
+
                 {surroundingFrames && surroundingFrames.length > 0 && (
                   <Card sx={{ my: 2 }}>
                     <Accordion expanded={subtitlesExpanded} disableGutters>
@@ -1638,15 +1984,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       </AccordionSummary>
                       <AccordionDetails sx={{ paddingY: 0, paddingX: 0 }}>
                         <List sx={{ padding: '.5em 0' }}>
-                          {surroundingFrames &&
-                            surroundingFrames
-                              .filter(
-                                (result, index, array) =>
-                                  result?.subtitle &&
-                                  (index === 0 ||
-                                    result?.subtitle.replace(/\n/g, ' ') !==
-                                    array[index - 1].subtitle.replace(/\n/g, ' '))
-                              )
+                          {surroundingSubtitles &&
+                            surroundingSubtitles
                               .map((result, index) => (
                                 <ListItem key={result.id ? result.id : `surrounding-subtitle-${index}`} disablePadding sx={{ padding: '0 0 .6em 0' }}>
                                   <ListItemIcon sx={{ paddingLeft: '0' }}>
@@ -1667,12 +2006,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                           },
                                         },
                                       }}
-                                      onClick={() => handleOpenNavWithoutSavingDialog(result?.fid)}
+                                      onClick={() => handleOpenNavWithoutSavingDialog(cid, season, episode, result.frame)}
                                     >
                                       {loading ? (
                                         <CircularProgress size={20} sx={{ color: '#565656' }} />
                                       ) : result?.subtitle.replace(/\n/g, ' ') ===
-                                        defaultSubtitle.replace(/\n/g, ' ') ? (
+                                        defaultSubtitle?.replace(/\n/g, ' ') ? (
                                         <GpsFixed
                                           sx={{
                                             color:
@@ -1785,7 +2124,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     <Button onClick={() => setOpenNavWithoutSavingDialog(false)} color="primary">
                       Cancel
                     </Button>
-                    <Button onClick={() => handleNavigate(selectedNavItemFid)} color="primary" autoFocus>
+                    <Button onClick={() => handleNavigate(cid, season, episode, selectedNavItemFid)} color="primary" autoFocus>
                       Leave
                     </Button>
                   </DialogActions>
@@ -1794,58 +2133,54 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
             </Grid>
             <Grid container item spacing={1}>
-              {surroundingFrames &&
-                surroundingFrames.map((result) => (
-                  <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
+              {surroundingFrames?.map((surroundingFrame, index) => (
+                <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
+                  {surroundingFrame !== 'loading' ? (
+                    // Render the actual content if the surrounding frame data is available
                     <a style={{ textDecoration: 'none' }}>
-                      <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
-                        {/* {console.log(`${fid} = ${result?.fid}`)} */}
+                      <StyledCard
+                        sx={{
+                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
+                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer'
+                        }}>
                         <StyledCardMedia
                           component="img"
-                          src={`https://memesrc.com${result?.frame_image}`}
-                          alt={result?.subtitle}
-                          title={result?.subtitle}
+                          alt={`${surroundingFrame.frame}`}
+                          src={`${surroundingFrame.frameImage}`}
+                          title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            // editor.canvas._objects = [];
-                            // setSelectedFid(result?.fid);
-                            handleOpenNavWithoutSavingDialog(result?.fid);
-                            // setFineTuningValue(4);
+                            navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
                           }}
                         />
                       </StyledCard>
                     </a>
-                  </Grid>
-                ))}
-              <Grid item xs={12}>
-                {episodeDetails && episodeDetails.length > 0 && (
+                  ) : (
+                    // Render a skeleton if the data is not yet available (undefined)
+                    <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio: `${editorAspectRatio === 1 ? (16 / 9) : editorAspectRatio}/1` }} />
+                  )}
+                </Grid>
+              ))}
+              {surroundingFrames?.length > 0 && (
+                <Grid item xs={12}>
                   <Button
                     variant="contained"
                     fullWidth
-                    href={`/episode/${episodeDetails[0]}/${episodeDetails[1]}/${episodeDetails[2]}/${episodeDetails[3]}`}
+                    href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
                   >
                     View Episode
                   </Button>
-                )}
-              </Grid>
+                </Grid>
+              )}
             </Grid>
           </Card>
 
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
-            <Grid container>
-              <Grid item xs={12} mt={2}>
-                <center>
-                  <Box sx={{ maxWidth: '800px'}}>
-                    <EditorPageBottomBannerAd />
-                  </Box>
-                </center>
-              </Grid>
-            </Grid>
-          }
-
           <Popover
             open={colorPickerShowing !== false}
-            anchorEl={colorPickerAnchor}
-            onClose={() => setColorPickerShowing(false)}
+            anchorEl={colorPickerAnchorEl}
+            onClose={() => {
+              setColorPickerShowing(false);
+              setColorPickerAnchorEl(null);
+            }}
             id="colorPicker"
             anchorOrigin={{
               vertical: 'bottom',
@@ -1857,24 +2192,23 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             }}
           >
             <ColorPickerPopover>
-              <TwitterPickerWrapper
-                onChangeComplete={(color) => changeColor(color, pickingColor)}
-                color={colorPickerColor}
-                colors={[
-                  '#FFFFFF',
-                  'yellow',
-                  'black',
-                  'orange',
-                  '#8ED1FC',
-                  '#0693E3',
-                  '#ABB8C3',
-                  '#EB144C',
-                  '#F78DA7',
-                  '#9900EF',
-                ]}
-                width="280px"
-              // TODO: Fix background color to match other cards
-              />
+            <TwitterPickerWrapper
+              onChange={(color) => changeColor(color, pickingColor)}
+              color={colorPickerColor}
+              colors={[
+                '#FFFFFF', // White (unchanged)
+                '#FFFF00', // Yellow (unchanged)
+                '#000000', // Black (unchanged)
+                '#FF4136', // Bright Red
+                '#2ECC40', // Bright Green
+                '#0052CC', // Darker Blue
+                '#FF851B', // Bright Orange
+                '#B10DC9', // Bright Purple
+                '#39CCCC', // Bright Cyan
+                '#F012BE', // Bright Magenta
+              ]}
+              width="280px"
+            />
             </ColorPickerPopover>
           </Popover>
 
@@ -2005,6 +2339,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               </Box>
             </DialogActions>
           </Dialog>
+          {user?.userDetails?.subscriptionStatus !== 'active' &&
+            <Grid container>
+              <Grid item xs={12} mt={2}>
+                <center>
+                  <Box sx={{ maxWidth: '800px' }}>
+                    <EditorPageBottomBannerAd />
+                  </Box>
+                </center>
+              </Grid>
+            </Grid>
+          }
         </ParentContainer>
       </Container>
       <Snackbar
@@ -2122,7 +2467,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 }
 
 EditorPage.propTypes = {
-  setSeriesTitle: PropTypes.func.isRequired,
   shows: PropTypes.array,
 };
 

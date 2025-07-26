@@ -1,7 +1,7 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 import { lazy } from 'react';
-import EditorNewProjectPage from './pages/EditorNewProjectPage';
-import EditorProjectsPage from './pages/EditorProjectsPage';
+import EditorNewProjectPage from './pages/editor/EditorNewProjectPage';
+import EditorProjectsPage from './pages/editor/EditorProjectsPage';
 import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 import SiteWideMaintenance from './pages/SiteWideMaintenance';
 import { DialogProvider } from './contexts/SubscribeDialog';
@@ -35,7 +35,7 @@ const CheckAuth = lazy(() => import('./sections/auth/login/CheckAuth'));
 const AddToSeriesPage = lazy(() => import('./pages/AddToSeriesPage'));
 const HomePage = lazy(() => import('./pages/HomePage'))
 const V2SearchPage = lazy(() => import('./pages/V2SearchPage'));
-const EditorPage = lazy(() => import('./pages/EditorPage'));
+const EditorPage = lazy(() => import('./pages/editor/EditorPage'));
 const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
 const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
@@ -45,7 +45,7 @@ const MagicPopup = lazy(() => import('./components/magic-popup/MagicPopup'));
 const DynamicRouteHandler = lazy(() => import('./pages/DynamicRouteHandler'));
 const IpfsSearchBar = lazy(() => import('./sections/search/ipfs-search-bar'));
 const V2FramePage = lazy(() => import('./pages/V2FramePage'));
-const V2EditorPage = lazy(() => import('./pages/V2EditorPage'));
+const V2EditorPage = lazy(() => import('./pages/editor/V2EditorPage'));
 const V2EpisodePage = lazy(() => import('./pages/V2EpisodePage'));
 const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
 const ProSupport = lazy(() => import('./pages/ProSupport'));
