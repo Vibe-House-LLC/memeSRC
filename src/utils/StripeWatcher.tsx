@@ -4,7 +4,11 @@ import { useSearchParams } from "react-router-dom";
 import { SnackbarContext } from "../SnackbarContext";
 
 
-export default function StripeWatcher({ children }) {
+interface StripeWatcherProps {
+    children: React.ReactNode;
+}
+
+export default function StripeWatcher({ children }: StripeWatcherProps) {
     const  [searchParams]  = useSearchParams();
     const { setOpen, setMessage, setSeverity } = useContext(SnackbarContext)
 

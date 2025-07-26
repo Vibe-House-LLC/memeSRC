@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import { forwardRef, useEffect, useState } from 'react';
 import { SnackbarContext } from '../SnackbarContext';
 
-const Alert = forwardRef((props, ref) => 
+const Alert = forwardRef<HTMLDivElement, any>((props, ref) =>
     <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />
 );
 
@@ -12,7 +12,11 @@ SnackBar.propTypes = {
     children: PropTypes.element
 }
 
-export default function SnackBar({children}) {
+interface SnackBarProps {
+    children: React.ReactElement;
+}
+
+export default function SnackBar({ children }: SnackBarProps) {
     const [open, setOpen] = useState(false);
     const [severity, setSeverity] = useState('success');
     const [message, setMessage] = useState('');
