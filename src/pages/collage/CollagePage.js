@@ -4,15 +4,16 @@ import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide } from "@mui/material";
 import { Dashboard, Save } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
-import { UserContext } from "../UserContext";
-import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
-import { useCollage } from "../contexts/CollageContext";
-import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
-import UpgradeMessage from "../components/collage/components/UpgradeMessage";
-import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
-import { useCollageState } from "../components/collage/hooks/useCollageState";
-import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
-import CollageResultDialog from "../components/collage/components/CollageResultDialog";
+import { UserContext } from "../../UserContext";
+import { useSubscribeDialog } from "../../contexts/useSubscribeDialog";
+import { useCollage } from "../../contexts/CollageContext";
+import { aspectRatioPresets, layoutTemplates } from "../../components/collage/config/CollageConfig";
+import UpgradeMessage from "../../components/collage/components/UpgradeMessage";
+import { CollageLayout } from "../../components/collage/components/CollageLayoutComponents";
+import { useCollageState } from "../../components/collage/hooks/useCollageState";
+import EarlyAccessFeedback from "../../components/collage/components/EarlyAccessFeedback";
+import CollageResultDialog from "../../components/collage/components/CollageResultDialog";
+import { getCollagePreference } from "../../utils/collagePreferences";
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -40,29 +41,6 @@ const getBorderThicknessValue = (borderThickness, options) => {
   return option ? option.value : 2;
 };
 
-// Utility function to hash username for localStorage (needed for auto-forwarding)
-const hashString = (str) => {
-  let hash = 0;
-  if (str.length === 0) return hash;
-  for (let i = 0; i < str.length; i += 1) {
-    const char = str.charCodeAt(i);
-    hash = ((hash * 33) - hash) + char;
-    hash = Math.imul(hash, 1); // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString();
-};
-
-// Utility functions for localStorage preference management (needed for auto-forwarding)
-const getCollagePreferenceKey = (user) => {
-  if (!user?.userDetails?.email) return 'memeSRC-collage-preference-anonymous';
-  const hashedUsername = hashString(user.userDetails.email);
-  return `memeSRC-collage-preference-${hashedUsername}`;
-};
-
-const getCollagePreference = (user) => {
-  const key = getCollagePreferenceKey(user);
-  return localStorage.getItem(key) || 'new';
-};
 
 export default function CollagePage() {
   const theme = useTheme();

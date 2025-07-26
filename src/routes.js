@@ -54,8 +54,8 @@ const FAQPage = lazy(() => import('./pages/FAQPage'));
 const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const FacebookAuthDemo = lazy(() => import('./pages/FacebookAuthDemo'));
-const CollagePageLegacy = lazy(() => import('./pages/CollagePageLegacy'));
-const CollagePage = lazy(() => import('./pages/CollagePage'));
+const CollagePageLegacy = lazy(() => import('./pages/collage/CollagePageLegacy'));
+const CollagePage = lazy(() => import('./pages/collage/CollagePage'));
 const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
 const ServerPage = lazy(() => import('./pages/ServerPage'));
 
