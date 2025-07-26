@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { Menu, MenuItem, Box } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 
@@ -23,14 +23,10 @@ const CollagePreview = ({
   selectedAspectRatio,
   panelCount,
   selectedImages,
-  addImage,
   addMultipleImages,
-  removeImage,
-  updateImage,
   replaceImage,
   updatePanelImageMapping,
   panelImageMapping,
-  onCropRequest,
   borderThickness = 0,
   borderColor = '#000000',
   panelTransforms,
@@ -40,7 +36,6 @@ const CollagePreview = ({
   lastUsedTextSettings,
   isCreatingCollage = false,
 }) => {
-  const theme = useTheme();
   const fileInputRef = useRef(null);
   
   // State for menu
@@ -193,23 +188,6 @@ const CollagePreview = ({
     }
   };
 
-  // Determine if the active panel has an image (for menu options)
-  const hasActiveImage = () => {
-    if (activePanelIndex === null) return false;
-    
-    // Get panel ID from template structure
-    let panelId;
-    try {
-      const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
-      const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
-      panelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
-    } catch (error) {
-      panelId = `panel-${activePanelIndex + 1}`;
-    }
-    
-    // Check if this panel ID has an image mapping
-    return panelImageMapping[panelId] !== undefined;
-  };
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -254,6 +232,25 @@ const CollagePreview = ({
       </Menu>
     </Box>
   );
+};
+
+CollagePreview.propTypes = {
+  selectedTemplate: PropTypes.object,
+  selectedAspectRatio: PropTypes.string,
+  panelCount: PropTypes.number,
+  selectedImages: PropTypes.array,
+  addMultipleImages: PropTypes.func.isRequired,
+  replaceImage: PropTypes.func.isRequired,
+  updatePanelImageMapping: PropTypes.func.isRequired,
+  panelImageMapping: PropTypes.object.isRequired,
+  borderThickness: PropTypes.number,
+  borderColor: PropTypes.string,
+  panelTransforms: PropTypes.object,
+  updatePanelTransform: PropTypes.func,
+  panelTexts: PropTypes.object,
+  updatePanelText: PropTypes.func,
+  lastUsedTextSettings: PropTypes.object,
+  isCreatingCollage: PropTypes.bool,
 };
 
 export default CollagePreview; 

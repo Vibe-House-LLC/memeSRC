@@ -13,7 +13,6 @@ import {
   InputAdornment,
   IconButton,
   Link,
-  Divider,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';

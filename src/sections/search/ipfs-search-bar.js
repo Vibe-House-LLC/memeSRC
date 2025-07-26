@@ -1,40 +1,19 @@
 // ipfs-search-bar.js
 
 import styled from "@emotion/styled";
-import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
-import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
-import { API } from 'aws-amplify';
-import { Children, cloneElement, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { LoadingButton } from "@mui/lab";
+import { Link, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
+import { ArrowBack, Close, Search } from "@mui/icons-material";
+import { Children, cloneElement, useContext, useEffect, useRef, useState } from "react";
 import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
 import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
-import useLoadRandomFrame from "../../utils/loadRandomFrame";
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from "../../components/floating-action-buttons/FloatingActionButtons";
 
 // Define constants for colors and fonts
-const PRIMARY_COLOR = '#4285F4';
-const SECONDARY_COLOR = '#0F9D58';
 const FONT_FAMILY = 'Roboto, sans-serif';
-
-// Create a button component
-const StyledButton = styled(LoadingButton)`
-    font-family: ${FONT_FAMILY};
-    font-size: 18px;
-    color: #fff;
-    background-color: ${SECONDARY_COLOR};
-    border-radius: 8px;
-    padding: 8px 16px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-
-    &:hover {
-      background-color: ${PRIMARY_COLOR};
-    }
-`;
 
 const StyledSearchInput = styled(InputBase)`
   font-family: ${FONT_FAMILY};
@@ -48,31 +27,6 @@ const StyledSearchInput = styled(InputBase)`
   margin-bottom: auto;
 `;
 
-const StyledLeftFooter = styled('footer')`
-    bottom: ${props => props.hasAd ? '50px' : '0'};
-    left: 0;
-    line-height: 0;
-    position: fixed;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: transparent;
-    z-index: 1300;
-`;
-
-const StyledRightFooter = styled('footer')`
-    bottom: ${props => props.hasAd ? '50px' : '0'};
-    right: 0;
-    line-height: 0;
-    position: fixed;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: transparent;
-    z-index: 1300;
-`;
 
 const StyledHeader = styled('header')(() => ({
   lineHeight: 0,
@@ -99,9 +53,9 @@ IpfsSearchBar.propTypes = searchPropTypes;
 export default function IpfsSearchBar(props) {
   const params = useParams();
   const { pathname } = useLocation();
-  const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
-  const { show, setShow, searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? params?.cid || defaultShow : params?.cid || '_universal', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, shows, defaultShow } = useContext(UserContext);
+  const { searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? params?.cid || defaultShow : params?.cid || '_universal', setCid, selectedFrameIndex, setSelectedFrameIndex, savedCids } = useSearchDetailsV2();
+  const [searchParams] = useSearchParams();
   const searchTerm = searchParams.get('searchTerm');
 
   /* ----------------------------------- New ---------------------------------- */
@@ -122,23 +76,6 @@ export default function IpfsSearchBar(props) {
     setSearch(searchTerm)
   }, [pathname]);
 
-  useEffect(() => {
-    // Function to check and parse the local storage value
-    const checkAndParseLocalStorage = (key) => {
-      const storedValue = localStorage.getItem(key);
-      if (!storedValue) {
-        return null;
-      }
-
-      try {
-        const parsedValue = JSON.parse(storedValue);
-        return Array.isArray(parsedValue) ? parsedValue : null;
-      } catch (e) {
-        // If parsing fails, return null
-        return null;
-      }
-    };
-  });
 
   useEffect(() => {
     if (searchTerm) {
@@ -165,22 +102,6 @@ export default function IpfsSearchBar(props) {
   }, [params?.subtitleIndex]);
 
 
-  const getSessionID = async () => {
-    let sessionID;
-    if ("sessionID" in sessionStorage) {
-      sessionID = sessionStorage.getItem("sessionID");
-      return Promise.resolve(sessionID);
-    }
-    return API.get('publicapi', '/uuid')
-      .then(generatedSessionID => {
-        sessionStorage.setItem("sessionID", generatedSessionID);
-        return generatedSessionID;
-      })
-      .catch(err => {
-        console.log(`UUID Gen Fetch Error:  ${err}`);
-        throw err;
-      });
-  };
 
   const searchFunction = (searchEvent) => {
     searchEvent?.preventDefault();

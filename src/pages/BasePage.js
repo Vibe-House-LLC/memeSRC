@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Container, Typography, Breadcrumbs, Link } from '@mui/material';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
+import { Box, Typography, Button, Container, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, CircularProgress } from '@mui/material';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard, LockOpen, ContentCopy, CheckCircle } from '@mui/icons-material';
 import { API, Auth } from 'aws-amplify';
@@ -125,11 +125,7 @@ const AccountPage = () => {
 
   const isLoading = loadingInvoices || loadingSubscription;
   const recentPaidInvoice = invoices.find((invoice) => invoice.paid);
-  const currentSubscription = recentPaidInvoice?.lines?.data?.[0]?.description
-    ?.replace(/^1\s*×\s*/, '')
-    ?.replace(/\s*\(memeSRC\)/i, '');
-
-    console.log(recentPaidInvoice?.lines?.data?.[0])
+  console.log(recentPaidInvoice?.lines?.data?.[0])
   // Check if user is logged in
   if (!userDetails?.user?.userDetails) {
     return <Navigate to="/login" replace />;

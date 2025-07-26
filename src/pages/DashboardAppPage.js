@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
 // Amplify
 import { API, graphqlOperation } from 'aws-amplify';
@@ -51,7 +50,6 @@ export default function DashboardAppPage() {
   const [searchesDaily, setSearchesDaily] = useState()
   const [randomsDaily, setRandomsDaily] = useState()
   const [sessionsDaily, setSessionsDaily] = useState()
-  const [popularShows, setPopularShows] = useState([])
 
   const fetchAnalyticsFrameViews = async () => {
     const result = await API.graphql(
@@ -97,26 +95,6 @@ export default function DashboardAppPage() {
     setSessionsDaily(cleaned)
   }
 
-  const fetchAnalyticsPopularShows = async () => {
-    const result = await API.graphql(
-      graphqlOperation(getAnalyticsMetrics, {
-        id: 'popularShows'
-      })
-    )
-    console.log(result)
-    console.log(`POPULAR SHOWS: ${result.data.getAnalyticsMetrics.value}`)
-    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value).slice(1).map(row => ({
-        label: row[0],
-        value: parseInt(row[1], 10)
-      }));
-    const cleanedSorted = cleaned.sort((a, b) => {
-      if (a.value < b.value) return 1;
-      if (a.value > b.value) return -1;
-      return 0;
-    });
-    console.log(`Cleaned and sorted: ${cleanedSorted}`)
-    setPopularShows(cleanedSorted)
-  }
 
   // Pull the homepage sections from GraphQL when the component loads
   useEffect(() => {
@@ -134,7 +112,6 @@ export default function DashboardAppPage() {
     fetchAnalyticsRandoms();
     fetchAnalyticsSearches();
     fetchAnalyticsSessions();
-    fetchAnalyticsPopularShows();
     // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalFrameViews" } }).then(data => {
     //   const result = JSON.parse(data.value)[1][0]
     //   console.log(result)
@@ -169,7 +146,6 @@ export default function DashboardAppPage() {
     // })
   }, [])
 
-  const theme = useTheme();
 
   // async function createNewGlobalMessage(title, message, timestamp) {
   //   const newGlobalMessage = {

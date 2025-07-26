@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
 import {
   Box,
@@ -57,4 +58,16 @@ export const SectionHeading = ({ icon: Icon, title, sx = {} }) => {
       </Typography>
     </Box>
   );
-}; 
+};
+
+PageHeader.propTypes = {
+  icon: PropTypes.elementType,
+  title: PropTypes.string.isRequired,
+  isMobile: PropTypes.bool,
+};
+
+SectionHeading.propTypes = {
+  icon: PropTypes.elementType,
+  title: PropTypes.string.isRequired,
+  sx: PropTypes.object,
+};

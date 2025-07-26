@@ -10,7 +10,7 @@ const SubtitleViewerPage = () => {
   const [loading, setLoading] = useState(false);
   const [subtitles, setSubtitles] = useState([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [formValues, setFormValues] = useState({
     showId: '',
@@ -115,23 +115,6 @@ const SubtitleViewerPage = () => {
     }
   };
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-    // Fetch images for the new page
-    filteredSubtitles
-      .slice(newPage * rowsPerPage, newPage * rowsPerPage + rowsPerPage)
-      .forEach(subtitle => fetchFrameImage(subtitle.middle_frame));
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    const newRowsPerPage = parseInt(event.target.value, 10);
-    setRowsPerPage(newRowsPerPage);
-    setPage(0);
-    // Fetch images for the new page size
-    filteredSubtitles
-      .slice(0, newRowsPerPage)
-      .forEach(subtitle => fetchFrameImage(subtitle.middle_frame));
-  };
 
   // Move filteredSubtitles definition here, before it's used
   const filteredSubtitles = subtitles.filter(subtitle =>

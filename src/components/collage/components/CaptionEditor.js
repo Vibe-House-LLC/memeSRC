@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { 
   Box, 
   IconButton, 
@@ -21,10 +22,8 @@ import {
   DialogActions 
 } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
-import { 
-  Edit, 
-  FormatColorText, 
-  Close, 
+import {
+  Edit,
   FormatSize, 
   BorderOuter, 
   FormatBold, 
@@ -36,8 +35,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Palette, 
-  RotateLeft, 
-  Restore 
+  RotateLeft,
+  Restore
 } from '@mui/icons-material';
 import fonts from '../../../utils/fonts';
 
@@ -1216,4 +1215,17 @@ const CaptionEditor = ({
   );
 };
 
-export default CaptionEditor; 
+CaptionEditor.propTypes = {
+  panelId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  panelTexts: PropTypes.object.isRequired,
+  lastUsedTextSettings: PropTypes.object.isRequired,
+  updatePanelText: PropTypes.func.isRequired,
+  panelRects: PropTypes.array.isRequired,
+  calculateOptimalFontSize: PropTypes.func.isRequired,
+  textScaleFactor: PropTypes.number,
+  onClose: PropTypes.func.isRequired,
+  rect: PropTypes.object,
+  componentWidth: PropTypes.number,
+};
+
+export default CaptionEditor;
