@@ -2,7 +2,7 @@
 
 export const hashString = (str) => {
   let hash = 0;
-  if (!str) return hash;
+  if (str.length === 0) return hash;
   for (let i = 0; i < str.length; i += 1) {
     const char = str.charCodeAt(i);
     hash = ((hash * 33) - hash) + char;
