@@ -1,21 +1,24 @@
 import PropTypes from "prop-types";
 import { useContext, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useRouter } from 'next/router'; // eslint-disable-line import/no-unresolved
 import { SnackbarContext } from "../SnackbarContext";
 
 
 export default function StripeWatcher({ children }) {
-    const  [searchParams]  = useSearchParams();
+    const router = useRouter();
     const { setOpen, setMessage, setSeverity } = useContext(SnackbarContext)
 
     useEffect(() => {
-        if (searchParams.has('paymentComplete')) {
-            const stripeStatus =  searchParams.get('paymentComplete')
-            setMessage(stripeStatus)
-            setSeverity('info')
-            setOpen(true)
+        if (!router.isReady) {
+            return;
         }
-    }, [searchParams])
+        const stripeStatus = router.query.paymentComplete;
+        if (stripeStatus) {
+            setMessage(stripeStatus);
+            setSeverity('info');
+            setOpen(true);
+        }
+    }, [router.isReady, router.query]);
 
     return (
         <>
