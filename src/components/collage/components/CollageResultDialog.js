@@ -15,9 +15,7 @@ import {
   Snackbar,
   Alert,
 } from '@mui/material';
-import {
-  Close as CloseIcon,
-} from '@mui/icons-material';
+import CloseIcon from '@mui/icons-material/Close';
 
 export default function CollageResultDialog({ open, onClose, finalImage }) {
   const theme = useTheme();
@@ -209,6 +207,7 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
             >
               {imageUrl && (
                 <img
+                  loading="lazy"
                   src={imageUrl}
                   alt="Generated Collage"
                   style={{

@@ -1,6 +1,10 @@
 import PropTypes from 'prop-types';
 import { Container, Box, Typography, useMediaQuery } from '@mui/material';
-import { HowToVote, Upload, Science, GitHub, Update } from '@mui/icons-material';
+import HowToVote from '@mui/icons-material/HowToVote';
+import Upload from '@mui/icons-material/Upload';
+import Science from '@mui/icons-material/Science';
+import GitHub from '@mui/icons-material/GitHub';
+import Update from '@mui/icons-material/Update';
 
 export default function PlatformUpdates({ backgroundColor, textColor, large }) {
     const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))

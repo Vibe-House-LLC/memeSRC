@@ -228,7 +228,7 @@ export default function AddSeries() {
             {seriesSeasons && seriesSeasons.map((season) =>
                 (season.type.id === 1) ?
                     <Grid key={season.id || season.number} item xs={6} md={2}>
-                        <img src={season.image} alt='season artwork' style={{ width: '100%', height: 'auto' }} />
+                        <img loading="lazy" src={season.image} alt='season artwork' style={{ width: '100%', height: 'auto' }} />
                         <Typography component='h6' variant='h6'>
                             Season {season.number}
                         </Typography>

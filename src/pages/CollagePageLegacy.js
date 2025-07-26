@@ -1015,6 +1015,7 @@ export default function CollagePage() {
           <Grid item>
             <Stack spacing={3} justifyContent="center">
               <img
+                loading="lazy"
                 src="/assets/memeSRC-white.svg"
                 alt="memeSRC logo"
                 style={{ height: 48, marginBottom: -15 }}
@@ -1144,7 +1145,7 @@ export default function CollagePage() {
                     <>
                       <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
                         <ImageWrapper>
-                          <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
+                          <img loading="lazy" src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
                           <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
                             <Close />
                           </DeleteButton>

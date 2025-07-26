@@ -1,6 +1,10 @@
 import PropTypes from 'prop-types';
 import { Container, Box, Typography, useMediaQuery } from '@mui/material';
-import { PhotoAlbum, OpenWith, Layers, FormatShapes, AutoFixHighRounded } from '@mui/icons-material';
+import PhotoAlbum from '@mui/icons-material/PhotoAlbum';
+import OpenWith from '@mui/icons-material/OpenWith';
+import Layers from '@mui/icons-material/Layers';
+import FormatShapes from '@mui/icons-material/FormatShapes';
+import AutoFixHighRounded from '@mui/icons-material/AutoFixHighRounded';
 
 export default function EditorUpdates({ backgroundColor, textColor, large }) {
     const isMd = useMediaQuery(theme => theme.breakpoints.up('md'))

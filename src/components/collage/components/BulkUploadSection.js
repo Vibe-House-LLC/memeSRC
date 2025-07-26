@@ -12,14 +12,12 @@ import {
   Alert
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
-import { 
-  Add,
-  Delete,
-  RemoveCircle,
-  Upload,
-  Refresh,
-  Clear
-} from '@mui/icons-material';
+import Add from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import RemoveCircle from '@mui/icons-material/RemoveCircle';
+import Upload from '@mui/icons-material/Upload';
+import Refresh from '@mui/icons-material/Refresh';
+import Clear from '@mui/icons-material/Clear';
 
 const debugLog = (...args) => { console.log(...args); };
 
@@ -720,7 +718,7 @@ const BulkUploadSection = ({
                 </MenuItem>
                 {panelCount > 2 && (
                   <MenuItem onClick={handleDeleteFrameWithImage}>
-                    <Delete sx={{ mr: 1, fontSize: 18 }} />
+                    <DeleteIcon sx={{ mr: 1, fontSize: 18 }} />
                     Delete frame
                   </MenuItem>
                 )}

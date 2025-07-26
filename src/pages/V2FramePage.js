@@ -41,7 +41,22 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections } from '@mui/icons-material';
+import ArrowBackIos from '@mui/icons-material/ArrowBackIos';
+import ArrowForwardIos from '@mui/icons-material/ArrowForwardIos';
+import BrowseGallery from '@mui/icons-material/BrowseGallery';
+import Close from '@mui/icons-material/Close';
+import ContentCopy from '@mui/icons-material/ContentCopy';
+import Edit from '@mui/icons-material/Edit';
+import FontDownloadOutlined from '@mui/icons-material/FontDownloadOutlined';
+import FormatBold from '@mui/icons-material/FormatBold';
+import FormatColorFill from '@mui/icons-material/FormatColorFill';
+import FormatItalic from '@mui/icons-material/FormatItalic';
+import GpsFixed from '@mui/icons-material/GpsFixed';
+import GpsNotFixed from '@mui/icons-material/GpsNotFixed';
+import HistoryToggleOffRounded from '@mui/icons-material/HistoryToggleOffRounded';
+import Menu from '@mui/icons-material/Menu';
+import OpenInNew from '@mui/icons-material/OpenInNew';
+import Collections from '@mui/icons-material/Collections';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';

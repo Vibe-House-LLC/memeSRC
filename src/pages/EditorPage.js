@@ -6,7 +6,27 @@ import { useParams, useNavigate, useLocation, useSearchParams } from 'react-rout
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
+import Add from '@mui/icons-material/Add';
+import AddCircleOutline from '@mui/icons-material/AddCircleOutline';
+import AutoFixHigh from '@mui/icons-material/AutoFixHigh';
+import AutoFixHighRounded from '@mui/icons-material/AutoFixHighRounded';
+import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
+import Close from '@mui/icons-material/Close';
+import ClosedCaption from '@mui/icons-material/ClosedCaption';
+import ContentCopy from '@mui/icons-material/ContentCopy';
+import FormatColorFill from '@mui/icons-material/FormatColorFill';
+import GpsFixed from '@mui/icons-material/GpsFixed';
+import GpsNotFixed from '@mui/icons-material/GpsNotFixed';
+import HighlightOffRounded from '@mui/icons-material/HighlightOffRounded';
+import HistoryToggleOffRounded from '@mui/icons-material/HistoryToggleOffRounded';
+import IosShare from '@mui/icons-material/IosShare';
+import Menu from '@mui/icons-material/Menu';
+import Redo from '@mui/icons-material/Redo';
+import Save from '@mui/icons-material/Save';
+import Share from '@mui/icons-material/Share';
+import Undo from '@mui/icons-material/Undo';
+import ZoomIn from '@mui/icons-material/ZoomIn';
+import ZoomOut from '@mui/icons-material/ZoomOut';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -228,7 +248,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // Warm up the UUID function for faster save dialog response
   useEffect(() => {
-    API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    const warmup = () => API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(warmup)
+    } else {
+      setTimeout(warmup, 1)
+    }
   }, [])
 
   useEffect(() => {
@@ -1931,6 +1956,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
                 {!imageUploading && (
                   <img
+                    loading="lazy"
                     src={`https://i${process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
                       }.memesrc.com/${generatedImageFilename}`}
                     alt="generated meme"
@@ -2047,6 +2073,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   borderRadius: '4px'
                 }}>
                   <img
+                    loading="lazy"
                     src={image}
                     alt="placeholder"
                     style={{

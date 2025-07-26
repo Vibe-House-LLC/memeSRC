@@ -1,4 +1,4 @@
-import { Save } from '@mui/icons-material';
+import Save from '@mui/icons-material/Save';
 import { LoadingButton } from '@mui/lab';
 import { Card, FormControlLabel, FormGroup, Grid, Stack, Switch, Typography } from '@mui/material';
 import PropTypes from 'prop-types';

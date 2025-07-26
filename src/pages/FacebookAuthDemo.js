@@ -162,6 +162,7 @@ export default function FacebookAuthDemo() {
                       </Typography>
                       {profileInfo.picture && (
                         <img
+                          loading="lazy"
                           src={profileInfo.picture.data.url}
                           alt="Profile"
                           style={{ width: '100px', height: '100px', borderRadius: '50%', marginBottom: '16px' }}

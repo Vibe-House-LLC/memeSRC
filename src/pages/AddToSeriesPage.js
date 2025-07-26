@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
 import { Container, Grid, Stack, Typography, Card, Divider, LinearProgress, CircularProgress, Backdrop } from '@mui/material';
-import { UploadFile } from '@mui/icons-material';
+import UploadFile from '@mui/icons-material/UploadFile';
 import { LoadingButton } from '@mui/lab';
 // components
 import { useState, useEffect, useRef, useContext, Fragment } from 'react';

@@ -8,7 +8,7 @@ import {
   IconButton,
   Collapse,
 } from "@mui/material";
-import { KeyboardArrowDown } from "@mui/icons-material";
+import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 
 /**
  * Reusable disclosure card component for collapsible content sections

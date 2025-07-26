@@ -226,8 +226,9 @@ const SubtitleViewerPage = () => {
                 >
                   <TableCell style={{ width: 160 }}>
                     {frameImages[subtitle.middle_frame] && (
-                      <img 
-                        src={frameImages[subtitle.middle_frame]} 
+                      <img
+                        loading="lazy"
+                        src={frameImages[subtitle.middle_frame]}
                         alt={`Frame ${subtitle.middle_frame}`}
                         style={{ 
                           width: '100%', 

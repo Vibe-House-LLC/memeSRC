@@ -32,7 +32,17 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh, AutoFixHighRounded, ThumbDown } from '@mui/icons-material';
+import ArrowUpward from '@mui/icons-material/ArrowUpward';
+import ArrowDownward from '@mui/icons-material/ArrowDownward';
+import SearchIcon from '@mui/icons-material/Search';
+import Close from '@mui/icons-material/Close';
+import ThumbUp from '@mui/icons-material/ThumbUp';
+import Whatshot from '@mui/icons-material/Whatshot';
+import Lock from '@mui/icons-material/Lock';
+import NewReleasesOutlined from '@mui/icons-material/NewReleasesOutlined';
+import Refresh from '@mui/icons-material/Refresh';
+import AutoFixHighRounded from '@mui/icons-material/AutoFixHighRounded';
+import ThumbDown from '@mui/icons-material/ThumbDown';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -1285,7 +1295,7 @@ export default function VotingPage() {
                     ...params.InputProps,
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Search />
+                        <SearchIcon />
                       </InputAdornment>
                     ),
                     endAdornment: (searchText || isSearching) && (
@@ -1438,6 +1448,7 @@ export default function VotingPage() {
                                         />
                                       )}
                                       <img
+                                        loading="lazy"
                                         src={show.image || 'path/to/placeholder-image.jpg'}
                                         alt={show.name}
                                         style={{

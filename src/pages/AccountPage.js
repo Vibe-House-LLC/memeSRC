@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Button, Container, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, CircularProgress } from '@mui/material';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard, LockOpen, ContentCopy, CheckCircle } from '@mui/icons-material';
+import Receipt from '@mui/icons-material/Receipt';
+import Download from '@mui/icons-material/Download';
+import Block from '@mui/icons-material/Block';
+import SupportAgent from '@mui/icons-material/SupportAgent';
+import Bolt from '@mui/icons-material/Bolt';
+import AutoFixHighRounded from '@mui/icons-material/AutoFixHighRounded';
+import CreditCard from '@mui/icons-material/CreditCard';
+import LockOpen from '@mui/icons-material/LockOpen';
+import ContentCopy from '@mui/icons-material/ContentCopy';
+import CheckCircle from '@mui/icons-material/CheckCircle';
 import { API, Auth } from 'aws-amplify';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';

@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/system';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { OpenInNew } from '@mui/icons-material';
+import OpenInNew from '@mui/icons-material/OpenInNew';
 import ClearIcon from '@mui/icons-material/Clear';
 import ReactMarkdown from 'react-markdown';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';

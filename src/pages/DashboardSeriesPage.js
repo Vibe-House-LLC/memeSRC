@@ -678,7 +678,7 @@ export default function DashboardSeriesPage() {
                     seriesSeasons.map((season) =>
                       season.type.id === 1 ? (
                         <Grid item xs={6} md={4} key={season.id}>
-                          <img src={season.image} alt="season artwork" style={{ width: '100%', height: 'auto' }} />
+                          <img loading="lazy" src={season.image} alt="season artwork" style={{ width: '100%', height: 'auto' }} />
                           <Typography component="h6" variant="h6">
                             Season {season.number}
                           </Typography>

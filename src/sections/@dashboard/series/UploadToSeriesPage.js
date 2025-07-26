@@ -3,7 +3,7 @@ import { Container, Grid, Stack, Typography, Card, CircularProgress, Backdrop, D
 // components
 import { useState, useEffect, useRef, useContext, Fragment } from 'react';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
-import { UploadFile } from '@mui/icons-material';
+import UploadFile from '@mui/icons-material/UploadFile';
 import Dropzone from 'react-dropzone';
 import { LoadingButton } from '@mui/lab';
 import PropTypes from 'prop-types';

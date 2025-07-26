@@ -2,7 +2,7 @@ import { Outlet, Link } from 'react-router-dom';
 // @mui
 import { styled } from '@mui/material/styles';
 import { IconButton } from '@mui/material';
-import { SettingsSuggest } from '@mui/icons-material';
+import SettingsSuggest from '@mui/icons-material/SettingsSuggest';
 // components
 import Logo from '../../components/logo';
 

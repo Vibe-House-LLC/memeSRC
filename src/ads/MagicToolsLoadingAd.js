@@ -1,6 +1,6 @@
 import { Link, Typography, Box } from '@mui/material';
 import { useEffect, useContext } from 'react';
-import { Close } from '@mui/icons-material';
+import Close from '@mui/icons-material/Close';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { UserContext } from '../UserContext';
 import { useAdsenseLoader } from '../utils/adsenseLoader';

@@ -237,6 +237,7 @@ export default function TvdbSearch({ onSelect = () => {}, onClear = () => {}, ty
                                         {options.map(option =>
                                             <StyledList key={option.id} onClick={() => { handleSelection(option.fullResult) }} sx={{ display: 'flex', alignItems: 'center', p: 1.5, '&:hover': { backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'pointer' } }}>
                                                 <img
+                                                    loading="lazy"
                                                     src={option.fullResult.image_url}
                                                     alt={option.label}
                                                     style={{ height: '100px', marginRight: '10px' }}

@@ -2,7 +2,11 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
+import OpenWith from '@mui/icons-material/OpenWith';
+import Check from '@mui/icons-material/Check';
+import Place from '@mui/icons-material/Place';
+import Crop from '@mui/icons-material/Crop';
+import DragIndicator from '@mui/icons-material/DragIndicator';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 

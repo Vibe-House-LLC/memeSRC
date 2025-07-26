@@ -1,4 +1,12 @@
-import { AutoFixHighRounded, Close, SupportAgent, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack } from '@mui/icons-material';
+import AutoFixHighRounded from '@mui/icons-material/AutoFixHighRounded';
+import Close from '@mui/icons-material/Close';
+import SupportAgent from '@mui/icons-material/SupportAgent';
+import Check from '@mui/icons-material/Check';
+import Bolt from '@mui/icons-material/Bolt';
+import Share from '@mui/icons-material/Share';
+import ThumbUp from '@mui/icons-material/ThumbUp';
+import Feedback from '@mui/icons-material/Feedback';
+import ArrowBack from '@mui/icons-material/ArrowBack';
 import { Box, Button, Card, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, Typography, useMediaQuery, Stack } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
@@ -246,6 +254,7 @@ export const DialogProvider = ({ children }) => {
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <img
+              loading="lazy"
               src="/assets/memeSRC-white.svg"
               alt="memeSRC logo"
               style={{ height: isCompact ? 24 : 36 }}

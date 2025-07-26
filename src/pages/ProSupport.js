@@ -112,6 +112,7 @@ export default function ProSupport() {
             <Grid item>
               <Stack spacing={3} justifyContent="center">
                 <img
+                  loading="lazy"
                   src="/assets/memeSRC-white.svg"
                   alt="memeSRC logo"
                   style={{ height: 48, marginBottom: -15 }}

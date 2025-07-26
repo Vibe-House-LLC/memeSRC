@@ -20,7 +20,10 @@ import {
   Badge,
   Slide as MuiSlide,
 } from '@mui/material';
-import { AutoFixHighRounded, Check, Close, LocalPoliceRounded } from '@mui/icons-material';
+import AutoFixHighRounded from '@mui/icons-material/AutoFixHighRounded';
+import Check from '@mui/icons-material/Check';
+import Close from '@mui/icons-material/Close';
+import LocalPoliceRounded from '@mui/icons-material/LocalPoliceRounded';
 // utils
 import { useLocation, useNavigate } from "react-router-dom";
 import { bgBlur } from '../../../utils/cssStyles';

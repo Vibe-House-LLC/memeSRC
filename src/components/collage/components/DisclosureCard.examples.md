@@ -4,7 +4,7 @@
 
 ```jsx
 import DisclosureCard from './DisclosureCard';
-import { Settings } from '@mui/icons-material';
+import Settings from '@mui/icons-material/Settings';
 
 // Simple disclosure card
 <DisclosureCard

@@ -1,7 +1,8 @@
 import PropTypes from 'prop-types';
 import { useContext, useState } from 'react';
 import { Box, Chip, Divider, Fab, Popover, Stack, Typography, useTheme } from '@mui/material';
-import { AutoFixHighRounded, Close } from '@mui/icons-material';
+import AutoFixHighRounded from '@mui/icons-material/AutoFixHighRounded';
+import Close from '@mui/icons-material/Close';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../UserContext';

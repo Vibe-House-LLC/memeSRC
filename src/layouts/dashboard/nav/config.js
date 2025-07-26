@@ -1,5 +1,17 @@
 // component
-import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload } from '@mui/icons-material';
+import Article from '@mui/icons-material/Article';
+import Ballot from '@mui/icons-material/Ballot';
+import Edit from '@mui/icons-material/Edit';
+import Favorite from '@mui/icons-material/Favorite';
+import MapsUgc from '@mui/icons-material/MapsUgc';
+import PhotoLibrary from '@mui/icons-material/PhotoLibrary';
+import QuestionAnswer from '@mui/icons-material/QuestionAnswer';
+import Search from '@mui/icons-material/Search';
+import Settings from '@mui/icons-material/Settings';
+import Shield from '@mui/icons-material/Shield';
+import Star from '@mui/icons-material/Star';
+import SupportAgent from '@mui/icons-material/SupportAgent';
+import Upload from '@mui/icons-material/Upload';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------

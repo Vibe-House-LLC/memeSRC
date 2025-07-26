@@ -29,7 +29,12 @@ import {
 } from '@mui/material';
 import { Auth, API, graphqlOperation } from 'aws-amplify';
 // components
-import { AutoFixHighRounded, Check, Delete, Edit, Message, Upload } from '@mui/icons-material';
+import AutoFixHighRounded from '@mui/icons-material/AutoFixHighRounded';
+import Check from '@mui/icons-material/Check';
+import DeleteIcon from '@mui/icons-material/Delete';
+import Edit from '@mui/icons-material/Edit';
+import Message from '@mui/icons-material/Message';
+import Upload from '@mui/icons-material/Upload';
 import Label from '../components/label';
 import Iconify from '../components/iconify';
 // sections
@@ -606,7 +611,7 @@ export default function UserPage() {
 
         {/* TODO: Make user list adapt to changes */}
         <MenuItem sx={{ color: 'error.main' }} onClick={() => disableUser(filteredUsers[selectedIndex].username)}>
-          <Delete sx={{ mr: 1.5 }} />
+          <DeleteIcon sx={{ mr: 1.5 }} />
           Disable
         </MenuItem>
       </Popover>

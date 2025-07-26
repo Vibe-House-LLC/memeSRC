@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Container, Grid, Card, Typography, Stack, Divider, ToggleButtonGroup, ToggleButton, Link, } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { ArrowForward, Check } from '@mui/icons-material';
+import ArrowForward from '@mui/icons-material/ArrowForward';
+import Check from '@mui/icons-material/Check';
 
 
 export default function PricingPage() {

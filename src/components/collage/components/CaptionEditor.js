@@ -22,22 +22,20 @@ import {
   DialogActions 
 } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
-import {
-  Edit,
-  FormatSize, 
-  BorderOuter, 
-  FormatBold, 
-  FormatItalic, 
-  ControlCamera, 
-  SwapHoriz, 
-  SwapVert, 
-  Colorize, 
-  ChevronLeft, 
-  ChevronRight, 
-  Palette, 
-  RotateLeft,
-  Restore
-} from '@mui/icons-material';
+import Edit from '@mui/icons-material/Edit';
+import FormatSize from '@mui/icons-material/FormatSize';
+import BorderOuter from '@mui/icons-material/BorderOuter';
+import FormatBold from '@mui/icons-material/FormatBold';
+import FormatItalic from '@mui/icons-material/FormatItalic';
+import ControlCamera from '@mui/icons-material/ControlCamera';
+import SwapHoriz from '@mui/icons-material/SwapHoriz';
+import SwapVert from '@mui/icons-material/SwapVert';
+import Colorize from '@mui/icons-material/Colorize';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import Palette from '@mui/icons-material/Palette';
+import RotateLeft from '@mui/icons-material/RotateLeft';
+import Restore from '@mui/icons-material/Restore';
 import fonts from '../../../utils/fonts';
 
 // Color presets for text colors

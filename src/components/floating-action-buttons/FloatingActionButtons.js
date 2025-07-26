@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
-import { MapsUgc, Favorite, Shuffle, Dashboard, Delete, Edit } from '@mui/icons-material';
+import MapsUgc from '@mui/icons-material/MapsUgc';
+import Favorite from '@mui/icons-material/Favorite';
+import Shuffle from '@mui/icons-material/Shuffle';
+import Dashboard from '@mui/icons-material/Dashboard';
+import DeleteIcon from '@mui/icons-material/Delete';
+import Edit from '@mui/icons-material/Edit';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
@@ -357,7 +362,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                                     flexShrink: 0
                                                 }}
                                             >
-                                                <Delete fontSize="small" />
+                                                <DeleteIcon fontSize="small" />
                                             </Button>
                                         </Stack>
                                         
@@ -413,7 +418,7 @@ export default function FloatingActionButtons({ shows, showAd }) {
                                             borderColor: 'rgba(255, 255, 255, 0.3)',
                                             marginTop: '8px'
                                         }}
-                                        startIcon={<Delete />}
+                                        startIcon={<DeleteIcon />}
                                     >
                                         Clear All ({count})
                                     </Button>
