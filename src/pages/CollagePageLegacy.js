@@ -1017,6 +1017,7 @@ export default function CollagePage() {
               <img
                 src="/assets/memeSRC-white.svg"
                 alt="memeSRC logo"
+                loading="lazy"
                 style={{ height: 48, marginBottom: -15 }}
               />
               <Typography variant="h3" textAlign="center">
@@ -1144,7 +1145,7 @@ export default function CollagePage() {
                     <>
                       <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
                         <ImageWrapper>
-                          <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
+                          <img src={image.src} alt={`layer ${index + 1}`} loading="lazy" style={{ width: "100%" }} />
                           <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
                             <Close />
                           </DeleteButton>

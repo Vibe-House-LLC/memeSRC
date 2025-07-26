@@ -292,7 +292,21 @@ const EditorPage = ({ shows }) => {
 
   // Warm up the UUID function for faster save dialog response
   useEffect(() => {
-    API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        })
+      : setTimeout(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        }, 1000)
+
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId)
+      }
+    }
   }, [])
 
   useEffect(() => {
