@@ -10,19 +10,6 @@ const Logo = forwardRef(({ sx, color = 'white', ...other }, ref) => {
   const gradient1 = `${id}-grad-1`;
   const gradient2 = `${id}-grad-2`;
 
-  if (hexColor === '#ffffff') {
-    return (
-      <Box
-        ref={ref}
-        component="img"
-        src="/assets/memeSRC-white.svg"
-        alt="memeSRC logo"
-        sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
-        {...other}
-      />
-    );
-  }
-
   const colorStop1 = lighten(hexColor, 0.2);
   const colorStop2 = darken(hexColor, 0.1);
 
