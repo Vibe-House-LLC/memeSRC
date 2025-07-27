@@ -38,7 +38,7 @@ export default function ErrorPage() {
           <Box
             component="img"
             src="/assets/memeSRC-color.svg"
-            alt="memeSRC color logo"
+            alt="memeSRC logo"
             sx={{ height: 260, mx: 'auto', my: { xs: 5, sm: 10 } }}
           />
 
