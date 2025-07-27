@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import Logo from '../../components/logo/Logo';
+import { styled } from '@mui/material/styles';
 
 const StyledRoot = styled('div')(({ theme }) => ({
   [theme.breakpoints.up('md')]: {
