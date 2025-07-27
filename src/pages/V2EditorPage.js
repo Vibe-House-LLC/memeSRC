@@ -2225,7 +2225,7 @@ const EditorPage = ({ shows }) => {
                 <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
-                    <a style={{ textDecoration: 'none' }}>
+                    <Box component="div" sx={{ textDecoration: 'none' }}>
                       <StyledCard
                         sx={{
                           ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
@@ -2241,7 +2241,7 @@ const EditorPage = ({ shows }) => {
                           }}
                         />
                       </StyledCard>
-                    </a>
+                    </Box>
                   ) : (
                     // Render a skeleton if the data is not yet available (undefined)
                     <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio: `${editorAspectRatio === 1 ? (16 / 9) : editorAspectRatio}/1` }} />

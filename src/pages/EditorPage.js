@@ -1839,7 +1839,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               {surroundingFrames &&
                 surroundingFrames.map((result) => (
                   <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
-                    <a style={{ textDecoration: 'none' }}>
+                    <Box component="div" sx={{ textDecoration: 'none' }}>
                       <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
                         {/* {console.log(`${fid} = ${result?.fid}`)} */}
                         <StyledCardMedia
@@ -1855,7 +1855,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           }}
                         />
                       </StyledCard>
-                    </a>
+                    </Box>
                   </Grid>
                 ))}
               <Grid item xs={12}>

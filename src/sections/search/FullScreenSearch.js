@@ -208,7 +208,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     width: '130px',
                     height: 'auto',
                     margin: '0 auto',
-                    color: 'yellow' 
+                    color: 'yellow'
                   }}
                 />
               </Box>
