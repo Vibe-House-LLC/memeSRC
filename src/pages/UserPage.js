@@ -2,31 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { sentenceCase } from 'change-case';
 import { useContext, useEffect, useState } from 'react';
 // @mui
-import {
-  Card,
-  Table,
-  Stack,
-  Paper,
-  Button,
-  Popover,
-  Checkbox,
-  TableRow,
-  MenuItem,
-  TableBody,
-  TableCell,
-  Container,
-  Typography,
-  IconButton,
-  TableContainer,
-  TablePagination,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  TextField,
-  CircularProgress,
-} from '@mui/material';
+
 import { Auth, API, graphqlOperation } from 'aws-amplify';
 // components
 import { AutoFixHighRounded, Check, Delete, Edit, Message, Upload } from '@mui/icons-material';

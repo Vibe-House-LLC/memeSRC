@@ -1,7 +1,7 @@
 import { useState, useContext } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
-import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover } from '@mui/material';
+
 import { AutoFixHigh, Person } from '@mui/icons-material';
 // mocks_
 import { useNavigate } from 'react-router-dom';

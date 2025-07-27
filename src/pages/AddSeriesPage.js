@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, Typography } from '@mui/material';
+
 import { Helmet } from 'react-helmet-async';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 

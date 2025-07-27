@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowDownward, ArrowUpward } from '@mui/icons-material';
-import { IconButton, Tooltip, Typography } from '@mui/material';
+
 import PropTypes from 'prop-types';
 
 const ImageEditorControls = ({ index, moveLayerUp, moveLayerDown, src }) => (

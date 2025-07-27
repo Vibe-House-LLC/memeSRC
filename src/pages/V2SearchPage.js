@@ -1,7 +1,7 @@
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
+
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';

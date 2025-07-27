@@ -2,7 +2,7 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { styled } from '@mui/material/styles';
-import { Button, Typography, Container, Slider, Box } from '@mui/material';
+
 import { fabric } from 'fabric';
 import { API } from 'aws-amplify';
 
