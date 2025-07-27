@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 // @mui
-
+import { Box, Checkbox } from '@mui/material';
 //
 import Icon from './Icon';
 

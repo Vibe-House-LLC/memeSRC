@@ -7,7 +7,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import { styled } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
-
+import { Dialog, DialogActions, DialogContent, DialogTitle, Divider, Typography } from '@mui/material';
 import CidInput from './CidInput';
 import CreateIndex from './CreateIndex';
 

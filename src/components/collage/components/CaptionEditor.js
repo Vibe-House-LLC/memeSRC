@@ -1,24 +1,26 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import Box from '@mui/material/Box';
-import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import TextField from '@mui/material/TextField';
-import Slider from '@mui/material/Slider';
-import FormControl from '@mui/material/FormControl';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import Button from '@mui/material/Button';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
-import Tooltip from '@mui/material/Tooltip';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import ToggleButton from '@mui/material/ToggleButton';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogActions from '@mui/material/DialogActions';
+import { 
+  Box, 
+  IconButton, 
+  Typography, 
+  TextField, 
+  Slider, 
+  FormControl, 
+  Select, 
+  MenuItem, 
+  Button, 
+  Tabs, 
+  Tab, 
+  Tooltip, 
+  ToggleButtonGroup, 
+  ToggleButton, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogContentText, 
+  DialogActions 
+} from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
 import {
   Edit,

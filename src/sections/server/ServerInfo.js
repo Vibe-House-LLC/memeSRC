@@ -1,7 +1,7 @@
 // ServerInfo.js
 
 import React, { useEffect, useState } from 'react';
-
+import { Alert, Card, Container, Divider, Grid, Stack, Typography, useMediaQuery } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import NetworkGraph from './NetworkGraph';
 import IndexTable from './IndexTable';

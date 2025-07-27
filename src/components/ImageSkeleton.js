@@ -1,4 +1,4 @@
-
+import { Skeleton } from '@mui/material';
 import styled from '@emotion/styled';
 
 const StyledSkeleton = styled(Skeleton)`

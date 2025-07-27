@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
-import Box from '@mui/material/Box';
-import Container from '@mui/material/Container';
-import Stack from '@mui/material/Stack';
-import useMediaQuery from '@mui/material/useMediaQuery';
+import {
+  Box,
+  Container,
+  Stack,
+  useMediaQuery,
+} from "@mui/material";
 import { Settings, PhotoLibrary } from "@mui/icons-material";
 
 import CollageSettingsStep from "../steps/CollageSettingsStep";

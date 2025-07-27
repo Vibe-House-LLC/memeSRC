@@ -2,7 +2,19 @@
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-
+import {
+  Dialog,
+  DialogContent,
+  Box,
+  Typography,
+  IconButton,
+  useTheme,
+  useMediaQuery,
+  Backdrop,
+  Fade,
+  Snackbar,
+  Alert,
+} from '@mui/material';
 import {
   Close as CloseIcon,
 } from '@mui/icons-material';

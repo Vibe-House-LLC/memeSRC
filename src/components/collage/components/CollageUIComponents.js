@@ -1,8 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
+import {
+  Box,
+  Typography
+} from "@mui/material";
 
 /**
  * Header component for the collage page

@@ -1,4 +1,4 @@
-
+import { Link, Typography, Box } from '@mui/material';
 import { useEffect, useContext } from 'react';
 import { Close } from '@mui/icons-material';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';

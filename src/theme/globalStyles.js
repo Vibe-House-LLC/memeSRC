@@ -1,5 +1,5 @@
 // @mui
-
+import { GlobalStyles as MUIGlobalStyles } from '@mui/material';
 
 // ----------------------------------------------------------------------
 

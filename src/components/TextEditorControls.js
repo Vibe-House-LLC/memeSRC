@@ -10,7 +10,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { FontDownloadOutlined, FormatSizeRounded, Settings } from '@mui/icons-material';
 import IconButton from '@mui/material/IconButton';
-
+import { MenuItem, Select, Typography, Menu, InputAdornment } from '@mui/material';
 import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
 import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';

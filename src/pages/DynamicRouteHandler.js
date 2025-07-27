@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API } from 'aws-amplify';
-
+import { CircularProgress } from '@mui/material';
 import { getAlias, getContentMetadata, getV2ContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
 import HomePage from './HomePage';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';

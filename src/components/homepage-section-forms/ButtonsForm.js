@@ -1,6 +1,4 @@
-import Grid from '@mui/material/Grid';
-import IconButton from '@mui/material/IconButton';
-import TextField from '@mui/material/TextField';
+import { Grid, IconButton, TextField } from "@mui/material";
 import { AddCircleOutline, RemoveCircleOutline } from "@mui/icons-material";
 import React, { useState } from "react";
 import PropTypes from 'prop-types'

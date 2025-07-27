@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import Box from '@mui/material/Box';
+import { Menu, MenuItem, Box } from "@mui/material";
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 

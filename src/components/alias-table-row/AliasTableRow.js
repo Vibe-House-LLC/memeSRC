@@ -1,14 +1,5 @@
 import { Add } from "@mui/icons-material";
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
-import IconButton from '@mui/material/IconButton';
-import TableCell from '@mui/material/TableCell';
-import TableRow from '@mui/material/TableRow';
-import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, TableCell, TableRow, TextField, Typography } from "@mui/material";
 import { API, graphqlOperation } from "aws-amplify";
 import { useContext, useState } from "react";
 import { LoadingButton } from "@mui/lab";

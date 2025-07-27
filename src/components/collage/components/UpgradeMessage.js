@@ -1,15 +1,17 @@
 import React, { useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
-import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
-import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
-import Container from '@mui/material/Container';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import Chip from '@mui/material/Chip';
+import { 
+  Box, 
+  Grid, 
+  Paper, 
+  Typography, 
+  Stack, 
+  Button, 
+  Container, 
+  useMediaQuery,
+  Chip
+} from "@mui/material";
 import {
   Dashboard,
   LockOpen,

@@ -1,7 +1,7 @@
 import React, { useEffect, useReducer } from 'react';
 import PropTypes from 'prop-types';
 import { LineChart } from '@mui/x-charts';
-
+import { Stack, Typography, Box } from '@mui/material';
 
 const initialState = {
   rateIn: Array(30).fill(0),

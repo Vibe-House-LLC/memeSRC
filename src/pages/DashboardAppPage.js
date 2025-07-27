@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 // @mui
-
+import { Grid, Container, Typography } from '@mui/material';
 // Amplify
 import { API, graphqlOperation } from 'aws-amplify';
 import { listHomepageSections, getAnalyticsMetrics } from '../graphql/queries';

@@ -1,7 +1,7 @@
 // FavoritesPage.js
 
 import React, { useState, useEffect, useContext } from 'react';
-
+import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import Container from '@mui/material/Container';
 import { Link } from 'react-router-dom';

@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { forwardRef, useId } from 'react';
-
+import { Box } from '@mui/material';
 import { lighten, darken } from '@mui/material/styles';
 import colorToHex from '../../utils/colorToHex';
 

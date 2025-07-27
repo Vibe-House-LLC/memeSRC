@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import IconButton from '@mui/material/IconButton';
-import Collapse from '@mui/material/Collapse';
+import {
+  Box,
+  Typography,
+  Paper,
+  IconButton,
+  Collapse,
+} from "@mui/material";
 import { KeyboardArrowDown } from "@mui/icons-material";
 
 /**

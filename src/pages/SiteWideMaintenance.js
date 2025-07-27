@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { useEffect, useState } from 'react';
 import { styled } from '@mui/material/styles';
-
+import { Container, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 import { API, graphqlOperation } from 'aws-amplify';
 import { getWebsiteSetting } from '../graphql/queries';

@@ -7,7 +7,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import FeedbackIcon from '@mui/icons-material/Feedback';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-
+import { Box, Button, Card, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, Typography, useMediaQuery, Stack } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import PropTypes from 'prop-types';
-
+import { Backdrop, Typography, Stack, LinearProgress, Box } from '@mui/material';
 import Logo from './logo';
 import MagicToolsLoadingAd from '../ads/MagicToolsLoadingAd';
 import { UserContext } from '../UserContext';

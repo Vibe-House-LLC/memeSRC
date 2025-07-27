@@ -1,7 +1,5 @@
 import { styled } from "@mui/material/styles";
-import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
-import alpha from '@mui/material/alpha';
+import { Box, Paper, alpha } from "@mui/material";
 
 // Container for the page
 export const PageContainer = styled(Box)(({ theme }) => ({

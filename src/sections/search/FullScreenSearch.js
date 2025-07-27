@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-
+import { Button, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme } from '@mui/material';
 import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';

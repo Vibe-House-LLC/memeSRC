@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-
+import { Container, Box, Typography, useMediaQuery } from '@mui/material';
 import { HowToVote, Upload, Science, GitHub, Update } from '@mui/icons-material';
 
 export default function PlatformUpdates({ backgroundColor, textColor, large }) {

@@ -1,11 +1,5 @@
 import { Close, Search } from "@mui/icons-material";
-import Container from '@mui/material/Container';
-import IconButton from '@mui/material/IconButton';
-import Paper from '@mui/material/Paper';
-import Popper from '@mui/material/Popper';
-import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
-import styled from '@mui/material/styled';
+import { Container, IconButton, Paper, Popper, TextField, Typography, styled } from "@mui/material";
 import { API } from "aws-amplify";
 import { useRef, useState } from "react";
 import PropTypes from 'prop-types';

@@ -1,8 +1,4 @@
-import Autocomplete from '@mui/material/Autocomplete';
-import CircularProgress from '@mui/material/CircularProgress';
-import Grid from '@mui/material/Grid';
-import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
+import { Autocomplete, CircularProgress, Grid, TextField, Typography } from "@mui/material";
 import { API, graphqlOperation } from "aws-amplify";
 import { useEffect, useState } from "react";
 import { LoadingButton } from "@mui/lab";
