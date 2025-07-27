@@ -263,14 +263,15 @@ export const DialogProvider = ({ children }) => {
               memeSRC Pro
             </Typography>
           </Box>
-          <IconButton 
-            onClick={closeDialog} 
-            size="small" 
-            sx={{ 
-              position: 'absolute', 
-              top: isCompact ? 4 : 8, 
-              right: 10, 
-              zIndex: 1000, 
+          <IconButton
+            onClick={closeDialog}
+            size="small"
+            aria-label="close"
+            sx={{
+              position: 'absolute',
+              top: isCompact ? 4 : 8,
+              right: 10,
+              zIndex: 1000,
               opacity: 0.4 
             }}
           >

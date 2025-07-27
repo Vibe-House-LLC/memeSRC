@@ -40,6 +40,7 @@ export default function LanguagePopover() {
     <>
       <IconButton
         onClick={handleOpen}
+        aria-label="language"
         sx={{
           padding: 0,
           width: 44,

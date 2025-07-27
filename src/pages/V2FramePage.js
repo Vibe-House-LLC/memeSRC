@@ -724,6 +724,7 @@ useEffect(() => {
             </div>
           )}
           <IconButton
+            aria-label="previous frame"
             style={{
               position: 'absolute',
               top: '50%',
@@ -741,6 +742,7 @@ useEffect(() => {
             <ArrowBackIos style={{ fontSize: '2rem' }} />
           </IconButton>
           <IconButton
+            aria-label="next frame"
             disabled={Number(frame) - 1 === 0}
             style={{
               position: 'absolute',
@@ -763,7 +765,7 @@ useEffect(() => {
         {frames && frames?.length > 0 ?
           <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
             <Tooltip title="Fine Tuning">
-              <IconButton>
+              <IconButton aria-label="fine tuning">
                 {loadingFineTuning ? (
                   <CircularProgress size={24} />
                 ) : (
@@ -812,7 +814,7 @@ useEffect(() => {
           :
           <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
             <Tooltip title="Fine Tuning">
-              <IconButton>
+              <IconButton aria-label="fine tuning">
                 <HistoryToggleOffRounded alt="Fine Tuning" />
               </IconButton>
             </Tooltip>

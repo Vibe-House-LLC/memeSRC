@@ -159,6 +159,7 @@ export default function Header({ onOpenNav }) {
       <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
           <IconButton
             onClick={onOpenNav}
+            aria-label="open navigation"
             sx={{
               color: 'text.primary',
               ml: -1,
@@ -369,6 +370,7 @@ export default function Header({ onOpenNav }) {
           </Button>
           <IconButton
             size='small'
+            aria-label='dismiss early access'
             onClick={() => {
               handleEarlyAccessDismiss()
               setMagicAlertOpen(false)
@@ -414,6 +416,7 @@ export default function Header({ onOpenNav }) {
               <IconButton
                 className="close-button"
                 size="small"
+                aria-label="close"
                 sx={{
                   position: 'absolute',
                   right: 4,

@@ -205,6 +205,7 @@ function TryNewVersionBanner({ user, onTryNewVersion }) {
             {/* Close button */}
             <IconButton
               onClick={handleDismissClick}
+              aria-label="dismiss notice"
               sx={{
                 position: 'absolute',
                 top: 8,
@@ -1121,6 +1122,7 @@ export default function CollagePage() {
                     component="label"
                     sx={{ marginTop: '16px', marginBottom: '16px' }}
                     onClick={(event) => handleMenuClick(event, 0)}
+                    aria-label="add image or text"
                   >
                     <Add />
                   </UploadButton>
@@ -1146,16 +1148,32 @@ export default function CollagePage() {
                       <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
                         <ImageWrapper>
                           <img src={image.src} alt={`layer ${index + 1}`} loading="lazy" style={{ width: "100%" }} />
-                          <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
+                          <DeleteButton
+                            className="delete-button"
+                            onClick={() => deleteImage(index)}
+                            aria-label="delete layer"
+                          >
                             <Close />
                           </DeleteButton>
-                          <EditButton className="edit-button" onClick={() => handleEditImage(index)}>
+                          <EditButton
+                            className="edit-button"
+                            onClick={() => handleEditImage(index)}
+                            aria-label="edit layer"
+                          >
                             <Edit />
                           </EditButton>
-                          <MoveUpButton className="move-up-button" onClick={() => moveImage(index, -1)}>
+                          <MoveUpButton
+                            className="move-up-button"
+                            onClick={() => moveImage(index, -1)}
+                            aria-label="move layer up"
+                          >
                             <ArrowUpward />
                           </MoveUpButton>
-                          <MoveDownButton className="move-down-button" onClick={() => moveImage(index, 1)}>
+                          <MoveDownButton
+                            className="move-down-button"
+                            onClick={() => moveImage(index, 1)}
+                            aria-label="move layer down"
+                          >
                             <ArrowDownward />
                           </MoveDownButton>
                         </ImageWrapper>
@@ -1196,6 +1214,7 @@ export default function CollagePage() {
                     size="small"
                     component="label"
                     onClick={(event) => handleMenuClick(event, images.length)}
+                    aria-label="add image or text"
                   >
                     <Add />
                   </UploadButton>
