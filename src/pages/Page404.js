@@ -39,6 +39,7 @@ export default function Page404() {
           <Box
             component="img"
             src="/assets/illustrations/illustration_404.svg"
+            alt="404 not found"
             sx={{ height: 260, mx: 'auto', my: { xs: 5, sm: 10 } }}
           />
 

@@ -66,13 +66,13 @@ export default function ButtonsForm({ buttons, setButtons }) {
                         />
                     </Grid>
                     <Grid item xs={12}>
-                        <IconButton onClick={() => handleRemoveButton(index)}>
+                        <IconButton aria-label="remove button" onClick={() => handleRemoveButton(index)}>
                             <RemoveCircleOutline />
                         </IconButton>
                     </Grid>
                 </Grid>
             )) : "None"}
-            <IconButton onClick={() => handleAddButton()}>
+            <IconButton aria-label="add button" onClick={() => handleAddButton()}>
                 <AddCircleOutline />
             </IconButton>
         </>

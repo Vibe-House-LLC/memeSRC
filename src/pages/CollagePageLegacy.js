@@ -204,6 +204,7 @@ function TryNewVersionBanner({ user, onTryNewVersion }) {
           <>
             {/* Close button */}
             <IconButton
+              aria-label="close banner"
               onClick={handleDismissClick}
               sx={{
                 position: 'absolute',
@@ -1146,16 +1147,16 @@ export default function CollagePage() {
                       <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
                         <ImageWrapper>
                           <img src={image.src} alt={`layer ${index + 1}`} loading="lazy" style={{ width: "100%" }} />
-                          <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
+                          <DeleteButton aria-label="delete layer" className="delete-button" onClick={() => deleteImage(index)}>
                             <Close />
                           </DeleteButton>
-                          <EditButton className="edit-button" onClick={() => handleEditImage(index)}>
+                          <EditButton aria-label="edit layer" className="edit-button" onClick={() => handleEditImage(index)}>
                             <Edit />
                           </EditButton>
-                          <MoveUpButton className="move-up-button" onClick={() => moveImage(index, -1)}>
+                          <MoveUpButton aria-label="move layer up" className="move-up-button" onClick={() => moveImage(index, -1)}>
                             <ArrowUpward />
                           </MoveUpButton>
-                          <MoveDownButton className="move-down-button" onClick={() => moveImage(index, 1)}>
+                          <MoveDownButton aria-label="move layer down" className="move-down-button" onClick={() => moveImage(index, 1)}>
                             <ArrowDownward />
                           </MoveDownButton>
                         </ImageWrapper>

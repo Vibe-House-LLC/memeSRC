@@ -570,6 +570,7 @@ const AccountPage = () => {
                     ).toLocaleDateString()}`}
                   />
                   <IconButton
+                    aria-label="download invoice"
                     onClick={(e) => {
                       e.stopPropagation();
                       downloadInvoicePDF(invoice.invoice_pdf);

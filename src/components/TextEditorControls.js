@@ -117,6 +117,7 @@ export default function TextEditorControls(props) {
           size="small"
           color={editorVisible ? 'primary' : 'default'}
           onClick={() => setEditorVisible((prev) => !prev)}
+          aria-label="toggle settings"
           sx={{ marginLeft: 1 }}
         >
           <Settings />

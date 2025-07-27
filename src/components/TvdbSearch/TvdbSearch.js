@@ -200,11 +200,12 @@ export default function TvdbSearch({ onSelect = () => {}, onClear = () => {}, ty
                 InputProps={{
                     endAdornment:
                         <>
-                            <IconButton disabled={!searchTerm} onClick={handleSearch}>
+                            <IconButton aria-label="search" disabled={!searchTerm} onClick={handleSearch}>
                                 <Search />
                             </IconButton>
                             {searchTerm &&
                                 <IconButton
+                                    aria-label="clear search"
                                     onClick={() => {
                                         setSearchTerm('')
                                         setOptions([])

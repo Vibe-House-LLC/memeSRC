@@ -308,13 +308,14 @@ const AliasManagementPageRevised = () => {
                   <TableCell>{alias.aliasV2ContentMetadataId}</TableCell>
                   <TableCell align="right">
                     <IconButton
+                      aria-label="refresh metadata"
                       onClick={() => refreshMetadata(alias.aliasV2ContentMetadataId)}
                       disabled={refreshingMetadata === alias.aliasV2ContentMetadataId}
                     >
                       {refreshingMetadata === alias.aliasV2ContentMetadataId ? <CircularProgress size={24} /> : <Refresh />}
                     </IconButton>
-                    <IconButton onClick={() => handleOpenDialog(alias)}><Edit /></IconButton>
-                    <IconButton onClick={() => handleOpenDeleteDialog(alias)} color="error"><Delete /></IconButton>
+                    <IconButton aria-label="edit alias" onClick={() => handleOpenDialog(alias)}><Edit /></IconButton>
+                    <IconButton aria-label="delete alias" onClick={() => handleOpenDeleteDialog(alias)} color="error"><Delete /></IconButton>
                   </TableCell>
                 </TableRow>
               ))}

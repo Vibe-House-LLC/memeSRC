@@ -473,7 +473,7 @@ export default function UserPage() {
                       <TableCell align="left">{createdAt}</TableCell>
 
                       <TableCell align="right">
-                        <IconButton size="large" color="inherit" onClick={(event) => {
+                        <IconButton aria-label="open actions" size="large" color="inherit" onClick={(event) => {
                           setChosenUser(row)
                           handleOpenMenu(event, index)
                         }}>

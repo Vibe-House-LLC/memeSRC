@@ -200,7 +200,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <Box
                   component="img"
                   src={Logo({ color: currentThemeFontColor || 'white' })}
-                  sx={{ 
+                  alt="memeSRC logo"
+                  sx={{
                     objectFit: 'contain', 
                     cursor: 'pointer', 
                     display: 'block', 

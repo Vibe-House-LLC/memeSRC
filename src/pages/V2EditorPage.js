@@ -1617,10 +1617,10 @@ const EditorPage = ({ shows }) => {
                     <Stack direction='column' width='100%' spacing={1}>
                       <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
                         <ButtonGroup variant="contained" size="small">
-                          <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                          <IconButton aria-label="undo" disabled={(editorStates.length <= 1)} onClick={undo}>
                             <Undo />
                           </IconButton>
-                          <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                          <IconButton aria-label="redo" disabled={(futureStates.length === 0)} onClick={redo}>
                             <Redo />
                           </IconButton>
                         </ButtonGroup>
@@ -1661,7 +1661,7 @@ const EditorPage = ({ shows }) => {
                             sx={{ flexGrow: 1, zIndex: 100 }}
                             valueLabelFormat={(value) => `${Math.round(value)}%`}
                           />
-                          <IconButton onClick={toggleWhiteSpaceSlider}>
+                          <IconButton aria-label="close" onClick={toggleWhiteSpaceSlider}>
                             <Close />
                           </IconButton>
                         </Stack>

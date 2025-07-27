@@ -1290,10 +1290,10 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
 
                       <ButtonGroup variant="contained" size="small">
-                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                        <IconButton aria-label="undo" disabled={(editorStates.length <= 1)} onClick={undo}>
                           <UndoIcon />
                         </IconButton>
-                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                        <IconButton aria-label="redo" disabled={(futureStates.length === 0)} onClick={redo}>
                           <RedoIcon />
                         </IconButton>
                       </ButtonGroup>

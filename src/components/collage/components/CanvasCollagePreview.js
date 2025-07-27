@@ -2941,6 +2941,7 @@ const CanvasCollagePreview = ({
              !isDraggingBorder && !isReorderMode && (
               <IconButton
                 size="small"
+                aria-label={isInTransformMode ? 'finish transform' : 'open actions'}
                 onClick={(e) =>
                   isInTransformMode
                     ? toggleTransformMode(panelId)
@@ -2980,6 +2981,7 @@ const CanvasCollagePreview = ({
             {isReorderMode && reorderSourcePanel === panelId && (
               <IconButton
                 size="small"
+                aria-label="cancel reorder"
                 onClick={cancelReorderMode}
                 sx={{
                   position: 'absolute',

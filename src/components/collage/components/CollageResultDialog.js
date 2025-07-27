@@ -151,6 +151,7 @@ export default function CollageResultDialog({ open, onClose, finalImage }) {
         >
           {/* Close Button */}
           <IconButton
+            aria-label="close"
             onClick={onClose}
             sx={{
               position: 'absolute',
