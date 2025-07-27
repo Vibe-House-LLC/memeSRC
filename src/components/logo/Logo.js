@@ -17,11 +17,6 @@ const Logo = forwardRef(({ sx, color = 'white', ...other }, ref) => {
         component="img"
         src="/assets/memeSRC-white.svg"
         alt="memeSRC logo"
-        loading="eager"
-        decoding="async"
-        fetchpriority="high"
-        width={40}
-        height={24}
         sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
         {...other}
       />
@@ -37,8 +32,6 @@ const Logo = forwardRef(({ sx, color = 'white', ...other }, ref) => {
       component="svg"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 750 450"
-      width={40}
-      height={24}
       role="img"
       aria-label="memeSRC logo"
       sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
