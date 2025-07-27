@@ -200,11 +200,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <Box
                   component="img"
                   src={Logo({ color: currentThemeFontColor || 'white' })}
-                  sx={{ 
-                    objectFit: 'contain', 
-                    cursor: 'pointer', 
-                    display: 'block', 
-                    width: '130px', 
+                  alt="memeSRC logo"
+                  sx={{
+                    objectFit: 'contain',
+                    cursor: 'pointer',
+                    display: 'block',
+                    width: '130px',
                     height: 'auto',
                     margin: '0 auto',
                     color: 'yellow' 
@@ -352,7 +353,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Grid>
           </StyledSearchForm>
           <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={2} marginTop={1}>
-            <Typography component="h4" variant="h4">
+            <Typography component="h2" variant="h4">
               {currentThemeBragText}
             </Typography>
           </Grid>

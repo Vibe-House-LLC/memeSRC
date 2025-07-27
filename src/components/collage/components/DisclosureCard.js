@@ -157,6 +157,7 @@ const DisclosureCard = ({
         {/* Right side: Expand/Collapse Arrow */}
         <IconButton
           size="small"
+          aria-label="toggle section"
           sx={{
             transition: 'transform 0.2s ease',
             transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',

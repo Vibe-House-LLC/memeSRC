@@ -55,6 +55,7 @@ export default function AccountPopover() {
       {userDetails?.user &&
         <IconButton
           onClick={handleOpen}
+          aria-label="account options"
           sx={{
             p: 0.5,
             width: 44,
@@ -86,6 +87,7 @@ export default function AccountPopover() {
       {!(userDetails?.user) &&
         <IconButton
           onClick={handleOpen}
+          aria-label="account options"
           sx={{
             p: 0.5,
             width: 44,

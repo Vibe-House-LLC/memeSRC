@@ -70,6 +70,7 @@ const Logo = forwardRef(({ sx, ...other }, ref) => (
     ref={ref}
     component="img"
     src={`/assets/memeSRC${other.color === 'white' ? '-white' : '-color'}.svg`}
+    alt="memeSRC logo"
     sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
   />
 ));
