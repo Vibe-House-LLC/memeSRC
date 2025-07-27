@@ -1,4 +1,7 @@
-import { Container, Divider, LinearProgress, Typography } from "@mui/material";
+import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
+import LinearProgress from '@mui/material/LinearProgress';
+import Typography from '@mui/material/Typography';
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { API, graphqlOperation } from "aws-amplify";

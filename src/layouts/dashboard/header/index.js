@@ -2,24 +2,7 @@ import PropTypes from 'prop-types';
 import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 // @mui
 import { styled } from '@mui/material/styles';
-import {
-  Box,
-  Stack,
-  AppBar,
-  Toolbar,
-  Link,
-  IconButton,
-  Grid,
-  Typography,
-  Slide,
-  Chip,
-  Popover,
-  Button,
-  Card,
-  Popper,
-  Badge,
-  Slide as MuiSlide,
-} from '@mui/material';
+
 import { AutoFixHighRounded, Check, Close, LocalPoliceRounded } from '@mui/icons-material';
 // utils
 import { useLocation, useNavigate } from "react-router-dom";

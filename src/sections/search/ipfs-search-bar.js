@@ -1,7 +1,18 @@
 // ipfs-search-bar.js
 
 import styled from "@emotion/styled";
-import { Link, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
+import Link from '@mui/material/Link';
+import FormControl from '@mui/material/FormControl';
+import Grid from '@mui/material/Grid';
+import InputBase from '@mui/material/InputBase';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Container from '@mui/material/Container';
+import ListSubheader from '@mui/material/ListSubheader';
 import { ArrowBack, Close, Search } from "@mui/icons-material";
 import { Children, cloneElement, useContext, useEffect, useRef, useState } from "react";
 import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";

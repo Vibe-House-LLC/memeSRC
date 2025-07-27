@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 
-import { Backdrop, CircularProgress } from '@mui/material';
+
 import { SearchDetailsProvider } from './contexts/SearchDetailsProvider';
 import { CollageProvider } from './contexts/CollageContext';
 // routes

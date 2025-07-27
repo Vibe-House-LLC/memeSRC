@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Container, Typography, Breadcrumbs, Link } from '@mui/material';
+
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 export default function BasePage({ pageTitle, breadcrumbLinks = [], children }) {

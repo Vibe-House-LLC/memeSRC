@@ -1,18 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
-import {
-  Typography,
-  Container,
-  Grid,
-  Card,
-  CardHeader,
-  CardContent,
-  CircularProgress,
-  TextField,
-  Select,
-  MenuItem,
-  Button,
-} from '@mui/material';
+
 import { listProSupportMessages, getUserDetails } from '../graphql/queries';
 
 export default function ProSupportAdmin() {

@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { Container, Box, Typography, useMediaQuery } from '@mui/material';
+
 import { Bolt, SupportAgent, AutoFixHighRounded, Check } from '@mui/icons-material';
 
 export default function MemeSrcPro({ backgroundColor, textColor, large }) {

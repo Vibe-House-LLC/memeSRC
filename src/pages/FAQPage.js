@@ -1,19 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  Box,
-  Typography,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  TextField,
-  Card,
-  CardContent,
-  Button,
-  InputAdornment,
-  IconButton,
-  Link,
-} from '@mui/material';
+
 import { styled } from '@mui/system';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { OpenInNew } from '@mui/icons-material';

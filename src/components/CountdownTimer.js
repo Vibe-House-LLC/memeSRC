@@ -1,4 +1,6 @@
-import { Box, Typography } from '@mui/material';
+
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import { keyframes } from '@mui/system';
 import { useState, useEffect, useMemo, memo } from 'react';
 import PropTypes from 'prop-types';

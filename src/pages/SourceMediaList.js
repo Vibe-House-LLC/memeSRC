@@ -3,20 +3,7 @@ import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
 import { useEffect, useState } from 'react';
 // @mui
-import {
-  Card,
-  Table,
-  Stack,
-  Paper,
-  Checkbox,
-  TableRow,
-  TableBody,
-  TableCell,
-  Container,
-  Typography,
-  TableContainer,
-  TablePagination,
-} from '@mui/material';
+
 import { API } from 'aws-amplify';
 import { useNavigate } from 'react-router-dom';
 // components

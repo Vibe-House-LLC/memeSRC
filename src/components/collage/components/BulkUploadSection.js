@@ -1,16 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { 
-  Box, 
-  Typography, 
-  Card,
-  CardMedia,
-  Chip,
-  Menu,
-  MenuItem,
-  Snackbar,
-  Alert
-} from '@mui/material';
+
 import { useTheme, styled, alpha } from '@mui/material/styles';
 import { 
   Add,

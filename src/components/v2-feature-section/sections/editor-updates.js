@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { Container, Box, Typography, useMediaQuery } from '@mui/material';
+
 import { PhotoAlbum, OpenWith, Layers, FormatShapes, AutoFixHighRounded } from '@mui/icons-material';
 
 export default function EditorUpdates({ backgroundColor, textColor, large }) {

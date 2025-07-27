@@ -1,18 +1,15 @@
 /* eslint-disable no-unused-vars, react/prop-types */
 import { useState, useRef, useEffect } from "react";
 import { useTheme, styled, alpha } from "@mui/material/styles";
-import {
-  Box,
-  Button,
-  Typography,
-  Grid,
-  Paper,
-  Alert,
-  Chip,
-  IconButton,
-  useMediaQuery,
-  Tooltip
-} from "@mui/material";
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import Alert from '@mui/material/Alert';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import Tooltip from '@mui/material/Tooltip';
 import {
   KeyboardArrowLeft,
   KeyboardArrowRight,

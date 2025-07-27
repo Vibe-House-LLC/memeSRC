@@ -1,6 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon } from "@mui/material";
+import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
 import { useTheme } from "@mui/material/styles";
 import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
