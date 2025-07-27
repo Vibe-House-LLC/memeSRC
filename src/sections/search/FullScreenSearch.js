@@ -200,14 +200,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <Box
                   component="img"
                   src={Logo({ color: currentThemeFontColor || 'white' })}
-                  sx={{ 
-                    objectFit: 'contain', 
-                    cursor: 'pointer', 
-                    display: 'block', 
-                    width: '130px', 
+                  alt="memeSRC logo"
+                  sx={{
+                    objectFit: 'contain',
+                    cursor: 'pointer',
+                    display: 'block',
+                    width: '130px',
                     height: 'auto',
                     margin: '0 auto',
-                    color: 'yellow' 
+                    color: 'yellow'
                   }}
                 />
               </Box>
