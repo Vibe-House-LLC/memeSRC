@@ -6,7 +6,27 @@ import { useParams, useNavigate, useLocation, useSearchParams } from 'react-rout
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
+import AddIcon from '@mui/icons-material/Add';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CloseIcon from '@mui/icons-material/Close';
+import ClosedCaptionIcon from '@mui/icons-material/ClosedCaption';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import FormatColorFillIcon from '@mui/icons-material/FormatColorFill';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
+import GpsNotFixedIcon from '@mui/icons-material/GpsNotFixed';
+import HighlightOffRoundedIcon from '@mui/icons-material/HighlightOffRounded';
+import HistoryToggleOffRoundedIcon from '@mui/icons-material/HistoryToggleOffRounded';
+import IosShareIcon from '@mui/icons-material/IosShare';
+import MenuIcon from '@mui/icons-material/Menu';
+import RedoIcon from '@mui/icons-material/Redo';
+import SaveIcon from '@mui/icons-material/Save';
+import ShareIcon from '@mui/icons-material/Share';
+import UndoIcon from '@mui/icons-material/Undo';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -228,7 +248,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // Warm up the UUID function for faster save dialog response
   useEffect(() => {
-    API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        })
+      : setTimeout(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        }, 1000)
+
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -1257,17 +1291,17 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
                       <ButtonGroup variant="contained" size="small">
                         <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
-                          <Undo />
+                          <UndoIcon />
                         </IconButton>
                         <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
-                          <Redo />
+                          <RedoIcon />
                         </IconButton>
                       </ButtonGroup>
 
                       <Button
                         variant="contained"
                         size="medium"
-                        startIcon={<Save />}
+                        startIcon={<SaveIcon />}
                         onClick={handleClickDialogOpen}
                         sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                       >
@@ -1330,7 +1364,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         }}
                         icon={
                           <Box display="flex" alignItems="center" marginX={-1}>
-                            <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
+                            <HistoryToggleOffRoundedIcon fontSize='small' sx={{ mr: 1 }} />
                             Timing
                           </Box>
                         }
@@ -1344,7 +1378,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       }}
                       icon={
                         <Box display="flex" alignItems="center" marginX={-1}>
-                          <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
+                          <ClosedCaptionIcon fontSize='small' sx={{ mr: 1 }} />
                           Captions
                         </Box>
                       }
@@ -1358,7 +1392,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       }}
                       icon={
                         <Box display="flex" alignItems="center" marginX={-1}>
-                          <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
+                          <AutoFixHighRoundedIcon fontSize='small' sx={{ mr: 1 }} />
                           Magic
                         </Box>
                       }
@@ -1411,7 +1445,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     }}
                                     onClick={() => deleteLayer(index)}
                                   >
-                                    <HighlightOffRounded color="error" />
+                                    <HighlightOffRoundedIcon color="error" />
                                   </Fab>
                                 </div>
                               </Grid>
@@ -1442,7 +1476,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     }}
                                     onClick={() => deleteLayer(index)}
                                   >
-                                    <HighlightOffRounded color="error" />
+                                    <HighlightOffRoundedIcon color="error" />
                                   </Fab>
                                 </div>
                               </Grid>
@@ -1456,7 +1490,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           onClick={() => addText('text', true)}
                           fullWidth
                           sx={{ zIndex: '50', marginTop: '20px' }}
-                          startIcon={<AddCircleOutline />}
+                          startIcon={<AddCircleOutlineIcon />}
                         >
                           Add text layer
                         </Button>
@@ -1473,7 +1507,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           onClick={() => fileInputRef.current.click()}
                           fullWidth
                           sx={{ zIndex: '50', marginBottom: '20px' }}
-                          startIcon={<AddPhotoAlternate />}
+                          startIcon={<AddPhotoAlternateIcon />}
                         >
                           Add image layer
                         </Button>
@@ -1518,13 +1552,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         }}
                       >
                         <Tab
-                          icon={<AutoFixHigh fontSize='small' />}
+                          icon={<AutoFixHighIcon fontSize='small' />}
                           label="Eraser"
                           value="erase"
                           style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }}
                         />
                         <Tab
-                          icon={<FormatColorFill fontSize='small' />}
+                          icon={<FormatColorFillIcon fontSize='small' />}
                           label="Fill"
                           value="fill"
                           style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }}
@@ -1616,7 +1650,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     onClick={handleClickDialogOpen}
                     fullWidth
                     sx={{ marginTop: 2, zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                    startIcon={<Share />}
+                    startIcon={<ShareIcon />}
                     size="large"
                   >
                     Save/Copy/Share
@@ -1628,9 +1662,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
                         <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
                           {subtitlesExpanded ? (
-                            <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            <CloseIcon style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                           ) : (
-                            <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            <MenuIcon style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                           )}
                           {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
                         </Typography>
@@ -1673,7 +1707,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         <CircularProgress size={20} sx={{ color: '#565656' }} />
                                       ) : result?.subtitle.replace(/\n/g, ' ') ===
                                         defaultSubtitle.replace(/\n/g, ' ') ? (
-                                        <GpsFixed
+                                        <GpsFixedIcon
                                           sx={{
                                             color:
                                               result?.subtitle.replace(/\n/g, ' ') ===
@@ -1684,7 +1718,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                           }}
                                         />
                                       ) : (
-                                        <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                        <GpsNotFixedIcon sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
                                       )}
                                     </Fab>
                                   </ListItemIcon>
@@ -1723,7 +1757,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         handleSnackbarOpen();
                                       }}
                                     >
-                                      <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                                      <ContentCopyIcon sx={{ color: 'rgb(89, 89, 89)' }} />
                                     </Fab>
                                     <Fab
                                       size="small"
@@ -1738,7 +1772,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                       }}
                                       onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
                                     >
-                                      <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                      <AddIcon sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
                                     </Fab>
                                     {/* <Fab
                                                                               size="small"
@@ -1753,7 +1787,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                           {loading ? (
                                                                               <CircularProgress size={20} sx={{ color: "#565656"}} />
                                                                           ) : (
-                                                                              (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
+                                                                              (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixedIcon sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForwardIcon sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} />
                                                                           )}
                                                                           </Fab> */}
                                   </ListItemIcon>
@@ -1934,6 +1968,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     src={`https://i${process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
                       }.memesrc.com/${generatedImageFilename}`}
                     alt="generated meme"
+                    loading="lazy"
                   />
                 )}
                 {imageUploading && (
@@ -1971,7 +2006,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         files: [shareImageFile],
                       });
                     }}
-                    startIcon={<IosShare />}
+                    startIcon={<IosShareIcon />}
                   >
                     Share
                   </Button>
@@ -1987,7 +2022,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
                     handleSnackbarOpen();
                   }}
-                  startIcon={<ContentCopy />}
+                  startIcon={<ContentCopyIcon />}
                 >
                   Copy
                 </Button>
@@ -1998,7 +2033,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   sx={{ marginBottom: 2, padding: '12px 16px' }}
                   autoFocus
                   onClick={handleDialogClose}
-                  startIcon={<Close />}
+                  startIcon={<CloseIcon />}
                 >
                   Close
                 </Button>
@@ -2049,6 +2084,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   <img
                     src={image}
                     alt="placeholder"
+                    loading="lazy"
                     style={{
                       width: '100%',
                       aspectRatio: `${editorAspectRatio}/1`,
@@ -2068,7 +2104,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         color: 'white'
                       }}
                     >
-                      <CheckCircleOutline />
+                      <CheckCircleOutlineIcon />
                     </Fab>
                   )}
                 </div>
@@ -2114,7 +2150,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           }}
           onClick={() => setVariationDisplayColumns(prev => (prev === 2 ? 1 : 2))}
         >
-          {variationDisplayColumns === 2 ? <ZoomIn /> : <ZoomOut />}
+          {variationDisplayColumns === 2 ? <ZoomInIcon /> : <ZoomOutIcon />}
         </Fab>
       </Dialog>
     </>

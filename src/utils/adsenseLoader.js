@@ -14,15 +14,25 @@ export const useAdsenseLoader = () => {
       script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1307598869123774";
       script.async = true;
       script.crossOrigin = "anonymous";
-      document.body.appendChild(script);
-      adsenseLoaded = true;
+
+      const loadScript = () => {
+        document.body.appendChild(script);
+        adsenseLoaded = true;
+      };
+
+      const idleId = 'requestIdleCallback' in window
+        ? window.requestIdleCallback(loadScript)
+        : setTimeout(loadScript, 1000);
 
       return () => {
-        // Cleanup if user becomes a subscriber
-        if (user?.userDetails?.subscriptionStatus === 'active') {
+        if ('cancelIdleCallback' in window) {
+          window.cancelIdleCallback(idleId);
+        } else {
+          clearTimeout(idleId);
+        }
+        if (adsenseLoaded && user?.userDetails?.subscriptionStatus === 'active') {
           document.body.removeChild(script);
           adsenseLoaded = false;
-          // Clear any existing ads
           const ads = document.getElementsByClassName('adsbygoogle');
           Array.from(ads).forEach(ad => ad.remove());
         }

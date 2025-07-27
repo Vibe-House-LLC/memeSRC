@@ -32,7 +32,17 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh, AutoFixHighRounded, ThumbDown } from '@mui/icons-material';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
+import LockIcon from '@mui/icons-material/Lock';
+import NewReleasesOutlinedIcon from '@mui/icons-material/NewReleasesOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -1220,11 +1230,11 @@ export default function VotingPage() {
                   },
                 }}
               >
-                <ThumbUp color="success" sx={{ mr: 1 }} />
+                <ThumbUpIcon color="success" sx={{ mr: 1 }} />
                 Most Upvoted
               </ToggleButton>
               <ToggleButton value="combined" aria-label="battleground">
-                <Whatshot color="error" sx={{ mr: 1 }} />
+                <WhatshotIcon color="error" sx={{ mr: 1 }} />
                 Battleground
               </ToggleButton>
             </ToggleButtonGroup>
@@ -1243,7 +1253,7 @@ export default function VotingPage() {
               All
             </ToggleButton>
             <ToggleButton value="hideAvailable" aria-label="hide available">
-              <NewReleasesOutlined sx={{ mr: 1 }} />
+              <NewReleasesOutlinedIcon sx={{ mr: 1 }} />
               Requested
             </ToggleButton>
             <ToggleButton value="requested" aria-label="requested">
@@ -1285,7 +1295,7 @@ export default function VotingPage() {
                     ...params.InputProps,
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Search />
+                        <SearchIcon />
                       </InputAdornment>
                     ),
                     endAdornment: (searchText || isSearching) && (
@@ -1298,7 +1308,7 @@ export default function VotingPage() {
                           {isSearching ? (
                             <CircularProgress size={20} sx={{ color: 'white' }} />
                           ) : (
-                            <Close />
+                            <CloseIcon />
                           )}
                         </IconButton>
                       </InputAdornment>
@@ -1344,7 +1354,7 @@ export default function VotingPage() {
                 {isRefreshing ? (
                   <CircularProgress size={24} />
                 ) : (
-                  <Refresh />
+                  <RefreshIcon />
                 )}
               </IconButton>
             )}
@@ -1440,6 +1450,7 @@ export default function VotingPage() {
                                       <img
                                         src={show.image || 'path/to/placeholder-image.jpg'}
                                         alt={show.name}
+                                        loading="lazy"
                                         style={{
                                           ...showImageStyle,
                                           display: loadedImages[show.id] ? 'block' : 'none',
@@ -1478,7 +1489,7 @@ export default function VotingPage() {
                                         color="success.main"
                                         sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                       >
-                                        <ArrowUpward
+                                        <ArrowUpwardIcon
                                           fontSize="small"
                                           sx={{ verticalAlign: 'middle' }}
                                         />
@@ -1491,7 +1502,7 @@ export default function VotingPage() {
                                           ml={1}
                                           sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                         >
-                                          <ArrowDownward
+                                          <ArrowDownwardIcon
                                             fontSize="small"
                                             sx={{ verticalAlign: 'middle' }}
                                           />
@@ -1587,11 +1598,11 @@ export default function VotingPage() {
                                                 }}
                                               >
                                                 {userCanVote ? (
-                                                  <ArrowUpward />
+                                                  <ArrowUpwardIcon />
                                                 ) : isUpvoted ? (
-                                                  <ArrowUpward sx={{ color: 'success.main' }} />
+                                                  <ArrowUpwardIcon sx={{ color: 'success.main' }} />
                                                 ) : (
-                                                  <ArrowUpward />
+                                                  <ArrowUpwardIcon />
                                                 )}
                                               </StyledFab>
                                             </MagicVoteWrapper>
@@ -1678,9 +1689,9 @@ export default function VotingPage() {
                                                 }}
                                               >
                                                 {isDownvoted ? (
-                                                  <ArrowDownward sx={{ color: 'error.main' }} />
+                                                  <ArrowDownwardIcon sx={{ color: 'error.main' }} />
                                                 ) : (
-                                                  <ArrowDownward />
+                                                  <ArrowDownwardIcon />
                                                 )}
                                               </StyledFab>
                                             </MagicVoteWrapper>
@@ -1767,11 +1778,11 @@ export default function VotingPage() {
                                                 }}
                                               >
                                                 {userCanVote ? (
-                                                  <ThumbUp />
+                                                  <ThumbUpIcon />
                                                 ) : isUpvoted ? (
-                                                  <ThumbUp sx={{ color: 'success.main' }} />
+                                                  <ThumbUpIcon sx={{ color: 'success.main' }} />
                                                 ) : (
-                                                  <Lock />
+                                                  <LockIcon />
                                                 )}
                                               </StyledFab>
                                             </MagicVoteWrapper>
@@ -2034,11 +2045,11 @@ export default function VotingPage() {
             '&:last-child': { pb: '16px' },
           }
         }}>
-          <AutoFixHighRounded 
-            sx={{ 
-              color: magicVotesEnabled ? 'black' : theme.palette.success.main, 
+          <AutoFixHighRoundedIcon
+            sx={{
+              color: magicVotesEnabled ? 'black' : theme.palette.success.main,
               fontSize: '2rem',
-            }} 
+            }}
           />
           <Typography 
             variant="body1" 
@@ -2101,7 +2112,7 @@ export default function VotingPage() {
               color: 'white',
             }}
           >
-            <Close />
+            <CloseIcon />
           </IconButton>
 
           
@@ -2182,7 +2193,7 @@ export default function VotingPage() {
                       fontSize: { xs: '0.7rem', sm: '0.75rem' } // Slightly smaller on mobile
                     }}
                   >
-                    {multiplier !== 1 && <AutoFixHighRounded sx={{ fontSize: '1rem' }} />}
+                    {multiplier !== 1 && <AutoFixHighRoundedIcon sx={{ fontSize: '1rem' }} />}
                     {multiplier === 1 ? 'Free' : multiplier === 5 ? '1\u00A0credit' : '2\u00A0credits'}
                   </Typography>
                 </Box>
@@ -2224,9 +2235,9 @@ export default function VotingPage() {
             }}
           >
             {/* ThumbUp Icon if boosting upvote or ThumbDown Icon if boosting downvote */}
-            {magicVoteBoost > 0 ? 
-              <ThumbUp sx={{ fontSize: '1.5rem', mr: 1 }} /> : 
-              <ThumbDown sx={{ fontSize: '1.5rem', mr: 1 }} />}
+            {magicVoteBoost > 0 ?
+              <ThumbUpIcon sx={{ fontSize: '1.5rem', mr: 1 }} /> :
+              <ThumbDownIcon sx={{ fontSize: '1.5rem', mr: 1 }} />}
             {(() => {
               const requiredCredits = magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2;
               const hasEnoughCredits = user?.userDetails?.credits >= requiredCredits;

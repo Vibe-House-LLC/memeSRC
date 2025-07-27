@@ -7,16 +7,14 @@ import { useState, useEffect, Fragment, useContext } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
-import {
-  ArrowDropDown,
-  ChangeHistoryOutlined,
-  CheckCircle,
-  InfoOutlined,
-  ListAlt,
-  Pending,
-  Poll,
-  StorageOutlined,
-} from '@mui/icons-material';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ChangeHistoryOutlinedIcon from '@mui/icons-material/ChangeHistoryOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import PendingIcon from '@mui/icons-material/Pending';
+import PollIcon from '@mui/icons-material/Poll';
+import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import { listSeriesData, updateSeriesData } from '../utils/migrateSeriesData';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
@@ -466,7 +464,7 @@ export default function DashboardSeriesPage() {
             aria-haspopup="true"
             onClick={handleOptionsMenuClick}
             variant="contained"
-            startIcon={<ArrowDropDown />}
+            startIcon={<ArrowDropDownIcon />}
           >
             Options
           </Button>
@@ -490,7 +488,7 @@ export default function DashboardSeriesPage() {
               </Button>
             </MenuItem>
             <MenuItem onClick={handleOptionsMenuClose}>
-              <Button fullWidth variant="contained" startIcon={<StorageOutlined />} onClick={tvdbIdMigration}>
+              <Button fullWidth variant="contained" startIcon={<StorageOutlinedIcon />} onClick={tvdbIdMigration}>
                 Migrate Data
               </Button>
             </MenuItem>
@@ -499,7 +497,7 @@ export default function DashboardSeriesPage() {
                 handleChangeAllStatus();
                 handleOptionsMenuClose();
               }}>
-              <Button fullWidth variant="contained" startIcon={<ChangeHistoryOutlined />}>
+              <Button fullWidth variant="contained" startIcon={<ChangeHistoryOutlinedIcon />}>
                 Change All Status
               </Button>
             </MenuItem>
@@ -516,7 +514,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <ListAlt color="success" sx={{ mr: 1 }} />
+                  <ListAltIcon color="success" sx={{ mr: 1 }} />
                   All
                 </Box>
               }
@@ -525,7 +523,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <CheckCircle color="success" sx={{ mr: 1 }} />
+                  <CheckCircleIcon color="success" sx={{ mr: 1 }} />
                   Live
                 </Box>
               }
@@ -534,7 +532,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <Poll color="warning" sx={{ mr: 1 }} />
+                  <PollIcon color="warning" sx={{ mr: 1 }} />
                   Votable
                 </Box>
               }
@@ -543,7 +541,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <Pending color="action" sx={{ mr: 1 }} />
+                  <PendingIcon color="action" sx={{ mr: 1 }} />
                   Requested
                 </Box>
               }
@@ -552,7 +550,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <InfoOutlined color="error" sx={{ mr: 1 }} />
+                  <InfoOutlinedIcon color="error" sx={{ mr: 1 }} />
                   Other
                 </Box>
               }
@@ -678,7 +676,12 @@ export default function DashboardSeriesPage() {
                     seriesSeasons.map((season) =>
                       season.type.id === 1 ? (
                         <Grid item xs={6} md={4} key={season.id}>
-                          <img src={season.image} alt="season artwork" style={{ width: '100%', height: 'auto' }} />
+                          <img
+                            src={season.image}
+                            alt="season artwork"
+                            loading="lazy"
+                            style={{ width: '100%', height: 'auto' }}
+                          />
                           <Typography component="h6" variant="h6">
                             Season {season.number}
                           </Typography>
