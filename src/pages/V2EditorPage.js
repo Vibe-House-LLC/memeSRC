@@ -2217,7 +2217,10 @@ const EditorPage = ({ shows }) => {
                 <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
-                    <a style={{ textDecoration: 'none' }}>
+                    <a
+                      href={`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                      style={{ textDecoration: 'none' }}
+                    >
                       <StyledCard
                         sx={{
                           ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),

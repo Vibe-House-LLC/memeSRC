@@ -122,7 +122,7 @@ const Sidebar: React.FC = () => {
             <div className="mb-4">
               <h3 className="text-gray-700 dark:text-gray-300 font-semibold mb-2 px-1 mt-6 opacity-50">Tools</h3>
               <ul className="space-y-1">
-                <SidebarLink href="/collage" icon={<Image className="w-5 h-5" aria-label="Collage Icon" />} text="Collage" isPro colorIndex={0} />
+                <SidebarLink href="/collage" icon={<Image alt="Collage icon" className="w-5 h-5" aria-label="Collage Icon" />} text="Collage" isPro colorIndex={0} />
                 <SidebarLink href="/" icon={<Search className="w-5 h-5" aria-label="Search Icon" />} text="Search" colorIndex={1} />
                 <SidebarLink href="/edit" icon={<Edit className="w-5 h-5" aria-label="Edit Icon" />} text="Edit" colorIndex={2} />
                 <SidebarLink href="/vote" icon={<Vote className="w-5 h-5" aria-label="Vote Icon" />} text="Vote" colorIndex={3} />

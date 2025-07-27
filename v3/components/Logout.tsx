@@ -19,7 +19,7 @@ export default function Logout() {
 
   return (
     <Link
-      href="#"
+      href="/"
       onClick={handleSignOut}
       className="flex items-center text-red-600 hover:text-red-800 transition-colors"
     >

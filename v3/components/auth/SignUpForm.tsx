@@ -122,7 +122,10 @@ const SignUpForm = () => {
         </Button>
       </form>
       <p className="mt-6 text-sm text-gray-400 text-center">
-        By signing up, I agree to <Link href="#" className="text-purple-500 hover:underline">Terms of service</Link> and <Link href="#" className="text-purple-500 hover:underline">Privacy policy</Link>.
+        By signing up, I agree to{' '}
+        <Link href="/termsofservice" className="text-purple-500 hover:underline">Terms of service</Link>{' '}
+        and{' '}
+        <Link href="/privacypolicy" className="text-purple-500 hover:underline">Privacy policy</Link>.
       </p>
     </div>
   );
