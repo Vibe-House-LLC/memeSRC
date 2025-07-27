@@ -13,7 +13,7 @@ import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
 
-import Logo from '../../logo/logo';
+import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 
@@ -197,10 +197,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           <Grid container justifyContent="center">
             <Grid item textAlign="center" marginBottom={2}>
               <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
-                <Box
-                  component="img"
-                  src={Logo({ color: currentThemeFontColor || 'white' })}
-                  alt="memeSRC logo"
+                <Logo
+                  color={currentThemeFontColor || 'white'}
                   sx={{
                     objectFit: 'contain',
                     cursor: 'pointer',
