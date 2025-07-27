@@ -5,7 +5,7 @@ import Paper from '@mui/material/Paper';
 import Popper from '@mui/material/Popper';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import styled from '@mui/material/styled';
+import { styled } from '@mui/material/styles';
 import { API } from "aws-amplify";
 import { useRef, useState } from "react";
 import PropTypes from 'prop-types';

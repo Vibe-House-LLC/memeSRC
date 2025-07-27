@@ -1,5 +1,5 @@
 import Container from '@mui/material/Container';
-import styled from '@mui/material/styled';
+import { styled } from '@mui/material/styles';
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import Logo from "../../components/logo/Logo";
