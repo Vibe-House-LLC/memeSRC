@@ -49,8 +49,8 @@ root.render(
   </HelmetProvider>
 );
 
-// If you want to enable client cache, register instead.
-serviceWorker.unregister();
+// Enable service worker for offline caching and faster repeat visits.
+serviceWorker.register();
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
