@@ -5,11 +5,32 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useTheme } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CloseIcon from '@mui/icons-material/Close';
+import ClosedCaptionIcon from '@mui/icons-material/ClosedCaption';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import FormatColorFillIcon from '@mui/icons-material/FormatColorFill';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
+import GpsNotFixedIcon from '@mui/icons-material/GpsNotFixed';
+import HighlightOffRoundedIcon from '@mui/icons-material/HighlightOffRounded';
+import HistoryToggleOffRoundedIcon from '@mui/icons-material/HistoryToggleOffRounded';
+import IosShareIcon from '@mui/icons-material/IosShare';
+import MenuIcon from '@mui/icons-material/Menu';
+import RedoIcon from '@mui/icons-material/Redo';
+import SaveIcon from '@mui/icons-material/Save';
+import ShareIcon from '@mui/icons-material/Share';
+import UndoIcon from '@mui/icons-material/Undo';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
+import PropTypes from 'prop-types';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
@@ -17,8 +38,6 @@ import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
-import { createEditorProject, updateEditorProject } from '../graphql/mutations';
-import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 
@@ -70,7 +89,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [hasFabricPaths, setHasFabricPaths] = useState(false);
   const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
   const [selectedNavItemFid, setSelectedNavItemFid] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
@@ -128,7 +147,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [futureStates, setFutureStates] = useState([]);
   const [bgEditorStates, setBgEditorStates] = useState([]);
   const [bgFutureStates, setBgFutureStates] = useState([]);
-  const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
   // const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
 
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
@@ -174,7 +192,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [shows, loadedSeriesTitle])
 
-  const { selectedObjects, editor, onReady } = useFabricJSEditor()
+  const { editor, onReady } = useFabricJSEditor()
 
   const StyledTwitterPicker = styled(TwitterPicker)`
     span div {
@@ -230,7 +248,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // Warm up the UUID function for faster save dialog response
   useEffect(() => {
-    API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        })
+      : setTimeout(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        }, 1000)
+
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -246,22 +278,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   }, [updateEditorSize, imageLoaded])
 
-  const getSessionID = async () => {
-    let sessionID;
-    if ("sessionID" in sessionStorage) {
-      sessionID = sessionStorage.getItem("sessionID");
-      return Promise.resolve(sessionID);
-    }
-    return API.get('publicapi', '/uuid')
-      .then(generatedSessionID => {
-        sessionStorage.setItem("sessionID", generatedSessionID);
-        return generatedSessionID;
-      })
-      .catch(err => {
-        // console.log(`UUID Gen Fetch Error:  ${err}`);
-        throw err;
-      });
-  };
 
   const addText = useCallback((updatedText, append) => {
     const text = new fabric.Textbox(updatedText, {
@@ -299,67 +315,12 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
   // Function to handle image uploads and add them to the canvas
-  const addImageLayer = (imageFile) => {
-    const reader = new FileReader();
-    reader.onload = function (event) {
-      const imgObj = new Image();
-      imgObj.src = event.target.result;
-      imgObj.onload = function () {
-        const image = new fabric.Image(imgObj);
-
-        // Calculate the scale to fit the image within the canvas, maintaining the aspect ratio
-        const canvasWidth = editor.canvas.getWidth();
-        const canvasHeight = editor.canvas.getHeight();
-        // Introducing a padding factor of 0.9 for a 10% padding effect
-        const paddingFactor = 0.9;
-        const scale = Math.min(canvasWidth / imgObj.width, canvasHeight / imgObj.height) * paddingFactor;
-
-        // Set the image properties, including the scale
-        image.set({
-          angle: 0,
-          scaleX: scale,
-          scaleY: scale,
-          originX: 'center',
-          originY: 'center'
-        });
-
-        // Add the image to the canvas and set it as the active object
-        editor.canvas.add(image);
-        editor.canvas.setActiveObject(image); // Set the image as the active object
-
-        // Explicitly set the position of the image to the center of the canvas
-        image.set({
-          left: canvasWidth / 2,
-          top: canvasHeight / 2
-        });
-
-        // Update the image object and canvas state
-        image.setCoords();
-        editor.canvas.renderAll();
-
-        // Create a new canvas object for the image
-        const imageObject = {
-          type: 'image',
-          src: event.target.result,
-          scale,
-          angle: 0,
-          left: canvasWidth / 2 - (image.width * scale) / 2,
-          top: canvasHeight / 2 - (image.height * scale) / 2
-        };
-
-        // Update the canvasObjects state with the new image object
-        setCanvasObjects(prevObjects => [...prevObjects, imageObject]);
-      };
-    };
-    reader.readAsDataURL(imageFile);
-  };
 
 
 
 
 
 
-  const fileInputRef = useRef(null); // Define the ref
 
   const loadEditorDefaults = useCallback(async () => {
     setLoading(true);
@@ -798,13 +759,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // setDrawingMode((tool === 'magicEraser'))
   }
 
-  const downloadDataURL = (dataURL, fileName) => {
-    const link = document.createElement('a');
-    link.href = dataURL;
-    link.download = fileName;
-    // Simulate a click to start the download
-    link.click();
-  };
 
   const exportDrawing = async () => {
     setLoadingInpaintingResult(true)
@@ -915,7 +869,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           body: data
         });
 
-        const magicResultId = response.magicResultId;
+        const {magicResultId} = response;
 
         const startTime = Date.now();
 
@@ -1041,7 +995,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     try {
       // Save the current state of the canvas for local undo/redo before any scaling or modifications
       const serializedCanvas = JSON.stringify(editor.canvas);
-      const backgroundImage = editor.canvas.backgroundImage;
+      const {backgroundImage} = editor.canvas;
 
       setFutureStates([]);
       setBgFutureStates([]);
@@ -1109,19 +1063,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   };
 
 
-  function dataURLtoBlob(dataurl) {
-    const arr = dataurl.split(',');
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch) throw new Error('Invalid data URL');
-    const mime = mimeMatch[1];
-    const bstr = atob(arr[1]);
-    const n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    for (let i = 0; i < n; i += 1) {
-      u8arr[i] = bstr.charCodeAt(i);
-    }
-    return new Blob([u8arr], { type: mime });
-  }
 
 
 
@@ -1269,14 +1210,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   //   console.log(editorStates)
   // }, [editorStates])
 
-  const loadFineTuningFrames = () => {
-    setLoadingFineTuningFrames(false)
-    // if (loadingFineTuningFrames) {
-    //   setTimeout(() => {
-    //     setLoadingFineTuningFrames(false)
-    //   }, [1000])
-    // }
-  }
 
   // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
   useEffect(() => {
@@ -1357,18 +1290,26 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
 
                       <ButtonGroup variant="contained" size="small">
-                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
-                          <Undo />
+                        <IconButton
+                          disabled={(editorStates.length <= 1)}
+                          onClick={undo}
+                          aria-label="undo"
+                        >
+                          <UndoIcon />
                         </IconButton>
-                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
-                          <Redo />
+                        <IconButton
+                          disabled={(futureStates.length === 0)}
+                          onClick={redo}
+                          aria-label="redo"
+                        >
+                          <RedoIcon />
                         </IconButton>
                       </ButtonGroup>
 
                       <Button
                         variant="contained"
                         size="medium"
-                        startIcon={<Save />}
+                        startIcon={<SaveIcon />}
                         onClick={handleClickDialogOpen}
                         sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                       >
@@ -1431,7 +1372,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         }}
                         icon={
                           <Box display="flex" alignItems="center" marginX={-1}>
-                            <HistoryToggleOffRounded fontSize='small' sx={{ mr: 1 }} />
+                            <HistoryToggleOffRoundedIcon fontSize='small' sx={{ mr: 1 }} />
                             Timing
                           </Box>
                         }
@@ -1445,7 +1386,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       }}
                       icon={
                         <Box display="flex" alignItems="center" marginX={-1}>
-                          <ClosedCaption fontSize='small' sx={{ mr: 1 }} />
+                          <ClosedCaptionIcon fontSize='small' sx={{ mr: 1 }} />
                           Captions
                         </Box>
                       }
@@ -1459,7 +1400,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       }}
                       icon={
                         <Box display="flex" alignItems="center" marginX={-1}>
-                          <AutoFixHighRounded fontSize='small' sx={{ mr: 1 }} />
+                          <AutoFixHighRoundedIcon fontSize='small' sx={{ mr: 1 }} />
                           Magic
                         </Box>
                       }
@@ -1512,7 +1453,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     }}
                                     onClick={() => deleteLayer(index)}
                                   >
-                                    <HighlightOffRounded color="error" />
+                                    <HighlightOffRoundedIcon color="error" />
                                   </Fab>
                                 </div>
                               </Grid>
@@ -1543,7 +1484,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                     }}
                                     onClick={() => deleteLayer(index)}
                                   >
-                                    <HighlightOffRounded color="error" />
+                                    <HighlightOffRoundedIcon color="error" />
                                   </Fab>
                                 </div>
                               </Grid>
@@ -1557,7 +1498,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           onClick={() => addText('text', true)}
                           fullWidth
                           sx={{ zIndex: '50', marginTop: '20px' }}
-                          startIcon={<AddCircleOutline />}
+                          startIcon={<AddCircleOutlineIcon />}
                         >
                           Add text layer
                         </Button>
@@ -1574,7 +1515,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           onClick={() => fileInputRef.current.click()}
                           fullWidth
                           sx={{ zIndex: '50', marginBottom: '20px' }}
-                          startIcon={<AddPhotoAlternate />}
+                          startIcon={<AddPhotoAlternateIcon />}
                         >
                           Add image layer
                         </Button>
@@ -1619,13 +1560,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         }}
                       >
                         <Tab
-                          icon={<AutoFixHigh fontSize='small' />}
+                          icon={<AutoFixHighIcon fontSize='small' />}
                           label="Eraser"
                           value="erase"
                           style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }}
                         />
                         <Tab
-                          icon={<FormatColorFill fontSize='small' />}
+                          icon={<FormatColorFillIcon fontSize='small' />}
                           label="Fill"
                           value="fill"
                           style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }}
@@ -1717,7 +1658,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     onClick={handleClickDialogOpen}
                     fullWidth
                     sx={{ marginTop: 2, zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                    startIcon={<Share />}
+                    startIcon={<ShareIcon />}
                     size="large"
                   >
                     Save/Copy/Share
@@ -1729,9 +1670,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       <AccordionSummary sx={{ paddingX: 1.55, textAlign: "center" }} onClick={handleSubtitlesExpand} >
                         <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
                           {subtitlesExpanded ? (
-                            <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            <CloseIcon style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                           ) : (
-                            <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                            <MenuIcon style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                           )}
                           {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
                         </Typography>
@@ -1774,7 +1715,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         <CircularProgress size={20} sx={{ color: '#565656' }} />
                                       ) : result?.subtitle.replace(/\n/g, ' ') ===
                                         defaultSubtitle.replace(/\n/g, ' ') ? (
-                                        <GpsFixed
+                                        <GpsFixedIcon
                                           sx={{
                                             color:
                                               result?.subtitle.replace(/\n/g, ' ') ===
@@ -1785,7 +1726,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                           }}
                                         />
                                       ) : (
-                                        <GpsNotFixed sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                        <GpsNotFixedIcon sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
                                       )}
                                     </Fab>
                                   </ListItemIcon>
@@ -1824,7 +1765,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                         handleSnackbarOpen();
                                       }}
                                     >
-                                      <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                                      <ContentCopyIcon sx={{ color: 'rgb(89, 89, 89)' }} />
                                     </Fab>
                                     <Fab
                                       size="small"
@@ -1839,7 +1780,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                       }}
                                       onClick={() => addText(result?.subtitle.replace(/\n/g, ' '), true)}
                                     >
-                                      <Add sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
+                                      <AddIcon sx={{ color: 'rgb(89, 89, 89)', cursor: 'pointer' }} />
                                     </Fab>
                                     {/* <Fab
                                                                               size="small"
@@ -1854,7 +1795,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                                                                           {loading ? (
                                                                               <CircularProgress size={20} sx={{ color: "#565656"}} />
                                                                           ) : (
-                                                                              (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixed sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForward sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} /> 
+                                                                              (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle.replace(/\n/g, " ")) ? <GpsFixedIcon sx={{ color: (result?.subtitle.replace(/\n/g, " ") === defaultSubtitle?.replace(/\n/g, " ")) ? 'rgb(50, 50, 50)' : 'rgb(89, 89, 89)', cursor: "pointer"}} /> : <ArrowForwardIcon sx={{ color: "rgb(89, 89, 89)", cursor: "pointer"}} />
                                                                           )}
                                                                           </Fab> */}
                                   </ListItemIcon>
@@ -1898,7 +1839,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               {surroundingFrames &&
                 surroundingFrames.map((result) => (
                   <Grid item xs={4} sm={4} md={12 / 9} key={result.fid}>
-                    <a style={{ textDecoration: 'none' }}>
+                    <Box component="div" sx={{ textDecoration: 'none' }}>
                       <StyledCard style={{ border: fid === result?.fid ? '3px solid orange' : '' }}>
                         {/* {console.log(`${fid} = ${result?.fid}`)} */}
                         <StyledCardMedia
@@ -1914,7 +1855,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                           }}
                         />
                       </StyledCard>
-                    </a>
+                    </Box>
                   </Grid>
                 ))}
               <Grid item xs={12}>
@@ -2035,6 +1976,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     src={`https://i${process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
                       }.memesrc.com/${generatedImageFilename}`}
                     alt="generated meme"
+                    loading="lazy"
                   />
                 )}
                 {imageUploading && (
@@ -2072,7 +2014,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         files: [shareImageFile],
                       });
                     }}
-                    startIcon={<IosShare />}
+                    startIcon={<IosShareIcon />}
                   >
                     Share
                   </Button>
@@ -2088,7 +2030,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                     navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
                     handleSnackbarOpen();
                   }}
-                  startIcon={<ContentCopy />}
+                  startIcon={<ContentCopyIcon />}
                 >
                   Copy
                 </Button>
@@ -2099,7 +2041,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   sx={{ marginBottom: 2, padding: '12px 16px' }}
                   autoFocus
                   onClick={handleDialogClose}
-                  startIcon={<Close />}
+                  startIcon={<CloseIcon />}
                 >
                   Close
                 </Button>
@@ -2150,6 +2092,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                   <img
                     src={image}
                     alt="placeholder"
+                    loading="lazy"
                     style={{
                       width: '100%',
                       aspectRatio: `${editorAspectRatio}/1`,
@@ -2169,7 +2112,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         color: 'white'
                       }}
                     >
-                      <CheckCircleOutline />
+                      <CheckCircleOutlineIcon />
                     </Fab>
                   )}
                 </div>
@@ -2215,11 +2158,16 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           }}
           onClick={() => setVariationDisplayColumns(prev => (prev === 2 ? 1 : 2))}
         >
-          {variationDisplayColumns === 2 ? <ZoomIn /> : <ZoomOut />}
+          {variationDisplayColumns === 2 ? <ZoomInIcon /> : <ZoomOutIcon />}
         </Fab>
       </Dialog>
     </>
   );
 }
+
+EditorPage.propTypes = {
+  setSeriesTitle: PropTypes.func.isRequired,
+  shows: PropTypes.array,
+};
 
 export default EditorPage

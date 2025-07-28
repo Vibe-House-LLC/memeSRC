@@ -1,10 +1,9 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 import { API } from 'aws-amplify';
 import { Helmet } from 'react-helmet-async';
-import { Typography, Container, Grid, Stack, TextField, Box, Button, Paper, Divider, FormControl, FormLabel, Card, CardContent, List, ListItem, ListItemText, IconButton, Checkbox, FormControlLabel, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Typography, Container, Grid, Stack, TextField, Button, Paper, Card, CardContent, Checkbox, FormControlLabel, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Link } from 'react-router-dom';
-import DeleteIcon from '@mui/icons-material/Delete';
+
 import LockIcon from '@mui/icons-material/Lock';
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
@@ -115,6 +114,7 @@ export default function ProSupport() {
                 <img
                   src="/assets/memeSRC-white.svg"
                   alt="memeSRC logo"
+                  loading="lazy"
                   style={{ height: 48, marginBottom: -15 }}
                 />
                 <Typography variant="h3" textAlign="center">

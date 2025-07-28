@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import PropTypes from 'prop-types';
 
 const CollageContext = createContext();
 const STORAGE_KEY = 'memeSRC_collageItems';
@@ -67,9 +68,7 @@ export const CollageProvider = ({ children }) => {
   }, [collageItems]);
 
   const addItem = useCallback((item) => {
-    setCollageItems(prev => {
-      return [...prev, { ...item, id: Date.now() + Math.random() }];
-    });
+    setCollageItems(prev => [...prev, { ...item, id: Date.now() + Math.random() }]);
   }, []);
 
   const removeItem = useCallback((itemId) => {
@@ -80,14 +79,12 @@ export const CollageProvider = ({ children }) => {
     setCollageItems([]);
   }, []);
 
-  const isItemInCollage = useCallback((cid, season, episode, frame) => {
-    return collageItems.some(item => 
+  const isItemInCollage = useCallback((cid, season, episode, frame) => collageItems.some(item => 
       item.cid === cid && 
       item.season === season && 
       item.episode === episode && 
       item.frame === frame
-    );
-  }, [collageItems]);
+    ), [collageItems]);
 
   const value = {
     collageItems,
@@ -103,6 +100,10 @@ export const CollageProvider = ({ children }) => {
       {children}
     </CollageContext.Provider>
   );
+};
+
+CollageProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export default CollageContext;

@@ -1,11 +1,9 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Button, Fab, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme } from '@mui/material';
+import { Button, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme } from '@mui/material';
 import { Box } from '@mui/system';
-import { Favorite, MapsUgc, Shuffle } from '@mui/icons-material';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { LoadingButton } from '@mui/lab';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
@@ -14,15 +12,14 @@ import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
-import useLoadRandomFrame from '../../utils/loadRandomFrame';
-import Logo from '../../logo/logo';
+
+import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 
 /* --------------------------------- GraphQL -------------------------------- */
 
 // Define constants for colors and fonts
-const PRIMARY_COLOR = '#4285F4';
 const SECONDARY_COLOR = '#0F9D58';
 const FONT_FAMILY = 'Roboto, sans-serif';
 
@@ -52,21 +49,6 @@ const StyledLabel = styled.label`
   font-size: 14px;
 `;
 
-// Create a button component
-const StyledButton = styled(LoadingButton)`
-  font-family: ${FONT_FAMILY};
-  font-size: 18px;
-  color: #fff;
-  background-color: ${SECONDARY_COLOR};
-  border-radius: 8px;
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-
-  &:hover {
-    background-color: ${PRIMARY_COLOR};
-  }
-`;
 
 const StyledSearchInput = styled.input`
   font-family: ${FONT_FAMILY};
@@ -85,20 +67,6 @@ const StyledSearchInput = styled.input`
     outline: none;
   }
 `;
-
-// Combine footer styles into one component
-const StyledFooter = styled('footer')(({ position = 'left' }) => ({
-  bottom: 0,
-  [position]: 0,
-  lineHeight: 0,
-  position: 'fixed',
-  padding: '10px',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: 'transparent',
-  zIndex: 1300
-}));
 
 // Height of the fixed navbar on mobile
 const NAVBAR_HEIGHT = 45;
@@ -145,7 +113,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
   const { pathname } = useLocation();
-  const { loadRandomFrame, loadingRandom, } = useLoadRandomFrame();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
@@ -230,17 +197,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           <Grid container justifyContent="center">
             <Grid item textAlign="center" marginBottom={2}>
               <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
-                <Box
-                  component="img"
-                  src={Logo({ color: currentThemeFontColor || 'white' })}
-                  sx={{ 
-                    objectFit: 'contain', 
-                    cursor: 'pointer', 
-                    display: 'block', 
-                    width: '130px', 
+                <Logo
+                  color={currentThemeFontColor || 'white'}
+                  sx={{
+                    objectFit: 'contain',
+                    cursor: 'pointer',
+                    display: 'block',
+                    width: '130px',
                     height: 'auto',
                     margin: '0 auto',
-                    color: 'yellow' 
+                    color: 'yellow'
                   }}
                 />
               </Box>
@@ -385,7 +351,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Grid>
           </StyledSearchForm>
           <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={2} marginTop={1}>
-            <Typography component="h4" variant="h4">
+            <Typography component="h2" variant="h4">
               {currentThemeBragText}
             </Typography>
           </Grid>

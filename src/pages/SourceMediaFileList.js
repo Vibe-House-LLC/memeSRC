@@ -9,20 +9,17 @@ import {
   Stack,
   Paper,
   Button,
-  Popover,
   Checkbox,
   TableRow,
-  MenuItem,
   TableBody,
   TableCell,
   Container,
   Typography,
-  IconButton,
   TableContainer,
   TablePagination,
 } from '@mui/material';
-import { Auth, API, Storage } from 'aws-amplify';
-import { useNavigate, useParams } from 'react-router-dom';
+import { API, Storage } from 'aws-amplify';
+import { useParams } from 'react-router-dom';
 // components
 import Label from '../components/label';
 import Scrollbar from '../components/scrollbar';
@@ -147,7 +144,6 @@ function formatDateTime(dateTimeStr) {
   let formattedDate = date.toLocaleString('en-US', options);
 
   formattedDate = formattedDate.replace(/(\d+):(\d+)/, (match, p1, p2) => {
-      const period = p1 < 12 ? 'am' : 'pm';
       const hour = p1 < 12 ? p1 : p1 - 12;
       return `${hour}:${p2}`;
   });
@@ -159,8 +155,6 @@ function formatDateTime(dateTimeStr) {
 
 export default function SourceMediaFileList() {
   const { sourceMediaId } = useParams();
-  const [open, setOpen] = useState(null);
-  const [selectedIndex, setSelectedIndex] = useState(null);
   const [page, setPage] = useState(0);
   const [order, setOrder] = useState('asc');
   const [selected, setSelected] = useState([]);
@@ -169,9 +163,6 @@ export default function SourceMediaFileList() {
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [sourceMedia, setSourceMedia] = useState([]);
   const [seriesName, setSeriesName] = useState();
-  const [credits, setCredits] = useState(0);
-
-  const navigate = useNavigate();
 
   async function listSourceMediasGraphQL(limit, nextToken = null, result = []) {
     const sourceMediaQuery = { limit, nextToken, id: sourceMediaId };
@@ -182,7 +173,7 @@ export default function SourceMediaFileList() {
       authMode: 'AMAZON_COGNITO_USER_POOLS',
     });
   
-    const items = response.data.getSourceMedia.files.items;
+    const {items} = response.data.getSourceMedia.files;
     console.log(response)
     result.push(...items);
   
@@ -204,18 +195,6 @@ export default function SourceMediaFileList() {
     }).catch(error => console.log(error))
   }, [])
 
-  const handleOpenMenu = (event, index) => {
-    setSelectedIndex(index);
-    setOpen(event.currentTarget);
-  };
-
-  useEffect(() => {
-    console.log(selectedIndex)
-  }, [selectedIndex])
-
-  const handleCloseMenu = () => {
-    setOpen(null);
-  };
 
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -268,14 +247,6 @@ export default function SourceMediaFileList() {
 
   const isNotFound = !filteredSourceMedia.length && !!filterName;
 
-  function downloadFile(url) {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = '';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
 
 const generateDownloadLink = async (key) => {
 
@@ -317,10 +288,6 @@ const generateDownloadLink = async (key) => {
   }).then(downloadLink => {
     downloadBlob(downloadLink.Body, s3Object.fileName)
   }).catch(error => console.log(error))
-
-  
-
-  // downloadFile(downloadLink)
 }
 
   return (
@@ -352,7 +319,7 @@ const generateDownloadLink = async (key) => {
                   onSelectAllClick={handleSelectAllClick}
                 />
                 <TableBody>
-                  {filteredSourceMedia.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
+                  {filteredSourceMedia.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
                     const { key, id, status, createdAt } = row;
                     const selectedSourceMedia = selected.indexOf(id) !== -1;
 

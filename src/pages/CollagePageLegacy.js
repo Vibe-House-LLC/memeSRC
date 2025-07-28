@@ -1,4 +1,5 @@
-import { useContext, useEffect, useRef, useState, useCallback, memo } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import PropTypes from 'prop-types';
 import { Helmet } from "react-helmet-async";
 import {
   Box,
@@ -11,13 +12,7 @@ import {
   MenuItem,
   Grid,
   Stack,
-  Alert,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  RadioGroup,
   FormControlLabel,
-  Radio,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -28,16 +23,13 @@ import {
   Stepper,
   Step,
   StepLabel,
-  ToggleButton,
-  Popover,
   Paper,
   Chip,
-  Collapse,
   TextField,
   Checkbox,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit, ArrowUpward, ArrowDownward, Save, FormatColorFill, TrendingUp, ExpandLess } from "@mui/icons-material";
+import { Delete, Add, ArrowBack, ArrowForward, Close, Edit, ArrowUpward, ArrowDownward, Save, TrendingUp } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom'; 
 import { LoadingButton } from "@mui/lab";
 import { useTheme } from "@mui/material/styles";
@@ -63,11 +55,6 @@ const getCollagePreferenceKey = (user) => {
   if (!user?.userDetails?.email) return 'memeSRC-collage-preference-anonymous';
   const hashedUsername = hashString(user.userDetails.email);
   return `memeSRC-collage-preference-${hashedUsername}`;
-};
-
-const getCollagePreference = (user) => {
-  const key = getCollagePreferenceKey(user);
-  return localStorage.getItem(key) || 'new'; // Default to new version
 };
 
 const setCollagePreference = (user, preference) => {
@@ -134,6 +121,10 @@ function SubtleSwitchChip({ onTryNewVersion }) {
   );
 }
 
+SubtleSwitchChip.propTypes = {
+  onTryNewVersion: PropTypes.func.isRequired,
+};
+
 // Component for encouraging users to try the new version
 function TryNewVersionBanner({ user, onTryNewVersion }) {
   const theme = useTheme();
@@ -149,11 +140,6 @@ function TryNewVersionBanner({ user, onTryNewVersion }) {
 
   const handleDismissClick = () => {
     setShowDismissFeedback(true);
-  };
-
-  const handleDismissWithoutFeedback = () => {
-    setBannerDismissed(user);
-    setBannerDismissedLocal(true);
   };
 
   const handleCancelDismiss = () => {
@@ -219,6 +205,7 @@ function TryNewVersionBanner({ user, onTryNewVersion }) {
             {/* Close button */}
             <IconButton
               onClick={handleDismissClick}
+              aria-label="dismiss notice"
               sx={{
                 position: 'absolute',
                 top: 8,
@@ -454,12 +441,10 @@ function TryNewVersionBanner({ user, onTryNewVersion }) {
   );
 }
 
-const CollageContainer = styled(Box)({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  marginTop: "32px",
-});
+TryNewVersionBanner.propTypes = {
+  user: PropTypes.object,
+  onTryNewVersion: PropTypes.func.isRequired,
+};
 
 const CollageImage = styled("img")({
   maxWidth: "100%",
@@ -568,18 +553,6 @@ const EmptyStateContainer = styled(Box)(({ theme }) => ({
   },
 }));
 
-const ResultContainer = styled(Box)(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  padding: theme.spacing(4),
-  backgroundColor: theme.palette.background.paper,
-  borderRadius: theme.shape.borderRadius,
-  boxShadow: theme.shadows[3],
-  marginTop: theme.spacing(3),
-  marginBottom: theme.spacing(3),
-}));
-
 const ResultOptionsContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
@@ -614,10 +587,6 @@ const CollageThumbnail = styled('img')(({ theme }) => ({
   boxShadow: theme.shadows[2],
 }));
 
-const BorderThicknessControl = styled(FormControl)(({ theme }) => ({
-  minWidth: 120,
-  // marginBottom: theme.spacing(2),
-}));
 
 const StepperContainer = styled(Box)(({ theme }) => ({
   width: '100%',
@@ -650,25 +619,6 @@ const ButtonGroup = styled(Box)(({ theme }) => ({
   marginTop: theme.spacing(2),
 }));
 
-const FullWidthButtonGroup = styled(Box)(({ theme }) => ({
-  width: '100%',
-  marginTop: theme.spacing(2),
-}));
-
-const OptionsContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'row',
-  gap: theme.spacing(2),
-  marginBottom: theme.spacing(3),
-  [theme.breakpoints.down('sm')]: {
-    flexDirection: 'column',
-  },
-}));
-
-const OptionItem = styled(Box)(({ theme }) => ({
-  flex: 1,
-  minWidth: 0,
-}));
 
 const borderColorOptions = [
   { label: 'White', value: '#FFFFFF' },
@@ -687,7 +637,6 @@ export default function CollagePage() {
   const [activeStep, setActiveStep] = useState(0);
   const [accordionExpanded, setAccordionExpanded] = useState(false);
   const canvasRef = useRef(null);
-  const isMobile = useMediaQuery("(max-width:600px)");
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuIndex, setMenuIndex] = useState(null);
   const imageRefs = useRef([]);
@@ -800,8 +749,7 @@ export default function CollagePage() {
   const handleImageUpload = (event, index) => {
     const uploadedImages = Array.from(event.target.files);
   
-    const loadImage = (file) => {
-      return new Promise((resolve) => {
+    const loadImage = (file) => new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
           const img = new Image();
@@ -817,7 +765,6 @@ export default function CollagePage() {
         };
         reader.readAsDataURL(file);
       });
-    };
   
     Promise.all(uploadedImages.map(loadImage)).then((newImages) => {
       setImages((prevImages) => {
@@ -972,18 +919,6 @@ export default function CollagePage() {
     }
   };
 
-  const calculateButtonPositions = useCallback(() => {
-    const positions = [];
-    imageRefs.current.forEach((ref, index) => {
-      if (ref) {
-        const { top, height } = ref.getBoundingClientRect();
-        positions[index] = top + height / 2;
-      }
-    });
-    return positions;
-  }, [images]);
-
-  const buttonPositions = calculateButtonPositions();
 
   const handleBorderChange = (event) => {
     const value = parseInt(event.target.value, 10);
@@ -1051,7 +986,7 @@ export default function CollagePage() {
   };
 
   const handleBorderColorChange = (event) => {
-    const value = event.target.value;
+    const {value} = event.target;
     if (value === 'custom') {
       setShowColorPicker(true);
     } else {
@@ -1083,6 +1018,7 @@ export default function CollagePage() {
               <img
                 src="/assets/memeSRC-white.svg"
                 alt="memeSRC logo"
+                loading="lazy"
                 style={{ height: 48, marginBottom: -15 }}
               />
               <Typography variant="h3" textAlign="center">
@@ -1186,6 +1122,7 @@ export default function CollagePage() {
                     component="label"
                     sx={{ marginTop: '16px', marginBottom: '16px' }}
                     onClick={(event) => handleMenuClick(event, 0)}
+                    aria-label="add image or text"
                   >
                     <Add />
                   </UploadButton>
@@ -1210,17 +1147,33 @@ export default function CollagePage() {
                     <>
                       <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
                         <ImageWrapper>
-                          <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
-                          <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
+                          <img src={image.src} alt={`layer ${index + 1}`} loading="lazy" style={{ width: "100%" }} />
+                          <DeleteButton
+                            className="delete-button"
+                            onClick={() => deleteImage(index)}
+                            aria-label="delete layer"
+                          >
                             <Close />
                           </DeleteButton>
-                          <EditButton className="edit-button" onClick={() => handleEditImage(index)}>
+                          <EditButton
+                            className="edit-button"
+                            onClick={() => handleEditImage(index)}
+                            aria-label="edit layer"
+                          >
                             <Edit />
                           </EditButton>
-                          <MoveUpButton className="move-up-button" onClick={() => moveImage(index, -1)}>
+                          <MoveUpButton
+                            className="move-up-button"
+                            onClick={() => moveImage(index, -1)}
+                            aria-label="move layer up"
+                          >
                             <ArrowUpward />
                           </MoveUpButton>
-                          <MoveDownButton className="move-down-button" onClick={() => moveImage(index, 1)}>
+                          <MoveDownButton
+                            className="move-down-button"
+                            onClick={() => moveImage(index, 1)}
+                            aria-label="move layer down"
+                          >
                             <ArrowDownward />
                           </MoveDownButton>
                         </ImageWrapper>
@@ -1261,6 +1214,7 @@ export default function CollagePage() {
                     size="small"
                     component="label"
                     onClick={(event) => handleMenuClick(event, images.length)}
+                    aria-label="add image or text"
                   >
                     <Add />
                   </UploadButton>

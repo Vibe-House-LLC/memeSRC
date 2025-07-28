@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import PropTypes from 'prop-types';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
 import {
   Container,
@@ -33,17 +32,26 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowUpward, ArrowDownward, Search, Close, ThumbUp, Whatshot, Lock, NewReleasesOutlined, Refresh, AutoFixHighRounded, ThumbDown } from '@mui/icons-material';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
+import LockIcon from '@mui/icons-material/Lock';
+import NewReleasesOutlinedIcon from '@mui/icons-material/NewReleasesOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import FlipMove from 'react-flip-move';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
 import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
 import { debounce } from 'lodash';
-import MuiAlert from '@mui/material/Alert';
 import match from 'autosuggest-highlight/match';
 import parse from 'autosuggest-highlight/parse';
-import { listSeries, getSeries } from '../graphql/queries';
+import { getSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
@@ -199,10 +207,6 @@ const ShimmerWrapper = styled('div')(({ enabled }) => ({
   },
 }));
 
-// Define the Alert component for consistent styling
-const Alert = React.forwardRef((props, ref) => (
-  <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />
-));
 
 export default function VotingPage() {
   const { shows: searchableShows } = useShows();  // Add this line
@@ -258,12 +262,10 @@ export default function VotingPage() {
   // Add cache variables
   const seriesCache = useRef({});
 
-  const [allSeriesData, setAllSeriesData] = useState(null); // State to store all series data
 
   const [loadedImages, setLoadedImages] = useState({});
 
   // Initialize with true to load the top list first
-  const [isTopList, setIsTopList] = useState(true);
 
   const [originalRanks, setOriginalRanks] = useState({});
 
@@ -302,8 +304,8 @@ export default function VotingPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Add this debounced search function after other function declarations
-  const debouncedSearch = useCallback(
-    debounce(async (searchValue) => {
+  const debouncedSearch = useMemo(
+    () => debounce(async (searchValue) => {
       if (!searchValue) {
         setSearchOptions([]);
         return;
@@ -597,7 +599,7 @@ export default function VotingPage() {
           const votesData = JSON.parse(votesResponse);
 
           votesData.forEach((item) => {
-            const seriesId = item.seriesId;
+            const {seriesId} = item;
             if (newVoteData[seriesId]) {
               newVoteData[seriesId].totalVotesUp = item.totalVotes.upvotes || 0;
               newVoteData[seriesId].totalVotesDown = item.totalVotes.downvotes || 0;
@@ -635,79 +637,7 @@ export default function VotingPage() {
     [user, fetchSeriesData]
   );
 
-  const filterAndSortSeriesData = useCallback((data = allSeriesData) => {
-    try {
-      if (!data) return;
 
-      const searchFilteredShows = data.filter(
-        (show) => show.name.toLowerCase().includes(searchText.toLowerCase())
-      );
-
-      const sortedShows = [...searchFilteredShows];
-
-      if (sortedShows.length > 0) {
-        switch (rankMethod) {
-          case 'combined':
-            sortedShows.sort((a, b) => {
-              const voteDiffA = (voteData[a.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesDown || 0);
-              const voteDiffB = (voteData[b.id]?.totalVotesUp || 0) - (voteData[b.id]?.totalVotesDown || 0);
-              return voteDiffB - voteDiffA || safeCompareSeriesTitles(a.id, b.id);
-            });
-            break;
-          case 'downvotes':
-            sortedShows.sort((a, b) => {
-              const downvoteDiff = (voteData[b.id]?.totalVotesDown || 0) - (voteData[a.id]?.totalVotesDown || 0);
-              return downvoteDiff || safeCompareSeriesTitles(a.id, b.id);
-            });
-            break;
-          default: // Upvotes
-            sortedShows.sort((a, b) => {
-              const upvoteDiff = (voteData[b.id]?.totalVotesUp || 0) - (voteData[a.id]?.totalVotesUp || 0);
-              return upvoteDiff || safeCompareSeriesTitles(a.id, b.id);
-            });
-        }
-      }
-
-      setCurrentPage(0);
-
-      // Update seriesMetadata with existing ranks
-      setSeriesMetadata(sortedShows.map(show => ({ ...show, rank: originalRanks[show.id] || null })));
-    } catch (error) {
-      console.error('Error in filterAndSortSeriesData:', error);
-      setSeriesMetadata([]);
-    }
-  }, [allSeriesData, searchText, rankMethod, voteData, originalRanks, safeCompareSeriesTitles]);
-
-  const fetchAllSeriesData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const fetchSeries = async (nextToken = null, accumulatedItems = []) => {
-        const result = await API.graphql({
-          ...graphqlOperation(listSeries, { nextToken, limit: 1000 }),
-          authMode: 'API_KEY',
-        });
-        const items = accumulatedItems.concat(result.data.listSeries.items);
-        if (result.data.listSeries.nextToken) {
-          return fetchSeries(result.data.listSeries.nextToken, items);
-        }
-        return items;
-      };
-
-      const fetchedSeriesData = await fetchSeries();
-
-      // Add all series to cache
-      fetchedSeriesData.forEach((show) => {
-        seriesCache.current[show.id] = show;
-      });
-
-      setAllSeriesData(fetchedSeriesData);
-      filterAndSortSeriesData(fetchedSeriesData);
-    } catch (error) {
-      console.error('Error fetching all series data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [filterAndSortSeriesData]);
 
   // Update the useEffect that handles search to store the ranks
   useEffect(() => {
@@ -724,7 +654,7 @@ export default function VotingPage() {
             },
           });
 
-          const hits = response.hits;
+          const {hits} = response;
           
           // Store the ranks from search results
           const newSearchRanks = {};
@@ -960,11 +890,6 @@ export default function VotingPage() {
     }
   };
 
-  const handleMagicVoteMultiplierChange = (event, newMultiplier) => {
-    if (newMultiplier !== null) {
-      setMagicVoteMultiplier(newMultiplier);
-    }
-  };
 
   // Update handleUpvote and handleDownvote functions to use handleVote
   const handleUpvote = (seriesId) => {
@@ -1144,7 +1069,7 @@ export default function VotingPage() {
         setVoteData((prevVoteData) => {
           const updatedVoteData = { ...prevVoteData };
           votesArray.forEach((item) => {
-            const seriesId = item.seriesId;
+            const {seriesId} = item;
             const existingData = updatedVoteData[seriesId] || {};
             
             updatedVoteData[seriesId] = {
@@ -1305,11 +1230,11 @@ export default function VotingPage() {
                   },
                 }}
               >
-                <ThumbUp color="success" sx={{ mr: 1 }} />
+                <ThumbUpIcon color="success" sx={{ mr: 1 }} />
                 Most Upvoted
               </ToggleButton>
               <ToggleButton value="combined" aria-label="battleground">
-                <Whatshot color="error" sx={{ mr: 1 }} />
+                <WhatshotIcon color="error" sx={{ mr: 1 }} />
                 Battleground
               </ToggleButton>
             </ToggleButtonGroup>
@@ -1328,7 +1253,7 @@ export default function VotingPage() {
               All
             </ToggleButton>
             <ToggleButton value="hideAvailable" aria-label="hide available">
-              <NewReleasesOutlined sx={{ mr: 1 }} />
+              <NewReleasesOutlinedIcon sx={{ mr: 1 }} />
               Requested
             </ToggleButton>
             <ToggleButton value="requested" aria-label="requested">
@@ -1370,7 +1295,7 @@ export default function VotingPage() {
                     ...params.InputProps,
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Search />
+                        <SearchIcon />
                       </InputAdornment>
                     ),
                     endAdornment: (searchText || isSearching) && (
@@ -1383,7 +1308,7 @@ export default function VotingPage() {
                           {isSearching ? (
                             <CircularProgress size={20} sx={{ color: 'white' }} />
                           ) : (
-                            <Close />
+                            <CloseIcon />
                           )}
                         </IconButton>
                       </InputAdornment>
@@ -1429,7 +1354,7 @@ export default function VotingPage() {
                 {isRefreshing ? (
                   <CircularProgress size={24} />
                 ) : (
-                  <Refresh />
+                  <RefreshIcon />
                 )}
               </IconButton>
             )}
@@ -1525,6 +1450,7 @@ export default function VotingPage() {
                                       <img
                                         src={show.image || 'path/to/placeholder-image.jpg'}
                                         alt={show.name}
+                                        loading="lazy"
                                         style={{
                                           ...showImageStyle,
                                           display: loadedImages[show.id] ? 'block' : 'none',
@@ -1563,7 +1489,7 @@ export default function VotingPage() {
                                         color="success.main"
                                         sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                       >
-                                        <ArrowUpward
+                                        <ArrowUpwardIcon
                                           fontSize="small"
                                           sx={{ verticalAlign: 'middle' }}
                                         />
@@ -1576,7 +1502,7 @@ export default function VotingPage() {
                                           ml={1}
                                           sx={{ fontSize: '0.7rem', opacity: 0.6 }}
                                         >
-                                          <ArrowDownward
+                                          <ArrowDownwardIcon
                                             fontSize="small"
                                             sx={{ verticalAlign: 'middle' }}
                                           />
@@ -1672,11 +1598,11 @@ export default function VotingPage() {
                                                 }}
                                               >
                                                 {userCanVote ? (
-                                                  <ArrowUpward />
+                                                  <ArrowUpwardIcon />
                                                 ) : isUpvoted ? (
-                                                  <ArrowUpward sx={{ color: 'success.main' }} />
+                                                  <ArrowUpwardIcon sx={{ color: 'success.main' }} />
                                                 ) : (
-                                                  <ArrowUpward />
+                                                  <ArrowUpwardIcon />
                                                 )}
                                               </StyledFab>
                                             </MagicVoteWrapper>
@@ -1763,9 +1689,9 @@ export default function VotingPage() {
                                                 }}
                                               >
                                                 {isDownvoted ? (
-                                                  <ArrowDownward sx={{ color: 'error.main' }} />
+                                                  <ArrowDownwardIcon sx={{ color: 'error.main' }} />
                                                 ) : (
-                                                  <ArrowDownward />
+                                                  <ArrowDownwardIcon />
                                                 )}
                                               </StyledFab>
                                             </MagicVoteWrapper>
@@ -1852,11 +1778,11 @@ export default function VotingPage() {
                                                 }}
                                               >
                                                 {userCanVote ? (
-                                                  <ThumbUp />
+                                                  <ThumbUpIcon />
                                                 ) : isUpvoted ? (
-                                                  <ThumbUp sx={{ color: 'success.main' }} />
+                                                  <ThumbUpIcon sx={{ color: 'success.main' }} />
                                                 ) : (
-                                                  <Lock />
+                                                  <LockIcon />
                                                 )}
                                               </StyledFab>
                                             </MagicVoteWrapper>
@@ -2119,11 +2045,11 @@ export default function VotingPage() {
             '&:last-child': { pb: '16px' },
           }
         }}>
-          <AutoFixHighRounded 
-            sx={{ 
-              color: magicVotesEnabled ? 'black' : theme.palette.success.main, 
+          <AutoFixHighRoundedIcon
+            sx={{
+              color: magicVotesEnabled ? 'black' : theme.palette.success.main,
               fontSize: '2rem',
-            }} 
+            }}
           />
           <Typography 
             variant="body1" 
@@ -2186,7 +2112,7 @@ export default function VotingPage() {
               color: 'white',
             }}
           >
-            <Close />
+            <CloseIcon />
           </IconButton>
 
           
@@ -2267,7 +2193,7 @@ export default function VotingPage() {
                       fontSize: { xs: '0.7rem', sm: '0.75rem' } // Slightly smaller on mobile
                     }}
                   >
-                    {multiplier !== 1 && <AutoFixHighRounded sx={{ fontSize: '1rem' }} />}
+                    {multiplier !== 1 && <AutoFixHighRoundedIcon sx={{ fontSize: '1rem' }} />}
                     {multiplier === 1 ? 'Free' : multiplier === 5 ? '1\u00A0credit' : '2\u00A0credits'}
                   </Typography>
                 </Box>
@@ -2309,9 +2235,9 @@ export default function VotingPage() {
             }}
           >
             {/* ThumbUp Icon if boosting upvote or ThumbDown Icon if boosting downvote */}
-            {magicVoteBoost > 0 ? 
-              <ThumbUp sx={{ fontSize: '1.5rem', mr: 1 }} /> : 
-              <ThumbDown sx={{ fontSize: '1.5rem', mr: 1 }} />}
+            {magicVoteBoost > 0 ?
+              <ThumbUpIcon sx={{ fontSize: '1.5rem', mr: 1 }} /> :
+              <ThumbDownIcon sx={{ fontSize: '1.5rem', mr: 1 }} />}
             {(() => {
               const requiredCredits = magicVoteMultiplier === 1 ? 0 : magicVoteMultiplier === 5 ? 1 : 2;
               const hasEnoughCredits = user?.userDetails?.credits >= requiredCredits;

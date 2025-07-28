@@ -44,7 +44,6 @@ const generateSurroundingFrames = async (frameId) => {
 
   const surroundingFrameDataPromises = ids.map(async (id) => {
     const subtitle = await fetchSubtitleForFrame(id);
-    const newFrameNum = id.split('-')[3];
     return {
       fid: id,
       frame_image: `/${seriesId}/img/${idS}/${idE}/${id}.jpg`,

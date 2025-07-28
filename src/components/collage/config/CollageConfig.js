@@ -1,7 +1,5 @@
-import React from 'react';
-import { 
-  layoutDefinitions, 
-  getLayoutsForPanelCount, 
+import {
+  getLayoutsForPanelCount,
   createAutoLayout,
   layoutStyles,
   recommendedLayouts
@@ -18,34 +16,6 @@ export const aspectRatioPresets = [
   { id: 'landscape', name: 'Landscape', value: 1.78 }
 ];
 
-// Simple Panel component
-const SimplePanel = ({ filled, theme }) => (
-  <div
-    style={{
-      width: '100%',
-      height: '100%',
-      backgroundColor: filled 
-        ? (theme?.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.3)' : 'rgba(25, 118, 210, 0.1)')
-        : (theme?.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'white'),
-      border: `1px solid ${theme?.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)'}`,
-      borderRadius: '4px',
-      boxSizing: 'border-box',
-    }}
-  />
-);
-
-// Grid container style
-const getBaseGridStyle = (theme) => ({
-  width: '100%',
-  height: '100%',
-  display: 'grid',
-  gap: '4px',
-  padding: '4px',
-  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-  borderRadius: theme.shape.borderRadius,
-  transition: 'all 0.3s ease',
-  boxSizing: 'border-box',
-});
 
 /**
  * Main exported layoutTemplates array with Auto Layout and dynamic templates for 2-5 panels
@@ -59,9 +29,8 @@ export const layoutTemplates = [
     arrangement: 'auto',
     minImages: 2,
     maxImages: 5,
-    renderPreview: (aspectRatio, theme, imageCount = 0) => {
-      return createAutoLayout(Math.max(2, imageCount || 2), aspectRatio, theme, aspectRatioPresets);
-    }
+    renderPreview: (aspectRatio, theme, imageCount = 0) =>
+      createAutoLayout(Math.max(2, imageCount || 2), aspectRatio, theme, aspectRatioPresets)
   },
   
   // Dynamic templates for each panel count (2-5)
@@ -74,7 +43,7 @@ export const layoutTemplates = [
     maxImages: panelCount,
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
       const actualImageCount = imageCount || panelCount;
-      const closestAspectRatio = aspectRatioPresets.find(preset => preset.value === aspectRatio) || 
+      const closestAspectRatio = aspectRatioPresets.find(preset => preset.value === aspectRatio) ||
                                 aspectRatioPresets.find(preset => preset.id === 'square');
       const aspectRatioId = closestAspectRatio?.id || 'square';
       

@@ -1,17 +1,14 @@
 import { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Box, 
-  Typography, 
-  Chip, 
-  useMediaQuery,
+import {
+  Box,
+  Typography,
+  Chip,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Paper,
-  alpha
 } from '@mui/material';
-import { useTheme, styled } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import ScienceIcon from '@mui/icons-material/Science';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -103,13 +100,9 @@ const StyledTeaserNavItemIcon = styled(ListItemIcon)({
 });
 
 export default function CollageNavTeaser() {
-  const theme = useTheme();
   const location = useLocation();
   const { user } = useContext(UserContext);
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
   const isActive = location.pathname === '/collage';
-  const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
   
   // Check if user prefers legacy collage tool
   const collagePreference = getCollagePreference(user);

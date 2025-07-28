@@ -4,9 +4,7 @@ import { Typography, Container, Grid, Paper, Card, CardContent, Button, Alert } 
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 
-const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-};
+const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
 export default function FacebookAuthDemo() {
   const { user, setUser } = useContext(UserContext);
@@ -63,7 +61,7 @@ export default function FacebookAuthDemo() {
         facebookAccessToken: response.authResponse.accessToken,
         facebookUserId: response.authResponse.userID,
       });
-      fetchProfileInfo(response.authResponse.accessToken);
+      fetchProfileInfo();
       fetchGroupPosts(response.authResponse.userID, response.authResponse.accessToken);
     } else {
       // User is not logged into Facebook or your app
@@ -90,7 +88,7 @@ export default function FacebookAuthDemo() {
     }, loginOptions);
   };
 
-  const fetchProfileInfo = (accessToken) => {
+  const fetchProfileInfo = () => {
     window.FB.api('/me', { fields: 'id,name,first_name,last_name,picture.type(large)' }, (response) => {
       if (response && !response.error) {
         setProfileInfo(response);
@@ -166,6 +164,7 @@ export default function FacebookAuthDemo() {
                         <img
                           src={profileInfo.picture.data.url}
                           alt="Profile"
+                          loading="lazy"
                           style={{ width: '100px', height: '100px', borderRadius: '50%', marginBottom: '16px' }}
                         />
                       )}

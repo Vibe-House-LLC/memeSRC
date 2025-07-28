@@ -1,81 +1,78 @@
 import PropTypes from 'prop-types';
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import { Box } from '@mui/material';
+import { lighten, darken } from '@mui/material/styles';
+import colorToHex from '../../utils/colorToHex';
 
-// ----------------------------------------------------------------------
+const Logo = forwardRef(({ sx, color = 'white', ...other }, ref) => {
+  const hexColor = colorToHex(color).toLowerCase();
+  const id = useId();
+  const gradient1 = `${id}-grad-1`;
+  const gradient2 = `${id}-grad-2`;
 
-const Logo = forwardRef(({ sx, ...other }, ref) => (
+  if (hexColor === '#ffffff') {
+    return (
+      <Box
+        ref={ref}
+        component="img"
+        src="/assets/memeSRC-white.svg"
+        alt="memeSRC logo"
+        loading="eager"
+        decoding="async"
+        fetchpriority="high"
+        width={40}
+        height={24}
+        sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
+        {...other}
+      />
+    );
+  }
 
-  // const theme = useTheme();
+  const colorStop1 = lighten(hexColor, 0.2);
+  const colorStop2 = darken(hexColor, 0.1);
 
-  // const PRIMARY_LIGHT = theme.palette.primary.light;
-
-  // const PRIMARY_MAIN = theme.palette.primary.main;
-
-  // const PRIMARY_DARK = theme.palette.primary.dark;
-
-  // OR using local (public folder)
-  // -------------------------------------------------------
-
-  // const logo = (
-  //   <Box
-  //     ref={ref}
-  //     component="div"
-  //     sx={{
-  //       width: 40,
-  //       height: 40,
-  //       display: 'inline-flex',
-  //       ...sx,
-  //     }}
-  //     {...other}
-  //   >
-  //     <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 512 512">
-  //       <defs>
-  //         <linearGradient id="BG1" x1="100%" x2="50%" y1="9.946%" y2="50%">
-  //           <stop offset="0%" stopColor={PRIMARY_DARK} />
-  //           <stop offset="100%" stopColor={PRIMARY_MAIN} />
-  //         </linearGradient>
-
-  //         <linearGradient id="BG2" x1="50%" x2="50%" y1="0%" y2="100%">
-  //           <stop offset="0%" stopColor={PRIMARY_LIGHT} />
-  //           <stop offset="100%" stopColor={PRIMARY_MAIN} />
-  //         </linearGradient>
-
-  //         <linearGradient id="BG3" x1="50%" x2="50%" y1="0%" y2="100%">
-  //           <stop offset="0%" stopColor={PRIMARY_LIGHT} />
-  //           <stop offset="100%" stopColor={PRIMARY_MAIN} />
-  //         </linearGradient>
-  //       </defs>
-
-  //       <g fill={PRIMARY_MAIN} fillRule="evenodd" stroke="none" strokeWidth="1">
-  //         <path
-  //           fill="url(#BG1)"
-  //           d="M183.168 285.573l-2.918 5.298-2.973 5.363-2.846 5.095-2.274 4.043-2.186 3.857-2.506 4.383-1.6 2.774-2.294 3.939-1.099 1.869-1.416 2.388-1.025 1.713-1.317 2.18-.95 1.558-1.514 2.447-.866 1.38-.833 1.312-.802 1.246-.77 1.18-.739 1.111-.935 1.38-.664.956-.425.6-.41.572-.59.8-.376.497-.537.69-.171.214c-10.76 13.37-22.496 23.493-36.93 29.334-30.346 14.262-68.07 14.929-97.202-2.704l72.347-124.682 2.8-1.72c49.257-29.326 73.08 1.117 94.02 40.927z"
-  //         />
-  //         <path
-  //           fill="url(#BG2)"
-  //           d="M444.31 229.726c-46.27-80.956-94.1-157.228-149.043-45.344-7.516 14.384-12.995 42.337-25.267 42.337v-.142c-12.272 0-17.75-27.953-25.265-42.337C189.79 72.356 141.96 148.628 95.69 229.584c-3.483 6.106-6.828 11.932-9.69 16.996 106.038-67.127 97.11 135.667 184 137.278V384c86.891-1.611 77.962-204.405 184-137.28-2.86-5.062-6.206-10.888-9.69-16.994"
-  //         />
-  //         <path
-  //           fill="url(#BG3)"
-  //           d="M450 384c26.509 0 48-21.491 48-48s-21.491-48-48-48-48 21.491-48 48 21.491 48 48 48"
-  //         />
-  //       </g>
-  //     </svg>
-  //   </Box>
-  // );
-
-
-  <Box
-    ref={ref}
-    component="img"
-    src={`/assets/memeSRC${other.color === 'white' ? '-white' : '-color'}.svg`}
-    sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
-  />
-));
+  return (
+    <Box
+      ref={ref}
+      component="svg"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 750 450"
+      width={40}
+      height={24}
+      role="img"
+      aria-label="memeSRC logo"
+      sx={{ width: 40, objectFit: 'contain', height: 'auto', cursor: 'pointer', ...sx }}
+      {...other}
+    >
+      <title>memeSRC logo</title>
+      <defs>
+        <linearGradient id={gradient1} x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(6.07497e-15,-99.2118,99.2118,6.07497e-15,278.569,271.493)">
+          <stop offset="0" stopColor={colorStop1} />
+          <stop offset="1" stopColor={colorStop2} />
+        </linearGradient>
+        <linearGradient id={gradient2} x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(2.54706e-14,-415.967,415.967,2.54706e-14,359.704,437.058)">
+          <stop offset="0" stopColor={colorStop2} />
+          <stop offset="1" stopColor={colorStop1} />
+        </linearGradient>
+      </defs>
+      <g transform="matrix(1.13805,0,0,1.32974,-1030.88,-1339.16)">
+        <rect x="905.832" y="1007.08" width="659.024" height="338.413" fill="none" />
+        <g>
+          <g transform="matrix(0.878698,0,0,0.752028,945.803,1049.04)">
+            <path d="M98.8,166.008L13.007,311.727C13.007,311.727 88.128,360.176 155.187,303.304C222.247,246.432 230.759,165.677 230.759,165.63C230.759,165.584 426.352,164.082 426.352,164.082C426.352,164.082 450.547,269.3 504.354,303.309C558.161,337.319 607.353,336.307 647.334,312.702C579.947,195.245 559.738,162.094 559.738,162.094C559.738,162.094 528.245,128.636 509.367,125.42C490.49,122.203 372.469,153.381 372.469,153.381L285.248,151.908C285.248,151.908 135.562,105.666 98.8,166.008" fill={`url(#${gradient1})`} />
+          </g>
+          <g transform="matrix(0.878698,0,0,0.752028,945.803,1049.04)">
+            <path d="M98.8,166.008C132.319,129.837 185.623,145.6 219.243,204.674C252.864,263.749 276.919,328.792 329.078,328.792C381.238,328.792 404.922,267.025 440.821,205.906C476.719,144.787 502.08,127.976 559.738,162.094C515.536,83.092 436.238,-78.505 365.224,74.908C333.633,136.469 334.645,172.038 292.968,73.553C251.29,-24.932 191.714,11.364 155.381,69.399C119.047,127.434 98.02,166.849 98.8,166.008Z" fill={`url(#${gradient2})`} />
+          </g>
+        </g>
+      </g>
+    </Box>
+  );
+});
 
 Logo.propTypes = {
   sx: PropTypes.object,
-}; 
+  color: PropTypes.string,
+};
 
 export default Logo;

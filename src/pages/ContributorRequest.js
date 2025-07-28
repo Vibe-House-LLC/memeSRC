@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Typography, Container, Grid, Stack, FormControl, InputLabel, Select, MenuItem, } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { API, graphqlOperation } from 'aws-amplify';
+import { API } from 'aws-amplify';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactMarkdown } from 'react-markdown/lib/react-markdown';
 import UploadToSeriesPage from '../sections/@dashboard/series/UploadToSeriesPage';
@@ -79,9 +79,7 @@ export default function ContributorRequest() {
   const [series, setSeries] = useState();
   const navigate = useNavigate()
 
-  const authorized = user?.['cognito:groups']?.some((element) => {
-    return element === 'admins' || element === 'contributors';
-  })
+  const authorized = user?.['cognito:groups']?.some((element) => element === 'admins' || element === 'contributors')
 
   const becomeContributor = () => {
     if (user) {
@@ -113,7 +111,7 @@ export default function ContributorRequest() {
       authMode: 'AMAZON_COGNITO_USER_POOLS',
     });
 
-    const items = response.data.listSeries.items;
+    const {items} = response.data.listSeries;
     result.push(...items);
 
     if (response.data.listSeries.nextToken) {

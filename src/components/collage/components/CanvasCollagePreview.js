@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, IconButton, Typography, useMediaQuery, Menu, MenuItem, ListItemIcon } from "@mui/material";
+import PropTypes from 'prop-types';
+import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
@@ -400,11 +401,9 @@ const parseGridToRects = (layoutConfig, containerWidth, containerHeight, panelCo
  */
 const CanvasCollagePreview = ({
   selectedTemplate,
-  selectedAspectRatio,
   panelCount,
   images = [],
   onPanelClick,
-  onMenuOpen,
   aspectRatioValue = 1,
   panelImageMapping = {},
   updatePanelImageMapping,
@@ -452,16 +451,11 @@ const CanvasCollagePreview = ({
   const [hoveredBorder, setHoveredBorder] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(null);
 
-  // Mobile detection for slider fix
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
-
   // Base canvas size for text scaling calculations
   const BASE_CANVAS_WIDTH = 400;
   
   // Calculate text scale factor based on current canvas size vs base size
-  const textScaleFactor = useMemo(() => {
-    return componentWidth / BASE_CANVAS_WIDTH;
-  }, [componentWidth]);
+  const textScaleFactor = useMemo(() => componentWidth / BASE_CANVAS_WIDTH, [componentWidth]);
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
@@ -610,8 +604,7 @@ const CanvasCollagePreview = ({
 
   // Load images when they change
   useEffect(() => {
-    const loadImage = (src, key) => {
-      return new Promise((resolve) => {
+    const loadImage = (src, key) => new Promise((resolve) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve({ key, img });
@@ -623,7 +616,6 @@ const CanvasCollagePreview = ({
           img.src = src.displayUrl || src.originalUrl || '';
         }
       });
-    };
 
     const loadAllImages = async () => {
       const imagePromises = images.map((imageData, index) => 
@@ -760,13 +752,10 @@ const CanvasCollagePreview = ({
     
     // Draw panels
     panelRects.forEach((rect) => {
-      const { x, y, width, height, panelId, index } = rect;
+      const { x, y, width, height, panelId } = rect;
       const imageIndex = panelImageMapping[panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
-      const isHovered = hoveredPanel === index;
-      const isSelected = selectedPanel === index;
-      const isInTransformMode = isTransformMode[panelId];
       const panelText = panelTexts[panelId] || {};
       
       // Draw panel background
@@ -1302,7 +1291,7 @@ const CanvasCollagePreview = ({
   }, [lastUsedTextSettings, textScaleFactor]);
 
   // Handle text editing
-  const handleTextEdit = useCallback((panelId, event) => {
+  const handleTextEdit = useCallback((panelId) => {
     // Cancel reorder mode when opening text editor
     if (isReorderMode) {
       setIsReorderMode(false);
@@ -1535,14 +1524,12 @@ const CanvasCollagePreview = ({
   }, [isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
 
   // Cleanup hover timeout on unmount
-  useEffect(() => {
-    return () => {
+  useEffect(() => () => {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
         hoverTimeoutRef.current = null;
       }
-    };
-  }, []);
+    }, []);
 
 
 
@@ -1626,7 +1613,8 @@ const CanvasCollagePreview = ({
     
     // Border zones have highest priority for cursor
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null && !isReorderMode) {
-      cursor = borderZone.cursor;
+      const { cursor: borderCursor } = borderZone;
+      cursor = borderCursor;
     } else if (hoveredPanelIndex >= 0 && !borderZone) {
       const panel = panelRects[hoveredPanelIndex];
       
@@ -1692,10 +1680,6 @@ const CanvasCollagePreview = ({
           // Calculate proposed new positions
           const newPositionX = currentTransform.positionX + deltaX;
           const newPositionY = currentTransform.positionY + deltaY;
-          
-          // Calculate the final image bounds with new position
-          const finalOffsetX = centerOffsetX + newPositionX;
-          const finalOffsetY = centerOffsetY + newPositionY;
           
           // Calculate bounds to prevent white space (image must always cover the panel)
           let minPositionX;
@@ -2569,13 +2553,9 @@ const CanvasCollagePreview = ({
   }, [actionMenuPanelId, startReorderMode, handleActionMenuClose]);
 
   // Get final canvas for export
-  const getCanvasBlob = useCallback(() => {
-    return new Promise((resolve) => {
+  const getCanvasBlob = useCallback(() => new Promise((resolve) => {
       const canvas = canvasRef.current;
       if (canvas) {
-        // Temporarily set the generating flag to exclude placeholder text
-        const originalGenerating = isGeneratingCollage;
-        
         // Create a temporary canvas for export without placeholder text
         const exportCanvas = document.createElement('canvas');
         const exportCtx = exportCanvas.getContext('2d');
@@ -2848,8 +2828,7 @@ const CanvasCollagePreview = ({
       } else {
         resolve(null);
       }
-    });
-  }, [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor]);
+    }), [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {
@@ -2948,31 +2927,12 @@ const CanvasCollagePreview = ({
       
       {/* Control panels positioned over canvas */}
       {panelRects.map((rect) => {
-        const { panelId, index } = rect;
+        const { panelId } = rect;
         const imageIndex = panelImageMapping[panelId];
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
         const isInTransformMode = isTransformMode[panelId];
         
         // Calculate responsive dimensions based on panel size with mobile-friendly minimums
-        const minPanelSize = Math.min(rect.width, rect.height);
-        const isMobileSize = minPanelSize < 200; // Detect mobile-sized panels
-        
-        // Use larger minimums for mobile touch targets
-        const collapsedHeight = Math.max(isMobileSize ? 28 : 24, Math.min(40, minPanelSize * 0.15));
-        const sidePadding = Math.max(isMobileSize ? 6 : 4, Math.min(12, rect.width * 0.02));
-        const tabSize = Math.max(isMobileSize ? 28 : 22, Math.min(32, minPanelSize * 0.12)); // Slightly smaller but still touch-friendly
-        const fontSize = Math.max(isMobileSize ? 11 : 10, Math.min(14, minPanelSize * 0.08));
-        const borderRadius = Math.max(3, Math.min(8, minPanelSize * 0.02));
-        
-        // Calculate dynamic expanded height based on content needs
-        const tabRowHeight = tabSize + (isMobileSize ? 12 : 8); // Tab height + margin
-        const contentAreaHeight = isMobileSize ? 80 : 65; // More space for content (text field, sliders, etc.)
-        const containerPadding = (isMobileSize ? 12 : 8); // Top/bottom padding
-        const expandedHeight = Math.max(
-          tabRowHeight + contentAreaHeight + containerPadding,
-          isMobileSize ? 120 : 100 // Ensure minimum usable height
-        );
-        
         return (
           <Box key={`controls-${panelId}`}>
             {/* Single control button with action menu */}
@@ -3101,8 +3061,8 @@ const CanvasCollagePreview = ({
       })}
 
       {/* Focus overlays - darken and blur inactive panels during editing modes */}
-      {(textEditingPanel !== null || Object.values(isTransformMode).some(enabled => enabled) || isReorderMode) && 
-       panelRects.map((rect, index) => {
+      {(textEditingPanel !== null || Object.values(isTransformMode).some(enabled => enabled) || isReorderMode) &&
+       panelRects.map((rect) => {
         const { panelId } = rect;
         
         // Skip overlay for active panels (being edited, in transform mode, or source panel during reorder)
@@ -3129,7 +3089,7 @@ const CanvasCollagePreview = ({
       })}
 
       {/* "Move Here" overlays for destination panels in reorder mode */}
-      {isReorderMode && panelRects.map((rect, index) => {
+      {isReorderMode && panelRects.map((rect) => {
         const { panelId } = rect;
         
         // Only show on destination panels (not the source panel)
@@ -3237,10 +3197,10 @@ const CanvasCollagePreview = ({
       )}
 
       {/* Border drag zones - only visible when not in transform mode, text editing, or reorder mode */}
-      {!Object.values(isTransformMode).some(enabled => enabled) && 
-       textEditingPanel === null && 
+      {!Object.values(isTransformMode).some(enabled => enabled) &&
+       textEditingPanel === null &&
        !isReorderMode &&
-       borderZones.map((zone, index) => (
+       borderZones.map((zone) => (
         <Box
           key={`border-zone-${zone.id || `${zone.type}-${zone.index}`}`}
           onMouseDown={(e) => {
@@ -3314,6 +3274,24 @@ const CanvasCollagePreview = ({
 
     </Box>
   );
+};
+
+CanvasCollagePreview.propTypes = {
+  selectedTemplate: PropTypes.object,
+  panelCount: PropTypes.number,
+  images: PropTypes.arrayOf(PropTypes.string),
+  onPanelClick: PropTypes.func,
+  aspectRatioValue: PropTypes.number,
+  panelImageMapping: PropTypes.object,
+  updatePanelImageMapping: PropTypes.func,
+  borderThickness: PropTypes.number,
+  borderColor: PropTypes.string,
+  panelTransforms: PropTypes.object,
+  updatePanelTransform: PropTypes.func,
+  panelTexts: PropTypes.object,
+  updatePanelText: PropTypes.func,
+  lastUsedTextSettings: PropTypes.object,
+  isGeneratingCollage: PropTypes.bool,
 };
 
 export default CanvasCollagePreview;

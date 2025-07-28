@@ -1,34 +1,23 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete, LinearProgress, Tabs, Tab, Box, Menu, Backdrop } from '@mui/material';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ShareIcon from '@mui/icons-material/Share';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import Popover from '@mui/material/Popover';
-import { grey } from '@mui/material/colors';
-import CardActions from '@mui/material/CardActions';
-import { styled } from '@mui/material/styles';
+import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, CircularProgress, Tabs, Tab, Box, Menu, Backdrop } from '@mui/material';
+
 // components
 import { useState, useEffect, Fragment, useContext } from 'react';
-import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
-import {
-  ArrowDropDown,
-  ChangeHistoryOutlined,
-  CheckCircle,
-  InfoOutlined,
-  ListAlt,
-  Pending,
-  Poll,
-  RequestPage,
-  StorageOutlined,
-} from '@mui/icons-material';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ChangeHistoryOutlinedIcon from '@mui/icons-material/ChangeHistoryOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import PendingIcon from '@mui/icons-material/Pending';
+import PollIcon from '@mui/icons-material/Poll';
+import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import { listSeriesData, updateSeriesData } from '../utils/migrateSeriesData';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
-import { listSeries } from '../graphql/queries';
 import { onUpdateSeries } from '../graphql/subscriptions';
 import SeriesCard from '../sections/@dashboard/series/SeriesCard';
 import { SnackbarContext } from '../SnackbarContext';
@@ -73,18 +62,8 @@ const FormMode = {
   EDIT: 'edit',
 };
 
-const ExpandMore = styled((props) => {
-  const { ...other } = props;
-  return <IconButton {...other} />;
-})(({ theme, expand }) => ({
-  transform: !expand ? 'rotate(0deg)' : 'rotate(180deg)',
-  marginLeft: 'auto',
-  transition: theme.transitions.create('transform', {
-    duration: theme.transitions.duration.shortest,
-  }),
-}));
 
-async function fetchMetadata(items = [], nextToken = null) {
+async function fetchMetadata(nextToken = null) {
   const result = await API.graphql(
     graphqlOperation(listSeriesAndSeasons, {
       filter: {},
@@ -124,18 +103,8 @@ export default function DashboardSeriesPage() {
   const [metadataLoaded, setMetadataLoaded] = useState(false);
   const [dialogButtonText, setDialogButtonText] = useState('Next');
   const [dialogButtonLoading, setDialogButtonLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [tvdbSearchopen, setTvdbSearchOpen] = useState(false);
-  const [tvdbResults, setTvdbResults] = useState([]);
-  const [tvdbResultsLoading, setTvdbResultsLoading] = useState(false);
-  const [tvdbSearchQuery, setTvdbSearchQuery] = useState('');
   const [statusText, setStatusText] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [fileLocation, setFileLocation] = useState('');
   const [sortMethod, setSortMethod] = useState('all');
-  const [selectedIndex, setSelectedIndex] = useState(null)
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
   const [newBulkStatus, setNewBulkStatus] = useState('');
@@ -152,27 +121,10 @@ export default function DashboardSeriesPage() {
     setOptionsMenuAnchor(null);
   };
 
-  const handleExpandClick = () => {
-    setExpanded(!expanded);
-  };
-
-  const handleMoreVertClick = (event, itemIndex) => {
-    setSelectedIndex(itemIndex);
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setSelectedIndex(null);
-    setAnchorEl(null);
-  };
-
   const handleCloseForm = () => {
     setShowForm(false);
     clearForm();
   };
-
-  const open = Boolean(anchorEl);
-  const popoverId = open ? 'simple-popover' : undefined;
 
   const clearForm = () => {
     setId('');
@@ -184,10 +136,8 @@ export default function DashboardSeriesPage() {
     setSeriesImage('');
     setSeriesSeasons('');
     setMetadataLoaded(false);
-    setTvdbResults([]);
     if (sub) { sub.unsubscribe(); }
     setStatusText('');
-    setFileLocation('');
   };
 
   // ----------------------------------------------------------------------
@@ -254,9 +204,6 @@ export default function DashboardSeriesPage() {
 
   // ----------------------------------------------------------------------
 
-  const toggleForm = () => {
-    setShowForm(!showForm);
-  };
 
   const handleSubmit = (event) => {
     const seriesData = {
@@ -276,7 +223,6 @@ export default function DashboardSeriesPage() {
     }
     clearForm();
     setShowForm(false);
-    handleClose();
   };
 
   const handleGetMetadata = () => {
@@ -331,9 +277,8 @@ export default function DashboardSeriesPage() {
   };
 
   const handleDelete = (id) => {
-    deleteExistingSeries(id)
-    handleClose();
-  }
+    deleteExistingSeries(id);
+  };
 
   // Add new state for nextToken
   const [nextToken, setNextToken] = useState(null);
@@ -355,7 +300,7 @@ export default function DashboardSeriesPage() {
     if (!nextToken) return;
     
     setLoading(true);
-    const data = await fetchMetadata([], nextToken);
+    const data = await fetchMetadata(nextToken);
     const newMetadata = [...metadata, ...data.items];
     setMetadata(newMetadata);
     
@@ -396,26 +341,6 @@ export default function DashboardSeriesPage() {
     filterMetadataByMethod(value, metadata);
   };
 
-  const searchTvdb = async () => {
-    setTvdbResultsLoading(true);
-    await API.get('publicapi', '/tvdb/search', {
-      'queryStringParameters': {
-        'query': tvdbSearchQuery
-      }
-    }).then(results => {
-      console.log(results)
-      if (typeof results === 'object') {
-        setTvdbResults(results);
-        setTvdbResultsLoading(false);
-      } else {
-        setTvdbResults([]);
-        setTvdbResultsLoading(false);
-      }
-      results.forEach(element => {
-        console.log(element)
-      });
-    }).catch(error => console.log(error))
-  }
 
   const getTvdbSeasons = async () => {
     await API.get('publicapi', `/tvdb/series/${tvdbid}/extended`)
@@ -426,34 +351,7 @@ export default function DashboardSeriesPage() {
       .catch(error => console.log(error))
   }
 
-  const handleUpload = (files) => {
-    setUploading(true);
-    Storage.put(files[0].name, files[0], {
-      resumable: true,
-      level: "protected",
-      completeCallback: (event) => {
-        setUploading(false);
-        console.log('Upload Complete!');
-        Auth.currentUserCredentials().then((creds) => {
-          setUploading(false);
-          console.log(`protected/${creds.identityId}/${event.key}`);
-          setFileLocation(`protected/${creds.identityId}/${event.key}`);
-        });
-      },
-      progressCallback: (progress) => {
-        setUploadProgress(progress.loaded / progress.total * 100);
-        console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
-      },
-      errorCallback: (err) => {
-        console.error('Unexpected error while uploading', err);
-      }
-    })
-  }
 
-  useEffect(() => {
-    const timeOutId = setTimeout(() => searchTvdb(), 100);
-    return () => clearTimeout(timeOutId);
-  }, [tvdbSearchQuery]);
 
   useEffect(() => {
     if (tvdbid !== '') {
@@ -566,7 +464,7 @@ export default function DashboardSeriesPage() {
             aria-haspopup="true"
             onClick={handleOptionsMenuClick}
             variant="contained"
-            startIcon={<ArrowDropDown />}
+            startIcon={<ArrowDropDownIcon />}
           >
             Options
           </Button>
@@ -590,7 +488,7 @@ export default function DashboardSeriesPage() {
               </Button>
             </MenuItem>
             <MenuItem onClick={handleOptionsMenuClose}>
-              <Button fullWidth variant="contained" startIcon={<StorageOutlined />} onClick={tvdbIdMigration}>
+              <Button fullWidth variant="contained" startIcon={<StorageOutlinedIcon />} onClick={tvdbIdMigration}>
                 Migrate Data
               </Button>
             </MenuItem>
@@ -599,7 +497,7 @@ export default function DashboardSeriesPage() {
                 handleChangeAllStatus();
                 handleOptionsMenuClose();
               }}>
-              <Button fullWidth variant="contained" startIcon={<ChangeHistoryOutlined />}>
+              <Button fullWidth variant="contained" startIcon={<ChangeHistoryOutlinedIcon />}>
                 Change All Status
               </Button>
             </MenuItem>
@@ -616,7 +514,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <ListAlt color="success" sx={{ mr: 1 }} />
+                  <ListAltIcon color="success" sx={{ mr: 1 }} />
                   All
                 </Box>
               }
@@ -625,7 +523,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <CheckCircle color="success" sx={{ mr: 1 }} />
+                  <CheckCircleIcon color="success" sx={{ mr: 1 }} />
                   Live
                 </Box>
               }
@@ -634,7 +532,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <Poll color="warning" sx={{ mr: 1 }} />
+                  <PollIcon color="warning" sx={{ mr: 1 }} />
                   Votable
                 </Box>
               }
@@ -643,7 +541,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <Pending color="action" sx={{ mr: 1 }} />
+                  <PendingIcon color="action" sx={{ mr: 1 }} />
                   Requested
                 </Box>
               }
@@ -652,7 +550,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <InfoOutlined color="error" sx={{ mr: 1 }} />
+                  <InfoOutlinedIcon color="error" sx={{ mr: 1 }} />
                   Other
                 </Box>
               }
@@ -704,7 +602,7 @@ export default function DashboardSeriesPage() {
           )}
         </Container>
       </Container>
-      <Dialog open={showForm} onClose={handleClose}>
+      <Dialog open={showForm} onClose={handleCloseForm}>
         <DialogTitle>Create New Content Metadata</DialogTitle>
         <DialogContent>
           <form>
@@ -774,27 +672,16 @@ export default function DashboardSeriesPage() {
                     </FormControl>
                   </Grid>
 
-                  {uploading && (
-                    <>
-                      <Grid item xs={12}>
-                        <LinearProgress variant="determinate" value={uploadProgress} />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Status"
-                          fullWidth
-                          value={statusText}
-                          disabled
-                          onChange={(event) => setStatusText(event.target.value)}
-                        />
-                      </Grid>
-                    </>
-                  )}
                   {seriesSeasons &&
                     seriesSeasons.map((season) =>
                       season.type.id === 1 ? (
-                        <Grid item xs={6} md={4}>
-                          <img src={season.image} alt="season artwork" style={{ width: '100%', height: 'auto' }} />
+                        <Grid item xs={6} md={4} key={season.id}>
+                          <img
+                            src={season.image}
+                            alt="season artwork"
+                            loading="lazy"
+                            style={{ width: '100%', height: 'auto' }}
+                          />
                           <Typography component="h6" variant="h6">
                             Season {season.number}
                           </Typography>

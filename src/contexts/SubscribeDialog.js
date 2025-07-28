@@ -1,7 +1,16 @@
-import { AutoFixHighRounded, Block, Close, Favorite, Star, SupportAgent, ExpandMore, Clear, Check, Bolt, Share, ThumbUp, Feedback, ArrowBack, Settings } from '@mui/icons-material';
-import { Box, Button, Card, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, LinearProgress, Typography, useMediaQuery, FormControlLabel, Fab, Stack } from '@mui/material';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import CloseIcon from '@mui/icons-material/Close';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import CheckIcon from '@mui/icons-material/Check';
+import BoltIcon from '@mui/icons-material/Bolt';
+import ShareIcon from '@mui/icons-material/Share';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import FeedbackIcon from '@mui/icons-material/Feedback';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { Box, Button, Card, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, Typography, useMediaQuery, Stack } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
+import PropTypes from 'prop-types';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
@@ -35,20 +44,16 @@ export const DialogProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isXs = useMediaQuery(theme => theme.breakpoints.down('sm'));
-  const isMd = useMediaQuery(theme => theme.breakpoints.up('sm'));
   const isCompact = useMediaQuery('(max-width:850px)');
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(getInitialPlan());
   const [loading, setLoading] = useState(false);
   const { user } = useContext(UserContext);
   const [checkoutLink, setCheckoutLink] = useState();
-  const [billingAgreement, setBillingAgreement] = useState(false);
-
-  const [askedAboutCredits, setAskedAboutCredits] = useState(false);
 
   const [selectedTitleSubtitle, setSelectedTitleSubtitle] = useState(null);
 
-  const { countryCode, countryName } = useUserLocation();
+  const { countryCode } = useUserLocation();
 
   const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(!isCompact);
 
@@ -83,22 +88,16 @@ export const DialogProvider = ({ children }) => {
 
   const setSelectedPlanAndScroll = (plan) => {
     setSelectedPlan(plan);
-    setAskedAboutCredits(false);
     if (isCompact) {
       setCreditOptionsExpanded(false);
     }
     subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const openDialog = (content) => {
-    setSubscriptionDialogOpen(true);
-  };
-
   const closeDialog = () => {
     setSubscriptionDialogOpen(false);
     setLoading(false)
     setCheckoutLink()
-    setBillingAgreement(false)
   };
 
   const buySubscription = () => {
@@ -190,10 +189,6 @@ export const DialogProvider = ({ children }) => {
     }
   };
 
-  const getRandomTitleSubtitle = () => {
-    const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
-    return titleSubtitlePairs[randomIndex];
-  };
 
   const openSubscriptionDialog = () => {
     setSubscriptionDialogOpen(true)
@@ -261,24 +256,26 @@ export const DialogProvider = ({ children }) => {
             <img
               src="/assets/memeSRC-white.svg"
               alt="memeSRC logo"
+              loading="lazy"
               style={{ height: isCompact ? 24 : 36 }}
             />
             <Typography fontSize={isCompact ? 22 : 28} fontWeight={700}>
               memeSRC Pro
             </Typography>
           </Box>
-          <IconButton 
-            onClick={closeDialog} 
-            size="small" 
-            sx={{ 
-              position: 'absolute', 
-              top: isCompact ? 4 : 8, 
-              right: 10, 
-              zIndex: 1000, 
+          <IconButton
+            onClick={closeDialog}
+            size="small"
+            aria-label="close"
+            sx={{
+              position: 'absolute',
+              top: isCompact ? 4 : 8,
+              right: 10,
+              zIndex: 1000,
               opacity: 0.4 
             }}
           >
-            <Close />
+            <CloseIcon />
           </IconButton>
         </DialogTitle>
         <Divider />
@@ -372,7 +369,7 @@ export const DialogProvider = ({ children }) => {
                           mr: 2,
                         }}
                       >
-                        <Check sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
+                        <CheckIcon sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
                       </Box>
                       <Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>
                         Zero Ads
@@ -391,7 +388,7 @@ export const DialogProvider = ({ children }) => {
                           mr: 2,
                         }}
                       >
-                        <SupportAgent sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
+                        <SupportAgentIcon sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
                       </Box>
                       <Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>
                         Pro Support
@@ -410,7 +407,7 @@ export const DialogProvider = ({ children }) => {
                           mr: 2,
                         }}
                       >
-                        <Bolt sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
+                        <BoltIcon sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
                       </Box>
                       <Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>
                         Exclusive Features
@@ -435,7 +432,7 @@ export const DialogProvider = ({ children }) => {
                           mr: 2,
                         }}
                       >
-                        <AutoFixHighRounded sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
+                        <AutoFixHighRoundedIcon sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
                       </Box>
                       <Typography fontSize={isCompact ? 16 : 18} fontWeight={500} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {getCreditCount()} Magic Credits
@@ -578,7 +575,7 @@ export const DialogProvider = ({ children }) => {
                                     fontWeight: 600,
                                   }}
                                 >
-                                  <AutoFixHighRounded sx={{ fontSize: isCompact ? 23 : 28, mx: 0.5 }} />
+                                  <AutoFixHighRoundedIcon sx={{ fontSize: isCompact ? 23 : 28, mx: 0.5 }} />
                                   {credits}
                                 </Box>
                               </Card>
@@ -718,7 +715,7 @@ export const DialogProvider = ({ children }) => {
                       mr: 2,
                     }}
                   >
-                    <Share sx={{ color: 'common.white' }} />
+                    <ShareIcon sx={{ color: 'common.white' }} />
                   </Box>
                   <Typography variant="body1">Help spread the word</Typography>
                 </Box>
@@ -735,7 +732,7 @@ export const DialogProvider = ({ children }) => {
                       mr: 2,
                     }}
                   >
-                    <ThumbUp sx={{ color: 'common.white' }} />
+                    <ThumbUpIcon sx={{ color: 'common.white' }} />
                   </Box>
                   <Typography variant="body1">Make and share more memes</Typography>
                 </Box>
@@ -752,7 +749,7 @@ export const DialogProvider = ({ children }) => {
                       mr: 2,
                     }}
                   >
-                    <Feedback sx={{ color: 'common.white' }} />
+                    <FeedbackIcon sx={{ color: 'common.white' }} />
                   </Box>
                   <Typography variant="body1">Give feedback and contribute</Typography>
                 </Box>
@@ -799,7 +796,7 @@ export const DialogProvider = ({ children }) => {
                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
                 },
               }}
-              startIcon={<ArrowBack />}
+              startIcon={<ArrowBackIcon />}
             >
               Go Back
             </Button>
@@ -986,4 +983,8 @@ export const DialogProvider = ({ children }) => {
       </Dialog>
     </SubscribeDialogContext.Provider>
   );
+};
+
+DialogProvider.propTypes = {
+  children: PropTypes.node
 };

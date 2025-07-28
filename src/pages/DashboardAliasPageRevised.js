@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress } from "@mui/material";
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Add, Edit, Delete, Refresh } from "@mui/icons-material";
@@ -73,9 +74,15 @@ const AliasFormDialog = ({ open, onClose, onSubmit, initialValues }) => {
   );
 };
 
+AliasFormDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  initialValues: PropTypes.object.isRequired,
+};
 
-const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => {
-  return (
+
+const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Confirm Delete</DialogTitle>
       <DialogContent>
@@ -87,13 +94,18 @@ const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => {
       </DialogActions>
     </Dialog>
   );
+
+ConfirmDeleteDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onConfirm: PropTypes.func.isRequired,
 };
 
 /* Main Component */
 
 const AliasManagementPageRevised = () => {
   const [aliases, setAliases] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [currentAlias, setCurrentAlias] = useState(null);

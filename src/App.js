@@ -9,8 +9,6 @@ import Router from './routes';
 import ThemeProvider from './theme';
 import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
-import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
-import { DialogProvider } from './contexts/SubscribeDialog';
 
 
 // ----------------------------------------------------------------------

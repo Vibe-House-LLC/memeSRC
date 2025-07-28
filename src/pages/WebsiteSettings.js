@@ -1,4 +1,4 @@
-import { Card, Container, Divider, FormControlLabel, FormGroup, Grid, LinearProgress, Stack, Switch, Typography } from "@mui/material";
+import { Container, Divider, LinearProgress, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { API, graphqlOperation } from "aws-amplify";

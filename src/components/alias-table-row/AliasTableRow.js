@@ -1,8 +1,9 @@
 import { Add } from "@mui/icons-material";
-import { Button, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, TableCell, TableRow, TextField, Typography } from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, TableCell, TableRow, TextField, Typography } from "@mui/material";
 import { API, graphqlOperation } from "aws-amplify";
 import { useContext, useState } from "react";
 import { LoadingButton } from "@mui/lab";
+import PropTypes from 'prop-types';
 import { getAlias } from "../../graphql/queries";
 import { createAlias, updateAlias } from "../../graphql/mutations";
 import { SnackbarContext } from "../../SnackbarContext";
@@ -113,3 +114,10 @@ export default function AliasTableRow({ row }) {
         </>
     )
 }
+
+AliasTableRow.propTypes = {
+    row: PropTypes.shape({
+        id: PropTypes.string,
+        title: PropTypes.string,
+    }).isRequired,
+};

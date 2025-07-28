@@ -8,24 +8,19 @@ import {
   Table,
   Stack,
   Paper,
-  Button,
-  Popover,
   Checkbox,
   TableRow,
-  MenuItem,
   TableBody,
   TableCell,
   Container,
   Typography,
-  IconButton,
   TableContainer,
   TablePagination,
 } from '@mui/material';
-import { Auth, API } from 'aws-amplify';
+import { API } from 'aws-amplify';
 import { useNavigate } from 'react-router-dom';
 // components
 import Label from '../components/label';
-import Iconify from '../components/iconify';
 import Scrollbar from '../components/scrollbar';
 // sections
 import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
@@ -122,7 +117,7 @@ async function listSourceMediasGraphQL(limit, nextToken = null, result = []) {
     authMode: 'AMAZON_COGNITO_USER_POOLS',
   });
 
-  const items = response.data.listSourceMedias.items;
+  const {items} = response.data.listSourceMedias;
   result.push(...items);
 
   if (response.data.listSourceMedias.nextToken) {
@@ -139,9 +134,8 @@ function formatDateTime(dateTimeStr) {
   let formattedDate = date.toLocaleString('en-US', options);
 
   formattedDate = formattedDate.replace(/(\d+):(\d+)/, (match, p1, p2) => {
-      const period = p1 < 12 ? 'am' : 'pm';
-      const hour = p1 < 12 ? p1 : p1 - 12;
-      return `${hour}:${p2}`;
+    const hour = p1 < 12 ? p1 : p1 - 12;
+    return `${hour}:${p2}`;
   });
 
   return formattedDate;
@@ -150,8 +144,6 @@ function formatDateTime(dateTimeStr) {
 
 
 export default function SourceMediaList() {
-  const [open, setOpen] = useState(null);
-  const [selectedIndex, setSelectedIndex] = useState(null);
   const [page, setPage] = useState(0);
   const [order, setOrder] = useState('asc');
   const [selected, setSelected] = useState([]);
@@ -159,7 +151,6 @@ export default function SourceMediaList() {
   const [filterName, setFilterName] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [sourceMedia, setSourceMedia] = useState([]);
-  const [credits, setCredits] = useState(0);
 
   const navigate = useNavigate();
 
@@ -169,18 +160,6 @@ export default function SourceMediaList() {
     }).catch(error => console.log(error))
   }, [])
 
-  const handleOpenMenu = (event, index) => {
-    setSelectedIndex(index);
-    setOpen(event.currentTarget);
-  };
-
-  useEffect(() => {
-    console.log(selectedIndex)
-  }, [selectedIndex])
-
-  const handleCloseMenu = () => {
-    setOpen(null);
-  };
 
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -262,7 +241,7 @@ export default function SourceMediaList() {
                   onSelectAllClick={handleSelectAllClick}
                 />
                 <TableBody>
-                  {filteredSourceMedia.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
+                  {filteredSourceMedia.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
                     const { series, user, id, status, createdAt } = row;
                     const selectedSourceMedia = selected.indexOf(id) !== -1;
 

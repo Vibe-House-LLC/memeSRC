@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
 import {
   Box,
@@ -8,8 +9,7 @@ import {
 /**
  * Header component for the collage page
  */
-export const PageHeader = ({ icon: Icon, title, isMobile }) => {
-  return (
+export const PageHeader = ({ icon: Icon, title, isMobile }) => (
     <Box>
       <Typography variant="h3" gutterBottom sx={{ 
         display: 'flex', 
@@ -33,7 +33,6 @@ export const PageHeader = ({ icon: Icon, title, isMobile }) => {
       </Typography>
     </Box>
   );
-};
 
 /**
  * Section heading with icon
@@ -59,4 +58,16 @@ export const SectionHeading = ({ icon: Icon, title, sx = {} }) => {
       </Typography>
     </Box>
   );
-}; 
+};
+
+PageHeader.propTypes = {
+  icon: PropTypes.elementType,
+  title: PropTypes.string.isRequired,
+  isMobile: PropTypes.bool,
+};
+
+SectionHeading.propTypes = {
+  icon: PropTypes.elementType,
+  title: PropTypes.string.isRequired,
+  sx: PropTypes.object,
+};

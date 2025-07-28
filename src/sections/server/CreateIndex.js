@@ -1,7 +1,8 @@
 // CreateIndex.js
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Button, TextField, LinearProgress, Typography } from '@mui/material';
+import PropTypes from 'prop-types';
+import { Box, Button, TextField, Typography } from '@mui/material';
 import ProcessingDialog from './ProcessingDialog';
 
 function CreateIndex({ onProcessComplete }) {
@@ -33,7 +34,7 @@ function CreateIndex({ onProcessComplete }) {
     setProgress(0);
   
     const electron = window.require('electron');
-    const ipcRenderer = electron.ipcRenderer;
+    const {ipcRenderer} = electron;
     const ipcArguments = {
       inputPath: folderPath,
       id,
@@ -92,7 +93,7 @@ function CreateIndex({ onProcessComplete }) {
     // setIsProcessing(true);
     // setIsDialogOpen(true);
     setProgress(0);
-  }, [onProcessComplete]);
+  }, []);
 
   useEffect(() => {
     let progressInterval;
@@ -179,5 +180,9 @@ function CreateIndex({ onProcessComplete }) {
     </>
   );
 }
+
+CreateIndex.propTypes = {
+  onProcessComplete: PropTypes.func,
+};
 
 export default CreateIndex;

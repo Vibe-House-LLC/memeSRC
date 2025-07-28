@@ -1,14 +1,16 @@
 // V2EditorPage.js
+/* eslint-disable no-unused-vars, func-names */
 
 import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import PropTypes from 'prop-types';
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -290,7 +292,21 @@ const EditorPage = ({ shows }) => {
 
   // Warm up the UUID function for faster save dialog response
   useEffect(() => {
-    API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        })
+      : setTimeout(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        }, 1000)
+
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -355,7 +371,7 @@ const EditorPage = ({ shows }) => {
       }
       addToHistory();
     }
-  }, [editor]);
+  }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Function to handle image uploads and add them to the canvas
@@ -533,7 +549,7 @@ const EditorPage = ({ shows }) => {
         })
         .catch((err) => console.log(err));
     }
-  }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]);
+  }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -872,7 +888,7 @@ const EditorPage = ({ shows }) => {
           body: data
         });
 
-        const magicResultId = response.magicResultId;
+        const {magicResultId} = response;
 
         const startTime = Date.now();
 
@@ -1417,14 +1433,12 @@ const EditorPage = ({ shows }) => {
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
-      const blobPromises = fineTuningFrames.map((url) => {
-        return fetch(url)
+      const blobPromises = fineTuningFrames.map((url) => fetch(url)
           .then((response) => response.blob())
           .catch((error) => {
             console.error('Error fetching image:', error);
             return null;
-          });
-      });
+          }));
 
       // Wait for all blob promises to resolve
       Promise.all(blobPromises)
@@ -1603,10 +1617,18 @@ const EditorPage = ({ shows }) => {
                     <Stack direction='column' width='100%' spacing={1}>
                       <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
                         <ButtonGroup variant="contained" size="small">
-                          <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
+                          <IconButton
+                            disabled={(editorStates.length <= 1)}
+                            onClick={undo}
+                            aria-label="undo"
+                          >
                             <Undo />
                           </IconButton>
-                          <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
+                          <IconButton
+                            disabled={(futureStates.length === 0)}
+                            onClick={redo}
+                            aria-label="redo"
+                          >
                             <Redo />
                           </IconButton>
                         </ButtonGroup>
@@ -1647,7 +1669,7 @@ const EditorPage = ({ shows }) => {
                             sx={{ flexGrow: 1, zIndex: 100 }}
                             valueLabelFormat={(value) => `${Math.round(value)}%`}
                           />
-                          <IconButton onClick={toggleWhiteSpaceSlider}>
+                          <IconButton onClick={toggleWhiteSpaceSlider} aria-label="close">
                             <Close />
                           </IconButton>
                         </Stack>
@@ -2203,7 +2225,7 @@ const EditorPage = ({ shows }) => {
                 <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
-                    <a style={{ textDecoration: 'none' }}>
+                    <Box component="div" sx={{ textDecoration: 'none' }}>
                       <StyledCard
                         sx={{
                           ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
@@ -2219,7 +2241,7 @@ const EditorPage = ({ shows }) => {
                           }}
                         />
                       </StyledCard>
-                    </a>
+                    </Box>
                   ) : (
                     // Render a skeleton if the data is not yet available (undefined)
                     <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio: `${editorAspectRatio === 1 ? (16 / 9) : editorAspectRatio}/1` }} />
@@ -2531,5 +2553,9 @@ const EditorPage = ({ shows }) => {
     </>
   );
 }
+
+EditorPage.propTypes = {
+  shows: PropTypes.array,
+};
 
 export default EditorPage

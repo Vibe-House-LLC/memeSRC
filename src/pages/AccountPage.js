@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Box, Typography, Button, Container, Divider, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
+import { Box, Typography, Button, Container, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, CircularProgress } from '@mui/material';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Receipt, Download, Block, SupportAgent, Bolt, AutoFixHighRounded, CreditCard, LockOpen, ContentCopy, CheckCircle } from '@mui/icons-material';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import DownloadIcon from '@mui/icons-material/Download';
+import BlockIcon from '@mui/icons-material/Block';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import BoltIcon from '@mui/icons-material/Bolt';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { API, Auth } from 'aws-amplify';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
@@ -125,23 +134,17 @@ const AccountPage = () => {
 
   const isLoading = loadingInvoices || loadingSubscription;
   const recentPaidInvoice = invoices.find((invoice) => invoice.paid);
-  const currentSubscription = recentPaidInvoice?.lines?.data?.[0]?.description
-    ?.replace(/^1\s*×\s*/, '')
-    ?.replace(/\s*\(memeSRC\)/i, '');
-
-    console.log(recentPaidInvoice?.lines?.data?.[0])
+  console.log(recentPaidInvoice?.lines?.data?.[0])
   // Check if user is logged in
   if (!userDetails?.user?.userDetails) {
     return <Navigate to="/login" replace />;
   }
 
-  const formatAmount = (amount, currency) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatAmount = (amount, currency) => new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || 'usd',
       minimumFractionDigits: 2,
     }).format(amount / 100);
-  };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 2 }}>
@@ -206,9 +209,9 @@ const AccountPage = () => {
                     }}
                   >
                     {showCopySuccess ? (
-                      <CheckCircle sx={{ fontSize: 16, opacity: 0.7, color: 'success.main' }} />
+                      <CheckCircleIcon sx={{ fontSize: 16, opacity: 0.7, color: 'success.main' }} />
                     ) : (
-                      <ContentCopy sx={{ fontSize: 16, opacity: 0.7 }} />
+                      <ContentCopyIcon sx={{ fontSize: 16, opacity: 0.7 }} />
                     )}
                     <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
                       {userDetails?.user?.sub 
@@ -295,7 +298,7 @@ const AccountPage = () => {
                           alignItems: 'center',
                           gap: 1
                         }}>
-                          <CreditCard sx={{ fontSize: 20 }} />
+                          <CreditCardIcon sx={{ fontSize: 20 }} />
                           Your last payment failed. Please update your payment method to continue using Pro features.
                         </Typography>
                         <Button
@@ -374,12 +377,12 @@ const AccountPage = () => {
                     )}
                   </Box>
                 </Box>
-                {[
-                  { icon: <Block />, text: 'Ad-Free Experience' },
-                  { icon: <SupportAgent />, text: 'Priority Support' },
-                  { icon: <Bolt />, text: 'Early Access to New Features' },
-                  { icon: <AutoFixHighRounded />, text: 'Monthly Magic Credits' },
-                ].map(({ icon, text }) => (
+                  {[
+                    { icon: <BlockIcon />, text: 'Ad-Free Experience' },
+                    { icon: <SupportAgentIcon />, text: 'Priority Support' },
+                    { icon: <BoltIcon />, text: 'Early Access to New Features' },
+                    { icon: <AutoFixHighRoundedIcon />, text: 'Monthly Magic Credits' },
+                  ].map(({ icon, text }) => (
                   <Box 
                     key={text}
                     sx={{ 
@@ -437,7 +440,7 @@ const AccountPage = () => {
                       },
                     }}
                   >
-                    <LockOpen sx={{ fontSize: 20 }} />
+                    <LockOpenIcon sx={{ fontSize: 20 }} />
                     <Typography 
                       variant="body1"
                       sx={{ 
@@ -558,7 +561,7 @@ const AccountPage = () => {
                   onClick={() => openInvoicePDF(invoice.hosted_invoice_url)}
                 >
                   <ListItemIcon>
-                    <Receipt />
+                    <ReceiptIcon />
                   </ListItemIcon>
                   <ListItemText
                     primary={`Invoice #${invoice.number}`}
@@ -573,7 +576,7 @@ const AccountPage = () => {
                     }}
                     disabled={!invoice.invoice_pdf}
                   >
-                    <Download />
+                    <DownloadIcon />
                   </IconButton>
                 </ListItem>
               ))}

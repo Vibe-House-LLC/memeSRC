@@ -1,5 +1,6 @@
 import { API } from 'aws-amplify';
 import React, { useState, useCallback, useEffect, useContext, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
@@ -29,11 +30,24 @@ export default function SearchPage({ metadata }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Make sure API functions are warm
-    API.get('publicapi', '/search', { queryStringParameters: { warmup: true } })
-    API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
-    // Prep sessionID for future use
-    prepSessionID()
+    const runWarmups = () => {
+      API.get('publicapi', '/search', { queryStringParameters: { warmup: true } })
+      API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
+      // Prep sessionID for future use
+      prepSessionID()
+    }
+
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(runWarmups)
+      : setTimeout(runWarmups, 1000)
+
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId)
+      }
+    }
   }, [])
 
   const handleSearch = useCallback((e) => {
@@ -67,3 +81,7 @@ export default function SearchPage({ metadata }) {
     </>
   );
 }
+
+SearchPage.propTypes = {
+  metadata: PropTypes.array,
+};

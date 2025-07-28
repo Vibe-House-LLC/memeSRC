@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { set, sub } from 'date-fns';
+
 import { noCase } from 'change-case';
 import { useContext, useEffect, useState } from 'react';
 // @mui
@@ -7,9 +7,7 @@ import {
   Box,
   List,
   Badge,
-  Button,
   Avatar,
-  Tooltip,
   Divider,
   Popover,
   Typography,
@@ -81,14 +79,6 @@ export default function NotificationsPopover() {
     setOpen(null);
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(
-      notifications.map((notification) => ({
-        ...notification,
-        isUnRead: false,
-      }))
-    );
-  };
 
   const handleMarkAsRead = (notification) => {
     // Find the index of the notification in the notifications array
@@ -192,7 +182,11 @@ export default function NotificationsPopover() {
 
   return (
     <>
-      <IconButton color={open ? 'primary' : 'default'} onClick={handleOpen} sx={{ width: 40, height: 40 }}>
+      <IconButton
+        color={open ? 'primary' : 'default'}
+        onClick={handleOpen}
+        aria-label="notifications"
+        sx={{ width: 40, height: 40 }}>
         <Badge badgeContent={totalUnRead} color="error">
           <Iconify icon="eva:bell-fill" />
         </Badge>
@@ -222,7 +216,14 @@ export default function NotificationsPopover() {
 
           {/* {totalUnRead > 0 && (
             <Tooltip title=" Mark all as read">
-              <IconButton color="primary" onClick={handleMarkAllAsRead}>
+              <IconButton color="primary" onClick={() => {
+                setNotifications(
+                  notifications.map((notification) => ({
+                    ...notification,
+                    isUnRead: false,
+                  }))
+                );
+              }}>
                 <Iconify icon="eva:done-all-fill" />
               </IconButton>
             </Tooltip>
@@ -287,9 +288,10 @@ NotificationItem.propTypes = {
     description: PropTypes.string,
     type: PropTypes.string,
     avatar: PropTypes.any,
-    readFunction: PropTypes.func,
-    unreadFunction: PropTypes.func,
+    path: PropTypes.string,
   }),
+  readFunction: PropTypes.func,
+  unreadFunction: PropTypes.func,
 };
 
 function NotificationItem({ notification, readFunction, unreadFunction }) {

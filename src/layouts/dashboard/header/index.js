@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 // @mui
-import { css, styled, useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import {
   Box,
   Stack,
@@ -14,36 +14,22 @@ import {
   Slide,
   Chip,
   Popover,
-  Tooltip,
   Button,
   Card,
-  Fab,
-  Divider,
-  Alert,
   Popper,
-  Fade,
   Badge,
   Slide as MuiSlide,
 } from '@mui/material';
-import { Add, ArrowCircleUpRounded, ArrowUpward, ArrowUpwardRounded, AutoFixHighRounded, Check, Close, Discount, HdrPlusTwoTone, InfoRounded, LocalOffer, LocalPoliceRounded, MonetizationOnRounded, NewReleasesRounded, UpgradeRounded, Verified } from '@mui/icons-material';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import SupervisedUserCircleIcon from '@mui/icons-material/SupervisedUserCircle';
+import { AutoFixHighRounded, Check, Close, LocalPoliceRounded } from '@mui/icons-material';
 // utils
 import { useLocation, useNavigate } from "react-router-dom";
-import { LoadingButton } from '@mui/lab';
-import { API } from 'aws-amplify';
 import { bgBlur } from '../../../utils/cssStyles';
 // components
 import Iconify from '../../../components/iconify';
 import Logo from "../../../components/logo/Logo";
 //
-import Searchbar from './Searchbar';
 import AccountPopover from './AccountPopover';
-import LanguagePopover from './LanguagePopover';
-import NotificationsPopover from './NotificationsPopover';
-import { ColorModeContext } from '../../../theme';
 import { UserContext } from '../../../UserContext';
-import { SnackbarContext } from '../../../SnackbarContext';
 import { MagicPopupContext } from '../../../MagicPopupContext';
 import { SubscribeDialogContext } from '../../../contexts/SubscribeDialog';
 import { CURRENT_SALE } from '../../../constants/sales';
@@ -51,21 +37,13 @@ import { SnowEffect } from '../../../components/CountdownTimer';
 
 // ----------------------------------------------------------------------
 
-const NAV_WIDTH = 280;
-
-const HEADER_MOBILE = 45;
-
-const HEADER_DESKTOP = 45;
-
 const StyledRoot = styled(AppBar)(({ theme }) => ({
   ...bgBlur({ color: theme.palette.background.default }),
   boxShadow: 'none',
   overflow: 'hidden', // This line will hide the slide in/out animation outside the AppBar
 }));
 
-const StyledToolbar = styled(Toolbar)(({ theme }) => ({
-
-}));
+const StyledToolbar = styled(Toolbar)({});
 
 // ----------------------------------------------------------------------
 
@@ -75,15 +53,10 @@ Header.propTypes = {
 
 export default function Header({ onOpenNav }) {
   const navigate = useNavigate();
-  const buttonRef = useRef(null);
-  const { user, setUser } = useContext(UserContext);
-  const { magicToolsPopoverAnchorEl, setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
-  const theme = useTheme();
-  const colorMode = useContext(ColorModeContext);
+  const { user } = useContext(UserContext);
+  const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
   const location = useLocation();
   const [showLogo, setShowLogo] = useState(false);
-  const [showNav, setShowNav] = useState(false);
-  const { setOpen, setMessage, setSeverity } = useContext(SnackbarContext)
   const containerRef = useRef(null);
   const [magicAlertOpen, setMagicAlertOpen] = useState(false);
   const { openSubscriptionDialog } = useContext(SubscribeDialogContext);
@@ -138,11 +111,6 @@ export default function Header({ onOpenNav }) {
   useEffect(() => {
     if (location.pathname === '/') {
       window.addEventListener('scroll', handleScroll);
-      setShowNav(true);
-    } else if (location.pathname !== '/') {
-      setShowNav(true);
-    } else {
-      setShowNav(false);
     }
 
     return () => {
@@ -191,6 +159,7 @@ export default function Header({ onOpenNav }) {
       <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
           <IconButton
             onClick={onOpenNav}
+            aria-label="open navigation"
             sx={{
               color: 'text.primary',
               ml: -1,
@@ -401,6 +370,7 @@ export default function Header({ onOpenNav }) {
           </Button>
           <IconButton
             size='small'
+            aria-label='dismiss early access'
             onClick={() => {
               handleEarlyAccessDismiss()
               setMagicAlertOpen(false)
@@ -446,6 +416,7 @@ export default function Header({ onOpenNav }) {
               <IconButton
                 className="close-button"
                 size="small"
+                aria-label="close"
                 sx={{
                   position: 'absolute',
                   right: 4,

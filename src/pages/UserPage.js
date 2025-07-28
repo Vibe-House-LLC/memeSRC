@@ -1,5 +1,4 @@
 import { Helmet } from 'react-helmet-async';
-import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
 import { useContext, useEffect, useState } from 'react';
 // @mui
@@ -33,7 +32,6 @@ import { Auth, API, graphqlOperation } from 'aws-amplify';
 import { AutoFixHighRounded, Check, Delete, Edit, Message, Upload } from '@mui/icons-material';
 import Label from '../components/label';
 import Iconify from '../components/iconify';
-import Scrollbar from '../components/scrollbar';
 // sections
 import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
 // import UserCountChart from '../sections/@dashboard/app/UserSignupsGraph';
@@ -110,7 +108,7 @@ async function listUserDetailsGraphQL(limit, nextToken = null, result = []) {
     authMode: 'AMAZON_COGNITO_USER_POOLS',
   });
 
-  const items = response.data.listUserDetails.items;
+  const {items} = response.data.listUserDetails;
   result.push(...items);
 
   if (response.data.listUserDetails.nextToken) {
@@ -173,14 +171,12 @@ export default function UserPage() {
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [userList, setUserList] = useState([]);
   const [chosenUser, setChosenUser] = useState(null);
-  const [credits, setCredits] = useState(0);
   const { setOpen, setMessage, setSeverity } = useContext(SnackbarContext)
-
   // States for notification stuff
   const [sendNotificationOpen, setSendNotificationOpen] = useState(false);
   const [notificationTitle, setNotificationTitle] = useState('');
   const [notificationDescription, setNotificationDescription] = useState('');
-  const [notificationType, setNotificationType] = useState('chat_message');
+  const notificationType = 'chat_message';
   const [notificationPath, setNotificationPath] = useState('');
   const [sendingNotification, setSendingNotification] = useState(false);
   const [notificationSent, setNotificationSent] = useState(false);
@@ -421,7 +417,7 @@ export default function UserPage() {
               />
               <TableBody>
                 {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
-                  const { username, email, id, earlyAccessStatus, contributorAccessStatus, status, enabled, credits, createdAt } = row;
+                  const { username, email, id, earlyAccessStatus, contributorAccessStatus, status, credits, createdAt } = row;
                   const selectedUser = selected.indexOf(username) !== -1;
 
                   return (

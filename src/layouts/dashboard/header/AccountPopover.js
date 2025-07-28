@@ -1,42 +1,25 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
-import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover, CircularProgress } from '@mui/material';
+import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover } from '@mui/material';
 import { AutoFixHigh, Person } from '@mui/icons-material';
 // mocks_
 import { useNavigate } from 'react-router-dom';
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify';
 import { UserContext } from '../../../UserContext';
-import { useSubscribeDialog } from '../../../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
 
 // ----------------------------------------------------------------------
 
-const MENU_OPTIONS = [
-  // {
-  //   label: 'Home',
-  //   icon: 'eva:home-fill',
-  // },
-  // {
-  //   label: 'Profile',
-  //   icon: 'eva:person-fill',
-  // },
-  // {
-  //   label: 'Settings',
-  //   icon: 'eva:settings-2-fill',
-  // },
-];
 
 // ----------------------------------------------------------------------
 
 export default function AccountPopover() {
   const userDetails = useContext(UserContext);
 
-  const { openSubscriptionDialog } = useSubscribeDialog();
 
   const [open, setOpen] = useState(null);
 
-  const [loadingCustomerPortal, setLoadingCustomerPortal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -48,20 +31,6 @@ export default function AccountPopover() {
     setOpen(null);
   };
 
-  const logIntoCustomerPortal = () => {
-    setLoadingCustomerPortal(true)
-    API.post('publicapi', '/user/update/getPortalLink', {
-      body: {
-        currentUrl: window.location.href
-      }
-    }).then(results => {
-      console.log(results)
-      setLoadingCustomerPortal(false)
-      window.location.href = results
-    }).catch(error => {
-      console.log(error.response)
-    })
-  }
 
   const logout = () => {
     Auth.signOut().then(() => {
@@ -80,16 +49,13 @@ export default function AccountPopover() {
     })
   }
 
-  const handleSubscribe = () => {
-    setOpen()
-    openSubscriptionDialog();
-  }
 
   return (
     <>
       {userDetails?.user &&
         <IconButton
           onClick={handleOpen}
+          aria-label="account options"
           sx={{
             p: 0.5,
             width: 44,
@@ -121,6 +87,7 @@ export default function AccountPopover() {
       {!(userDetails?.user) &&
         <IconButton
           onClick={handleOpen}
+          aria-label="account options"
           sx={{
             p: 0.5,
             width: 44,
@@ -204,16 +171,7 @@ export default function AccountPopover() {
               <>
                 <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
                 <MenuItem onClick={() => { navigate('/account'); handleClose(); }}>
-                  <Stack direction='row' alignItems='center' spacing={1} sx={{ width: '100%' }}>
-                    {loadingCustomerPortal ? (
-                      <>
-                        <CircularProgress color='success' size={16} />
-                        <span>Please Wait...</span>
-                      </>
-                    ) : (
-                      'Manage Account'
-                    )}
-                  </Stack>
+                  Manage Account
                 </MenuItem>
               </>
             )}      
