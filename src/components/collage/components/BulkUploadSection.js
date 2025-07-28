@@ -12,7 +12,7 @@ import {
   Alert
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
-import { 
+import {
   Add,
   Delete,
   RemoveCircle,
@@ -20,6 +20,7 @@ import {
   Refresh,
   Clear
 } from '@mui/icons-material';
+import MyLibrary from './MyLibrary';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -808,6 +809,9 @@ const BulkUploadSection = ({
           )}
         </Box>
       )}
+
+      {/* User image library below uploader */}
+      <MyLibrary onSelect={(url) => addMultipleImages([url])} />
 
       {/* Toast Notification */}
       <Snackbar
