@@ -12,6 +12,7 @@ import { Settings, PhotoLibrary } from "@mui/icons-material";
 import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
 import BulkUploadSection from "./BulkUploadSection";
+import MyLibrarySection from "./MyLibrarySection";
 import { SectionHeading } from './CollageUIComponents';
 import DisclosureCard from './DisclosureCard';
 
@@ -165,6 +166,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               onBulkUploadSectionToggle={imagesStepProps.onBulkUploadSectionToggle}
               onStartFromScratch={imagesStepProps.onStartFromScratch}
             />
+            <MyLibrarySection />
           </Box>
         ) : isMobile ? (
           // Mobile: Stack vertically with tighter spacing, NO BulkUploadSection after images are added
