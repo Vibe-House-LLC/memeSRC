@@ -4,6 +4,9 @@ import { Menu, MenuItem, Box } from "@mui/material";
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 
+const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
+
 /**
  * Get the aspect ratio value from the presets
  * @param {string} selectedAspectRatio - The ID of the selected aspect ratio
@@ -48,7 +51,7 @@ const CollagePreview = ({
 
   // Handle panel click to trigger file upload
   const handlePanelClick = (index, panelId) => {
-    console.log(`Panel clicked: index=${index}, panelId=${panelId}`); // Debug log
+    debugLog(`Panel clicked: index=${index}, panelId=${panelId}`); // Debug log
     setActivePanelIndex(index);
     setActivePanelId(panelId);
     fileInputRef.current?.click();
@@ -110,7 +113,7 @@ const CollagePreview = ({
       });
 
     // Debug selected template and active panel
-    console.log("File upload for panel:", {
+    debugLog("File upload for panel:", {
       activePanelIndex,
       fileCount: files.length,
       template: selectedTemplate,
@@ -125,7 +128,7 @@ const CollagePreview = ({
     // Use the stored activePanelId if available
     if (activePanelId) {
       clickedPanelId = activePanelId;
-      console.log(`Using stored activePanelId: ${clickedPanelId}`);
+      debugLog(`Using stored activePanelId: ${clickedPanelId}`);
     } else {
       // Fallback: Try to get panel ID from template structure using activePanelIndex
       console.warn("activePanelId not set, falling back to index-based lookup");
@@ -133,7 +136,7 @@ const CollagePreview = ({
         const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
         const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
         clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
-        console.log(`Using fallback panel ID: ${clickedPanelId} for activePanelIndex: ${activePanelIndex}`);
+        debugLog(`Using fallback panel ID: ${clickedPanelId} for activePanelIndex: ${activePanelIndex}`);
       } catch (error) {
         console.error("Error getting fallback panel ID:", error);
         clickedPanelId = `panel-${activePanelIndex + 1}`;
@@ -143,20 +146,20 @@ const CollagePreview = ({
     // Process all files
     Promise.all(files.map(loadFile))
       .then((imageUrls) => {
-        console.log(`Loaded ${imageUrls.length} files for panel ${clickedPanelId}`);
+        debugLog(`Loaded ${imageUrls.length} files for panel ${clickedPanelId}`);
 
         // Check if this is a replacement operation for the first file
         const existingImageIndex = panelImageMapping[clickedPanelId];
-        console.log(`Panel ${clickedPanelId}: existingImageIndex=${existingImageIndex}`);
+        debugLog(`Panel ${clickedPanelId}: existingImageIndex=${existingImageIndex}`);
         
         if (existingImageIndex !== undefined && imageUrls.length === 1) {
           // If this panel already has an image and we're only uploading one file, replace it
-          console.log(`Replacing image at index ${existingImageIndex} for panel ${clickedPanelId}`);
+          debugLog(`Replacing image at index ${existingImageIndex} for panel ${clickedPanelId}`);
           replaceImage(existingImageIndex, imageUrls[0]);
         } else {
           // Otherwise, add all images sequentially
           const currentLength = selectedImages.length;
-          console.log(`Adding ${imageUrls.length} new images starting at index ${currentLength}`);
+          debugLog(`Adding ${imageUrls.length} new images starting at index ${currentLength}`);
           
           // Add all images at once
           addMultipleImages(imageUrls);
@@ -167,12 +170,12 @@ const CollagePreview = ({
               ...panelImageMapping,
               [clickedPanelId]: currentLength
             };
-            console.log("Updated mapping for single image:", newMapping);
+            debugLog("Updated mapping for single image:", newMapping);
             updatePanelImageMapping(newMapping);
           } else {
             // For multiple files, don't auto-assign them to panels
             // Let the user manually assign them by clicking on panels
-            console.log(`Added ${imageUrls.length} images. Users can now assign them to panels manually.`);
+            debugLog(`Added ${imageUrls.length} images. Users can now assign them to panels manually.`);
           }
         }
       })

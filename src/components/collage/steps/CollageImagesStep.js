@@ -41,7 +41,7 @@ const CollageImagesStep = ({
   const fileInputRef = useRef(null);
   
   // Debug the props we're receiving
-  console.log("CollageImagesStep props:", {
+  debugLog("CollageImagesStep props:", {
     selectedImages: selectedImages?.length,
     panelCount,
     selectedTemplate: selectedTemplate?.name,
@@ -90,7 +90,7 @@ const CollageImagesStep = ({
 
   // Effect to debug props
   useEffect(() => {
-    console.log("Images updated:", selectedImages);
+    debugLog("Images updated:", selectedImages);
   }, [selectedImages]);
 
   // Bulk upload handler and related functions removed since moved to BulkUploadSection

@@ -21,7 +21,8 @@ import {
   Clear
 } from '@mui/icons-material';
 
-const debugLog = (...args) => { console.log(...args); };
+const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
 // Styled components similar to CollageSettingsStep
 const HorizontalScroller = styled(Box)(({ theme }) => ({
