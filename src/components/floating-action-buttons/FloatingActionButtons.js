@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { Fab, Button, styled, Stack, Typography, Box, CardMedia, Divider, Badge } from '@mui/material';
 import { MapsUgc, Favorite, Shuffle, Dashboard, Delete, Edit } from '@mui/icons-material';
@@ -107,7 +107,7 @@ const getImageUrl = (item) => {
     return `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/frame/${item.cid}/${item.season}/${item.episode}/${item.frame}`;
 };
 
-export default function FloatingActionButtons({ shows, showAd }) {
+function FloatingActionButtons({ shows, showAd }) {
     const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const { collageItems, clearAll, removeItem, count } = useCollage();
     const [showImageDrawer, setShowImageDrawer] = useState(false);
@@ -120,7 +120,6 @@ export default function FloatingActionButtons({ shows, showAd }) {
     // Check if user is an admin
     const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
 
-    console.log('showImageDrawer:', showImageDrawer, 'collageItems.length:', collageItems.length);
 
     // Function to handle closing with animation
     const handleClose = () => {
@@ -135,7 +134,6 @@ export default function FloatingActionButtons({ shows, showAd }) {
     const handleCreateCollage = () => {
         if (collageItems.length === 0) return;
         
-        console.log('[COLLAGE DEBUG] Original collage items:', collageItems);
         
         // Transform collage items into format expected by collage system
         const collageImages = collageItems.map(item => ({
@@ -152,7 +150,6 @@ export default function FloatingActionButtons({ shows, showAd }) {
             }
         }));
 
-        console.log('[COLLAGE DEBUG] Transformed collage images:', collageImages);
 
         // Navigate to collage page with images
         navigate('/collage', { 
@@ -431,3 +428,5 @@ FloatingActionButtons.propTypes = {
     shows: PropTypes.array.isRequired,
     showAd: PropTypes.bool.isRequired,
 }
+
+export default React.memo(FloatingActionButtons);
