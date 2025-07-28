@@ -116,7 +116,7 @@ export default function EarlyAccessFeedback() {
       navigate('/collage-legacy?force=legacy');
       
     } catch (error) {
-      console.log('Error submitting switch feedback:', error);
+      console.error('Error submitting switch feedback:', error);
       // Still switch even if feedback fails
       setCollagePreference(user, 'legacy');
       navigate('/collage-legacy?force=legacy');
@@ -178,7 +178,7 @@ export default function EarlyAccessFeedback() {
           setOpen(true);
         }
       } catch (error) {
-        console.log(error);
+        console.error(error);
         setSnackbarMessage(`${error}`);
         setSeverity('error');
         setOpen(true);
