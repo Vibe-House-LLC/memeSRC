@@ -556,6 +556,67 @@ const BulkUploadSection = ({
     }
   };
 
+  // Handler for selecting images from MyLibrary
+  const handleLibrarySelect = (urls) => {
+    if (!urls || urls.length === 0) return;
+
+    addMultipleImages(urls);
+
+    const emptyPanels = [];
+    const assignedPanelIds = new Set(Object.keys(panelImageMapping));
+
+    for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
+      const panelId =
+        selectedTemplate?.layout?.panels?.[panelIndex]?.id ||
+        `panel-${panelIndex + 1}`;
+      if (
+        !assignedPanelIds.has(panelId) ||
+        panelImageMapping[panelId] === undefined ||
+        panelImageMapping[panelId] === null
+      ) {
+        emptyPanels.push(panelId);
+      }
+    }
+
+    const numEmptyPanels = emptyPanels.length;
+    const numNewImages = urls.length;
+
+    let newPanelCount = panelCount;
+    if (numNewImages > numEmptyPanels) {
+      const additionalPanelsNeeded = numNewImages - numEmptyPanels;
+      newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12);
+      if (setPanelCount && newPanelCount !== panelCount) {
+        setPanelCount(newPanelCount);
+      }
+    }
+
+    const newMapping = { ...panelImageMapping };
+    const currentLength = selectedImages.length;
+    let newImageIndex = currentLength;
+
+    for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
+      newMapping[emptyPanels[i]] = newImageIndex;
+      newImageIndex += 1;
+    }
+
+    if (numNewImages > numEmptyPanels) {
+      for (
+        let panelIndex = panelCount;
+        panelIndex < newPanelCount &&
+        newImageIndex < currentLength + numNewImages;
+        panelIndex += 1
+      ) {
+        const panelId =
+          selectedTemplate?.layout?.panels?.[panelIndex]?.id ||
+          `panel-${panelIndex + 1}`;
+        newMapping[panelId] = newImageIndex;
+        newImageIndex += 1;
+      }
+    }
+
+    updatePanelImageMapping(newMapping);
+  };
+
   // Generate panel list data
   const generatePanelList = () => {
     const panels = [];
@@ -811,7 +872,7 @@ const BulkUploadSection = ({
       )}
 
       {/* User image library below uploader */}
-      <MyLibrary onSelect={(urls) => addMultipleImages(urls)} />
+      <MyLibrary onSelect={handleLibrarySelect} />
 
       {/* Toast Notification */}
       <Snackbar
