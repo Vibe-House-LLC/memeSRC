@@ -41,13 +41,13 @@
         "memesrcSearch": {},
         "memesrcRandom": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcRandom-577a6c474e6775635234-build.zip",
+          "s3Key": "amplify-builds/memesrcRandom-3471796a56414c394978-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcFrameFunction": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcFrameFunction-66397652656367714942-build.zip"
+          "s3Key": "amplify-builds/memesrcFrameFunction-61566b75325454537a32-build.zip"
         },
         "memesrcUUID": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -72,7 +72,7 @@
         "memesrcTVDB": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcTVDB-557447494a69776b4274-build.zip"
+          "s3Key": "amplify-builds/memesrcTVDB-2f50564b7a7246556866-build.zip"
         },
         "memesrcGraphQL": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
