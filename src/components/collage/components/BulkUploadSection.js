@@ -557,8 +557,6 @@ const BulkUploadSection = ({
   };
 
   // Handler for selecting images from MyLibrary
-  const pendingMappingRef = useRef(null);
-
   const handleLibrarySelect = (urls) => {
     if (!urls || urls.length === 0) return;
 
@@ -614,19 +612,11 @@ const BulkUploadSection = ({
       }
     }
 
-    // Store mapping to apply after images and panel count update
-    pendingMappingRef.current = newMapping;
+    // Apply mapping immediately before component unmounts
+    updatePanelImageMapping(newMapping);
 
     addMultipleImages(urls);
   };
-
-  // Apply pending mapping after images/panel count update
-  useEffect(() => {
-    if (pendingMappingRef.current) {
-      updatePanelImageMapping(pendingMappingRef.current);
-      pendingMappingRef.current = null;
-    }
-  }, [selectedImages, panelCount]);
 
   // Generate panel list data
   const generatePanelList = () => {
