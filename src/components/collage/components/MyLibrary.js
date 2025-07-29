@@ -25,8 +25,16 @@ const MyLibrary = ({ onSelect }) => {
   const fetchImages = async () => {
     try {
       const listed = await Storage.list('library/', { level: 'protected' });
+      
+      // Sort by lastModified date, newest first
+      const sortedResults = listed.results.sort((a, b) => {
+        const dateA = new Date(a.lastModified);
+        const dateB = new Date(b.lastModified);
+        return dateB - dateA; // Descending order (newest first)
+      });
+      
       const imageData = await Promise.all(
-        listed.results.map(async (item) => {
+        sortedResults.map(async (item) => {
           // Just get signed URLs for display - no expensive conversion yet
           const url = await Storage.get(item.key, { level: 'protected' });
           return { key: item.key, url };
