@@ -17,12 +17,17 @@ import { Storage } from 'aws-amplify';
 const MyLibrary = ({ onSelect }) => {
   const [images, setImages] = useState([]);
   const [selected, setSelected] = useState([]);
+  const [allImageKeys, setAllImageKeys] = useState([]);
+  const [loadedCount, setLoadedCount] = useState(0);
+  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const fetchImages = async () => {
+  const IMAGES_PER_PAGE = 10;
+
+  const fetchAllImageKeys = async () => {
     try {
       const listed = await Storage.list('library/', { level: 'protected' });
       
@@ -33,17 +38,51 @@ const MyLibrary = ({ onSelect }) => {
         return dateB - dateA; // Descending order (newest first)
       });
       
+      setAllImageKeys(sortedResults);
+      return sortedResults;
+    } catch (err) {
+      console.error('Error loading library image keys', err);
+      return [];
+    }
+  };
+
+  const loadImages = async (startIndex = 0, append = false) => {
+    if (loading) return;
+    
+    setLoading(true);
+    try {
+      const keys = allImageKeys.length > 0 ? allImageKeys : await fetchAllImageKeys();
+      const endIndex = Math.min(startIndex + IMAGES_PER_PAGE, keys.length);
+      const keysToLoad = keys.slice(startIndex, endIndex);
+      
       const imageData = await Promise.all(
-        sortedResults.map(async (item) => {
+        keysToLoad.map(async (item) => {
           // Just get signed URLs for display - no expensive conversion yet
           const url = await Storage.get(item.key, { level: 'protected' });
           return { key: item.key, url };
         })
       );
-      setImages(imageData);
+      
+      setImages(prev => append ? [...prev, ...imageData] : imageData);
+      setLoadedCount(endIndex);
     } catch (err) {
       console.error('Error loading library images', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const fetchImages = async () => {
+    setImages([]);
+    setLoadedCount(0);
+    const keys = await fetchAllImageKeys();
+    if (keys.length > 0) {
+      await loadImages(0, false);
+    }
+  };
+
+  const loadMoreImages = async () => {
+    await loadImages(loadedCount, true);
   };
 
   useEffect(() => {
@@ -126,7 +165,8 @@ const MyLibrary = ({ onSelect }) => {
           });
         })
       );
-      fetchImages();
+      // Reset and fetch images to show newly uploaded files first
+      await fetchImages();
     } catch (err) {
       console.error('Error uploading library images', err);
     } finally {
@@ -196,6 +236,21 @@ const MyLibrary = ({ onSelect }) => {
           );
         })}
       </ImageList>
+      
+      {/* Load More Button */}
+      {loadedCount < allImageKeys.length && (
+        <Box sx={{ textAlign: 'center', mt: 2 }}>
+          <Button 
+            variant="outlined" 
+            onClick={loadMoreImages}
+            disabled={loading}
+            size="small"
+          >
+            {loading ? 'Loading...' : `Load More (${allImageKeys.length - loadedCount} remaining)`}
+          </Button>
+        </Box>
+      )}
+      
       {selected.length > 0 && (
         <Box sx={{ textAlign: 'right', mt: 1 }}>
           <Button variant="contained" size="small" onClick={handleCreate}>
