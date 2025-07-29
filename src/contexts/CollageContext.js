@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 
 const CollageContext = createContext();
@@ -86,14 +86,14 @@ export const CollageProvider = ({ children }) => {
       item.frame === frame
     ), [collageItems]);
 
-  const value = {
+  const value = useMemo(() => ({
     collageItems,
     addItem,
     removeItem,
     clearAll,
     isItemInCollage,
     count: collageItems.length
-  };
+  }), [collageItems, addItem, removeItem, clearAll, isItemInCollage]);
 
   return (
     <CollageContext.Provider value={value}>

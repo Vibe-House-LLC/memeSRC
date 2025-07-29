@@ -1,0 +1,23 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - '# Execute Amplify CLI with the helper script'
+        - amplifyPush --simple
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install
+        - node -e "process.stdout.write(require('./package.json').version)" > .version
+    build:
+      commands:
+        - REACT_APP_USER_BRANCH=$USER_BRANCH REACT_APP_VERSION=$(cat .version) GENERATE_SOURCEMAP=false npm run build
+  artifacts:
+    baseDirectory: build
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*

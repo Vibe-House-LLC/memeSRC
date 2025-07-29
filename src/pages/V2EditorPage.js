@@ -83,7 +83,6 @@ const EditorPage = ({ shows }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
 
-  // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid, editorProjectId, fineTuningIndex, searchTerms } = useParams();
   const { user, setUser } = useContext(UserContext);
@@ -200,20 +199,17 @@ const EditorPage = ({ shows }) => {
       multiplier: imageScale || 1
     });
 
-    fetch(resultImage)
-      .then(res => res.blob())
-      .then(blob => {
-        console.log('Location state:', location.state);
+          fetch(resultImage)
+        .then(res => res.blob())
+        .then(blob => {
+          if (!location.state || !location.state.collageState) {
+            console.error('Collage state is missing');
+            return;
+          }
 
-        if (!location.state || !location.state.collageState) {
-          console.error('Collage state is missing');
-          return;
-        }
+                  const { collageState } = location.state;
 
-        const { collageState } = location.state;
-        console.log('Collage state:', collageState);
-
-        if (!Array.isArray(collageState.images) || typeof collageState.editingImageIndex !== 'number') {
+          if (!Array.isArray(collageState.images) || typeof collageState.editingImageIndex !== 'number') {
           console.error('Invalid collage state structure');
           return;
         }
@@ -262,7 +258,6 @@ const EditorPage = ({ shows }) => {
   // Canvas resizing
   const resizeCanvas = useCallback((width, height) => {
     if (editor) {
-      // console.log('Resized the canvas');
       editor.canvas.preserveObjectStacking = true;
       editor?.canvas.setWidth(width);
       editor?.canvas.setHeight(height);
@@ -272,7 +267,6 @@ const EditorPage = ({ shows }) => {
 
   // Update the editor size
   const updateEditorSize = useCallback(() => {
-    // console.log()
     const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
     // Calculate scale factor
     const scaleFactorX = desiredWidth / canvasSize.width;
@@ -547,7 +541,9 @@ const EditorPage = ({ shows }) => {
             { crossOrigin: 'anonymous' }
           );
         })
-        .catch((err) => console.log(err));
+        .catch((err) => {
+          console.error('Error loading frame data:', err);
+        });
     }
   }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -622,10 +618,10 @@ const EditorPage = ({ shows }) => {
               });
             },
             progressCallback: (progress) => {
-              console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
+              // Upload progress
             },
             errorCallback: (err) => {
-              console.error('Unexpected error while uploading', err);
+              console.error('Upload error:', err);
             }
           });
 
@@ -671,13 +667,8 @@ const EditorPage = ({ shows }) => {
   }
 
   const handleEdit = (event, index) => {
-    // console.log(event)
-    // console.log(index)
-    // setDefaultSubtitle(event.target.value)
     editor.canvas.item(index).set('text', event.target.value);
-    // console.log(`Length of object:  + ${selectedObjects.length}`)
     setCanvasObjects([...editor.canvas._objects])
-    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
   }
 
@@ -690,7 +681,6 @@ const EditorPage = ({ shows }) => {
     const defaultFontSize = editor.canvas.getWidth() * 0.04;
     editor.canvas.item(index).fontSize = defaultFontSize * (event.target.value / 100);
     setCanvasObjects([...editor.canvas._objects])
-    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
   }
 
@@ -711,7 +701,6 @@ const EditorPage = ({ shows }) => {
 
 
   const handleStyle = (index, customStyles) => {
-    console.log("index, customStyles:", index, customStyles)
     // Select the item
     const item = editor.canvas.item(index);
     // Update the style
@@ -735,7 +724,6 @@ const EditorPage = ({ shows }) => {
     // Update the canvas
     item.dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
-    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
     addToHistory();
   }
@@ -774,7 +762,7 @@ const EditorPage = ({ shows }) => {
           }`));
       return result.data.getMagicResult?.results;
     } catch (error) {
-      console.error("Error fetching magic result:", error);
+      console.error('Error fetching magic result:', error);
       return null;
     }
   }
@@ -833,7 +821,6 @@ const EditorPage = ({ shows }) => {
       if (obj instanceof fabric.Path) {
         const path = obj.toObject();
         const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
-        // console.log(path)
         newPath.scale(scale);
         newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
         tempCanvasDrawing.add(newPath);
@@ -857,7 +844,6 @@ const EditorPage = ({ shows }) => {
 
     const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement())
 
-    // console.log(newBackgroundImage)
     const imageWidth = backgroundImage.width
     const imageHeight = backgroundImage.height
     const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
@@ -1092,8 +1078,6 @@ const EditorPage = ({ shows }) => {
   }
 
   useEffect(() => {
-    // console.log('there was a change to Canvas');
-
     if (editor && !editorLoaded) {
       setEditorLoaded(true);
 
@@ -1187,10 +1171,6 @@ const EditorPage = ({ shows }) => {
     }
   }, [editor]);
 
-  // useEffect(() => {
-  //   console.log(editorStates)
-  // }, [editorStates])
-
   const loadFineTuningFrames = () => {
     setLoadingFineTuningFrames(false)
   }
@@ -1276,7 +1256,7 @@ const EditorPage = ({ shows }) => {
     getV2Metadata(cid).then(metadata => {
       setConfirmedCid(metadata.id)
     }).catch(error => {
-      console.log(error)
+      // Error getting metadata
     })
   }, [cid]);
 
@@ -1289,8 +1269,6 @@ const EditorPage = ({ shows }) => {
 
   useEffect(() => {
     if (frames && frames.length > 0) {
-      console.log(frames.length)
-      console.log(Math.floor(frames.length / 2))
       setSelectedFrameIndex(fineTuningIndex || Math.floor(frames.length / 2))
 
       // Background image from the given URL
@@ -1330,7 +1308,6 @@ const EditorPage = ({ shows }) => {
         try {
           // Fetch initial frame information including the main image and subtitle
           const initialInfo = await fetchFrameInfo(confirmedCid, season, episode, frame, { mainImage: true });
-          console.log("initialInfo: ", initialInfo);
           // setFrame(initialInfo.frame_image);
           // setFrameData(initialInfo);
           // setDisplayImage(initialInfo.frame_image);
@@ -1360,7 +1337,6 @@ const EditorPage = ({ shows }) => {
 
           setFineTuningFrames(fineTuningImageUrls);
           setFrames(fineTuningImageUrls);
-          console.log("Fine Tuning Frames: ", fineTuningImageUrls);
         } catch (error) {
           console.error("Failed to fetch fine tuning frames:", error);
         }
@@ -1370,7 +1346,6 @@ const EditorPage = ({ shows }) => {
         try {
           // Fetch only the surrounding subtitles
           const subtitlesSurrounding = (await fetchFrameInfo(confirmedCid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
-          console.log("setSurroundingSubtitles", subtitlesSurrounding)
           setSurroundingSubtitles(subtitlesSurrounding);
         } catch (error) {
           console.error("Failed to fetch surrounding subtitles:", error);
@@ -1389,7 +1364,6 @@ const EditorPage = ({ shows }) => {
               season: parseInt(season, 10),
               episode: parseInt(episode, 10),
             })));
-            console.log("Loaded Surrounding Frames: ", surroundingFrames);
           }).catch(error => {
             console.error("Failed to fetch surrounding frames:", error);
           });
@@ -1428,7 +1402,6 @@ const EditorPage = ({ shows }) => {
 
   const loadFineTuningImages = () => {
     if (fineTuningFrames && !fineTuningLoadStarted) {
-      console.log('LOADING THE IMAGES');
       setFineTuningLoadStarted(true);
       setLoadingFineTuning(true);
 

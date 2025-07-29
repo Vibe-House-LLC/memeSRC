@@ -15,6 +15,9 @@ import BulkUploadSection from "./BulkUploadSection";
 import { SectionHeading } from './CollageUIComponents';
 import DisclosureCard from './DisclosureCard';
 
+const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
+
 /**
  * Main container for the collage page content
  */
@@ -124,7 +127,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
   // Check if user has added at least one image
   const hasImages = imagesStepProps.selectedImages && imagesStepProps.selectedImages.length > 0;
 
-  console.log("CollageLayout received props:", {
+  debugLog("CollageLayout received props:", {
     settingsStepProps: {
       hasTemplate: !!settingsStepProps.selectedTemplate,
       hasAspectRatio: !!settingsStepProps.selectedAspectRatio,
