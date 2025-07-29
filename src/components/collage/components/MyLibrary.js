@@ -1,12 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Typography, ImageList, ImageListItem, Card, CardActionArea } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import {
+  Box,
+  Typography,
+  ImageList,
+  ImageListItem,
+  Card,
+  CardActionArea,
+  Button,
+  useMediaQuery,
+} from '@mui/material';
+import { Add, CheckCircle } from '@mui/icons-material';
+import { useTheme } from '@mui/material/styles';
 import { Storage } from 'aws-amplify';
 
 const MyLibrary = ({ onSelect }) => {
   const [images, setImages] = useState([]);
+  const [selected, setSelected] = useState([]);
   const fileInputRef = useRef(null);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const fetchImages = async () => {
     try {
@@ -26,6 +40,21 @@ const MyLibrary = ({ onSelect }) => {
   useEffect(() => {
     fetchImages();
   }, []);
+
+  const toggleSelect = (key) => {
+    setSelected((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  const handleCreate = () => {
+    if (!onSelect) return;
+    const selectedUrls = images
+      .filter((img) => selected.includes(img.key))
+      .map((img) => img.url);
+    onSelect(selectedUrls);
+    setSelected([]);
+  };
 
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -51,12 +80,14 @@ const MyLibrary = ({ onSelect }) => {
     }
   };
 
+  const cols = isMobile ? 3 : 4;
+
   return (
     <Box sx={{ mt: 3 }}>
       <Typography variant="h6" sx={{ mb: 1 }}>
         My Library
       </Typography>
-      <ImageList cols={4} gap={8} rowHeight={80} sx={{ m: 0 }}>
+      <ImageList cols={cols} gap={8} rowHeight={80} sx={{ m: 0 }}>
         <ImageListItem key="upload">
           <CardActionArea onClick={() => fileInputRef.current?.click()} sx={{ height: '100%' }}>
             <Card
@@ -73,12 +104,51 @@ const MyLibrary = ({ onSelect }) => {
             </Card>
           </CardActionArea>
         </ImageListItem>
-        {images.map((img) => (
-          <ImageListItem key={img.key} onClick={() => onSelect && onSelect(img.url)} sx={{ cursor: 'pointer' }}>
-            <img src={img.url} alt="library" style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
-          </ImageListItem>
-        ))}
+        {images.map((img) => {
+          const isSelected = selected.includes(img.key);
+          return (
+            <ImageListItem key={img.key} sx={{ cursor: 'pointer' }}>
+              <CardActionArea
+                onClick={() => toggleSelect(img.key)}
+                sx={{ height: '100%', position: 'relative' }}
+              >
+                <Card sx={{ height: '100%' }}>
+                  <img
+                    src={img.url}
+                    alt="library"
+                    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                  />
+                </Card>
+                {isSelected && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      bgcolor: 'rgba(0,0,0,0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'primary.contrastText',
+                    }}
+                  >
+                    <CheckCircle fontSize="large" />
+                  </Box>
+                )}
+              </CardActionArea>
+            </ImageListItem>
+          );
+        })}
       </ImageList>
+      {selected.length > 0 && (
+        <Box sx={{ textAlign: 'right', mt: 1 }}>
+          <Button variant="contained" size="small" onClick={handleCreate}>
+            Create
+          </Button>
+        </Box>
+      )}
       <input
         type="file"
         accept="image/*"

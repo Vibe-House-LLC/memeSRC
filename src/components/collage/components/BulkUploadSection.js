@@ -811,7 +811,7 @@ const BulkUploadSection = ({
       )}
 
       {/* User image library below uploader */}
-      <MyLibrary onSelect={(url) => addMultipleImages([url])} />
+      <MyLibrary onSelect={(urls) => addMultipleImages(urls)} />
 
       {/* Toast Notification */}
       <Snackbar
