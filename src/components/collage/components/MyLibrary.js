@@ -27,9 +27,40 @@ const MyLibrary = ({ onSelect }) => {
       const listed = await Storage.list('library/', { level: 'protected' });
       const imageData = await Promise.all(
         listed.results.map(async (item) => {
+          // Just get signed URLs for display - no expensive conversion yet
+          const url = await Storage.get(item.key, { level: 'protected' });
+          return { key: item.key, url };
+        })
+      );
+      setImages(imageData);
+    } catch (err) {
+      console.error('Error loading library images', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchImages();
+  }, []);
+
+  const toggleSelect = (key) => {
+    setSelected((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  const handleCreate = async () => {
+    if (!onSelect) return;
+    
+    try {
+      // Get selected images
+      const selectedImages = images.filter((img) => selected.includes(img.key));
+      
+      // Convert only the selected images to data URLs for canvas compatibility
+      const dataUrls = await Promise.all(
+        selectedImages.map(async (img) => {
           try {
             // Use Storage.get with download: true to get the file content
-            const downloadResult = await Storage.get(item.key, { 
+            const downloadResult = await Storage.get(img.key, { 
               level: 'protected',
               download: true 
             });
@@ -55,44 +86,20 @@ const MyLibrary = ({ onSelect }) => {
               reader.readAsDataURL(blob);
             });
             
-            return { 
-              key: item.key, 
-              url: dataUrl
-            };
+            return dataUrl;
           } catch (error) {
-            console.error('Error processing image:', item.key, error);
+            console.error('Error converting selected image:', img.key, error);
             // Fallback to regular URL if conversion fails
-            const url = await Storage.get(item.key, { level: 'protected' });
-            return { key: item.key, url };
+            return img.url;
           }
         })
       );
-      setImages(imageData);
-    } catch (err) {
-      console.error('Error loading library images', err);
+      
+      onSelect(dataUrls);
+      setSelected([]);
+    } catch (error) {
+      console.error('Error processing selected images:', error);
     }
-  };
-
-  useEffect(() => {
-    fetchImages();
-  }, []);
-
-  const toggleSelect = (key) => {
-    setSelected((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
-  };
-
-  const handleCreate = () => {
-    if (!onSelect) return;
-    
-    // Images are already converted to data URLs during fetch
-    const selectedUrls = images
-      .filter((img) => selected.includes(img.key))
-      .map((img) => img.url);
-    
-    onSelect(selectedUrls);
-    setSelected([]);
   };
 
   const handleFileChange = async (e) => {
