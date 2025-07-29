@@ -518,7 +518,7 @@ const EditorPage = ({ shows }) => {
           console.error('No saved editor state found for the project in S3.');
         }
       } catch (error) {
-        // Failed to load editor state from S3
+        console.error('Failed to load editor state from S3:', error);
       }
     } else {
       getFrame(selectedFid)
@@ -542,7 +542,7 @@ const EditorPage = ({ shows }) => {
           );
         })
         .catch((err) => {
-          // Error loading frame data
+          console.error('Error loading frame data:', err);
         });
     }
   }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -762,6 +762,7 @@ const EditorPage = ({ shows }) => {
           }`));
       return result.data.getMagicResult?.results;
     } catch (error) {
+      console.error('Error fetching magic result:', error);
       return null;
     }
   }
@@ -1407,7 +1408,10 @@ const EditorPage = ({ shows }) => {
       // Create an array of promises for each image load
       const blobPromises = fineTuningFrames.map((url) => fetch(url)
           .then((response) => response.blob())
-          .catch((error) => null));
+          .catch((error) => {
+            console.error('Error fetching image:', error);
+            return null;
+          }));
 
       // Wait for all blob promises to resolve
       Promise.all(blobPromises)
@@ -1422,6 +1426,7 @@ const EditorPage = ({ shows }) => {
           setLoadingFineTuning(false);
         })
         .catch((error) => {
+          console.error('Error loading fine-tuning images:', error);
           setLoadingFineTuning(false);
         });
     }
