@@ -25,13 +25,49 @@ const MyLibrary = ({ onSelect }) => {
   const fetchImages = async () => {
     try {
       const listed = await Storage.list('library/', { level: 'protected' });
-      const urls = await Promise.all(
+      const imageData = await Promise.all(
         listed.results.map(async (item) => {
-          const url = await Storage.get(item.key, { level: 'protected' });
-          return { key: item.key, url };
+          try {
+            // Use Storage.get with download: true to get the file content
+            const downloadResult = await Storage.get(item.key, { 
+              level: 'protected',
+              download: true 
+            });
+            
+            // Handle different possible return types
+            let blob;
+            if (downloadResult instanceof Blob) {
+              blob = downloadResult;
+            } else if (downloadResult.Body && downloadResult.Body instanceof Blob) {
+              blob = downloadResult.Body;
+            } else if (downloadResult instanceof ArrayBuffer) {
+              // Convert ArrayBuffer to Blob
+              blob = new Blob([downloadResult]);
+            } else {
+              throw new Error(`Unexpected download result type: ${typeof downloadResult}`);
+            }
+            
+            // Convert blob to data URL
+            const dataUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            
+            return { 
+              key: item.key, 
+              url: dataUrl
+            };
+          } catch (error) {
+            console.error('Error processing image:', item.key, error);
+            // Fallback to regular URL if conversion fails
+            const url = await Storage.get(item.key, { level: 'protected' });
+            return { key: item.key, url };
+          }
         })
       );
-      setImages(urls);
+      setImages(imageData);
     } catch (err) {
       console.error('Error loading library images', err);
     }
@@ -49,9 +85,12 @@ const MyLibrary = ({ onSelect }) => {
 
   const handleCreate = () => {
     if (!onSelect) return;
+    
+    // Images are already converted to data URLs during fetch
     const selectedUrls = images
       .filter((img) => selected.includes(img.key))
       .map((img) => img.url);
+    
     onSelect(selectedUrls);
     setSelected([]);
   };
