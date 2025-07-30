@@ -327,7 +327,13 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         <Typography variant="h6">
           My Library
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 2,
+          minWidth: isMobile ? '280px' : '370px',
+          justifyContent: 'flex-end'
+        }}>
           <FormControlLabel
             control={
               <Switch
@@ -354,7 +360,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                 onClick={handleDeleteSelected}
                 disabled={deleting}
                 startIcon={<Delete />}
-                sx={{ minWidth: '110px' }}
+                sx={{ minWidth: isMobile ? '85px' : '110px' }}
               >
                 {deleting ? 'Deleting...' : `Delete (${selected.length})`}
               </Button>
@@ -362,7 +368,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                 variant="contained" 
                 size="small" 
                 onClick={handleCreate}
-                sx={{ minWidth: '100px' }}
+                sx={{ minWidth: isMobile ? '75px' : '100px' }}
               >
                 Create ({selected.length})
               </Button>
