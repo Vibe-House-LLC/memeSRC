@@ -14,7 +14,34 @@ import { Add, CheckCircle } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { Storage } from 'aws-amplify';
 
-const MyLibrary = ({ onSelect }) => {
+// Utility function to save data URL to library
+export const saveImageToLibrary = async (dataUrl, filename = null) => {
+  try {
+    // Convert data URL to blob
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).slice(2);
+    const extension = blob.type ? blob.type.split('/')[1] : 'jpg';
+    const key = `library/${timestamp}-${randomId}-${filename || 'collage-image'}.${extension}`;
+    
+    // Save to AWS Storage
+    await Storage.put(key, blob, {
+      level: 'protected',
+      contentType: blob.type,
+    });
+    
+    console.log('Successfully saved image to library:', key);
+    return key;
+  } catch (error) {
+    console.error('Error saving image to library:', error);
+    throw error;
+  }
+};
+
+const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [images, setImages] = useState([]);
   const [selected, setSelected] = useState([]);
   const [allImageKeys, setAllImageKeys] = useState([]);
@@ -89,6 +116,13 @@ const MyLibrary = ({ onSelect }) => {
     fetchImages();
   }, []);
 
+  // Effect to refresh library when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger) {
+      fetchImages();
+    }
+  }, [refreshTrigger]);
+
   const toggleSelect = (key) => {
     setSelected((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
@@ -103,7 +137,8 @@ const MyLibrary = ({ onSelect }) => {
       const selectedImages = images.filter((img) => selected.includes(img.key));
       
       // Convert only the selected images to data URLs for canvas compatibility
-      const dataUrls = await Promise.all(
+      // and mark them as library-sourced to prevent re-saving
+      const imageObjects = await Promise.all(
         selectedImages.map(async (img) => {
           try {
             // Use Storage.get with download: true to get the file content
@@ -133,16 +168,31 @@ const MyLibrary = ({ onSelect }) => {
               reader.readAsDataURL(blob);
             });
             
-            return dataUrl;
+            // Return object with metadata to indicate library source
+            return {
+              originalUrl: dataUrl,
+              displayUrl: dataUrl,
+              metadata: {
+                isFromLibrary: true,
+                libraryKey: img.key
+              }
+            };
           } catch (error) {
             console.error('Error converting selected image:', img.key, error);
             // Fallback to regular URL if conversion fails
-            return img.url;
+            return {
+              originalUrl: img.url,
+              displayUrl: img.url,
+              metadata: {
+                isFromLibrary: true,
+                libraryKey: img.key
+              }
+            };
           }
         })
       );
       
-      onSelect(dataUrls);
+      onSelect(imageObjects);
       setSelected([]);
     } catch (error) {
       console.error('Error processing selected images:', error);
@@ -295,10 +345,12 @@ const MyLibrary = ({ onSelect }) => {
 
 MyLibrary.propTypes = {
   onSelect: PropTypes.func,
+  refreshTrigger: PropTypes.any,
 };
 
 MyLibrary.defaultProps = {
   onSelect: null,
+  refreshTrigger: null,
 };
 
 export default MyLibrary;

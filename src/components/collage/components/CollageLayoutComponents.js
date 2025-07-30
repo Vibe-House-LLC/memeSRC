@@ -164,6 +164,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
               bulkUploadSectionOpen={imagesStepProps.bulkUploadSectionOpen}
               onBulkUploadSectionToggle={imagesStepProps.onBulkUploadSectionToggle}
               onStartFromScratch={imagesStepProps.onStartFromScratch}
+              libraryRefreshTrigger={imagesStepProps.libraryRefreshTrigger}
             />
           </Box>
         ) : isMobile ? (

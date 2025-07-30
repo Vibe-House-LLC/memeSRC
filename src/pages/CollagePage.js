@@ -117,6 +117,7 @@ export default function CollagePage() {
     updatePanelImageMapping,
     updatePanelTransform,
     updatePanelText,
+    libraryRefreshTrigger,
   } = useCollageState();
 
   // Check if all panels have images assigned (same logic as CollageImagesStep)
@@ -359,6 +360,7 @@ export default function CollagePage() {
     onBulkUploadSectionToggle: () => {}, // No-op since BulkUploadSection is hidden when images are present
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
+    libraryRefreshTrigger, // For refreshing library when new images are auto-saved
   };
 
   // Log mapping changes for debugging
