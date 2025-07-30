@@ -18,7 +18,7 @@ import {
   IconButton,
   Collapse,
 } from '@mui/material';
-import { Add, CheckCircle, Delete, Close } from '@mui/icons-material';
+import { Add, CheckCircle, Delete, Close, Dashboard } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { Storage } from 'aws-amplify';
 
@@ -226,6 +226,22 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
   const handleClosePreview = () => {
     setPreviewOpen(false);
+    setPreviewImage(null);
+  };
+
+  const handleUseInCollage = () => {
+    if (!previewImage) return;
+    
+    // Close the preview modal
+    setPreviewOpen(false);
+    
+    // Enable select mode
+    setSelectMultipleMode(true);
+    
+    // Select only this image (clear other selections)
+    setSelected([previewImage.key]);
+    
+    // Clear preview image
     setPreviewImage(null);
   };
 
@@ -623,7 +639,16 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
             />
           )}
         </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', p: 2 }}>
+        <DialogActions sx={{ justifyContent: 'center', p: 2, gap: 1 }}>
+          <Button
+            onClick={handleUseInCollage}
+            color="primary"
+            variant="contained"
+            startIcon={<Dashboard />}
+            sx={{ minWidth: '140px' }}
+          >
+            Use in Collage
+          </Button>
           <Button
             onClick={handleDeleteImage}
             color="error"
