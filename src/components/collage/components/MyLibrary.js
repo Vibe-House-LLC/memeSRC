@@ -178,9 +178,18 @@ const MyLibrary = ({ onSelect }) => {
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        My Library
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, minHeight: '32px' }}>
+        <Typography variant="h6">
+          My Library
+        </Typography>
+        <Box sx={{ minWidth: '80px', display: 'flex', justifyContent: 'flex-end' }}>
+          {selected.length > 0 && (
+            <Button variant="contained" size="small" onClick={handleCreate}>
+              Create ({selected.length})
+            </Button>
+          )}
+        </Box>
+      </Box>
       <ImageList cols={cols} gap={8} rowHeight={80} sx={{ m: 0 }}>
         <ImageListItem key="upload">
           <CardActionArea onClick={() => fileInputRef.current?.click()} sx={{ height: '100%' }}>
@@ -247,14 +256,6 @@ const MyLibrary = ({ onSelect }) => {
             size="small"
           >
             {loading ? 'Loading...' : `Load More (${allImageKeys.length - loadedCount} remaining)`}
-          </Button>
-        </Box>
-      )}
-      
-      {selected.length > 0 && (
-        <Box sx={{ textAlign: 'right', mt: 1 }}>
-          <Button variant="contained" size="small" onClick={handleCreate}>
-            Create
           </Button>
         </Box>
       )}
