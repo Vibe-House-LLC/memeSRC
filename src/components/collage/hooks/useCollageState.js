@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCallback and useRef
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
+import { saveImageToLibrary } from '../components/MyLibrary';
 
 // Debug flag - only enable in development mode
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
@@ -24,6 +25,13 @@ export const useCollageState = () => {
     color: '#ffffff',
     strokeWidth: 2
   });
+  
+  // State for auto-saving images to library
+  const [autoSaveToLibrary, setAutoSaveToLibrary] = useState(true);
+  const [libraryRefreshTrigger, setLibraryRefreshTrigger] = useState(null);
+  
+  // Track image data URLs that have been saved to prevent duplicates
+  const savedImageDataUrls = useRef(new Set());
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
   const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
@@ -187,6 +195,44 @@ export const useCollageState = () => {
     }, [selectedImages]);
 
   /**
+   * Save image to library if auto-save is enabled
+   */
+  const saveToLibraryIfEnabled = useCallback(async (imageUrl, metadata = {}) => {
+    if (!autoSaveToLibrary || !imageUrl) return;
+    
+    try {
+      // Skip saving if image is from library (prevents duplicates)
+      if (metadata.isFromLibrary) {
+        console.log("Skipping auto-save for library image:", metadata.libraryKey);
+        return;
+      }
+      
+      // Only save data URLs (base64 images) - skip regular URLs
+      if (imageUrl.startsWith('data:')) {
+        // Check if we've already saved this exact image data
+        if (savedImageDataUrls.current.has(imageUrl)) {
+          console.log("Skipping auto-save for previously saved image");
+          return;
+        }
+        
+        console.log("Auto-saving new image to library...");
+        
+        // Save to library and track that we've saved it
+        await saveImageToLibrary(imageUrl, 'collage-upload');
+        savedImageDataUrls.current.add(imageUrl);
+        
+        // Trigger library refresh
+        setLibraryRefreshTrigger(Date.now());
+        console.log("✅ Successfully auto-saved image to library!");
+      } else {
+        console.log("Skipping auto-save for non-data URL:", `${imageUrl.substring(0, 50)}...`);
+      }
+    } catch (error) {
+      console.error("❌ Failed to auto-save image to library:", error);
+    }
+  }, [autoSaveToLibrary]);
+
+  /**
    * Add a new image to the collection.
    * Stores the same URL for both original and display initially.
    * @param {string|object} imageData - The image URL (usually base64) or object with subtitle data to add
@@ -200,6 +246,8 @@ export const useCollageState = () => {
         originalUrl: imageData,
         displayUrl: imageData
       };
+      // Auto-save to library
+      saveToLibraryIfEnabled(imageData, {});
     } else if (typeof imageData === 'object') {
       newImageObject = {
         originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
@@ -208,13 +256,16 @@ export const useCollageState = () => {
         subtitleShowing: imageData.subtitleShowing || false,
         metadata: imageData.metadata || {}
       };
+      // Auto-save to library (pass metadata to check if from library)
+      const imageUrl = imageData.originalUrl || imageData.displayUrl || imageData;
+      saveToLibraryIfEnabled(imageUrl, imageData.metadata || {});
     } else {
       return;
     }
     
     setSelectedImages(prev => [...prev, newImageObject]);
     if (DEBUG_MODE) console.log("Added image:", newImageObject);
-  }, []);
+  }, [saveToLibraryIfEnabled]);
 
   /**
    * Add multiple images to the collection at once.
@@ -227,19 +278,25 @@ export const useCollageState = () => {
     const newImageObjects = imageDataArray
       .filter(data => data) // Filter out any null/undefined
       .map(imageData => {
+        let imageUrl;
+        let newImageObj;
+        let metadata = {};
+        
         if (typeof imageData === 'string') {
-          return {
+          imageUrl = imageData;
+          newImageObj = {
             originalUrl: imageData,
             displayUrl: imageData
           };
-        }
-        if (typeof imageData === 'object') {
-          const newImageObj = {
+        } else if (typeof imageData === 'object') {
+          imageUrl = imageData.originalUrl || imageData.displayUrl || imageData;
+          metadata = imageData.metadata || {};
+          newImageObj = {
             originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
             displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
             subtitle: imageData.subtitle || '',
             subtitleShowing: imageData.subtitleShowing || false,
-            metadata: imageData.metadata || {}
+            metadata
           };
           if (DEBUG_MODE) {
             console.log(`[SUBTITLE DEBUG] Processing image object:`, {
@@ -248,9 +305,14 @@ export const useCollageState = () => {
               hasSubtitle: !!newImageObj.subtitle
             });
           }
-          return newImageObj;
+        } else {
+          return null;
         }
-        return null;
+        
+        // Auto-save to library (pass metadata to check if from library)
+        saveToLibraryIfEnabled(imageUrl, metadata);
+        
+        return newImageObj;
       })
       .filter(obj => obj !== null);
     
@@ -258,7 +320,7 @@ export const useCollageState = () => {
       setSelectedImages(prev => [...prev, ...newImageObjects]);
       if (DEBUG_MODE) console.log("Added multiple images:", newImageObjects);
     }
-  }, []);
+  }, [saveToLibraryIfEnabled]);
 
   /**
    * Remove an image object by index and update panel mapping.
@@ -379,6 +441,9 @@ export const useCollageState = () => {
         const newImages = [...selectedImages];
         newImages[index] = { originalUrl: newBase64Image, displayUrl: newBase64Image };
         setSelectedImages(newImages);
+        
+        // Auto-save the new image to library (it's a new upload, not from library)
+        saveToLibraryIfEnabled(newBase64Image, {});
 
         // Find the panelId(s) that use this image index and reset their transforms
         const panelsToResetTransform = Object.entries(panelImageMapping)
@@ -401,7 +466,7 @@ export const useCollageState = () => {
     } else if (DEBUG_MODE) {
       console.warn(`Failed to replace image at index ${index}`);
     }
-  }, [selectedImages, panelImageMapping]);
+  }, [selectedImages, panelImageMapping, saveToLibraryIfEnabled]);
 
 
   /**
@@ -418,8 +483,17 @@ export const useCollageState = () => {
     setPanelImageMapping({});
     setPanelTransforms({}); // Clear transforms as well
     setPanelTexts({}); // Clear texts as well
+    // Note: We don't clear savedImageDataUrls to prevent re-saving images across collages
     if (DEBUG_MODE) console.log("Cleared all images, mapping, transforms, and texts");
   }, [selectedImages]);
+
+  /**
+   * Clear the tracking of saved image data URLs (for debugging or reset purposes)
+   */
+  const clearSavedImageTracking = useCallback(() => {
+    savedImageDataUrls.current.clear();
+    if (DEBUG_MODE) console.log("Cleared saved image data URL tracking");
+  }, []);
 
   /**
    * Update the mapping between panels and image indices, and auto-assign subtitles.
@@ -608,5 +682,11 @@ export const useCollageState = () => {
     updatePanelText, // NEW: Updates text configuration for a panel
     resetPanelTransforms, // Resets all transforms to defaults
     resetPanelTexts, // NEW: Resets all texts to defaults
+    
+    // Library auto-save functionality
+    autoSaveToLibrary,
+    setAutoSaveToLibrary,
+    libraryRefreshTrigger,
+    clearSavedImageTracking, // For debugging/reset purposes
   };
 };

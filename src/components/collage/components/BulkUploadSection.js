@@ -116,6 +116,7 @@ const BulkUploadSection = ({
   removeImage, // Add removeImage function
   replaceImage, // Add replaceImage function
   onStartFromScratch, // Add prop to handle starting without images
+  libraryRefreshTrigger, // For refreshing library when new images are auto-saved
 }) => {
   const theme = useTheme();
   const bulkFileInputRef = useRef(null);
@@ -873,7 +874,7 @@ const BulkUploadSection = ({
       )}
 
       {/* User image library below uploader */}
-      <MyLibrary onSelect={handleLibrarySelect} />
+      <MyLibrary onSelect={handleLibrarySelect} refreshTrigger={libraryRefreshTrigger} />
 
       {/* Toast Notification */}
       <Snackbar
@@ -906,6 +907,7 @@ BulkUploadSection.propTypes = {
   removeImage: PropTypes.func,
   replaceImage: PropTypes.func,
   onStartFromScratch: PropTypes.func,
+  libraryRefreshTrigger: PropTypes.any,
 };
 
 export default BulkUploadSection; 

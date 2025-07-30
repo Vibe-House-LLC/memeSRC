@@ -5,21 +5,133 @@ import {
   Typography,
   ImageList,
   ImageListItem,
-  Card,
-  CardActionArea,
   Button,
   useMediaQuery,
+  Switch,
+  FormControlLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Collapse,
 } from '@mui/material';
-import { Add, CheckCircle } from '@mui/icons-material';
+import { Add, CheckCircle, Delete, Close, Dashboard } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { Storage } from 'aws-amplify';
 
-const MyLibrary = ({ onSelect }) => {
+// Utility function to resize image using canvas
+const resizeImage = (file, maxSize = 1500) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    img.onload = () => {
+      try {
+        const { width, height } = img;
+        
+        // Calculate new dimensions maintaining aspect ratio
+        let newWidth = width;
+        let newHeight = height;
+        
+        if (width > height) {
+          // Width is the longer side
+          if (width > maxSize) {
+            newWidth = maxSize;
+            newHeight = (height * maxSize) / width;
+          }
+        } else if (height > maxSize) {
+          // Height is the longer side
+          newHeight = maxSize;
+          newWidth = (width * maxSize) / height;
+        }
+        
+        // Set canvas dimensions
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        
+        // Draw resized image
+        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+        
+        // Convert to blob with quality setting
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to create blob from canvas'));
+            }
+          },
+          file.type || 'image/jpeg',
+          0.85 // Quality setting for JPEG
+        );
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    img.onerror = () => {
+      reject(new Error('Failed to load image'));
+    };
+    
+    // Load the image
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+// Utility function to save data URL to library
+export const saveImageToLibrary = async (dataUrl, filename = null) => {
+  try {
+    // Convert data URL to blob
+    const response = await fetch(dataUrl);
+    const originalBlob = await response.blob();
+    
+    // Create a file object from the blob to use with resizeImage
+    const file = new File([originalBlob], filename || 'collage-image', { 
+      type: originalBlob.type 
+    });
+    
+    let blobToUpload;
+    try {
+      // Try to resize the image
+      blobToUpload = await resizeImage(file);
+    } catch (resizeError) {
+      console.warn('Failed to resize image for library, using original:', resizeError);
+      blobToUpload = originalBlob;
+    }
+    
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).slice(2);
+    const extension = blobToUpload.type ? blobToUpload.type.split('/')[1] : 'jpg';
+    const key = `library/${timestamp}-${randomId}-${filename || 'collage-image'}.${extension}`;
+    
+    // Save to AWS Storage
+    await Storage.put(key, blobToUpload, {
+      level: 'protected',
+      contentType: blobToUpload.type,
+    });
+    
+    console.log('Successfully saved image to library:', key);
+    return key;
+  } catch (error) {
+    console.error('Error saving image to library:', error);
+    throw error;
+  }
+};
+
+const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [images, setImages] = useState([]);
   const [selected, setSelected] = useState([]);
   const [allImageKeys, setAllImageKeys] = useState([]);
   const [loadedCount, setLoadedCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [selectMultipleMode, setSelectMultipleMode] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const fileInputRef = useRef(null);
 
   const theme = useTheme();
@@ -89,10 +201,102 @@ const MyLibrary = ({ onSelect }) => {
     fetchImages();
   }, []);
 
+  // Effect to refresh library when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger) {
+      fetchImages();
+    }
+  }, [refreshTrigger]);
+
+  // Effect to handle window resize for responsive grid
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const toggleSelect = (key) => {
     setSelected((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
+  };
+
+  const handleImageClick = (img) => {
+    if (selectMultipleMode) {
+      toggleSelect(img.key);
+    } else {
+      setPreviewImage(img);
+      setPreviewOpen(true);
+    }
+  };
+
+  const handleClosePreview = () => {
+    setPreviewOpen(false);
+    setPreviewImage(null);
+  };
+
+  const handleUseInCollage = () => {
+    if (!previewImage) return;
+    
+    // Close the preview modal
+    setPreviewOpen(false);
+    
+    // Enable select mode
+    setSelectMultipleMode(true);
+    
+    // Select only this image (clear other selections)
+    setSelected([previewImage.key]);
+    
+    // Clear preview image
+    setPreviewImage(null);
+  };
+
+  const handleDeleteImage = async () => {
+    if (!previewImage) return;
+    
+    setDeleting(true);
+    try {
+      await Storage.remove(previewImage.key, { level: 'protected' });
+      console.log('Successfully deleted image:', previewImage.key);
+      
+      // Remove from local state
+      setImages(prev => prev.filter(img => img.key !== previewImage.key));
+      setAllImageKeys(prev => prev.filter(item => item.key !== previewImage.key));
+      setSelected(prev => prev.filter(key => key !== previewImage.key));
+      
+      handleClosePreview();
+    } catch (error) {
+      console.error('Error deleting image:', error);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selected.length === 0) return;
+    
+    setDeleting(true);
+    try {
+      // Delete all selected images from AWS Storage
+      await Promise.all(
+        selected.map(key => Storage.remove(key, { level: 'protected' }))
+      );
+      
+      console.log('Successfully deleted images:', selected);
+      
+      // Remove deleted images from local state
+      setImages(prev => prev.filter(img => !selected.includes(img.key)));
+      setAllImageKeys(prev => prev.filter(item => !selected.includes(item.key)));
+      setSelected([]);
+      
+    } catch (error) {
+      console.error('Error deleting selected images:', error);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -103,7 +307,8 @@ const MyLibrary = ({ onSelect }) => {
       const selectedImages = images.filter((img) => selected.includes(img.key));
       
       // Convert only the selected images to data URLs for canvas compatibility
-      const dataUrls = await Promise.all(
+      // and mark them as library-sourced to prevent re-saving
+      const imageObjects = await Promise.all(
         selectedImages.map(async (img) => {
           try {
             // Use Storage.get with download: true to get the file content
@@ -133,16 +338,31 @@ const MyLibrary = ({ onSelect }) => {
               reader.readAsDataURL(blob);
             });
             
-            return dataUrl;
+            // Return object with metadata to indicate library source
+            return {
+              originalUrl: dataUrl,
+              displayUrl: dataUrl,
+              metadata: {
+                isFromLibrary: true,
+                libraryKey: img.key
+              }
+            };
           } catch (error) {
             console.error('Error converting selected image:', img.key, error);
             // Fallback to regular URL if conversion fails
-            return img.url;
+            return {
+              originalUrl: img.url,
+              displayUrl: img.url,
+              metadata: {
+                isFromLibrary: true,
+                libraryKey: img.key
+              }
+            };
           }
         })
       );
       
-      onSelect(dataUrls);
+      onSelect(imageObjects);
       setSelected([]);
     } catch (error) {
       console.error('Error processing selected images:', error);
@@ -154,19 +374,70 @@ const MyLibrary = ({ onSelect }) => {
     if (!files.length) return;
 
     try {
-      await Promise.all(
-        files.map((file) => {
-          const key = `library/${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2)}-${file.name}`;
-          return Storage.put(key, file, {
-            level: 'protected',
-            contentType: file.type,
-          });
+      // Process and upload files with resizing
+      const uploadedImages = await Promise.all(
+        files.map(async (file) => {
+          try {
+            // Resize the image before uploading
+            const resizedBlob = await resizeImage(file);
+            
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).slice(2);
+            const key = `library/${timestamp}-${randomId}-${file.name}`;
+            
+            await Storage.put(key, resizedBlob, {
+              level: 'protected',
+              contentType: resizedBlob.type || file.type,
+            });
+            
+            // Get the signed URL for immediate display
+            const url = await Storage.get(key, { level: 'protected' });
+            
+            return {
+              key,
+              url,
+              lastModified: new Date().toISOString(),
+              size: resizedBlob.size
+            };
+          } catch (resizeError) {
+            console.warn('Failed to resize image, uploading original:', file.name, resizeError);
+            
+            // Fallback to original file if resizing fails
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).slice(2);
+            const key = `library/${timestamp}-${randomId}-${file.name}`;
+            
+            await Storage.put(key, file, {
+              level: 'protected',
+              contentType: file.type,
+            });
+            
+            const url = await Storage.get(key, { level: 'protected' });
+            
+            return {
+              key,
+              url,
+              lastModified: new Date().toISOString(),
+              size: file.size
+            };
+          }
         })
       );
-      // Reset and fetch images to show newly uploaded files first
-      await fetchImages();
+
+      console.log('Successfully uploaded files:', uploadedImages.map(r => r.key));
+
+      // Add uploaded images to the beginning of the current images list for immediate display
+      setImages(prev => [...uploadedImages, ...prev]);
+      
+      // Update allImageKeys to include the new items
+      setAllImageKeys(prev => [
+        ...uploadedImages.map(img => ({ key: img.key, lastModified: img.lastModified, size: img.size })),
+        ...prev
+      ]);
+      
+      // Update loaded count
+      setLoadedCount(prev => prev + uploadedImages.length);
+      
     } catch (err) {
       console.error('Error uploading library images', err);
     } finally {
@@ -174,64 +445,170 @@ const MyLibrary = ({ onSelect }) => {
     }
   };
 
-  const cols = isMobile ? 3 : 4;
+  const gap = 2; // Gap between items
+  const containerPadding = isMobile ? 48 : 64; // Total horizontal padding
+  const availableWidth = windowWidth - containerPadding;
+  
+  // Target thumbnail size range
+  const targetThumbnailSize = isMobile ? 80 : 120;
+  const minThumbnailSize = isMobile ? 60 : 80;
+  
+  // Calculate optimal number of columns based on target size
+  const idealCols = Math.floor((availableWidth + gap) / (targetThumbnailSize + gap));
+  const cols = Math.max(isMobile ? 3 : 4, idealCols); // Minimum columns
+  
+  // Calculate actual thumbnail size to fill the width
+  const actualThumbnailSize = Math.max(
+    minThumbnailSize,
+    Math.floor((availableWidth - (cols - 1) * gap) / cols)
+  );
+  
+  const rowHeight = actualThumbnailSize;
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        My Library
-      </Typography>
-      <ImageList cols={cols} gap={8} rowHeight={80} sx={{ m: 0 }}>
-        <ImageListItem key="upload">
-          <CardActionArea onClick={() => fileInputRef.current?.click()} sx={{ height: '100%' }}>
-            <Card
-              sx={{
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px dashed',
-                borderColor: 'divider',
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">
+          My Library
+        </Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={selectMultipleMode}
+              onChange={(e) => {
+                setSelectMultipleMode(e.target.checked);
+                // Clear selections when switching modes
+                if (!e.target.checked) {
+                  setSelected([]);
+                }
               }}
-            >
-              <Add />
-            </Card>
-          </CardActionArea>
+              size="small"
+            />
+          }
+          label="Select Multiple"
+          sx={{ mr: 0 }}
+        />
+      </Box>
+      
+      {/* Action buttons row */}
+      <Collapse 
+        in={selectMultipleMode && selected.length > 0}
+        timeout={300}
+        sx={{
+          '& .MuiCollapse-wrapper': {
+            '& .MuiCollapse-wrapperInner': {
+              transition: 'opacity 300ms ease-in-out',
+              opacity: selectMultipleMode && selected.length > 0 ? 1 : 0,
+            }
+          }
+        }}
+      >
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 1, 
+          mb: 2,
+          justifyContent: 'center'
+        }}>
+          <Button 
+            variant="outlined" 
+            color="error" 
+            size="small" 
+            onClick={handleDeleteSelected}
+            disabled={deleting}
+            startIcon={<Delete />}
+            sx={{ minWidth: isMobile ? '85px' : '110px' }}
+          >
+            {deleting ? 'Deleting...' : `Delete (${selected.length})`}
+          </Button>
+          <Button 
+            variant="contained" 
+            size="small" 
+            onClick={handleCreate}
+            sx={{ minWidth: isMobile ? '75px' : '100px' }}
+          >
+            Create ({selected.length})
+          </Button>
+        </Box>
+      </Collapse>
+      <ImageList 
+        cols={cols} 
+        gap={gap} 
+        rowHeight={rowHeight} 
+        sx={{ 
+          m: 0,
+          width: '100%' // Fill the full width of the container
+        }}
+      >
+        <ImageListItem key="upload">
+          <Box
+            onClick={() => fileInputRef.current?.click()}
+            sx={{
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px dashed',
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                borderColor: 'primary.main',
+              }
+            }}
+          >
+            <Add sx={{ color: 'text.secondary' }} />
+          </Box>
         </ImageListItem>
         {images.map((img) => {
           const isSelected = selected.includes(img.key);
           return (
             <ImageListItem key={img.key} sx={{ cursor: 'pointer' }}>
-              <CardActionArea
-                onClick={() => toggleSelect(img.key)}
-                sx={{ height: '100%', position: 'relative' }}
+              <Box
+                onClick={() => handleImageClick(img)}
+                sx={{ 
+                  height: '100%', 
+                  position: 'relative',
+                  overflow: 'hidden',
+                  transition: 'all 0.15s ease',
+                  '&:hover': {
+                    transform: 'scale(0.98)',
+                    opacity: 0.9,
+                  }
+                }}
               >
-                <Card sx={{ height: '100%' }}>
-                  <img
-                    src={img.url}
-                    alt="library"
-                    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                  />
-                </Card>
-                {isSelected && (
+                <img
+                  src={img.url}
+                  alt="library"
+                  style={{ 
+                    objectFit: 'cover', 
+                    width: '100%', 
+                    height: '100%',
+                    display: 'block'
+                  }}
+                />
+                {selectMultipleMode && isSelected && (
                   <Box
                     sx={{
                       position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      bgcolor: 'rgba(0,0,0,0.4)',
+                      top: 4,
+                      right: 4,
+                      width: 24,
+                      height: 24,
+                      bgcolor: 'primary.main',
+                      borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'primary.contrastText',
+                      border: '2px solid white',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                     }}
                   >
-                    <CheckCircle fontSize="large" />
+                    <CheckCircle fontSize="small" sx={{ color: 'white' }} />
                   </Box>
                 )}
-              </CardActionArea>
+              </Box>
             </ImageListItem>
           );
         })}
@@ -250,14 +627,6 @@ const MyLibrary = ({ onSelect }) => {
           </Button>
         </Box>
       )}
-      
-      {selected.length > 0 && (
-        <Box sx={{ textAlign: 'right', mt: 1 }}>
-          <Button variant="contained" size="small" onClick={handleCreate}>
-            Create
-          </Button>
-        </Box>
-      )}
       <input
         type="file"
         accept="image/*"
@@ -266,16 +635,77 @@ const MyLibrary = ({ onSelect }) => {
         ref={fileInputRef}
         onChange={handleFileChange}
       />
+
+      {/* Image Preview Modal */}
+      <Dialog
+        open={previewOpen}
+        onClose={handleClosePreview}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6">Image Preview</Typography>
+          <IconButton onClick={handleClosePreview} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          minHeight: '400px',
+          p: 2
+        }}>
+          {previewImage && (
+            <img
+              src={previewImage.url}
+              alt="Preview"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '70vh',
+                objectFit: 'contain',
+                borderRadius: '4px'
+              }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', p: 2, gap: 1 }}>
+          <Button
+            onClick={handleUseInCollage}
+            color="primary"
+            variant="contained"
+            startIcon={<Dashboard />}
+            sx={{ minWidth: '140px' }}
+          >
+            Use in Collage
+          </Button>
+          <Button
+            onClick={handleDeleteImage}
+            color="error"
+            variant="contained"
+            startIcon={<Delete />}
+            disabled={deleting}
+            sx={{ minWidth: '120px' }}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
 
 MyLibrary.propTypes = {
   onSelect: PropTypes.func,
+  refreshTrigger: PropTypes.any,
 };
 
 MyLibrary.defaultProps = {
   onSelect: null,
+  refreshTrigger: null,
 };
 
 export default MyLibrary;
