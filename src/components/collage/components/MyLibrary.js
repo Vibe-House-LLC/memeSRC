@@ -16,6 +16,7 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  Collapse,
 } from '@mui/material';
 import { Add, CheckCircle, Delete, Close } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
@@ -447,7 +448,18 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       </Box>
       
       {/* Action buttons row */}
-      {selectMultipleMode && selected.length > 0 && (
+      <Collapse 
+        in={selectMultipleMode && selected.length > 0}
+        timeout={300}
+        sx={{
+          '& .MuiCollapse-wrapper': {
+            '& .MuiCollapse-wrapperInner': {
+              transition: 'opacity 300ms ease-in-out',
+              opacity: selectMultipleMode && selected.length > 0 ? 1 : 0,
+            }
+          }
+        }}
+      >
         <Box sx={{ 
           display: 'flex', 
           gap: 1, 
@@ -474,7 +486,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
             Create ({selected.length})
           </Button>
         </Box>
-      )}
+      </Collapse>
       <ImageList cols={cols} gap={8} rowHeight={80} sx={{ m: 0 }}>
         <ImageListItem key="upload">
           <CardActionArea 
