@@ -5,8 +5,6 @@ import {
   Typography,
   ImageList,
   ImageListItem,
-  Card,
-  CardActionArea,
   Button,
   useMediaQuery,
   Switch,
@@ -133,6 +131,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [previewImage, setPreviewImage] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const fileInputRef = useRef(null);
 
   const theme = useTheme();
@@ -208,6 +207,16 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       fetchImages();
     }
   }, [refreshTrigger]);
+
+  // Effect to handle window resize for responsive grid
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const toggleSelect = (key) => {
     setSelected((prev) =>
@@ -436,7 +445,25 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     }
   };
 
-  const cols = isMobile ? 3 : 4;
+  const gap = 2; // Gap between items
+  const containerPadding = isMobile ? 48 : 64; // Total horizontal padding
+  const availableWidth = windowWidth - containerPadding;
+  
+  // Target thumbnail size range
+  const targetThumbnailSize = isMobile ? 80 : 120;
+  const minThumbnailSize = isMobile ? 60 : 80;
+  
+  // Calculate optimal number of columns based on target size
+  const idealCols = Math.floor((availableWidth + gap) / (targetThumbnailSize + gap));
+  const cols = Math.max(isMobile ? 3 : 4, idealCols); // Minimum columns
+  
+  // Calculate actual thumbnail size to fill the width
+  const actualThumbnailSize = Math.max(
+    minThumbnailSize,
+    Math.floor((availableWidth - (cols - 1) * gap) / cols)
+  );
+  
+  const rowHeight = actualThumbnailSize;
 
   return (
     <Box sx={{ mt: 3 }}>
@@ -503,79 +530,85 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           </Button>
         </Box>
       </Collapse>
-      <ImageList cols={cols} gap={8} rowHeight={80} sx={{ m: 0 }}>
+      <ImageList 
+        cols={cols} 
+        gap={gap} 
+        rowHeight={rowHeight} 
+        sx={{ 
+          m: 0,
+          width: '100%' // Fill the full width of the container
+        }}
+      >
         <ImageListItem key="upload">
-          <CardActionArea 
-            onClick={() => fileInputRef.current?.click()} 
-            sx={{ 
+          <Box
+            onClick={() => fileInputRef.current?.click()}
+            sx={{
               height: '100%',
-              borderRadius: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px dashed',
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
               '&:hover': {
-                '& .MuiCard-root': {
-                  boxShadow: 2,
-                }
+                backgroundColor: 'action.hover',
+                borderColor: 'primary.main',
               }
             }}
           >
-            <Card
-              sx={{
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px dashed',
-                borderColor: 'divider',
-                borderRadius: 1,
-              }}
-            >
-              <Add />
-            </Card>
-          </CardActionArea>
+            <Add sx={{ color: 'text.secondary' }} />
+          </Box>
         </ImageListItem>
         {images.map((img) => {
           const isSelected = selected.includes(img.key);
           return (
             <ImageListItem key={img.key} sx={{ cursor: 'pointer' }}>
-              <CardActionArea
+              <Box
                 onClick={() => handleImageClick(img)}
                 sx={{ 
                   height: '100%', 
                   position: 'relative',
-                  borderRadius: 1,
+                  overflow: 'hidden',
+                  transition: 'all 0.15s ease',
                   '&:hover': {
-                    '& .MuiCard-root': {
-                      boxShadow: 2,
-                    }
+                    transform: 'scale(0.98)',
+                    opacity: 0.9,
                   }
                 }}
               >
-                <Card sx={{ height: '100%', borderRadius: 1 }}>
-                  <img
-                    src={img.url}
-                    alt="library"
-                    style={{ objectFit: 'cover', width: '100%', height: '100%', borderRadius: '4px' }}
-                  />
-                </Card>
+                <img
+                  src={img.url}
+                  alt="library"
+                  style={{ 
+                    objectFit: 'cover', 
+                    width: '100%', 
+                    height: '100%',
+                    display: 'block'
+                  }}
+                />
                 {selectMultipleMode && isSelected && (
                   <Box
                     sx={{
                       position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      bgcolor: 'rgba(0,0,0,0.4)',
+                      top: 4,
+                      right: 4,
+                      width: 24,
+                      height: 24,
+                      bgcolor: 'primary.main',
+                      borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'primary.contrastText',
-                      borderRadius: 1,
+                      border: '2px solid white',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                     }}
                   >
-                    <CheckCircle fontSize="large" />
+                    <CheckCircle fontSize="small" sx={{ color: 'white' }} />
                   </Box>
                 )}
-              </CardActionArea>
+              </Box>
             </ImageListItem>
           );
         })}
