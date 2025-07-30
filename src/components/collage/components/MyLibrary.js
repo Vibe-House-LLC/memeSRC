@@ -192,7 +192,18 @@ const MyLibrary = ({ onSelect }) => {
       </Box>
       <ImageList cols={cols} gap={8} rowHeight={80} sx={{ m: 0 }}>
         <ImageListItem key="upload">
-          <CardActionArea onClick={() => fileInputRef.current?.click()} sx={{ height: '100%' }}>
+          <CardActionArea 
+            onClick={() => fileInputRef.current?.click()} 
+            sx={{ 
+              height: '100%',
+              borderRadius: 1,
+              '&:hover': {
+                '& .MuiCard-root': {
+                  boxShadow: 2,
+                }
+              }
+            }}
+          >
             <Card
               sx={{
                 height: '100%',
@@ -201,6 +212,7 @@ const MyLibrary = ({ onSelect }) => {
                 justifyContent: 'center',
                 border: '1px dashed',
                 borderColor: 'divider',
+                borderRadius: 1,
               }}
             >
               <Add />
@@ -213,13 +225,22 @@ const MyLibrary = ({ onSelect }) => {
             <ImageListItem key={img.key} sx={{ cursor: 'pointer' }}>
               <CardActionArea
                 onClick={() => toggleSelect(img.key)}
-                sx={{ height: '100%', position: 'relative' }}
+                sx={{ 
+                  height: '100%', 
+                  position: 'relative',
+                  borderRadius: 1,
+                  '&:hover': {
+                    '& .MuiCard-root': {
+                      boxShadow: 2,
+                    }
+                  }
+                }}
               >
-                <Card sx={{ height: '100%' }}>
+                <Card sx={{ height: '100%', borderRadius: 1 }}>
                   <img
                     src={img.url}
                     alt="library"
-                    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                    style={{ objectFit: 'cover', width: '100%', height: '100%', borderRadius: '4px' }}
                   />
                 </Card>
                 {isSelected && (
@@ -235,6 +256,7 @@ const MyLibrary = ({ onSelect }) => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: 'primary.contrastText',
+                      borderRadius: 1,
                     }}
                   >
                     <CheckCircle fontSize="large" />
