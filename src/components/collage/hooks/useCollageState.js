@@ -203,7 +203,7 @@ export const useCollageState = () => {
     try {
       // Skip saving if image is from library (prevents duplicates)
       if (metadata.isFromLibrary) {
-        if (DEBUG_MODE) console.log("Skipping auto-save for library image:", metadata.libraryKey);
+        console.log("Skipping auto-save for library image:", metadata.libraryKey);
         return;
       }
       
@@ -211,9 +211,11 @@ export const useCollageState = () => {
       if (imageUrl.startsWith('data:')) {
         // Check if we've already saved this exact image data
         if (savedImageDataUrls.current.has(imageUrl)) {
-          if (DEBUG_MODE) console.log("Skipping auto-save for previously saved image");
+          console.log("Skipping auto-save for previously saved image");
           return;
         }
+        
+        console.log("Auto-saving new image to library...");
         
         // Save to library and track that we've saved it
         await saveImageToLibrary(imageUrl, 'collage-upload');
@@ -221,10 +223,12 @@ export const useCollageState = () => {
         
         // Trigger library refresh
         setLibraryRefreshTrigger(Date.now());
-        if (DEBUG_MODE) console.log("Auto-saved new image to library");
+        console.log("✅ Successfully auto-saved image to library!");
+      } else {
+        console.log("Skipping auto-save for non-data URL:", `${imageUrl.substring(0, 50)}...`);
       }
     } catch (error) {
-      console.error("Failed to auto-save image to library:", error);
+      console.error("❌ Failed to auto-save image to library:", error);
     }
   }, [autoSaveToLibrary]);
 
