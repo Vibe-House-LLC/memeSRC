@@ -21,23 +21,97 @@ import { Add, CheckCircle, Delete, Close } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { Storage } from 'aws-amplify';
 
+// Utility function to resize image using canvas
+const resizeImage = (file, maxSize = 1500) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    img.onload = () => {
+      try {
+        const { width, height } = img;
+        
+        // Calculate new dimensions maintaining aspect ratio
+        let newWidth = width;
+        let newHeight = height;
+        
+        if (width > height) {
+          // Width is the longer side
+          if (width > maxSize) {
+            newWidth = maxSize;
+            newHeight = (height * maxSize) / width;
+          }
+        } else if (height > maxSize) {
+          // Height is the longer side
+          newHeight = maxSize;
+          newWidth = (width * maxSize) / height;
+        }
+        
+        // Set canvas dimensions
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        
+        // Draw resized image
+        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+        
+        // Convert to blob with quality setting
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to create blob from canvas'));
+            }
+          },
+          file.type || 'image/jpeg',
+          0.85 // Quality setting for JPEG
+        );
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    img.onerror = () => {
+      reject(new Error('Failed to load image'));
+    };
+    
+    // Load the image
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 // Utility function to save data URL to library
 export const saveImageToLibrary = async (dataUrl, filename = null) => {
   try {
     // Convert data URL to blob
     const response = await fetch(dataUrl);
-    const blob = await response.blob();
+    const originalBlob = await response.blob();
+    
+    // Create a file object from the blob to use with resizeImage
+    const file = new File([originalBlob], filename || 'collage-image', { 
+      type: originalBlob.type 
+    });
+    
+    let blobToUpload;
+    try {
+      // Try to resize the image
+      blobToUpload = await resizeImage(file);
+    } catch (resizeError) {
+      console.warn('Failed to resize image for library, using original:', resizeError);
+      blobToUpload = originalBlob;
+    }
     
     // Generate unique filename
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).slice(2);
-    const extension = blob.type ? blob.type.split('/')[1] : 'jpg';
+    const extension = blobToUpload.type ? blobToUpload.type.split('/')[1] : 'jpg';
     const key = `library/${timestamp}-${randomId}-${filename || 'collage-image'}.${extension}`;
     
     // Save to AWS Storage
-    await Storage.put(key, blob, {
+    await Storage.put(key, blobToUpload, {
       level: 'protected',
-      contentType: blob.type,
+      contentType: blobToUpload.type,
     });
     
     console.log('Successfully saved image to library:', key);
@@ -274,27 +348,53 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     if (!files.length) return;
 
     try {
-      // Upload files and get their URLs for immediate display
+      // Process and upload files with resizing
       const uploadedImages = await Promise.all(
         files.map(async (file) => {
-          const timestamp = Date.now();
-          const randomId = Math.random().toString(36).slice(2);
-          const key = `library/${timestamp}-${randomId}-${file.name}`;
-          
-          await Storage.put(key, file, {
-            level: 'protected',
-            contentType: file.type,
-          });
-          
-          // Get the signed URL for immediate display
-          const url = await Storage.get(key, { level: 'protected' });
-          
-          return {
-            key,
-            url,
-            lastModified: new Date().toISOString(),
-            size: file.size
-          };
+          try {
+            // Resize the image before uploading
+            const resizedBlob = await resizeImage(file);
+            
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).slice(2);
+            const key = `library/${timestamp}-${randomId}-${file.name}`;
+            
+            await Storage.put(key, resizedBlob, {
+              level: 'protected',
+              contentType: resizedBlob.type || file.type,
+            });
+            
+            // Get the signed URL for immediate display
+            const url = await Storage.get(key, { level: 'protected' });
+            
+            return {
+              key,
+              url,
+              lastModified: new Date().toISOString(),
+              size: resizedBlob.size
+            };
+          } catch (resizeError) {
+            console.warn('Failed to resize image, uploading original:', file.name, resizeError);
+            
+            // Fallback to original file if resizing fails
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).slice(2);
+            const key = `library/${timestamp}-${randomId}-${file.name}`;
+            
+            await Storage.put(key, file, {
+              level: 'protected',
+              contentType: file.type,
+            });
+            
+            const url = await Storage.get(key, { level: 'protected' });
+            
+            return {
+              key,
+              url,
+              lastModified: new Date().toISOString(),
+              size: file.size
+            };
+          }
         })
       );
 
@@ -323,59 +423,58 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, minHeight: '32px' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">
           My Library
         </Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={selectMultipleMode}
+              onChange={(e) => {
+                setSelectMultipleMode(e.target.checked);
+                // Clear selections when switching modes
+                if (!e.target.checked) {
+                  setSelected([]);
+                }
+              }}
+              size="small"
+            />
+          }
+          label="Select Multiple"
+          sx={{ mr: 0 }}
+        />
+      </Box>
+      
+      {/* Action buttons row */}
+      {selectMultipleMode && selected.length > 0 && (
         <Box sx={{ 
           display: 'flex', 
-          alignItems: 'center', 
-          gap: 2,
-          minWidth: isMobile ? '280px' : '370px',
-          justifyContent: 'flex-end'
+          gap: 1, 
+          mb: 2,
+          justifyContent: 'center'
         }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={selectMultipleMode}
-                onChange={(e) => {
-                  setSelectMultipleMode(e.target.checked);
-                  // Clear selections when switching modes
-                  if (!e.target.checked) {
-                    setSelected([]);
-                  }
-                }}
-                size="small"
-              />
-            }
-            label="Select Multiple"
-            sx={{ mr: 0 }}
-          />
-          {selectMultipleMode && selected.length > 0 && (
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button 
-                variant="outlined" 
-                color="error" 
-                size="small" 
-                onClick={handleDeleteSelected}
-                disabled={deleting}
-                startIcon={<Delete />}
-                sx={{ minWidth: isMobile ? '85px' : '110px' }}
-              >
-                {deleting ? 'Deleting...' : `Delete (${selected.length})`}
-              </Button>
-              <Button 
-                variant="contained" 
-                size="small" 
-                onClick={handleCreate}
-                sx={{ minWidth: isMobile ? '75px' : '100px' }}
-              >
-                Create ({selected.length})
-              </Button>
-            </Box>
-          )}
+          <Button 
+            variant="outlined" 
+            color="error" 
+            size="small" 
+            onClick={handleDeleteSelected}
+            disabled={deleting}
+            startIcon={<Delete />}
+            sx={{ minWidth: isMobile ? '85px' : '110px' }}
+          >
+            {deleting ? 'Deleting...' : `Delete (${selected.length})`}
+          </Button>
+          <Button 
+            variant="contained" 
+            size="small" 
+            onClick={handleCreate}
+            sx={{ minWidth: isMobile ? '75px' : '100px' }}
+          >
+            Create ({selected.length})
+          </Button>
         </Box>
-      </Box>
+      )}
       <ImageList cols={cols} gap={8} rowHeight={80} sx={{ m: 0 }}>
         <ImageListItem key="upload">
           <CardActionArea 
