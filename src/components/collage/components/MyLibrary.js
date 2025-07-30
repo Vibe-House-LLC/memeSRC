@@ -9,8 +9,15 @@ import {
   CardActionArea,
   Button,
   useMediaQuery,
+  Switch,
+  FormControlLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
 } from '@mui/material';
-import { Add, CheckCircle } from '@mui/icons-material';
+import { Add, CheckCircle, Delete, Close } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { Storage } from 'aws-amplify';
 
@@ -47,6 +54,10 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [allImageKeys, setAllImageKeys] = useState([]);
   const [loadedCount, setLoadedCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [selectMultipleMode, setSelectMultipleMode] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef(null);
 
   const theme = useTheme();
@@ -129,6 +140,65 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     );
   };
 
+  const handleImageClick = (img) => {
+    if (selectMultipleMode) {
+      toggleSelect(img.key);
+    } else {
+      setPreviewImage(img);
+      setPreviewOpen(true);
+    }
+  };
+
+  const handleClosePreview = () => {
+    setPreviewOpen(false);
+    setPreviewImage(null);
+  };
+
+  const handleDeleteImage = async () => {
+    if (!previewImage) return;
+    
+    setDeleting(true);
+    try {
+      await Storage.remove(previewImage.key, { level: 'protected' });
+      console.log('Successfully deleted image:', previewImage.key);
+      
+      // Remove from local state
+      setImages(prev => prev.filter(img => img.key !== previewImage.key));
+      setAllImageKeys(prev => prev.filter(item => item.key !== previewImage.key));
+      setSelected(prev => prev.filter(key => key !== previewImage.key));
+      
+      handleClosePreview();
+    } catch (error) {
+      console.error('Error deleting image:', error);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selected.length === 0) return;
+    
+    setDeleting(true);
+    try {
+      // Delete all selected images from AWS Storage
+      await Promise.all(
+        selected.map(key => Storage.remove(key, { level: 'protected' }))
+      );
+      
+      console.log('Successfully deleted images:', selected);
+      
+      // Remove deleted images from local state
+      setImages(prev => prev.filter(img => !selected.includes(img.key)));
+      setAllImageKeys(prev => prev.filter(item => !selected.includes(item.key)));
+      setSelected([]);
+      
+    } catch (error) {
+      console.error('Error deleting selected images:', error);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleCreate = async () => {
     if (!onSelect) return;
     
@@ -204,19 +274,44 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     if (!files.length) return;
 
     try {
-      await Promise.all(
-        files.map((file) => {
-          const key = `library/${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2)}-${file.name}`;
-          return Storage.put(key, file, {
+      // Upload files and get their URLs for immediate display
+      const uploadedImages = await Promise.all(
+        files.map(async (file) => {
+          const timestamp = Date.now();
+          const randomId = Math.random().toString(36).slice(2);
+          const key = `library/${timestamp}-${randomId}-${file.name}`;
+          
+          await Storage.put(key, file, {
             level: 'protected',
             contentType: file.type,
           });
+          
+          // Get the signed URL for immediate display
+          const url = await Storage.get(key, { level: 'protected' });
+          
+          return {
+            key,
+            url,
+            lastModified: new Date().toISOString(),
+            size: file.size
+          };
         })
       );
-      // Reset and fetch images to show newly uploaded files first
-      await fetchImages();
+
+      console.log('Successfully uploaded files:', uploadedImages.map(r => r.key));
+
+      // Add uploaded images to the beginning of the current images list for immediate display
+      setImages(prev => [...uploadedImages, ...prev]);
+      
+      // Update allImageKeys to include the new items
+      setAllImageKeys(prev => [
+        ...uploadedImages.map(img => ({ key: img.key, lastModified: img.lastModified, size: img.size })),
+        ...prev
+      ]);
+      
+      // Update loaded count
+      setLoadedCount(prev => prev + uploadedImages.length);
+      
     } catch (err) {
       console.error('Error uploading library images', err);
     } finally {
@@ -228,15 +323,50 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, minHeight: '32px' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, minHeight: '32px' }}>
         <Typography variant="h6">
           My Library
         </Typography>
-        <Box sx={{ minWidth: '80px', display: 'flex', justifyContent: 'flex-end' }}>
-          {selected.length > 0 && (
-            <Button variant="contained" size="small" onClick={handleCreate}>
-              Create ({selected.length})
-            </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={selectMultipleMode}
+                onChange={(e) => {
+                  setSelectMultipleMode(e.target.checked);
+                  // Clear selections when switching modes
+                  if (!e.target.checked) {
+                    setSelected([]);
+                  }
+                }}
+                size="small"
+              />
+            }
+            label="Select Multiple"
+            sx={{ mr: 0 }}
+          />
+          {selectMultipleMode && selected.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button 
+                variant="outlined" 
+                color="error" 
+                size="small" 
+                onClick={handleDeleteSelected}
+                disabled={deleting}
+                startIcon={<Delete />}
+                sx={{ minWidth: '110px' }}
+              >
+                {deleting ? 'Deleting...' : `Delete (${selected.length})`}
+              </Button>
+              <Button 
+                variant="contained" 
+                size="small" 
+                onClick={handleCreate}
+                sx={{ minWidth: '100px' }}
+              >
+                Create ({selected.length})
+              </Button>
+            </Box>
           )}
         </Box>
       </Box>
@@ -274,7 +404,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           return (
             <ImageListItem key={img.key} sx={{ cursor: 'pointer' }}>
               <CardActionArea
-                onClick={() => toggleSelect(img.key)}
+                onClick={() => handleImageClick(img)}
                 sx={{ 
                   height: '100%', 
                   position: 'relative',
@@ -293,7 +423,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                     style={{ objectFit: 'cover', width: '100%', height: '100%', borderRadius: '4px' }}
                   />
                 </Card>
-                {isSelected && (
+                {selectMultipleMode && isSelected && (
                   <Box
                     sx={{
                       position: 'absolute',
@@ -339,6 +469,56 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         ref={fileInputRef}
         onChange={handleFileChange}
       />
+
+      {/* Image Preview Modal */}
+      <Dialog
+        open={previewOpen}
+        onClose={handleClosePreview}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6">Image Preview</Typography>
+          <IconButton onClick={handleClosePreview} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          minHeight: '400px',
+          p: 2
+        }}>
+          {previewImage && (
+            <img
+              src={previewImage.url}
+              alt="Preview"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '70vh',
+                objectFit: 'contain',
+                borderRadius: '4px'
+              }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', p: 2 }}>
+          <Button
+            onClick={handleDeleteImage}
+            color="error"
+            variant="contained"
+            startIcon={<Delete />}
+            disabled={deleting}
+            sx={{ minWidth: '120px' }}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
