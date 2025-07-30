@@ -292,7 +292,7 @@ export const useCollageState = () => {
             displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
             subtitle: imageData.subtitle || '',
             subtitleShowing: imageData.subtitleShowing || false,
-            metadata: metadata
+            metadata
           };
           if (DEBUG_MODE) {
             console.log(`[SUBTITLE DEBUG] Processing image object:`, {
