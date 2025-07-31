@@ -71,6 +71,7 @@ export default function CollagePage() {
   const { openSubscriptionDialog } = useSubscribeDialog();
   const { clearAll } = useCollage();
   const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -120,7 +121,7 @@ export default function CollagePage() {
     libraryRefreshTrigger,
     autoSaveToLibrary,
     setAutoSaveToLibrary,
-  } = useCollageState();
+  } = useCollageState(isAdmin);
 
   // Check if all panels have images assigned (same logic as CollageImagesStep)
   const mappedPanels = Object.keys(panelImageMapping || {}).length;

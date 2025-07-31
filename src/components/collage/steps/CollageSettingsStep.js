@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars, react/prop-types */
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useContext } from "react";
 import { useTheme, styled, alpha } from "@mui/material/styles";
 import {
   Box,
@@ -32,6 +32,8 @@ import {
   Colorize,
   PhotoLibrary
 } from "@mui/icons-material";
+
+import { UserContext } from "../../../UserContext";
 
 // Import styled components
 import { TemplateCard } from "../styled/CollageStyled";
@@ -350,6 +352,9 @@ const CollageLayoutSettings = ({
   // Theme and responsive helpers
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const { user } = useContext(UserContext);
+  const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
   
   // Get aspect ratio value based on selected preset
   const getAspectRatioValue = () => {
@@ -1081,46 +1086,48 @@ const CollageLayoutSettings = ({
       </Box>
       
       {/* Auto-Save to Library Toggle */}
-      <Box sx={{ mb: isMobile ? 1 : 1.5 }}>
-        <StepSectionHeading sx={{ mb: 0.5 }}>
-          <PhotoLibrary sx={{ mr: 1, color: '#fff', fontSize: '1.3rem' }} />
-          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Library Settings
-          </Typography>
-        </StepSectionHeading>
-        
-        <FormControlLabel
-          control={
-            <Switch
-              checked={autoSaveToLibrary}
-              onChange={(e) => setAutoSaveToLibrary(e.target.checked)}
-              sx={{
-                '& .MuiSwitch-switchBase.Mui-checked': {
-                  color: '#fff',
-                },
-                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                  backgroundColor: '#fff',
-                  opacity: 0.6,
-                },
-                '& .MuiSwitch-track': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                },
-              }}
-            />
-          }
-          label={
-            <Typography variant="body2" sx={{ color: '#fff' }}>
-              Auto-save uploaded images to My Library
+      {hasCollageAccess && (
+        <Box sx={{ mb: isMobile ? 1 : 1.5 }}>
+          <StepSectionHeading sx={{ mb: 0.5 }}>
+            <PhotoLibrary sx={{ mr: 1, color: '#fff', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+              Library Settings
             </Typography>
-          }
-          sx={{ 
-            ml: 0,
-            '& .MuiFormControlLabel-label': {
-              fontSize: '0.875rem',
+          </StepSectionHeading>
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={autoSaveToLibrary}
+                onChange={(e) => setAutoSaveToLibrary(e.target.checked)}
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': {
+                    color: '#fff',
+                  },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: '#fff',
+                    opacity: 0.6,
+                  },
+                  '& .MuiSwitch-track': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                  },
+                }}
+              />
             }
-          }}
-        />
-      </Box>
+            label={
+              <Typography variant="body2" sx={{ color: '#fff' }}>
+                Auto-save uploaded images to My Library
+              </Typography>
+            }
+            sx={{
+              ml: 0,
+              '& .MuiFormControlLabel-label': {
+                fontSize: '0.875rem',
+              }
+            }}
+          />
+        </Box>
+      )}
       
       {/* Border Thickness UI with Horizontal Scroller - Moved below Choose Layout */}
       <Box sx={{ mb: isMobile ? 0.25 : 0.5, position: 'relative' }}>

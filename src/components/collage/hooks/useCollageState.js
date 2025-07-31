@@ -8,7 +8,7 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development';
 /**
  * Custom hook to manage collage state
  */
-export const useCollageState = () => {
+export const useCollageState = (hasLibraryAccess = false) => {
   // selectedImages now stores: { originalUrl: string, displayUrl: string, subtitle?: string, subtitleShowing?: boolean, metadata?: object }[]
   const [selectedImages, setSelectedImages] = useState([]);
   // panelImageMapping still maps: { panelId: imageIndex }
@@ -26,8 +26,8 @@ export const useCollageState = () => {
     strokeWidth: 2
   });
   
-  // State for auto-saving images to library
-  const [autoSaveToLibrary, setAutoSaveToLibrary] = useState(true);
+  // State for auto-saving images to library (admins only)
+  const [autoSaveToLibrary, setAutoSaveToLibrary] = useState(hasLibraryAccess);
   const [libraryRefreshTrigger, setLibraryRefreshTrigger] = useState(null);
   
   // Track image data URLs that have been saved to prevent duplicates
