@@ -8,7 +8,7 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development';
 /**
  * Custom hook to manage collage state
  */
-export const useCollageState = () => {
+export const useCollageState = (isAdmin = false) => {
   // selectedImages now stores: { originalUrl: string, displayUrl: string, subtitle?: string, subtitleShowing?: boolean, metadata?: object }[]
   const [selectedImages, setSelectedImages] = useState([]);
   // panelImageMapping still maps: { panelId: imageIndex }
@@ -27,7 +27,7 @@ export const useCollageState = () => {
   });
   
   // State for auto-saving images to library
-  const [autoSaveToLibrary, setAutoSaveToLibrary] = useState(true);
+  const [autoSaveToLibrary, setAutoSaveToLibrary] = useState(isAdmin);
   const [libraryRefreshTrigger, setLibraryRefreshTrigger] = useState(null);
   
   // Track image data URLs that have been saved to prevent duplicates
@@ -198,7 +198,7 @@ export const useCollageState = () => {
    * Save image to library if auto-save is enabled
    */
   const saveToLibraryIfEnabled = useCallback(async (imageUrl, metadata = {}) => {
-    if (!autoSaveToLibrary || !imageUrl) return;
+    if (!isAdmin || !autoSaveToLibrary || !imageUrl) return;
     
     try {
       // Skip saving if image is from library (prevents duplicates)
@@ -230,7 +230,7 @@ export const useCollageState = () => {
     } catch (error) {
       console.error("❌ Failed to auto-save image to library:", error);
     }
-  }, [autoSaveToLibrary]);
+  }, [autoSaveToLibrary, isAdmin]);
 
   /**
    * Add a new image to the collection.

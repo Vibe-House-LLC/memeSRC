@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { 
   Box, 
@@ -21,6 +21,7 @@ import {
   Clear
 } from '@mui/icons-material';
 import MyLibrary from './MyLibrary';
+import { UserContext } from '../../../UserContext';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -119,6 +120,8 @@ const BulkUploadSection = ({
   libraryRefreshTrigger, // For refreshing library when new images are auto-saved
 }) => {
   const theme = useTheme();
+  const { user } = useContext(UserContext);
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
@@ -874,7 +877,9 @@ const BulkUploadSection = ({
       )}
 
       {/* User image library below uploader */}
-      <MyLibrary onSelect={handleLibrarySelect} refreshTrigger={libraryRefreshTrigger} />
+      {isAdmin && (
+        <MyLibrary onSelect={handleLibrarySelect} refreshTrigger={libraryRefreshTrigger} />
+      )}
 
       {/* Toast Notification */}
       <Snackbar
