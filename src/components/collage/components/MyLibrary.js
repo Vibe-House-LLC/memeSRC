@@ -139,7 +139,8 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const IMAGES_PER_PAGE = 10;
 
   const CACHE_KEY = 'libraryUrlCache';
-  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+  const SIGNED_URL_EXPIRATION = 24 * 60 * 60; // seconds
+  const CACHE_DURATION = (SIGNED_URL_EXPIRATION - 60 * 60) * 1000; // 1h less
 
   const getCachedUrl = async (key) => {
     const cacheRaw = localStorage.getItem(CACHE_KEY);
@@ -157,10 +158,32 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       return cached.url;
     }
 
-    const url = await Storage.get(key, { level: 'protected', expires: 24 * 60 * 60 });
+    const url = await Storage.get(key, { level: 'protected', expires: SIGNED_URL_EXPIRATION });
     cache[key] = { url, expiresAt: Date.now() + CACHE_DURATION };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    } catch (err) {
+      console.warn('Error storing image URL cache', err);
+    }
     return url;
+  };
+
+  const removeFromCache = (key) => {
+    try {
+      const cacheRaw = localStorage.getItem(CACHE_KEY);
+      if (!cacheRaw) return;
+      const cache = JSON.parse(cacheRaw);
+      if (cache[key]) {
+        delete cache[key];
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+        } catch (err) {
+          console.warn('Error updating image URL cache', err);
+        }
+      }
+    } catch (err) {
+      console.warn('Error removing URL from cache', err);
+    }
   };
 
   const fetchAllImageKeys = async () => {
@@ -283,6 +306,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     setDeleting(true);
     try {
       await Storage.remove(previewImage.key, { level: 'protected' });
+      removeFromCache(previewImage.key);
       console.log('Successfully deleted image:', previewImage.key);
       
       // Remove from local state
@@ -307,6 +331,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       await Promise.all(
         selected.map(key => Storage.remove(key, { level: 'protected' }))
       );
+      selected.forEach(removeFromCache);
       
       console.log('Successfully deleted images:', selected);
       
