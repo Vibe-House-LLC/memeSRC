@@ -109,6 +109,7 @@ export const saveImageToLibrary = async (dataUrl, filename = null) => {
     await Storage.put(key, blobToUpload, {
       level: 'protected',
       contentType: blobToUpload.type,
+      cacheControl: 'max-age=31536000',
     });
     
     console.log('Successfully saved image to library:', key);
@@ -136,6 +137,31 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const IMAGES_PER_PAGE = 10;
+
+  const CACHE_KEY = 'libraryUrlCache';
+  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+  const getCachedUrl = async (key) => {
+    const cacheRaw = localStorage.getItem(CACHE_KEY);
+    let cache = {};
+    try {
+      if (cacheRaw) {
+        cache = JSON.parse(cacheRaw);
+      }
+    } catch {
+      cache = {};
+    }
+
+    const cached = cache[key];
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.url;
+    }
+
+    const url = await Storage.get(key, { level: 'protected', expires: 24 * 60 * 60 });
+    cache[key] = { url, expiresAt: Date.now() + CACHE_DURATION };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    return url;
+  };
 
   const fetchAllImageKeys = async () => {
     try {
@@ -167,8 +193,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       
       const imageData = await Promise.all(
         keysToLoad.map(async (item) => {
-          // Just get signed URLs for display - no expensive conversion yet
-          const url = await Storage.get(item.key, { level: 'protected' });
+          const url = await getCachedUrl(item.key);
           return { key: item.key, url };
         })
       );
@@ -386,10 +411,11 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
             await Storage.put(key, resizedBlob, {
               level: 'protected',
               contentType: resizedBlob.type || file.type,
+              cacheControl: 'max-age=31536000',
             });
             
-            // Get the signed URL for immediate display
-            const url = await Storage.get(key, { level: 'protected' });
+            // Get the signed URL for immediate display and cache it
+            const url = await getCachedUrl(key);
             
             return {
               key,
@@ -408,9 +434,10 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
             await Storage.put(key, file, {
               level: 'protected',
               contentType: file.type,
+              cacheControl: 'max-age=31536000',
             });
             
-            const url = await Storage.get(key, { level: 'protected' });
+            const url = await getCachedUrl(key);
             
             return {
               key,
