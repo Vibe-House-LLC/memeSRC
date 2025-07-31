@@ -834,10 +834,15 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         <DialogActions sx={{ justifyContent: 'center', p: 2, gap: 1 }}>
           <Button
             onClick={handleUseInCollage}
-            color="primary"
             variant="contained"
             startIcon={<Dashboard />}
-            sx={{ minWidth: '140px' }}
+            sx={{ 
+              minWidth: '140px',
+              bgcolor: '#6c5b7b',
+              '&:hover': {
+                bgcolor: '#5d4e75',
+              }
+            }}
           >
             Use in Collage
           </Button>
