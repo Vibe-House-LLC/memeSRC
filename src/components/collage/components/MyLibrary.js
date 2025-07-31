@@ -21,8 +21,7 @@ import { useTheme } from '@mui/material/styles';
 import { Storage } from 'aws-amplify';
 
 // Utility function to resize image using canvas
-const resizeImage = (file, maxSize = 1500) => {
-  return new Promise((resolve, reject) => {
+const resizeImage = (file, maxSize = 1500) => new Promise((resolve, reject) => {
     const img = new Image();
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -78,7 +77,6 @@ const resizeImage = (file, maxSize = 1500) => {
     // Load the image
     img.src = URL.createObjectURL(file);
   });
-};
 
 // Utility function to save data URL to library
 export const saveImageToLibrary = async (dataUrl, filename = null) => {
