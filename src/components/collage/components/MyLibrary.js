@@ -142,6 +142,28 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const SIGNED_URL_EXPIRATION = 24 * 60 * 60; // seconds
   const CACHE_DURATION = (SIGNED_URL_EXPIRATION - 60 * 60) * 1000; // 1h less
 
+  const getCacheStatus = () => {
+    try {
+      const cacheRaw = localStorage.getItem(CACHE_KEY);
+      if (!cacheRaw) return { count: 0, keys: [] };
+      
+      const cache = JSON.parse(cacheRaw);
+      const now = Date.now();
+      const keys = Object.keys(cache);
+      const validKeys = keys.filter(key => cache[key].expiresAt && cache[key].expiresAt > now);
+      
+      return { 
+        count: validKeys.length, 
+        total: keys.length,
+        keys: validKeys,
+        expired: keys.length - validKeys.length
+      };
+    } catch (err) {
+      console.warn('Error checking cache status', err);
+      return { count: 0, keys: [], error: err.message };
+    }
+  };
+
   const getCachedUrl = async (key) => {
     const cacheRaw = localStorage.getItem(CACHE_KEY);
     let cache = {};
@@ -149,23 +171,54 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       if (cacheRaw) {
         cache = JSON.parse(cacheRaw);
       }
-    } catch {
+    } catch (err) {
+      console.warn('Error parsing cache', err);
       cache = {};
     }
 
     const cached = cache[key];
-    if (cached && cached.expiresAt > Date.now()) {
+    const now = Date.now();
+    
+    if (cached && cached.expiresAt && cached.expiresAt > now) {
+      console.log('📸 Cache HIT for', key.split('/').pop());
       return cached.url;
     }
 
+    console.log('📡 Cache MISS for', key.split('/').pop(), cached ? '(expired)' : '(not found)');
     const url = await Storage.get(key, { level: 'protected', expires: SIGNED_URL_EXPIRATION });
-    cache[key] = { url, expiresAt: Date.now() + CACHE_DURATION };
+    cache[key] = { url, expiresAt: now + CACHE_DURATION };
+    
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
     } catch (err) {
       console.warn('Error storing image URL cache', err);
     }
     return url;
+  };
+
+  const cleanExpiredCache = () => {
+    try {
+      const cacheRaw = localStorage.getItem(CACHE_KEY);
+      if (!cacheRaw) return;
+      
+      const cache = JSON.parse(cacheRaw);
+      const now = Date.now();
+      let cleanedCount = 0;
+      
+      Object.keys(cache).forEach(key => {
+        if (!cache[key].expiresAt || cache[key].expiresAt <= now) {
+          delete cache[key];
+          cleanedCount+=1;
+        }
+      });
+      
+      if (cleanedCount > 0) {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+        console.log('Cleaned', cleanedCount, 'expired cache entries');
+      }
+    } catch (err) {
+      console.warn('Error cleaning expired cache', err);
+    }
   };
 
   const removeFromCache = (key) => {
@@ -231,6 +284,9 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   };
 
   const fetchImages = async () => {
+    // Clean expired cache entries before loading
+    cleanExpiredCache();
+    
     setImages([]);
     setLoadedCount(0);
     const keys = await fetchAllImageKeys();
@@ -244,6 +300,8 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   };
 
   useEffect(() => {
+    // Clean expired cache on component mount
+    cleanExpiredCache();
     fetchImages();
   }, []);
 
@@ -747,6 +805,35 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     </Box>
   );
 };
+
+// Debug function for browser console
+if (typeof window !== 'undefined') {
+  window.debugLibraryCache = () => {
+    const CACHE_KEY = 'libraryUrlCache';
+    try {
+      const cacheRaw = localStorage.getItem(CACHE_KEY);
+      if (!cacheRaw) {
+        console.log('🗃️ No cache found');
+        return;
+      }
+      
+      const cache = JSON.parse(cacheRaw);
+      const now = Date.now();
+      const entries = Object.entries(cache);
+      
+      console.log('🗃️ Cache Status:');
+      console.log(`Total entries: ${entries.length}`);
+      
+      entries.forEach(([key, data]) => {
+        const isValid = data.expiresAt && data.expiresAt > now;
+        const timeLeft = data.expiresAt ? Math.round((data.expiresAt - now) / 1000 / 60) : 0;
+        console.log(`${isValid ? '✅' : '❌'} ${key.split('/').pop()} - ${isValid ? `${timeLeft}min left` : 'expired'}`);
+      });
+    } catch (err) {
+      console.error('Error checking cache:', err);
+    }
+  };
+}
 
 MyLibrary.propTypes = {
   onSelect: PropTypes.func,
