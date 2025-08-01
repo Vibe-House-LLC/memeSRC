@@ -136,7 +136,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
   const [totalFiles, setTotalFiles] = useState(0);
-  const [singleFileProgress, setSingleFileProgress] = useState(0);
+  const [overallProgress, setOverallProgress] = useState(0);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -147,27 +147,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const SIGNED_URL_EXPIRATION = 24 * 60 * 60; // seconds
   const CACHE_DURATION = (SIGNED_URL_EXPIRATION - 60 * 60) * 1000; // 1h less
 
-  const getCacheStatus = () => {
-    try {
-      const cacheRaw = localStorage.getItem(CACHE_KEY);
-      if (!cacheRaw) return { count: 0, keys: [] };
-      
-      const cache = JSON.parse(cacheRaw);
-      const now = Date.now();
-      const keys = Object.keys(cache);
-      const validKeys = keys.filter(key => cache[key].expiresAt && cache[key].expiresAt > now);
-      
-      return { 
-        count: validKeys.length, 
-        total: keys.length,
-        keys: validKeys,
-        expired: keys.length - validKeys.length
-      };
-    } catch (err) {
-      console.warn('Error checking cache status', err);
-      return { count: 0, keys: [], error: err.message };
-    }
-  };
 
   const getCachedUrl = async (key) => {
     const cacheRaw = localStorage.getItem(CACHE_KEY);
@@ -488,74 +467,72 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       setUploading(true);
       setUploadedFilesCount(0);
       setTotalFiles(files.length);
-      setSingleFileProgress(0);
-      // Process and upload files with resizing
-      const uploadedImages = await Promise.all(
-        files.map(async (file) => {
-          try {
-            // Resize the image before uploading
-            const resizedBlob = await resizeImage(file);
+      setOverallProgress(0);
+      const uploadedImages = [];
 
-            const timestamp = Date.now();
-            const randomId = Math.random().toString(36).slice(2);
-            const key = `library/${timestamp}-${randomId}-${file.name}`;
+      /* eslint-disable no-await-in-loop */
+      for (let i = 0; i < files.length; i += 1) {
+        const file = files[i];
+        try {
+          // Resize the image before uploading
+          const resizedBlob = await resizeImage(file);
 
-            await Storage.put(key, resizedBlob, {
-              level: 'protected',
-              contentType: resizedBlob.type || file.type,
-              cacheControl: 'max-age=31536000',
-              progressCallback: progress => {
-                if (files.length === 1) {
-                  const percent = Math.round((progress.loaded / progress.total) * 100);
-                  setSingleFileProgress(percent);
-                }
-              }
-            });
+          const timestamp = Date.now();
+          const randomId = Math.random().toString(36).slice(2);
+          const key = `library/${timestamp}-${randomId}-${file.name}`;
 
-            setUploadedFilesCount(prev => prev + 1);
+          await Storage.put(key, resizedBlob, {
+            level: 'protected',
+            contentType: resizedBlob.type || file.type,
+            cacheControl: 'max-age=31536000',
+            progressCallback: progress => {
+              const overall = ((i + progress.loaded / progress.total) / files.length) * 100;
+              setOverallProgress(overall);
+            }
+          });
 
-            // Get the signed URL for immediate display and cache it
-            const url = await getCachedUrl(key);
+          setUploadedFilesCount(prev => prev + 1);
 
-            return {
-              key,
-              url,
-              lastModified: new Date().toISOString(),
-              size: resizedBlob.size
-            };
-          } catch (resizeError) {
-            console.warn('Failed to resize image, uploading original:', file.name, resizeError);
+          // Get the signed URL for immediate display and cache it
+          const url = await getCachedUrl(key);
 
-            // Fallback to original file if resizing fails
-            const timestamp = Date.now();
-            const randomId = Math.random().toString(36).slice(2);
-            const key = `library/${timestamp}-${randomId}-${file.name}`;
+          uploadedImages.push({
+            key,
+            url,
+            lastModified: new Date().toISOString(),
+            size: resizedBlob.size
+          });
+        } catch (resizeError) {
+          console.warn('Failed to resize image, uploading original:', file.name, resizeError);
 
-            await Storage.put(key, file, {
-              level: 'protected',
-              contentType: file.type,
-              cacheControl: 'max-age=31536000',
-              progressCallback: progress => {
-                if (files.length === 1) {
-                  const percent = Math.round((progress.loaded / progress.total) * 100);
-                  setSingleFileProgress(percent);
-                }
-              }
-            });
+          // Fallback to original file if resizing fails
+          const timestamp = Date.now();
+          const randomId = Math.random().toString(36).slice(2);
+          const key = `library/${timestamp}-${randomId}-${file.name}`;
 
-            setUploadedFilesCount(prev => prev + 1);
+          await Storage.put(key, file, {
+            level: 'protected',
+            contentType: file.type,
+            cacheControl: 'max-age=31536000',
+            progressCallback: progress => {
+              const overall = ((i + progress.loaded / progress.total) / files.length) * 100;
+              setOverallProgress(overall);
+            }
+          });
 
-            const url = await getCachedUrl(key);
+          setUploadedFilesCount(prev => prev + 1);
 
-            return {
-              key,
-              url,
-              lastModified: new Date().toISOString(),
-              size: file.size
-            };
-          }
-        })
-      );
+          const url = await getCachedUrl(key);
+
+          uploadedImages.push({
+            key,
+            url,
+            lastModified: new Date().toISOString(),
+            size: file.size
+          });
+        }
+      }
+      /* eslint-enable no-await-in-loop */
 
       console.log('Successfully uploaded files:', uploadedImages.map(r => r.key));
 
@@ -577,7 +554,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       console.error('Error uploading library images', err);
     } finally {
       if (e.target) e.target.value = null;
-      if (files.length === 1) setSingleFileProgress(100);
+      setOverallProgress(100);
       setUploading(false);
     }
   };
@@ -629,20 +606,9 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
       {uploading && (
         <Box sx={{ mb: 2 }}>
-          <LinearProgress
-            variant="determinate"
-            value={
-              totalFiles === 1
-                ? singleFileProgress
-                : totalFiles
-                ? (uploadedFilesCount / totalFiles) * 100
-                : 0
-            }
-          />
+          <LinearProgress variant="determinate" value={overallProgress} />
           <Typography variant="caption" display="block" align="center" sx={{ mt: 0.5 }}>
-            {totalFiles === 1
-              ? `${singleFileProgress}%`
-              : `${uploadedFilesCount}/${totalFiles} uploaded`}
+            {Math.round(overallProgress)}%{totalFiles > 1 ? ` (${uploadedFilesCount}/${totalFiles})` : ''}
           </Typography>
         </Box>
       )}
