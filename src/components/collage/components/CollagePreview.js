@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Menu, MenuItem, Box } from "@mui/material";
+import { Menu, MenuItem, Box } from '@mui/material';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
+import MyLibraryDialog from './MyLibraryDialog';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -40,6 +41,9 @@ const CollagePreview = ({
   isCreatingCollage = false,
 }) => {
   const fileInputRef = useRef(null);
+
+  // State for library dialog
+  const [libraryOpen, setLibraryOpen] = useState(false);
   
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
@@ -49,12 +53,12 @@ const CollagePreview = ({
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
 
-  // Handle panel click to trigger file upload
+  // Handle panel click to open library dialog
   const handlePanelClick = (index, panelId) => {
-    debugLog(`Panel clicked: index=${index}, panelId=${panelId}`); // Debug log
+    debugLog(`Panel clicked: index=${index}, panelId=${panelId}`);
     setActivePanelIndex(index);
     setActivePanelId(panelId);
-    fileInputRef.current?.click();
+    setLibraryOpen(true);
   };
 
   // Open menu for a panel
@@ -191,6 +195,40 @@ const CollagePreview = ({
     }
   };
 
+  // Handle selecting images from MyLibrary dialog
+  const handleLibrarySelect = (images) => {
+    if (!images || images.length === 0 || activePanelIndex === null) {
+      setLibraryOpen(false);
+      return;
+    }
+
+    let clickedPanelId;
+
+    if (activePanelId) {
+      clickedPanelId = activePanelId;
+    } else {
+      try {
+        const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
+        const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
+        clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+      } catch (error) {
+        clickedPanelId = `panel-${activePanelIndex + 1}`;
+      }
+    }
+
+    const currentLength = selectedImages.length;
+    addMultipleImages(images);
+
+    if (images.length === 1) {
+      const newMapping = { ...panelImageMapping, [clickedPanelId]: currentLength };
+      updatePanelImageMapping(newMapping);
+    }
+
+    setActivePanelIndex(null);
+    setActivePanelId(null);
+    setLibraryOpen(false);
+  };
+
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -233,6 +271,12 @@ const CollagePreview = ({
       >
         <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
       </Menu>
+
+      <MyLibraryDialog
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onSelect={handleLibrarySelect}
+      />
     </Box>
   );
 };
