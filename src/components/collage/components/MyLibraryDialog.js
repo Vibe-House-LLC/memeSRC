@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Dialog, DialogContent, DialogTitle, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import MyLibrary from './MyLibrary';
+import ImageLibrary from '../../library/ImageLibrary';
 
 const MyLibraryDialog = ({ open, onClose, onSelect, refreshTrigger }) => {
   const theme = useTheme();
@@ -18,7 +18,7 @@ const MyLibraryDialog = ({ open, onClose, onSelect, refreshTrigger }) => {
     >
       <DialogTitle>My Library</DialogTitle>
       <DialogContent dividers>
-        <MyLibrary
+        <ImageLibrary
           onSelect={(images) => {
             if (onSelect) onSelect(images);
             onClose();
