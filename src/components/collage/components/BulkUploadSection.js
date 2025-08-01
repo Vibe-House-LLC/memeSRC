@@ -20,7 +20,7 @@ import {
   Refresh,
   Clear
 } from '@mui/icons-material';
-import MyLibrary from './MyLibrary';
+import ImageLibrary from '../../library/ImageLibrary';
 import { UserContext } from '../../../UserContext';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
@@ -560,7 +560,7 @@ const BulkUploadSection = ({
     }
   };
 
-  // Handler for selecting images from MyLibrary
+  // Handler for selecting images from ImageLibrary
   const handleLibrarySelect = (urls) => {
     if (!urls || urls.length === 0) return;
 
@@ -878,7 +878,7 @@ const BulkUploadSection = ({
 
       {/* User image library below uploader */}
       {isAdmin && (
-        <MyLibrary onSelect={handleLibrarySelect} refreshTrigger={libraryRefreshTrigger} />
+        <ImageLibrary onSelect={handleLibrarySelect} refreshTrigger={libraryRefreshTrigger} />
       )}
 
       {/* Toast Notification */}

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Menu, MenuItem, Box } from '@mui/material';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
-import MyLibraryDialog from './MyLibraryDialog';
+import ImageLibraryDialog from '../../library/ImageLibraryDialog';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -272,7 +272,7 @@ const CollagePreview = ({
         <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
       </Menu>
 
-      <MyLibraryDialog
+      <ImageLibraryDialog
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
         onSelect={handleLibrarySelect}

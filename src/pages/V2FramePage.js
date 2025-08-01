@@ -53,7 +53,7 @@ import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import { useCollage } from '../contexts/CollageContext';
-import { saveImageToLibrary } from '../components/collage/components/MyLibrary';
+import { saveImageToLibrary } from '../components/library/libraryUtils';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
