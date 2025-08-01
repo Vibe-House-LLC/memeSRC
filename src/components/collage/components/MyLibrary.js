@@ -15,6 +15,7 @@ import {
   DialogActions,
   IconButton,
   Collapse,
+  LinearProgress,
 } from '@mui/material';
 import { Add, CheckCircle, Delete, Close, Dashboard } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
@@ -132,6 +133,10 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [deleting, setDeleting] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [singleFileProgress, setSingleFileProgress] = useState(0);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -480,26 +485,38 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     if (!files.length) return;
 
     try {
+      setUploading(true);
+      setUploadedFilesCount(0);
+      setTotalFiles(files.length);
+      setSingleFileProgress(0);
       // Process and upload files with resizing
       const uploadedImages = await Promise.all(
         files.map(async (file) => {
           try {
             // Resize the image before uploading
             const resizedBlob = await resizeImage(file);
-            
+
             const timestamp = Date.now();
             const randomId = Math.random().toString(36).slice(2);
             const key = `library/${timestamp}-${randomId}-${file.name}`;
-            
+
             await Storage.put(key, resizedBlob, {
               level: 'protected',
               contentType: resizedBlob.type || file.type,
               cacheControl: 'max-age=31536000',
+              progressCallback: progress => {
+                if (files.length === 1) {
+                  const percent = Math.round((progress.loaded / progress.total) * 100);
+                  setSingleFileProgress(percent);
+                }
+              }
             });
-            
+
+            setUploadedFilesCount(prev => prev + 1);
+
             // Get the signed URL for immediate display and cache it
             const url = await getCachedUrl(key);
-            
+
             return {
               key,
               url,
@@ -508,20 +525,28 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
             };
           } catch (resizeError) {
             console.warn('Failed to resize image, uploading original:', file.name, resizeError);
-            
+
             // Fallback to original file if resizing fails
             const timestamp = Date.now();
             const randomId = Math.random().toString(36).slice(2);
             const key = `library/${timestamp}-${randomId}-${file.name}`;
-            
+
             await Storage.put(key, file, {
               level: 'protected',
               contentType: file.type,
               cacheControl: 'max-age=31536000',
+              progressCallback: progress => {
+                if (files.length === 1) {
+                  const percent = Math.round((progress.loaded / progress.total) * 100);
+                  setSingleFileProgress(percent);
+                }
+              }
             });
-            
+
+            setUploadedFilesCount(prev => prev + 1);
+
             const url = await getCachedUrl(key);
-            
+
             return {
               key,
               url,
@@ -533,6 +558,8 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       );
 
       console.log('Successfully uploaded files:', uploadedImages.map(r => r.key));
+
+      setUploadedFilesCount(files.length);
 
       // Add uploaded images to the beginning of the current images list for immediate display
       setImages(prev => [...uploadedImages, ...prev]);
@@ -550,6 +577,8 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       console.error('Error uploading library images', err);
     } finally {
       if (e.target) e.target.value = null;
+      if (files.length === 1) setSingleFileProgress(100);
+      setUploading(false);
     }
   };
 
@@ -597,9 +626,29 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           sx={{ mr: 0 }}
         />
       </Box>
-      
+
+      {uploading && (
+        <Box sx={{ mb: 2 }}>
+          <LinearProgress
+            variant="determinate"
+            value={
+              totalFiles === 1
+                ? singleFileProgress
+                : totalFiles
+                ? (uploadedFilesCount / totalFiles) * 100
+                : 0
+            }
+          />
+          <Typography variant="caption" display="block" align="center" sx={{ mt: 0.5 }}>
+            {totalFiles === 1
+              ? `${singleFileProgress}%`
+              : `${uploadedFilesCount}/${totalFiles} uploaded`}
+          </Typography>
+        </Box>
+      )}
+
       {/* Action buttons row */}
-      <Collapse 
+      <Collapse
         in={selectMultipleMode && selected.length > 0}
         timeout={300}
         sx={{
@@ -649,7 +698,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       >
         <ImageListItem key="upload">
           <Box
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !uploading && fileInputRef.current?.click()}
             sx={{
               height: '100%',
               display: 'flex',
@@ -658,11 +707,11 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
               border: '1px dashed',
               borderColor: 'divider',
               backgroundColor: 'background.paper',
-              cursor: 'pointer',
+              cursor: uploading ? 'default' : 'pointer',
               transition: 'all 0.2s',
               '&:hover': {
-                backgroundColor: 'action.hover',
-                borderColor: 'primary.main',
+                backgroundColor: uploading ? 'background.paper' : 'action.hover',
+                borderColor: uploading ? 'divider' : 'primary.main',
               }
             }}
           >
@@ -742,6 +791,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         style={{ display: 'none' }}
         ref={fileInputRef}
         onChange={handleFileChange}
+        disabled={uploading}
       />
 
       {/* Image Preview Modal */}
