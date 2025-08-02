@@ -16,6 +16,7 @@ import {
   IconButton,
   Collapse,
   CircularProgress,
+  LinearProgress,
 } from '@mui/material';
 import { Add, CheckCircle, Delete, Close, Dashboard } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
@@ -138,7 +139,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [totalFiles, setTotalFiles] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
   const [imageLoaded, setImageLoaded] = useState({});
-  const progressRef = useRef({});
   const uploadsRef = useRef({});
   const MAX_CONCURRENT_UPLOADS = 3;
 
@@ -471,13 +471,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     setImageLoaded(prev => ({ ...prev, [key]: true }));
   };
 
-  const updateProgress = (id, progress) => {
-    progressRef.current[id] = progress;
-    const total = Object.values(progressRef.current).reduce((a, b) => a + b, 0);
-    setOverallProgress(total / totalFiles);
-    setImages(prev => prev.map(img => (img.id === id ? { ...img, progress } : img)));
-  };
-
   const finalizeUpload = (id, data) => {
     setImages(prev => prev.map(img => {
       if (img.id === id) {
@@ -487,8 +480,11 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       return img;
     }));
     setImageLoaded(prev => ({ ...prev, [data.key]: false }));
-    progressRef.current[id] = 100;
-    setUploadedFilesCount(prev => prev + 1);
+    setUploadedFilesCount(prev => {
+      const newCount = prev + 1;
+      setOverallProgress((newCount / totalFiles) * 100);
+      return newCount;
+    });
   };
 
   const uploadSingle = async (file, id) => {
@@ -509,10 +505,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         level: 'protected',
         contentType: blob.type || file.type,
         cacheControl: 'max-age=31536000',
-        progressCallback: progress => {
-          const percent = (progress.loaded / progress.total) * 100;
-          updateProgress(id, percent);
-        }
       });
 
       const url = await getCachedUrl(key);
@@ -525,7 +517,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       setLoadedCount(prev => prev + 1);
     } catch (err) {
       console.error('Error uploading library image', err);
-      updateProgress(id, 100);
     }
   };
 
@@ -560,16 +551,11 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     const placeholders = files.map((file) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       uploadsRef.current[id] = file;
-      return { id, previewUrl: URL.createObjectURL(file), progress: 0 };
+      return { id, previewUrl: URL.createObjectURL(file) };
     });
 
-    progressRef.current = placeholders.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
     setImages(prev => [...placeholders, ...prev]);
-    setImageLoaded(prev => ({
-      ...prev,
-      ...Object.fromEntries(placeholders.map(ph => [ph.id, true]))
-    }));
-
+    
     await processUploads(placeholders);
 
     console.log('Successfully uploaded files');
@@ -624,10 +610,10 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       </Box>
 
       {uploading && (
-        <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <CircularProgress variant="determinate" value={overallProgress} />
+        <Box sx={{ mb: 2 }}>
+          <LinearProgress variant="determinate" value={overallProgress} />
           <Typography variant="caption" align="center" sx={{ mt: 0.5 }}>
-            {Math.round(overallProgress)}%{totalFiles > 1 ? ` (${uploadedFilesCount}/${totalFiles})` : ''}
+            {uploadedFilesCount}/{totalFiles} uploaded
           </Typography>
         </Box>
       )}
@@ -716,23 +702,27 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                         objectFit: 'cover',
                         width: '100%',
                         height: '100%',
-                        opacity: 0.6,
                         display: 'block'
                       }}
                     />
                   ) : (
                     <Box sx={{ width: '100%', height: '100%', bgcolor: 'action.hover' }} />
                   )}
-                  <CircularProgress
-                    variant={img.progress > 0 ? 'determinate' : 'indeterminate'}
-                    value={img.progress}
+                  <Box
                     sx={{
                       position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)'
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      bgcolor: 'action.hover',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
-                  />
+                  >
+                    <CircularProgress size={24} />
+                  </Box>
                 </Box>
               </ImageListItem>
             );
