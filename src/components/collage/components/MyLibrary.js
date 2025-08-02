@@ -1106,9 +1106,19 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
               }}
             >
               <Button
-                onClick={() => toggleFavorite(previewImage?.key)}
-                variant={favorites[previewImage?.key] ? 'contained' : 'outlined'}
-                startIcon={favorites[previewImage?.key] ? <Star /> : <StarBorder />}
+                onClick={() => {
+                  if (previewImage?.key) {
+                    toggleFavorite(previewImage.key);
+                  }
+                }}
+                variant={
+                  previewImage?.key && favorites[previewImage.key]
+                    ? 'contained'
+                    : 'outlined'
+                }
+                startIcon={
+                  previewImage?.key && favorites[previewImage.key] ? <Star /> : <StarBorder />
+                }
                 size="large"
                 sx={{
                   minHeight: 48,
