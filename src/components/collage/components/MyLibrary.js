@@ -15,6 +15,7 @@ import {
   DialogActions,
   IconButton,
   Collapse,
+  CircularProgress,
 } from '@mui/material';
 import { Add, CheckCircle, Delete, Close, Dashboard } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
@@ -132,6 +133,14 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [deleting, setDeleting] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [overallProgress, setOverallProgress] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState({});
+  const progressRef = useRef({});
+  const uploadsRef = useRef({});
+  const MAX_CONCURRENT_UPLOADS = 3;
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -142,27 +151,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const SIGNED_URL_EXPIRATION = 24 * 60 * 60; // seconds
   const CACHE_DURATION = (SIGNED_URL_EXPIRATION - 60 * 60) * 1000; // 1h less
 
-  const getCacheStatus = () => {
-    try {
-      const cacheRaw = localStorage.getItem(CACHE_KEY);
-      if (!cacheRaw) return { count: 0, keys: [] };
-      
-      const cache = JSON.parse(cacheRaw);
-      const now = Date.now();
-      const keys = Object.keys(cache);
-      const validKeys = keys.filter(key => cache[key].expiresAt && cache[key].expiresAt > now);
-      
-      return { 
-        count: validKeys.length, 
-        total: keys.length,
-        keys: validKeys,
-        expired: keys.length - validKeys.length
-      };
-    } catch (err) {
-      console.warn('Error checking cache status', err);
-      return { count: 0, keys: [], error: err.message };
-    }
-  };
 
   const getCachedUrl = async (key) => {
     const cacheRaw = localStorage.getItem(CACHE_KEY);
@@ -273,8 +261,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           return { key: item.key, url };
         })
       );
-      
-      setImages(prev => append ? [...prev, ...imageData] : imageData);
+
+      setImages(prev => (append ? [...prev, ...imageData] : imageData));
+      setImageLoaded(prev => ({
+        ...prev,
+        ...Object.fromEntries(imageData.map(img => [img.key, false]))
+      }));
       setLoadedCount(endIndex);
     } catch (err) {
       console.error('Error loading library images', err);
@@ -475,82 +467,115 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     }
   };
 
+  const handleImageLoad = (key) => {
+    setImageLoaded(prev => ({ ...prev, [key]: true }));
+  };
+
+  const updateProgress = (id, progress) => {
+    progressRef.current[id] = progress;
+    const total = Object.values(progressRef.current).reduce((a, b) => a + b, 0);
+    setOverallProgress(total / totalFiles);
+    setImages(prev => prev.map(img => (img.id === id ? { ...img, progress } : img)));
+  };
+
+  const finalizeUpload = (id, data) => {
+    setImages(prev => prev.map(img => {
+      if (img.id === id) {
+        if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
+        return { key: data.key, url: data.url };
+      }
+      return img;
+    }));
+    setImageLoaded(prev => ({ ...prev, [data.key]: false }));
+    progressRef.current[id] = 100;
+    setUploadedFilesCount(prev => prev + 1);
+  };
+
+  const uploadSingle = async (file, id) => {
+    try {
+      let blob;
+      try {
+        blob = await resizeImage(file);
+      } catch (err) {
+        console.warn('Failed to resize image, uploading original:', file.name, err);
+        blob = file;
+      }
+
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).slice(2);
+      const key = `library/${timestamp}-${randomId}-${file.name}`;
+
+      await Storage.put(key, blob, {
+        level: 'protected',
+        contentType: blob.type || file.type,
+        cacheControl: 'max-age=31536000',
+        progressCallback: progress => {
+          const percent = (progress.loaded / progress.total) * 100;
+          updateProgress(id, percent);
+        }
+      });
+
+      const url = await getCachedUrl(key);
+      finalizeUpload(id, { key, url, size: blob.size, lastModified: new Date().toISOString() });
+
+      setAllImageKeys(prev => [
+        { key, lastModified: new Date().toISOString(), size: blob.size },
+        ...prev
+      ]);
+      setLoadedCount(prev => prev + 1);
+    } catch (err) {
+      console.error('Error uploading library image', err);
+      updateProgress(id, 100);
+    }
+  };
+
+  const processUploads = async (placeholders) => {
+    let index = 0;
+    /* eslint-disable no-await-in-loop */
+    const worker = async () => {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const current = index;
+        index += 1;
+        if (current >= placeholders.length) break;
+        const ph = placeholders[current];
+        const file = uploadsRef.current[ph.id];
+        await uploadSingle(file, ph.id);
+      }
+    };
+    /* eslint-enable no-await-in-loop */
+    const workers = Array.from({ length: Math.min(MAX_CONCURRENT_UPLOADS, placeholders.length) }, worker);
+    await Promise.all(workers);
+  };
+
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    try {
-      // Process and upload files with resizing
-      const uploadedImages = await Promise.all(
-        files.map(async (file) => {
-          try {
-            // Resize the image before uploading
-            const resizedBlob = await resizeImage(file);
-            
-            const timestamp = Date.now();
-            const randomId = Math.random().toString(36).slice(2);
-            const key = `library/${timestamp}-${randomId}-${file.name}`;
-            
-            await Storage.put(key, resizedBlob, {
-              level: 'protected',
-              contentType: resizedBlob.type || file.type,
-              cacheControl: 'max-age=31536000',
-            });
-            
-            // Get the signed URL for immediate display and cache it
-            const url = await getCachedUrl(key);
-            
-            return {
-              key,
-              url,
-              lastModified: new Date().toISOString(),
-              size: resizedBlob.size
-            };
-          } catch (resizeError) {
-            console.warn('Failed to resize image, uploading original:', file.name, resizeError);
-            
-            // Fallback to original file if resizing fails
-            const timestamp = Date.now();
-            const randomId = Math.random().toString(36).slice(2);
-            const key = `library/${timestamp}-${randomId}-${file.name}`;
-            
-            await Storage.put(key, file, {
-              level: 'protected',
-              contentType: file.type,
-              cacheControl: 'max-age=31536000',
-            });
-            
-            const url = await getCachedUrl(key);
-            
-            return {
-              key,
-              url,
-              lastModified: new Date().toISOString(),
-              size: file.size
-            };
-          }
-        })
-      );
+    setUploading(true);
+    setUploadedFilesCount(0);
+    setTotalFiles(files.length);
+    setOverallProgress(0);
 
-      console.log('Successfully uploaded files:', uploadedImages.map(r => r.key));
+    const placeholders = files.map((file) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      uploadsRef.current[id] = file;
+      return { id, previewUrl: URL.createObjectURL(file), progress: 0 };
+    });
 
-      // Add uploaded images to the beginning of the current images list for immediate display
-      setImages(prev => [...uploadedImages, ...prev]);
-      
-      // Update allImageKeys to include the new items
-      setAllImageKeys(prev => [
-        ...uploadedImages.map(img => ({ key: img.key, lastModified: img.lastModified, size: img.size })),
-        ...prev
-      ]);
-      
-      // Update loaded count
-      setLoadedCount(prev => prev + uploadedImages.length);
-      
-    } catch (err) {
-      console.error('Error uploading library images', err);
-    } finally {
-      if (e.target) e.target.value = null;
-    }
+    progressRef.current = placeholders.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
+    setImages(prev => [...placeholders, ...prev]);
+    setImageLoaded(prev => ({
+      ...prev,
+      ...Object.fromEntries(placeholders.map(ph => [ph.id, true]))
+    }));
+
+    await processUploads(placeholders);
+
+    console.log('Successfully uploaded files');
+    setOverallProgress(100);
+    setUploading(false);
+    if (e.target) e.target.value = null;
   };
 
   const gap = 2; // Gap between items
@@ -597,9 +622,18 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           sx={{ mr: 0 }}
         />
       </Box>
-      
+
+      {uploading && (
+        <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <CircularProgress variant="determinate" value={overallProgress} />
+          <Typography variant="caption" align="center" sx={{ mt: 0.5 }}>
+            {Math.round(overallProgress)}%{totalFiles > 1 ? ` (${uploadedFilesCount}/${totalFiles})` : ''}
+          </Typography>
+        </Box>
+      )}
+
       {/* Action buttons row */}
-      <Collapse 
+      <Collapse
         in={selectMultipleMode && selected.length > 0}
         timeout={300}
         sx={{
@@ -649,7 +683,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       >
         <ImageListItem key="upload">
           <Box
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !uploading && fileInputRef.current?.click()}
             sx={{
               height: '100%',
               display: 'flex',
@@ -658,11 +692,11 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
               border: '1px dashed',
               borderColor: 'divider',
               backgroundColor: 'background.paper',
-              cursor: 'pointer',
+              cursor: uploading ? 'default' : 'pointer',
               transition: 'all 0.2s',
               '&:hover': {
-                backgroundColor: 'action.hover',
-                borderColor: 'primary.main',
+                backgroundColor: uploading ? 'background.paper' : 'action.hover',
+                borderColor: uploading ? 'divider' : 'primary.main',
               }
             }}
           >
@@ -670,13 +704,47 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           </Box>
         </ImageListItem>
         {images.map((img) => {
+          if (!img.key) {
+            return (
+              <ImageListItem key={img.id}>
+                <Box sx={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
+                  {img.previewUrl ? (
+                    <img
+                      src={img.previewUrl}
+                      alt="uploading"
+                      style={{
+                        objectFit: 'cover',
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0.6,
+                        display: 'block'
+                      }}
+                    />
+                  ) : (
+                    <Box sx={{ width: '100%', height: '100%', bgcolor: 'action.hover' }} />
+                  )}
+                  <CircularProgress
+                    variant={img.progress > 0 ? 'determinate' : 'indeterminate'}
+                    value={img.progress}
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  />
+                </Box>
+              </ImageListItem>
+            );
+          }
           const isSelected = selected.includes(img.key);
+          const loaded = imageLoaded[img.key];
           return (
             <ImageListItem key={img.key} sx={{ cursor: 'pointer' }}>
               <Box
                 onClick={() => handleImageClick(img)}
-                sx={{ 
-                  height: '100%', 
+                sx={{
+                  height: '100%',
                   position: 'relative',
                   overflow: 'hidden',
                   transition: 'all 0.15s ease',
@@ -686,14 +754,32 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                   }
                 }}
               >
+                {!loaded && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      bgcolor: 'action.hover',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <CircularProgress size={24} />
+                  </Box>
+                )}
                 <img
                   src={img.url}
                   alt="library"
-                  style={{ 
-                    objectFit: 'cover', 
-                    width: '100%', 
+                  onLoad={() => handleImageLoad(img.key)}
+                  style={{
+                    objectFit: 'cover',
+                    width: '100%',
                     height: '100%',
-                    display: 'block'
+                    display: loaded ? 'block' : 'none'
                   }}
                 />
                 {selectMultipleMode && isSelected && (
@@ -742,6 +828,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         style={{ display: 'none' }}
         ref={fileInputRef}
         onChange={handleFileChange}
+        disabled={uploading}
       />
 
       {/* Image Preview Modal */}
