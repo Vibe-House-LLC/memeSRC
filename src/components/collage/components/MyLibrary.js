@@ -184,6 +184,18 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     return [...placeholders, ...existing];
   };
 
+  const favoritesRef = useRef(favorites);
+
+  const persistFavorites = (updated) => {
+    favoritesRef.current = updated;
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated)); // TODO: Persist to user's GraphQL data
+    } catch (err) {
+      console.warn('Error storing favorites', err);
+    }
+    return updated;
+  };
+
   const toggleFavorite = (key) => {
     setFavorites(prev => {
       const updated = { ...prev };
@@ -192,13 +204,13 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       } else {
         updated[key] = Date.now();
       }
-      return updated;
+      return persistFavorites(updated);
     });
+    setImages(prev => sortLoadedImages(prev, favoritesRef.current));
   };
 
   useEffect(() => {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)); // TODO: Persist to user's GraphQL data
-    setImages(prev => sortLoadedImages(prev, favorites));
+    favoritesRef.current = favorites;
   }, [favorites]);
 
 
@@ -337,7 +349,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
       setImages(prev => {
         const newImages = append ? [...prev, ...imageData] : imageData;
-        return sortLoadedImages(newImages, favorites);
+        return sortLoadedImages(newImages, favoritesRef.current);
       });
       setImageLoaded(prev => ({
         ...prev,
@@ -457,7 +469,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       setFavorites(prev => {
         const updated = { ...prev };
         delete updated[previewImage.key];
-        return updated;
+        return persistFavorites(updated);
       });
       setImages(prev => prev.filter(img => img.key !== previewImage.key));
       setAllImageKeys(prev => prev.filter(item => item.key !== previewImage.key));
@@ -488,7 +500,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       setFavorites(prev => {
         const updated = { ...prev };
         selected.forEach(key => { delete updated[key]; });
-        return updated;
+        return persistFavorites(updated);
       });
       setImages(prev => prev.filter(img => !selected.includes(img.key)));
       setAllImageKeys(prev => prev.filter(item => !selected.includes(item.key)));
@@ -663,7 +675,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     });
 
     progressRef.current = placeholders.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
-    setImages(prev => sortLoadedImages([...placeholders, ...prev], favorites));
+    setImages(prev => sortLoadedImages([...placeholders, ...prev], favoritesRef.current));
     setImageLoaded(prev => ({
       ...prev,
       ...Object.fromEntries(placeholders.map(ph => [ph.id, true]))
