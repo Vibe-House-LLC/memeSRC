@@ -1009,19 +1009,24 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
             </Typography>
           </Box>
           <IconButton 
-            onClick={handleClosePreview}
+            onClick={handleDeleteImage}
+            disabled={deleting}
             size={isMobile ? "medium" : "large"}
             sx={{
-              color: 'text.secondary',
-              bgcolor: 'action.hover',
+              color: 'error.main',
+              bgcolor: 'error.lighter',
               '&:hover': {
-                bgcolor: 'action.selected',
+                bgcolor: 'error.light',
                 transform: 'scale(1.1)',
+              },
+              '&:disabled': {
+                color: 'text.disabled',
+                bgcolor: 'action.disabledBackground',
               },
               transition: 'all 0.2s ease-in-out',
             }}
           >
-            <Close fontSize={isMobile ? "medium" : "large"} />
+            <Delete fontSize={isMobile ? "medium" : "large"} />
           </IconButton>
         </Box>
 
@@ -1084,89 +1089,148 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           <Box
             sx={{
               display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              gap: isMobile ? 1.5 : 2,
+              flexDirection: 'column',
+              gap: 2,
               justifyContent: 'center',
               alignItems: 'stretch',
+              maxWidth: isMobile ? '100%' : '600px',
+              margin: '0 auto',
             }}
           >
-            <Button
-              onClick={() => toggleFavorite(previewImage?.key)}
-              color={favorites[previewImage?.key] ? 'warning' : 'primary'}
-              variant={favorites[previewImage?.key] ? 'contained' : 'outlined'}
-              startIcon={favorites[previewImage?.key] ? <Star /> : <StarBorder />}
-              size={isMobile ? "large" : "medium"}
+            {/* Primary actions row */}
+            <Box
               sx={{
-                minHeight: isMobile ? 48 : 40,
-                flex: isMobile ? 1 : 'none',
-                minWidth: isMobile ? 'auto' : '160px',
-                borderRadius: 2,
-                textTransform: 'none',
-                fontSize: isMobile ? '0.95rem' : '0.875rem',
-                fontWeight: 600,
-                '&:hover': {
-                  transform: 'translateY(-1px)',
-                  boxShadow: 4,
-                },
-                transition: 'all 0.2s ease-in-out',
+                display: 'flex',
+                gap: 1.5,
+                justifyContent: 'center',
               }}
             >
-              {favorites[previewImage?.key] 
-                ? (isMobile ? 'Favorited' : 'Remove Favorite')
-                : (isMobile ? 'Add Favorite' : 'Add Favorite')
-              }
-            </Button>
-            
-            <Button
-              onClick={handleUseInCollage}
-              color="primary"
-              variant="contained"
-              startIcon={<Dashboard />}
-              size={isMobile ? "large" : "medium"}
-              sx={{
-                minHeight: isMobile ? 48 : 40,
-                flex: isMobile ? 1 : 'none',
-                minWidth: isMobile ? 'auto' : '140px',
-                borderRadius: 2,
-                textTransform: 'none',
-                fontSize: isMobile ? '0.95rem' : '0.875rem',
-                fontWeight: 600,
-                '&:hover': {
-                  transform: 'translateY(-1px)',
-                  boxShadow: 6,
-                },
-                transition: 'all 0.2s ease-in-out',
-              }}
-            >
-              {isMobile ? 'Use in Collage' : 'Use in Collage'}
-            </Button>
-            
-            <Button
-              onClick={handleDeleteImage}
-              color="error"
-              variant="outlined"
-              startIcon={<Delete />}
-              disabled={deleting}
-              size={isMobile ? "large" : "medium"}
-              sx={{
-                minHeight: isMobile ? 48 : 40,
-                flex: isMobile ? 1 : 'none',
-                minWidth: isMobile ? 'auto' : '120px',
-                borderRadius: 2,
-                textTransform: 'none',
-                fontSize: isMobile ? '0.95rem' : '0.875rem',
-                fontWeight: 600,
-                '&:hover': {
-                  transform: 'translateY(-1px)',
-                  boxShadow: 4,
-                  bgcolor: 'error.main',
-                  color: 'white',
-                },
-                transition: 'all 0.2s ease-in-out',
-              }}
-            >
-              {deleting ? (isMobile ? 'Deleting...' : 'Deleting...') : (isMobile ? 'Delete' : 'Delete')}
-            </Button>
+              <Button
+                onClick={() => toggleFavorite(previewImage?.key)}
+                variant={favorites[previewImage?.key] ? 'contained' : 'outlined'}
+                startIcon={favorites[previewImage?.key] ? <Star /> : <StarBorder />}
+                size="large"
+                sx={{
+                  minHeight: 48,
+                  flex: 1,
+                  borderRadius: 3,
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  // Explicit colors for dark mode compatibility
+                  ...(favorites[previewImage?.key] ? {
+                    bgcolor: '#FFB726',
+                    color: '#000',
+                    borderColor: '#FFB726',
+                    '&:hover': {
+                      bgcolor: '#FF9800',
+                      borderColor: '#FF9800',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 4px 12px rgba(255, 183, 38, 0.4)',
+                    },
+                  } : {
+                    color: '#FFB726',
+                    borderColor: '#FFB726',
+                    bgcolor: 'transparent',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 183, 38, 0.1)',
+                      borderColor: '#FF9800',
+                      transform: 'translateY(-1px)',
+                      boxShadow: 4,
+                    },
+                  }),
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                {favorites[previewImage?.key] ? 'Unfavorite' : 'Favorite'}
+              </Button>
+
+              <Button
+                onClick={handleUseInCollage}
+                variant="contained"
+                startIcon={<Add />}
+                size="large"
+                sx={{
+                  minHeight: 48,
+                  flex: 1,
+                  borderRadius: 3,
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                  border: '1px solid #8b5cc7',
+                  boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                  color: '#fff',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                    boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
+                    transform: 'translateY(-1px)',
+                  },
+                  transition: 'all 0.3s ease-in-out',
+                }}
+              >
+                Collage
+              </Button>
+            </Box>
+
+            {/* Close button - full width on mobile, part of row on desktop */}
+            {isMobile ? (
+              <Button
+                onClick={handleClosePreview}
+                variant="outlined"
+                size="large"
+                sx={{
+                  minHeight: 48,
+                  width: '100%',
+                  borderRadius: 3,
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  color: '#9E9E9E',
+                  borderColor: '#424242',
+                  bgcolor: 'transparent',
+                  '&:hover': {
+                    color: '#FFFFFF',
+                    borderColor: '#666666',
+                    bgcolor: 'rgba(158, 158, 158, 0.1)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: 4,
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                Close
+              </Button>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  onClick={handleClosePreview}
+                  variant="outlined"
+                  size="large"
+                  sx={{
+                    minHeight: 48,
+                    minWidth: 120,
+                    borderRadius: 3,
+                    textTransform: 'none',
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    color: '#9E9E9E',
+                    borderColor: '#424242',
+                    bgcolor: 'transparent',
+                    '&:hover': {
+                      color: '#FFFFFF',
+                      borderColor: '#666666',
+                      bgcolor: 'rgba(158, 158, 158, 0.1)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: 4,
+                    },
+                    transition: 'all 0.2s ease-in-out',
+                  }}
+                >
+                  Close
+                </Button>
+              </Box>
+            )}
           </Box>
         </Box>
       </Dialog>
