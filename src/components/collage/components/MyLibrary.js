@@ -16,6 +16,7 @@ import {
   IconButton,
   Collapse,
   LinearProgress,
+  CircularProgress,
 } from '@mui/material';
 import { Add, CheckCircle, Delete, Close, Dashboard } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
@@ -137,6 +138,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
   const [totalFiles, setTotalFiles] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState({});
   const progressRef = useRef({});
   const uploadsRef = useRef({});
   const MAX_CONCURRENT_UPLOADS = 3;
@@ -260,8 +262,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           return { key: item.key, url };
         })
       );
-      
-      setImages(prev => append ? [...prev, ...imageData] : imageData);
+
+      setImages(prev => (append ? [...prev, ...imageData] : imageData));
+      setImageLoaded(prev => ({
+        ...prev,
+        ...Object.fromEntries(imageData.map(img => [img.key, false]))
+      }));
       setLoadedCount(endIndex);
     } catch (err) {
       console.error('Error loading library images', err);
@@ -462,6 +468,10 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     }
   };
 
+  const handleImageLoad = (key) => {
+    setImageLoaded(prev => ({ ...prev, [key]: true }));
+  };
+
   const updateProgress = (id, progress) => {
     progressRef.current[id] = progress;
     const total = Object.values(progressRef.current).reduce((a, b) => a + b, 0);
@@ -477,6 +487,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       }
       return img;
     }));
+    setImageLoaded(prev => ({ ...prev, [data.key]: false }));
     progressRef.current[id] = 100;
     setUploadedFilesCount(prev => prev + 1);
   };
@@ -555,6 +566,10 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
     progressRef.current = placeholders.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
     setImages(prev => [...placeholders, ...prev]);
+    setImageLoaded(prev => ({
+      ...prev,
+      ...Object.fromEntries(placeholders.map(ph => [ph.id, true]))
+    }));
 
     await processUploads(placeholders);
 
@@ -719,6 +734,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
             );
           }
           const isSelected = selected.includes(img.key);
+          const loaded = imageLoaded[img.key];
           return (
             <ImageListItem key={img.key} sx={{ cursor: 'pointer' }}>
               <Box
@@ -734,14 +750,32 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                   }
                 }}
               >
+                {!loaded && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      bgcolor: 'action.hover',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <CircularProgress size={24} />
+                  </Box>
+                )}
                 <img
                   src={img.url}
                   alt="library"
+                  onLoad={() => handleImageLoad(img.key)}
                   style={{
                     objectFit: 'cover',
                     width: '100%',
                     height: '100%',
-                    display: 'block'
+                    display: loaded ? 'block' : 'none'
                   }}
                 />
                 {selectMultipleMode && isSelected && (
