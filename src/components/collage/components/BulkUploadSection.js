@@ -616,10 +616,11 @@ const BulkUploadSection = ({
       }
     }
 
-    // Apply mapping immediately before component unmounts
-    updatePanelImageMapping(newMapping);
-
+    // Add images first so mapping references valid indices
     addMultipleImages(urls);
+
+    // Update mapping after images are added
+    updatePanelImageMapping(newMapping);
   };
 
   // Generate panel list data

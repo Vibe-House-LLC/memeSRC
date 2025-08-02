@@ -527,15 +527,13 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   };
 
   const processUploads = async (placeholders) => {
-    let index = 0;
+    const queue = [...placeholders];
     /* eslint-disable no-await-in-loop */
     const worker = async () => {
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const current = index;
-        index += 1;
-        if (current >= placeholders.length) break;
-        const ph = placeholders[current];
+        const ph = queue.shift();
+        if (!ph) break;
         const file = uploadsRef.current[ph.id];
         await uploadSingle(file, ph.id);
       }
