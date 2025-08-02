@@ -10,9 +10,6 @@ import {
   Switch,
   FormControlLabel,
   Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   IconButton,
   Collapse,
   LinearProgress,
@@ -22,8 +19,6 @@ import {
   Add,
   CheckCircle,
   Delete,
-  Close,
-  Dashboard,
   Star,
   StarBorder,
 } from '@mui/icons-material';
