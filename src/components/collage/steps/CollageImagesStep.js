@@ -98,16 +98,16 @@ const CollageImagesStep = ({
   return (
     <Box sx={{ my: isMobile ? 0 : 0.25 }}>
       {/* Layout Preview */}
-      <Box sx={{ 
+      <Box sx={{
         p: isMobile ? 1.5 : 1.5,
         mb: isMobile ? 1.5 : 1.5,
-        borderRadius: 2, 
-        textAlign: 'center', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
+        borderRadius: 2,
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         position: 'relative',
-      }}>        
+      }}>
         {/* Always render the preview, let it handle null templates */}
         <Box sx={{ 
           width: '100%', 
@@ -142,8 +142,10 @@ const CollageImagesStep = ({
           />
         </Box>
         
-        <Typography variant="body2" sx={{ 
-            color: 'text.secondary', 
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
             fontSize: '0.85rem',
             textAlign: 'center'
           }}

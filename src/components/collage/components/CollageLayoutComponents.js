@@ -74,29 +74,43 @@ ContentPaper.propTypes = {
 /**
  * Collapsible Settings Section for Mobile
  */
-const CollapsibleSettingsSection = ({ settingsStepProps, isMobile }) => {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+const CollapsibleSettingsSection = ({
+  settingsStepProps,
+  isMobile,
+  settingsOpen,
+  setSettingsOpen,
+  settingsRef,
+}) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = settingsOpen !== undefined ? settingsOpen : internalOpen;
 
   if (!isMobile) {
     return null; // Only render on mobile
   }
 
   const handleSettingsToggle = (open) => {
-    setIsSettingsOpen(open);
+    if (setSettingsOpen) {
+      setSettingsOpen(open);
+    } else {
+      setInternalOpen(open);
+    }
   };
 
   return (
-    <DisclosureCard
-      title={isSettingsOpen ? "Hide Settings" : "Open Settings"}
-      icon={Settings}
-      defaultOpen={false}
-      isMobile={isMobile}
-      onToggle={handleSettingsToggle}
-      sx={{ mb: 2 }}
-      contentSx={{ pt: 1 }}
-    >
-      <CollageSettingsStep {...settingsStepProps} />
-    </DisclosureCard>
+    <Box ref={settingsRef}>
+      <DisclosureCard
+        title={isOpen ? "Hide Settings" : "Open Settings"}
+        icon={Settings}
+        defaultOpen={false}
+        isMobile={isMobile}
+        open={isOpen}
+        onToggle={handleSettingsToggle}
+        sx={{ mb: 2 }}
+        contentSx={{ pt: 1 }}
+      >
+        <CollageSettingsStep {...settingsStepProps} />
+      </DisclosureCard>
+    </Box>
   );
 };
 
@@ -112,12 +126,24 @@ CollapsibleSettingsSection.propTypes = {
     onTemplateChange: PropTypes.func.isRequired,
   }).isRequired,
   isMobile: PropTypes.bool.isRequired,
+  settingsOpen: PropTypes.bool,
+  setSettingsOpen: PropTypes.func,
+  settingsRef: PropTypes.object,
 };
 
 /**
  * Unified layout for the collage tool that adapts to all screen sizes
  */
-export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, setFinalImage, isMobile }) => {
+export const CollageLayout = ({
+  settingsStepProps,
+  imagesStepProps,
+  finalImage,
+  setFinalImage,
+  isMobile,
+  settingsOpen,
+  setSettingsOpen,
+  settingsRef,
+}) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const handleOpenExportDialog = () => {
@@ -171,7 +197,13 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
           // Mobile: Stack vertically with tighter spacing, NO BulkUploadSection after images are added
           <Stack spacing={1.5} sx={{ p: 1.5, px: 1 }}>
             {/* Collapsible Settings Section for Mobile */}
-            <CollapsibleSettingsSection settingsStepProps={settingsStepProps} isMobile={isMobile} />
+            <CollapsibleSettingsSection
+              settingsStepProps={settingsStepProps}
+              isMobile={isMobile}
+              settingsOpen={settingsOpen}
+              setSettingsOpen={setSettingsOpen}
+              settingsRef={settingsRef}
+            />
 
             {/* Images Section */}
             <Box sx={{ 
@@ -199,7 +231,7 @@ export const CollageLayout = ({ settingsStepProps, imagesStepProps, finalImage, 
             width: '100%'
           }}>
             {/* Settings Section */}
-            <Box sx={{ 
+            <Box ref={settingsRef} sx={{
               flex: { xs: 'none', md: '1 1 0' },
               width: { xs: '100%', md: '50%' },
               bgcolor: 'background.paper',
@@ -276,4 +308,7 @@ CollageLayout.propTypes = {
   setFinalImage: PropTypes.func.isRequired,
   isMobile: PropTypes.bool.isRequired,
   onBackToEdit: PropTypes.func,
+  settingsOpen: PropTypes.bool,
+  setSettingsOpen: PropTypes.func,
+  settingsRef: PropTypes.object,
 };
