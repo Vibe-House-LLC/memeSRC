@@ -481,12 +481,11 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const finalizeUpload = (id, data) => {
     setImages(prev => prev.map(img => {
       if (img.id === id) {
-        if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
-        return { key: data.key, url: data.url };
+        return { key: data.key, url: img.previewUrl, previewUrl: img.previewUrl };
       }
       return img;
     }));
-    setImageLoaded(prev => ({ ...prev, [data.key]: false }));
+    setImageLoaded(prev => ({ ...prev, [data.key]: true }));
     progressRef.current[id] = 100;
   };
 
@@ -514,8 +513,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         }
       });
 
-      const url = await getCachedUrl(key);
-      finalizeUpload(id, { key, url, size: blob.size, lastModified: new Date().toISOString() });
+      finalizeUpload(id, { key, size: blob.size, lastModified: new Date().toISOString() });
 
       setAllImageKeys(prev => [
         { key, lastModified: new Date().toISOString(), size: blob.size },
