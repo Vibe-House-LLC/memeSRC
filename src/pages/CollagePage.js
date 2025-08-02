@@ -190,58 +190,62 @@ export default function CollagePage() {
   // Handle images passed from collage
   useEffect(() => {
     if (location.state?.fromCollage && location.state?.images) {
-      debugLog('Loading images from collage:', location.state.images);
-      
-      // Transform images to the expected format, preserving subtitle data
-      const transformedImages = location.state.images.map(item => {
-        if (typeof item === 'string') {
-          return item; // Already a URL
-        }
-        // Return the complete item with subtitle data preserved
-        return {
-          originalUrl: item.originalUrl || item.displayUrl || item,
-          displayUrl: item.displayUrl || item.originalUrl || item,
-          subtitle: item.subtitle || '',
-          subtitleShowing: item.subtitleShowing || false,
-          metadata: item.metadata || {}
-        };
-      });
-      
-      debugLog('Transformed collage images with subtitle data:', transformedImages);
-      addMultipleImages(transformedImages);
-      
-      // Auto-assign images to panels like bulk upload does
-      setTimeout(() => {
-        // First adjust panel count if needed to accommodate all images
-        const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
-        debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
-        debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
-        
-        if (transformedImages.length > panelCount && setPanelCount) {
-          setPanelCount(desiredPanelCount);
-          debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
-        }
-        
-        // Wait a bit more for template to update if panel count changed
-        setTimeout(() => {
-          debugLog(`[PANEL DEBUG] Template after panel count change:`, selectedTemplate);
-          
-          // Then assign images to panels using the updated panel count
-          const newMapping = {};
-          const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
-          
-          for (let i = 0; i < imagesToAssign; i += 1) {
-            const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
-            newMapping[panelId] = i;
+      const loadImages = async () => {
+        debugLog('Loading images from collage:', location.state.images);
+
+        // Transform images to the expected format, preserving subtitle data
+        const transformedImages = location.state.images.map(item => {
+          if (typeof item === 'string') {
+            return item; // Already a URL
           }
-          
-          debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
-          updatePanelImageMapping(newMapping);
-        }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
-      }, 100); // Small delay to ensure images are added first
-      
-      // Clear the navigation state to prevent re-loading on refresh
-      navigate(location.pathname, { replace: true, state: {} });
+          // Return the complete item with subtitle data preserved
+          return {
+            originalUrl: item.originalUrl || item.displayUrl || item,
+            displayUrl: item.displayUrl || item.originalUrl || item,
+            subtitle: item.subtitle || '',
+            subtitleShowing: item.subtitleShowing || false,
+            metadata: item.metadata || {}
+          };
+        });
+
+        debugLog('Transformed collage images with subtitle data:', transformedImages);
+        await addMultipleImages(transformedImages);
+
+        // Auto-assign images to panels like bulk upload does
+        setTimeout(() => {
+          // First adjust panel count if needed to accommodate all images
+          const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
+          debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
+          debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
+
+          if (transformedImages.length > panelCount && setPanelCount) {
+            setPanelCount(desiredPanelCount);
+            debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
+          }
+
+          // Wait a bit more for template to update if panel count changed
+          setTimeout(() => {
+            debugLog(`[PANEL DEBUG] Template after panel count change:`, selectedTemplate);
+
+            // Then assign images to panels using the updated panel count
+            const newMapping = {};
+            const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
+
+            for (let i = 0; i < imagesToAssign; i += 1) {
+              const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
+              newMapping[panelId] = i;
+            }
+
+            debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
+            updatePanelImageMapping(newMapping);
+          }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
+        }, 100); // Small delay to ensure images are added first
+
+        // Clear the navigation state to prevent re-loading on refresh
+        navigate(location.pathname, { replace: true, state: {} });
+      };
+
+      loadImages();
     }
   }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
 
@@ -352,10 +356,10 @@ export default function CollagePage() {
   };
 
   // Handler for starting from scratch without images
-  const handleStartFromScratch = () => {
+  const handleStartFromScratch = async () => {
     debugLog('Starting from scratch - user chose to continue without images');
     // Add a placeholder to trigger showing the collage interface
-    addMultipleImages(['__START_FROM_SCRATCH__']);
+    await addMultipleImages(['__START_FROM_SCRATCH__']);
     // Scroll to top to show the collage interface
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

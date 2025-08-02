@@ -100,7 +100,7 @@ const CollagePreview = ({
   };
 
   // Handle file selection for a panel
-  const handleFileChange = (event) => {
+  const handleFileChange = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0 || activePanelIndex === null) return;
 
@@ -143,45 +143,44 @@ const CollagePreview = ({
       }
     }
 
-    // Process all files
-    Promise.all(files.map(loadFile))
-      .then((imageUrls) => {
-        debugLog(`Loaded ${imageUrls.length} files for panel ${clickedPanelId}`);
+    try {
+      // Process all files
+      const imageUrls = await Promise.all(files.map(loadFile));
+      debugLog(`Loaded ${imageUrls.length} files for panel ${clickedPanelId}`);
 
-        // Check if this is a replacement operation for the first file
-        const existingImageIndex = panelImageMapping[clickedPanelId];
-        debugLog(`Panel ${clickedPanelId}: existingImageIndex=${existingImageIndex}`);
-        
-        if (existingImageIndex !== undefined && imageUrls.length === 1) {
-          // If this panel already has an image and we're only uploading one file, replace it
-          debugLog(`Replacing image at index ${existingImageIndex} for panel ${clickedPanelId}`);
-          replaceImage(existingImageIndex, imageUrls[0]);
+      // Check if this is a replacement operation for the first file
+      const existingImageIndex = panelImageMapping[clickedPanelId];
+      debugLog(`Panel ${clickedPanelId}: existingImageIndex=${existingImageIndex}`);
+
+      if (existingImageIndex !== undefined && imageUrls.length === 1) {
+        // If this panel already has an image and we're only uploading one file, replace it
+        debugLog(`Replacing image at index ${existingImageIndex} for panel ${clickedPanelId}`);
+        await replaceImage(existingImageIndex, imageUrls[0]);
+      } else {
+        // Otherwise, add all images sequentially
+        const currentLength = selectedImages.length;
+        debugLog(`Adding ${imageUrls.length} new images starting at index ${currentLength}`);
+
+        // Add all images at once
+        await addMultipleImages(imageUrls);
+
+        // If this is a single file replacement, update the specific panel mapping
+        if (imageUrls.length === 1) {
+          const newMapping = {
+            ...panelImageMapping,
+            [clickedPanelId]: currentLength
+          };
+          debugLog("Updated mapping for single image:", newMapping);
+          updatePanelImageMapping(newMapping);
         } else {
-          // Otherwise, add all images sequentially
-          const currentLength = selectedImages.length;
-          debugLog(`Adding ${imageUrls.length} new images starting at index ${currentLength}`);
-          
-          // Add all images at once
-          addMultipleImages(imageUrls);
-          
-          // If this is a single file replacement, update the specific panel mapping
-          if (imageUrls.length === 1) {
-            const newMapping = {
-              ...panelImageMapping,
-              [clickedPanelId]: currentLength
-            };
-            debugLog("Updated mapping for single image:", newMapping);
-            updatePanelImageMapping(newMapping);
-          } else {
-            // For multiple files, don't auto-assign them to panels
-            // Let the user manually assign them by clicking on panels
-            debugLog(`Added ${imageUrls.length} images. Users can now assign them to panels manually.`);
-          }
+          // For multiple files, don't auto-assign them to panels
+          // Let the user manually assign them by clicking on panels
+          debugLog(`Added ${imageUrls.length} images. Users can now assign them to panels manually.`);
         }
-      })
-      .catch((error) => {
-        console.error("Error loading files:", error);
-      });
+      }
+    } catch (error) {
+      console.error("Error loading files:", error);
+    }
     
     // Reset file input and active panel state
     setActivePanelIndex(null);
