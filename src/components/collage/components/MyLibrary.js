@@ -949,68 +949,226 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       <Dialog
         open={previewOpen}
         onClose={handleClosePreview}
-        maxWidth="md"
-        fullWidth
+        maxWidth={false}
+        fullScreen={isMobile}
+        fullWidth={!isMobile}
         PaperProps={{
-          sx: { borderRadius: 2 }
+          sx: { 
+            borderRadius: isMobile ? 0 : 3,
+            maxWidth: isMobile ? '100%' : '90vw',
+            maxHeight: isMobile ? '100%' : '90vh',
+            margin: isMobile ? 0 : 2,
+            bgcolor: 'background.paper',
+            boxShadow: isMobile ? 'none' : 24,
+          }
+        }}
+        TransitionProps={{
+          timeout: 400,
+        }}
+        sx={{
+          '& .MuiDialog-container': {
+            alignItems: isMobile ? 'stretch' : 'center',
+            justifyContent: isMobile ? 'stretch' : 'center',
+          }
         }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6">Image Preview</Typography>
-          <IconButton onClick={handleClosePreview} size="small">
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          minHeight: '400px',
-          p: 2
-        }}>
-          {previewImage && (
-            <img
-              src={previewImage.url}
-              alt="Preview"
-              style={{
-                maxWidth: '100%',
-                maxHeight: '70vh',
-                objectFit: 'contain',
-                borderRadius: '4px'
+        {/* Header */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: isMobile ? 2 : 3,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            minHeight: isMobile ? 64 : 72,
+            bgcolor: 'background.paper',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            {favorites[previewImage?.key] && (
+              <Star
+                sx={{
+                  color: 'warning.main',
+                  fontSize: isMobile ? '1.2rem' : '1.4rem',
+                }}
+              />
+            )}
+            <Typography 
+              variant={isMobile ? "h6" : "h5"} 
+              sx={{ 
+                fontWeight: 600,
+                color: 'text.primary',
+                fontSize: isMobile ? '1.1rem' : '1.25rem',
               }}
-            />
+            >
+              Image Preview
+            </Typography>
+          </Box>
+          <IconButton 
+            onClick={handleClosePreview}
+            size={isMobile ? "medium" : "large"}
+            sx={{
+              color: 'text.secondary',
+              bgcolor: 'action.hover',
+              '&:hover': {
+                bgcolor: 'action.selected',
+                transform: 'scale(1.1)',
+              },
+              transition: 'all 0.2s ease-in-out',
+            }}
+          >
+            <Close fontSize={isMobile ? "medium" : "large"} />
+          </IconButton>
+        </Box>
+
+        {/* Image Content */}
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: isMobile ? 1.5 : 3,
+            bgcolor: 'background.default',
+            overflow: 'hidden',
+            // Calculate available height: full screen minus header, footer, and padding
+            height: isMobile 
+              ? 'calc(100vh - 64px - 120px - 24px)' // header - footer - padding
+              : 'calc(90vh - 72px - 88px - 48px)', // header - footer - padding
+          }}
+        >
+          {previewImage && (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+              }}
+            >
+              <img
+                src={previewImage.url}
+                alt="Preview"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  width: 'auto',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                  transition: 'transform 0.3s ease-in-out',
+                }}
+              />
+            </Box>
           )}
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', p: 2, gap: 1 }}>
-          <Button
-            onClick={() => toggleFavorite(previewImage?.key)}
-            color={favorites[previewImage?.key] ? 'warning' : 'primary'}
-            variant="contained"
-            startIcon={favorites[previewImage?.key] ? <Star /> : <StarBorder />}
-            sx={{ minWidth: '170px' }}
+        </Box>
+
+        {/* Action Buttons */}
+        <Box
+          sx={{
+            p: isMobile ? 2 : 3,
+            bgcolor: 'background.paper',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            position: 'sticky',
+            bottom: 0,
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: isMobile ? 1.5 : 2,
+              justifyContent: 'center',
+              alignItems: 'stretch',
+            }}
           >
-            {favorites[previewImage?.key] ? 'Remove Favorite' : 'Add Favorite'}
-          </Button>
-          <Button
-            onClick={handleUseInCollage}
-            color="primary"
-            variant="contained"
-            startIcon={<Dashboard />}
-            sx={{ minWidth: '140px' }}
-          >
-            Use in Collage
-          </Button>
-          <Button
-            onClick={handleDeleteImage}
-            color="error"
-            variant="contained"
-            startIcon={<Delete />}
-            disabled={deleting}
-            sx={{ minWidth: '120px' }}
-          >
-            {deleting ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogActions>
+            <Button
+              onClick={() => toggleFavorite(previewImage?.key)}
+              color={favorites[previewImage?.key] ? 'warning' : 'primary'}
+              variant={favorites[previewImage?.key] ? 'contained' : 'outlined'}
+              startIcon={favorites[previewImage?.key] ? <Star /> : <StarBorder />}
+              size={isMobile ? "large" : "medium"}
+              sx={{
+                minHeight: isMobile ? 48 : 40,
+                flex: isMobile ? 1 : 'none',
+                minWidth: isMobile ? 'auto' : '160px',
+                borderRadius: 2,
+                textTransform: 'none',
+                fontSize: isMobile ? '0.95rem' : '0.875rem',
+                fontWeight: 600,
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: 4,
+                },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
+              {favorites[previewImage?.key] 
+                ? (isMobile ? 'Favorited' : 'Remove Favorite')
+                : (isMobile ? 'Add Favorite' : 'Add Favorite')
+              }
+            </Button>
+            
+            <Button
+              onClick={handleUseInCollage}
+              color="primary"
+              variant="contained"
+              startIcon={<Dashboard />}
+              size={isMobile ? "large" : "medium"}
+              sx={{
+                minHeight: isMobile ? 48 : 40,
+                flex: isMobile ? 1 : 'none',
+                minWidth: isMobile ? 'auto' : '140px',
+                borderRadius: 2,
+                textTransform: 'none',
+                fontSize: isMobile ? '0.95rem' : '0.875rem',
+                fontWeight: 600,
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: 6,
+                },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
+              {isMobile ? 'Use in Collage' : 'Use in Collage'}
+            </Button>
+            
+            <Button
+              onClick={handleDeleteImage}
+              color="error"
+              variant="outlined"
+              startIcon={<Delete />}
+              disabled={deleting}
+              size={isMobile ? "large" : "medium"}
+              sx={{
+                minHeight: isMobile ? 48 : 40,
+                flex: isMobile ? 1 : 'none',
+                minWidth: isMobile ? 'auto' : '120px',
+                borderRadius: 2,
+                textTransform: 'none',
+                fontSize: isMobile ? '0.95rem' : '0.875rem',
+                fontWeight: 600,
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: 4,
+                  bgcolor: 'error.main',
+                  color: 'white',
+                },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
+              {deleting ? (isMobile ? 'Deleting...' : 'Deleting...') : (isMobile ? 'Delete' : 'Delete')}
+            </Button>
+          </Box>
+        </Box>
       </Dialog>
     </Box>
   );
