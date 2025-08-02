@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { 
   Box, 
@@ -12,7 +12,7 @@ import {
   Alert
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
-import { 
+import {
   Add,
   Delete,
   RemoveCircle,
@@ -20,6 +20,8 @@ import {
   Refresh,
   Clear
 } from '@mui/icons-material';
+import MyLibrary from './MyLibrary';
+import { UserContext } from '../../../UserContext';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -115,8 +117,11 @@ const BulkUploadSection = ({
   removeImage, // Add removeImage function
   replaceImage, // Add replaceImage function
   onStartFromScratch, // Add prop to handle starting without images
+  libraryRefreshTrigger, // For refreshing library when new images are auto-saved
 }) => {
   const theme = useTheme();
+  const { user } = useContext(UserContext);
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
@@ -555,6 +560,69 @@ const BulkUploadSection = ({
     }
   };
 
+  // Handler for selecting images from MyLibrary
+  const handleLibrarySelect = (urls) => {
+    if (!urls || urls.length === 0) return;
+
+    const emptyPanels = [];
+    const assignedPanelIds = new Set(Object.keys(panelImageMapping));
+
+    for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
+      const panelId =
+        selectedTemplate?.layout?.panels?.[panelIndex]?.id ||
+        `panel-${panelIndex + 1}`;
+      if (
+        !assignedPanelIds.has(panelId) ||
+        panelImageMapping[panelId] === undefined ||
+        panelImageMapping[panelId] === null
+      ) {
+        emptyPanels.push(panelId);
+      }
+    }
+
+    const numEmptyPanels = emptyPanels.length;
+    const numNewImages = urls.length;
+
+    let newPanelCount = panelCount;
+    if (numNewImages > numEmptyPanels) {
+      const additionalPanelsNeeded = numNewImages - numEmptyPanels;
+      newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12);
+      if (setPanelCount && newPanelCount !== panelCount) {
+        setPanelCount(newPanelCount);
+      }
+    }
+
+    const newMapping = { ...panelImageMapping };
+    const currentLength = selectedImages.length;
+    let newImageIndex = currentLength;
+
+    for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
+      newMapping[emptyPanels[i]] = newImageIndex;
+      newImageIndex += 1;
+    }
+
+    if (numNewImages > numEmptyPanels) {
+      for (
+        let panelIndex = panelCount;
+        panelIndex < newPanelCount &&
+        newImageIndex < currentLength + numNewImages;
+        panelIndex += 1
+      ) {
+        const panelId =
+          selectedTemplate?.layout?.panels?.[panelIndex]?.id ||
+          `panel-${panelIndex + 1}`;
+        newMapping[panelId] = newImageIndex;
+        newImageIndex += 1;
+      }
+    }
+
+    // Add images first so mapping references valid indices
+    addMultipleImages(urls);
+
+    // Update mapping after images are added
+    updatePanelImageMapping(newMapping);
+  };
+
   // Generate panel list data
   const generatePanelList = () => {
     const panels = [];
@@ -809,6 +877,11 @@ const BulkUploadSection = ({
         </Box>
       )}
 
+      {/* User image library below uploader */}
+      {isAdmin && (
+        <MyLibrary onSelect={handleLibrarySelect} refreshTrigger={libraryRefreshTrigger} />
+      )}
+
       {/* Toast Notification */}
       <Snackbar
         open={toast.open}
@@ -840,6 +913,7 @@ BulkUploadSection.propTypes = {
   removeImage: PropTypes.func,
   replaceImage: PropTypes.func,
   onStartFromScratch: PropTypes.func,
+  libraryRefreshTrigger: PropTypes.any,
 };
 
 export default BulkUploadSection; 

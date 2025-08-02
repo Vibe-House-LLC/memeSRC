@@ -70,7 +70,8 @@ export default function CollagePage() {
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
   const { clearAll } = useCollage();
-  const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const authorized = (user?.userDetails?.magicSubscription === "true" || isAdmin);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -117,7 +118,10 @@ export default function CollagePage() {
     updatePanelImageMapping,
     updatePanelTransform,
     updatePanelText,
-  } = useCollageState();
+    libraryRefreshTrigger,
+    autoSaveToLibrary,
+    setAutoSaveToLibrary,
+  } = useCollageState(isAdmin);
 
   // Check if all panels have images assigned (same logic as CollageImagesStep)
   const mappedPanels = Object.keys(panelImageMapping || {}).length;
@@ -312,7 +316,9 @@ export default function CollagePage() {
     setBorderThickness,
     borderColor,
     setBorderColor,
-    borderThicknessOptions
+    borderThicknessOptions,
+    autoSaveToLibrary,
+    setAutoSaveToLibrary,
   };
 
   // Handler for when collage is generated - show inline result
@@ -359,6 +365,7 @@ export default function CollagePage() {
     onBulkUploadSectionToggle: () => {}, // No-op since BulkUploadSection is hidden when images are present
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
+    libraryRefreshTrigger, // For refreshing library when new images are auto-saved
   };
 
   // Log mapping changes for debugging
