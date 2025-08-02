@@ -175,7 +175,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const SIGNED_URL_EXPIRATION = 24 * 60 * 60; // seconds
   const CACHE_DURATION = (SIGNED_URL_EXPIRATION - 60 * 60) * 1000; // 1h less
 
-  const sortImages = (imgs, favs) => {
+  const sortLoadedImages = (imgs, favs) => {
     const placeholders = imgs.filter(img => !img.key);
     const existing = imgs.filter(img => img.key);
     existing.sort((a, b) => {
@@ -203,7 +203,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
   useEffect(() => {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)); // TODO: Persist to user's GraphQL data
-    setImages(prev => sortImages(prev, favorites));
+    setImages(prev => sortLoadedImages(prev, favorites));
   }, [favorites]);
 
 
@@ -307,8 +307,31 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     setLoading(true);
     try {
       const keys = allImageKeys.length > 0 ? allImageKeys : await fetchAllImageKeys();
-      const endIndex = Math.min(startIndex + IMAGES_PER_PAGE, keys.length);
-      const keysToLoad = keys.slice(startIndex, endIndex);
+      
+      let keysToLoad;
+      let endIndex;
+      
+      if (startIndex === 0 && !append) {
+        // Initial load: prioritize favorites
+        const favoriteKeys = keys.filter(item => favorites[item.key]);
+        const nonFavoriteKeys = keys.filter(item => !favorites[item.key]);
+        
+        // Sort favorites by most recently favorited
+        favoriteKeys.sort((a, b) => (favorites[b.key] || 0) - (favorites[a.key] || 0));
+        
+        // Take up to IMAGES_PER_PAGE items, prioritizing favorites
+        const totalToLoad = Math.min(IMAGES_PER_PAGE, keys.length);
+        keysToLoad = [...favoriteKeys, ...nonFavoriteKeys].slice(0, totalToLoad);
+        endIndex = totalToLoad;
+      } else {
+        // Subsequent loads: avoid duplicates by checking what's already loaded
+        const currentlyLoadedKeys = new Set(images.filter(img => img.key).map(img => img.key));
+        const unloadedKeys = keys.filter(item => !currentlyLoadedKeys.has(item.key));
+        
+        const remainingToLoad = Math.min(IMAGES_PER_PAGE, unloadedKeys.length);
+        keysToLoad = unloadedKeys.slice(0, remainingToLoad);
+        endIndex = loadedCount + remainingToLoad;
+      }
       
       const imageData = await Promise.all(
         keysToLoad.map(async (item) => {
@@ -319,7 +342,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
       setImages(prev => {
         const newImages = append ? [...prev, ...imageData] : imageData;
-        return sortImages(newImages, favorites);
+        return sortLoadedImages(newImages, favorites);
       });
       setImageLoaded(prev => ({
         ...prev,
@@ -645,7 +668,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     });
 
     progressRef.current = placeholders.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
-    setImages(prev => sortImages([...placeholders, ...prev], favorites));
+    setImages(prev => sortLoadedImages([...placeholders, ...prev], favorites));
     setImageLoaded(prev => ({
       ...prev,
       ...Object.fromEntries(placeholders.map(ph => [ph.id, true]))
