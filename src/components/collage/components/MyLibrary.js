@@ -18,7 +18,15 @@ import {
   LinearProgress,
   CircularProgress,
 } from '@mui/material';
-import { Add, CheckCircle, Delete, Close, Dashboard } from '@mui/icons-material';
+import {
+  Add,
+  CheckCircle,
+  Delete,
+  Close,
+  Dashboard,
+  Star,
+  StarBorder,
+} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { Storage } from 'aws-amplify';
 
@@ -141,6 +149,23 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const loadMoreRef = useRef(null);
   const MAX_CONCURRENT_UPLOADS = 3;
 
+  const FAVORITES_KEY = 'libraryFavorites';
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(FAVORITES_KEY));
+      if (Array.isArray(stored)) {
+        const now = Date.now();
+        return stored.reduce((acc, key, idx) => {
+          acc[key] = now - idx;
+          return acc;
+        }, {});
+      }
+      return stored || {};
+    } catch (e) {
+      return {};
+    }
+  });
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -149,6 +174,37 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const CACHE_KEY = 'libraryUrlCache';
   const SIGNED_URL_EXPIRATION = 24 * 60 * 60; // seconds
   const CACHE_DURATION = (SIGNED_URL_EXPIRATION - 60 * 60) * 1000; // 1h less
+
+  const sortImages = (imgs, favs) => {
+    const placeholders = imgs.filter(img => !img.key);
+    const existing = imgs.filter(img => img.key);
+    existing.sort((a, b) => {
+      const aFav = favs[a.key];
+      const bFav = favs[b.key];
+      if (aFav && bFav) return bFav - aFav;
+      if (aFav) return -1;
+      if (bFav) return 1;
+      return 0;
+    });
+    return [...placeholders, ...existing];
+  };
+
+  const toggleFavorite = (key) => {
+    setFavorites(prev => {
+      const updated = { ...prev };
+      if (updated[key]) {
+        delete updated[key];
+      } else {
+        updated[key] = Date.now();
+      }
+      return updated;
+    });
+  };
+
+  useEffect(() => {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)); // TODO: Persist to user's GraphQL data
+    setImages(prev => sortImages(prev, favorites));
+  }, [favorites]);
 
 
   const getCachedUrl = async (key) => {
@@ -261,7 +317,10 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         })
       );
 
-      setImages(prev => (append ? [...prev, ...imageData] : imageData));
+      setImages(prev => {
+        const newImages = append ? [...prev, ...imageData] : imageData;
+        return sortImages(newImages, favorites);
+      });
       setImageLoaded(prev => ({
         ...prev,
         ...Object.fromEntries(imageData.map(img => [img.key, false]))
@@ -376,7 +435,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       removeFromCache(previewImage.key);
       console.log('Successfully deleted image:', previewImage.key);
       
-      // Remove from local state
+      // Remove from favorites and local state
+      setFavorites(prev => {
+        const updated = { ...prev };
+        delete updated[previewImage.key];
+        return updated;
+      });
       setImages(prev => prev.filter(img => img.key !== previewImage.key));
       setAllImageKeys(prev => prev.filter(item => item.key !== previewImage.key));
       setSelected(prev => prev.filter(key => key !== previewImage.key));
@@ -402,7 +466,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       
       console.log('Successfully deleted images:', selected);
       
-      // Remove deleted images from local state
+      // Remove deleted images from favorites and local state
+      setFavorites(prev => {
+        const updated = { ...prev };
+        selected.forEach(key => { delete updated[key]; });
+        return updated;
+      });
       setImages(prev => prev.filter(img => !selected.includes(img.key)));
       setAllImageKeys(prev => prev.filter(item => !selected.includes(item.key)));
       setSelected([]);
@@ -576,7 +645,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     });
 
     progressRef.current = placeholders.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
-    setImages(prev => [...placeholders, ...prev]);
+    setImages(prev => sortImages([...placeholders, ...prev], favorites));
     setImageLoaded(prev => ({
       ...prev,
       ...Object.fromEntries(placeholders.map(ph => [ph.id, true]))
@@ -760,9 +829,8 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                   height: '100%',
                   position: 'relative',
                   overflow: 'hidden',
-                  transition: 'all 0.15s ease',
+                  transition: 'opacity 0.15s ease',
                   '&:hover': {
-                    transform: 'scale(0.98)',
                     opacity: 0.9,
                   }
                 }}
@@ -796,6 +864,24 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                     display: loaded ? 'block' : 'none'
                   }}
                 />
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(img.key);
+                  }}
+                  sx={{
+                    position: 'absolute',
+                    top: 4,
+                    left: 4,
+                    color: favorites[img.key] ? 'warning.main' : 'white',
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.6)' },
+                    zIndex: 2,
+                  }}
+                >
+                  {favorites[img.key] ? <Star fontSize="small" /> : <StarBorder fontSize="small" />}
+                </IconButton>
                 {selectMultipleMode && isSelected && (
                   <Box
                     sx={{
@@ -875,6 +961,15 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           )}
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', p: 2, gap: 1 }}>
+          <Button
+            onClick={() => toggleFavorite(previewImage?.key)}
+            color={favorites[previewImage?.key] ? 'warning' : 'primary'}
+            variant="contained"
+            startIcon={favorites[previewImage?.key] ? <Star /> : <StarBorder />}
+            sx={{ minWidth: '170px' }}
+          >
+            {favorites[previewImage?.key] ? 'Remove Favorite' : 'Add Favorite'}
+          </Button>
           <Button
             onClick={handleUseInCollage}
             color="primary"
