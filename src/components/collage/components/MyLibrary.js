@@ -135,9 +135,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
-  const [totalFiles, setTotalFiles] = useState(0);
-  const [overallProgress, setOverallProgress] = useState(0);
   const [imageLoaded, setImageLoaded] = useState({});
   const progressRef = useRef({});
   const uploadsRef = useRef({});
@@ -472,10 +469,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     setImageLoaded(prev => ({ ...prev, [key]: true }));
   };
 
+  const handlePreviewLoad = (id) => {
+    setImages(prev => prev.map(img => (img.id === id ? { ...img, previewLoaded: true } : img)));
+  };
+
   const updateProgress = (id, progress) => {
     progressRef.current[id] = progress;
-    const total = Object.values(progressRef.current).reduce((a, b) => a + b, 0);
-    setOverallProgress(total / totalFiles);
     setImages(prev => prev.map(img => (img.id === id ? { ...img, progress } : img)));
   };
 
@@ -489,7 +488,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     }));
     setImageLoaded(prev => ({ ...prev, [data.key]: false }));
     progressRef.current[id] = 100;
-    setUploadedFilesCount(prev => prev + 1);
   };
 
   const uploadSingle = async (file, id) => {
@@ -554,14 +552,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     if (!files.length) return;
 
     setUploading(true);
-    setUploadedFilesCount(0);
-    setTotalFiles(files.length);
-    setOverallProgress(0);
+    progressRef.current = {};
 
     const placeholders = files.map((file) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       uploadsRef.current[id] = file;
-      return { id, previewUrl: URL.createObjectURL(file), progress: 0 };
+      return { id, previewUrl: URL.createObjectURL(file), progress: 0, previewLoaded: false };
     });
 
     progressRef.current = placeholders.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
@@ -574,7 +570,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     await processUploads(placeholders);
 
     console.log('Successfully uploaded files');
-    setOverallProgress(100);
     setUploading(false);
     if (e.target) e.target.value = null;
   };
@@ -624,14 +619,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         />
       </Box>
 
-      {uploading && (
-        <Box sx={{ mb: 2 }}>
-          <LinearProgress variant="determinate" value={overallProgress} />
-          <Typography variant="caption" display="block" align="center" sx={{ mt: 0.5 }}>
-            {Math.round(overallProgress)}%{totalFiles > 1 ? ` (${uploadedFilesCount}/${totalFiles})` : ''}
-          </Typography>
-        </Box>
-      )}
+
 
       {/* Action buttons row */}
       <Collapse
@@ -709,25 +697,41 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
             return (
               <ImageListItem key={img.id}>
                 <Box sx={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
-                  {img.previewUrl ? (
+                  {img.previewUrl && (
                     <img
                       src={img.previewUrl}
                       alt="uploading"
+                      onLoad={() => handlePreviewLoad(img.id)}
                       style={{
                         objectFit: 'cover',
                         width: '100%',
                         height: '100%',
                         opacity: 0.6,
-                        display: 'block'
+                        display: img.previewLoaded ? 'block' : 'none'
                       }}
                     />
-                  ) : (
-                    <Box sx={{ width: '100%', height: '100%', bgcolor: 'action.hover' }} />
+                  )}
+                  {!img.previewLoaded && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        bgcolor: 'action.hover',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <CircularProgress size={24} sx={{ color: 'white' }} />
+                    </Box>
                   )}
                   <LinearProgress
                     variant="determinate"
                     value={img.progress}
-                    sx={{ position: 'absolute', bottom: 0, left: 0, width: '100%' }}
+                    sx={{ position: 'absolute', bottom: 0, left: 0, width: '100%', '& .MuiLinearProgress-bar': { backgroundColor: 'white' } }}
                   />
                 </Box>
               </ImageListItem>
