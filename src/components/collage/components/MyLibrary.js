@@ -711,23 +711,21 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                       }}
                     />
                   )}
-                  {!img.previewLoaded && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        bgcolor: 'action.hover',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <CircularProgress size={24} sx={{ color: 'white' }} />
-                    </Box>
-                  )}
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      ...(img.previewLoaded ? {} : { bgcolor: 'action.hover' })
+                    }}
+                  >
+                    <CircularProgress size={24} sx={{ color: 'white' }} />
+                  </Box>
                   <LinearProgress
                     variant="determinate"
                     value={img.progress}
