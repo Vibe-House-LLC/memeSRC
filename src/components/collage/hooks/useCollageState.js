@@ -277,8 +277,9 @@ export const useCollageState = (isAdmin = false) => {
 
     const newImageObjects = [];
 
-    for (const imageData of imageDataArray) {
-      if (!imageData) continue;
+    await imageDataArray.reduce(async (prevPromise, imageData) => {
+      await prevPromise;
+      if (!imageData) return Promise.resolve();
 
       let imageUrl;
       let newImageObj;
@@ -308,14 +309,15 @@ export const useCollageState = (isAdmin = false) => {
           });
         }
       } else {
-        continue;
+        return Promise.resolve();
       }
 
       // Auto-save to library (pass metadata to check if from library)
       await saveToLibraryIfEnabled(imageUrl, metadata);
 
       newImageObjects.push(newImageObj);
-    }
+      return Promise.resolve();
+    }, Promise.resolve());
 
     if (newImageObjects.length > 0) {
       setSelectedImages(prev => [...prev, ...newImageObjects]);
