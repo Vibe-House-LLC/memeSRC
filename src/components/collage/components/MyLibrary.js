@@ -138,6 +138,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [imageLoaded, setImageLoaded] = useState({});
   const progressRef = useRef({});
   const uploadsRef = useRef({});
+  const loadMoreRef = useRef(null);
   const MAX_CONCURRENT_UPLOADS = 3;
 
   const theme = useTheme();
@@ -288,6 +289,24 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const loadMoreImages = async () => {
     await loadImages(loadedCount, true);
   };
+
+  // Automatically load more images when scrolling near the bottom
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [first] = entries;
+        if (first.isIntersecting && !loading && loadedCount < allImageKeys.length) {
+          loadMoreImages();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    const { current } = loadMoreRef;
+    if (current) observer.observe(current);
+    return () => {
+      if (current) observer.unobserve(current);
+    };
+  }, [loading, loadedCount, allImageKeys.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Clean expired cache on component mount
@@ -769,6 +788,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                   src={img.url}
                   alt="library"
                   onLoad={() => handleImageLoad(img.key)}
+                  loading="lazy"
                   style={{
                     objectFit: 'cover',
                     width: '100%',
@@ -802,19 +822,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         })}
       </ImageList>
       
-      {/* Load More Button */}
-      {loadedCount < allImageKeys.length && (
-        <Box sx={{ textAlign: 'center', mt: 2 }}>
-          <Button 
-            variant="outlined" 
-            onClick={loadMoreImages}
-            disabled={loading}
-            size="small"
-          >
-            {loading ? 'Loading...' : `Load More (${allImageKeys.length - loadedCount} remaining)`}
-          </Button>
+      {loading && images.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <CircularProgress size={24} />
         </Box>
       )}
+      {loadedCount < allImageKeys.length && <Box ref={loadMoreRef} sx={{ height: 1 }} />}
       <input
         type="file"
         accept="image/*"
