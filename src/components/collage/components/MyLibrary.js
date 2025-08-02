@@ -864,24 +864,22 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                     display: loaded ? 'block' : 'none'
                   }}
                 />
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(img.key);
-                  }}
-                  sx={{
-                    position: 'absolute',
-                    top: 4,
-                    left: 4,
-                    color: favorites[img.key] ? 'warning.main' : 'white',
-                    backgroundColor: 'rgba(0,0,0,0.4)',
-                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.6)' },
-                    zIndex: 2,
-                  }}
-                >
-                  {favorites[img.key] ? <Star fontSize="small" /> : <StarBorder fontSize="small" />}
-                </IconButton>
+                {favorites[img.key] && (
+                  <Star
+                    fontSize="small"
+                    sx={{
+                      position: 'absolute',
+                      top: 4,
+                      left: 4,
+                      color: 'white',
+                      zIndex: 2,
+                      filter: 'drop-shadow(0px 1px 3px rgba(0,0,0,0.8))',
+                      backgroundColor: 'warning.main',
+                      borderRadius: '50%',
+                      padding: '2px',
+                    }}
+                  />
+                )}
                 {selectMultipleMode && isSelected && (
                   <Box
                     sx={{
