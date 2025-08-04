@@ -150,48 +150,8 @@ export default function FramePage() {
             offScreenCanvas.width = maxCanvasWidth;
             offScreenCanvas.height = maxCanvasHeight;
             
-            // Draw the image
-            ctx.drawImage(img, 0, 0, maxCanvasWidth, maxCanvasHeight);
-            
-            // Add text overlay if enabled
-            if (showText && loadedSubtitle) {
-              // Text styling setup (similar to updateCanvasUnthrottled)
-              const referenceWidth = 1000;
-              const referenceFontSizeDesktop = 40;
-              const referenceFontSizeMobile = 40;
-              const referenceBottomAnch = 25;
-              const referenceBottomAnchMobile = 25;
-              const scaleFactor = 1000 / referenceWidth;
-              
-              const scaledFontSizeDesktop = referenceFontSizeDesktop * scaleFactor * fontSizeScaleFactor;
-              const scaledFontSizeMobile = referenceFontSizeMobile * scaleFactor * fontSizeScaleFactor;
-              const scaledBottomAnch = isMd ? referenceBottomAnch * scaleFactor * fontBottomMarginScaleFactor : referenceBottomAnchMobile * scaleFactor * fontBottomMarginScaleFactor;
-              const referenceLineHeight = 50;
-              const scaledLineHeight = referenceLineHeight * scaleFactor * fontLineHeightScaleFactor * fontSizeScaleFactor;
-              
-              // Apply text styling
-              const fontStyle = isItalic ? 'italic' : 'normal';
-              const fontWeight = isBold ? 'bold' : 'normal';
-              const fontColor = (typeof colorPickerColor === 'object') ? '#FFFFFF' : colorPickerColor;
-              
-              ctx.font = `${fontStyle} ${fontWeight} ${isMd ? scaledFontSizeDesktop : scaledFontSizeMobile}px ${fontFamily}`;
-              ctx.textAlign = 'center';
-              ctx.fillStyle = fontColor;
-              ctx.strokeStyle = getContrastColor(fontColor);
-              ctx.lineWidth = offScreenCanvas.width * 0.0044;
-              ctx.lineJoin = 'round';
-              
-              const x = offScreenCanvas.width / 2;
-              const maxWidth = offScreenCanvas.width - 60;
-              const text = isLowercaseFont ? loadedSubtitle.toLowerCase() : loadedSubtitle;
-              
-              // Calculate and draw text
-              const numOfLines = wrapText(ctx, text, x, 0, maxWidth, scaledLineHeight, false);
-              const totalTextHeight = numOfLines * scaledLineHeight;
-              const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch + 40;
-              
-              wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
-            }
+                      // Draw the image (original image without any text overlay)
+          ctx.drawImage(img, 0, 0, maxCanvasWidth, maxCanvasHeight);
             
             resolve();
           } catch (error) {
