@@ -41,7 +41,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, LibraryBooks } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, LibraryBooks, Dashboard } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -1466,7 +1466,7 @@ useEffect(() => {
                         color: '#ccc'
                       }
                     }}
-                    startIcon={<Collections />}
+                    startIcon={<Dashboard />}
                   >
                     Add to Collage
                   </Button>
@@ -1490,7 +1490,7 @@ useEffect(() => {
                         color: '#ccc'
                       }
                     }}
-                    startIcon={<LibraryBooks />}
+                    startIcon={<Collections />}
                   >
                     {savingToLibrary ? 'Saving...' : 'Save to Library'}
                   </Button>

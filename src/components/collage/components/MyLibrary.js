@@ -725,7 +725,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                   setSelected([]);
                 }
               }}
-              size="small"
+              size="medium"
             />
           }
           label="Select Multiple"
@@ -769,7 +769,13 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
             variant="contained" 
             size="small" 
             onClick={handleCreate}
-            sx={{ minWidth: isMobile ? '75px' : '100px' }}
+            sx={{ 
+              minWidth: isMobile ? '75px' : '100px',
+              bgcolor: '#4caf50',
+              '&:hover': {
+                bgcolor: '#45a049',
+              }
+            }}
           >
             Create ({selected.length})
           </Button>
@@ -891,7 +897,9 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                     objectFit: 'cover',
                     width: '100%',
                     height: '100%',
-                    display: loaded ? 'block' : 'none'
+                    display: loaded ? 'block' : 'none',
+                    filter: selectMultipleMode && isSelected ? 'blur(1.5px)' : 'none',
+                    transition: 'filter 0.2s ease'
                   }}
                 />
                 {favorites[img.key] && (
@@ -914,20 +922,57 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                   <Box
                     sx={{
                       position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      width: 24,
-                      height: 24,
-                      bgcolor: 'primary.main',
-                      borderRadius: '50%',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      bgcolor: '#4caf50',
+                      opacity: 0.25,
+                      transition: 'all 0.2s ease',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                )}
+                {/* Selection border */}
+                {selectMultipleMode && isSelected && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      border: '3px solid',
+                      borderColor: '#4caf50',
+                      pointerEvents: 'none',
+                      transition: 'all 0.2s ease',
+                    }}
+                  />
+                )}
+                {/* Translucent checkmark in center */}
+                {selectMultipleMode && isSelected && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      border: '2px solid white',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      pointerEvents: 'none',
+                      transition: 'all 0.2s ease',
                     }}
                   >
-                    <CheckCircle fontSize="small" sx={{ color: 'white' }} />
+                    <CheckCircle 
+                      sx={{ 
+                        color: '#4caf50',
+                        fontSize: '48px',
+                        opacity: 0.9,
+                        filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.6))',
+                        transition: 'all 0.2s ease',
+                      }} 
+                    />
                   </Box>
                 )}
               </Box>
