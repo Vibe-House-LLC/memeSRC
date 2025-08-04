@@ -760,7 +760,6 @@ const BulkUploadSection = ({
             ref={specificPanelFileInputRef}
             style={{ display: 'none' }}
             accept="image/*"
-            multiple
             onChange={handleSpecificPanelFileChange}
           />
 

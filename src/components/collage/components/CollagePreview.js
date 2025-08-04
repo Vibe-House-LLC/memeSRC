@@ -219,7 +219,6 @@ const CollagePreview = ({
         ref={fileInputRef}
         style={{ display: 'none' }}
         accept="image/*"
-        multiple
         onChange={handleFileChange}
       />
       
