@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useContext } from 'react';
 import PropTypes from 'prop-types';
 import {
   Box,
@@ -14,6 +14,7 @@ import {
   Collapse,
   LinearProgress,
   CircularProgress,
+  Slide,
 } from '@mui/material';
 import {
   Add,
@@ -23,7 +24,8 @@ import {
   StarBorder,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import { Storage } from 'aws-amplify';
+import { Storage, Auth } from 'aws-amplify';
+import { UserContext } from '../../../UserContext';
 
 // Utility function to resize image using canvas
 const resizeImage = (file, maxSize = 1500) => new Promise((resolve, reject) => {
@@ -143,6 +145,28 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const uploadsRef = useRef({});
   const loadMoreRef = useRef(null);
   const MAX_CONCURRENT_UPLOADS = 3;
+
+  // Admin check
+  const { user } = useContext(UserContext);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check admin status
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const session = await Auth.currentSession();
+        const groups = session.getAccessToken().payload['cognito:groups'] || [];
+        setIsAdmin(groups.includes('admins'));
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      }
+    };
+
+    if (user) {
+      checkAdminStatus();
+    }
+  }, [user]);
 
   const FAVORITES_KEY = 'libraryFavorites';
   const [favorites, setFavorites] = useState(() => {
@@ -733,54 +757,55 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         />
       </Box>
 
-
-
-      {/* Action buttons row */}
-      <Collapse
-        in={selectMultipleMode && selected.length > 0}
-        timeout={300}
-        sx={{
-          '& .MuiCollapse-wrapper': {
-            '& .MuiCollapse-wrapperInner': {
-              transition: 'opacity 300ms ease-in-out',
-              opacity: selectMultipleMode && selected.length > 0 ? 1 : 0,
-            }
-          }
-        }}
-      >
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 1, 
-          mb: 2,
-          justifyContent: 'center'
-        }}>
-          <Button 
-            variant="outlined" 
-            color="error" 
-            size="small" 
-            onClick={handleDeleteSelected}
-            disabled={deleting}
-            startIcon={<Delete />}
-            sx={{ minWidth: isMobile ? '85px' : '110px' }}
-          >
-            {deleting ? 'Deleting...' : `Delete (${selected.length})`}
-          </Button>
-          <Button 
-            variant="contained" 
-            size="small" 
-            onClick={handleCreate}
-            sx={{ 
-              minWidth: isMobile ? '75px' : '100px',
-              bgcolor: '#4caf50',
-              '&:hover': {
-                bgcolor: '#45a049',
+      {/* Action buttons row - Non-admin users only */}
+      {!isAdmin && (
+        <Collapse
+          in={selectMultipleMode && selected.length > 0}
+          timeout={300}
+          sx={{
+            '& .MuiCollapse-wrapper': {
+              '& .MuiCollapse-wrapperInner': {
+                transition: 'opacity 300ms ease-in-out',
+                opacity: selectMultipleMode && selected.length > 0 ? 1 : 0,
               }
-            }}
-          >
-            Create ({selected.length})
-          </Button>
-        </Box>
-      </Collapse>
+            }
+          }}
+        >
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 1, 
+            mb: 2,
+            justifyContent: 'center'
+          }}>
+            <Button 
+              variant="outlined" 
+              color="error" 
+              size="small" 
+              onClick={handleDeleteSelected}
+              disabled={deleting}
+              startIcon={<Delete />}
+              sx={{ minWidth: isMobile ? '85px' : '110px' }}
+            >
+              {deleting ? 'Deleting...' : `Delete (${selected.length})`}
+            </Button>
+            <Button 
+              variant="contained" 
+              size="small" 
+              onClick={handleCreate}
+              sx={{ 
+                minWidth: isMobile ? '75px' : '100px',
+                bgcolor: '#4caf50',
+                '&:hover': {
+                  bgcolor: '#45a049',
+                }
+              }}
+            >
+              Create ({selected.length})
+            </Button>
+          </Box>
+        </Collapse>
+      )}
+
       <ImageList 
         cols={cols} 
         gap={gap} 
@@ -1296,6 +1321,62 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           </Box>
         </Box>
       </Dialog>
+
+      {/* Bottom Action Bar - Continue Button - Admin users only */}
+      {isAdmin && selectMultipleMode && selected.length > 0 && (
+        <Slide direction="up" in timeout={600}>
+          <Box
+            sx={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 1000,
+              bgcolor: 'background.paper',
+              borderTop: 1,
+              borderColor: 'divider',
+              p: isMobile ? 1.5 : 2,
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
+              backdropFilter: 'blur(20px)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 1.5,
+            }}
+          >
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleCreate}
+              disabled={deleting}
+              sx={{
+                minHeight: 48,
+                px: 4,
+                borderRadius: 3,
+                textTransform: 'none',
+                fontSize: '1rem',
+                fontWeight: 700,
+                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                border: '1px solid #8b5cc7',
+                boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                color: '#fff',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                  boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
+                  transform: 'translateY(-1px)',
+                },
+                '&:disabled': {
+                  opacity: 0.6,
+                  transform: 'none',
+                },
+                transition: 'all 0.3s ease-in-out',
+              }}
+            >
+              Continue ({selected.length})
+            </Button>
+          </Box>
+        </Slide>
+      )}
     </Box>
   );
 };
