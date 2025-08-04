@@ -928,7 +928,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                       bottom: 0,
                       bgcolor: '#4caf50',
                       opacity: 0.25,
-                      borderRadius: '8px',
                       transition: 'all 0.2s ease',
                       pointerEvents: 'none',
                     }}
@@ -945,7 +944,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                       bottom: 0,
                       border: '3px solid',
                       borderColor: '#4caf50',
-                      borderRadius: '8px',
                       pointerEvents: 'none',
                       transition: 'all 0.2s ease',
                     }}
