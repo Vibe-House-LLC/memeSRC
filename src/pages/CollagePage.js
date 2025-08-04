@@ -258,7 +258,7 @@ export default function CollagePage() {
 
   // Reset the collage and return to the library
   const handleResetCollage = () => {
-    if (window.confirm('Reset collage and return to the library?')) {
+    if (window.confirm('Resetting the collage will discard your changes.')) {
       clearImages();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
