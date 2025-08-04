@@ -1,8 +1,8 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide } from "@mui/material";
-import { Dashboard, Save } from "@mui/icons-material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, IconButton, Tooltip } from "@mui/material";
+import { Dashboard, Save, RestartAlt, Settings } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -81,6 +81,10 @@ export default function CollagePage() {
   
   // State to control button animation
   const [showAnimatedButton, setShowAnimatedButton] = useState(false);
+
+  // State and ref for settings disclosure
+  const settingsRef = useRef(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   
 
 
@@ -153,19 +157,19 @@ export default function CollagePage() {
     debugLog(`[PAGE DEBUG] Border settings: color=${borderColor}, thickness=${borderThickness} (${borderThicknessValue}%)`);
   }, [borderColor, borderThickness, borderThicknessValue]);
 
-  // Animate button in with delay when ready
+  // Animate button section in with delay when the preview is visible
   useEffect(() => {
-    if (hasImages && allPanelsHaveImages && !showResultDialog) {
+    if (hasImages && !showResultDialog) {
       const timer = setTimeout(() => {
         setShowAnimatedButton(true);
       }, 800); // 800ms delay for dramatic effect
-      
+
       return () => clearTimeout(timer);
     }
-    
+
     setShowAnimatedButton(false);
     return undefined; // Consistent return for all code paths
-  }, [hasImages, allPanelsHaveImages, showResultDialog]);
+  }, [hasImages, showResultDialog]);
 
 
 
@@ -186,58 +190,62 @@ export default function CollagePage() {
   // Handle images passed from collage
   useEffect(() => {
     if (location.state?.fromCollage && location.state?.images) {
-      debugLog('Loading images from collage:', location.state.images);
-      
-      // Transform images to the expected format, preserving subtitle data
-      const transformedImages = location.state.images.map(item => {
-        if (typeof item === 'string') {
-          return item; // Already a URL
-        }
-        // Return the complete item with subtitle data preserved
-        return {
-          originalUrl: item.originalUrl || item.displayUrl || item,
-          displayUrl: item.displayUrl || item.originalUrl || item,
-          subtitle: item.subtitle || '',
-          subtitleShowing: item.subtitleShowing || false,
-          metadata: item.metadata || {}
-        };
-      });
-      
-      debugLog('Transformed collage images with subtitle data:', transformedImages);
-      addMultipleImages(transformedImages);
-      
-      // Auto-assign images to panels like bulk upload does
-      setTimeout(() => {
-        // First adjust panel count if needed to accommodate all images
-        const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
-        debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
-        debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
-        
-        if (transformedImages.length > panelCount && setPanelCount) {
-          setPanelCount(desiredPanelCount);
-          debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
-        }
-        
-        // Wait a bit more for template to update if panel count changed
-        setTimeout(() => {
-          debugLog(`[PANEL DEBUG] Template after panel count change:`, selectedTemplate);
-          
-          // Then assign images to panels using the updated panel count
-          const newMapping = {};
-          const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
-          
-          for (let i = 0; i < imagesToAssign; i += 1) {
-            const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
-            newMapping[panelId] = i;
+      const loadImages = async () => {
+        debugLog('Loading images from collage:', location.state.images);
+
+        // Transform images to the expected format, preserving subtitle data
+        const transformedImages = location.state.images.map(item => {
+          if (typeof item === 'string') {
+            return item; // Already a URL
           }
-          
-          debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
-          updatePanelImageMapping(newMapping);
-        }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
-      }, 100); // Small delay to ensure images are added first
-      
-      // Clear the navigation state to prevent re-loading on refresh
-      navigate(location.pathname, { replace: true, state: {} });
+          // Return the complete item with subtitle data preserved
+          return {
+            originalUrl: item.originalUrl || item.displayUrl || item,
+            displayUrl: item.displayUrl || item.originalUrl || item,
+            subtitle: item.subtitle || '',
+            subtitleShowing: item.subtitleShowing || false,
+            metadata: item.metadata || {}
+          };
+        });
+
+        debugLog('Transformed collage images with subtitle data:', transformedImages);
+        await addMultipleImages(transformedImages);
+
+        // Auto-assign images to panels like bulk upload does
+        setTimeout(() => {
+          // First adjust panel count if needed to accommodate all images
+          const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
+          debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
+          debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
+
+          if (transformedImages.length > panelCount && setPanelCount) {
+            setPanelCount(desiredPanelCount);
+            debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
+          }
+
+          // Wait a bit more for template to update if panel count changed
+          setTimeout(() => {
+            debugLog(`[PANEL DEBUG] Template after panel count change:`, selectedTemplate);
+
+            // Then assign images to panels using the updated panel count
+            const newMapping = {};
+            const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
+
+            for (let i = 0; i < imagesToAssign; i += 1) {
+              const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
+              newMapping[panelId] = i;
+            }
+
+            debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
+            updatePanelImageMapping(newMapping);
+          }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
+        }, 100); // Small delay to ensure images are added first
+
+        // Clear the navigation state to prevent re-loading on refresh
+        navigate(location.pathname, { replace: true, state: {} });
+      };
+
+      loadImages();
     }
   }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
 
@@ -246,6 +254,27 @@ export default function CollagePage() {
   // Handler to go back to edit mode
   const handleBackToEdit = () => {
     setShowResultDialog(false);
+  };
+
+  // Reset the collage and return to the library
+  const handleResetCollage = () => {
+    if (window.confirm('Reset collage and return to the library?')) {
+      clearImages();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Toggle settings disclosure and scroll when opening
+  const handleToggleSettings = () => {
+    setSettingsOpen(prev => {
+      const next = !prev;
+      if (!prev) {
+        setTimeout(() => {
+          settingsRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+      return next;
+    });
   };
 
 
@@ -327,10 +356,10 @@ export default function CollagePage() {
   };
 
   // Handler for starting from scratch without images
-  const handleStartFromScratch = () => {
+  const handleStartFromScratch = async () => {
     debugLog('Starting from scratch - user chose to continue without images');
     // Add a placeholder to trigger showing the collage interface
-    addMultipleImages(['__START_FROM_SCRATCH__']);
+    await addMultipleImages(['__START_FROM_SCRATCH__']);
     // Scroll to top to show the collage interface
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -390,9 +419,9 @@ export default function CollagePage() {
       {!authorized ? (
         <UpgradeMessage openSubscriptionDialog={openSubscriptionDialog} previewImage="/assets/images/products/collage-tool.png" />
       ) : (
-        <Box component="main" sx={{ 
+        <Box component="main" sx={{
           flexGrow: 1,
-          pb: !showResultDialog && hasImages && allPanelsHaveImages ? 8 : (isMobile ? 2 : 4),
+          pb: !showResultDialog && hasImages ? 8 : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
           overflowY: 'visible', // Allow vertical overflow for caption editor
@@ -445,10 +474,13 @@ export default function CollagePage() {
               setFinalImage={setFinalImage}
               isMobile={isMobile}
               onBackToEdit={handleBackToEdit}
+              settingsOpen={settingsOpen}
+              setSettingsOpen={setSettingsOpen}
+              settingsRef={settingsRef}
             />
 
             {/* Bottom Action Bar */}
-            {!showResultDialog && hasImages && allPanelsHaveImages && (
+            {!showResultDialog && hasImages && (
               <Slide direction="up" in={showAnimatedButton} timeout={600}>
                 <Box
                   sx={{
@@ -465,12 +497,26 @@ export default function CollagePage() {
                     backdropFilter: 'blur(20px)',
                     display: 'flex',
                     justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: 1.5,
                   }}
                 >
+                  <Tooltip title="Reset collage">
+                    <span>
+                      <IconButton
+                        onClick={handleResetCollage}
+                        color="error"
+                        disabled={isCreatingCollage}
+                        aria-label="Reset collage"
+                      >
+                        <RestartAlt />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                   <Button
                     variant="contained"
                     onClick={handleFloatingButtonClick}
-                    disabled={isCreatingCollage}
+                    disabled={isCreatingCollage || !allPanelsHaveImages}
                     fullWidth={isMobile}
                     size="large"
                     startIcon={<Save />}
@@ -513,12 +559,24 @@ export default function CollagePage() {
                           boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
                         },
                       },
-                      animation: !isCreatingCollage ? 'pulse 2s ease-in-out infinite' : 'none',
+                      animation: !isCreatingCollage && allPanelsHaveImages ? 'pulse 2s ease-in-out infinite' : 'none',
                     }}
                     aria-label="Create and save collage"
                   >
                     {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
                   </Button>
+                  <Tooltip title={settingsOpen ? 'Close settings' : 'Open settings'}>
+                    <span>
+                      <IconButton
+                        onClick={handleToggleSettings}
+                        color="primary"
+                        disabled={isCreatingCollage}
+                        aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                      >
+                        <Settings />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                 </Box>
               </Slide>
             )}

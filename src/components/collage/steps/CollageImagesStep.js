@@ -54,7 +54,7 @@ const CollageImagesStep = ({
   });
 
   // Handler for file selection from Add Image button - use same logic as BulkUploadSection
-  const handleFileChange = (event) => {
+  const handleFileChange = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
@@ -68,19 +68,18 @@ const CollageImagesStep = ({
 
     debugLog(`Add Image button: uploading ${files.length} files...`);
 
-    // Process all files using the same logic as BulkUploadSection
-    Promise.all(files.map(loadFile))
-      .then((imageUrls) => {
-        debugLog(`Loaded ${imageUrls.length} files from Add Image button`);
-        
-        // Add all images at once - this will trigger the same auto-assignment logic
-        addMultipleImages(imageUrls);
-        
-        debugLog(`Added ${imageUrls.length} new images via Add Image button`);
-      })
-      .catch((error) => {
-        console.error("Error loading files from Add Image button:", error);
-      });
+    try {
+      // Process all files using the same logic as BulkUploadSection
+      const imageUrls = await Promise.all(files.map(loadFile));
+      debugLog(`Loaded ${imageUrls.length} files from Add Image button`);
+
+      // Add all images at once - this will trigger the same auto-assignment logic
+      await addMultipleImages(imageUrls);
+
+      debugLog(`Added ${imageUrls.length} new images via Add Image button`);
+    } catch (error) {
+      console.error("Error loading files from Add Image button:", error);
+    }
     
     // Reset file input
     if (event.target) {
@@ -98,16 +97,16 @@ const CollageImagesStep = ({
   return (
     <Box sx={{ my: isMobile ? 0 : 0.25 }}>
       {/* Layout Preview */}
-      <Box sx={{ 
+      <Box sx={{
         p: isMobile ? 1.5 : 1.5,
         mb: isMobile ? 1.5 : 1.5,
-        borderRadius: 2, 
-        textAlign: 'center', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
+        borderRadius: 2,
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         position: 'relative',
-      }}>        
+      }}>
         {/* Always render the preview, let it handle null templates */}
         <Box sx={{ 
           width: '100%', 
@@ -142,8 +141,10 @@ const CollageImagesStep = ({
           />
         </Box>
         
-        <Typography variant="body2" sx={{ 
-            color: 'text.secondary', 
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
             fontSize: '0.85rem',
             textAlign: 'center'
           }}

@@ -237,9 +237,9 @@ export const useCollageState = (isAdmin = false) => {
    * Stores the same URL for both original and display initially.
    * @param {string|object} imageData - The image URL (usually base64) or object with subtitle data to add
    */
-  const addImage = useCallback((imageData) => {
+  const addImage = useCallback(async (imageData) => {
     if (!imageData) return;
-    
+
     let newImageObject;
     if (typeof imageData === 'string') {
       newImageObject = {
@@ -247,7 +247,7 @@ export const useCollageState = (isAdmin = false) => {
         displayUrl: imageData
       };
       // Auto-save to library
-      saveToLibraryIfEnabled(imageData, {});
+      await saveToLibraryIfEnabled(imageData, {});
     } else if (typeof imageData === 'object') {
       newImageObject = {
         originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
@@ -258,11 +258,11 @@ export const useCollageState = (isAdmin = false) => {
       };
       // Auto-save to library (pass metadata to check if from library)
       const imageUrl = imageData.originalUrl || imageData.displayUrl || imageData;
-      saveToLibraryIfEnabled(imageUrl, imageData.metadata || {});
+      await saveToLibraryIfEnabled(imageUrl, imageData.metadata || {});
     } else {
       return;
     }
-    
+
     setSelectedImages(prev => [...prev, newImageObject]);
     if (DEBUG_MODE) console.log("Added image:", newImageObject);
   }, [saveToLibraryIfEnabled]);
@@ -272,50 +272,53 @@ export const useCollageState = (isAdmin = false) => {
    * Stores the same URL for both original and display initially for each image.
    * @param {Array} imageDataArray - Array of image URLs (usually base64) or objects with subtitle data to add
    */
-  const addMultipleImages = useCallback((imageDataArray) => {
+  const addMultipleImages = useCallback(async (imageDataArray) => {
     if (!imageDataArray || !Array.isArray(imageDataArray) || imageDataArray.length === 0) return;
-    
-    const newImageObjects = imageDataArray
-      .filter(data => data) // Filter out any null/undefined
-      .map(imageData => {
-        let imageUrl;
-        let newImageObj;
-        let metadata = {};
-        
-        if (typeof imageData === 'string') {
-          imageUrl = imageData;
-          newImageObj = {
-            originalUrl: imageData,
-            displayUrl: imageData
-          };
-        } else if (typeof imageData === 'object') {
-          imageUrl = imageData.originalUrl || imageData.displayUrl || imageData;
-          metadata = imageData.metadata || {};
-          newImageObj = {
-            originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
-            displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
-            subtitle: imageData.subtitle || '',
-            subtitleShowing: imageData.subtitleShowing || false,
-            metadata
-          };
-          if (DEBUG_MODE) {
-            console.log(`[SUBTITLE DEBUG] Processing image object:`, {
-              originalData: imageData,
-              processedData: newImageObj,
-              hasSubtitle: !!newImageObj.subtitle
-            });
-          }
-        } else {
-          return null;
+
+    const newImageObjects = [];
+
+    await imageDataArray.reduce(async (prevPromise, imageData) => {
+      await prevPromise;
+      if (!imageData) return Promise.resolve();
+
+      let imageUrl;
+      let newImageObj;
+      let metadata = {};
+
+      if (typeof imageData === 'string') {
+        imageUrl = imageData;
+        newImageObj = {
+          originalUrl: imageData,
+          displayUrl: imageData
+        };
+      } else if (typeof imageData === 'object') {
+        imageUrl = imageData.originalUrl || imageData.displayUrl || imageData;
+        metadata = imageData.metadata || {};
+        newImageObj = {
+          originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
+          displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
+          subtitle: imageData.subtitle || '',
+          subtitleShowing: imageData.subtitleShowing || false,
+          metadata
+        };
+        if (DEBUG_MODE) {
+          console.log(`[SUBTITLE DEBUG] Processing image object:`, {
+            originalData: imageData,
+            processedData: newImageObj,
+            hasSubtitle: !!newImageObj.subtitle
+          });
         }
-        
-        // Auto-save to library (pass metadata to check if from library)
-        saveToLibraryIfEnabled(imageUrl, metadata);
-        
-        return newImageObj;
-      })
-      .filter(obj => obj !== null);
-    
+      } else {
+        return Promise.resolve();
+      }
+
+      // Auto-save to library (pass metadata to check if from library)
+      await saveToLibraryIfEnabled(imageUrl, metadata);
+
+      newImageObjects.push(newImageObj);
+      return Promise.resolve();
+    }, Promise.resolve());
+
     if (newImageObjects.length > 0) {
       setSelectedImages(prev => [...prev, ...newImageObjects]);
       if (DEBUG_MODE) console.log("Added multiple images:", newImageObjects);
@@ -424,16 +427,16 @@ export const useCollageState = (isAdmin = false) => {
    * @param {number} index - The index of the image object to replace
    * @param {string} newBase64Image - The new image URL (base64)
    */
-  const replaceImage = useCallback((index, newBase64Image) => {
+  const replaceImage = useCallback(async (index, newBase64Image) => {
     if (index >= 0 && index < selectedImages.length && newBase64Image) {
         const oldImageObj = selectedImages[index];
         // Clean up old blobs
-        if (oldImageObj.originalUrl && typeof oldImageObj.originalUrl === 'string' && 
+        if (oldImageObj.originalUrl && typeof oldImageObj.originalUrl === 'string' &&
             oldImageObj.originalUrl.startsWith('blob:')) {
           URL.revokeObjectURL(oldImageObj.originalUrl);
         }
-        if (oldImageObj.displayUrl && typeof oldImageObj.displayUrl === 'string' && 
-            oldImageObj.displayUrl.startsWith('blob:') && 
+        if (oldImageObj.displayUrl && typeof oldImageObj.displayUrl === 'string' &&
+            oldImageObj.displayUrl.startsWith('blob:') &&
             oldImageObj.displayUrl !== oldImageObj.originalUrl) {
           URL.revokeObjectURL(oldImageObj.displayUrl);
         }
@@ -441,9 +444,9 @@ export const useCollageState = (isAdmin = false) => {
         const newImages = [...selectedImages];
         newImages[index] = { originalUrl: newBase64Image, displayUrl: newBase64Image };
         setSelectedImages(newImages);
-        
+
         // Auto-save the new image to library (it's a new upload, not from library)
-        saveToLibraryIfEnabled(newBase64Image, {});
+        await saveToLibraryIfEnabled(newBase64Image, {});
 
         // Find the panelId(s) that use this image index and reset their transforms
         const panelsToResetTransform = Object.entries(panelImageMapping)

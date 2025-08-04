@@ -10,13 +10,18 @@ import {
   Switch,
   FormControlLabel,
   Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   IconButton,
   Collapse,
+  LinearProgress,
+  CircularProgress,
 } from '@mui/material';
-import { Add, CheckCircle, Delete, Close, Dashboard } from '@mui/icons-material';
+import {
+  Add,
+  CheckCircle,
+  Delete,
+  Star,
+  StarBorder,
+} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { Storage } from 'aws-amplify';
 
@@ -132,6 +137,29 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const [deleting, setDeleting] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState({});
+  const progressRef = useRef({});
+  const uploadsRef = useRef({});
+  const loadMoreRef = useRef(null);
+  const MAX_CONCURRENT_UPLOADS = 3;
+
+  const FAVORITES_KEY = 'libraryFavorites';
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(FAVORITES_KEY));
+      if (Array.isArray(stored)) {
+        const now = Date.now();
+        return stored.reduce((acc, key, idx) => {
+          acc[key] = now - idx;
+          return acc;
+        }, {});
+      }
+      return stored || {};
+    } catch (e) {
+      return {};
+    }
+  });
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -142,27 +170,49 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const SIGNED_URL_EXPIRATION = 24 * 60 * 60; // seconds
   const CACHE_DURATION = (SIGNED_URL_EXPIRATION - 60 * 60) * 1000; // 1h less
 
-  const getCacheStatus = () => {
-    try {
-      const cacheRaw = localStorage.getItem(CACHE_KEY);
-      if (!cacheRaw) return { count: 0, keys: [] };
-      
-      const cache = JSON.parse(cacheRaw);
-      const now = Date.now();
-      const keys = Object.keys(cache);
-      const validKeys = keys.filter(key => cache[key].expiresAt && cache[key].expiresAt > now);
-      
-      return { 
-        count: validKeys.length, 
-        total: keys.length,
-        keys: validKeys,
-        expired: keys.length - validKeys.length
-      };
-    } catch (err) {
-      console.warn('Error checking cache status', err);
-      return { count: 0, keys: [], error: err.message };
-    }
+  const sortLoadedImages = (imgs, favs) => {
+    const placeholders = imgs.filter(img => !img.key);
+    const existing = imgs.filter(img => img.key);
+    existing.sort((a, b) => {
+      const aFav = favs[a.key];
+      const bFav = favs[b.key];
+      if (aFav && bFav) return bFav - aFav;
+      if (aFav) return -1;
+      if (bFav) return 1;
+      return 0;
+    });
+    return [...placeholders, ...existing];
   };
+
+  const favoritesRef = useRef(favorites);
+
+  const persistFavorites = (updated) => {
+    favoritesRef.current = updated;
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated)); // TODO: Persist to user's GraphQL data
+    } catch (err) {
+      console.warn('Error storing favorites', err);
+    }
+    return updated;
+  };
+
+  const toggleFavorite = (key) => {
+    setFavorites(prev => {
+      const updated = { ...prev };
+      if (updated[key]) {
+        delete updated[key];
+      } else {
+        updated[key] = Date.now();
+      }
+      return persistFavorites(updated);
+    });
+    setImages(prev => sortLoadedImages(prev, favoritesRef.current));
+  };
+
+  useEffect(() => {
+    favoritesRef.current = favorites;
+  }, [favorites]);
+
 
   const getCachedUrl = async (key) => {
     const cacheRaw = localStorage.getItem(CACHE_KEY);
@@ -264,8 +314,31 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     setLoading(true);
     try {
       const keys = allImageKeys.length > 0 ? allImageKeys : await fetchAllImageKeys();
-      const endIndex = Math.min(startIndex + IMAGES_PER_PAGE, keys.length);
-      const keysToLoad = keys.slice(startIndex, endIndex);
+      
+      let keysToLoad;
+      let endIndex;
+      
+      if (startIndex === 0 && !append) {
+        // Initial load: prioritize favorites
+        const favoriteKeys = keys.filter(item => favorites[item.key]);
+        const nonFavoriteKeys = keys.filter(item => !favorites[item.key]);
+        
+        // Sort favorites by most recently favorited
+        favoriteKeys.sort((a, b) => (favorites[b.key] || 0) - (favorites[a.key] || 0));
+        
+        // Take up to IMAGES_PER_PAGE items, prioritizing favorites
+        const totalToLoad = Math.min(IMAGES_PER_PAGE, keys.length);
+        keysToLoad = [...favoriteKeys, ...nonFavoriteKeys].slice(0, totalToLoad);
+        endIndex = totalToLoad;
+      } else {
+        // Subsequent loads: avoid duplicates by checking what's already loaded
+        const currentlyLoadedKeys = new Set(images.filter(img => img.key).map(img => img.key));
+        const unloadedKeys = keys.filter(item => !currentlyLoadedKeys.has(item.key));
+        
+        const remainingToLoad = Math.min(IMAGES_PER_PAGE, unloadedKeys.length);
+        keysToLoad = unloadedKeys.slice(0, remainingToLoad);
+        endIndex = loadedCount + remainingToLoad;
+      }
       
       const imageData = await Promise.all(
         keysToLoad.map(async (item) => {
@@ -273,8 +346,15 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           return { key: item.key, url };
         })
       );
-      
-      setImages(prev => append ? [...prev, ...imageData] : imageData);
+
+      setImages(prev => {
+        const newImages = append ? [...prev, ...imageData] : imageData;
+        return sortLoadedImages(newImages, favoritesRef.current);
+      });
+      setImageLoaded(prev => ({
+        ...prev,
+        ...Object.fromEntries(imageData.map(img => [img.key, false]))
+      }));
       setLoadedCount(endIndex);
     } catch (err) {
       console.error('Error loading library images', err);
@@ -298,6 +378,24 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const loadMoreImages = async () => {
     await loadImages(loadedCount, true);
   };
+
+  // Automatically load more images when scrolling near the bottom
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [first] = entries;
+        if (first.isIntersecting && !loading && loadedCount < allImageKeys.length) {
+          loadMoreImages();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    const { current } = loadMoreRef;
+    if (current) observer.observe(current);
+    return () => {
+      if (current) observer.unobserve(current);
+    };
+  }, [loading, loadedCount, allImageKeys.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Clean expired cache on component mount
@@ -367,7 +465,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       removeFromCache(previewImage.key);
       console.log('Successfully deleted image:', previewImage.key);
       
-      // Remove from local state
+      // Remove from favorites and local state
+      setFavorites(prev => {
+        const updated = { ...prev };
+        delete updated[previewImage.key];
+        return persistFavorites(updated);
+      });
       setImages(prev => prev.filter(img => img.key !== previewImage.key));
       setAllImageKeys(prev => prev.filter(item => item.key !== previewImage.key));
       setSelected(prev => prev.filter(key => key !== previewImage.key));
@@ -393,7 +496,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       
       console.log('Successfully deleted images:', selected);
       
-      // Remove deleted images from local state
+      // Remove deleted images from favorites and local state
+      setFavorites(prev => {
+        const updated = { ...prev };
+        selected.forEach(key => { delete updated[key]; });
+        return persistFavorites(updated);
+      });
       setImages(prev => prev.filter(img => !selected.includes(img.key)));
       setAllImageKeys(prev => prev.filter(item => !selected.includes(item.key)));
       setSelected([]);
@@ -475,82 +583,109 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     }
   };
 
+  const handleImageLoad = (key) => {
+    setImageLoaded(prev => ({ ...prev, [key]: true }));
+  };
+
+  const handlePreviewLoad = (id) => {
+    setImages(prev => prev.map(img => (img.id === id ? { ...img, previewLoaded: true } : img)));
+  };
+
+  const updateProgress = (id, progress) => {
+    progressRef.current[id] = progress;
+    setImages(prev => prev.map(img => (img.id === id ? { ...img, progress } : img)));
+  };
+
+  const finalizeUpload = (id, data) => {
+    setImages(prev => prev.map(img => {
+      if (img.id === id) {
+        return { key: data.key, url: img.previewUrl, previewUrl: img.previewUrl };
+      }
+      return img;
+    }));
+    setImageLoaded(prev => ({ ...prev, [data.key]: true }));
+    progressRef.current[id] = 100;
+  };
+
+  const uploadSingle = async (file, id) => {
+    try {
+      let blob;
+      try {
+        blob = await resizeImage(file);
+      } catch (err) {
+        console.warn('Failed to resize image, uploading original:', file.name, err);
+        blob = file;
+      }
+
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).slice(2);
+      const key = `library/${timestamp}-${randomId}-${file.name}`;
+
+      await Storage.put(key, blob, {
+        level: 'protected',
+        contentType: blob.type || file.type,
+        cacheControl: 'max-age=31536000',
+        progressCallback: progress => {
+          const percent = (progress.loaded / progress.total) * 100;
+          updateProgress(id, percent);
+        }
+      });
+
+      finalizeUpload(id, { key, size: blob.size, lastModified: new Date().toISOString() });
+
+      setAllImageKeys(prev => [
+        { key, lastModified: new Date().toISOString(), size: blob.size },
+        ...prev
+      ]);
+      setLoadedCount(prev => prev + 1);
+    } catch (err) {
+      console.error('Error uploading library image', err);
+      updateProgress(id, 100);
+    }
+  };
+
+  const processUploads = async (placeholders) => {
+    const queue = [...placeholders];
+    /* eslint-disable no-await-in-loop */
+    const worker = async () => {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const ph = queue.shift();
+        if (!ph) break;
+        const file = uploadsRef.current[ph.id];
+        await uploadSingle(file, ph.id);
+      }
+    };
+    /* eslint-enable no-await-in-loop */
+    const workers = Array.from({ length: Math.min(MAX_CONCURRENT_UPLOADS, placeholders.length) }, worker);
+    await Promise.all(workers);
+  };
+
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    try {
-      // Process and upload files with resizing
-      const uploadedImages = await Promise.all(
-        files.map(async (file) => {
-          try {
-            // Resize the image before uploading
-            const resizedBlob = await resizeImage(file);
-            
-            const timestamp = Date.now();
-            const randomId = Math.random().toString(36).slice(2);
-            const key = `library/${timestamp}-${randomId}-${file.name}`;
-            
-            await Storage.put(key, resizedBlob, {
-              level: 'protected',
-              contentType: resizedBlob.type || file.type,
-              cacheControl: 'max-age=31536000',
-            });
-            
-            // Get the signed URL for immediate display and cache it
-            const url = await getCachedUrl(key);
-            
-            return {
-              key,
-              url,
-              lastModified: new Date().toISOString(),
-              size: resizedBlob.size
-            };
-          } catch (resizeError) {
-            console.warn('Failed to resize image, uploading original:', file.name, resizeError);
-            
-            // Fallback to original file if resizing fails
-            const timestamp = Date.now();
-            const randomId = Math.random().toString(36).slice(2);
-            const key = `library/${timestamp}-${randomId}-${file.name}`;
-            
-            await Storage.put(key, file, {
-              level: 'protected',
-              contentType: file.type,
-              cacheControl: 'max-age=31536000',
-            });
-            
-            const url = await getCachedUrl(key);
-            
-            return {
-              key,
-              url,
-              lastModified: new Date().toISOString(),
-              size: file.size
-            };
-          }
-        })
-      );
+    setUploading(true);
+    progressRef.current = {};
 
-      console.log('Successfully uploaded files:', uploadedImages.map(r => r.key));
+    const placeholders = files.map((file) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      uploadsRef.current[id] = file;
+      return { id, previewUrl: URL.createObjectURL(file), progress: 0, previewLoaded: false };
+    });
 
-      // Add uploaded images to the beginning of the current images list for immediate display
-      setImages(prev => [...uploadedImages, ...prev]);
-      
-      // Update allImageKeys to include the new items
-      setAllImageKeys(prev => [
-        ...uploadedImages.map(img => ({ key: img.key, lastModified: img.lastModified, size: img.size })),
-        ...prev
-      ]);
-      
-      // Update loaded count
-      setLoadedCount(prev => prev + uploadedImages.length);
-      
-    } catch (err) {
-      console.error('Error uploading library images', err);
-    } finally {
-      if (e.target) e.target.value = null;
-    }
+    progressRef.current = placeholders.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
+    setImages(prev => sortLoadedImages([...placeholders, ...prev], favoritesRef.current));
+    setImageLoaded(prev => ({
+      ...prev,
+      ...Object.fromEntries(placeholders.map(ph => [ph.id, true]))
+    }));
+
+    await processUploads(placeholders);
+
+    console.log('Successfully uploaded files');
+    setUploading(false);
+    if (e.target) e.target.value = null;
   };
 
   const gap = 2; // Gap between items
@@ -597,9 +732,11 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           sx={{ mr: 0 }}
         />
       </Box>
-      
+
+
+
       {/* Action buttons row */}
-      <Collapse 
+      <Collapse
         in={selectMultipleMode && selected.length > 0}
         timeout={300}
         sx={{
@@ -655,7 +792,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       >
         <ImageListItem key="upload">
           <Box
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !uploading && fileInputRef.current?.click()}
             sx={{
               height: '100%',
               display: 'flex',
@@ -664,12 +801,11 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
               border: '1px dashed',
               borderColor: 'divider',
               backgroundColor: 'background.paper',
-              borderRadius: '8px',
-              cursor: 'pointer',
+              cursor: uploading ? 'default' : 'pointer',
               transition: 'all 0.2s',
               '&:hover': {
-                backgroundColor: 'action.hover',
-                borderColor: 'primary.main',
+                backgroundColor: uploading ? 'background.paper' : 'action.hover',
+                borderColor: uploading ? 'divider' : 'primary.main',
               }
             }}
           >
@@ -677,37 +813,111 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
           </Box>
         </ImageListItem>
         {images.map((img) => {
+          if (!img.key) {
+            return (
+              <ImageListItem key={img.id}>
+                <Box sx={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
+                  {img.previewUrl && (
+                    <img
+                      src={img.previewUrl}
+                      alt="uploading"
+                      onLoad={() => handlePreviewLoad(img.id)}
+                      style={{
+                        objectFit: 'cover',
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0.6,
+                        display: img.previewLoaded ? 'block' : 'none'
+                      }}
+                    />
+                  )}
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      ...(img.previewLoaded ? {} : { bgcolor: 'action.hover' })
+                    }}
+                  >
+                    <CircularProgress size={24} sx={{ color: 'white' }} />
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={img.progress}
+                    sx={{ position: 'absolute', bottom: 0, left: 0, width: '100%', '& .MuiLinearProgress-bar': { backgroundColor: 'white' } }}
+                  />
+                </Box>
+              </ImageListItem>
+            );
+          }
           const isSelected = selected.includes(img.key);
+          const loaded = imageLoaded[img.key];
           return (
             <ImageListItem key={img.key} sx={{ cursor: 'pointer' }}>
               <Box
                 onClick={() => handleImageClick(img)}
-                sx={{ 
-                  height: '100%', 
+                sx={{
+                  height: '100%',
                   position: 'relative',
                   overflow: 'hidden',
-                  borderRadius: '8px',
-                  transition: 'all 0.15s ease',
+                  transition: 'opacity 0.15s ease',
                   '&:hover': {
-                    transform: 'scale(0.98)',
                     opacity: 0.9,
                   }
                 }}
               >
+                {!loaded && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      bgcolor: 'action.hover',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <CircularProgress size={24} />
+                  </Box>
+                )}
                 <img
                   src={img.url}
                   alt="library"
-                  style={{ 
-                    objectFit: 'cover', 
-                    width: '100%', 
+                  onLoad={() => handleImageLoad(img.key)}
+                  loading="lazy"
+                  style={{
+                    objectFit: 'cover',
+                    width: '100%',
                     height: '100%',
-                    display: 'block',
-                    borderRadius: '8px',
+                    display: loaded ? 'block' : 'none',
                     filter: selectMultipleMode && isSelected ? 'blur(1.5px)' : 'none',
                     transition: 'filter 0.2s ease'
                   }}
                 />
-                {/* Selection overlay - only for selected items */}
+                {favorites[img.key] && (
+                  <Star
+                    fontSize="small"
+                    sx={{
+                      position: 'absolute',
+                      top: 4,
+                      left: 4,
+                      color: 'white',
+                      zIndex: 2,
+                      filter: 'drop-shadow(0px 1px 3px rgba(0,0,0,0.8))',
+                      backgroundColor: 'warning.main',
+                      borderRadius: '50%',
+                      padding: '2px',
+                    }}
+                  />
+                )}
                 {selectMultipleMode && isSelected && (
                   <Box
                     sx={{
@@ -773,19 +983,12 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         })}
       </ImageList>
       
-      {/* Load More Button */}
-      {loadedCount < allImageKeys.length && (
-        <Box sx={{ textAlign: 'center', mt: 2 }}>
-          <Button 
-            variant="outlined" 
-            onClick={loadMoreImages}
-            disabled={loading}
-            size="small"
-          >
-            {loading ? 'Loading...' : `Load More (${allImageKeys.length - loadedCount} remaining)`}
-          </Button>
+      {loading && images.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <CircularProgress size={24} />
         </Box>
       )}
+      {loadedCount < allImageKeys.length && <Box ref={loadMoreRef} sx={{ height: 1 }} />}
       <input
         type="file"
         accept="image/*"
@@ -793,65 +996,307 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         style={{ display: 'none' }}
         ref={fileInputRef}
         onChange={handleFileChange}
+        disabled={uploading}
       />
 
       {/* Image Preview Modal */}
       <Dialog
         open={previewOpen}
         onClose={handleClosePreview}
-        maxWidth="md"
-        fullWidth
+        maxWidth={false}
+        fullScreen={isMobile}
+        fullWidth={!isMobile}
         PaperProps={{
-          sx: { borderRadius: 2 }
+          sx: { 
+            borderRadius: isMobile ? 0 : 3,
+            maxWidth: isMobile ? '100%' : '90vw',
+            maxHeight: isMobile ? '100%' : '90vh',
+            margin: isMobile ? 0 : 2,
+            bgcolor: 'background.paper',
+            boxShadow: isMobile ? 'none' : 24,
+          }
+        }}
+        TransitionProps={{
+          timeout: 400,
+        }}
+        sx={{
+          '& .MuiDialog-container': {
+            alignItems: isMobile ? 'stretch' : 'center',
+            justifyContent: isMobile ? 'stretch' : 'center',
+          }
         }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6">Image Preview</Typography>
-          <IconButton onClick={handleClosePreview} size="small">
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          minHeight: '400px',
-          p: 2
-        }}>
-          {previewImage && (
-            <img
-              src={previewImage.url}
-              alt="Preview"
-              style={{
-                maxWidth: '100%',
-                maxHeight: '70vh',
-                objectFit: 'contain',
-                borderRadius: '4px'
+        {/* Header */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: isMobile ? 2 : 3,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            minHeight: isMobile ? 64 : 72,
+            bgcolor: 'background.paper',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            {favorites[previewImage?.key] && (
+              <Star
+                sx={{
+                  color: 'warning.main',
+                  fontSize: isMobile ? '1.2rem' : '1.4rem',
+                }}
+              />
+            )}
+            <Typography 
+              variant={isMobile ? "h6" : "h5"} 
+              sx={{ 
+                fontWeight: 600,
+                color: 'text.primary',
+                fontSize: isMobile ? '1.1rem' : '1.25rem',
               }}
-            />
-          )}
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', p: 2, gap: 1 }}>
-          <Button
-            onClick={handleUseInCollage}
-            color="primary"
-            variant="contained"
-            startIcon={<Dashboard />}
-            sx={{ minWidth: '140px' }}
-          >
-            Use in Collage
-          </Button>
-          <Button
+            >
+              Image Preview
+            </Typography>
+          </Box>
+          <IconButton 
             onClick={handleDeleteImage}
-            color="error"
-            variant="contained"
-            startIcon={<Delete />}
             disabled={deleting}
-            sx={{ minWidth: '120px' }}
+            size={isMobile ? "medium" : "large"}
+            sx={{
+              color: 'error.main',
+              bgcolor: 'error.lighter',
+              '&:hover': {
+                bgcolor: 'error.light',
+                transform: 'scale(1.1)',
+              },
+              '&:disabled': {
+                color: 'text.disabled',
+                bgcolor: 'action.disabledBackground',
+              },
+              transition: 'all 0.2s ease-in-out',
+            }}
           >
-            {deleting ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogActions>
+            <Delete fontSize={isMobile ? "medium" : "large"} />
+          </IconButton>
+        </Box>
+
+        {/* Image Content */}
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: isMobile ? 1.5 : 3,
+            bgcolor: 'background.default',
+            overflow: 'hidden',
+            // Calculate available height: full screen minus header, footer, and padding
+            height: isMobile 
+              ? 'calc(100vh - 64px - 120px - 24px)' // header - footer - padding
+              : 'calc(90vh - 72px - 88px - 48px)', // header - footer - padding
+          }}
+        >
+          {previewImage && (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+              }}
+            >
+              <img
+                src={previewImage.url}
+                alt="Preview"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  width: 'auto',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                  transition: 'transform 0.3s ease-in-out',
+                }}
+              />
+            </Box>
+          )}
+        </Box>
+
+        {/* Action Buttons */}
+        <Box
+          sx={{
+            p: isMobile ? 2 : 3,
+            bgcolor: 'background.paper',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            position: 'sticky',
+            bottom: 0,
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              justifyContent: 'center',
+              alignItems: 'stretch',
+              maxWidth: isMobile ? '100%' : '600px',
+              margin: '0 auto',
+            }}
+          >
+            {/* Primary actions row */}
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1.5,
+                justifyContent: 'center',
+              }}
+            >
+              <Button
+                onClick={() => {
+                  if (previewImage?.key) {
+                    toggleFavorite(previewImage.key);
+                  }
+                }}
+                variant={
+                  previewImage?.key && favorites[previewImage.key]
+                    ? 'contained'
+                    : 'outlined'
+                }
+                startIcon={
+                  previewImage?.key && favorites[previewImage.key] ? <Star /> : <StarBorder />
+                }
+                size="large"
+                sx={{
+                  minHeight: 48,
+                  flex: 1,
+                  borderRadius: 3,
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  // Explicit colors for dark mode compatibility
+                  ...(favorites[previewImage?.key] ? {
+                    bgcolor: '#FFB726',
+                    color: '#000',
+                    borderColor: '#FFB726',
+                    '&:hover': {
+                      bgcolor: '#FF9800',
+                      borderColor: '#FF9800',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 4px 12px rgba(255, 183, 38, 0.4)',
+                    },
+                  } : {
+                    color: '#FFB726',
+                    borderColor: '#FFB726',
+                    bgcolor: 'transparent',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 183, 38, 0.1)',
+                      borderColor: '#FF9800',
+                      transform: 'translateY(-1px)',
+                      boxShadow: 4,
+                    },
+                  }),
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                {favorites[previewImage?.key] ? 'Unfavorite' : 'Favorite'}
+              </Button>
+
+              <Button
+                onClick={handleUseInCollage}
+                variant="contained"
+                startIcon={<Add />}
+                size="large"
+                sx={{
+                  minHeight: 48,
+                  flex: 1,
+                  borderRadius: 3,
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                  border: '1px solid #8b5cc7',
+                  boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                  color: '#fff',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                    boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
+                    transform: 'translateY(-1px)',
+                  },
+                  transition: 'all 0.3s ease-in-out',
+                }}
+              >
+                Collage
+              </Button>
+            </Box>
+
+            {/* Close button - full width on mobile, part of row on desktop */}
+            {isMobile ? (
+              <Button
+                onClick={handleClosePreview}
+                variant="outlined"
+                size="large"
+                sx={{
+                  minHeight: 48,
+                  width: '100%',
+                  borderRadius: 3,
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  color: '#9E9E9E',
+                  borderColor: '#424242',
+                  bgcolor: 'transparent',
+                  '&:hover': {
+                    color: '#FFFFFF',
+                    borderColor: '#666666',
+                    bgcolor: 'rgba(158, 158, 158, 0.1)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: 4,
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                Close
+              </Button>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  onClick={handleClosePreview}
+                  variant="outlined"
+                  size="large"
+                  sx={{
+                    minHeight: 48,
+                    minWidth: 120,
+                    borderRadius: 3,
+                    textTransform: 'none',
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    color: '#9E9E9E',
+                    borderColor: '#424242',
+                    bgcolor: 'transparent',
+                    '&:hover': {
+                      color: '#FFFFFF',
+                      borderColor: '#666666',
+                      bgcolor: 'rgba(158, 158, 158, 0.1)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: 4,
+                    },
+                    transition: 'all 0.2s ease-in-out',
+                  }}
+                >
+                  Close
+                </Button>
+              </Box>
+            )}
+          </Box>
+        </Box>
       </Dialog>
     </Box>
   );

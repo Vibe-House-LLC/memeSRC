@@ -195,7 +195,7 @@ const BulkUploadSection = ({
 
 
   // --- Handler for bulk file upload ---
-  const handleBulkFileUpload = (event) => {
+  const handleBulkFileUpload = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
@@ -206,7 +206,7 @@ const BulkUploadSection = ({
         message: 'Beta supports up to 5 images for now',
         severity: 'error'
       });
-      
+
       // Reset file input
       if (event.target) {
         event.target.value = null;
@@ -224,80 +224,79 @@ const BulkUploadSection = ({
 
     debugLog(`Bulk uploading ${files.length} files...`);
 
-    // Process all files
-    Promise.all(files.map(loadFile))
-      .then((imageUrls) => {
-        debugLog(`Loaded ${imageUrls.length} files for bulk upload`);
-        
-        // Add all images at once
-        addMultipleImages(imageUrls);
-        
-        // Find currently empty panels by checking existing mapping
-        const emptyPanels = [];
-        const assignedPanelIds = new Set(Object.keys(panelImageMapping));
-        
-        debugLog(`Current panel mapping:`, panelImageMapping);
-        debugLog(`Assigned panel IDs:`, Array.from(assignedPanelIds));
-        
-        for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
+    try {
+      // Process all files
+      const imageUrls = await Promise.all(files.map(loadFile));
+      debugLog(`Loaded ${imageUrls.length} files for bulk upload`);
+
+      // Add all images at once
+      await addMultipleImages(imageUrls);
+
+      // Find currently empty panels by checking existing mapping
+      const emptyPanels = [];
+      const assignedPanelIds = new Set(Object.keys(panelImageMapping));
+
+      debugLog(`Current panel mapping:`, panelImageMapping);
+      debugLog(`Assigned panel IDs:`, Array.from(assignedPanelIds));
+
+      for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
+        const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
+
+        // Check if this panel is not assigned or assigned to undefined/null
+        if (!assignedPanelIds.has(panelId) || panelImageMapping[panelId] === undefined || panelImageMapping[panelId] === null) {
+          emptyPanels.push(panelId);
+        }
+      }
+
+      const numEmptyPanels = emptyPanels.length;
+      const numNewImages = imageUrls.length;
+
+      debugLog(`Found ${numEmptyPanels} empty panels (${emptyPanels}) for ${numNewImages} new images`);
+
+      // Calculate if we need to increase panel count
+      let newPanelCount = panelCount;
+      if (numNewImages > numEmptyPanels) {
+        // Need more panels - increase by the difference
+        const additionalPanelsNeeded = numNewImages - numEmptyPanels;
+        newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12); // Max 12 panels
+
+        if (setPanelCount && newPanelCount !== panelCount) {
+          setPanelCount(newPanelCount);
+          debugLog(`Increased panel count from ${panelCount} to ${newPanelCount} to accommodate new images`);
+        }
+      }
+
+      // Create new mapping with assignments
+      const newMapping = { ...panelImageMapping };
+      const currentLength = selectedImages.length;
+      let newImageIndex = currentLength;
+
+      // First, fill existing empty panels
+      for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
+        newMapping[emptyPanels[i]] = newImageIndex;
+        debugLog(`Assigning new image ${newImageIndex} to empty panel ${emptyPanels[i]}`);
+        newImageIndex += 1;
+      }
+
+      // Then, assign remaining images to newly created panels (if any)
+      if (numNewImages > numEmptyPanels) {
+        for (let panelIndex = panelCount; panelIndex < newPanelCount && newImageIndex < currentLength + numNewImages; panelIndex += 1) {
           const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
-          
-          // Check if this panel is not assigned or assigned to undefined/null
-          if (!assignedPanelIds.has(panelId) || panelImageMapping[panelId] === undefined || panelImageMapping[panelId] === null) {
-            emptyPanels.push(panelId);
-          }
-        }
-        
-        const numEmptyPanels = emptyPanels.length;
-        const numNewImages = imageUrls.length;
-        
-        debugLog(`Found ${numEmptyPanels} empty panels (${emptyPanels}) for ${numNewImages} new images`);
-        
-        // Calculate if we need to increase panel count
-        let newPanelCount = panelCount;
-        if (numNewImages > numEmptyPanels) {
-          // Need more panels - increase by the difference
-          const additionalPanelsNeeded = numNewImages - numEmptyPanels;
-          newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12); // Max 12 panels
-          
-          if (setPanelCount && newPanelCount !== panelCount) {
-            setPanelCount(newPanelCount);
-            debugLog(`Increased panel count from ${panelCount} to ${newPanelCount} to accommodate new images`);
-          }
-        }
-        
-        // Create new mapping with assignments
-        const newMapping = { ...panelImageMapping };
-        const currentLength = selectedImages.length;
-        let newImageIndex = currentLength;
-        
-        // First, fill existing empty panels
-        for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
-          newMapping[emptyPanels[i]] = newImageIndex;
-          debugLog(`Assigning new image ${newImageIndex} to empty panel ${emptyPanels[i]}`);
+          newMapping[panelId] = newImageIndex;
+          debugLog(`Assigning new image ${newImageIndex} to new panel ${panelId}`);
           newImageIndex += 1;
         }
-        
-        // Then, assign remaining images to newly created panels (if any)
-        if (numNewImages > numEmptyPanels) {
-          for (let panelIndex = panelCount; panelIndex < newPanelCount && newImageIndex < currentLength + numNewImages; panelIndex += 1) {
-            const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
-            newMapping[panelId] = newImageIndex;
-            debugLog(`Assigning new image ${newImageIndex} to new panel ${panelId}`);
-            newImageIndex += 1;
-          }
-        }
+      }
 
-        debugLog(`Final mapping:`, newMapping);
-        updatePanelImageMapping(newMapping);
-        debugLog(`Assigned ${numNewImages} new images to panels`);
-        
-        // Note: Scroll behavior moved to CollagePage to handle after section collapse
-      })
-      .catch((error) => {
-        console.error("Error loading files:", error);
-      });
-    
+      debugLog(`Final mapping:`, newMapping);
+      updatePanelImageMapping(newMapping);
+      debugLog(`Assigned ${numNewImages} new images to panels`);
+
+      // Note: Scroll behavior moved to CollagePage to handle after section collapse
+    } catch (error) {
+      console.error("Error loading files:", error);
+    }
+
     // Reset file input
     if (event.target) {
       event.target.value = null;
@@ -477,7 +476,7 @@ const BulkUploadSection = ({
   };
 
   // Handler for file selection for specific panel
-  const handleSpecificPanelFileChange = (event) => {
+  const handleSpecificPanelFileChange = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0 || !selectedPanelForAction) return;
 
@@ -491,69 +490,68 @@ const BulkUploadSection = ({
 
     debugLog(`Uploading ${files.length} files to specific panel: ${selectedPanelForAction.panelId}`);
 
-    // Process all files
-    Promise.all(files.map(loadFile))
-      .then((imageUrls) => {
-        debugLog(`Loaded ${imageUrls.length} files for panel ${selectedPanelForAction.panelId}`);
-        
-        if (selectedPanelForAction.hasImage) {
-          // Replace existing image
-          const firstImageUrl = imageUrls[0];
-          
-          // Update the existing image in the array
-          const updatedImages = [...selectedImages];
-          updatedImages[selectedPanelForAction.imageIndex] = {
-            originalUrl: firstImageUrl,
-            displayUrl: firstImageUrl
-          };
-          
-          // If there are additional images, add them to the collection
-          if (imageUrls.length > 1) {
-            const additionalImages = imageUrls.slice(1).map(url => ({
-              originalUrl: url,
-              displayUrl: url
-            }));
-            updatedImages.push(...additionalImages);
-          }
-          
-          // Use replaceImage if available, otherwise use addMultipleImages
-          if (typeof replaceImage === 'function') {
-            replaceImage(selectedPanelForAction.imageIndex, firstImageUrl);
-            if (imageUrls.length > 1) {
-              addMultipleImages(imageUrls.slice(1));
-            }
-          } else {
-            // Fallback: add all images and update mapping
-            addMultipleImages(imageUrls);
-            const newMapping = { ...panelImageMapping };
-            newMapping[selectedPanelForAction.panelId] = selectedImages.length;
-            updatePanelImageMapping(newMapping);
-          }
-          
-          debugLog(`Replaced image in panel ${selectedPanelForAction.panelId}`);
-        } else {
-          // Add new image to empty panel
-          addMultipleImages(imageUrls);
-          
-          // Get the starting index for new images
-          const currentLength = selectedImages.length;
-          
-          // Create new mapping with the first image assigned to the selected panel
-          const newMapping = { ...panelImageMapping };
-          newMapping[selectedPanelForAction.panelId] = currentLength;
-          
-          debugLog(`Assigning image ${currentLength} to panel ${selectedPanelForAction.panelId}`);
-          
-          // If there are more images, they'll be available for assignment to other panels
-          updatePanelImageMapping(newMapping);
-          
-          debugLog(`Assigned image to specific panel. Updated mapping:`, newMapping);
+    try {
+      // Process all files
+      const imageUrls = await Promise.all(files.map(loadFile));
+      debugLog(`Loaded ${imageUrls.length} files for panel ${selectedPanelForAction.panelId}`);
+
+      if (selectedPanelForAction.hasImage) {
+        // Replace existing image
+        const firstImageUrl = imageUrls[0];
+
+        // Update the existing image in the array
+        const updatedImages = [...selectedImages];
+        updatedImages[selectedPanelForAction.imageIndex] = {
+          originalUrl: firstImageUrl,
+          displayUrl: firstImageUrl
+        };
+
+        // If there are additional images, add them to the collection
+        if (imageUrls.length > 1) {
+          const additionalImages = imageUrls.slice(1).map(url => ({
+            originalUrl: url,
+            displayUrl: url
+          }));
+          updatedImages.push(...additionalImages);
         }
-      })
-      .catch((error) => {
-        console.error("Error loading files for specific panel:", error);
-      });
-    
+
+        // Use replaceImage if available, otherwise use addMultipleImages
+        if (typeof replaceImage === 'function') {
+          await replaceImage(selectedPanelForAction.imageIndex, firstImageUrl);
+          if (imageUrls.length > 1) {
+            await addMultipleImages(imageUrls.slice(1));
+          }
+        } else {
+          // Fallback: add all images and update mapping
+          await addMultipleImages(imageUrls);
+          const newMapping = { ...panelImageMapping };
+          newMapping[selectedPanelForAction.panelId] = selectedImages.length;
+          updatePanelImageMapping(newMapping);
+        }
+
+        debugLog(`Replaced image in panel ${selectedPanelForAction.panelId}`);
+      } else {
+        // Add new image to empty panel
+        await addMultipleImages(imageUrls);
+
+        // Get the starting index for new images
+        const currentLength = selectedImages.length;
+
+        // Create new mapping with the first image assigned to the selected panel
+        const newMapping = { ...panelImageMapping };
+        newMapping[selectedPanelForAction.panelId] = currentLength;
+
+        debugLog(`Assigning image ${currentLength} to panel ${selectedPanelForAction.panelId}`);
+
+        // If there are more images, they'll be available for assignment to other panels
+        updatePanelImageMapping(newMapping);
+
+        debugLog(`Assigned image to specific panel. Updated mapping:`, newMapping);
+      }
+    } catch (error) {
+      console.error("Error loading files for specific panel:", error);
+    }
+
     // Reset file input
     if (event.target) {
       event.target.value = null;
@@ -561,7 +559,7 @@ const BulkUploadSection = ({
   };
 
   // Handler for selecting images from MyLibrary
-  const handleLibrarySelect = (urls) => {
+  const handleLibrarySelect = async (urls) => {
     if (!urls || urls.length === 0) return;
 
     const emptyPanels = [];
@@ -616,10 +614,11 @@ const BulkUploadSection = ({
       }
     }
 
-    // Apply mapping immediately before component unmounts
-    updatePanelImageMapping(newMapping);
+    // Add images first so mapping references valid indices
+    await addMultipleImages(urls);
 
-    addMultipleImages(urls);
+    // Update mapping after images are added
+    updatePanelImageMapping(newMapping);
   };
 
   // Generate panel list data
