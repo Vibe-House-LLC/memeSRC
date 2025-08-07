@@ -1322,7 +1322,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         </Box>
       </Dialog>
 
-      {/* Bottom Action Bar - Continue Button - Admin users only */}
+      {/* Bottom Action Bar - Admin users only */}
       {isAdmin && selectMultipleMode && selected.length > 0 && (
         <Slide direction="up" in timeout={600}>
           <Box
@@ -1344,6 +1344,24 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
               gap: 1.5,
             }}
           >
+            <Button
+              variant="outlined"
+              color="error"
+              size="large"
+              onClick={handleDeleteSelected}
+              disabled={deleting}
+              startIcon={<Delete />}
+              sx={{
+                minHeight: 48,
+                px: 3,
+                borderRadius: 3,
+                textTransform: 'none',
+                fontSize: '1rem',
+                fontWeight: 700,
+              }}
+            >
+              {deleting ? 'Deleting...' : `Delete (${selected.length})`}
+            </Button>
             <Button
               variant="contained"
               size="large"
