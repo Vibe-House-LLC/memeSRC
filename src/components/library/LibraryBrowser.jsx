@@ -103,12 +103,41 @@ export default function LibraryBrowser({
     } finally {
       setConfirm(null);
       clear();
+      if (previewKey && keys.includes(previewKey)) {
+        setPreviewKey(null);
+      }
     }
-  }, [clear, remove]);
+  }, [clear, remove, previewKey]);
 
   const onTileClick = (key) => setPreviewKey(key);
 
+  const previewIndex = useMemo(() => items.findIndex((i) => i.key === previewKey), [items, previewKey]);
+
+  const handlePrev = useCallback(() => {
+    if (previewIndex > 0) setPreviewKey(items[previewIndex - 1]?.key ?? null);
+  }, [items, previewIndex]);
+
+  const handleNext = useCallback(() => {
+    if (previewIndex >= 0 && previewIndex < items.length - 1) setPreviewKey(items[previewIndex + 1]?.key ?? null);
+  }, [items, previewIndex]);
+
   const previewItem = useMemo(() => items.find((i) => i.key === previewKey), [items, previewKey]);
+  
+  // Keyboard navigation for preview
+  useEffect(() => {
+    if (!previewKey) return undefined;
+    const handler = (e) => {
+      if (e.key === 'Escape') {
+        setPreviewKey(null);
+      } else if (e.key === 'ArrowLeft') {
+        handlePrev();
+      } else if (e.key === 'ArrowRight') {
+        handleNext();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [previewKey, handlePrev, handleNext]);
 
   return (
     <Box sx={{ mt: 3, ...(sx || {}) }}>
@@ -156,6 +185,10 @@ export default function LibraryBrowser({
         imageUrl={previewItem?.url}
         onDelete={deleteEnabled ? () => setConfirm({ keys: [previewKey] }) : undefined}
         titleId="library-preview-title"
+        onPrev={handlePrev}
+        onNext={handleNext}
+        hasPrev={previewIndex > 0}
+        hasNext={previewIndex >= 0 && previewIndex < items.length - 1}
       />
 
       <Dialog open={Boolean(confirm)} onClose={() => setConfirm(null)} aria-labelledby="confirm-delete-title">
