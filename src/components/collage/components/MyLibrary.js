@@ -15,6 +15,8 @@ import {
   LinearProgress,
   CircularProgress,
   Slide,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   Add,
@@ -22,6 +24,7 @@ import {
   Delete,
   Star,
   StarBorder,
+  MoreVert,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { Storage, Auth } from 'aws-amplify';
@@ -145,6 +148,8 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const uploadsRef = useRef({});
   const loadMoreRef = useRef(null);
   const MAX_CONCURRENT_UPLOADS = 3;
+  const [moreAnchorEl, setMoreAnchorEl] = useState(null);
+  const isMoreOpen = Boolean(moreAnchorEl);
 
   // Admin check
   const { user } = useContext(UserContext);
@@ -482,6 +487,8 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
   const handleDeleteImage = async () => {
     if (!previewImage) return;
+    const confirmDelete = window.confirm('Delete this image from your library? This cannot be undone.');
+    if (!confirmDelete) return;
     
     setDeleting(true);
     try {
@@ -509,6 +516,8 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
   const handleDeleteSelected = async () => {
     if (selected.length === 0) return;
+    const confirmDelete = window.confirm(`Delete ${selected.length} selected image${selected.length > 1 ? 's' : ''}? This cannot be undone.`);
+    if (!confirmDelete) return;
     
     setDeleting(true);
     try {
@@ -535,6 +544,35 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleFavoriteSelectedBulk = () => {
+    if (selected.length === 0) return;
+    setFavorites(prev => {
+      const updated = { ...prev };
+      let timestamp = Date.now();
+      selected.forEach(key => {
+        if (!updated[key]) {
+          updated[key] = timestamp;
+          timestamp += 1;
+        }
+      });
+      return persistFavorites(updated);
+    });
+    // Re-sort images to reflect favorites
+    setImages(prev => sortLoadedImages(prev, favoritesRef.current));
+  };
+
+  const handleUnselectAll = () => {
+    setSelected([]);
+  };
+
+  const handleOpenMore = (event) => {
+    setMoreAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseMore = () => {
+    setMoreAnchorEl(null);
   };
 
   const handleCreate = async () => {
@@ -1322,7 +1360,13 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         </Box>
       </Dialog>
 
-      {/* Bottom Action Bar - Admin users only */}
+      {/* Spacer to prevent content being hidden behind bottom bar on mobile */}
+      {isAdmin && isMobile && selectMultipleMode && selected.length > 0 && (
+        <Box sx={{ height: 'calc(120px + env(safe-area-inset-bottom, 0px))' }} />
+      )}
+
+      {/* Bottom Action Bar - Admin users only */
+      }
       {isAdmin && selectMultipleMode && selected.length > 0 && (
         <Slide direction="up" in timeout={600}>
           <Box
@@ -1336,62 +1380,122 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
               borderTop: 1,
               borderColor: 'divider',
               p: isMobile ? 1.5 : 2,
+              pb: `calc(${isMobile ? 12 : 16}px + env(safe-area-inset-bottom, 0px))`,
               boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
               backdropFilter: 'blur(20px)',
               display: 'flex',
+              flexDirection: 'column',
               justifyContent: 'center',
-              alignItems: 'center',
-              gap: 1.5,
+              alignItems: 'stretch',
+              gap: 1,
             }}
           >
-            <Button
-              variant="outlined"
-              color="error"
-              size="large"
-              onClick={handleDeleteSelected}
-              disabled={deleting}
-              startIcon={<Delete />}
-              sx={{
-                minHeight: 48,
-                px: 3,
-                borderRadius: 3,
-                textTransform: 'none',
-                fontSize: '1rem',
-                fontWeight: 700,
-              }}
-            >
-              {deleting ? 'Deleting...' : `Delete (${selected.length})`}
-            </Button>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={handleCreate}
-              disabled={deleting}
-              sx={{
-                minHeight: 48,
-                px: 4,
-                borderRadius: 3,
-                textTransform: 'none',
-                fontSize: '1rem',
-                fontWeight: 700,
-                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                border: '1px solid #8b5cc7',
-                boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
-                color: '#fff',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                  boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
-                  transform: 'translateY(-1px)',
-                },
-                '&:disabled': {
-                  opacity: 0.6,
-                  transform: 'none',
-                },
-                transition: 'all 0.3s ease-in-out',
-              }}
-            >
-              Continue ({selected.length})
-            </Button>
+            {/* Selection summary row */}
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              width: '100%',
+              maxWidth: 960,
+              mx: 'auto',
+            }}>
+              <Box sx={{
+                display: 'flex',
+                gap: 1,
+                overflowX: 'auto',
+                py: 0.5,
+                flex: '1 1 auto',
+                maskImage: 'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)',
+              }}>
+                {images.filter(img => img.key && selected.includes(img.key)).map(img => (
+                  <Box key={img.key}
+                    onClick={() => toggleSelect(img.key)}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      flex: '0 0 auto',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <img src={img.url} alt="sel" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </Box>
+                ))}
+              </Box>
+              <IconButton
+                onClick={handleOpenMore}
+                size="large"
+                sx={{
+                  width: 40,
+                  height: 40,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1.5,
+                  flex: '0 0 auto',
+                }}
+              >
+                <MoreVert />
+              </IconButton>
+              <Menu
+                anchorEl={moreAnchorEl}
+                open={isMoreOpen}
+                onClose={handleCloseMore}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              >
+                <MenuItem onClick={() => { handleFavoriteSelectedBulk(); handleCloseMore(); }}>Favorite selected</MenuItem>
+                <MenuItem onClick={() => { handleUnselectAll(); handleCloseMore(); }}>Unselect all</MenuItem>
+                <MenuItem onClick={() => { handleCloseMore(); handleDeleteSelected(); }} sx={{ color: 'error.main' }}>Delete selected</MenuItem>
+              </Menu>
+            </Box>
+
+            {/* Actions row: primary CTA full-width */}
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              gap: 1.5,
+              width: '100%',
+              // Make the CTA span full bar width
+              alignItems: 'stretch',
+              justifyContent: 'center',
+              mx: 'auto',
+            }}>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={handleCreate}
+                disabled={deleting}
+                sx={{
+                  minHeight: 48,
+                  px: 4,
+                  borderRadius: 3,
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                  border: '1px solid #8b5cc7',
+                  boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                  color: '#fff',
+                  width: '100%',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                    boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
+                    transform: 'translateY(-1px)',
+                  },
+                  '&:disabled': {
+                    opacity: 0.6,
+                    transform: 'none',
+                  },
+                  transition: 'all 0.3s ease-in-out',
+                }}
+              >
+                Make Collage ({selected.length})
+              </Button>
+            </Box>
           </Box>
         </Slide>
       )}
