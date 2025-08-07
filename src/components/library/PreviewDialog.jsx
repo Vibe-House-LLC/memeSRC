@@ -44,16 +44,16 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
         sx: {
           borderRadius: isMobile ? 0 : 3,
           maxWidth: isMobile ? '100%' : '90vw',
-          maxHeight: isMobile ? '100dvh' : '90vh',
-          height: isMobile ? '100dvh' : 'auto',
+          height: isMobile ? '100dvh' : '90vh',
           display: 'flex',
           flexDirection: 'column',
           margin: isMobile ? 0 : 2,
           bgcolor: '#0f0f10',
           overscrollBehavior: 'contain',
+          overflow: 'hidden',
         },
       }}
-      BackdropProps={{ sx: { backdropFilter: 'blur(1px)', touchAction: 'none' } }}
+      BackdropProps={{ sx: { backdropFilter: 'blur(1px)' } }}
     >
       {/* Header */}
       <Box
@@ -120,6 +120,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
           flexGrow: 1,
           minHeight: 0,
           touchAction: 'none',
+          overflow: 'hidden',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={(e) => { handleTouchMove(e); e.preventDefault(); }}
@@ -129,6 +130,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
           <Box
             sx={{
               width: '100%',
+              height: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -142,8 +144,8 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
               src={imageUrl}
               alt="Preview"
               style={{
-                maxWidth: '100%',
-                maxHeight: '100%',
+                width: '100%',
+                height: '100%',
                 objectFit: 'contain',
                 borderRadius: 8,
                 boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
