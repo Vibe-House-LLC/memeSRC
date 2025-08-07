@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar, Typography } from '@mui/material';
-import { Refresh } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Menu, MenuItem, Snackbar, Typography } from '@mui/material';
+import { MoreVert, Refresh } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
@@ -38,6 +38,8 @@ export default function LibraryBrowser({
   const [previewKey, setPreviewKey] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'info' });
+  const [optionsAnchor, setOptionsAnchor] = useState(null);
+  const [sortOption, setSortOption] = useState('newest'); // 'newest' | 'oldest' | 'az'
 
   const sentinelRef = useRef(null);
 
@@ -54,6 +56,27 @@ export default function LibraryBrowser({
     io.observe(el);
     return () => io.disconnect();
   }, [hasMore, loadMore, loading]);
+
+  const parseTimestampFromKey = (key) => {
+    try {
+      const m = /library\/(\d+)-/.exec(key);
+      if (m && m[1]) return Number(m[1]);
+    } catch (e) { /* ignore */ }
+    return 0;
+  };
+
+  const displayItems = useMemo(() => {
+    const arr = items.slice();
+    if (sortOption === 'oldest') {
+      arr.sort((a, b) => parseTimestampFromKey(a.key) - parseTimestampFromKey(b.key));
+    } else if (sortOption === 'az') {
+      arr.sort((a, b) => (a.key || '').localeCompare(b.key || ''));
+    } else {
+      // newest first (default)
+      arr.sort((a, b) => parseTimestampFromKey(b.key) - parseTimestampFromKey(a.key));
+    }
+    return arr;
+  }, [items, sortOption]);
 
   const selectedItems = useMemo(() => items.filter((i) => selectedKeys.has(i.key)), [items, selectedKeys]);
 
@@ -111,17 +134,43 @@ export default function LibraryBrowser({
 
   const onTileClick = (key) => setPreviewKey(key);
 
-  const previewIndex = useMemo(() => items.findIndex((i) => i.key === previewKey), [items, previewKey]);
+  const previewIndex = useMemo(() => displayItems.findIndex((i) => i.key === previewKey), [displayItems, previewKey]);
 
   const handlePrev = useCallback(() => {
     if (previewIndex > 0) setPreviewKey(items[previewIndex - 1]?.key ?? null);
   }, [items, previewIndex]);
 
   const handleNext = useCallback(() => {
-    if (previewIndex >= 0 && previewIndex < items.length - 1) setPreviewKey(items[previewIndex + 1]?.key ?? null);
-  }, [items, previewIndex]);
+    if (previewIndex >= 0 && previewIndex < displayItems.length - 1) setPreviewKey(displayItems[previewIndex + 1]?.key ?? null);
+  }, [displayItems, previewIndex]);
 
-  const previewItem = useMemo(() => items.find((i) => i.key === previewKey), [items, previewKey]);
+  const previewItem = useMemo(() => displayItems.find((i) => i.key === previewKey), [displayItems, previewKey]);
+
+  const openOptions = (e) => setOptionsAnchor(e.currentTarget);
+  const closeOptions = () => setOptionsAnchor(null);
+
+  const handleSelectAllDisplayed = () => {
+    displayItems.forEach((it) => {
+      if (!isSelected(it.key)) toggle(it.key);
+    });
+    closeOptions();
+  };
+
+  const handleClearSelected = () => {
+    clear();
+    closeOptions();
+  };
+
+  const handleDeleteSelected = () => {
+    const keys = Array.from(selectedKeys);
+    if (keys.length > 0) setConfirm({ keys });
+    closeOptions();
+  };
+
+  const handleSetSort = (opt) => {
+    setSortOption(opt);
+    closeOptions();
+  };
   
   // Keyboard navigation for preview
   useEffect(() => {
@@ -149,18 +198,24 @@ export default function LibraryBrowser({
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>{items.length} item{items.length === 1 ? '' : 's'} • {count} selected</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Button size="small" startIcon={<Refresh />} onClick={() => reload()} aria-label="Refresh library" sx={{
-            textTransform: 'none',
-            color: '#8b5cc7',
-            border: '1px solid rgba(139,92,199,0.45)',
-            background: 'rgba(139,92,199,0.08)',
-            '&:hover': { background: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
-          }}>Refresh</Button>
+          <IconButton aria-label="Library options" onClick={openOptions} sx={{ color: '#8b5cc7', border: '1px solid rgba(139,92,199,0.45)' }}>
+            <MoreVert />
+          </IconButton>
+          <Menu anchorEl={optionsAnchor} open={Boolean(optionsAnchor)} onClose={closeOptions}>
+            <MenuItem onClick={() => reload()}><Refresh fontSize="small" style={{ marginRight: 8 }} /> Refresh</MenuItem>
+            <MenuItem onClick={handleSelectAllDisplayed} disabled={displayItems.length === 0}>Select all</MenuItem>
+            <MenuItem onClick={handleClearSelected} disabled={count === 0}>Clear selected</MenuItem>
+            <MenuItem onClick={handleDeleteSelected} disabled={count === 0}>Delete selected</MenuItem>
+            <MenuItem disabled divider>Sorting</MenuItem>
+            <MenuItem selected={sortOption === 'newest'} onClick={() => handleSetSort('newest')}>Newest first</MenuItem>
+            <MenuItem selected={sortOption === 'oldest'} onClick={() => handleSetSort('oldest')}>Oldest first</MenuItem>
+            <MenuItem selected={sortOption === 'az'} onClick={() => handleSetSort('az')}>A–Z</MenuItem>
+          </Menu>
         </Box>
       </Box>
 
       <LibraryGrid
-        items={items}
+        items={displayItems}
         showUploadTile={uploadEnabled && isAdmin}
         uploadTile={<UploadTile disabled={loading} onFiles={async (files) => {
           await files.reduce(async (p, f) => {
@@ -190,7 +245,7 @@ export default function LibraryBrowser({
         onPrev={handlePrev}
         onNext={handleNext}
         hasPrev={previewIndex > 0}
-        hasNext={previewIndex >= 0 && previewIndex < items.length - 1}
+        hasNext={previewIndex >= 0 && previewIndex < displayItems.length - 1}
         isSelected={previewKey ? isSelected(previewKey) : false}
         onToggleSelected={previewKey ? () => toggle(previewKey) : undefined}
       />
