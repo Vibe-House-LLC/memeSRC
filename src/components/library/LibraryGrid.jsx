@@ -1,22 +1,45 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Box, ImageList, ImageListItem, useMediaQuery } from '@mui/material';
 
 export default function LibraryGrid({ items, renderTile, showUploadTile, uploadTile }) {
-  const isServer = typeof window === 'undefined';
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-  const windowWidth = isServer ? 1024 : window.innerWidth;
   const gap = 2;
-  const containerPadding = isMobile ? 48 : 64;
-  const availableWidth = windowWidth - containerPadding;
+
+  // Measure actual container width to keep tiles perfectly square at all breakpoints
+  const containerRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(1024);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return undefined;
+    const update = () => setContainerWidth(node.clientWidth || node.offsetWidth || 1024);
+    update();
+    let resizeObserver;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(update);
+      resizeObserver.observe(node);
+    } else {
+      window.addEventListener('resize', update);
+    }
+    return () => {
+      if (resizeObserver) resizeObserver.disconnect();
+      else window.removeEventListener('resize', update);
+    };
+  }, []);
+
+  const availableWidth = containerWidth;
   const targetSize = isMobile ? 92 : 128;
   const minSize = isMobile ? 72 : 92;
   const idealCols = Math.floor((availableWidth + gap) / (targetSize + gap));
-  const cols = Math.max(isMobile ? 3 : 4, idealCols);
-  const rowHeight = useMemo(() => Math.max(minSize, Math.floor((availableWidth - (cols - 1) * gap) / cols)), [availableWidth, cols, minSize]);
+  const cols = Math.max(isMobile ? 3 : 4, idealCols || (isMobile ? 3 : 4));
+  const rowHeight = useMemo(
+    () => Math.max(minSize, Math.floor((availableWidth - (cols - 1) * gap) / Math.max(cols, 1))),
+    [availableWidth, cols, minSize]
+  );
 
   return (
-    <Box sx={{ p: 0 }}>
+    <Box ref={containerRef} sx={{ p: 0, width: '100%' }}>
       <ImageList cols={cols} gap={gap} rowHeight={rowHeight} sx={{ m: 0, width: '100%' }}>
         {showUploadTile && (
           <ImageListItem key="upload">
