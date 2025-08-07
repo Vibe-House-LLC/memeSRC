@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar, Typography } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Refresh } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
@@ -34,12 +34,28 @@ export default function LibraryBrowser({
   isAdmin,
   sx,
 }) {
-  const { items, loading, loadMore, reload, upload, remove, toggleFavorite, favorites } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger, userSub });
+  const { items, loading, hasMore, loadMore, reload, upload, remove, toggleFavorite, favorites } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger, userSub });
   const { selectedKeys, isSelected, toggle, clear, count } = useSelection({ multiple });
 
   const [previewKey, setPreviewKey] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'info' });
+
+  const sentinelRef = useRef(null);
+
+  // Infinite scroll
+  useEffect(() => {
+    if (!sentinelRef.current) return undefined;
+    const el = sentinelRef.current;
+    const io = new IntersectionObserver((entries) => {
+      const [entry] = entries;
+      if (entry.isIntersecting && hasMore && !loading) {
+        loadMore();
+      }
+    }, { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore, loading]);
 
   const selectedItems = useMemo(() => items.filter((i) => selectedKeys.has(i.key)), [items, selectedKeys]);
 
@@ -105,7 +121,7 @@ export default function LibraryBrowser({
         </Box>
         {favoriteEnabled && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button size="small" startIcon={<Add />} onClick={() => reload()} aria-label="Refresh library" sx={{
+            <Button size="small" startIcon={<Refresh />} onClick={() => reload()} aria-label="Refresh library" sx={{
               textTransform: 'none',
               color: '#8b5cc7',
               border: '1px solid rgba(139,92,199,0.45)',
@@ -120,7 +136,6 @@ export default function LibraryBrowser({
         items={items}
         showUploadTile={uploadEnabled && isAdmin}
         uploadTile={<UploadTile disabled={loading} onFiles={async (files) => {
-          // Upload sequentially using promise chaining to satisfy lint rules
           await files.reduce(async (p, f) => {
             await p;
             await upload(f);
@@ -138,9 +153,8 @@ export default function LibraryBrowser({
         )}
       />
 
-      {!loading && items.length > 0 && (
-        <Box sx={{ height: 1 }} aria-hidden onMouseEnter={() => loadMore()} />
-      )}
+      {/* infinite scroll sentinel */}
+      <Box ref={sentinelRef} sx={{ height: 1 }} aria-hidden />
 
       <PreviewDialog
         open={Boolean(previewKey)}
