@@ -44,12 +44,18 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
         sx: {
           borderRadius: isMobile ? 0 : 3,
           maxWidth: isMobile ? '100%' : '90vw',
-          maxHeight: isMobile ? '100%' : '90vh',
+          maxHeight: isMobile ? '100dvh' : '90vh',
+          height: isMobile ? '100dvh' : 'auto',
+          display: 'flex',
+          flexDirection: 'column',
           margin: isMobile ? 0 : 2,
           bgcolor: '#0f0f10',
+          overscrollBehavior: 'contain',
         },
       }}
+      BackdropProps={{ sx: { backdropFilter: 'blur(1px)', touchAction: 'none' } }}
     >
+      {/* Header */}
       <Box
         sx={{
           display: 'flex',
@@ -67,43 +73,56 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
         <Typography id={titleId} variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>
           Image Preview
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {typeof isSelected === 'boolean' && onToggleSelected && (
+        {!isMobile && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {typeof isSelected === 'boolean' && onToggleSelected && (
+              <IconButton
+                onClick={onToggleSelected}
+                aria-label={isSelected ? 'Deselect image' : 'Select image'}
+                aria-pressed={isSelected}
+                sx={{
+                  color: isSelected ? '#0a0' : 'rgba(255,255,255,0.9)',
+                  bgcolor: isSelected ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
+                  '&:hover': { bgcolor: isSelected ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.16)' },
+                }}
+              >
+                {isSelected ? <CheckCircle /> : <CheckCircleOutline />}
+              </IconButton>
+            )}
+            {onDelete && (
+              <IconButton
+                onClick={onDelete}
+                aria-label="Delete image"
+                sx={{ color: '#ff5252', bgcolor: 'rgba(255,82,82,0.1)', '&:hover': { bgcolor: 'rgba(255,82,82,0.2)' } }}
+              >
+                <Delete />
+              </IconButton>
+            )}
             <IconButton
-              onClick={onToggleSelected}
-              aria-label={isSelected ? 'Deselect image' : 'Select image'}
-              aria-pressed={isSelected}
-              sx={{
-                color: isSelected ? '#0a0' : 'rgba(255,255,255,0.9)',
-                bgcolor: isSelected ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
-                '&:hover': { bgcolor: isSelected ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.16)' },
-              }}
+              onClick={onClose}
+              aria-label="Close preview"
+              sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
             >
-              {isSelected ? <CheckCircle /> : <CheckCircleOutline />}
+              <Close />
             </IconButton>
-          )}
-          {onDelete && (
-            <IconButton
-              onClick={onDelete}
-              aria-label="Delete image"
-              sx={{ color: '#ff5252', bgcolor: 'rgba(255,82,82,0.1)', '&:hover': { bgcolor: 'rgba(255,82,82,0.2)' } }}
-            >
-              <Delete />
-            </IconButton>
-          )}
-          <IconButton
-            onClick={onClose}
-            aria-label="Close preview"
-            sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
-          >
-            <Close />
-          </IconButton>
-        </Box>
+          </Box>
+        )}
       </Box>
+      {/* Content (image area) */}
       <Box
-        sx={{ p: isMobile ? 1.5 : 3, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#111214', position: 'relative' }}
+        sx={{
+          p: isMobile ? 1.5 : 3,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: '#111214',
+          position: 'relative',
+          flexGrow: 1,
+          minHeight: 0,
+          touchAction: 'none',
+        }}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
+        onTouchMove={(e) => { handleTouchMove(e); e.preventDefault(); }}
         onTouchEnd={handleTouchEnd}
       >
         {imageUrl && (
@@ -124,7 +143,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
               alt="Preview"
               style={{
                 maxWidth: '100%',
-                maxHeight: isMobile ? 'calc(100vh - 160px)' : 'calc(90vh - 160px)',
+                maxHeight: '100%',
                 objectFit: 'contain',
                 borderRadius: 8,
                 boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
@@ -135,8 +154,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
             )}
           </Box>
         )}
-
-        {hasPrev && (
+        {!isMobile && hasPrev && (
           <IconButton
             aria-label="Previous image"
             onClick={onPrev}
@@ -155,7 +173,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
             <KeyboardArrowLeft />
           </IconButton>
         )}
-        {hasNext && (
+        {!isMobile && hasNext && (
           <IconButton
             aria-label="Next image"
             onClick={onNext}
@@ -175,6 +193,61 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
           </IconButton>
         )}
       </Box>
+
+      {/* Footer controls on mobile */}
+      {isMobile && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            p: 1.5,
+            borderTop: '1px solid',
+            borderColor: 'rgba(255,255,255,0.12)',
+            bgcolor: '#0f0f10',
+          }}
+        >
+          <IconButton
+            aria-label="Previous image"
+            onClick={onPrev}
+            disabled={!hasPrev}
+            sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
+          >
+            <KeyboardArrowLeft />
+          </IconButton>
+          {typeof isSelected === 'boolean' && onToggleSelected && (
+            <IconButton
+              onClick={onToggleSelected}
+              aria-label={isSelected ? 'Deselect image' : 'Select image'}
+              aria-pressed={isSelected}
+              sx={{
+                color: isSelected ? '#22c55e' : 'rgba(255,255,255,0.9)',
+                bgcolor: isSelected ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
+                '&:hover': { bgcolor: isSelected ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.16)' },
+              }}
+            >
+              {isSelected ? <CheckCircle /> : <CheckCircleOutline />}
+            </IconButton>
+          )}
+          {onDelete && (
+            <IconButton onClick={onDelete} aria-label="Delete image" sx={{ color: '#ff5252', bgcolor: 'rgba(255,82,82,0.1)', '&:hover': { bgcolor: 'rgba(255,82,82,0.2)' } }}>
+              <Delete />
+            </IconButton>
+          )}
+          <IconButton
+            aria-label="Next image"
+            onClick={onNext}
+            disabled={!hasNext}
+            sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
+          >
+            <KeyboardArrowRight />
+          </IconButton>
+          <IconButton onClick={onClose} aria-label="Close preview" sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}>
+            <Close />
+          </IconButton>
+        </Box>
+      )}
     </Dialog>
   );
 }
