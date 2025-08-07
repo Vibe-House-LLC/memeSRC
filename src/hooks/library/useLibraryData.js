@@ -6,7 +6,6 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
   const [allKeys, setAllKeys] = useState([]); // full list for paging: { key, lastModified, size }
   const [loading, setLoading] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
-  const [uploadingCount, setUploadingCount] = useState(0);
 
   const favoritesKey = useMemo(() => `libraryFavorites:${userSub || 'anon'}`, [userSub]);
   const [favorites, setFavorites] = useState(() => {
@@ -19,6 +18,8 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       return {};
     }
   });
+
+  const hasMore = useMemo(() => loadedCount < allKeys.length, [loadedCount, allKeys.length]);
 
   const persistFavorites = useCallback((next) => {
     try {
@@ -90,7 +91,6 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
   }, [allKeys, items, loading, pageSize, sortWithFavorites, storageLevel]);
 
   const upload = useCallback(async (file, { onProgress } = {}) => {
-    setUploadingCount((c) => c + 1);
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const previewUrl = typeof window !== 'undefined' ? URL.createObjectURL(file) : undefined;
     // Insert placeholder at top
@@ -116,6 +116,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       }
       setAllKeys((prev) => [{ key, lastModified: new Date().toISOString(), size: file.size }, ...prev]);
       setItems((prev) => sortWithFavorites([{ key, url }, ...prev.filter((it) => it.id !== id)]));
+      setLoadedCount((prev) => prev + 1);
       return { key, url };
     } catch (e) {
       if (typeof window !== 'undefined' && previewUrl) {
@@ -128,8 +129,6 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       // Drop placeholder on failure
       setItems((prev) => prev.filter((it) => it.id !== id));
       throw e;
-    } finally {
-      setUploadingCount((c) => Math.max(0, c - 1));
     }
   }, [sortWithFavorites, storageLevel]);
 
@@ -139,5 +138,5 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
     setAllKeys((prev) => prev.filter((i) => i.key !== key));
   }, [storageLevel]);
 
-  return { items, loading, loadMore, reload, upload, remove: removeItem, toggleFavorite, favorites };
+  return { items, loading, hasMore, loadMore, reload, upload, remove: removeItem, toggleFavorite, favorites };
 }
