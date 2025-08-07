@@ -27,14 +27,12 @@ export default function LibraryBrowser({
   onError,
   uploadEnabled = true,
   deleteEnabled = true,
-  favoriteEnabled = true,
   storageLevel = 'protected',
   refreshTrigger,
-  userSub,
   isAdmin,
   sx,
 }) {
-  const { items, loading, hasMore, loadMore, reload, upload, remove, toggleFavorite, favorites } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger, userSub });
+  const { items, loading, hasMore, loadMore, reload, upload, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
   const { selectedKeys, isSelected, toggle, clear, count } = useSelection({ multiple });
 
   const [previewKey, setPreviewKey] = useState(null);
@@ -119,17 +117,15 @@ export default function LibraryBrowser({
           <Typography variant="h6" sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.92)' }}>My Library</Typography>
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>{items.length} item{items.length === 1 ? '' : 's'} • {count} selected</Typography>
         </Box>
-        {favoriteEnabled && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button size="small" startIcon={<Refresh />} onClick={() => reload()} aria-label="Refresh library" sx={{
-              textTransform: 'none',
-              color: '#8b5cc7',
-              border: '1px solid rgba(139,92,199,0.45)',
-              background: 'rgba(139,92,199,0.08)',
-              '&:hover': { background: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
-            }}>Refresh</Button>
-          </Box>
-        )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Button size="small" startIcon={<Refresh />} onClick={() => reload()} aria-label="Refresh library" sx={{
+            textTransform: 'none',
+            color: '#8b5cc7',
+            border: '1px solid rgba(139,92,199,0.45)',
+            background: 'rgba(139,92,199,0.08)',
+            '&:hover': { background: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
+          }}>Refresh</Button>
+        </Box>
       </Box>
 
       <LibraryGrid
@@ -146,8 +142,6 @@ export default function LibraryBrowser({
             item={item}
             selected={isSelected(item.key)}
             onClick={() => toggle(item.key)}
-            onToggleFavorite={() => toggleFavorite(item.key)}
-            isFavorite={Boolean(favorites[item.key])}
             onPreview={() => onTileClick(item.key)}
           />
         )}
@@ -191,7 +185,6 @@ LibraryBrowser.propTypes = {
   onError: PropTypes.func,
   uploadEnabled: PropTypes.bool,
   deleteEnabled: PropTypes.bool,
-  favoriteEnabled: PropTypes.bool,
   storageLevel: PropTypes.oneOf(['private', 'protected']),
   refreshTrigger: PropTypes.any,
   userSub: PropTypes.string,

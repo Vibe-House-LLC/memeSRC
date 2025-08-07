@@ -1,56 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getUrl, list, put, remove } from '../../utils/library/storage';
 
-export default function useLibraryData({ pageSize = 10, storageLevel = 'protected', refreshToken = null, userSub = null } = {}) {
+export default function useLibraryData({ pageSize = 10, storageLevel = 'protected', refreshToken = null } = {}) {
   const [items, setItems] = useState([]); // { key, url }
   const [allKeys, setAllKeys] = useState([]); // full list for paging: { key, lastModified, size }
   const [loading, setLoading] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
 
-  const favoritesKey = useMemo(() => `libraryFavorites:${userSub || 'anon'}`, [userSub]);
-  const [favorites, setFavorites] = useState(() => {
-    if (typeof window === 'undefined') return {};
-    try {
-      const raw = localStorage.getItem(favoritesKey);
-      return raw ? JSON.parse(raw) : {};
-    } catch (err) {
-      // ignore JSON parse/storage errors
-      return {};
-    }
-  });
-
   const hasMore = useMemo(() => loadedCount < allKeys.length, [loadedCount, allKeys.length]);
 
-  const persistFavorites = useCallback((next) => {
-    try {
-      localStorage.setItem(favoritesKey, JSON.stringify(next));
-    } catch (err) {
-      // ignore storage errors
-    }
-    return next;
-  }, [favoritesKey]);
-
-  const toggleFavorite = useCallback((key) => {
-    setFavorites((prev) => {
-      const updated = { ...prev };
-      if (updated[key]) delete updated[key]; else updated[key] = Date.now();
-      return persistFavorites(updated);
-    });
-  }, [persistFavorites]);
-
-  const sortWithFavorites = useCallback((arr) => {
-    const placeholders = arr.filter((i) => !i.key);
-    const rest = arr.filter((i) => i.key);
-    rest.sort((a, b) => {
-      const af = favorites[a.key];
-      const bf = favorites[b.key];
-      if (af && bf) return bf - af;
-      if (af) return -1;
-      if (bf) return 1;
-      return 0;
-    });
-    return [...placeholders, ...rest];
-  }, [favorites]);
+  // No favorites: keep original order as returned by storage
+  const sortItems = useCallback((arr) => arr, []);
 
   const reload = useCallback(async () => {
     setItems([]);
@@ -59,18 +19,16 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       const all = await list('library/', { level: storageLevel });
       setAllKeys(all);
       if (all.length > 0) {
-        const initialFavoriteKeys = all.filter((k) => favorites[k.key]);
-        const nonFavs = all.filter((k) => !favorites[k.key]);
         const totalToLoad = Math.min(pageSize, all.length);
-        const keysToLoad = [...initialFavoriteKeys, ...nonFavs].slice(0, totalToLoad);
+        const keysToLoad = all.slice(0, totalToLoad);
         const urls = await Promise.all(keysToLoad.map(async (it) => ({ key: it.key, url: await getUrl(it.key, { level: storageLevel }) })));
-        setItems(sortWithFavorites(urls));
+        setItems(sortItems(urls));
         setLoadedCount(totalToLoad);
       }
     } catch (e) {
       // ignore list error; caller can trigger reload again
     }
-  }, [favorites, pageSize, sortWithFavorites, storageLevel]);
+  }, [pageSize, sortItems, storageLevel]);
 
   useEffect(() => { reload(); }, [reload, refreshToken]);
 
@@ -83,18 +41,18 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       const count = Math.min(pageSize, remaining.length);
       const toLoad = remaining.slice(0, count);
       const urls = await Promise.all(toLoad.map(async (it) => ({ key: it.key, url: await getUrl(it.key, { level: storageLevel }) })));
-      setItems((prev) => sortWithFavorites([...prev, ...urls]));
+      setItems((prev) => sortItems([...prev, ...urls]));
       setLoadedCount((prev) => prev + count);
     } finally {
       setLoading(false);
     }
-  }, [allKeys, items, loading, pageSize, sortWithFavorites, storageLevel]);
+  }, [allKeys, items, loading, pageSize, sortItems, storageLevel]);
 
   const upload = useCallback(async (file, { onProgress } = {}) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const previewUrl = typeof window !== 'undefined' ? URL.createObjectURL(file) : undefined;
     // Insert placeholder at top
-    setItems((prev) => sortWithFavorites([{ id, url: previewUrl, loading: true, progress: 0 }, ...prev]));
+    setItems((prev) => sortItems([{ id, url: previewUrl, loading: true, progress: 0 }, ...prev]));
     try {
       const timestamp = Date.now();
       const rand = Math.random().toString(36).slice(2);
@@ -115,7 +73,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
         }
       }
       setAllKeys((prev) => [{ key, lastModified: new Date().toISOString(), size: file.size }, ...prev]);
-      setItems((prev) => sortWithFavorites([{ key, url }, ...prev.filter((it) => it.id !== id)]));
+      setItems((prev) => sortItems([{ key, url }, ...prev.filter((it) => it.id !== id)]));
       setLoadedCount((prev) => prev + 1);
       return { key, url };
     } catch (e) {
@@ -130,7 +88,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       setItems((prev) => prev.filter((it) => it.id !== id));
       throw e;
     }
-  }, [sortWithFavorites, storageLevel]);
+  }, [sortItems, storageLevel]);
 
   const removeItem = useCallback(async (key) => {
     await remove(key, { level: storageLevel });
@@ -138,5 +96,5 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
     setAllKeys((prev) => prev.filter((i) => i.key !== key));
   }, [storageLevel]);
 
-  return { items, loading, hasMore, loadMore, reload, upload, remove: removeItem, toggleFavorite, favorites };
+  return { items, loading, hasMore, loadMore, reload, upload, remove: removeItem };
 }

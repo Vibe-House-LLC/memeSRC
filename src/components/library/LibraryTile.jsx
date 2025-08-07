@@ -1,9 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, CircularProgress, IconButton } from '@mui/material';
-import { Check, Star, StarBorder, OpenInNew } from '@mui/icons-material';
+import { Check, OpenInNew } from '@mui/icons-material';
 
-export default function LibraryTile({ item, selected, onClick, onToggleFavorite, isFavorite, onPreview }) {
+export default function LibraryTile({ item, selected, onClick, onPreview }) {
   const loaded = Boolean(item?.url) && !item?.loading;
   return (
     <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
@@ -20,9 +20,6 @@ export default function LibraryTile({ item, selected, onClick, onToggleFavorite,
           </>
         )}
       </Box>
-      <IconButton size="small" onClick={onToggleFavorite} aria-label={isFavorite ? 'Unfavorite image' : 'Favorite image'} sx={{ position: 'absolute', top: 6, left: 6, bgcolor: isFavorite ? '#FFB726' : 'rgba(0,0,0,0.35)', color: isFavorite ? '#000' : '#fff', '&:hover': { bgcolor: isFavorite ? '#FF9800' : 'rgba(0,0,0,0.45)' }, borderRadius: 1.5 }}>
-        {isFavorite ? <Star fontSize="small" /> : <StarBorder fontSize="small" />}
-      </IconButton>
       <IconButton size="small" onClick={onPreview} aria-label="Preview image" sx={{ position: 'absolute', top: 6, right: 6, bgcolor: 'rgba(0,0,0,0.35)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.45)' }, borderRadius: 1.5 }}>
         <OpenInNew fontSize="small" />
       </IconButton>
@@ -42,7 +39,5 @@ LibraryTile.propTypes = {
   item: PropTypes.object.isRequired,
   selected: PropTypes.bool,
   onClick: PropTypes.func,
-  onToggleFavorite: PropTypes.func,
-  isFavorite: PropTypes.bool,
   onPreview: PropTypes.func,
 };
