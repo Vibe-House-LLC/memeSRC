@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import {
   Add,
-  CheckCircle,
+  Check,
   Delete,
   Star,
   StarBorder,
@@ -961,7 +961,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                     width: '100%',
                     height: '100%',
                     display: loaded ? 'block' : 'none',
-                    filter: selectMultipleMode && isSelected ? 'blur(1.5px)' : 'none',
                     transition: 'filter 0.2s ease'
                   }}
                 />
@@ -981,62 +980,42 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
                     }}
                   />
                 )}
+                {/* Selection indicators */}
                 {selectMultipleMode && isSelected && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      bgcolor: '#4caf50',
-                      opacity: 0.25,
-                      transition: 'all 0.2s ease',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                )}
-                {/* Selection border */}
-                {selectMultipleMode && isSelected && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      border: '3px solid',
-                      borderColor: '#4caf50',
-                      pointerEvents: 'none',
-                      transition: 'all 0.2s ease',
-                    }}
-                  />
-                )}
-                {/* Translucent checkmark in center */}
-                {selectMultipleMode && isSelected && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      pointerEvents: 'none',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    <CheckCircle 
-                      sx={{ 
-                        color: '#4caf50',
-                        fontSize: '48px',
-                        opacity: 0.9,
-                        filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.6))',
+                  <>
+                    {/* Green border */}
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        border: '2px solid',
+                        borderColor: 'success.main',
+                        pointerEvents: 'none',
                         transition: 'all 0.2s ease',
-                      }} 
+                      }}
                     />
-                  </Box>
+                    {/* Check badge top-right */}
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        zIndex: 2,
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        bgcolor: 'success.main',
+                        color: 'common.white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                        border: '2px solid white',
+                      }}
+                    >
+                      <Check sx={{ fontSize: 14 }} />
+                    </Box>
+                  </>
                 )}
               </Box>
             </ImageListItem>
