@@ -880,7 +880,6 @@ const BulkUploadSection = ({
           isAdmin
           multiple
           refreshTrigger={libraryRefreshTrigger}
-          userSub={user?.attributes?.sub || user?.username}
           onSelect={(items) => handleLibrarySelect(items)}
         />
       )}

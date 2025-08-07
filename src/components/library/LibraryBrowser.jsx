@@ -187,7 +187,6 @@ LibraryBrowser.propTypes = {
   deleteEnabled: PropTypes.bool,
   storageLevel: PropTypes.oneOf(['private', 'protected']),
   refreshTrigger: PropTypes.any,
-  userSub: PropTypes.string,
   isAdmin: PropTypes.bool,
   sx: PropTypes.any,
 };
