@@ -278,17 +278,16 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   // Helper to cap concurrency when fetching signed URLs
   const mapWithConcurrency = async (items, fn, limit = 5) => {
     const results = new Array(items.length);
-    let i = 0;
-    async function worker() {
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const idx = i++;
-        if (idx >= items.length) break;
-        // eslint-disable-next-line no-await-in-loop
-        results[idx] = await fn(items[idx], idx);
-      }
-    }
-    const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
+    let cursor = 0;
+    const startWorker = () => {
+      if (cursor >= items.length) return Promise.resolve();
+      const idx = cursor;
+      cursor += 1;
+      return Promise.resolve(fn(items[idx], idx))
+        .then((res) => { results[idx] = res; })
+        .then(startWorker);
+    };
+    const workers = Array.from({ length: Math.min(limit, items.length) }, startWorker);
     await Promise.all(workers);
     return results;
   };
