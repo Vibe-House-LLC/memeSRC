@@ -36,7 +36,9 @@ export function resizeImage(file, maxSize = 1500, quality = 0.85) {
             (blob) => {
               try {
                 URL.revokeObjectURL(url);
-              } catch {}
+              } catch (err) {
+                // ignore revoke errors
+              }
               if (blob) resolve(blob);
               else resolve(file);
             },
@@ -44,12 +46,20 @@ export function resizeImage(file, maxSize = 1500, quality = 0.85) {
             quality
           );
         } catch (e) {
-          try { URL.revokeObjectURL(url); } catch {}
+          try {
+            URL.revokeObjectURL(url);
+          } catch (err) {
+            // ignore revoke errors
+          }
           resolve(file);
         }
       };
       img.onerror = () => {
-        try { URL.revokeObjectURL(url); } catch {}
+        try {
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          // ignore revoke errors
+        }
         resolve(file);
       };
       img.src = url;

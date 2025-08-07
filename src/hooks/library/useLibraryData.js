@@ -1,6 +1,5 @@
-export const __DO_NOT_USE = null;
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { get, getUrl, list, put, remove } from '../../utils/library/storage';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getUrl, list, put, remove } from '../../utils/library/storage';
 
 export default function useLibraryData({ pageSize = 10, storageLevel = 'protected', refreshToken = null, userSub = null } = {}) {
   const [items, setItems] = useState([]); // { key, url }
@@ -15,13 +14,18 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
     try {
       const raw = localStorage.getItem(favoritesKey);
       return raw ? JSON.parse(raw) : {};
-    } catch {
+    } catch (err) {
+      // ignore JSON parse/storage errors
       return {};
     }
   });
 
   const persistFavorites = useCallback((next) => {
-    try { localStorage.setItem(favoritesKey, JSON.stringify(next)); } catch {}
+    try {
+      localStorage.setItem(favoritesKey, JSON.stringify(next));
+    } catch (err) {
+      // ignore storage errors
+    }
     return next;
   }, [favoritesKey]);
 
@@ -63,7 +67,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
         setLoadedCount(totalToLoad);
       }
     } catch (e) {
-      // swallow here; surface via caller if desired
+      // ignore list error; caller can trigger reload again
     }
   }, [favorites, pageSize, sortWithFavorites, storageLevel]);
 
@@ -104,14 +108,22 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       });
       // Replace placeholder with real item
       if (typeof window !== 'undefined' && previewUrl) {
-        try { URL.revokeObjectURL(previewUrl); } catch {}
+        try {
+          URL.revokeObjectURL(previewUrl);
+        } catch (err) {
+          // ignore revoke errors
+        }
       }
       setAllKeys((prev) => [{ key, lastModified: new Date().toISOString(), size: file.size }, ...prev]);
       setItems((prev) => sortWithFavorites([{ key, url }, ...prev.filter((it) => it.id !== id)]));
       return { key, url };
     } catch (e) {
       if (typeof window !== 'undefined' && previewUrl) {
-        try { URL.revokeObjectURL(previewUrl); } catch {}
+        try {
+          URL.revokeObjectURL(previewUrl);
+        } catch (err) {
+          // ignore revoke errors
+        }
       }
       // Drop placeholder on failure
       setItems((prev) => prev.filter((it) => it.id !== id));

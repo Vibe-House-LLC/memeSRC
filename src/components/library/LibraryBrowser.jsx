@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Typography } from '@mui/material';
-import { Add, Star, StarBorder } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar, Typography } from '@mui/material';
+import { Add } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
@@ -51,7 +51,8 @@ export default function LibraryBrowser({
       let cursor = 0;
       const startWorker = async () => {
         if (cursor >= arr.length) return;
-        const idx = cursor++;
+        const idx = cursor + 1 - 1; // use numeric operations without ++
+        cursor += 1;
         const it = arr[idx];
         try {
           const blob = await get(it.key, { level: storageLevel });
@@ -71,10 +72,10 @@ export default function LibraryBrowser({
         await startWorker();
       };
       await Promise.all(Array.from({ length: Math.min(limit, arr.length) }, () => startWorker()));
-      onSelect && onSelect(results.filter(Boolean));
+      if (onSelect) onSelect(results.filter(Boolean));
       clear();
     } catch (e) {
-      onError && onError(e);
+      if (onError) onError(e);
       setSnack({ open: true, message: 'Failed to load selected images', severity: 'error' });
     }
   }, [clear, onError, onSelect, selectedItems, storageLevel]);
@@ -110,10 +111,11 @@ export default function LibraryBrowser({
         items={items}
         showUploadTile={uploadEnabled && isAdmin}
         uploadTile={<UploadTile disabled={loading} onFiles={async (files) => {
-          // For simplicity, upload sequentially to keep UI stable; hook reports progress via callback if desired
-          for (const f of files) {
+          // Upload sequentially using promise chaining to satisfy lint rules
+          await files.reduce(async (p, f) => {
+            await p;
             await upload(f);
-          }
+          }, Promise.resolve());
         }} />}
         renderTile={(item) => (
           <LibraryTile
