@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Menu, MenuItem, Snackbar, Typography } from '@mui/material';
-import { MoreVert, Refresh } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Typography, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader } from '@mui/material';
+import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
@@ -39,6 +39,7 @@ export default function LibraryBrowser({
   const [confirm, setConfirm] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'info' });
   const [optionsAnchor, setOptionsAnchor] = useState(null);
+  const [sortDisclosureOpen, setSortDisclosureOpen] = useState(false);
   const [sortOption, setSortOption] = useState('newest'); // 'newest' | 'oldest' | 'az'
 
   const sentinelRef = useRef(null);
@@ -69,8 +70,6 @@ export default function LibraryBrowser({
     const arr = items.slice();
     if (sortOption === 'oldest') {
       arr.sort((a, b) => parseTimestampFromKey(a.key) - parseTimestampFromKey(b.key));
-    } else if (sortOption === 'az') {
-      arr.sort((a, b) => (a.key || '').localeCompare(b.key || ''));
     } else {
       // newest first (default)
       arr.sort((a, b) => parseTimestampFromKey(b.key) - parseTimestampFromKey(a.key));
@@ -149,13 +148,6 @@ export default function LibraryBrowser({
   const openOptions = (e) => setOptionsAnchor(e.currentTarget);
   const closeOptions = () => setOptionsAnchor(null);
 
-  const handleSelectAllDisplayed = () => {
-    displayItems.forEach((it) => {
-      if (!isSelected(it.key)) toggle(it.key);
-    });
-    closeOptions();
-  };
-
   const handleClearSelected = () => {
     clear();
     closeOptions();
@@ -198,19 +190,86 @@ export default function LibraryBrowser({
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>{items.length} item{items.length === 1 ? '' : 's'} • {count} selected</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton aria-label="Library options" onClick={openOptions} sx={{ color: '#8b5cc7', border: '1px solid rgba(139,92,199,0.45)' }}>
-            <MoreVert />
+          <IconButton
+            aria-label="Library options"
+            onClick={openOptions}
+            size="small"
+            sx={{
+              color: '#8b5cc7',
+              border: '1px solid rgba(139,92,199,0.45)',
+              bgcolor: 'rgba(139,92,199,0.08)',
+              '&:hover': { bgcolor: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
+            }}
+          >
+            <MoreVert fontSize="small" />
           </IconButton>
-          <Menu anchorEl={optionsAnchor} open={Boolean(optionsAnchor)} onClose={closeOptions}>
-            <MenuItem onClick={() => reload()}><Refresh fontSize="small" style={{ marginRight: 8 }} /> Refresh</MenuItem>
-            <MenuItem onClick={handleSelectAllDisplayed} disabled={displayItems.length === 0}>Select all</MenuItem>
-            <MenuItem onClick={handleClearSelected} disabled={count === 0}>Clear selected</MenuItem>
-            <MenuItem onClick={handleDeleteSelected} disabled={count === 0}>Delete selected</MenuItem>
-            <MenuItem disabled divider>Sorting</MenuItem>
-            <MenuItem selected={sortOption === 'newest'} onClick={() => handleSetSort('newest')}>Newest first</MenuItem>
-            <MenuItem selected={sortOption === 'oldest'} onClick={() => handleSetSort('oldest')}>Oldest first</MenuItem>
-            <MenuItem selected={sortOption === 'az'} onClick={() => handleSetSort('az')}>A–Z</MenuItem>
-          </Menu>
+          <Popover
+            open={Boolean(optionsAnchor)}
+            anchorEl={optionsAnchor}
+            onClose={closeOptions}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            PaperProps={{ sx: { width: 300, borderRadius: 2, mt: 1, maxHeight: '70vh', overflowY: 'auto' } }}
+          >
+            <List
+              dense
+              disablePadding
+              subheader={
+                <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700 }}>
+                  Library options
+                </ListSubheader>
+              }
+            >
+              <ListItemButton onClick={() => { reload(); closeOptions(); }}>
+                <ListItemIcon><Refresh fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Refresh" />
+              </ListItemButton>
+              <Divider sx={{ my: 0.5 }} />
+
+              {count > 0 && (
+                <>
+                  <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700, lineHeight: 2 }}>
+                    Selection
+                  </ListSubheader>
+                  <ListItemButton onClick={handleClearSelected}>
+                    <ListItemIcon><Clear fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Clear selected" />
+                  </ListItemButton>
+                  {deleteEnabled && (
+                    <ListItemButton onClick={handleDeleteSelected} sx={{ color: 'error.main' }}>
+                      <ListItemIcon><DeleteForever fontSize="small" color="error" /></ListItemIcon>
+                      <ListItemText primary="Delete selected" />
+                    </ListItemButton>
+                  )}
+                  <Divider sx={{ my: 0.5 }} />
+                </>
+              )}
+
+              {items.length > 1 && (
+                <ListItemButton onClick={() => setSortDisclosureOpen((v) => !v)}>
+                <ListItemIcon><Sort fontSize="small" /></ListItemIcon>
+                  <ListItemText primary="Sorting" secondary={
+                    sortOption === 'newest' ? 'Newest first' : 'Oldest first'
+                  } />
+                {sortDisclosureOpen ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+              )}
+              {items.length > 1 && (
+                <Collapse in={sortDisclosureOpen} timeout="auto" unmountOnExit>
+                  <Box sx={{ pl: 6, pb: 1 }}>
+                    <RadioGroup
+                      aria-label="Sort order"
+                      value={sortOption}
+                      onChange={(e) => handleSetSort(e.target.value)}
+                    >
+                      <FormControlLabel value="newest" control={<Radio size="small" />} label="Newest first" />
+                      <FormControlLabel value="oldest" control={<Radio size="small" />} label="Oldest first" />
+                    </RadioGroup>
+                  </Box>
+                </Collapse>
+              )}
+            </List>
+          </Popover>
         </Box>
       </Box>
 
