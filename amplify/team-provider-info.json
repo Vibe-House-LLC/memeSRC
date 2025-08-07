@@ -119,7 +119,7 @@
         },
         "frameExtractor": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/frameExtractor-61753862535a79775059-build.zip"
+          "s3Key": "amplify-builds/frameExtractor-526e412f503439374278-build.zip"
         },
         "memesrcSearchV2": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
