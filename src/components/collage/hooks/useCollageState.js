@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCallback and useRef
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
-import { saveImageToLibrary } from '../components/MyLibrary';
+import { saveImageToLibrary } from '../../../utils/library/saveImageToLibrary';
 
 // Debug flag - only enable in development mode
 const DEBUG_MODE = process.env.NODE_ENV === 'development';

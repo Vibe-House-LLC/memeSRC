@@ -20,7 +20,7 @@ import {
   Refresh,
   Clear
 } from '@mui/icons-material';
-import MyLibrary from './MyLibrary';
+import { LibraryBrowser } from '../../library';
 import { UserContext } from '../../../UserContext';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
@@ -558,9 +558,9 @@ const BulkUploadSection = ({
     }
   };
 
-  // Handler for selecting images from MyLibrary
-  const handleLibrarySelect = async (urls) => {
-    if (!urls || urls.length === 0) return;
+  // Handler for selecting images from LibraryBrowser
+  const handleLibrarySelect = async (items) => {
+    if (!items || items.length === 0) return;
 
     const emptyPanels = [];
     const assignedPanelIds = new Set(Object.keys(panelImageMapping));
@@ -579,7 +579,7 @@ const BulkUploadSection = ({
     }
 
     const numEmptyPanels = emptyPanels.length;
-    const numNewImages = urls.length;
+    const numNewImages = items.length;
 
     let newPanelCount = panelCount;
     if (numNewImages > numEmptyPanels) {
@@ -614,8 +614,8 @@ const BulkUploadSection = ({
       }
     }
 
-    // Add images first so mapping references valid indices
-    await addMultipleImages(urls);
+    // Add items first so mapping references valid indices
+    await addMultipleImages(items);
 
     // Update mapping after images are added
     updatePanelImageMapping(newMapping);
@@ -876,7 +876,13 @@ const BulkUploadSection = ({
 
       {/* User image library below uploader */}
       {isAdmin && (
-        <MyLibrary onSelect={handleLibrarySelect} refreshTrigger={libraryRefreshTrigger} />
+        <LibraryBrowser
+          isAdmin
+          multiple
+          refreshTrigger={libraryRefreshTrigger}
+          userSub={user?.attributes?.sub || user?.username}
+          onSelect={(items) => handleLibrarySelect(items)}
+        />
       )}
 
       {/* Toast Notification */}
