@@ -195,9 +195,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
 
   const IMAGES_PER_PAGE = 10;
 
-  const CACHE_KEY = 'libraryUrlCache';
-  const SIGNED_URL_EXPIRATION = 24 * 60 * 60; // seconds
-  const CACHE_DURATION = (SIGNED_URL_EXPIRATION - 60 * 60) * 1000; // 1h less
 
   const sortLoadedImages = (imgs, favs) => {
     const placeholders = imgs.filter(img => !img.key);
@@ -242,79 +239,20 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     favoritesRef.current = favorites;
   }, [favorites]);
 
+  // Keep a ref of images for safe URL revocation in async handlers and on unmount
+  const imagesRef = useRef(images);
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
 
-  const getCachedUrl = async (key) => {
-    const cacheRaw = localStorage.getItem(CACHE_KEY);
-    let cache = {};
+  const revokePlaceholderPreviewUrl = (id) => {
     try {
-      if (cacheRaw) {
-        cache = JSON.parse(cacheRaw);
+      const placeholder = imagesRef.current.find((img) => img.id === id && img.previewUrl);
+      if (placeholder && typeof placeholder.previewUrl === 'string' && placeholder.previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(placeholder.previewUrl);
       }
-    } catch (err) {
-      console.warn('Error parsing cache', err);
-      cache = {};
-    }
-
-    const cached = cache[key];
-    const now = Date.now();
-    
-    if (cached && cached.expiresAt && cached.expiresAt > now) {
-      console.log('📸 Cache HIT for', key.split('/').pop());
-      return cached.url;
-    }
-
-    console.log('📡 Cache MISS for', key.split('/').pop(), cached ? '(expired)' : '(not found)');
-    const url = await Storage.get(key, { level: 'protected', expires: SIGNED_URL_EXPIRATION });
-    cache[key] = { url, expiresAt: now + CACHE_DURATION };
-    
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-    } catch (err) {
-      console.warn('Error storing image URL cache', err);
-    }
-    return url;
-  };
-
-  const cleanExpiredCache = () => {
-    try {
-      const cacheRaw = localStorage.getItem(CACHE_KEY);
-      if (!cacheRaw) return;
-      
-      const cache = JSON.parse(cacheRaw);
-      const now = Date.now();
-      let cleanedCount = 0;
-      
-      Object.keys(cache).forEach(key => {
-        if (!cache[key].expiresAt || cache[key].expiresAt <= now) {
-          delete cache[key];
-          cleanedCount+=1;
-        }
-      });
-      
-      if (cleanedCount > 0) {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-        console.log('Cleaned', cleanedCount, 'expired cache entries');
-      }
-    } catch (err) {
-      console.warn('Error cleaning expired cache', err);
-    }
-  };
-
-  const removeFromCache = (key) => {
-    try {
-      const cacheRaw = localStorage.getItem(CACHE_KEY);
-      if (!cacheRaw) return;
-      const cache = JSON.parse(cacheRaw);
-      if (cache[key]) {
-        delete cache[key];
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-        } catch (err) {
-          console.warn('Error updating image URL cache', err);
-        }
-      }
-    } catch (err) {
-      console.warn('Error removing URL from cache', err);
+    } catch (_) {
+      // no-op
     }
   };
 
@@ -335,6 +273,24 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       console.error('Error loading library image keys', err);
       return [];
     }
+  };
+
+  // Helper to cap concurrency when fetching signed URLs
+  const mapWithConcurrency = async (items, fn, limit = 5) => {
+    const results = new Array(items.length);
+    let i = 0;
+    async function worker() {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const idx = i++;
+        if (idx >= items.length) break;
+        // eslint-disable-next-line no-await-in-loop
+        results[idx] = await fn(items[idx], idx);
+      }
+    }
+    const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
+    await Promise.all(workers);
+    return results;
   };
 
   const loadImages = async (startIndex = 0, append = false) => {
@@ -369,11 +325,13 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         endIndex = loadedCount + remainingToLoad;
       }
       
-      const imageData = await Promise.all(
-        keysToLoad.map(async (item) => {
-          const url = await getCachedUrl(item.key);
+      const imageData = await mapWithConcurrency(
+        keysToLoad,
+        async (item) => {
+          const url = await Storage.get(item.key, { level: 'protected', expires: 3600 });
           return { key: item.key, url };
-        })
+        },
+        5
       );
 
       setImages(prev => {
@@ -393,9 +351,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   };
 
   const fetchImages = async () => {
-    // Clean expired cache entries before loading
-    cleanExpiredCache();
-    
     setImages([]);
     setLoadedCount(0);
     const keys = await fetchAllImageKeys();
@@ -427,9 +382,19 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   }, [loading, loadedCount, allImageKeys.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    // Clean expired cache on component mount
-    cleanExpiredCache();
     fetchImages();
+    // Cleanup: revoke any leftover placeholder object URLs on unmount
+    return () => {
+      try {
+        imagesRef.current.forEach((img) => {
+          if (img.previewUrl && typeof img.previewUrl === 'string' && img.previewUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(img.previewUrl);
+          }
+        });
+      } catch (_) {
+        // no-op
+      }
+    };
   }, []);
 
   // Effect to refresh library when refreshTrigger changes
@@ -493,7 +458,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     setDeleting(true);
     try {
       await Storage.remove(previewImage.key, { level: 'protected' });
-      removeFromCache(previewImage.key);
       console.log('Successfully deleted image:', previewImage.key);
       
       // Remove from favorites and local state
@@ -525,7 +489,6 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
       await Promise.all(
         selected.map(key => Storage.remove(key, { level: 'protected' }))
       );
-      selected.forEach(removeFromCache);
       
       console.log('Successfully deleted images:', selected);
       
@@ -661,7 +624,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   const finalizeUpload = (id, data) => {
     setImages(prev => prev.map(img => {
       if (img.id === id) {
-        return { key: data.key, url: img.previewUrl, previewUrl: img.previewUrl };
+        return { key: data.key, url: data.url };
       }
       return img;
     }));
@@ -693,7 +656,11 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
         }
       });
 
-      finalizeUpload(id, { key, size: blob.size, lastModified: new Date().toISOString() });
+      // Fetch signed URL for the uploaded object and finalize
+      const signedUrl = await Storage.get(key, { level: 'protected', expires: 3600 });
+      finalizeUpload(id, { key, url: signedUrl, size: blob.size, lastModified: new Date().toISOString() });
+      // Revoke temporary preview object URL now that we have a stable URL
+      revokePlaceholderPreviewUrl(id);
 
       setAllImageKeys(prev => [
         { key, lastModified: new Date().toISOString(), size: blob.size },
@@ -703,6 +670,8 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
     } catch (err) {
       console.error('Error uploading library image', err);
       updateProgress(id, 100);
+      // Revoke temporary preview object URL on failure as well
+      revokePlaceholderPreviewUrl(id);
     }
   };
 
@@ -1482,34 +1451,7 @@ const MyLibrary = ({ onSelect, refreshTrigger }) => {
   );
 };
 
-// Debug function for browser console
-if (typeof window !== 'undefined') {
-  window.debugLibraryCache = () => {
-    const CACHE_KEY = 'libraryUrlCache';
-    try {
-      const cacheRaw = localStorage.getItem(CACHE_KEY);
-      if (!cacheRaw) {
-        console.log('🗃️ No cache found');
-        return;
-      }
-      
-      const cache = JSON.parse(cacheRaw);
-      const now = Date.now();
-      const entries = Object.entries(cache);
-      
-      console.log('🗃️ Cache Status:');
-      console.log(`Total entries: ${entries.length}`);
-      
-      entries.forEach(([key, data]) => {
-        const isValid = data.expiresAt && data.expiresAt > now;
-        const timeLeft = data.expiresAt ? Math.round((data.expiresAt - now) / 1000 / 60) : 0;
-        console.log(`${isValid ? '✅' : '❌'} ${key.split('/').pop()} - ${isValid ? `${timeLeft}min left` : 'expired'}`);
-      });
-    } catch (err) {
-      console.error('Error checking cache:', err);
-    }
-  };
-}
+
 
 MyLibrary.propTypes = {
   onSelect: PropTypes.func,
