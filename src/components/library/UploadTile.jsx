@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Box } from '@mui/material';
+import { Box, Stack, Typography } from '@mui/material';
 import { Add } from '@mui/icons-material';
 
 export default function UploadTile({ onFiles, disabled }) {
@@ -13,11 +13,18 @@ export default function UploadTile({ onFiles, disabled }) {
       onClick={() => !disabled && inputRef.current?.click()}
       sx={{
         height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        border: '1px dashed', borderColor: 'divider', bgcolor: 'background.paper', cursor: disabled ? 'default' : 'pointer',
-        '&:hover': { borderColor: disabled ? 'divider' : 'primary.main', bgcolor: disabled ? 'background.paper' : 'action.hover' }
+        border: '1px dashed', borderColor: 'rgba(255,255,255,0.2)', bgcolor: 'rgba(255,255,255,0.02)', cursor: disabled ? 'default' : 'pointer',
+        borderRadius: 1,
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': { borderColor: disabled ? 'rgba(255,255,255,0.2)' : '#8b5cc7', bgcolor: disabled ? 'rgba(255,255,255,0.02)' : 'rgba(139,92,199,0.12)' }
       }}
     >
-      <Add sx={{ color: 'text.secondary' }} />
+      <Stack spacing={0.5} alignItems="center" justifyContent="center">
+        <Add sx={{ color: 'rgba(255,255,255,0.8)' }} />
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+          Upload
+        </Typography>
+      </Stack>
       <input type="file" accept="image/*" multiple ref={inputRef} onChange={(e) => {
         const files = Array.from(e.target.files || []);
         if (files.length) onFiles(files);

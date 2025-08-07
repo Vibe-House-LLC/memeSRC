@@ -98,11 +98,20 @@ export default function LibraryBrowser({
 
   return (
     <Box sx={{ mt: 3, ...(sx || {}) }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6">My Library</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.92)' }}>My Library</Typography>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>{items.length} item{items.length === 1 ? '' : 's'} • {count} selected</Typography>
+        </Box>
         {favoriteEnabled && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button size="small" startIcon={<Add />} onClick={() => reload()} aria-label="Refresh library">Refresh</Button>
+            <Button size="small" startIcon={<Add />} onClick={() => reload()} aria-label="Refresh library" sx={{
+              textTransform: 'none',
+              color: '#8b5cc7',
+              border: '1px solid rgba(139,92,199,0.45)',
+              background: 'rgba(139,92,199,0.08)',
+              '&:hover': { background: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
+            }}>Refresh</Button>
           </Box>
         )}
       </Box>
@@ -129,12 +138,10 @@ export default function LibraryBrowser({
         )}
       />
 
-      {/* Infinite sentry */}
       {!loading && items.length > 0 && (
         <Box sx={{ height: 1 }} aria-hidden onMouseEnter={() => loadMore()} />
       )}
 
-      {/* Preview */}
       <PreviewDialog
         open={Boolean(previewKey)}
         onClose={() => setPreviewKey(null)}
@@ -143,7 +150,6 @@ export default function LibraryBrowser({
         titleId="library-preview-title"
       />
 
-      {/* Confirm Dialog */}
       <Dialog open={Boolean(confirm)} onClose={() => setConfirm(null)} aria-labelledby="confirm-delete-title">
         <DialogTitle id="confirm-delete-title">Delete image{confirm?.keys?.length > 1 ? 's' : ''}?</DialogTitle>
         <DialogContent>
@@ -155,7 +161,6 @@ export default function LibraryBrowser({
         </DialogActions>
       </Dialog>
 
-      {/* Action bar (admin) */}
       {isAdmin && (
         <ActionBar open={count > 0} primaryLabel="Make Collage" count={count} onPrimary={handleUseSelected} />
       )}
