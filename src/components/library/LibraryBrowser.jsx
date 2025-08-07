@@ -189,6 +189,8 @@ export default function LibraryBrowser({
         onNext={handleNext}
         hasPrev={previewIndex > 0}
         hasNext={previewIndex >= 0 && previewIndex < items.length - 1}
+        isSelected={previewKey ? isSelected(previewKey) : false}
+        onToggleSelected={previewKey ? () => toggle(previewKey) : undefined}
       />
 
       <Dialog open={Boolean(confirm)} onClose={() => setConfirm(null)} aria-labelledby="confirm-delete-title">

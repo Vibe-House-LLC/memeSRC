@@ -1,9 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, Dialog, IconButton, Typography, useMediaQuery } from '@mui/material';
-import { Delete, Close, KeyboardArrowLeft, KeyboardArrowRight } from '@mui/icons-material';
+import { Delete, Close, KeyboardArrowLeft, KeyboardArrowRight, CheckCircle, CheckCircleOutline } from '@mui/icons-material';
 
-export default function PreviewDialog({ open, onClose, imageUrl, onDelete, titleId, onPrev, onNext, hasPrev, hasNext }) {
+export default function PreviewDialog({ open, onClose, imageUrl, onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected }) {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
   const [swipeOffsetY, setSwipeOffsetY] = React.useState(0);
@@ -68,6 +68,20 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
           Image Preview
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {typeof isSelected === 'boolean' && onToggleSelected && (
+            <IconButton
+              onClick={onToggleSelected}
+              aria-label={isSelected ? 'Deselect image' : 'Select image'}
+              aria-pressed={isSelected}
+              sx={{
+                color: isSelected ? '#0a0' : 'rgba(255,255,255,0.9)',
+                bgcolor: isSelected ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
+                '&:hover': { bgcolor: isSelected ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.16)' },
+              }}
+            >
+              {isSelected ? <CheckCircle /> : <CheckCircleOutline />}
+            </IconButton>
+          )}
           {onDelete && (
             <IconButton
               onClick={onDelete}
@@ -102,6 +116,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
               transform: `translateY(${swipeOffsetY}px)`,
               opacity: swipeOffsetY ? Math.max(0.3, 1 - swipeOffsetY / 300) : 1,
               transition: swipeOffsetY ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
+              position: 'relative',
             }}
           >
             <img
@@ -115,6 +130,9 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
                 boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
               }}
             />
+            {isSelected && (
+              <Box sx={{ position: 'absolute', inset: 0, border: '2px solid #22c55e', borderRadius: 2, pointerEvents: 'none' }} />
+            )}
           </Box>
         )}
 
