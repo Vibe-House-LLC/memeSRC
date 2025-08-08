@@ -51,13 +51,13 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
   }, [allKeys, items, loading, pageSize, sortItems, storageLevel]);
 
   // Create a placeholder item and return a handle
-  const createPlaceholder = useCallback((file, { withPreview = true } = {}) => {
+  const createPlaceholder = useCallback((file, { withPreview = true, createdAtValue } = {}) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const previewUrl = withPreview && typeof window !== 'undefined' ? URL.createObjectURL(file) : undefined;
     setItems((prev) =>
       sortItems([
         // progress intentionally left undefined so UI shows indeterminate until upload starts
-        { id, url: previewUrl, loading: true, createdAt: Date.now() },
+        { id, url: previewUrl, loading: true, createdAt: typeof createdAtValue === 'number' ? createdAtValue : Date.now() },
         ...prev,
       ])
     );
@@ -66,7 +66,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
 
   // Perform the actual resize and upload for a given placeholder handle
   const performUpload = useCallback(async (file, handle, { onProgress } = {}) => {
-    const { id, previewUrl } = handle || {};
+    const { id, previewUrl, plannedTimestamp } = handle || {};
     // Yield to the browser so the placeholder can paint before heavy work
     try {
       await new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
@@ -79,7 +79,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
         // eslint-disable-next-line no-unused-expressions
         await new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
       } catch (_) { /* ignore */ }
-      const timestamp = Date.now();
+      const timestamp = typeof plannedTimestamp === 'number' ? plannedTimestamp : Date.now();
       const rand = Math.random().toString(36).slice(2);
       const key = `library/${timestamp}-${rand}-${file.name || 'image'}`;
       const { url } = await put(key, toUpload, {
@@ -93,7 +93,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
         try { URL.revokeObjectURL(previewUrl); } catch (_) { /* ignore */ }
       }
       setAllKeys((prev) => [{ key, lastModified: new Date().toISOString(), size: toUpload?.size || file.size }, ...prev]);
-      if (id) setItems((prev) => sortItems([{ key, url }, ...prev.filter((it) => it.id !== id)]));
+      if (id) setItems((prev) => prev.map((it) => (it.id === id ? { key, url, createdAt: timestamp } : it)));
       setLoadedCount((prev) => prev + 1);
       return { key, url };
     } catch (e) {
@@ -110,17 +110,20 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
 
   // Legacy single-file API: create placeholder + upload
   const upload = useCallback(async (file, { onProgress } = {}) => {
-    const handle = createPlaceholder(file, { withPreview: true });
-    return performUpload(file, handle, { onProgress });
+    const plannedTimestamp = Date.now();
+    const handle = createPlaceholder(file, { withPreview: true, createdAtValue: plannedTimestamp });
+    return performUpload(file, { ...handle, plannedTimestamp }, { onProgress });
   }, [createPlaceholder, performUpload]);
 
   // Bulk upload with concurrency limit; shows placeholders immediately (without previews) to reduce memory pressure
   const uploadMany = useCallback(async (files, { concurrency = 1 } = {}) => {
     const handles = [];
+    const baseTs = Date.now();
     for (let i = 0; i < files.length; i += 1) {
       const file = files[i];
-      // Create placeholder without preview first
-      handles.push({ file, handle: createPlaceholder(file, { withPreview: false }) });
+      const plannedTimestamp = baseTs - i; // stable newest-first across selection order
+      // Create placeholder without preview first with planned timestamp
+      handles.push({ file, plannedTimestamp, handle: createPlaceholder(file, { withPreview: false, createdAtValue: plannedTimestamp }) });
       // Yield every 8 placeholders so React can paint and avoid jank
       if ((i + 1) % 8 === 0) {
         // eslint-disable-next-line no-await-in-loop
@@ -138,7 +141,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
         const idx = cursor + 1 - 1; // avoid ++ for explicitness
         cursor += 1;
         if (idx >= handles.length) break;
-        const { file, handle } = handles[idx];
+        const { file, handle, plannedTimestamp } = handles[idx];
         // Create preview URL just-in-time and attach to placeholder
         let previewUrl;
         if (typeof window !== 'undefined') {
@@ -149,7 +152,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
         }
         try {
           // eslint-disable-next-line no-await-in-loop
-          results[idx] = await performUpload(file, { id: handle?.id, previewUrl });
+          results[idx] = await performUpload(file, { id: handle?.id, previewUrl, plannedTimestamp });
         } catch (_) {
           results[idx] = null;
           if (typeof window !== 'undefined' && previewUrl) {

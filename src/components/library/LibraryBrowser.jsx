@@ -71,31 +71,12 @@ export default function LibraryBrowser({
 
   const displayItems = useMemo(() => {
     const arr = items.slice();
-    const getTs = (it) => (it?.key ? parseTimestampFromKey(it.key) : 0);
-    const getPlaceholderTs = (it) => (typeof it?.createdAt === 'number' ? it.createdAt : 0);
-    arr.sort((a, b) => {
-      const aHasKey = Boolean(a?.key);
-      const bHasKey = Boolean(b?.key);
-      if (!aHasKey && !bHasKey) {
-        // Both placeholders: order by createdAt
-        return sortOption === 'oldest'
-          ? getPlaceholderTs(a) - getPlaceholderTs(b)
-          : getPlaceholderTs(b) - getPlaceholderTs(a);
-      }
-      if (!aHasKey || !bHasKey) {
-        // One is a placeholder: decide by sort option
-        if (sortOption === 'oldest') {
-          // Placeholders should appear last when sorting oldest-first
-          return aHasKey ? -1 : 1;
-        }
-        // Newest-first: placeholders should appear first
-        return aHasKey ? 1 : -1;
-      }
-      // Both have keys: compare by timestamp embedded in key
-      return sortOption === 'oldest'
-        ? getTs(a) - getTs(b)
-        : getTs(b) - getTs(a);
-    });
+    const getTime = (it) => {
+      if (it?.key) return parseTimestampFromKey(it.key);
+      if (typeof it?.createdAt === 'number') return it.createdAt;
+      return 0;
+    };
+    arr.sort((a, b) => (sortOption === 'oldest' ? getTime(a) - getTime(b) : getTime(b) - getTime(a)));
     return arr;
   }, [items, sortOption]);
 
