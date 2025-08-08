@@ -407,6 +407,7 @@ export default function LibraryBrowser({
             selected={effectiveSelectionEnabled ? isSelected(item.key) : false}
             disabled={effectiveSelectionEnabled ? (Boolean(maxSelected) && atMax && !isSelected(item.key)) : false}
             showPreviewIcon={effectiveSelectionEnabled}
+            selectionMode={effectiveSelectionEnabled}
             onClick={() => {
               if (effectivePreviewOnClick) {
                 onTileClick(item.key);

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Box, Skeleton, CircularProgress } from '@mui/material';
 import { Check } from '@mui/icons-material';
 
-export default function LibraryTile({ item, selected, onClick, onPreview, disabled }) {
+export default function LibraryTile({ item, selected, onClick, onPreview, disabled, selectionMode }) {
   const loaded = Boolean(item?.url) && !item?.loading;
   return (
     <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: disabled ? 'not-allowed' : 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
@@ -62,6 +62,9 @@ export default function LibraryTile({ item, selected, onClick, onPreview, disabl
       {disabled && !selected && (
         <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.35)', borderRadius: 1.2, pointerEvents: 'none' }} />
       )}
+      {selectionMode && !selected && (
+        <Box sx={{ position: 'absolute', inset: 0, border: '2px solid', borderColor: 'rgba(255,255,255,0.5)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.6)', pointerEvents: 'none', borderRadius: 1.2 }} />
+      )}
     </Box>
   );
 }
@@ -72,4 +75,5 @@ LibraryTile.propTypes = {
   onClick: PropTypes.func,
   onPreview: PropTypes.func,
   disabled: PropTypes.bool,
+  selectionMode: PropTypes.bool,
 };
