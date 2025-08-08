@@ -435,7 +435,25 @@ export default function LibraryBrowser({
         hasPrev={previewIndex > 0}
         hasNext={previewIndex >= 0 && previewIndex < displayItems.length - 1}
         isSelected={previewKey ? isSelected(previewKey) : false}
-        onToggleSelected={previewKey ? () => toggle(previewKey) : undefined}
+        onToggleSelected={previewKey ? async () => {
+          // In single-select mode, immediately pass selection to caller and close
+          if (multiple === false) {
+            try {
+              await handleInstantSelect({ key: previewItem?.key, url: previewItem?.url });
+            } finally {
+              setPreviewKey(null);
+            }
+            return;
+          }
+          // Multi-select: ensure select mode is enabled, toggle selection, then close
+          if (!effectiveSelectionEnabled) {
+            setSelectMode(true);
+            if (typeof onSelectModeChange === 'function') onSelectModeChange(true);
+          }
+          toggle(previewKey);
+          setPreviewKey(null);
+        } : undefined}
+        footerMode={!multiple ? 'single' : 'default'}
       />
 
       <Dialog open={Boolean(confirm)} onClose={() => setConfirm(null)} aria-labelledby="confirm-delete-title">

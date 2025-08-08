@@ -1,9 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Box, Dialog, IconButton, Typography, useMediaQuery } from '@mui/material';
+import { Box, Dialog, IconButton, Typography, useMediaQuery, Button } from '@mui/material';
 import { Delete, Close, KeyboardArrowLeft, KeyboardArrowRight, CheckCircle, CheckCircleOutline } from '@mui/icons-material';
 
-export default function PreviewDialog({ open, onClose, imageUrl, onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected }) {
+export default function PreviewDialog({ open, onClose, imageUrl, onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected, footerMode = 'default' }) {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
   const [swipeOffsetY, setSwipeOffsetY] = React.useState(0);
@@ -210,44 +210,95 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
             bgcolor: '#0f0f10',
           }}
         >
-          <IconButton
-            aria-label="Previous image"
-            onClick={onPrev}
-            disabled={!hasPrev}
-            sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
-          >
-            <KeyboardArrowLeft />
-          </IconButton>
-          {typeof isSelected === 'boolean' && onToggleSelected && (
-            <IconButton
-              onClick={onToggleSelected}
-              aria-label={isSelected ? 'Deselect image' : 'Select image'}
-              aria-pressed={isSelected}
-              sx={{
-                color: isSelected ? '#22c55e' : 'rgba(255,255,255,0.9)',
-                bgcolor: isSelected ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
-                '&:hover': { bgcolor: isSelected ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.16)' },
-              }}
-            >
-              {isSelected ? <CheckCircle /> : <CheckCircleOutline />}
-            </IconButton>
+          {footerMode === 'single' ? (
+            <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+              <Button
+                onClick={onClose}
+                variant="contained"
+                fullWidth
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  borderRadius: 1.25,
+                  color: '#e5e7eb',
+                  bgcolor: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.24)',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    bgcolor: 'rgba(255,255,255,0.10)',
+                    borderColor: 'rgba(255,255,255,0.36)'
+                  }
+                }}
+                startIcon={<Close />}
+              >
+                Close
+              </Button>
+              {onToggleSelected && (
+                <Button
+                  onClick={onToggleSelected}
+                  variant="contained"
+                  fullWidth
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 800,
+                    borderRadius: 1.25,
+                    color: '#0b0f0c',
+                    background: 'linear-gradient(45deg, #16a34a 10%, #22c55e 90%)',
+                    border: '1px solid rgba(34,197,94,0.65)',
+                    boxShadow: '0 6px 16px rgba(34,197,94,0.25)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #12813c 10%, #1fb455 90%)',
+                      boxShadow: '0 8px 18px rgba(34,197,94,0.35)'
+                    }
+                  }}
+                  startIcon={<CheckCircle />}
+                >
+                  Select
+                </Button>
+              )}
+            </Box>
+          ) : (
+            <>
+              <IconButton
+                aria-label="Previous image"
+                onClick={onPrev}
+                disabled={!hasPrev}
+                sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
+              >
+                <KeyboardArrowLeft />
+              </IconButton>
+              {typeof isSelected === 'boolean' && onToggleSelected && (
+                <IconButton
+                  onClick={onToggleSelected}
+                  aria-label={isSelected ? 'Deselect image' : 'Select image'}
+                  aria-pressed={isSelected}
+                  sx={{
+                    color: isSelected ? '#22c55e' : 'rgba(255,255,255,0.9)',
+                    bgcolor: isSelected ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
+                    '&:hover': { bgcolor: isSelected ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.16)' },
+                  }}
+                >
+                  {isSelected ? <CheckCircle /> : <CheckCircleOutline />}
+                </IconButton>
+              )}
+              {onDelete && (
+                <IconButton onClick={onDelete} aria-label="Delete image" sx={{ color: '#ff5252', bgcolor: 'rgba(255,82,82,0.1)', '&:hover': { bgcolor: 'rgba(255,82,82,0.2)' } }}>
+                  <Delete />
+                </IconButton>
+              )}
+              <IconButton
+                aria-label="Next image"
+                onClick={onNext}
+                disabled={!hasNext}
+                sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
+              >
+                <KeyboardArrowRight />
+              </IconButton>
+              <IconButton onClick={onClose} aria-label="Close preview" sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}>
+                <Close />
+              </IconButton>
+            </>
           )}
-          {onDelete && (
-            <IconButton onClick={onDelete} aria-label="Delete image" sx={{ color: '#ff5252', bgcolor: 'rgba(255,82,82,0.1)', '&:hover': { bgcolor: 'rgba(255,82,82,0.2)' } }}>
-              <Delete />
-            </IconButton>
-          )}
-          <IconButton
-            aria-label="Next image"
-            onClick={onNext}
-            disabled={!hasNext}
-            sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
-          >
-            <KeyboardArrowRight />
-          </IconButton>
-          <IconButton onClick={onClose} aria-label="Close preview" sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}>
-            <Close />
-          </IconButton>
         </Box>
       )}
     </Dialog>
