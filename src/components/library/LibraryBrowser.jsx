@@ -96,29 +96,29 @@ export default function LibraryBrowser({
       const arr = selectedItems;
       const results = new Array(arr.length);
       let cursor = 0;
-      const startWorker = async () => {
-        if (cursor >= arr.length) return;
-        const idx = cursor + 1 - 1; // use numeric operations without ++
-        cursor += 1;
-        const it = arr[idx];
-        try {
-          const blob = await get(it.key, { level: storageLevel });
-          const dataUrl = await blobToDataUrl(blob);
-          results[idx] = {
-            originalUrl: dataUrl,
-            displayUrl: dataUrl,
-            metadata: { isFromLibrary: true, libraryKey: it.key },
-          };
-        } catch (e) {
-          results[idx] = {
-            originalUrl: it.url,
-            displayUrl: it.url,
-            metadata: { isFromLibrary: true, libraryKey: it.key },
-          };
+      const worker = async () => {
+        while (cursor < arr.length) {
+          const idx = cursor; // simplified from cursor + 1 - 1
+          cursor += 1;
+          const it = arr[idx];
+          try {
+            const blob = await get(it.key, { level: storageLevel });
+            const dataUrl = await blobToDataUrl(blob);
+            results[idx] = {
+              originalUrl: dataUrl,
+              displayUrl: dataUrl,
+              metadata: { isFromLibrary: true, libraryKey: it.key },
+            };
+          } catch (e) {
+            results[idx] = {
+              originalUrl: it.url,
+              displayUrl: it.url,
+              metadata: { isFromLibrary: true, libraryKey: it.key },
+            };
+          }
         }
-        await startWorker();
       };
-      await Promise.all(Array.from({ length: Math.min(limit, arr.length) }, () => startWorker()));
+      await Promise.all(Array.from({ length: Math.min(limit, arr.length) }, () => worker()));
       if (onSelect) onSelect(results.filter(Boolean));
       clear();
     } catch (e) {
