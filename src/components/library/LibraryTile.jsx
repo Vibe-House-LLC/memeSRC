@@ -3,11 +3,11 @@ import PropTypes from 'prop-types';
 import { Box, CircularProgress, IconButton } from '@mui/material';
 import { Check, OpenInNew } from '@mui/icons-material';
 
-export default function LibraryTile({ item, selected, onClick, onPreview }) {
+export default function LibraryTile({ item, selected, onClick, onPreview, disabled }) {
   const loaded = Boolean(item?.url) && !item?.loading;
   return (
-    <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
-      <Box onClick={onClick} aria-label={selected ? 'Unselect image' : 'Select image'} role="button" tabIndex={0} sx={{ width: '100%', height: '100%' }}>
+    <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: disabled ? 'not-allowed' : 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
+      <Box onClick={disabled ? undefined : onClick} aria-label={selected ? 'Unselect image' : 'Select image'} role="button" tabIndex={disabled ? -1 : 0} sx={{ width: '100%', height: '100%', pointerEvents: disabled ? 'none' : 'auto' }}>
         {!loaded && (
           <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.06)' }}>
             <CircularProgress size={22} sx={{ color: 'rgba(255,255,255,0.85)' }} />
@@ -31,6 +31,9 @@ export default function LibraryTile({ item, selected, onClick, onPreview }) {
           </Box>
         </>
       )}
+      {disabled && !selected && (
+        <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.35)', borderRadius: 1.2, pointerEvents: 'none' }} />
+      )}
     </Box>
   );
 }
@@ -40,4 +43,5 @@ LibraryTile.propTypes = {
   selected: PropTypes.bool,
   onClick: PropTypes.func,
   onPreview: PropTypes.func,
+  disabled: PropTypes.bool,
 };

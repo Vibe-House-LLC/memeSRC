@@ -910,6 +910,8 @@ const BulkUploadSection = ({
                 <LibraryBrowser
                   isAdmin
                   multiple
+                  minSelected={2}
+                  maxSelected={5}
                   refreshTrigger={libraryRefreshTrigger}
                   onSelect={(items) => handleLibrarySelect(items)}
                 />

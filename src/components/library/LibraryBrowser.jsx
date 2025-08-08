@@ -32,9 +32,11 @@ export default function LibraryBrowser({
   isAdmin,
   sx,
   instantSelectOnClick = false,
+  minSelected,
+  maxSelected,
 }) {
   const { items, loading, hasMore, loadMore, reload, upload, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
-  const { selectedKeys, isSelected, toggle, clear, count } = useSelection({ multiple });
+  const { selectedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
 
   const [previewKey, setPreviewKey] = useState(null);
   const [confirm, setConfirm] = useState(null);
@@ -357,6 +359,7 @@ export default function LibraryBrowser({
           <LibraryTile
             item={item}
             selected={isSelected(item.key)}
+            disabled={Boolean(maxSelected) && atMax && !isSelected(item.key)}
             onClick={() => {
               if (!multiple && instantSelectOnClick) {
                 handleInstantSelect(item);
@@ -398,7 +401,13 @@ export default function LibraryBrowser({
       </Dialog>
 
       {isAdmin && (
-        <ActionBar open={count > 0} primaryLabel="Make Collage" count={count} onPrimary={handleUseSelected} />
+        <ActionBar
+          open={count > 0}
+          primaryLabel="Make Collage"
+          count={count}
+          onPrimary={handleUseSelected}
+          disabled={typeof minSelected === 'number' ? count < minSelected : false}
+        />
       )}
 
       <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack((s) => ({ ...s, open: false }))} message={snack.message} />
@@ -417,4 +426,6 @@ LibraryBrowser.propTypes = {
   refreshTrigger: PropTypes.any,
   isAdmin: PropTypes.bool,
   sx: PropTypes.any,
+  minSelected: PropTypes.number,
+  maxSelected: PropTypes.number,
 };
