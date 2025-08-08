@@ -138,7 +138,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       // sequentially consume tasks from the shared cursor to avoid deep recursion
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const idx = cursor + 1 - 1; // avoid ++ for explicitness
+        const idx = cursor;
         cursor += 1;
         if (idx >= handles.length) break;
         const { file, handle, plannedTimestamp } = handles[idx];
