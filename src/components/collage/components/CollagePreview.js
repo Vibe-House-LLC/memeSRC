@@ -4,6 +4,7 @@ import { Menu, MenuItem, Box, Dialog, DialogTitle, DialogContent } from "@mui/ma
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 import { LibraryBrowser } from '../../library';
+import { get as getFromLibrary } from '../../../utils/library/storage';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -216,34 +217,69 @@ const CollagePreview = ({
 
   // Handle selecting an image from the Library for the active (empty) panel
   const handleLibrarySelect = async (items) => {
-    try {
-      if (!items || items.length === 0 || activePanelIndex === null) {
-        setIsLibraryOpen(false);
-        return;
-      }
+    if (!items || items.length === 0 || activePanelIndex === null) {
+      setIsLibraryOpen(false);
+      return;
+    }
 
-      // Determine panel ID
-      let clickedPanelId = activePanelId;
-      if (!clickedPanelId) {
+    // Optimistically close dialog for snappier UX
+    setIsLibraryOpen(false);
+
+    // Determine panel ID
+    let clickedPanelId = activePanelId;
+    if (!clickedPanelId) {
+      try {
+        const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
+        const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
+        clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+      } catch (e) {
+        clickedPanelId = `panel-${activePanelIndex + 1}`;
+      }
+    }
+
+    const selected = items[0];
+
+    // Helper to ensure we use a data URL for canvas safety
+    const ensureDataUrl = async (item) => {
+      const srcUrl = item?.originalUrl || item?.displayUrl || item?.url || item;
+      const isData = typeof srcUrl === 'string' && srcUrl.startsWith('data:');
+      const libraryKey = item?.metadata?.libraryKey;
+      if (isData) {
+        return srcUrl;
+      }
+      if (libraryKey) {
         try {
-          const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
-          const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
-          clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+          const blob = await getFromLibrary(libraryKey);
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          return dataUrl;
         } catch (e) {
-          clickedPanelId = `panel-${activePanelIndex + 1}`;
+          // Fallback to provided URL if conversion fails
+          return srcUrl;
         }
       }
+      return srcUrl;
+    };
 
-      const selected = items[0];
-
+    try {
       if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
-        // Replace existing image in place
-        const newUrl = selected?.originalUrl || selected?.displayUrl || selected;
+        // Replace existing image in place with data URL
+        const newUrl = await ensureDataUrl(selected);
         await replaceImage(activeExistingImageIndex, newUrl);
       } else {
-        // Assign to empty panel: add to images and map
+        // Assign to empty panel: add to images and map using data URL
         const currentLength = selectedImages.length;
-        await addMultipleImages([selected]);
+        const newUrl = await ensureDataUrl(selected);
+        const imageObj = {
+          originalUrl: newUrl,
+          displayUrl: newUrl,
+          metadata: selected?.metadata || {},
+        };
+        await addMultipleImages([imageObj]);
         const newMapping = {
           ...panelImageMapping,
           [clickedPanelId]: currentLength,
@@ -251,8 +287,7 @@ const CollagePreview = ({
         updatePanelImageMapping(newMapping);
       }
     } finally {
-      // Close dialog and reset active state
-      setIsLibraryOpen(false);
+      // Reset active state
       setIsReplaceMode(false);
       setActiveExistingImageIndex(null);
       setActivePanelIndex(null);

@@ -184,32 +184,17 @@ export default function LibraryBrowser({
   // Rely on MUI Dialog's built-in scroll lock; no manual overrides to avoid sticky states
   
   // Instant select a single item when used as a picker with multiple={false}
-  const handleInstantSelect = useCallback(async (item) => {
-    try {
-      const it = item;
-      let result;
-      try {
-        const blob = await get(it.key, { level: storageLevel });
-        const dataUrl = await blobToDataUrl(blob);
-        result = {
-          originalUrl: dataUrl,
-          displayUrl: dataUrl,
-          metadata: { isFromLibrary: true, libraryKey: it.key },
-        };
-      } catch (e) {
-        result = {
-          originalUrl: it.url,
-          displayUrl: it.url,
-          metadata: { isFromLibrary: true, libraryKey: it.key },
-        };
-      }
-      if (onSelect) onSelect([result]);
-      clear();
-    } catch (e) {
-      if (onError) onError(e);
-      setSnack({ open: true, message: 'Failed to load image', severity: 'error' });
-    }
-  }, [clear, onError, onSelect, storageLevel]);
+  const handleInstantSelect = useCallback((item) => {
+    // Optimistic selection: use the signed URL immediately to avoid delays
+    const it = item;
+    const result = {
+      originalUrl: it.url,
+      displayUrl: it.url,
+      metadata: { isFromLibrary: true, libraryKey: it.key },
+    };
+    if (onSelect) onSelect([result]);
+    clear();
+  }, [clear, onSelect]);
 
   return (
     <Box sx={{ mt: 3, ...(sx || {}) }}>
