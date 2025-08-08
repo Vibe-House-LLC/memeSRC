@@ -1866,10 +1866,10 @@ const CanvasCollagePreview = ({
       if (isTransformMode[clickedPanel.panelId]) {
         setIsDragging(true);
         setDragStart({ x, y });
-      } else if (onPanelClick && textEditingPanel === null) {
-        // Regular panel click - only allow when no caption editor is open
-        onPanelClick(clickedPanel.index, clickedPanel.panelId);
-      }
+        } else if (onPanelClick && textEditingPanel === null) {
+          // Desktop/mouse: open immediately on click
+          onPanelClick(clickedPanel.index, clickedPanel.panelId);
+        }
     }
   }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart]);
 
@@ -2143,6 +2143,7 @@ const CanvasCollagePreview = ({
             startX: touch.clientX,
             startY: touch.clientY,
             startTime: Date.now(),
+            startScrollY: window.scrollY || window.pageYOffset || 0,
             isTextArea: true
           };
           return;
@@ -2160,11 +2161,12 @@ const CanvasCollagePreview = ({
             setDragStart({ x, y });
           } else {
             // Touched on a different panel while in transform mode - store info to dismiss on touch end
-            touchStartInfo.current = {
+          touchStartInfo.current = {
               panelId: clickedPanel.panelId,
               startX: touch.clientX,
               startY: touch.clientY,
               startTime: Date.now(),
+            startScrollY: window.scrollY || window.pageYOffset || 0,
               dismissTransformMode: true
             };
           }
@@ -2189,9 +2191,16 @@ const CanvasCollagePreview = ({
           setIsDragging(true);
           setDragStart({ x, y });
         } else if (onPanelClick && textEditingPanel === null) {
-          // Allow normal touch behavior for panels not in transform mode
-          // Regular panel click - only allow when no caption editor is open
-          onPanelClick(clickedPanel.index, clickedPanel.panelId);
+          // Defer opening until touchend confirmation to avoid triggering during scroll
+          touchStartInfo.current = {
+            panelId: clickedPanel.panelId,
+            panelIndex: clickedPanel.index,
+            startX: touch.clientX,
+            startY: touch.clientY,
+            startTime: Date.now(),
+            startScrollY: window.scrollY || window.pageYOffset || 0,
+            isPanelTap: true,
+          };
         }
       } else if (textEditingPanel !== null) {
         // When touched outside any panel and caption editor is open, explicitly allow normal scrolling
@@ -2240,15 +2249,16 @@ const CanvasCollagePreview = ({
     // If any panel is in transform mode, we need to handle this specially
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     
-    // If we're tracking a potential text area tap, check for movement
-    if (touchStartInfo.current && touchStartInfo.current.isTextArea) {
+    // If we're tracking a potential tap, check for movement or scroll (covers text area and panel taps)
+    if (touchStartInfo.current && (touchStartInfo.current.isTextArea || touchStartInfo.current.isPanelTap)) {
       const touch = e.touches[0];
       const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
       const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
+      const deltaScrollY = Math.abs((window.scrollY || window.pageYOffset || 0) - (touchStartInfo.current.startScrollY || 0));
       
       // If the touch has moved significantly, it's a scroll, not a tap
       const scrollThreshold = 10; // pixels
-      if (deltaX > scrollThreshold || deltaY > scrollThreshold) {
+      if (deltaX > scrollThreshold || deltaY > scrollThreshold || deltaScrollY > scrollThreshold) {
         touchStartInfo.current = null; // Cancel the potential tap
       }
     }
@@ -2463,14 +2473,38 @@ const CanvasCollagePreview = ({
       const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
       const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
       const deltaTime = Date.now() - touchStartInfo.current.startTime;
+      const deltaScrollY = Math.abs((window.scrollY || window.pageYOffset || 0) - (touchStartInfo.current.startScrollY || 0));
       
       // If the touch didn't move much and was quick, treat it as a tap
       const maxMovement = 10; // pixels
       const maxDuration = 500; // milliseconds
       
-      if (deltaX < maxMovement && deltaY < maxMovement && deltaTime < maxDuration) {
+      if (deltaX < maxMovement && deltaY < maxMovement && deltaScrollY < maxMovement && deltaTime < maxDuration) {
         // This was a tap, open the caption editor
         handleTextEdit(touchStartInfo.current.panelId, e);
+      }
+    }
+    // Check if this was a tap on a panel (to open the library)
+    if (
+      touchStartInfo.current &&
+      touchStartInfo.current.isPanelTap &&
+      e.changedTouches &&
+      e.changedTouches[0]
+    ) {
+      const touch = e.changedTouches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
+      const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
+      const deltaTime = Date.now() - touchStartInfo.current.startTime;
+      const deltaScrollY = Math.abs((window.scrollY || window.pageYOffset || 0) - (touchStartInfo.current.startScrollY || 0));
+      
+      const maxMovement = 10; // pixels
+      const maxDuration = 500; // milliseconds
+      
+      if (deltaX < maxMovement && deltaY < maxMovement && deltaScrollY < maxMovement && deltaTime < maxDuration) {
+        // Confirmed tap, now open the library for this panel
+        if (onPanelClick && textEditingPanel === null) {
+          onPanelClick(touchStartInfo.current.panelIndex, touchStartInfo.current.panelId);
+        }
       }
     }
     
@@ -2480,12 +2514,13 @@ const CanvasCollagePreview = ({
       const deltaX = Math.abs(touch.clientX - touchStartInfo.current.startX);
       const deltaY = Math.abs(touch.clientY - touchStartInfo.current.startY);
       const deltaTime = Date.now() - touchStartInfo.current.startTime;
+      const deltaScrollY = Math.abs((window.scrollY || window.pageYOffset || 0) - (touchStartInfo.current.startScrollY || 0));
       
       // If the touch didn't move much and was quick, treat it as a tap
       const maxMovement = 10; // pixels
       const maxDuration = 500; // milliseconds
       
-      if (deltaX < maxMovement && deltaY < maxMovement && deltaTime < maxDuration) {
+      if (deltaX < maxMovement && deltaY < maxMovement && deltaScrollY < maxMovement && deltaTime < maxDuration) {
         // This was a tap on a non-active frame, dismiss transform mode
         dismissTransformMode();
       }
