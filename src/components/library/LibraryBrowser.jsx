@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Typography, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader } from '@mui/material';
 import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, CloudUpload } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
@@ -29,7 +29,6 @@ export default function LibraryBrowser({
   deleteEnabled = true,
   storageLevel = 'protected',
   refreshTrigger,
-  isAdmin,
   sx,
   instantSelectOnClick = false,
   minSelected,
@@ -492,7 +491,6 @@ LibraryBrowser.propTypes = {
   deleteEnabled: PropTypes.bool,
   storageLevel: PropTypes.oneOf(['private', 'protected']),
   refreshTrigger: PropTypes.any,
-  isAdmin: PropTypes.bool,
   sx: PropTypes.any,
     instantSelectOnClick: PropTypes.bool,
   minSelected: PropTypes.number,

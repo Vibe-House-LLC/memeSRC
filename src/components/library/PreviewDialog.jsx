@@ -315,6 +315,7 @@ PreviewDialog.propTypes = {
   onNext: PropTypes.func,
   hasPrev: PropTypes.bool,
   hasNext: PropTypes.bool,
-    isSelected: PropTypes.bool,
-    onToggleSelected: PropTypes.func,
+  isSelected: PropTypes.bool,
+  onToggleSelected: PropTypes.func,
+  footerMode: PropTypes.oneOf(['default', 'single']),
 };

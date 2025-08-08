@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import PropTypes from 'prop-types';
 
 /**
  * CollageAnimatedIcon
@@ -131,7 +132,7 @@ export default function CollageAnimatedIcon({
     // Apply layout for all tiles
     grid.style.gridTemplateColumns = stage.columns;
     grid.style.gridTemplateRows = stage.rows;
-    grid.style.gap = String(stage.gap ?? computedGap) + 'px';
+    grid.style.gap = `${String(stage.gap ?? computedGap)  }px`;
 
     stage.items.forEach((pos, i) => {
       const t = tiles[i];
@@ -167,21 +168,23 @@ export default function CollageAnimatedIcon({
 
       // Newly appearing tiles start from the most-overlapping previous rect
       if(!was && will){
-        let bestIdx = -1, bestOverlap = -1;
-        for(let j=0;j<tiles.length;j++){
-          if(!prevShowRef.current[j]) continue;
-          const ov = overlapArea(first[j], L);
-          if(ov > bestOverlap){ bestOverlap = ov; bestIdx = j; }
+        let bestIdx = -1; let bestOverlap = -1;
+        for(let j = 0; j < tiles.length; j += 1){
+          if(prevShowRef.current[j]){
+            const ov = overlapArea(first[j], L);
+            if(ov > bestOverlap){ bestOverlap = ov; bestIdx = j; }
+          }
         }
         if(bestIdx === -1){
           // fallback: nearest center among previously visible
           let bestD = Infinity;
           const Lc = center(L);
-          for(let j=0;j<tiles.length;j++){
-            if(!prevShowRef.current[j]) continue;
-            const C = center(first[j]);
-            const d = Math.hypot(C.x - Lc.x, C.y - Lc.y);
-            if(d < bestD){ bestD = d; bestIdx = j; }
+          for(let j = 0; j < tiles.length; j += 1){
+            if(prevShowRef.current[j]){
+              const C = center(first[j]);
+              const d = Math.hypot(C.x - Lc.x, C.y - Lc.y);
+              if(d < bestD){ bestD = d; bestIdx = j; }
+            }
           }
         }
         if(bestIdx !== -1){ F = first[bestIdx]; }
@@ -311,7 +314,7 @@ export default function CollageAnimatedIcon({
   const tileBaseStyle = {
     position: 'relative',
     borderRadius: `${computedRadius}px`,
-    boxShadow: shadow + ', inset 0 0 0 1px rgba(0,0,0,.08)',
+    boxShadow: `${shadow  }, inset 0 0 0 1px rgba(0,0,0,.08)`,
     willChange: 'transform, opacity',
     pointerEvents: 'none',
     transformStyle: 'preserve-3d',
@@ -341,5 +344,20 @@ export default function CollageAnimatedIcon({
     </div>
   );
 }
+
+CollageAnimatedIcon.propTypes = {
+  size: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  gap: PropTypes.number,
+  radius: PropTypes.number,
+  shadow: PropTypes.string,
+  colors: PropTypes.arrayOf(PropTypes.string),
+  moveDurationMs: PropTypes.number,
+  holdDurationMs: PropTypes.number,
+  easing: PropTypes.string,
+  paused: PropTypes.bool,
+  className: PropTypes.string,
+  style: PropTypes.object,
+  ariaLabel: PropTypes.string,
+};
 
 

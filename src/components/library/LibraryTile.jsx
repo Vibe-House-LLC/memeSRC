@@ -6,8 +6,8 @@ import { Check } from '@mui/icons-material';
 export default function LibraryTile({ item, selected, onClick, onPreview, disabled, selectionMode }) {
   const loaded = Boolean(item?.url) && !item?.loading;
   return (
-    <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: disabled ? 'not-allowed' : 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
-      <Box onClick={disabled ? undefined : onClick} aria-label={selected ? 'Unselect image' : 'Select image'} role="button" tabIndex={disabled ? -1 : 0} sx={{ width: '100%', height: '100%', pointerEvents: disabled ? 'none' : 'auto' }}>
+      <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: disabled ? 'not-allowed' : 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
+      <Box onClick={disabled ? undefined : onClick} onDoubleClick={disabled ? undefined : onPreview} aria-label={selected ? 'Unselect image' : 'Select image'} role="button" tabIndex={disabled ? -1 : 0} sx={{ width: '100%', height: '100%', pointerEvents: disabled ? 'none' : 'auto' }}>
         {!loaded && (
           <Skeleton variant="rectangular" animation="wave" width="100%" height="100%" sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
         )}
