@@ -7,7 +7,9 @@ import { useTheme } from '@mui/material/styles';
 import CollagePreview from '../components/CollagePreview';
 
 // Debugging utils
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
 const CollageImagesStep = ({

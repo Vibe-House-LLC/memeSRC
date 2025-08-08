@@ -24,7 +24,9 @@ import { LibraryBrowser } from '../../library';
 import { UserContext } from '../../../UserContext';
 import useLibraryData from '../../../hooks/library/useLibraryData';
 
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
 // Styled components similar to CollageSettingsStep

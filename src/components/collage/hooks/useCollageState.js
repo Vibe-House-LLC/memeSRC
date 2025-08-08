@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCall
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
 import { saveImageToLibrary } from '../../../utils/library/saveImageToLibrary';
 
-// Debug flag - only enable in development mode
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+// Debug flag - opt-in via localStorage while in development
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 
 /**
  * Custom hook to manage collage state
