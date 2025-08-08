@@ -6,8 +6,10 @@ const DEFAULT_LEVEL = 'protected';
 /**
  * List objects under a prefix
  */
-export async function list(prefix = 'library/', { level = DEFAULT_LEVEL } = {}) {
-  const result = await Storage.list(prefix, { level });
+export async function list(prefix = 'library/', { level = DEFAULT_LEVEL, pageSize = 1000 } = {}) {
+  // Clamp pageSize to Amplify's supported range 0-1000
+  const safePageSize = Math.max(0, Math.min(1000, Number(pageSize) || 0));
+  const result = await Storage.list(prefix, { level, pageSize: safePageSize });
   const items = (result?.results || result || [])
     .map((entry) => ({
       key: entry.key || entry?.Key || entry?.key, // support various shapes

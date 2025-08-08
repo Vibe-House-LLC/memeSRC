@@ -16,7 +16,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
     setItems([]);
     setLoadedCount(0);
     try {
-      const all = await list('library/', { level: storageLevel });
+      const all = await list('library/', { level: storageLevel, pageSize });
       setAllKeys(all);
       if (all.length > 0) {
         const totalToLoad = Math.min(pageSize, all.length);
