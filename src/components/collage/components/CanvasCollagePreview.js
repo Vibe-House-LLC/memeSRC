@@ -3279,7 +3279,14 @@ const CanvasCollagePreview = ({
 CanvasCollagePreview.propTypes = {
   selectedTemplate: PropTypes.object,
   panelCount: PropTypes.number,
-  images: PropTypes.arrayOf(PropTypes.string),
+  images: PropTypes.arrayOf(PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.shape({
+      originalUrl: PropTypes.string,
+      displayUrl: PropTypes.string,
+      metadata: PropTypes.object,
+    }),
+  ])),
   onPanelClick: PropTypes.func,
   aspectRatioValue: PropTypes.number,
   panelImageMapping: PropTypes.object,
