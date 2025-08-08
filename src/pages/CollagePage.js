@@ -123,8 +123,6 @@ export default function CollagePage() {
     updatePanelTransform,
     updatePanelText,
     libraryRefreshTrigger,
-    autoSaveToLibrary,
-    setAutoSaveToLibrary,
   } = useCollageState(isAdmin);
 
   // Check if all panels have images assigned (same logic as CollageImagesStep)
@@ -346,8 +344,6 @@ export default function CollagePage() {
     borderColor,
     setBorderColor,
     borderThicknessOptions,
-    autoSaveToLibrary,
-    setAutoSaveToLibrary,
   };
 
   // Handler for when collage is generated - show inline result
