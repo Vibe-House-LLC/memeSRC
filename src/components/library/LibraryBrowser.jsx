@@ -96,6 +96,7 @@ export default function LibraryBrowser({
       const arr = selectedItems;
       const results = new Array(arr.length);
       let cursor = 0;
+      /* eslint-disable no-await-in-loop */
       const worker = async () => {
         while (cursor < arr.length) {
           const idx = cursor; // simplified from cursor + 1 - 1
@@ -118,6 +119,7 @@ export default function LibraryBrowser({
           }
         }
       };
+      /* eslint-enable no-await-in-loop */
       await Promise.all(Array.from({ length: Math.min(limit, arr.length) }, () => worker()));
       if (onSelect) onSelect(results.filter(Boolean));
       clear();
