@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Typography, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader } from '@mui/material';
-import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess } from '@mui/icons-material';
+import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, CloudUpload } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
@@ -219,6 +219,58 @@ export default function LibraryBrowser({
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>{items.length} item{items.length === 1 ? '' : 's'} • {count} selected</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {uploadEnabled && (
+            <Button
+              size="small"
+              startIcon={<CloudUpload fontSize="small" />}
+              onClick={async () => {
+                // create a hidden input to trigger upload flow
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.multiple = multiple;
+                input.onchange = async (e) => {
+                  const files = Array.from(e.target.files || []);
+                  let last;
+                  await files.reduce(async (p, f) => {
+                    await p;
+                    last = await upload(f);
+                  }, Promise.resolve());
+                  if (!multiple && instantSelectOnClick && last && last.key) {
+                    await handleInstantSelect({ key: last.key, url: last.url });
+                  }
+                };
+                input.click();
+              }}
+              sx={{
+                minHeight: 34,
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 1.5,
+                fontWeight: 700,
+                textTransform: 'none',
+                letterSpacing: 0.2,
+                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                border: '1px solid #8b5cc7',
+                color: '#ffffff',
+                boxShadow: '0 6px 16px rgba(107,66,161,0.35)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                  borderColor: '#9f7ae0',
+                  boxShadow: '0 8px 18px rgba(127,86,190,0.45)'
+                },
+                '& .MuiButton-startIcon': { mr: 1 },
+                '& .MuiButton-startIcon > *:nth-of-type(1)': { color: '#ffffff' },
+                '&.Mui-disabled': {
+                  opacity: 0.5,
+                  color: '#ffffff',
+                  borderColor: 'rgba(255,255,255,0.3)'
+                }
+              }}
+            >
+              Upload
+            </Button>
+          )}
           <IconButton
             aria-label="Library options"
             onClick={openOptions}
