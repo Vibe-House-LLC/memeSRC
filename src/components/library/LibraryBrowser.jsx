@@ -34,9 +34,18 @@ export default function LibraryBrowser({
   instantSelectOnClick = false,
   minSelected,
   maxSelected,
+  showActionBar,
+  actionBarLabel = 'Use Selected',
+  onActionBarPrimary,
+  selectionEnabled,
+  previewOnClick,
+  showSelectToggle = false,
+  initialSelectMode = false,
+  onSelectModeChange,
 }) {
   const { items, loading, hasMore, loadMore, reload, uploadMany, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
   const { selectedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
+  const [selectMode, setSelectMode] = useState(Boolean(initialSelectMode));
 
   const [previewKey, setPreviewKey] = useState(null);
   const [confirm, setConfirm] = useState(null);
@@ -119,6 +128,14 @@ export default function LibraryBrowser({
     }
   }, [clear, onError, onSelect, selectedItems, storageLevel]);
 
+  const handlePrimary = useCallback(async () => {
+    if (typeof onActionBarPrimary === 'function') {
+      await onActionBarPrimary({ selectedItems, storageLevel, clear });
+    } else {
+      await handleUseSelected();
+    }
+  }, [clear, handleUseSelected, onActionBarPrimary, selectedItems, storageLevel]);
+
   const handleDelete = useCallback(async (keys) => {
     try {
       await Promise.all(keys.map((k) => remove(k)));
@@ -198,20 +215,19 @@ export default function LibraryBrowser({
     clear();
   }, [clear, onSelect]);
 
+  const effectiveSelectionEnabled = typeof selectionEnabled === 'boolean' ? selectionEnabled : selectMode;
+  const effectivePreviewOnClick = typeof previewOnClick === 'boolean' ? previewOnClick : !effectiveSelectionEnabled;
+
   return (
     <Box sx={{ mt: 3, ...(sx || {}) }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.92)' }}>My Library</Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>{items.length} item{items.length === 1 ? '' : 's'} • {count} selected</Typography>
-        </Box>
+        {/* Left: Upload button */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {uploadEnabled && (
             <Button
               size="small"
               startIcon={<CloudUpload fontSize="small" />}
               onClick={async () => {
-                // create a hidden input to trigger upload flow
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = 'image/*';
@@ -254,6 +270,40 @@ export default function LibraryBrowser({
               }}
             >
               Upload
+            </Button>
+          )}
+        </Box>
+
+        {/* Right: Select toggle button and options */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {showSelectToggle && (
+            <Button
+              size="small"
+              onClick={() => {
+                const next = !effectiveSelectionEnabled;
+                setSelectMode(next);
+                if (!next) {
+                  try { clear(); } catch (_) { /* ignore */ }
+                }
+                if (typeof onSelectModeChange === 'function') onSelectModeChange(next);
+              }}
+              sx={{
+                minHeight: 34,
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 1.5,
+                fontWeight: 800,
+                textTransform: 'none',
+                letterSpacing: 0.2,
+                border: effectiveSelectionEnabled ? '1px solid #4b5563' : '1px solid rgba(255,255,255,0.28)',
+                color: '#e5e7eb',
+                background: effectiveSelectionEnabled ? 'linear-gradient(45deg, #1f2937 30%, #374151 90%)' : 'transparent',
+                '&:hover': {
+                  background: effectiveSelectionEnabled ? 'linear-gradient(45deg, #253042 30%, #3f4856 90%)' : 'rgba(255,255,255,0.06)',
+                },
+              }}
+            >
+              {effectiveSelectionEnabled ? 'Select: On' : 'Select: Off'}
             </Button>
           )}
           <IconButton
@@ -354,12 +404,15 @@ export default function LibraryBrowser({
         renderTile={(item) => (
           <LibraryTile
             item={item}
-            selected={isSelected(item.key)}
-            disabled={Boolean(maxSelected) && atMax && !isSelected(item.key)}
+            selected={effectiveSelectionEnabled ? isSelected(item.key) : false}
+            disabled={effectiveSelectionEnabled ? (Boolean(maxSelected) && atMax && !isSelected(item.key)) : false}
+            showPreviewIcon={effectiveSelectionEnabled}
             onClick={() => {
-              if (!multiple && instantSelectOnClick) {
+              if (effectivePreviewOnClick) {
+                onTileClick(item.key);
+              } else if (!multiple && instantSelectOnClick) {
                 handleInstantSelect(item);
-              } else {
+              } else if (effectiveSelectionEnabled) {
                 toggle(item.key);
               }
             }}
@@ -396,12 +449,12 @@ export default function LibraryBrowser({
         </DialogActions>
       </Dialog>
 
-      {isAdmin && (
+      {(showActionBar || false) && (
         <ActionBar
           open={count > 0}
-          primaryLabel="Make Collage"
+          primaryLabel={actionBarLabel}
           count={count}
-          onPrimary={handleUseSelected}
+          onPrimary={handlePrimary}
           disabled={typeof minSelected === 'number' ? count < minSelected : false}
         />
       )}
@@ -425,4 +478,12 @@ LibraryBrowser.propTypes = {
     instantSelectOnClick: PropTypes.bool,
   minSelected: PropTypes.number,
   maxSelected: PropTypes.number,
+  showActionBar: PropTypes.bool,
+  actionBarLabel: PropTypes.string,
+  onActionBarPrimary: PropTypes.func,
+  selectionEnabled: PropTypes.bool,
+  previewOnClick: PropTypes.bool,
+  showSelectToggle: PropTypes.bool,
+  initialSelectMode: PropTypes.bool,
+  onSelectModeChange: PropTypes.func,
 };

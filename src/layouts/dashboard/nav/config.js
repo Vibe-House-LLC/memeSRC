@@ -1,5 +1,5 @@
 // component
-import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload } from '@mui/icons-material';
+import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -104,6 +104,12 @@ const navConfig = [
     sectionTitle: 'Admin',
     adminOnly: true,
     items: [
+      {
+        title: 'Library',
+        path: '/library',
+        externalLink: false,
+        icon: <Collections />,
+      },
       {
         title: 'dashboard',
         path: '/dashboard/app',

@@ -915,6 +915,10 @@ const BulkUploadSection = ({
                   maxSelected={5}
                   refreshTrigger={libraryRefreshTrigger}
                   onSelect={(items) => handleLibrarySelect(items)}
+                  showActionBar
+                  actionBarLabel="Make Collage"
+                  showSelectToggle
+                  initialSelectMode
                 />
               ) : (
                 <>

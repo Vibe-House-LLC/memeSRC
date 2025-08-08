@@ -406,6 +406,9 @@ const CollagePreview = ({
             deleteEnabled={false}
             instantSelectOnClick
             onSelect={(arr) => handleLibrarySelect(arr)}
+            showActionBar={false}
+            selectionEnabled
+            previewOnClick={false}
           />
         </DialogContent>
         <DialogActions sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>

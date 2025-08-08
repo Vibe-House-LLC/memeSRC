@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Box, IconButton, Skeleton, CircularProgress } from '@mui/material';
 import { Check, OpenInNew } from '@mui/icons-material';
 
-export default function LibraryTile({ item, selected, onClick, onPreview, disabled }) {
+export default function LibraryTile({ item, selected, onClick, onPreview, disabled, showPreviewIcon = true }) {
   const loaded = Boolean(item?.url) && !item?.loading;
   return (
     <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: disabled ? 'not-allowed' : 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
@@ -30,7 +30,7 @@ export default function LibraryTile({ item, selected, onClick, onPreview, disabl
           </Box>
         </Box>
       )}
-      {loaded && (
+      {loaded && showPreviewIcon && (
         <IconButton size="small" onClick={onPreview} aria-label="Preview image" sx={{ position: 'absolute', top: 6, right: 6, bgcolor: 'rgba(0,0,0,0.35)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.45)' }, borderRadius: 1.5 }}>
           <OpenInNew fontSize="small" />
         </IconButton>
@@ -76,4 +76,5 @@ LibraryTile.propTypes = {
   onClick: PropTypes.func,
   onPreview: PropTypes.func,
   disabled: PropTypes.bool,
+  showPreviewIcon: PropTypes.bool,
 };
