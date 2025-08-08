@@ -34,10 +34,10 @@ export async function saveImageToLibrary(input, filename = null, { level = 'prot
     blob = input;
   }
 
-  // Resize client-side; fall back to original on failure
+  // Resize client-side to max 1000px; fall back to original on failure
   let toUpload;
   try {
-    toUpload = await resizeImage(blob);
+    toUpload = await resizeImage(blob, 1000);
   } catch {
     toUpload = blob;
   }

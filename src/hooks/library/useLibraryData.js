@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getUrl, list, put, remove } from '../../utils/library/storage';
+import { resizeImage } from '../../utils/library/resizeImage';
 
 export default function useLibraryData({ pageSize = 10, storageLevel = 'protected', refreshToken = null } = {}) {
   const [items, setItems] = useState([]); // { key, url }
@@ -54,10 +55,12 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
     // Insert placeholder at top
     setItems((prev) => sortItems([{ id, url: previewUrl, loading: true, progress: 0 }, ...prev]));
     try {
+      // Resize client-side to max 1000px on the longest side, preserving aspect ratio
+      const toUpload = await resizeImage(file, 1000);
       const timestamp = Date.now();
       const rand = Math.random().toString(36).slice(2);
       const key = `library/${timestamp}-${rand}-${file.name || 'image'}`;
-      const { url } = await put(key, file, {
+      const { url } = await put(key, toUpload, {
         level: storageLevel,
         onProgress: (pct) => {
           if (onProgress) onProgress(pct);
@@ -72,7 +75,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
           // ignore revoke errors
         }
       }
-      setAllKeys((prev) => [{ key, lastModified: new Date().toISOString(), size: file.size }, ...prev]);
+      setAllKeys((prev) => [{ key, lastModified: new Date().toISOString(), size: toUpload?.size || file.size }, ...prev]);
       setItems((prev) => sortItems([{ key, url }, ...prev.filter((it) => it.id !== id)]));
       setLoadedCount((prev) => prev + 1);
       return { key, url };
