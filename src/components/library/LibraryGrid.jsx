@@ -42,7 +42,7 @@ export default function LibraryGrid({ items, renderTile, showUploadTile, uploadT
     <Box ref={containerRef} sx={{ p: 0, width: '100%' }}>
       <ImageList cols={cols} gap={gap} rowHeight={rowHeight} sx={{ m: 0, width: '100%' }}>
         {items.map((item) => (
-          <ImageListItem key={item.key}>
+          <ImageListItem key={item.key || item.id}>
             {renderTile(item)}
           </ImageListItem>
         ))}

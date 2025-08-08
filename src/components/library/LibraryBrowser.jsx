@@ -71,12 +71,31 @@ export default function LibraryBrowser({
 
   const displayItems = useMemo(() => {
     const arr = items.slice();
-    if (sortOption === 'oldest') {
-      arr.sort((a, b) => parseTimestampFromKey(a.key) - parseTimestampFromKey(b.key));
-    } else {
-      // newest first (default)
-      arr.sort((a, b) => parseTimestampFromKey(b.key) - parseTimestampFromKey(a.key));
-    }
+    const getTs = (it) => (it?.key ? parseTimestampFromKey(it.key) : 0);
+    const getPlaceholderTs = (it) => (typeof it?.createdAt === 'number' ? it.createdAt : 0);
+    arr.sort((a, b) => {
+      const aHasKey = Boolean(a?.key);
+      const bHasKey = Boolean(b?.key);
+      if (!aHasKey && !bHasKey) {
+        // Both placeholders: order by createdAt
+        return sortOption === 'oldest'
+          ? getPlaceholderTs(a) - getPlaceholderTs(b)
+          : getPlaceholderTs(b) - getPlaceholderTs(a);
+      }
+      if (!aHasKey || !bHasKey) {
+        // One is a placeholder: decide by sort option
+        if (sortOption === 'oldest') {
+          // Placeholders should appear last when sorting oldest-first
+          return aHasKey ? -1 : 1;
+        }
+        // Newest-first: placeholders should appear first
+        return aHasKey ? 1 : -1;
+      }
+      // Both have keys: compare by timestamp embedded in key
+      return sortOption === 'oldest'
+        ? getTs(a) - getTs(b)
+        : getTs(b) - getTs(a);
+    });
     return arr;
   }, [items, sortOption]);
 
@@ -218,11 +237,12 @@ export default function LibraryBrowser({
                 input.multiple = multiple;
                 input.onchange = async (e) => {
                   const files = Array.from(e.target.files || []);
-                  let last;
-                  await files.reduce(async (p, f) => {
-                    await p;
-                    last = await upload(f);
-                  }, Promise.resolve());
+                  const uploads = files.map((f) => upload(f));
+                  const results = await Promise.allSettled(uploads);
+                  const successes = results
+                    .filter((r) => r.status === 'fulfilled' && r.value && r.value.key)
+                    .map((r) => r.value);
+                  const last = successes[successes.length - 1];
                   if (!multiple && instantSelectOnClick && last && last.key) {
                     await handleInstantSelect({ key: last.key, url: last.url });
                   }
@@ -345,11 +365,12 @@ export default function LibraryBrowser({
         items={displayItems}
         showUploadTile={uploadEnabled}
         uploadTile={<UploadTile disabled={loading} onFiles={async (files) => {
-          let last;
-          await files.reduce(async (p, f) => {
-            await p;
-            last = await upload(f);
-          }, Promise.resolve());
+          const uploads = files.map((f) => upload(f));
+          const results = await Promise.allSettled(uploads);
+          const successes = results
+            .filter((r) => r.status === 'fulfilled' && r.value && r.value.key)
+            .map((r) => r.value);
+          const last = successes[successes.length - 1];
           // If single-select instant mode, auto-select the last uploaded image
           if (!multiple && instantSelectOnClick && last && last.key) {
             await handleInstantSelect({ key: last.key, url: last.url });
@@ -367,7 +388,7 @@ export default function LibraryBrowser({
                 toggle(item.key);
               }
             }}
-            onPreview={() => onTileClick(item.key)}
+            onPreview={() => item.key && onTileClick(item.key)}
           />
         )}
       />

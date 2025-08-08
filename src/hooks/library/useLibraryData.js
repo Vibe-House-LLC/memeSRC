@@ -53,8 +53,13 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
   const upload = useCallback(async (file, { onProgress } = {}) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const previewUrl = typeof window !== 'undefined' ? URL.createObjectURL(file) : undefined;
-    // Insert placeholder at top
-    setItems((prev) => sortItems([{ id, url: previewUrl, loading: true, progress: 0 }, ...prev]));
+    // Insert placeholder at top with a creation timestamp for stable sort ordering
+    setItems((prev) =>
+      sortItems([
+        { id, url: previewUrl, loading: true, progress: 0, createdAt: Date.now() },
+        ...prev,
+      ])
+    );
     try {
       // Resize client-side to max 1000px on the longest side, preserving aspect ratio
       const toUpload = await resizeImage(file, 1000);
