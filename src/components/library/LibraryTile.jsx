@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Box, CircularProgress, IconButton } from '@mui/material';
+import { Box, IconButton, Skeleton, CircularProgress } from '@mui/material';
 import { Check, OpenInNew } from '@mui/icons-material';
 
 export default function LibraryTile({ item, selected, onClick, onPreview, disabled }) {
@@ -9,9 +9,7 @@ export default function LibraryTile({ item, selected, onClick, onPreview, disabl
     <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: disabled ? 'not-allowed' : 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
       <Box onClick={disabled ? undefined : onClick} aria-label={selected ? 'Unselect image' : 'Select image'} role="button" tabIndex={disabled ? -1 : 0} sx={{ width: '100%', height: '100%', pointerEvents: disabled ? 'none' : 'auto' }}>
         {!loaded && (
-          <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.06)' }}>
-            <CircularProgress size={22} sx={{ color: 'rgba(255,255,255,0.85)' }} />
-          </Box>
+          <Skeleton variant="rectangular" animation="wave" width="100%" height="100%" sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
         )}
         {item?.url && (
           <>
@@ -20,9 +18,31 @@ export default function LibraryTile({ item, selected, onClick, onPreview, disabl
           </>
         )}
       </Box>
-      <IconButton size="small" onClick={onPreview} aria-label="Preview image" sx={{ position: 'absolute', top: 6, right: 6, bgcolor: 'rgba(0,0,0,0.35)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.45)' }, borderRadius: 1.5 }}>
-        <OpenInNew fontSize="small" />
-      </IconButton>
+      {loaded && (
+        <IconButton size="small" onClick={onPreview} aria-label="Preview image" sx={{ position: 'absolute', top: 6, right: 6, bgcolor: 'rgba(0,0,0,0.35)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.45)' }, borderRadius: 1.5 }}>
+          <OpenInNew fontSize="small" />
+        </IconButton>
+      )}
+      {item?.loading && typeof item?.progress === 'number' && (
+        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Track ring */}
+          <CircularProgress
+            variant="determinate"
+            value={100}
+            size={56}
+            thickness={4}
+            sx={{ color: 'rgba(255,255,255,0.18)', position: 'absolute' }}
+          />
+          {/* Progress ring */}
+          <CircularProgress
+            variant="determinate"
+            value={Math.max(0, Math.min(100, item.progress))}
+            size={56}
+            thickness={4}
+            sx={{ color: '#8b5cc7' }}
+          />
+        </Box>
+      )}
       {selected && (
         <>
           <Box sx={{ position: 'absolute', inset: 0, border: '2px solid', borderColor: '#22c55e', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.6)', pointerEvents: 'none', borderRadius: 1.2 }} />
