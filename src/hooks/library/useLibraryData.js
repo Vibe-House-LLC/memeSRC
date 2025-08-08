@@ -50,18 +50,28 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
     }
   }, [allKeys, items, loading, pageSize, sortItems, storageLevel]);
 
-  const upload = useCallback(async (file, { onProgress } = {}) => {
+  // Create a placeholder item and return a handle
+  const createPlaceholder = useCallback((file) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const previewUrl = typeof window !== 'undefined' ? URL.createObjectURL(file) : undefined;
-    // Insert placeholder at top with a creation timestamp for stable sort ordering
     setItems((prev) =>
       sortItems([
         { id, url: previewUrl, loading: true, progress: 0, createdAt: Date.now() },
         ...prev,
       ])
     );
+    return { id, previewUrl };
+  }, [sortItems]);
+
+  // Perform the actual resize and upload for a given placeholder handle
+  const performUpload = useCallback(async (file, handle, { onProgress } = {}) => {
+    const { id, previewUrl } = handle || {};
+    // Yield to the browser so the placeholder can paint before heavy work
     try {
-      // Resize client-side to max 1000px on the longest side, preserving aspect ratio
+      await new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
+      await new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
+    } catch (_) { /* ignore */ }
+    try {
       const toUpload = await resizeImage(file, 1000);
       const timestamp = Date.now();
       const rand = Math.random().toString(36).slice(2);
@@ -70,34 +80,51 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
         level: storageLevel,
         onProgress: (pct) => {
           if (onProgress) onProgress(pct);
-          setItems((prev) => prev.map((it) => (it.id === id ? { ...it, progress: pct } : it)));
+          if (id) setItems((prev) => prev.map((it) => (it.id === id ? { ...it, progress: pct } : it)));
         },
       });
-      // Replace placeholder with real item
       if (typeof window !== 'undefined' && previewUrl) {
-        try {
-          URL.revokeObjectURL(previewUrl);
-        } catch (err) {
-          // ignore revoke errors
-        }
+        try { URL.revokeObjectURL(previewUrl); } catch (_) { /* ignore */ }
       }
       setAllKeys((prev) => [{ key, lastModified: new Date().toISOString(), size: toUpload?.size || file.size }, ...prev]);
-      setItems((prev) => sortItems([{ key, url }, ...prev.filter((it) => it.id !== id)]));
+      if (id) setItems((prev) => sortItems([{ key, url }, ...prev.filter((it) => it.id !== id)]));
       setLoadedCount((prev) => prev + 1);
       return { key, url };
     } catch (e) {
       if (typeof window !== 'undefined' && previewUrl) {
-        try {
-          URL.revokeObjectURL(previewUrl);
-        } catch (err) {
-          // ignore revoke errors
-        }
+        try { URL.revokeObjectURL(previewUrl); } catch (_) { /* ignore */ }
       }
-      // Drop placeholder on failure
-      setItems((prev) => prev.filter((it) => it.id !== id));
+      if (id) setItems((prev) => prev.filter((it) => it.id !== id));
       throw e;
     }
   }, [sortItems, storageLevel]);
+
+  // Legacy single-file API: create placeholder + upload
+  const upload = useCallback(async (file, { onProgress } = {}) => {
+    const handle = createPlaceholder(file);
+    return performUpload(file, handle, { onProgress });
+  }, [createPlaceholder, performUpload]);
+
+  // Bulk upload with concurrency limit; shows all placeholders immediately
+  const uploadMany = useCallback(async (files, { concurrency = 3 } = {}) => {
+    const handles = files.map((f) => ({ file: f, handle: createPlaceholder(f) }));
+    const results = new Array(handles.length);
+    let cursor = 0;
+    const startWorker = async () => {
+      if (cursor >= handles.length) return;
+      const idx = cursor + 1 - 1; // avoid ++ for explicitness
+      cursor += 1;
+      const { file, handle } = handles[idx];
+      try {
+        results[idx] = await performUpload(file, handle);
+      } catch (_) {
+        results[idx] = null;
+      }
+      await startWorker();
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, handles.length) }, () => startWorker()));
+    return results;
+  }, [createPlaceholder, performUpload]);
 
   const removeItem = useCallback(async (key) => {
     await remove(key, { level: storageLevel });
@@ -105,5 +132,5 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
     setAllKeys((prev) => prev.filter((i) => i.key !== key));
   }, [storageLevel]);
 
-  return { items, loading, hasMore, loadMore, reload, upload, remove: removeItem };
+  return { items, loading, hasMore, loadMore, reload, upload, uploadMany, remove: removeItem };
 }

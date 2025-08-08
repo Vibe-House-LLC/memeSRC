@@ -35,7 +35,7 @@ export default function LibraryBrowser({
   minSelected,
   maxSelected,
 }) {
-  const { items, loading, hasMore, loadMore, reload, upload, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
+  const { items, loading, hasMore, loadMore, reload, upload, uploadMany, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
   const { selectedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
 
   const [previewKey, setPreviewKey] = useState(null);
@@ -237,11 +237,8 @@ export default function LibraryBrowser({
                 input.multiple = multiple;
                 input.onchange = async (e) => {
                   const files = Array.from(e.target.files || []);
-                  const uploads = files.map((f) => upload(f));
-                  const results = await Promise.allSettled(uploads);
-                  const successes = results
-                    .filter((r) => r.status === 'fulfilled' && r.value && r.value.key)
-                    .map((r) => r.value);
+                  const results = await uploadMany(files);
+                  const successes = results.filter(Boolean);
                   const last = successes[successes.length - 1];
                   if (!multiple && instantSelectOnClick && last && last.key) {
                     await handleInstantSelect({ key: last.key, url: last.url });
@@ -365,11 +362,8 @@ export default function LibraryBrowser({
         items={displayItems}
         showUploadTile={uploadEnabled}
         uploadTile={<UploadTile disabled={loading} onFiles={async (files) => {
-          const uploads = files.map((f) => upload(f));
-          const results = await Promise.allSettled(uploads);
-          const successes = results
-            .filter((r) => r.status === 'fulfilled' && r.value && r.value.key)
-            .map((r) => r.value);
+          const results = await uploadMany(files);
+          const successes = results.filter(Boolean);
           const last = successes[successes.length - 1];
           // If single-select instant mode, auto-select the last uploaded image
           if (!multiple && instantSelectOnClick && last && last.key) {
