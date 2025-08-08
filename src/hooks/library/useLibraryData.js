@@ -51,12 +51,13 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
   }, [allKeys, items, loading, pageSize, sortItems, storageLevel]);
 
   // Create a placeholder item and return a handle
-  const createPlaceholder = useCallback((file) => {
+  const createPlaceholder = useCallback((file, { withPreview = true } = {}) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const previewUrl = typeof window !== 'undefined' ? URL.createObjectURL(file) : undefined;
+    const previewUrl = withPreview && typeof window !== 'undefined' ? URL.createObjectURL(file) : undefined;
     setItems((prev) =>
       sortItems([
-        { id, url: previewUrl, loading: true, progress: 0, createdAt: Date.now() },
+        // progress intentionally left undefined so UI shows indeterminate until upload starts
+        { id, url: previewUrl, loading: true, createdAt: Date.now() },
         ...prev,
       ])
     );
@@ -73,6 +74,11 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
     } catch (_) { /* ignore */ }
     try {
       const toUpload = await resizeImage(file, 1000);
+      // Yield before network upload to keep UI responsive
+      try {
+        // eslint-disable-next-line no-unused-expressions
+        await new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
+      } catch (_) { /* ignore */ }
       const timestamp = Date.now();
       const rand = Math.random().toString(36).slice(2);
       const key = `library/${timestamp}-${rand}-${file.name || 'image'}`;
@@ -94,35 +100,70 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       if (typeof window !== 'undefined' && previewUrl) {
         try { URL.revokeObjectURL(previewUrl); } catch (_) { /* ignore */ }
       }
-      if (id) setItems((prev) => prev.filter((it) => it.id !== id));
+      if (id) {
+        // Keep the placeholder but mark as failed so the UI can indicate an error
+        setItems((prev) => prev.map((it) => (it.id === id ? { ...it, loading: false, error: true } : it)));
+      }
       throw e;
     }
   }, [sortItems, storageLevel]);
 
   // Legacy single-file API: create placeholder + upload
   const upload = useCallback(async (file, { onProgress } = {}) => {
-    const handle = createPlaceholder(file);
+    const handle = createPlaceholder(file, { withPreview: true });
     return performUpload(file, handle, { onProgress });
   }, [createPlaceholder, performUpload]);
 
-  // Bulk upload with concurrency limit; shows all placeholders immediately
-  const uploadMany = useCallback(async (files, { concurrency = 3 } = {}) => {
-    const handles = files.map((f) => ({ file: f, handle: createPlaceholder(f) }));
+  // Bulk upload with concurrency limit; shows placeholders immediately (without previews) to reduce memory pressure
+  const uploadMany = useCallback(async (files, { concurrency = 1 } = {}) => {
+    const handles = [];
+    for (let i = 0; i < files.length; i += 1) {
+      const file = files[i];
+      // Create placeholder without preview first
+      handles.push({ file, handle: createPlaceholder(file, { withPreview: false }) });
+      // Yield every 8 placeholders so React can paint and avoid jank
+      if ((i + 1) % 8 === 0) {
+        // eslint-disable-next-line no-await-in-loop
+        try {
+          await new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
+        } catch (_) { /* ignore */ }
+      }
+    }
     const results = new Array(handles.length);
     let cursor = 0;
-    const startWorker = async () => {
-      if (cursor >= handles.length) return;
-      const idx = cursor + 1 - 1; // avoid ++ for explicitness
-      cursor += 1;
-      const { file, handle } = handles[idx];
-      try {
-        results[idx] = await performUpload(file, handle);
-      } catch (_) {
-        results[idx] = null;
+    const worker = async () => {
+      // sequentially consume tasks from the shared cursor to avoid deep recursion
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const idx = cursor + 1 - 1; // avoid ++ for explicitness
+        cursor += 1;
+        if (idx >= handles.length) break;
+        const { file, handle } = handles[idx];
+        // Create preview URL just-in-time and attach to placeholder
+        let previewUrl;
+        if (typeof window !== 'undefined') {
+          try { previewUrl = URL.createObjectURL(file); } catch (_) { /* ignore */ }
+        }
+        if (previewUrl && handle?.id) {
+          setItems((prev) => prev.map((it) => (it.id === handle.id ? { ...it, url: previewUrl } : it)));
+        }
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          results[idx] = await performUpload(file, { id: handle?.id, previewUrl });
+        } catch (_) {
+          results[idx] = null;
+          if (typeof window !== 'undefined' && previewUrl) {
+            try { URL.revokeObjectURL(previewUrl); } catch (_) { /* ignore */ }
+          }
+        }
+        // Small delay between tasks to avoid overwhelming CPU/GPU on large batches
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        } catch (_) { /* ignore */ }
       }
-      await startWorker();
     };
-    await Promise.all(Array.from({ length: Math.min(concurrency, handles.length) }, () => startWorker()));
+    await Promise.all(Array.from({ length: Math.min(concurrency, handles.length) }, () => worker()));
     return results;
   }, [createPlaceholder, performUpload]);
 

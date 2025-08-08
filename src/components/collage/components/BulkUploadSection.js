@@ -9,7 +9,8 @@ import {
   Menu,
   MenuItem,
   Snackbar,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
 import {
@@ -134,6 +135,7 @@ const BulkUploadSection = ({
     items: adminLibraryItems,
     upload: uploadToLibrary,
     reload: reloadAdminLibrary,
+    uploadMany: uploadManyToLibrary,
   } = useLibraryData({ pageSize: 1, storageLevel: 'protected', refreshToken: libraryRefreshTrigger });
 
   // State for context menu
@@ -150,8 +152,8 @@ const BulkUploadSection = ({
   // Check if there are any selected images
   const hasImages = selectedImages && selectedImages.length > 0;
 
-  // Determine if admin has any library items
-  const adminHasLibraryItems = isAdmin && (adminLibraryItems?.length || 0) > 0;
+  // Determine if admin has any uploaded (non-placeholder) library items
+  const adminHasLibraryItems = isAdmin && Boolean(adminLibraryItems?.some((it) => it?.key));
 
   // Check if there are any empty frames
   const hasEmptyFrames = () => {
@@ -322,13 +324,12 @@ const BulkUploadSection = ({
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
     try {
-      // Upload sequentially to keep UI simple (avoid for-of per lint rules)
-      await files.reduce(
-        (promise, file) => promise.then(() => uploadToLibrary(file)),
-        Promise.resolve()
-      );
-      // Refresh our small library view so we switch to the LibraryBrowser
-      await reloadAdminLibrary();
+      // Use concurrent uploads with immediate placeholders
+      const results = await uploadManyToLibrary(files, { concurrency: 4 });
+      const successCount = (results || []).filter(Boolean).length;
+      if (successCount === 0) {
+        setToast({ open: true, message: 'Failed to upload images', severity: 'error' });
+      }
     } catch (e) {
       console.error('Failed to upload to library:', e);
       setToast({ open: true, message: 'Failed to upload to library', severity: 'error' });
@@ -955,6 +956,42 @@ const BulkUploadSection = ({
                       onChange={handleAdminLibraryUpload}
                     />
                   </Box>
+
+                  {/* Show placeholders and recently added items while uploads are in progress */}
+                  {Array.isArray(adminLibraryItems) && adminLibraryItems.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <HorizontalScroller>
+                        {adminLibraryItems.map((it, idx) => (
+                          <PanelThumbnail key={it.key || it.id || idx} hasImage>
+                            <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+                              <CardMedia
+                                component="img"
+                                width="100%"
+                                height="100%"
+                                image={it.url}
+                                alt="Uploading"
+                                sx={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                              />
+                              {it.loading && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    bgcolor: (theme) => theme.palette.action.disabledBackground,
+                                  }}
+                                >
+                                  <CircularProgress size={20} />
+                                </Box>
+                              )}
+                            </Box>
+                          </PanelThumbnail>
+                        ))}
+                      </HorizontalScroller>
+                    </Box>
+                  )}
                 </>
               )}
             </>

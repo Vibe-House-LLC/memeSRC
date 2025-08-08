@@ -18,6 +18,18 @@ export default function LibraryTile({ item, selected, onClick, onPreview, disabl
           </>
         )}
       </Box>
+      {item?.loading && typeof item?.progress !== 'number' && !item?.error && (
+        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <CircularProgress size={24} sx={{ color: '#8b5cc7' }} />
+        </Box>
+      )}
+      {item?.error && (
+        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.35)' }}>
+          <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: 'error.main', color: '#000', fontWeight: 700, fontSize: 12, border: '1px solid rgba(255,255,255,0.7)' }}>
+            Upload failed
+          </Box>
+        </Box>
+      )}
       {loaded && (
         <IconButton size="small" onClick={onPreview} aria-label="Preview image" sx={{ position: 'absolute', top: 6, right: 6, bgcolor: 'rgba(0,0,0,0.35)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.45)' }, borderRadius: 1.5 }}>
           <OpenInNew fontSize="small" />
@@ -29,7 +41,7 @@ export default function LibraryTile({ item, selected, onClick, onPreview, disabl
           <CircularProgress
             variant="determinate"
             value={100}
-            size={56}
+            size={28}
             thickness={4}
             sx={{ color: 'rgba(255,255,255,0.18)', position: 'absolute' }}
           />
@@ -37,7 +49,7 @@ export default function LibraryTile({ item, selected, onClick, onPreview, disabl
           <CircularProgress
             variant="determinate"
             value={Math.max(0, Math.min(100, item.progress))}
-            size={56}
+            size={28}
             thickness={4}
             sx={{ color: '#8b5cc7' }}
           />
