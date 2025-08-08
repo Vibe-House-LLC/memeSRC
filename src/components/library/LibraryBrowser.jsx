@@ -31,6 +31,7 @@ export default function LibraryBrowser({
   refreshTrigger,
   isAdmin,
   sx,
+  instantSelectOnClick = false,
 }) {
   const { items, loading, hasMore, loadMore, reload, upload, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
   const { selectedKeys, isSelected, toggle, clear, count } = useSelection({ multiple });
@@ -181,6 +182,34 @@ export default function LibraryBrowser({
   }, [previewKey, handlePrev, handleNext]);
 
   // Rely on MUI Dialog's built-in scroll lock; no manual overrides to avoid sticky states
+  
+  // Instant select a single item when used as a picker with multiple={false}
+  const handleInstantSelect = useCallback(async (item) => {
+    try {
+      const it = item;
+      let result;
+      try {
+        const blob = await get(it.key, { level: storageLevel });
+        const dataUrl = await blobToDataUrl(blob);
+        result = {
+          originalUrl: dataUrl,
+          displayUrl: dataUrl,
+          metadata: { isFromLibrary: true, libraryKey: it.key },
+        };
+      } catch (e) {
+        result = {
+          originalUrl: it.url,
+          displayUrl: it.url,
+          metadata: { isFromLibrary: true, libraryKey: it.key },
+        };
+      }
+      if (onSelect) onSelect([result]);
+      clear();
+    } catch (e) {
+      if (onError) onError(e);
+      setSnack({ open: true, message: 'Failed to load image', severity: 'error' });
+    }
+  }, [clear, onError, onSelect, storageLevel]);
 
   return (
     <Box sx={{ mt: 3, ...(sx || {}) }}>
@@ -275,18 +304,29 @@ export default function LibraryBrowser({
 
       <LibraryGrid
         items={displayItems}
-        showUploadTile={uploadEnabled && isAdmin}
+        showUploadTile={uploadEnabled}
         uploadTile={<UploadTile disabled={loading} onFiles={async (files) => {
+          let last;
           await files.reduce(async (p, f) => {
             await p;
-            await upload(f);
+            last = await upload(f);
           }, Promise.resolve());
+          // If single-select instant mode, auto-select the last uploaded image
+          if (!multiple && instantSelectOnClick && last && last.key) {
+            await handleInstantSelect({ key: last.key, url: last.url });
+          }
         }} />}
         renderTile={(item) => (
           <LibraryTile
             item={item}
             selected={isSelected(item.key)}
-            onClick={() => toggle(item.key)}
+            onClick={() => {
+              if (!multiple && instantSelectOnClick) {
+                handleInstantSelect(item);
+              } else {
+                toggle(item.key);
+              }
+            }}
             onPreview={() => onTileClick(item.key)}
           />
         )}

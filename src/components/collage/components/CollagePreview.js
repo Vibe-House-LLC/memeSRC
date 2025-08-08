@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Menu, MenuItem, Box } from "@mui/material";
+import { Menu, MenuItem, Box, Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
+import { LibraryBrowser } from '../../library';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
@@ -45,16 +46,39 @@ const CollagePreview = ({
   const [menuPosition, setMenuPosition] = useState(null);
   const [activePanelIndex, setActivePanelIndex] = useState(null);
   const [activePanelId, setActivePanelId] = useState(null);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isReplaceMode, setIsReplaceMode] = useState(false);
+  const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
 
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
 
-  // Handle panel click to trigger file upload
+  // Handle panel click - open Library for both empty frames and replacements
   const handlePanelClick = (index, panelId) => {
-    debugLog(`Panel clicked: index=${index}, panelId=${panelId}`); // Debug log
+    debugLog(`Panel clicked: index=${index}, panelId=${panelId}`);
     setActivePanelIndex(index);
     setActivePanelId(panelId);
-    fileInputRef.current?.click();
+
+    // Determine if the clicked panel currently has an assigned image
+    const imageIndex = panelImageMapping?.[panelId];
+    const hasValidImage =
+      imageIndex !== undefined &&
+      imageIndex !== null &&
+      imageIndex >= 0 &&
+      imageIndex < (selectedImages?.length || 0) &&
+      selectedImages?.[imageIndex];
+
+    if (!hasValidImage) {
+      // Empty frame: add from Library
+      setIsReplaceMode(false);
+      setActiveExistingImageIndex(null);
+      setIsLibraryOpen(true);
+    } else {
+      // Frame has image: replace from Library
+      setIsReplaceMode(true);
+      setActiveExistingImageIndex(imageIndex);
+      setIsLibraryOpen(true);
+    }
   };
 
   // Open menu for a panel
@@ -78,7 +102,7 @@ const CollagePreview = ({
   // Handle replace image from menu
   const handleReplaceImage = () => {
     if (activePanelIndex !== null) {
-      // Get the panel ID for the active panel
+      // Determine panel ID and existing image index
       let panelId;
       try {
         const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
@@ -87,14 +111,14 @@ const CollagePreview = ({
       } catch (error) {
         panelId = `panel-${activePanelIndex + 1}`;
       }
-      
-      // Set the active panel info for when file is selected
+
       setActivePanelId(panelId);
-      
-      // Trigger file input
-      fileInputRef.current?.click();
+      const existingIdx = panelImageMapping?.[panelId];
+      setActiveExistingImageIndex(typeof existingIdx === 'number' ? existingIdx : null);
+      setIsReplaceMode(true);
+      setIsLibraryOpen(true);
     }
-    
+
     // Close the menu
     handleMenuClose();
   };
@@ -190,6 +214,52 @@ const CollagePreview = ({
     }
   };
 
+  // Handle selecting an image from the Library for the active (empty) panel
+  const handleLibrarySelect = async (items) => {
+    try {
+      if (!items || items.length === 0 || activePanelIndex === null) {
+        setIsLibraryOpen(false);
+        return;
+      }
+
+      // Determine panel ID
+      let clickedPanelId = activePanelId;
+      if (!clickedPanelId) {
+        try {
+          const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
+          const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
+          clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+        } catch (e) {
+          clickedPanelId = `panel-${activePanelIndex + 1}`;
+        }
+      }
+
+      const selected = items[0];
+
+      if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
+        // Replace existing image in place
+        const newUrl = selected?.originalUrl || selected?.displayUrl || selected;
+        await replaceImage(activeExistingImageIndex, newUrl);
+      } else {
+        // Assign to empty panel: add to images and map
+        const currentLength = selectedImages.length;
+        await addMultipleImages([selected]);
+        const newMapping = {
+          ...panelImageMapping,
+          [clickedPanelId]: currentLength,
+        };
+        updatePanelImageMapping(newMapping);
+      }
+    } finally {
+      // Close dialog and reset active state
+      setIsLibraryOpen(false);
+      setIsReplaceMode(false);
+      setActiveExistingImageIndex(null);
+      setActivePanelIndex(null);
+      setActivePanelId(null);
+    }
+  };
+
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -221,6 +291,20 @@ const CollagePreview = ({
         accept="image/*"
         onChange={handleFileChange}
       />
+
+      {/* Library selection dialog for empty frame taps */}
+      <Dialog open={isLibraryOpen} onClose={() => setIsLibraryOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Select a photo</DialogTitle>
+        <DialogContent dividers>
+          <LibraryBrowser
+            multiple={false}
+            uploadEnabled
+            deleteEnabled={false}
+            instantSelectOnClick
+            onSelect={(arr) => handleLibrarySelect(arr)}
+          />
+        </DialogContent>
+      </Dialog>
       
       {/* Panel options menu */}
       <Menu
