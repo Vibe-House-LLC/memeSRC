@@ -1,6 +1,22 @@
 import React, { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Menu, MenuItem, Box, Dialog, DialogTitle, DialogContent } from "@mui/material";
+import {
+  Menu,
+  MenuItem,
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  IconButton,
+  AppBar,
+  Toolbar,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import CloseIcon from '@mui/icons-material/Close';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 import { LibraryBrowser } from '../../library';
@@ -44,6 +60,8 @@ const CollagePreview = ({
   isCreatingCollage = false,
 }) => {
   const fileInputRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
@@ -297,6 +315,15 @@ const CollagePreview = ({
     }
   };
 
+  // Close the library dialog and reset active state
+  const handleLibraryClose = () => {
+    setIsLibraryOpen(false);
+    setIsReplaceMode(false);
+    setActiveExistingImageIndex(null);
+    setActivePanelIndex(null);
+    setActivePanelId(null);
+  };
+
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -330,9 +357,49 @@ const CollagePreview = ({
       />
 
       {/* Library selection dialog for empty frame taps */}
-      <Dialog open={isLibraryOpen} onClose={() => setIsLibraryOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle>Select a photo</DialogTitle>
-        <DialogContent dividers>
+      <Dialog
+        open={isLibraryOpen}
+        onClose={handleLibraryClose}
+        fullWidth
+        maxWidth="md"
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: {
+            borderRadius: isMobile ? 0 : 2,
+            bgcolor: '#121212',
+            color: '#eaeaea',
+          },
+        }}
+      >
+        {isMobile ? (
+          <AppBar
+            position="sticky"
+            color="default"
+            elevation={0}
+            sx={{ borderBottom: '1px solid #2a2a2a', bgcolor: '#121212', color: '#eaeaea' }}
+          >
+            <Toolbar>
+              <Typography variant="h6" sx={{ flexGrow: 1, color: '#eaeaea' }}>
+                Select a photo
+              </Typography>
+              <IconButton edge="end" aria-label="close" onClick={handleLibraryClose} sx={{ color: '#eaeaea' }}>
+                <CloseIcon />
+              </IconButton>
+            </Toolbar>
+          </AppBar>
+        ) : (
+          <DialogTitle sx={{ pr: 6, color: '#eaeaea' }}>
+            Select a photo
+            <IconButton
+              aria-label="close"
+              onClick={handleLibraryClose}
+              sx={{ position: 'absolute', right: 8, top: 8, color: '#eaeaea' }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+        )}
+        <DialogContent dividers sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#0f0f0f' }}>
           <LibraryBrowser
             multiple={false}
             uploadEnabled
@@ -341,6 +408,27 @@ const CollagePreview = ({
             onSelect={(arr) => handleLibrarySelect(arr)}
           />
         </DialogContent>
+        <DialogActions sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
+          <Button
+            onClick={handleLibraryClose}
+            variant="contained"
+            disableElevation
+            fullWidth={isMobile}
+            sx={{
+              bgcolor: '#252525',
+              color: '#f0f0f0',
+              border: '1px solid #3a3a3a',
+              borderRadius: '8px',
+              px: isMobile ? 2 : 2.5,
+              py: isMobile ? 1.25 : 0.75,
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' }
+            }}
+          >
+            Cancel
+          </Button>
+        </DialogActions>
       </Dialog>
       
       {/* Panel options menu */}
