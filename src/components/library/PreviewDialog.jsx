@@ -264,4 +264,6 @@ PreviewDialog.propTypes = {
   onNext: PropTypes.func,
   hasPrev: PropTypes.bool,
   hasNext: PropTypes.bool,
+    isSelected: PropTypes.bool,
+    onToggleSelected: PropTypes.func,
 };

@@ -133,8 +133,6 @@ const BulkUploadSection = ({
   // Admin: peek at library to decide what to show at start
   const {
     items: adminLibraryItems,
-    upload: uploadToLibrary,
-    reload: reloadAdminLibrary,
     uploadMany: uploadManyToLibrary,
   } = useLibraryData({ pageSize: 1, storageLevel: 'protected', refreshToken: libraryRefreshTrigger });
 

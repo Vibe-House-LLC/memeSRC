@@ -35,7 +35,7 @@ export default function LibraryBrowser({
   minSelected,
   maxSelected,
 }) {
-  const { items, loading, hasMore, loadMore, reload, upload, uploadMany, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
+  const { items, loading, hasMore, loadMore, reload, uploadMany, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
   const { selectedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
 
   const [previewKey, setPreviewKey] = useState(null);
@@ -422,6 +422,7 @@ LibraryBrowser.propTypes = {
   refreshTrigger: PropTypes.any,
   isAdmin: PropTypes.bool,
   sx: PropTypes.any,
+    instantSelectOnClick: PropTypes.bool,
   minSelected: PropTypes.number,
   maxSelected: PropTypes.number,
 };

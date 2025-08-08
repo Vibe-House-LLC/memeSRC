@@ -7,7 +7,7 @@ export function resizeImage(file, maxSize = 1500, quality = 0.85) {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return Promise.resolve(file);
   }
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     try {
       const img = new Image();
       const url = URL.createObjectURL(file);

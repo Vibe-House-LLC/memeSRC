@@ -126,8 +126,8 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       handles.push({ file, plannedTimestamp, handle: createPlaceholder(file, { withPreview: false, createdAtValue: plannedTimestamp }) });
       // Yield every 8 placeholders so React can paint and avoid jank
       if ((i + 1) % 8 === 0) {
-        // eslint-disable-next-line no-await-in-loop
         try {
+          // eslint-disable-next-line no-await-in-loop
           await new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
         } catch (_) { /* ignore */ }
       }

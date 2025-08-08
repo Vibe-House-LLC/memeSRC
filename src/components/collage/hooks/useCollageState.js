@@ -9,7 +9,7 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== '
 /**
  * Custom hook to manage collage state
  */
-export const useCollageState = (isAdmin = false) => {
+export const useCollageState = () => {
   // selectedImages now stores: { originalUrl: string, displayUrl: string, subtitle?: string, subtitleShowing?: boolean, metadata?: object }[]
   const [selectedImages, setSelectedImages] = useState([]);
   // panelImageMapping still maps: { panelId: imageIndex }
@@ -247,18 +247,15 @@ export const useCollageState = (isAdmin = false) => {
       await prevPromise;
       if (!imageData) return Promise.resolve();
 
-      let imageUrl;
       let newImageObj;
       let metadata = {};
 
       if (typeof imageData === 'string') {
-        imageUrl = imageData;
         newImageObj = {
           originalUrl: imageData,
           displayUrl: imageData
         };
       } else if (typeof imageData === 'object') {
-        imageUrl = imageData.originalUrl || imageData.displayUrl || imageData;
         metadata = imageData.metadata || {};
         newImageObj = {
           originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
