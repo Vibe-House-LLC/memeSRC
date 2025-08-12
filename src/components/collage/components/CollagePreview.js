@@ -1,10 +1,30 @@
 import React, { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Menu, MenuItem, Box } from "@mui/material";
+import {
+  Menu,
+  MenuItem,
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  IconButton,
+  AppBar,
+  Toolbar,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import CloseIcon from '@mui/icons-material/Close';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
+import { LibraryBrowser } from '../../library';
+import { get as getFromLibrary } from '../../../utils/library/storage';
 
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
 /**
@@ -40,21 +60,46 @@ const CollagePreview = ({
   isCreatingCollage = false,
 }) => {
   const fileInputRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
   const [activePanelIndex, setActivePanelIndex] = useState(null);
   const [activePanelId, setActivePanelId] = useState(null);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isReplaceMode, setIsReplaceMode] = useState(false);
+  const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
 
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
 
-  // Handle panel click to trigger file upload
+  // Handle panel click - open Library for both empty frames and replacements
   const handlePanelClick = (index, panelId) => {
-    debugLog(`Panel clicked: index=${index}, panelId=${panelId}`); // Debug log
+    debugLog(`Panel clicked: index=${index}, panelId=${panelId}`);
     setActivePanelIndex(index);
     setActivePanelId(panelId);
-    fileInputRef.current?.click();
+
+    // Determine if the clicked panel currently has an assigned image
+    const imageIndex = panelImageMapping?.[panelId];
+    const hasValidImage =
+      imageIndex !== undefined &&
+      imageIndex !== null &&
+      imageIndex >= 0 &&
+      imageIndex < (selectedImages?.length || 0) &&
+      selectedImages?.[imageIndex];
+
+    if (!hasValidImage) {
+      // Empty frame: add from Library
+      setIsReplaceMode(false);
+      setActiveExistingImageIndex(null);
+      setIsLibraryOpen(true);
+    } else {
+      // Frame has image: replace from Library
+      setIsReplaceMode(true);
+      setActiveExistingImageIndex(imageIndex);
+      setIsLibraryOpen(true);
+    }
   };
 
   // Open menu for a panel
@@ -78,7 +123,7 @@ const CollagePreview = ({
   // Handle replace image from menu
   const handleReplaceImage = () => {
     if (activePanelIndex !== null) {
-      // Get the panel ID for the active panel
+      // Determine panel ID and existing image index
       let panelId;
       try {
         const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
@@ -87,14 +132,14 @@ const CollagePreview = ({
       } catch (error) {
         panelId = `panel-${activePanelIndex + 1}`;
       }
-      
-      // Set the active panel info for when file is selected
+
       setActivePanelId(panelId);
-      
-      // Trigger file input
-      fileInputRef.current?.click();
+      const existingIdx = panelImageMapping?.[panelId];
+      setActiveExistingImageIndex(typeof existingIdx === 'number' ? existingIdx : null);
+      setIsReplaceMode(true);
+      setIsLibraryOpen(true);
     }
-    
+
     // Close the menu
     handleMenuClose();
   };
@@ -190,6 +235,95 @@ const CollagePreview = ({
     }
   };
 
+  // Handle selecting an image from the Library for the active (empty) panel
+  const handleLibrarySelect = async (items) => {
+    if (!items || items.length === 0 || activePanelIndex === null) {
+      setIsLibraryOpen(false);
+      return;
+    }
+
+    // Optimistically close dialog for snappier UX
+    setIsLibraryOpen(false);
+
+    // Determine panel ID
+    let clickedPanelId = activePanelId;
+    if (!clickedPanelId) {
+      try {
+        const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
+        const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
+        clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
+      } catch (e) {
+        clickedPanelId = `panel-${activePanelIndex + 1}`;
+      }
+    }
+
+    const selected = items[0];
+
+    // Helper to ensure we use a data URL for canvas safety
+    const ensureDataUrl = async (item) => {
+      const srcUrl = item?.originalUrl || item?.displayUrl || item?.url || item;
+      const isData = typeof srcUrl === 'string' && srcUrl.startsWith('data:');
+      const libraryKey = item?.metadata?.libraryKey;
+      if (isData) {
+        return srcUrl;
+      }
+      if (libraryKey) {
+        try {
+          const blob = await getFromLibrary(libraryKey);
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          return dataUrl;
+        } catch (e) {
+          // Fallback to provided URL if conversion fails
+          return srcUrl;
+        }
+      }
+      return srcUrl;
+    };
+
+    try {
+      if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
+        // Replace existing image in place with data URL
+        const newUrl = await ensureDataUrl(selected);
+        await replaceImage(activeExistingImageIndex, newUrl);
+      } else {
+        // Assign to empty panel: add to images and map using data URL
+        const currentLength = selectedImages.length;
+        const newUrl = await ensureDataUrl(selected);
+        const imageObj = {
+          originalUrl: newUrl,
+          displayUrl: newUrl,
+          metadata: selected?.metadata || {},
+        };
+        await addMultipleImages([imageObj]);
+        const newMapping = {
+          ...panelImageMapping,
+          [clickedPanelId]: currentLength,
+        };
+        updatePanelImageMapping(newMapping);
+      }
+    } finally {
+      // Reset active state
+      setIsReplaceMode(false);
+      setActiveExistingImageIndex(null);
+      setActivePanelIndex(null);
+      setActivePanelId(null);
+    }
+  };
+
+  // Close the library dialog and reset active state
+  const handleLibraryClose = () => {
+    setIsLibraryOpen(false);
+    setIsReplaceMode(false);
+    setActiveExistingImageIndex(null);
+    setActivePanelIndex(null);
+    setActivePanelId(null);
+  };
+
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -221,6 +355,85 @@ const CollagePreview = ({
         accept="image/*"
         onChange={handleFileChange}
       />
+
+      {/* Library selection dialog for empty frame taps */}
+      <Dialog
+        open={isLibraryOpen}
+        onClose={handleLibraryClose}
+        fullWidth
+        maxWidth="md"
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: {
+            borderRadius: isMobile ? 0 : 2,
+            bgcolor: '#121212',
+            color: '#eaeaea',
+          },
+        }}
+      >
+        {isMobile ? (
+          <AppBar
+            position="sticky"
+            color="default"
+            elevation={0}
+            sx={{ borderBottom: '1px solid #2a2a2a', bgcolor: '#121212', color: '#eaeaea' }}
+          >
+            <Toolbar>
+              <Typography variant="h6" sx={{ flexGrow: 1, color: '#eaeaea' }}>
+                Select a photo
+              </Typography>
+              <IconButton edge="end" aria-label="close" onClick={handleLibraryClose} sx={{ color: '#eaeaea' }}>
+                <CloseIcon />
+              </IconButton>
+            </Toolbar>
+          </AppBar>
+        ) : (
+          <DialogTitle sx={{ pr: 6, color: '#eaeaea' }}>
+            Select a photo
+            <IconButton
+              aria-label="close"
+              onClick={handleLibraryClose}
+              sx={{ position: 'absolute', right: 8, top: 8, color: '#eaeaea' }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+        )}
+        <DialogContent dividers sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#0f0f0f' }}>
+          <LibraryBrowser
+            multiple={false}
+            uploadEnabled
+            deleteEnabled={false}
+            onSelect={(arr) => handleLibrarySelect(arr)}
+            showActionBar={false}
+            selectionEnabled
+            previewOnClick
+            showSelectToggle
+            initialSelectMode
+          />
+        </DialogContent>
+        <DialogActions sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
+          <Button
+            onClick={handleLibraryClose}
+            variant="contained"
+            disableElevation
+            fullWidth={isMobile}
+            sx={{
+              bgcolor: '#252525',
+              color: '#f0f0f0',
+              border: '1px solid #3a3a3a',
+              borderRadius: '8px',
+              px: isMobile ? 2 : 2.5,
+              py: isMobile ? 1.25 : 0.75,
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' }
+            }}
+          >
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
       
       {/* Panel options menu */}
       <Menu

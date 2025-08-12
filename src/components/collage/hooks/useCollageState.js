@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCallback and useRef
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
-import { saveImageToLibrary } from '../components/MyLibrary';
 
-// Debug flag - only enable in development mode
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+// Debug flag - opt-in via localStorage while in development
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 
 /**
  * Custom hook to manage collage state
  */
-export const useCollageState = (isAdmin = false) => {
+export const useCollageState = () => {
   // selectedImages now stores: { originalUrl: string, displayUrl: string, subtitle?: string, subtitleShowing?: boolean, metadata?: object }[]
   const [selectedImages, setSelectedImages] = useState([]);
   // panelImageMapping still maps: { panelId: imageIndex }
@@ -26,9 +27,9 @@ export const useCollageState = (isAdmin = false) => {
     strokeWidth: 2
   });
   
-  // State for auto-saving images to library
-  const [autoSaveToLibrary, setAutoSaveToLibrary] = useState(isAdmin);
-  const [libraryRefreshTrigger, setLibraryRefreshTrigger] = useState(null);
+  // Auto-save to library is disabled; keep state for legacy props but do not use
+  const [autoSaveToLibrary, setAutoSaveToLibrary] = useState(false);
+  const [libraryRefreshTrigger] = useState(null);
   
   // Track image data URLs that have been saved to prevent duplicates
   const savedImageDataUrls = useRef(new Set());
@@ -195,42 +196,10 @@ export const useCollageState = (isAdmin = false) => {
     }, [selectedImages]);
 
   /**
-   * Save image to library if auto-save is enabled
+   * Auto-upload to library has been fully disabled per product direction.
+   * This is intentionally a no-op.
    */
-  const saveToLibraryIfEnabled = useCallback(async (imageUrl, metadata = {}) => {
-    if (!isAdmin || !autoSaveToLibrary || !imageUrl) return;
-    
-    try {
-      // Skip saving if image is from library (prevents duplicates)
-      if (metadata.isFromLibrary) {
-        console.log("Skipping auto-save for library image:", metadata.libraryKey);
-        return;
-      }
-      
-      // Only save data URLs (base64 images) - skip regular URLs
-      if (imageUrl.startsWith('data:')) {
-        // Check if we've already saved this exact image data
-        if (savedImageDataUrls.current.has(imageUrl)) {
-          console.log("Skipping auto-save for previously saved image");
-          return;
-        }
-        
-        console.log("Auto-saving new image to library...");
-        
-        // Save to library and track that we've saved it
-        await saveImageToLibrary(imageUrl, 'collage-upload');
-        savedImageDataUrls.current.add(imageUrl);
-        
-        // Trigger library refresh
-        setLibraryRefreshTrigger(Date.now());
-        console.log("✅ Successfully auto-saved image to library!");
-      } else {
-        console.log("Skipping auto-save for non-data URL:", `${imageUrl.substring(0, 50)}...`);
-      }
-    } catch (error) {
-      console.error("❌ Failed to auto-save image to library:", error);
-    }
-  }, [autoSaveToLibrary, isAdmin]);
+  const saveToLibraryIfEnabled = useCallback(async () => {}, []);
 
   /**
    * Add a new image to the collection.
@@ -246,8 +215,7 @@ export const useCollageState = (isAdmin = false) => {
         originalUrl: imageData,
         displayUrl: imageData
       };
-      // Auto-save to library
-      await saveToLibraryIfEnabled(imageData, {});
+      // Auto-save to library disabled
     } else if (typeof imageData === 'object') {
       newImageObject = {
         originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
@@ -256,9 +224,7 @@ export const useCollageState = (isAdmin = false) => {
         subtitleShowing: imageData.subtitleShowing || false,
         metadata: imageData.metadata || {}
       };
-      // Auto-save to library (pass metadata to check if from library)
-      const imageUrl = imageData.originalUrl || imageData.displayUrl || imageData;
-      await saveToLibraryIfEnabled(imageUrl, imageData.metadata || {});
+      // Auto-save to library disabled
     } else {
       return;
     }
@@ -281,18 +247,15 @@ export const useCollageState = (isAdmin = false) => {
       await prevPromise;
       if (!imageData) return Promise.resolve();
 
-      let imageUrl;
       let newImageObj;
       let metadata = {};
 
       if (typeof imageData === 'string') {
-        imageUrl = imageData;
         newImageObj = {
           originalUrl: imageData,
           displayUrl: imageData
         };
       } else if (typeof imageData === 'object') {
-        imageUrl = imageData.originalUrl || imageData.displayUrl || imageData;
         metadata = imageData.metadata || {};
         newImageObj = {
           originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
@@ -312,8 +275,7 @@ export const useCollageState = (isAdmin = false) => {
         return Promise.resolve();
       }
 
-      // Auto-save to library (pass metadata to check if from library)
-      await saveToLibraryIfEnabled(imageUrl, metadata);
+      // Auto-save to library disabled
 
       newImageObjects.push(newImageObj);
       return Promise.resolve();
@@ -445,8 +407,7 @@ export const useCollageState = (isAdmin = false) => {
         newImages[index] = { originalUrl: newBase64Image, displayUrl: newBase64Image };
         setSelectedImages(newImages);
 
-        // Auto-save the new image to library (it's a new upload, not from library)
-        await saveToLibraryIfEnabled(newBase64Image, {});
+        // Auto-save to library disabled
 
         // Find the panelId(s) that use this image index and reset their transforms
         const panelsToResetTransform = Object.entries(panelImageMapping)

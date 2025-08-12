@@ -14,7 +14,9 @@ import { useCollageState } from "../components/collage/hooks/useCollageState";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 import CollageResultDialog from "../components/collage/components/CollageResultDialog";
 
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
 // Development utility removed - welcome screen is no longer shown for users with access
@@ -123,8 +125,6 @@ export default function CollagePage() {
     updatePanelTransform,
     updatePanelText,
     libraryRefreshTrigger,
-    autoSaveToLibrary,
-    setAutoSaveToLibrary,
   } = useCollageState(isAdmin);
 
   // Check if all panels have images assigned (same logic as CollageImagesStep)
@@ -346,8 +346,6 @@ export default function CollagePage() {
     borderColor,
     setBorderColor,
     borderThicknessOptions,
-    autoSaveToLibrary,
-    setAutoSaveToLibrary,
   };
 
   // Handler for when collage is generated - show inline result

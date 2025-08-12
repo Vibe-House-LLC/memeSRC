@@ -39,7 +39,9 @@ const getCollagePreference = (user) => {
   return localStorage.getItem(key) || 'new'; // Default to new version
 };
 
-const StyledCollageNavItem = styled(ListItemButton)(({ theme, isActive }) => ({
+const StyledCollageNavItem = styled(ListItemButton, {
+  shouldForwardProp: (prop) => prop !== 'isActive',
+})(({ theme, isActive }) => ({
   ...theme.typography.body2,
   minHeight: 72,
   position: 'relative',

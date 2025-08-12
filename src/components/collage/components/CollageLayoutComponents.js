@@ -15,7 +15,9 @@ import BulkUploadSection from "./BulkUploadSection";
 import { SectionHeading } from './CollageUIComponents';
 import DisclosureCard from './DisclosureCard';
 
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
 /**
@@ -116,14 +118,14 @@ const CollapsibleSettingsSection = ({
 
 CollapsibleSettingsSection.propTypes = {
   settingsStepProps: PropTypes.shape({
-    selectedAspectRatio: PropTypes.number,
+    selectedAspectRatio: PropTypes.string,
     selectedTemplate: PropTypes.object,
     panelCount: PropTypes.number.isRequired,
-    borderThickness: PropTypes.number,
+    borderThickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     setBorderThickness: PropTypes.func,
     setPanelCount: PropTypes.func.isRequired,
-    onAspectRatioChange: PropTypes.func.isRequired,
-    onTemplateChange: PropTypes.func.isRequired,
+    setSelectedAspectRatio: PropTypes.func.isRequired,
+    setSelectedTemplate: PropTypes.func.isRequired,
   }).isRequired,
   isMobile: PropTypes.bool.isRequired,
   settingsOpen: PropTypes.bool,
@@ -280,19 +282,19 @@ export const CollageLayout = ({
 
 CollageLayout.propTypes = {
   settingsStepProps: PropTypes.shape({
-    selectedAspectRatio: PropTypes.number,
+    selectedAspectRatio: PropTypes.string,
     selectedTemplate: PropTypes.object,
     panelCount: PropTypes.number.isRequired,
-    borderThickness: PropTypes.number,
+    borderThickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     setBorderThickness: PropTypes.func,
     setPanelCount: PropTypes.func.isRequired,
-    onAspectRatioChange: PropTypes.func.isRequired,
-    onTemplateChange: PropTypes.func.isRequired,
+    setSelectedAspectRatio: PropTypes.func.isRequired,
+    setSelectedTemplate: PropTypes.func.isRequired,
   }).isRequired,
   imagesStepProps: PropTypes.shape({
     selectedImages: PropTypes.array.isRequired,
     selectedTemplate: PropTypes.object,
-    selectedAspectRatio: PropTypes.number,
+    selectedAspectRatio: PropTypes.string,
     panelCount: PropTypes.number.isRequired,
     panelImageMapping: PropTypes.object.isRequired,
     addMultipleImages: PropTypes.func.isRequired,

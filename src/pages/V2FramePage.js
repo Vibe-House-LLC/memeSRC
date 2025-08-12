@@ -53,7 +53,7 @@ import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import { useCollage } from '../contexts/CollageContext';
-import { saveImageToLibrary } from '../components/collage/components/MyLibrary';
+import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -161,15 +161,15 @@ export default function FramePage() {
         img.onerror = reject;
       });
       
-      // Convert canvas to data URL
-      const dataUrl = offScreenCanvas.toDataURL('image/jpeg', 0.9);
+      // Convert canvas to Blob (prefer toBlob and pass Blob to library saver)
+      const blob = await new Promise((resolve) => offScreenCanvas.toBlob(resolve, 'image/jpeg', 0.9));
       
       // Generate filename
       const showTitleSafe = (showTitle || frameData?.showTitle || 'frame').replace(/[^a-zA-Z0-9]/g, '-');
       const filename = `${showTitleSafe}-S${season}E${episode}-${frameToTimeCode(frame).replace(/:/g, '-')}`;
       
       // Save to library
-      await saveImageToLibrary(dataUrl, filename);
+      await saveImageToLibrary(blob, filename);
       
       setLibrarySnackbarOpen(true);
     } catch (error) {
