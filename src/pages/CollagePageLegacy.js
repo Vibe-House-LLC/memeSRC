@@ -718,7 +718,18 @@ export default function CollagePage() {
       }
     }
 
-    if (location.state?.updatedCollageState) {
+    if (location.state?.images && Array.isArray(location.state.images) && location.state.images.length > 0) {
+      // Accept images passed from new collage and initialize legacy stack
+      setImages(location.state.images.map(img => ({
+        id: Date.now().toString() + Math.random().toString(36).slice(2),
+        src: img.src || img.displayUrl || img.originalUrl || img,
+        width: img.width || img.naturalWidth || 1000,
+        height: img.height || img.naturalHeight || 1000,
+      })));
+      setHasAddedImages(true);
+      // Clear navigation state so refresh doesn't re-import
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (location.state?.updatedCollageState) {
       const { images, borderThickness, editMode, accordionExpanded } = location.state.updatedCollageState;
       setImages(images.map(img => ({
         ...img,

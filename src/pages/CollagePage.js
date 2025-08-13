@@ -88,9 +88,9 @@ export default function CollagePage() {
   const settingsRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Fallback dialog state when user exceeds 5 images
+  // Fallback dialog state when user selects more than 5 images at once
   const [showFallbackDialog, setShowFallbackDialog] = useState(false);
-  const [hasShownFallback, setHasShownFallback] = useState(false);
+  const [pendingImagesForLegacy, setPendingImagesForLegacy] = useState([]);
   
 
 
@@ -175,13 +175,13 @@ export default function CollagePage() {
     return undefined;
   }, [hasImages, showResultDialog]);
 
-  // If user adds more than 5 images, prompt to switch to legacy stack
+  // If a bulk add from library exceeds 5, BulkUploadSection/CollagePreview will route directly.
+  // Here we keep the dialog for awareness if state ever exceeds 5 for any reason.
   useEffect(() => {
-    if (!hasShownFallback && selectedImages.length > 5) {
+    if (selectedImages.length > 5 && !showFallbackDialog) {
       setShowFallbackDialog(true);
-      setHasShownFallback(true);
     }
-  }, [selectedImages.length, hasShownFallback]);
+  }, [selectedImages.length, showFallbackDialog]);
 
 
 
@@ -634,8 +634,8 @@ export default function CollagePage() {
           <Button
             variant="contained"
             onClick={() => {
-              // Navigate to legacy page; it persists its own state and supports unlimited images
-              navigate('/collage-legacy', { state: { fromCollage: true } });
+              const payload = selectedImages.map((img) => ({ src: img.displayUrl || img.originalUrl || img }));
+              navigate('/collage-legacy', { state: { fromCollage: true, images: payload } });
             }}
           >
             Use Stack

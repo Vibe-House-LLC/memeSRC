@@ -20,6 +20,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 import { LibraryBrowser } from '../../library';
+import { useNavigate } from 'react-router-dom';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { UserContext } from '../../../UserContext';
 
@@ -65,6 +66,7 @@ const CollagePreview = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const navigate = useNavigate();
   
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
@@ -304,15 +306,21 @@ const CollagePreview = ({
         const newUrl = await ensureDataUrl(items[0]);
         await replaceImage(activeExistingImageIndex, newUrl);
       } else {
-        // Multi-add: add all selected items, then map first one to clicked panel
-        const currentLength = selectedImages.length;
-        const dataUrls = await Promise.all(items.map(ensureDataUrl));
-        const imageObjs = dataUrls.map((url) => ({ originalUrl: url, displayUrl: url }));
-        await addMultipleImages(imageObjs);
+        // If selection exceeds 5, route to legacy Stack editor with images
+        if (items.length > 5) {
+          const payload = await Promise.all(items.map(async (it) => ({ src: await ensureDataUrl(it) })));
+          navigate('/collage-legacy', { state: { fromCollage: true, images: payload } });
+        } else {
+          // Multi-add: add all selected items, then map first one to clicked panel
+          const currentLength = selectedImages.length;
+          const dataUrls = await Promise.all(items.map(ensureDataUrl));
+          const imageObjs = dataUrls.map((url) => ({ originalUrl: url, displayUrl: url }));
+          await addMultipleImages(imageObjs);
 
-        const newMapping = { ...panelImageMapping };
-        newMapping[clickedPanelId] = currentLength;
-        updatePanelImageMapping(newMapping);
+          const newMapping = { ...panelImageMapping };
+          newMapping[clickedPanelId] = currentLength;
+          updatePanelImageMapping(newMapping);
+        }
       }
     } finally {
       setIsReplaceMode(false);

@@ -22,6 +22,7 @@ import {
   Clear
 } from '@mui/icons-material';
 import { LibraryBrowser } from '../../library';
+import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../../UserContext';
 import useLibraryData from '../../../hooks/library/useLibraryData';
 
@@ -129,6 +130,7 @@ const BulkUploadSection = ({
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
+  const navigate = useNavigate();
 
   // Admin: peek at library to decide what to show at start
   const {
@@ -594,6 +596,18 @@ const BulkUploadSection = ({
   // Handler for selecting images from LibraryBrowser
   const handleLibrarySelect = async (items) => {
     if (!items || items.length === 0) return;
+
+    // If selection exceeds 5, route to legacy Stack editor with images
+    if (items.length > 5) {
+      try {
+        navigate('/collage-legacy', { state: { fromCollage: true, images: items.map(it => ({
+          src: it.originalUrl || it.displayUrl || it.url || it,
+        })) } });
+      } catch (_) {
+        // swallow
+      }
+      return;
+    }
 
     const emptyPanels = [];
     const assignedPanelIds = new Set(Object.keys(panelImageMapping));
