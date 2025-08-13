@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, IconButton, Tooltip } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Alert } from "@mui/material";
 import { Dashboard, Save, RestartAlt, Settings } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
@@ -87,6 +87,10 @@ export default function CollagePage() {
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Fallback dialog state when user exceeds 5 images
+  const [showFallbackDialog, setShowFallbackDialog] = useState(false);
+  const [hasShownFallback, setHasShownFallback] = useState(false);
   
 
 
@@ -162,14 +166,22 @@ export default function CollagePage() {
     if (hasImages && !showResultDialog) {
       const timer = setTimeout(() => {
         setShowAnimatedButton(true);
-      }, 800); // 800ms delay for dramatic effect
+      }, 800);
 
       return () => clearTimeout(timer);
     }
 
     setShowAnimatedButton(false);
-    return undefined; // Consistent return for all code paths
+    return undefined;
   }, [hasImages, showResultDialog]);
+
+  // If user adds more than 5 images, prompt to switch to legacy stack
+  useEffect(() => {
+    if (!hasShownFallback && selectedImages.length > 5) {
+      setShowFallbackDialog(true);
+      setHasShownFallback(true);
+    }
+  }, [selectedImages.length, hasShownFallback]);
 
 
 
@@ -422,7 +434,7 @@ export default function CollagePage() {
           pb: !showResultDialog && hasImages ? 8 : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
-          overflowY: 'visible', // Allow vertical overflow for caption editor
+          overflowY: 'visible',
           minHeight: '100vh',
           bgcolor: 'background.default'
         }}>
@@ -433,7 +445,7 @@ export default function CollagePage() {
               pt: isMobile ? 1 : 1.5,
               px: isMobile ? 1 : 2,
               width: '100%',
-              overflow: 'visible' // Allow caption editor to overflow container bounds
+              overflow: 'visible'
             }}
             disableGutters={isMobile}
           >
@@ -464,6 +476,23 @@ export default function CollagePage() {
             </Box>
 
             <EarlyAccessFeedback />
+
+            {selectedImages.length > 5 && (
+              <Box sx={{ mb: 2 }}>
+                <Alert severity="info" sx={{ borderRadius: 2 }}>
+                  You added {selectedImages.length} images. The new collage supports up to 5 at a time.
+                  You can continue here with 5, or switch to the classic Stack tool for unlimited images.
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    sx={{ ml: 2 }}
+                    onClick={() => setShowFallbackDialog(true)}
+                  >
+                    Use Stack Collage
+                  </Button>
+                </Alert>
+              </Box>
+            )}
 
             <CollageLayout
               settingsStepProps={settingsStepProps}
@@ -588,6 +617,31 @@ export default function CollagePage() {
           />
         </Box>
       )}
+
+      {/* Fallback dialog: Offer legacy Stack when >5 images */}
+      <Dialog open={showFallbackDialog} onClose={() => setShowFallbackDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Use Stack Collage?</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 1.5 }}>
+            You selected {selectedImages.length} images. The new collage supports up to 5 images.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Switch to the classic Stack collage for unlimited images, or continue here with 5.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowFallbackDialog(false)}>Stay Here</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              // Navigate to legacy page; it persists its own state and supports unlimited images
+              navigate('/collage-legacy', { state: { fromCollage: true } });
+            }}
+          >
+            Use Stack
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
