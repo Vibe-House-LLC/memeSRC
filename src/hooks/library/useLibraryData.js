@@ -133,14 +133,10 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       }
     }
     const results = new Array(handles.length);
-    let cursor = 0;
-    const worker = async () => {
-      // sequentially consume tasks from the shared cursor to avoid deep recursion
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const idx = cursor;
-        cursor += 1;
-        if (idx >= handles.length) break;
+    const workerCount = Math.min(concurrency, handles.length);
+    const worker = async (workerIndex) => {
+      // Deterministic strided partitioning avoids shared mutable state across workers
+      for (let idx = workerIndex; idx < handles.length; idx += workerCount) {
         const { file, handle, plannedTimestamp } = handles[idx];
         // Create preview URL just-in-time and attach to placeholder
         let previewUrl;
@@ -166,7 +162,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
         } catch (_) { /* ignore */ }
       }
     };
-    await Promise.all(Array.from({ length: Math.min(concurrency, handles.length) }, () => worker()));
+    await Promise.all(Array.from({ length: workerCount }, (_, i) => worker(i)));
     return results;
   }, [createPlaceholder, performUpload]);
 
