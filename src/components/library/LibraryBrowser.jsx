@@ -157,8 +157,8 @@ export default function LibraryBrowser({
   const previewIndex = useMemo(() => displayItems.findIndex((i) => i.key === previewKey), [displayItems, previewKey]);
 
   const handlePrev = useCallback(() => {
-    if (previewIndex > 0) setPreviewKey(items[previewIndex - 1]?.key ?? null);
-  }, [items, previewIndex]);
+    if (previewIndex > 0) setPreviewKey(displayItems[previewIndex - 1]?.key ?? null);
+  }, [displayItems, previewIndex]);
 
   const handleNext = useCallback(() => {
     if (previewIndex >= 0 && previewIndex < displayItems.length - 1) setPreviewKey(displayItems[previewIndex + 1]?.key ?? null);
