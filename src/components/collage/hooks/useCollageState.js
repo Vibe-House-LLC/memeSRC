@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCallback and useRef
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
 
-// Debug flag - only enable in development mode
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+// Debug flag - opt-in via localStorage while in development
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 
 /**
  * Custom hook to manage collage state
@@ -24,6 +26,13 @@ export const useCollageState = () => {
     color: '#ffffff',
     strokeWidth: 2
   });
+  
+  // Auto-save to library is disabled; keep state for legacy props but do not use
+  const [autoSaveToLibrary, setAutoSaveToLibrary] = useState(false);
+  const [libraryRefreshTrigger] = useState(null);
+  
+  // Track image data URLs that have been saved to prevent duplicates
+  const savedImageDataUrls = useRef(new Set());
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
   const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
@@ -187,19 +196,26 @@ export const useCollageState = () => {
     }, [selectedImages]);
 
   /**
+   * Auto-upload to library has been fully disabled per product direction.
+   * This is intentionally a no-op.
+   */
+  const saveToLibraryIfEnabled = useCallback(async () => {}, []);
+
+  /**
    * Add a new image to the collection.
    * Stores the same URL for both original and display initially.
    * @param {string|object} imageData - The image URL (usually base64) or object with subtitle data to add
    */
-  const addImage = useCallback((imageData) => {
+  const addImage = useCallback(async (imageData) => {
     if (!imageData) return;
-    
+
     let newImageObject;
     if (typeof imageData === 'string') {
       newImageObject = {
         originalUrl: imageData,
         displayUrl: imageData
       };
+      // Auto-save to library disabled
     } else if (typeof imageData === 'object') {
       newImageObject = {
         originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
@@ -208,57 +224,68 @@ export const useCollageState = () => {
         subtitleShowing: imageData.subtitleShowing || false,
         metadata: imageData.metadata || {}
       };
+      // Auto-save to library disabled
     } else {
       return;
     }
-    
+
     setSelectedImages(prev => [...prev, newImageObject]);
     if (DEBUG_MODE) console.log("Added image:", newImageObject);
-  }, []);
+  }, [saveToLibraryIfEnabled]);
 
   /**
    * Add multiple images to the collection at once.
    * Stores the same URL for both original and display initially for each image.
    * @param {Array} imageDataArray - Array of image URLs (usually base64) or objects with subtitle data to add
    */
-  const addMultipleImages = useCallback((imageDataArray) => {
+  const addMultipleImages = useCallback(async (imageDataArray) => {
     if (!imageDataArray || !Array.isArray(imageDataArray) || imageDataArray.length === 0) return;
-    
-    const newImageObjects = imageDataArray
-      .filter(data => data) // Filter out any null/undefined
-      .map(imageData => {
-        if (typeof imageData === 'string') {
-          return {
-            originalUrl: imageData,
-            displayUrl: imageData
-          };
+
+    const newImageObjects = [];
+
+    await imageDataArray.reduce(async (prevPromise, imageData) => {
+      await prevPromise;
+      if (!imageData) return Promise.resolve();
+
+      let newImageObj;
+      let metadata = {};
+
+      if (typeof imageData === 'string') {
+        newImageObj = {
+          originalUrl: imageData,
+          displayUrl: imageData
+        };
+      } else if (typeof imageData === 'object') {
+        metadata = imageData.metadata || {};
+        newImageObj = {
+          originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
+          displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
+          subtitle: imageData.subtitle || '',
+          subtitleShowing: imageData.subtitleShowing || false,
+          metadata
+        };
+        if (DEBUG_MODE) {
+          console.log(`[SUBTITLE DEBUG] Processing image object:`, {
+            originalData: imageData,
+            processedData: newImageObj,
+            hasSubtitle: !!newImageObj.subtitle
+          });
         }
-        if (typeof imageData === 'object') {
-          const newImageObj = {
-            originalUrl: imageData.originalUrl || imageData.displayUrl || imageData,
-            displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
-            subtitle: imageData.subtitle || '',
-            subtitleShowing: imageData.subtitleShowing || false,
-            metadata: imageData.metadata || {}
-          };
-          if (DEBUG_MODE) {
-            console.log(`[SUBTITLE DEBUG] Processing image object:`, {
-              originalData: imageData,
-              processedData: newImageObj,
-              hasSubtitle: !!newImageObj.subtitle
-            });
-          }
-          return newImageObj;
-        }
-        return null;
-      })
-      .filter(obj => obj !== null);
-    
+      } else {
+        return Promise.resolve();
+      }
+
+      // Auto-save to library disabled
+
+      newImageObjects.push(newImageObj);
+      return Promise.resolve();
+    }, Promise.resolve());
+
     if (newImageObjects.length > 0) {
       setSelectedImages(prev => [...prev, ...newImageObjects]);
       if (DEBUG_MODE) console.log("Added multiple images:", newImageObjects);
     }
-  }, []);
+  }, [saveToLibraryIfEnabled]);
 
   /**
    * Remove an image object by index and update panel mapping.
@@ -362,16 +389,16 @@ export const useCollageState = () => {
    * @param {number} index - The index of the image object to replace
    * @param {string} newBase64Image - The new image URL (base64)
    */
-  const replaceImage = useCallback((index, newBase64Image) => {
+  const replaceImage = useCallback(async (index, newBase64Image) => {
     if (index >= 0 && index < selectedImages.length && newBase64Image) {
         const oldImageObj = selectedImages[index];
         // Clean up old blobs
-        if (oldImageObj.originalUrl && typeof oldImageObj.originalUrl === 'string' && 
+        if (oldImageObj.originalUrl && typeof oldImageObj.originalUrl === 'string' &&
             oldImageObj.originalUrl.startsWith('blob:')) {
           URL.revokeObjectURL(oldImageObj.originalUrl);
         }
-        if (oldImageObj.displayUrl && typeof oldImageObj.displayUrl === 'string' && 
-            oldImageObj.displayUrl.startsWith('blob:') && 
+        if (oldImageObj.displayUrl && typeof oldImageObj.displayUrl === 'string' &&
+            oldImageObj.displayUrl.startsWith('blob:') &&
             oldImageObj.displayUrl !== oldImageObj.originalUrl) {
           URL.revokeObjectURL(oldImageObj.displayUrl);
         }
@@ -379,6 +406,8 @@ export const useCollageState = () => {
         const newImages = [...selectedImages];
         newImages[index] = { originalUrl: newBase64Image, displayUrl: newBase64Image };
         setSelectedImages(newImages);
+
+        // Auto-save to library disabled
 
         // Find the panelId(s) that use this image index and reset their transforms
         const panelsToResetTransform = Object.entries(panelImageMapping)
@@ -401,7 +430,7 @@ export const useCollageState = () => {
     } else if (DEBUG_MODE) {
       console.warn(`Failed to replace image at index ${index}`);
     }
-  }, [selectedImages, panelImageMapping]);
+  }, [selectedImages, panelImageMapping, saveToLibraryIfEnabled]);
 
 
   /**
@@ -418,8 +447,17 @@ export const useCollageState = () => {
     setPanelImageMapping({});
     setPanelTransforms({}); // Clear transforms as well
     setPanelTexts({}); // Clear texts as well
+    // Note: We don't clear savedImageDataUrls to prevent re-saving images across collages
     if (DEBUG_MODE) console.log("Cleared all images, mapping, transforms, and texts");
   }, [selectedImages]);
+
+  /**
+   * Clear the tracking of saved image data URLs (for debugging or reset purposes)
+   */
+  const clearSavedImageTracking = useCallback(() => {
+    savedImageDataUrls.current.clear();
+    if (DEBUG_MODE) console.log("Cleared saved image data URL tracking");
+  }, []);
 
   /**
    * Update the mapping between panels and image indices, and auto-assign subtitles.
@@ -608,5 +646,11 @@ export const useCollageState = () => {
     updatePanelText, // NEW: Updates text configuration for a panel
     resetPanelTransforms, // Resets all transforms to defaults
     resetPanelTexts, // NEW: Resets all texts to defaults
+    
+    // Library auto-save functionality
+    autoSaveToLibrary,
+    setAutoSaveToLibrary,
+    libraryRefreshTrigger,
+    clearSavedImageTracking, // For debugging/reset purposes
   };
 };

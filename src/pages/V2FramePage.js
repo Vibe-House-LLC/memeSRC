@@ -52,7 +52,8 @@ import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
-import { useCollage } from '../contexts/CollageContext';
+// Removed collage collector usage
+import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -102,26 +103,62 @@ export default function FramePage() {
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
-  const { addItem, count } = useCollage();
   
   // Check if user is an admin (same logic as FloatingActionButtons)
   const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
 
-  // Function to add current frame to collage
-  const handleAddToCollage = () => {
-    const currentItem = {
-      cid: confirmedCid,
-      season: parseInt(season, 10),
-      episode: parseInt(episode, 10),
-      frame: parseInt(frame, 10),
-      subtitle: loadedSubtitle || '',
-      subtitleShowing: showText && (loadedSubtitle || '').trim() !== '',
-      frameImage: displayImage || frameData?.frame_image,
-      showTitle: showTitle || frameData?.showTitle,
-      timestamp: frameToTimeCode(frame)
-    };
-    addItem(currentItem);
-    setCollageSnackbarOpen(true);
+  // Function to save current frame to library
+  const handleSaveToLibrary = async () => {
+    if (!displayImage || savingToLibrary) return;
+
+    setSavingToLibrary(true);
+    try {
+      // Create a canvas to generate the final image
+      const offScreenCanvas = document.createElement('canvas');
+      const ctx = offScreenCanvas.getContext('2d');
+      
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = displayImage;
+      
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          try {
+            // Set canvas dimensions
+            const maxCanvasWidth = 1000;
+            const canvasAspectRatio = img.width / img.height;
+            const maxCanvasHeight = maxCanvasWidth / canvasAspectRatio;
+            
+            offScreenCanvas.width = maxCanvasWidth;
+            offScreenCanvas.height = maxCanvasHeight;
+            
+                      // Draw the image (original image without any text overlay)
+          ctx.drawImage(img, 0, 0, maxCanvasWidth, maxCanvasHeight);
+            
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        };
+        img.onerror = reject;
+      });
+      
+      // Convert canvas to Blob (prefer toBlob and pass Blob to library saver)
+      const blob = await new Promise((resolve) => offScreenCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+      
+      // Generate filename
+      const showTitleSafe = (showTitle || frameData?.showTitle || 'frame').replace(/[^a-zA-Z0-9]/g, '-');
+      const filename = `${showTitleSafe}-S${season}E${episode}-${frameToTimeCode(frame).replace(/:/g, '-')}`;
+      
+      // Save to library
+      await saveImageToLibrary(blob, filename);
+      
+      setLibrarySnackbarOpen(true);
+    } catch (error) {
+      console.error('Error saving frame to library:', error);
+    } finally {
+      setSavingToLibrary(false);
+    }
   };
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
@@ -172,7 +209,9 @@ export default function FramePage() {
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
-  const [collageSnackbarOpen, setCollageSnackbarOpen] = useState(false);
+  // Removed collage snackbar state
+  const [librarySnackbarOpen, setLibrarySnackbarOpen] = useState(false);
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
 
 
   const theme = useTheme();
@@ -185,8 +224,10 @@ export default function FramePage() {
     setSnackBarOpen(false);
   }
 
-  const handleCollageSnackbarClose = () => {
-    setCollageSnackbarOpen(false);
+  // Removed collage snackbar handler
+
+  const handleLibrarySnackbarClose = () => {
+    setLibrarySnackbarOpen(false);
   }
 
   /* ---------------------------- Subtitle Function --------------------------- */
@@ -1345,29 +1386,31 @@ useEffect(() => {
               </Button>
 
               {hasCollageAccess && (
-                <Button
-                  size="medium"
-                  fullWidth
-                  variant="outlined"
-                  onClick={handleAddToCollage}
-                  disabled={!confirmedCid}
-                  sx={{ 
-                    mb: 2, 
-                    borderColor: '#2196F3', 
-                    color: '#2196F3',
-                    '&:hover': { 
-                      borderColor: '#1976D2', 
-                      backgroundColor: 'rgba(33, 150, 243, 0.04)' 
-                    },
-                    '&.Mui-disabled': {
-                      borderColor: '#ccc',
-                      color: '#ccc'
-                    }
-                  }}
-                  startIcon={<Collections />}
-                >
-                  Add to Collage
-                </Button>
+                <>
+                  <Button
+                    size="medium"
+                    fullWidth
+                    variant="outlined"
+                    onClick={handleSaveToLibrary}
+                    disabled={!confirmedCid || !displayImage || savingToLibrary}
+                    sx={{ 
+                      mb: 2, 
+                      borderColor: '#FF9800', 
+                      color: '#FF9800',
+                      '&:hover': { 
+                        borderColor: '#F57C00', 
+                        backgroundColor: 'rgba(255, 152, 0, 0.04)' 
+                      },
+                      '&.Mui-disabled': {
+                        borderColor: '#ccc',
+                        color: '#ccc'
+                      }
+                    }}
+                    startIcon={<Collections />}
+                  >
+                    {savingToLibrary ? 'Saving...' : 'Save to Library'}
+                  </Button>
+                </>
               )}
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
@@ -1495,14 +1538,16 @@ useEffect(() => {
             </Alert>
           </Snackbar>
 
+          {/* Removed collage snackbar */}
+
           <Snackbar
-            open={collageSnackbarOpen}
+            open={librarySnackbarOpen}
             autoHideDuration={3000}
-            onClose={handleCollageSnackbarClose}
+            onClose={handleLibrarySnackbarClose}
             anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
           >
-            <Alert onClose={handleCollageSnackbarClose} severity="success" sx={{ width: '100%' }}>
-              Frame added to collage! ({count} items)
+            <Alert onClose={handleLibrarySnackbarClose} severity="success" sx={{ width: '100%' }}>
+              Frame saved to library!
             </Alert>
           </Snackbar>
 

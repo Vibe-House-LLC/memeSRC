@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { 
   Box, 
@@ -9,10 +9,11 @@ import {
   Menu,
   MenuItem,
   Snackbar,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
-import { 
+import {
   Add,
   Delete,
   RemoveCircle,
@@ -20,8 +21,13 @@ import {
   Refresh,
   Clear
 } from '@mui/icons-material';
+import { LibraryBrowser } from '../../library';
+import { UserContext } from '../../../UserContext';
+import useLibraryData from '../../../hooks/library/useLibraryData';
 
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
 // Styled components similar to CollageSettingsStep
@@ -115,11 +121,20 @@ const BulkUploadSection = ({
   removeImage, // Add removeImage function
   replaceImage, // Add replaceImage function
   onStartFromScratch, // Add prop to handle starting without images
+  libraryRefreshTrigger, // For refreshing library when new images are auto-saved
 }) => {
   const theme = useTheme();
+  const { user } = useContext(UserContext);
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
+
+  // Admin: peek at library to decide what to show at start
+  const {
+    items: adminLibraryItems,
+    uploadMany: uploadManyToLibrary,
+  } = useLibraryData({ pageSize: 1, storageLevel: 'protected', refreshToken: libraryRefreshTrigger });
 
   // State for context menu
   const [contextMenu, setContextMenu] = useState(null);
@@ -134,6 +149,9 @@ const BulkUploadSection = ({
 
   // Check if there are any selected images
   const hasImages = selectedImages && selectedImages.length > 0;
+
+  // Determine if admin has any uploaded (non-placeholder) library items
+  const adminHasLibraryItems = isAdmin && Boolean(adminLibraryItems?.some((it) => it?.key));
 
   // Check if there are any empty frames
   const hasEmptyFrames = () => {
@@ -190,7 +208,7 @@ const BulkUploadSection = ({
 
 
   // --- Handler for bulk file upload ---
-  const handleBulkFileUpload = (event) => {
+  const handleBulkFileUpload = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
@@ -201,7 +219,7 @@ const BulkUploadSection = ({
         message: 'Beta supports up to 5 images for now',
         severity: 'error'
       });
-      
+
       // Reset file input
       if (event.target) {
         event.target.value = null;
@@ -219,83 +237,102 @@ const BulkUploadSection = ({
 
     debugLog(`Bulk uploading ${files.length} files...`);
 
-    // Process all files
-    Promise.all(files.map(loadFile))
-      .then((imageUrls) => {
-        debugLog(`Loaded ${imageUrls.length} files for bulk upload`);
-        
-        // Add all images at once
-        addMultipleImages(imageUrls);
-        
-        // Find currently empty panels by checking existing mapping
-        const emptyPanels = [];
-        const assignedPanelIds = new Set(Object.keys(panelImageMapping));
-        
-        debugLog(`Current panel mapping:`, panelImageMapping);
-        debugLog(`Assigned panel IDs:`, Array.from(assignedPanelIds));
-        
-        for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
+    try {
+      // Process all files
+      const imageUrls = await Promise.all(files.map(loadFile));
+      debugLog(`Loaded ${imageUrls.length} files for bulk upload`);
+
+      // Add all images at once
+      await addMultipleImages(imageUrls);
+
+      // Find currently empty panels by checking existing mapping
+      const emptyPanels = [];
+      const assignedPanelIds = new Set(Object.keys(panelImageMapping));
+
+      debugLog(`Current panel mapping:`, panelImageMapping);
+      debugLog(`Assigned panel IDs:`, Array.from(assignedPanelIds));
+
+      for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
+        const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
+
+        // Check if this panel is not assigned or assigned to undefined/null
+        if (!assignedPanelIds.has(panelId) || panelImageMapping[panelId] === undefined || panelImageMapping[panelId] === null) {
+          emptyPanels.push(panelId);
+        }
+      }
+
+      const numEmptyPanels = emptyPanels.length;
+      const numNewImages = imageUrls.length;
+
+      debugLog(`Found ${numEmptyPanels} empty panels (${emptyPanels}) for ${numNewImages} new images`);
+
+      // Calculate if we need to increase panel count
+      let newPanelCount = panelCount;
+      if (numNewImages > numEmptyPanels) {
+        // Need more panels - increase by the difference
+        const additionalPanelsNeeded = numNewImages - numEmptyPanels;
+        newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12); // Max 12 panels
+
+        if (setPanelCount && newPanelCount !== panelCount) {
+          setPanelCount(newPanelCount);
+          debugLog(`Increased panel count from ${panelCount} to ${newPanelCount} to accommodate new images`);
+        }
+      }
+
+      // Create new mapping with assignments
+      const newMapping = { ...panelImageMapping };
+      const currentLength = selectedImages.length;
+      let newImageIndex = currentLength;
+
+      // First, fill existing empty panels
+      for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
+        newMapping[emptyPanels[i]] = newImageIndex;
+        debugLog(`Assigning new image ${newImageIndex} to empty panel ${emptyPanels[i]}`);
+        newImageIndex += 1;
+      }
+
+      // Then, assign remaining images to newly created panels (if any)
+      if (numNewImages > numEmptyPanels) {
+        for (let panelIndex = panelCount; panelIndex < newPanelCount && newImageIndex < currentLength + numNewImages; panelIndex += 1) {
           const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
-          
-          // Check if this panel is not assigned or assigned to undefined/null
-          if (!assignedPanelIds.has(panelId) || panelImageMapping[panelId] === undefined || panelImageMapping[panelId] === null) {
-            emptyPanels.push(panelId);
-          }
-        }
-        
-        const numEmptyPanels = emptyPanels.length;
-        const numNewImages = imageUrls.length;
-        
-        debugLog(`Found ${numEmptyPanels} empty panels (${emptyPanels}) for ${numNewImages} new images`);
-        
-        // Calculate if we need to increase panel count
-        let newPanelCount = panelCount;
-        if (numNewImages > numEmptyPanels) {
-          // Need more panels - increase by the difference
-          const additionalPanelsNeeded = numNewImages - numEmptyPanels;
-          newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12); // Max 12 panels
-          
-          if (setPanelCount && newPanelCount !== panelCount) {
-            setPanelCount(newPanelCount);
-            debugLog(`Increased panel count from ${panelCount} to ${newPanelCount} to accommodate new images`);
-          }
-        }
-        
-        // Create new mapping with assignments
-        const newMapping = { ...panelImageMapping };
-        const currentLength = selectedImages.length;
-        let newImageIndex = currentLength;
-        
-        // First, fill existing empty panels
-        for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
-          newMapping[emptyPanels[i]] = newImageIndex;
-          debugLog(`Assigning new image ${newImageIndex} to empty panel ${emptyPanels[i]}`);
+          newMapping[panelId] = newImageIndex;
+          debugLog(`Assigning new image ${newImageIndex} to new panel ${panelId}`);
           newImageIndex += 1;
         }
-        
-        // Then, assign remaining images to newly created panels (if any)
-        if (numNewImages > numEmptyPanels) {
-          for (let panelIndex = panelCount; panelIndex < newPanelCount && newImageIndex < currentLength + numNewImages; panelIndex += 1) {
-            const panelId = selectedTemplate?.layout?.panels?.[panelIndex]?.id || `panel-${panelIndex + 1}`;
-            newMapping[panelId] = newImageIndex;
-            debugLog(`Assigning new image ${newImageIndex} to new panel ${panelId}`);
-            newImageIndex += 1;
-          }
-        }
+      }
 
-        debugLog(`Final mapping:`, newMapping);
-        updatePanelImageMapping(newMapping);
-        debugLog(`Assigned ${numNewImages} new images to panels`);
-        
-        // Note: Scroll behavior moved to CollagePage to handle after section collapse
-      })
-      .catch((error) => {
-        console.error("Error loading files:", error);
-      });
-    
+      debugLog(`Final mapping:`, newMapping);
+      updatePanelImageMapping(newMapping);
+      debugLog(`Assigned ${numNewImages} new images to panels`);
+
+      // Note: Scroll behavior moved to CollagePage to handle after section collapse
+    } catch (error) {
+      console.error("Error loading files:", error);
+    }
+
     // Reset file input
     if (event.target) {
       event.target.value = null;
+    }
+  };
+
+  // --- Admin-only: upload directly to Library when they have no items yet ---
+  const adminLibraryFileInputRef = useRef(null);
+  const handleAdminLibraryUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    try {
+      // Use concurrent uploads with immediate placeholders
+      const results = await uploadManyToLibrary(files, { concurrency: 4 });
+      const successCount = (results || []).filter(Boolean).length;
+      if (successCount === 0) {
+        setToast({ open: true, message: 'Failed to upload images', severity: 'error' });
+      }
+    } catch (e) {
+      console.error('Failed to upload to library:', e);
+      setToast({ open: true, message: 'Failed to upload to library', severity: 'error' });
+    } finally {
+      if (event.target) event.target.value = null;
     }
   };
 
@@ -472,7 +509,7 @@ const BulkUploadSection = ({
   };
 
   // Handler for file selection for specific panel
-  const handleSpecificPanelFileChange = (event) => {
+  const handleSpecificPanelFileChange = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0 || !selectedPanelForAction) return;
 
@@ -486,73 +523,135 @@ const BulkUploadSection = ({
 
     debugLog(`Uploading ${files.length} files to specific panel: ${selectedPanelForAction.panelId}`);
 
-    // Process all files
-    Promise.all(files.map(loadFile))
-      .then((imageUrls) => {
-        debugLog(`Loaded ${imageUrls.length} files for panel ${selectedPanelForAction.panelId}`);
-        
-        if (selectedPanelForAction.hasImage) {
-          // Replace existing image
-          const firstImageUrl = imageUrls[0];
-          
-          // Update the existing image in the array
-          const updatedImages = [...selectedImages];
-          updatedImages[selectedPanelForAction.imageIndex] = {
-            originalUrl: firstImageUrl,
-            displayUrl: firstImageUrl
-          };
-          
-          // If there are additional images, add them to the collection
-          if (imageUrls.length > 1) {
-            const additionalImages = imageUrls.slice(1).map(url => ({
-              originalUrl: url,
-              displayUrl: url
-            }));
-            updatedImages.push(...additionalImages);
-          }
-          
-          // Use replaceImage if available, otherwise use addMultipleImages
-          if (typeof replaceImage === 'function') {
-            replaceImage(selectedPanelForAction.imageIndex, firstImageUrl);
-            if (imageUrls.length > 1) {
-              addMultipleImages(imageUrls.slice(1));
-            }
-          } else {
-            // Fallback: add all images and update mapping
-            addMultipleImages(imageUrls);
-            const newMapping = { ...panelImageMapping };
-            newMapping[selectedPanelForAction.panelId] = selectedImages.length;
-            updatePanelImageMapping(newMapping);
-          }
-          
-          debugLog(`Replaced image in panel ${selectedPanelForAction.panelId}`);
-        } else {
-          // Add new image to empty panel
-          addMultipleImages(imageUrls);
-          
-          // Get the starting index for new images
-          const currentLength = selectedImages.length;
-          
-          // Create new mapping with the first image assigned to the selected panel
-          const newMapping = { ...panelImageMapping };
-          newMapping[selectedPanelForAction.panelId] = currentLength;
-          
-          debugLog(`Assigning image ${currentLength} to panel ${selectedPanelForAction.panelId}`);
-          
-          // If there are more images, they'll be available for assignment to other panels
-          updatePanelImageMapping(newMapping);
-          
-          debugLog(`Assigned image to specific panel. Updated mapping:`, newMapping);
+    try {
+      // Process all files
+      const imageUrls = await Promise.all(files.map(loadFile));
+      debugLog(`Loaded ${imageUrls.length} files for panel ${selectedPanelForAction.panelId}`);
+
+      if (selectedPanelForAction.hasImage) {
+        // Replace existing image
+        const firstImageUrl = imageUrls[0];
+
+        // Update the existing image in the array
+        const updatedImages = [...selectedImages];
+        updatedImages[selectedPanelForAction.imageIndex] = {
+          originalUrl: firstImageUrl,
+          displayUrl: firstImageUrl
+        };
+
+        // If there are additional images, add them to the collection
+        if (imageUrls.length > 1) {
+          const additionalImages = imageUrls.slice(1).map(url => ({
+            originalUrl: url,
+            displayUrl: url
+          }));
+          updatedImages.push(...additionalImages);
         }
-      })
-      .catch((error) => {
-        console.error("Error loading files for specific panel:", error);
-      });
-    
+
+        // Use replaceImage if available, otherwise use addMultipleImages
+        if (typeof replaceImage === 'function') {
+          await replaceImage(selectedPanelForAction.imageIndex, firstImageUrl);
+          if (imageUrls.length > 1) {
+            await addMultipleImages(imageUrls.slice(1));
+          }
+        } else {
+          // Fallback: add all images and update mapping
+          await addMultipleImages(imageUrls);
+          const newMapping = { ...panelImageMapping };
+          newMapping[selectedPanelForAction.panelId] = selectedImages.length;
+          updatePanelImageMapping(newMapping);
+        }
+
+        debugLog(`Replaced image in panel ${selectedPanelForAction.panelId}`);
+      } else {
+        // Add new image to empty panel
+        await addMultipleImages(imageUrls);
+
+        // Get the starting index for new images
+        const currentLength = selectedImages.length;
+
+        // Create new mapping with the first image assigned to the selected panel
+        const newMapping = { ...panelImageMapping };
+        newMapping[selectedPanelForAction.panelId] = currentLength;
+
+        debugLog(`Assigning image ${currentLength} to panel ${selectedPanelForAction.panelId}`);
+
+        // If there are more images, they'll be available for assignment to other panels
+        updatePanelImageMapping(newMapping);
+
+        debugLog(`Assigned image to specific panel. Updated mapping:`, newMapping);
+      }
+    } catch (error) {
+      console.error("Error loading files for specific panel:", error);
+    }
+
     // Reset file input
     if (event.target) {
       event.target.value = null;
     }
+  };
+
+  // Handler for selecting images from LibraryBrowser
+  const handleLibrarySelect = async (items) => {
+    if (!items || items.length === 0) return;
+
+    const emptyPanels = [];
+    const assignedPanelIds = new Set(Object.keys(panelImageMapping));
+
+    for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
+      const panelId =
+        selectedTemplate?.layout?.panels?.[panelIndex]?.id ||
+        `panel-${panelIndex + 1}`;
+      if (
+        !assignedPanelIds.has(panelId) ||
+        panelImageMapping[panelId] === undefined ||
+        panelImageMapping[panelId] === null
+      ) {
+        emptyPanels.push(panelId);
+      }
+    }
+
+    const numEmptyPanels = emptyPanels.length;
+    const numNewImages = items.length;
+
+    let newPanelCount = panelCount;
+    if (numNewImages > numEmptyPanels) {
+      const additionalPanelsNeeded = numNewImages - numEmptyPanels;
+      newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12);
+      if (setPanelCount && newPanelCount !== panelCount) {
+        setPanelCount(newPanelCount);
+      }
+    }
+
+    const newMapping = { ...panelImageMapping };
+    const currentLength = selectedImages.length;
+    let newImageIndex = currentLength;
+
+    for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
+      newMapping[emptyPanels[i]] = newImageIndex;
+      newImageIndex += 1;
+    }
+
+    if (numNewImages > numEmptyPanels) {
+      for (
+        let panelIndex = panelCount;
+        panelIndex < newPanelCount &&
+        newImageIndex < currentLength + numNewImages;
+        panelIndex += 1
+      ) {
+        const panelId =
+          selectedTemplate?.layout?.panels?.[panelIndex]?.id ||
+          `panel-${panelIndex + 1}`;
+        newMapping[panelId] = newImageIndex;
+        newImageIndex += 1;
+      }
+    }
+
+    // Add items first so mapping references valid indices
+    await addMultipleImages(items);
+
+    // Update mapping after images are added
+    updatePanelImageMapping(newMapping);
   };
 
   // Generate panel list data
@@ -694,7 +793,6 @@ const BulkUploadSection = ({
             ref={specificPanelFileInputRef}
             style={{ display: 'none' }}
             accept="image/*"
-            multiple
             onChange={handleSpecificPanelFileChange}
           />
 
@@ -743,71 +841,167 @@ const BulkUploadSection = ({
           </Menu>
         </Box>
       ) : (
-        // Simple empty state like legacy version
+        // Starting point: distinct for admins vs non-admins
         <Box>
-          <Box sx={{ 
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '200px',
-            border: `2px dashed ${theme.palette.divider}`,
-            borderRadius: 2,
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              borderColor: theme.palette.primary.main,
-              backgroundColor: theme.palette.action.hover,
-            }
-          }}>
-            <Box 
-              onClick={() => bulkFileInputRef.current?.click()}
-              sx={{ textAlign: 'center', p: 3 }}
-            >
-              <Add sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-              <Typography variant="h6" gutterBottom>
-                Add Images
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Upload images for your collage
-              </Typography>
-            </Box>
-            
-            <input
-              type="file"
-              ref={bulkFileInputRef}
-              style={{ display: 'none' }}
-              accept="image/*"
-              multiple
-              onChange={handleBulkFileUpload}
-            />
-          </Box>
-
-          {/* Start from scratch option below the upload box */}
-          {onStartFromScratch && (
-            <Box sx={{ textAlign: 'center', mt: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                or,{' '}
-                <Typography 
-                  component="span" 
-                  variant="body2"
-                  onClick={onStartFromScratch}
-                  sx={{ 
-                    color: 'primary.main',
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      color: 'primary.dark'
-                    }
-                  }}
+          {!isAdmin ? (
+            // Non-admins: only the collage bulk upload dropzone
+            <>
+              <Box sx={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '200px',
+                border: `2px dashed ${theme.palette.divider}`,
+                borderRadius: 2,
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  borderColor: theme.palette.primary.main,
+                  backgroundColor: theme.palette.action.hover,
+                }
+              }}>
+                <Box 
+                  onClick={() => bulkFileInputRef.current?.click()}
+                  sx={{ textAlign: 'center', p: 3 }}
                 >
-                  start from scratch
-                </Typography>
-              </Typography>
-            </Box>
+                  <Add sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+                  <Typography variant="h6" gutterBottom>
+                    Add Images
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Upload images for your collage
+                  </Typography>
+                </Box>
+                
+                <input
+                  type="file"
+                  ref={bulkFileInputRef}
+                  style={{ display: 'none' }}
+                  accept="image/*"
+                  multiple
+                  onChange={handleBulkFileUpload}
+                />
+              </Box>
+              {onStartFromScratch && (
+                <Box sx={{ textAlign: 'center', mt: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    or,{' '}
+                    <Typography 
+                      component="span" 
+                      variant="body2"
+                      onClick={onStartFromScratch}
+                      sx={{ 
+                        color: 'primary.main',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        '&:hover': { color: 'primary.dark' }
+                      }}
+                    >
+                      start from scratch
+                    </Typography>
+                  </Typography>
+                </Box>
+              )}
+            </>
+          ) : (
+            // Admins: either show Library only, or an "Add photos to your library" dropzone when empty
+            <>
+              {adminHasLibraryItems ? (
+                <LibraryBrowser
+                  isAdmin
+                  multiple
+                  minSelected={2}
+                  maxSelected={5}
+                  refreshTrigger={libraryRefreshTrigger}
+                  onSelect={(items) => handleLibrarySelect(items)}
+                  showActionBar
+                  actionBarLabel="Make Collage"
+                  showSelectToggle
+                  initialSelectMode
+                />
+              ) : (
+                <>
+                  <Box sx={{ 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '200px',
+                    border: `2px dashed ${theme.palette.divider}`,
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderColor: theme.palette.primary.main,
+                      backgroundColor: theme.palette.action.hover,
+                    }
+                  }}>
+                    <Box 
+                      onClick={() => adminLibraryFileInputRef.current?.click()}
+                      sx={{ textAlign: 'center', p: 3 }}
+                    >
+                      <Add sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Add photos to your library
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Upload images to build your library, then make collages from them
+                      </Typography>
+                    </Box>
+                    <input
+                      type="file"
+                      ref={adminLibraryFileInputRef}
+                      style={{ display: 'none' }}
+                      accept="image/*"
+                      multiple
+                      onChange={handleAdminLibraryUpload}
+                    />
+                  </Box>
+
+                  {/* Show placeholders and recently added items while uploads are in progress */}
+                  {Array.isArray(adminLibraryItems) && adminLibraryItems.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <HorizontalScroller>
+                        {adminLibraryItems.map((it, idx) => (
+                          <PanelThumbnail key={it.key || it.id || idx} hasImage>
+                            <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+                              <CardMedia
+                                component="img"
+                                width="100%"
+                                height="100%"
+                                image={it.url}
+                                alt="Uploading"
+                                sx={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                              />
+                              {it.loading && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    bgcolor: (theme) => theme.palette.action.disabledBackground,
+                                  }}
+                                >
+                                  <CircularProgress size={20} />
+                                </Box>
+                              )}
+                            </Box>
+                          </PanelThumbnail>
+                        ))}
+                      </HorizontalScroller>
+                    </Box>
+                  )}
+                </>
+              )}
+            </>
           )}
         </Box>
       )}
+
+      {/* Library section is now rendered above for admins when no images; non-admins never see it */}
 
       {/* Toast Notification */}
       <Snackbar
@@ -840,6 +1034,7 @@ BulkUploadSection.propTypes = {
   removeImage: PropTypes.func,
   replaceImage: PropTypes.func,
   onStartFromScratch: PropTypes.func,
+  libraryRefreshTrigger: PropTypes.any,
 };
 
 export default BulkUploadSection; 

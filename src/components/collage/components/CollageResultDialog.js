@@ -19,7 +19,7 @@ import {
   Close as CloseIcon,
 } from '@mui/icons-material';
 
-export default function CollageResultDialog({ open, onClose, finalImage }) {
+export default function CollageResultDialog({ open, onClose, finalImage = null }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -291,6 +291,4 @@ CollageResultDialog.propTypes = {
   finalImage: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Blob)]),
 };
 
-CollageResultDialog.defaultProps = {
-  finalImage: null,
-}; 
+ 

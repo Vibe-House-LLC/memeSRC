@@ -7,34 +7,44 @@ import { useTheme } from '@mui/material/styles';
 import CollagePreview from '../components/CollagePreview';
 
 // Debugging utils
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
 const CollageImagesStep = ({
-  selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
-  addImage, // Adds new object { original, display, subtitle?, subtitleShowing?, metadata? }
-  addMultipleImages, // Adds multiple objects { original, display, subtitle?, subtitleShowing?, metadata? }
-  removeImage, // Removes object, updates mapping
-  updateImage, // Updates ONLY displayUrl (for crop result)
-  replaceImage, // <-- NEW: Updates BOTH urls (for replacing upload)
-  clearImages, // Clears objects, mapping
-  panelCount,
+  selectedImages = [],
+  addImage = () => { console.warn("addImage default prop called"); },
+  addMultipleImages = () => { console.warn("addMultipleImages default prop called"); },
+  removeImage = () => { console.warn("removeImage default prop called"); },
+  updateImage = () => { console.warn("updateImage default prop called"); },
+  replaceImage = () => { console.warn("replaceImage default prop called"); },
+  clearImages = () => { console.warn("clearImages default prop called"); },
+  panelCount = 2,
   selectedTemplate,
-  selectedAspectRatio,
-  borderThickness,
+  selectedAspectRatio = 'portrait',
+  borderThickness = 'medium',
   borderColor,
-  borderThicknessOptions,
-  panelImageMapping, // Still { panelId: imageIndex }
-  updatePanelImageMapping, // Updates mapping directly
-  panelTransforms, // Receive new state
-  updatePanelTransform, // Receive new function
-  panelTexts, // NEW: Receive text state from centralized management
-  lastUsedTextSettings, // NEW: Receive text settings from centralized management
-  updatePanelText, // NEW: Receive text update function from centralized management
-  setFinalImage, // <<< Keep this
-  handleOpenExportDialog, // <<< Add handleOpenExportDialog prop
-  onCollageGenerated, // <<< NEW: Handler for inline result display
-  isCreatingCollage // <<< NEW: Pass collage generation state to prevent placeholder text during export
+  borderThicknessOptions = [
+    { label: "None", value: 0 },
+    { label: "Thin", value: 0.5 },
+    { label: "Medium", value: 1.5 },
+    { label: "Thicc", value: 4 },
+    { label: "Thiccer", value: 7 },
+    { label: "XTRA THICC", value: 12 },
+    { label: "UNGODLY CHONK'D", value: 20 }
+  ],
+  panelImageMapping = {},
+  updatePanelImageMapping = () => { console.warn("updatePanelImageMapping default prop called"); },
+  panelTransforms,
+  updatePanelTransform,
+  panelTexts,
+  lastUsedTextSettings,
+  updatePanelText,
+  setFinalImage = () => { console.warn("setFinalImage default prop called"); },
+  handleOpenExportDialog = () => { console.warn("handleOpenExportDialog default prop called"); },
+  onCollageGenerated = null,
+  isCreatingCollage
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -54,7 +64,7 @@ const CollageImagesStep = ({
   });
 
   // Handler for file selection from Add Image button - use same logic as BulkUploadSection
-  const handleFileChange = (event) => {
+  const handleFileChange = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
@@ -68,19 +78,18 @@ const CollageImagesStep = ({
 
     debugLog(`Add Image button: uploading ${files.length} files...`);
 
-    // Process all files using the same logic as BulkUploadSection
-    Promise.all(files.map(loadFile))
-      .then((imageUrls) => {
-        debugLog(`Loaded ${imageUrls.length} files from Add Image button`);
-        
-        // Add all images at once - this will trigger the same auto-assignment logic
-        addMultipleImages(imageUrls);
-        
-        debugLog(`Added ${imageUrls.length} new images via Add Image button`);
-      })
-      .catch((error) => {
-        console.error("Error loading files from Add Image button:", error);
-      });
+    try {
+      // Process all files using the same logic as BulkUploadSection
+      const imageUrls = await Promise.all(files.map(loadFile));
+      debugLog(`Loaded ${imageUrls.length} files from Add Image button`);
+
+      // Add all images at once - this will trigger the same auto-assignment logic
+      await addMultipleImages(imageUrls);
+
+      debugLog(`Added ${imageUrls.length} new images via Add Image button`);
+    } catch (error) {
+      console.error("Error loading files from Add Image button:", error);
+    }
     
     // Reset file input
     if (event.target) {
@@ -98,16 +107,16 @@ const CollageImagesStep = ({
   return (
     <Box sx={{ my: isMobile ? 0 : 0.25 }}>
       {/* Layout Preview */}
-      <Box sx={{ 
+      <Box sx={{
         p: isMobile ? 1.5 : 1.5,
         mb: isMobile ? 1.5 : 1.5,
-        borderRadius: 2, 
-        textAlign: 'center', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
+        borderRadius: 2,
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         position: 'relative',
-      }}>        
+      }}>
         {/* Always render the preview, let it handle null templates */}
         <Box sx={{ 
           width: '100%', 
@@ -142,8 +151,10 @@ const CollageImagesStep = ({
           />
         </Box>
         
-        <Typography variant="body2" sx={{ 
-            color: 'text.secondary', 
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
             fontSize: '0.85rem',
             textAlign: 'center'
           }}
@@ -198,34 +209,6 @@ CollageImagesStep.propTypes = {
   handleOpenExportDialog: PropTypes.func,
   onCollageGenerated: PropTypes.func,
   isCreatingCollage: PropTypes.bool,
-};
-
-// Add defaultProps (ensure new replaceImage prop has default)
-CollageImagesStep.defaultProps = {
-  selectedImages: [],
-  panelCount: 2,
-  selectedAspectRatio: 'portrait',
-  borderThickness: 'medium',
-  borderThicknessOptions: [ 
-    { label: "None", value: 0 },        // 0%
-    { label: "Thin", value: 0.5 },      // 0.5%
-    { label: "Medium", value: 1.5 },    // 1.5%
-    { label: "Thicc", value: 4 },       // 4%
-    { label: "Thiccer", value: 7 },     // 7%
-    { label: "XTRA THICC", value: 12 }, // 12%
-    { label: "UNGODLY CHONK'D", value: 20 } // 20%
-  ],
-  panelImageMapping: {},
-  addImage: () => { console.warn("addImage default prop called"); },
-  addMultipleImages: () => { console.warn("addMultipleImages default prop called"); },
-  removeImage: () => { console.warn("removeImage default prop called"); },
-  updateImage: () => { console.warn("updateImage default prop called"); },
-  replaceImage: () => { console.warn("replaceImage default prop called"); }, // Add default
-  clearImages: () => { console.warn("clearImages default prop called"); },
-  updatePanelImageMapping: () => { console.warn("updatePanelImageMapping default prop called"); },
-  setFinalImage: () => { console.warn("setFinalImage default prop called"); }, // Add default
-  handleOpenExportDialog: () => { console.warn("handleOpenExportDialog default prop called"); }, // Add default
-  onCollageGenerated: null, // Add default for new handler
 };
 
 export default CollageImagesStep;

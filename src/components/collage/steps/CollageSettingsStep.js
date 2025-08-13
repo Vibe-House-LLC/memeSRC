@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars, react/prop-types */
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useContext } from "react";
 import { useTheme, styled, alpha } from "@mui/material/styles";
 import {
   Box,
@@ -29,6 +29,7 @@ import {
   Palette,
   Colorize
 } from "@mui/icons-material";
+import { UserContext } from "../../../UserContext";
 
 // Import styled components
 import { TemplateCard } from "../styled/CollageStyled";
@@ -308,7 +309,7 @@ const isDarkColor = (hexColor) => {
 };
 
 // Renamed component to CollageLayoutSettings
-const CollageLayoutSettings = ({ 
+const CollageLayoutSettings = ({
   selectedImages, 
   selectedTemplate, 
   setSelectedTemplate, 
@@ -323,7 +324,7 @@ const CollageLayoutSettings = ({
   setBorderThickness,
   borderColor,
   setBorderColor,
-  borderThicknessOptions
+  borderThicknessOptions,
 }) => {
   // State for scroll indicators
   const [aspectLeftScroll, setAspectLeftScroll] = useState(false);
@@ -345,6 +346,8 @@ const CollageLayoutSettings = ({
   // Theme and responsive helpers
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { user } = useContext(UserContext);
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
   
   // Get aspect ratio value based on selected preset
   const getAspectRatioValue = () => {
@@ -1074,6 +1077,8 @@ const CollageLayoutSettings = ({
           </Box>
         )}
       </Box>
+      
+      
       
       {/* Border Thickness UI with Horizontal Scroller - Moved below Choose Layout */}
       <Box sx={{ mb: isMobile ? 0.25 : 0.5, position: 'relative' }}>

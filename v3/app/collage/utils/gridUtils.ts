@@ -49,8 +49,8 @@ export const findAreaPosition = (
   let startRow = -1, startCol = -1, endRow = -1, endCol = -1;
   
   // Find area boundaries
-  for (let row = 0; row < gridAreas.length; row++) {
-    for (let col = 0; col < gridAreas[row].length; col++) {
+  for (let row = 0; row < gridAreas.length; row+=1) {
+    for (let col = 0; col < gridAreas[row].length; col+=1) {
       if (gridAreas[row][col] === areaName) {
         if (startRow === -1) {
           startRow = row;
