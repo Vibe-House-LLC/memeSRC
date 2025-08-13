@@ -72,7 +72,7 @@
             "Arn"
           ]
         },
-        "Runtime": "nodejs16.x",
+        "Runtime": "nodejs22.x",
         "Timeout": 25,
         "Code": {
           "S3Bucket": {
