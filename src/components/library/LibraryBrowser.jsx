@@ -92,35 +92,37 @@ export default function LibraryBrowser({
 
   const handleUseSelected = useCallback(async () => {
     try {
-      const limit = 5;
+      const concurrency = 5;
       const arr = selectedItems;
       const results = new Array(arr.length);
-      let cursor = 0;
       /* eslint-disable no-await-in-loop */
-      const worker = async () => {
-        while (cursor < arr.length) {
-          const idx = cursor; // simplified from cursor + 1 - 1
-          cursor += 1;
-          const it = arr[idx];
-          try {
-            const blob = await get(it.key, { level: storageLevel });
-            const dataUrl = await blobToDataUrl(blob);
-            results[idx] = {
-              originalUrl: dataUrl,
-              displayUrl: dataUrl,
-              metadata: { isFromLibrary: true, libraryKey: it.key },
-            };
-          } catch (e) {
-            results[idx] = {
-              originalUrl: it.url,
-              displayUrl: it.url,
-              metadata: { isFromLibrary: true, libraryKey: it.key },
-            };
-          }
+      const processIndex = async (idx) => {
+        const it = arr[idx];
+        try {
+          const blob = await get(it.key, { level: storageLevel });
+          const dataUrl = await blobToDataUrl(blob);
+          results[idx] = {
+            originalUrl: dataUrl,
+            displayUrl: dataUrl,
+            metadata: { isFromLibrary: true, libraryKey: it.key },
+          };
+        } catch (e) {
+          results[idx] = {
+            originalUrl: it.url,
+            displayUrl: it.url,
+            metadata: { isFromLibrary: true, libraryKey: it.key },
+          };
         }
       };
+      const poolSize = Math.min(concurrency, arr.length);
+      await Promise.all(
+        Array.from({ length: poolSize }, (_, workerIndex) => (async () => {
+          for (let idx = workerIndex; idx < arr.length; idx += poolSize) {
+            await processIndex(idx);
+          }
+        })())
+      );
       /* eslint-enable no-await-in-loop */
-      await Promise.all(Array.from({ length: Math.min(limit, arr.length) }, () => worker()));
       if (onSelect) onSelect(results.filter(Boolean));
       clear();
     } catch (e) {
