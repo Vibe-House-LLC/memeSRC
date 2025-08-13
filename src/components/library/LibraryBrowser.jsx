@@ -184,6 +184,10 @@ export default function LibraryBrowser({
 
   const handleSetSort = (opt) => {
     setSortOption(opt);
+    try {
+      // Reload backing data from the correct end so pagination aligns with UI sort
+      reload({ fromEnd: opt === 'oldest' });
+    } catch (_) { /* ignore */ }
     closeOptions();
   };
   

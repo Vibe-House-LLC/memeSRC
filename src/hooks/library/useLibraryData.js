@@ -7,13 +7,16 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
   const [allKeys, setAllKeys] = useState([]); // full list for paging: { key, lastModified, size }
   const [loading, setLoading] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
+  const [fetchFromEnd, setFetchFromEnd] = useState(false);
 
   const hasMore = useMemo(() => loadedCount < allKeys.length, [loadedCount, allKeys.length]);
 
   // No favorites: keep original order as returned by storage
   const sortItems = useCallback((arr) => arr, []);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async ({ fromEnd } = {}) => {
+    const useFromEnd = typeof fromEnd === 'boolean' ? fromEnd : fetchFromEnd;
+    setFetchFromEnd(useFromEnd);
     setItems([]);
     setLoadedCount(0);
     try {
@@ -22,7 +25,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       setAllKeys(all);
       if (all.length > 0) {
         const totalToLoad = Math.min(pageSize, all.length);
-        const keysToLoad = all.slice(0, totalToLoad);
+        const keysToLoad = useFromEnd ? all.slice(-totalToLoad) : all.slice(0, totalToLoad);
         const urls = await Promise.all(keysToLoad.map(async (it) => ({ key: it.key, url: await getUrl(it.key, { level: storageLevel }) })));
         setItems(sortItems(urls));
         setLoadedCount(totalToLoad);
@@ -30,7 +33,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
     } catch (e) {
       // ignore list error; caller can trigger reload again
     }
-  }, [pageSize, sortItems, storageLevel]);
+  }, [fetchFromEnd, pageSize, sortItems, storageLevel]);
 
   useEffect(() => { reload(); }, [reload, refreshToken]);
 
@@ -41,14 +44,14 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       const currentlyLoadedKeys = new Set(items.filter((i) => i.key).map((i) => i.key));
       const remaining = allKeys.filter((k) => !currentlyLoadedKeys.has(k.key));
       const count = Math.min(pageSize, remaining.length);
-      const toLoad = remaining.slice(0, count);
+      const toLoad = fetchFromEnd ? remaining.slice(-count) : remaining.slice(0, count);
       const urls = await Promise.all(toLoad.map(async (it) => ({ key: it.key, url: await getUrl(it.key, { level: storageLevel }) })));
       setItems((prev) => sortItems([...prev, ...urls]));
       setLoadedCount((prev) => prev + count);
     } finally {
       setLoading(false);
     }
-  }, [allKeys, items, loading, pageSize, sortItems, storageLevel]);
+  }, [allKeys, fetchFromEnd, items, loading, pageSize, sortItems, storageLevel]);
 
   // Create a placeholder item and return a handle
   const createPlaceholder = useCallback((file, { withPreview = true, createdAtValue } = {}) => {
