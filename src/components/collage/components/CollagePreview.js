@@ -263,7 +263,7 @@ const CollagePreview = ({
     // Optimistically close dialog for snappier UX
     setIsLibraryOpen(false);
 
-    // Determine panel ID
+    // Determine initial target panel ID
     let clickedPanelId = activePanelId;
     if (!clickedPanelId) {
       try {
@@ -275,16 +275,12 @@ const CollagePreview = ({
       }
     }
 
-    const selected = items[0];
-
     // Helper to ensure we use a data URL for canvas safety
     const ensureDataUrl = async (item) => {
       const srcUrl = item?.originalUrl || item?.displayUrl || item?.url || item;
       const isData = typeof srcUrl === 'string' && srcUrl.startsWith('data:');
       const libraryKey = item?.metadata?.libraryKey;
-      if (isData) {
-        return srcUrl;
-      }
+      if (isData) return srcUrl;
       if (libraryKey) {
         try {
           const blob = await getFromLibrary(libraryKey);
@@ -295,8 +291,7 @@ const CollagePreview = ({
             reader.readAsDataURL(blob);
           });
           return dataUrl;
-        } catch (e) {
-          // Fallback to provided URL if conversion fails
+        } catch (_) {
           return srcUrl;
         }
       }
@@ -305,27 +300,21 @@ const CollagePreview = ({
 
     try {
       if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
-        // Replace existing image in place with data URL
-        const newUrl = await ensureDataUrl(selected);
+        // Replace existing image in place
+        const newUrl = await ensureDataUrl(items[0]);
         await replaceImage(activeExistingImageIndex, newUrl);
       } else {
-        // Assign to empty panel: add to images and map using data URL
+        // Multi-add: add all selected items, then map first one to clicked panel
         const currentLength = selectedImages.length;
-        const newUrl = await ensureDataUrl(selected);
-        const imageObj = {
-          originalUrl: newUrl,
-          displayUrl: newUrl,
-          metadata: selected?.metadata || {},
-        };
-        await addMultipleImages([imageObj]);
-        const newMapping = {
-          ...panelImageMapping,
-          [clickedPanelId]: currentLength,
-        };
+        const dataUrls = await Promise.all(items.map(ensureDataUrl));
+        const imageObjs = dataUrls.map((url) => ({ originalUrl: url, displayUrl: url }));
+        await addMultipleImages(imageObjs);
+
+        const newMapping = { ...panelImageMapping };
+        newMapping[clickedPanelId] = currentLength;
         updatePanelImageMapping(newMapping);
       }
     } finally {
-      // Reset active state
       setIsReplaceMode(false);
       setActiveExistingImageIndex(null);
       setActivePanelIndex(null);
@@ -399,7 +388,7 @@ const CollagePreview = ({
             >
               <Toolbar>
                 <Typography variant="h6" sx={{ flexGrow: 1, color: '#eaeaea' }}>
-                  Select a photo
+                  Select photos
                 </Typography>
                 <IconButton edge="end" aria-label="close" onClick={handleLibraryClose} sx={{ color: '#eaeaea' }}>
                   <CloseIcon />
@@ -408,7 +397,7 @@ const CollagePreview = ({
             </AppBar>
           ) : (
             <DialogTitle sx={{ pr: 6, color: '#eaeaea' }}>
-              Select a photo
+              Select photos
               <IconButton
                 aria-label="close"
                 onClick={handleLibraryClose}
@@ -420,11 +409,12 @@ const CollagePreview = ({
           )}
           <DialogContent dividers sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#0f0f0f' }}>
             <LibraryBrowser
-              multiple={false}
+              multiple
               uploadEnabled
               deleteEnabled={false}
               onSelect={(arr) => handleLibrarySelect(arr)}
-              showActionBar={false}
+              showActionBar
+              actionBarLabel="Use Selected"
               selectionEnabled
               previewOnClick
               showSelectToggle
