@@ -1602,6 +1602,15 @@ useEffect(() => {
                 variant="contained"
                 fullWidth
                 href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                sx={{
+                  color: '#e5e7eb',
+                  background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+                  border: '1px solid rgba(255, 255, 255, 0.16)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+                    borderColor: 'rgba(255, 255, 255, 0.24)',
+                  },
+                }}
               >
                 View Episode
               </Button>
