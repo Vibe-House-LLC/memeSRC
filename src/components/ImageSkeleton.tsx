@@ -1,5 +1,6 @@
 import { Skeleton } from '@mui/material';
 import styled from '@emotion/styled';
+import type { FC } from 'react';
 
 const StyledSkeleton = styled(Skeleton)`
   width: 100%;
@@ -7,6 +8,6 @@ const StyledSkeleton = styled(Skeleton)`
   position: absolute;
 `;
 
-const ImageSkeleton = () => <StyledSkeleton variant="rectangular" />;
+const ImageSkeleton: FC = () => <StyledSkeleton variant="rectangular" />;
 
 export default ImageSkeleton;
