@@ -658,7 +658,11 @@ export default function ReleasesPage() {
                             sx={{ 
                               px: { xs: 1, sm: 1.5 },
                               '& h1, & h2, & h3': { 
-                                fontSize: { xs: '1.25rem', sm: '1.35rem', md: '1.45rem' },
+                                fontSize: { 
+                                  xs: isLatest ? '1.25rem' : '1.15rem', 
+                                  sm: isLatest ? '1.35rem' : '1.25rem', 
+                                  md: isLatest ? '1.45rem' : '1.35rem' 
+                                },
                                 fontWeight: 700, 
                                 mb: { xs: 1.25, sm: 1.5 },
                                 color: theme.palette.common.white,
@@ -669,7 +673,11 @@ export default function ReleasesPage() {
                               },
                               '& p': { 
                                 mb: { xs: 1.25, sm: 1.5 },
-                                fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' },
+                                fontSize: { 
+                                  xs: isLatest ? '0.95rem' : '0.9rem', 
+                                  sm: isLatest ? '1rem' : '0.95rem', 
+                                  md: isLatest ? '1.05rem' : '1rem' 
+                                },
                                 lineHeight: { xs: 1.6, sm: 1.65 },
                                 color: 'text.primary',
                                 opacity: 0.95,
@@ -681,7 +689,11 @@ export default function ReleasesPage() {
                                 pl: { xs: 2.5, sm: 3 },
                                 mb: { xs: 1.25, sm: 1.5 },
                                 '& li': {
-                                  fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' },
+                                  fontSize: { 
+                                    xs: isLatest ? '0.95rem' : '0.9rem', 
+                                    sm: isLatest ? '1rem' : '0.95rem', 
+                                    md: isLatest ? '1.05rem' : '1rem' 
+                                  },
                                   lineHeight: { xs: 1.6, sm: 1.65 },
                                   mb: { xs: 0.5, sm: 0.75 },
                                   color: 'text.primary',
@@ -698,7 +710,7 @@ export default function ReleasesPage() {
                                 px: { xs: 1, sm: 1.2 },
                                 py: { xs: 0.3, sm: 0.4 },
                                 borderRadius: 1,
-                                fontSize: { xs: '0.78rem', sm: '0.82rem' },
+                                fontSize: { xs: isLatest ? '0.78rem' : '0.74rem', sm: isLatest ? '0.82rem' : '0.78rem' },
                                 fontFamily: '"JetBrains Mono", Monaco, Consolas, "Roboto Mono", monospace',
                                 border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
                                 fontWeight: 500,
@@ -744,7 +756,11 @@ export default function ReleasesPage() {
                                   mb: 0,
                                   fontStyle: 'italic',
                                   opacity: 0.9,
-                                  fontSize: { xs: '0.9rem', sm: '0.95rem', md: '1rem' }
+                                  fontSize: { 
+                                    xs: isLatest ? '0.9rem' : '0.85rem', 
+                                    sm: isLatest ? '0.95rem' : '0.9rem', 
+                                    md: isLatest ? '1rem' : '0.95rem' 
+                                  }
                                 }
                               }
                             }}
