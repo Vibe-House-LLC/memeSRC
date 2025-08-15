@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Stack, Card, Chip, Divider } from '@mui/material';
+import { Box, Typography, TextField, Button, List, Stack, Card, CircularProgress, InputAdornment } from '@mui/material';
 import { ArrowBack, ArrowForward } from '@mui/icons-material';
 import { API } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
@@ -13,6 +13,8 @@ const UserList = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [isLoadingAll, setIsLoadingAll] = useState(false);
+    const [hasTriggeredLoadAll, setHasTriggeredLoadAll] = useState(false);
+    const [isLoadingFromSearch, setIsLoadingFromSearch] = useState(false);
     const itemsPerPage = 10;
 
     // Function for loading users
@@ -20,7 +22,7 @@ const UserList = () => {
         API.graphql({
             query: listUserDetails,
             variables: {
-                limit: 50
+                limit: 10
             }
         }).then(response => {
             setUsers(response?.data?.listUserDetails?.items)
@@ -41,7 +43,7 @@ const UserList = () => {
         API.graphql({
             query: listUserDetails,
             variables: {
-                limit: 50,
+                limit: 10,
                 nextToken
             }
         }).then(response => {
@@ -55,8 +57,17 @@ const UserList = () => {
     };
 
     // Function for loading all users
-    const loadAllUsers = async () => {
+    const loadAllUsers = async (fromSearchFocus = false) => {
+        // Prevent multiple simultaneous calls
+        if (isLoadingAll || (hasTriggeredLoadAll && !fromSearchFocus)) {
+            return;
+        }
+
         setIsLoadingAll(true);
+        if (fromSearchFocus) {
+            setIsLoadingFromSearch(true);
+        }
+        
         try {
             let allUsers = [];
             let currentNextToken = null;
@@ -65,7 +76,6 @@ const UserList = () => {
                 const response = await API.graphql({
                     query: listUserDetails,
                     variables: {
-                        limit: 100,
                         nextToken: currentNextToken,
                     },
                 });
@@ -82,17 +92,31 @@ const UserList = () => {
             await fetchUsers();
             setUsers(allUsers);
             setNextToken(null);
+            setHasTriggeredLoadAll(true);
         } catch (error) {
             alert('Something went wrong loading users');
             console.log(error);
+            // Reset the flag on error so user can try again
+            setHasTriggeredLoadAll(false);
         }
         setIsLoadingAll(false);
+        if (fromSearchFocus) {
+            setIsLoadingFromSearch(false);
+        }
     };
 
     // Function to handle search input change
     const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
         setCurrentPage(1);
+    };
+
+    // Function to handle search field focus
+    const handleSearchFocus = () => {
+        // Only trigger loadAllUsers if we haven't already loaded all users and there are more to load
+        if (!hasTriggeredLoadAll && nextToken && !isLoadingAll) {
+            loadAllUsers(true);
+        }
     };
 
     // Function to handle page change
@@ -138,10 +162,24 @@ const UserList = () => {
                     label="Search"
                     value={searchTerm}
                     onChange={handleSearchChange}
+                    onFocus={handleSearchFocus}
                     fullWidth
                     sx={{ maxWidth: 400 }}
+                    InputProps={{
+                        endAdornment: isLoadingFromSearch && (
+                            <InputAdornment position="end">
+                                <CircularProgress size={20} />
+                            </InputAdornment>
+                        ),
+                    }}
                 />
-                <LoadingButton disabled={!nextToken || isLoadingAll} loading={isLoadingAll} variant="contained" onClick={loadAllUsers} style={{ marginLeft: '16px' }}>
+                <LoadingButton 
+                    disabled={!nextToken || isLoadingAll || hasTriggeredLoadAll} 
+                    loading={isLoadingAll} 
+                    variant="contained" 
+                    onClick={() => loadAllUsers(false)} 
+                    style={{ marginLeft: '16px' }}
+                >
                     Load All Users
                 </LoadingButton>
             </Stack>
