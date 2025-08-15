@@ -140,8 +140,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     return Date.now() - published <= threeDaysMs;
   }, [latestRelease, dismissedVersion]);
 
-  const getReleaseTypeMemo = useCallback((tagName) => getReleaseType(tagName), []);
-
   const statusDotColor = useMemo(() => {
     if (!latestRelease) return '#22c55e';
     const isDraft = Boolean(latestRelease.draft);
@@ -157,7 +155,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       default:
         return (theme?.palette?.info?.main) || '#3b82f6';
     }
-  }, [latestRelease, getReleaseTypeMemo, theme]);
+  }, [latestRelease, theme]);
 
   useEffect(() => {
     let didCancel = false;

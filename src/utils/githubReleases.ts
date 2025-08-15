@@ -169,8 +169,9 @@ export function getReleaseColor(type: ReleaseType, isPrerelease: boolean, isDraf
 }
 
 export function formatRelativeTimeCompact(dateString?: string): string {
-  if (!dateString) return '';
+  if (!dateString) return 'Draft';
   const then = new Date(dateString).getTime();
+  if (Number.isNaN(then)) return 'Draft';
   const now = Date.now();
   const seconds = Math.max(1, Math.floor((now - then) / 1000));
   if (seconds < 60) return '<1m ago';
