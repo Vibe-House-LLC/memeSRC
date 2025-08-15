@@ -26,7 +26,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { bgBlur } from '../../../utils/cssStyles';
 // components
 import Iconify from '../../../components/iconify';
-import Logo from "../../../components/logo/Logo";
+import Logo from "../../../components/logo";
 //
 import AccountPopover from './AccountPopover';
 import { UserContext } from '../../../UserContext';

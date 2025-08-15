@@ -1,10 +1,16 @@
-import PropTypes from 'prop-types';
 import { forwardRef, useId } from 'react';
 import { Box } from '@mui/material';
+import type { BoxProps } from '@mui/material/Box';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { lighten, darken } from '@mui/material/styles';
 import colorToHex from '../../utils/colorToHex';
 
-const Logo = forwardRef(({ sx, color = 'white', ...other }, ref) => {
+type LogoProps = BoxProps & {
+  sx?: SxProps<Theme>;
+  color?: string;
+};
+
+const Logo = forwardRef<HTMLElement, LogoProps>(({ sx, color = 'white', ...other }, ref) => {
   const hexColor = colorToHex(color).toLowerCase();
   const id = useId();
   const gradient1 = `${id}-grad-1`;
@@ -69,10 +75,5 @@ const Logo = forwardRef(({ sx, color = 'white', ...other }, ref) => {
     </Box>
   );
 });
-
-Logo.propTypes = {
-  sx: PropTypes.object,
-  color: PropTypes.string,
-};
 
 export default Logo;

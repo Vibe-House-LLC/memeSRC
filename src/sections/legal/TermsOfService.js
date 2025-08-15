@@ -2,7 +2,7 @@ import { Container, styled } from '@mui/material';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import Logo from '../../components/logo/Logo';
+import Logo from '../../components/logo';
 
 const StyledRoot = styled('div')(({ theme }) => ({
   [theme.breakpoints.up('md')]: {

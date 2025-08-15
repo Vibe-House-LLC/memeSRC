@@ -17,11 +17,11 @@ const GREY = {
 };
 
 const PRIMARY = {
-  lighter: '#D1E9FC',
-  light: '#76B0F1',
-  main: '#2065D1',
-  dark: '#103996',
-  darker: '#061B64',
+  lighter: '#E9D5FF', // light lavender
+  light: '#C4A1FF',   // light purple
+  main: '#8B5CC7',    // brand purple
+  dark: '#7B4CB8',    // darker hover purple
+  darker: '#3D2459',  // deepest accent for states
   contrastText: '#fff',
 };
 
