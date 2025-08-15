@@ -26,6 +26,62 @@ export const DEFAULT_GITHUB_OWNER = 'Vibe-House-LLC';
 export const DEFAULT_GITHUB_REPO = 'memeSRC';
 export const DEFAULT_PAGE_SIZE = 20;
 
+// Simple cross-refresh cache with 60s TTL, backed by memory and localStorage
+const GITHUB_CACHE_TTL_MS = 60 * 1000;
+const CACHE_PREFIX = 'githubReleasesCache:';
+
+type CachedEntry<T> = { timestamp: number; data: T };
+const memoryCache = new Map<string, CachedEntry<unknown>>();
+const inflightRequests = new Map<string, Promise<unknown>>();
+
+function getStorageKey(key: string): string {
+  return `${CACHE_PREFIX}${key}`;
+}
+
+function readFromLocalStorage<T>(key: string): CachedEntry<T> | null {
+  try {
+    const raw = window.localStorage.getItem(getStorageKey(key));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedEntry<T>;
+    if (!parsed || typeof parsed.timestamp !== 'number') return null;
+    const isFresh = Date.now() - parsed.timestamp < GITHUB_CACHE_TTL_MS;
+    if (!isFresh) {
+      window.localStorage.removeItem(getStorageKey(key));
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeToLocalStorage<T>(key: string, data: T): void {
+  try {
+    const entry: CachedEntry<T> = { timestamp: Date.now(), data };
+    window.localStorage.setItem(getStorageKey(key), JSON.stringify(entry));
+  } catch {
+    // no-op if storage is unavailable or quota exceeded
+  }
+}
+
+function getCached<T>(key: string): T | null {
+  const mem = memoryCache.get(key) as CachedEntry<T> | undefined;
+  if (mem && Date.now() - mem.timestamp < GITHUB_CACHE_TTL_MS) return mem.data;
+  if (mem) memoryCache.delete(key);
+  const ls = readFromLocalStorage<T>(key);
+  if (ls) {
+    memoryCache.set(key, ls);
+    return ls.data;
+  }
+  return null;
+}
+
+function setCached<T>(key: string, data: T): void {
+  const entry: CachedEntry<T> = { timestamp: Date.now(), data };
+  memoryCache.set(key, entry);
+  writeToLocalStorage<T>(key, data);
+}
+
 function buildReleasesUrl(params?: {
   owner?: string;
   repo?: string;
@@ -47,15 +103,35 @@ export async function fetchReleases(params?: {
   signal?: AbortSignal;
 }): Promise<GitHubRelease[]> {
   const url = buildReleasesUrl(params);
-  const response = await fetch(url, {
-    headers: { Accept: 'application/vnd.github+json' },
-    signal: params?.signal,
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`GitHub API error ${response.status}: ${text}`);
+  const cacheKey = url;
+
+  const cached = getCached<GitHubRelease[]>(cacheKey);
+  if (cached) return cached;
+
+  const existing = inflightRequests.get(cacheKey) as Promise<GitHubRelease[]> | undefined;
+  if (existing) return existing;
+
+  const request = (async (): Promise<GitHubRelease[]> => {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/vnd.github+json' },
+      signal: params?.signal,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`GitHub API error ${response.status}: ${text}`);
+    }
+    const data = (await response.json()) as GitHubRelease[];
+    setCached<GitHubRelease[]>(cacheKey, data);
+    return data;
+  })();
+
+  inflightRequests.set(cacheKey, request);
+  try {
+    const data = await request;
+    return data;
+  } finally {
+    inflightRequests.delete(cacheKey);
   }
-  return response.json();
 }
 
 export async function fetchLatestRelease(params?: {
