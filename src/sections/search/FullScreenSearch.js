@@ -17,6 +17,13 @@ import FavoriteToggle from '../../components/FavoriteToggle';
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
+import {
+  fetchLatestRelease,
+  getReleaseType,
+  formatRelativeTimeCompact,
+  setDismissedVersion,
+  getDismissedVersion,
+} from '../../utils/githubReleases';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -121,13 +128,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   // Recent update indicator state
   const [latestRelease, setLatestRelease] = useState(null);
-  const [dismissedVersion, setDismissedVersion] = useState(() => {
-    try {
-      return window.localStorage.getItem('updateBannerDismissedVersion') || '';
-    } catch (e) {
-      return '';
-    }
-  });
+  const [dismissedVersion, setDismissedVersionState] = useState(() => getDismissedVersion());
 
   const hasRecentUndismissedUpdate = useMemo(() => {
     if (!latestRelease) return false;
@@ -139,35 +140,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     return Date.now() - published <= threeDaysMs;
   }, [latestRelease, dismissedVersion]);
 
-  const formatRelativeTimeCompact = useCallback((dateString) => {
-    if (!dateString) return '';
-    const then = new Date(dateString).getTime();
-    const now = Date.now();
-    const seconds = Math.max(1, Math.floor((now - then) / 1000));
-    if (seconds < 60) return '<1m ago';
-    const units = [
-      { label: 'y', secs: 31536000 },
-      { label: 'mo', secs: 2592000 },
-      { label: 'w', secs: 604800 },
-      { label: 'd', secs: 86400 },
-      { label: 'h', secs: 3600 },
-      { label: 'm', secs: 60 },
-    ];
-    const unit = units.find((u) => seconds >= u.secs);
-    return unit ? `${Math.floor(seconds / unit.secs)}${unit.label} ago` : '<1m ago';
-  }, []);
-
-  const getReleaseType = useCallback((tagName) => {
-    if (!tagName || typeof tagName !== 'string') return 'patch';
-    const version = tagName.replace(/^v/, '');
-    const parts = version.split('.');
-    if (parts.length >= 3) {
-      const [, minor, patch] = parts;
-      if (patch === '0' && minor === '0') return 'major';
-      if (patch === '0') return 'minor';
-    }
-    return 'patch';
-  }, []);
+  const getReleaseTypeMemo = useCallback((tagName) => getReleaseType(tagName), []);
 
   const statusDotColor = useMemo(() => {
     if (!latestRelease) return '#22c55e';
@@ -184,33 +157,29 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       default:
         return (theme?.palette?.info?.main) || '#3b82f6';
     }
-  }, [latestRelease, getReleaseType, theme]);
+  }, [latestRelease, getReleaseTypeMemo, theme]);
 
   useEffect(() => {
     let didCancel = false;
-    const fetchLatest = async () => {
+    const load = async () => {
       try {
-        const res = await fetch('https://api.github.com/repos/Vibe-House-LLC/memeSRC/releases?per_page=1');
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!didCancel) {
-          setLatestRelease(Array.isArray(json) ? json[0] : null);
-        }
+        const latest = await fetchLatestRelease();
+        if (!didCancel) setLatestRelease(latest);
       } catch (e) {
         // silent fail
       }
     };
-    fetchLatest();
+    load();
     return () => { didCancel = true };
   }, []);
 
   const handleDismissUpdateBanner = useCallback(() => {
     if (latestRelease?.tag_name) {
       try {
-        window.localStorage.setItem('updateBannerDismissedVersion', latestRelease.tag_name);
         setDismissedVersion(latestRelease.tag_name);
+        setDismissedVersionState(latestRelease.tag_name);
       } catch (e) {
-        console.error('Failed to save dismissed version to localStorage:', e);
+        // no-op
       }
     }
   }, [latestRelease]);
