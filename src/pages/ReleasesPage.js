@@ -327,7 +327,7 @@ export default function ReleasesPage() {
           role="main"
           aria-label="Releases list"
         >
-          <Stack spacing={{ xs: 2.5, sm: 3, md: 3.5 }}>
+          <Stack spacing={{ xs: 3, sm: 3.5, md: 4 }}>
             {releases.map((release, index) => {
               const title = String(release.name || release.tag_name || 'Untitled Release');
               const timeAgo = release.published_at 
@@ -342,6 +342,68 @@ export default function ReleasesPage() {
 
               return (
                 <Box key={release.id}>
+                  {/* Section Headers */}
+                  {index === 0 && (
+                    <Box sx={{ mb: { xs: 2, sm: 3 } }}>
+                      <Typography 
+                        variant="h4"
+                        component="h2"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                          color: 'primary.main',
+                          textAlign: 'center',
+                          mb: 1,
+                          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                        }}
+                      >
+                        Latest Update
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                        sx={{ 
+                          textAlign: 'center',
+                          fontSize: { xs: '0.9rem', sm: '1rem' },
+                          opacity: 0.8,
+                        }}
+                      >
+                        Most recent changes and improvements
+                      </Typography>
+                    </Box>
+                  )}
+                  
+                  {index === 1 && (
+                    <Box sx={{ mb: { xs: 2, sm: 3 }, mt: { xs: 4, sm: 5 } }}>
+                      <Typography 
+                        variant="h4"
+                        component="h2"
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: { xs: '1.35rem', sm: '1.5rem', md: '1.75rem' },
+                          color: 'text.primary',
+                          textAlign: 'center',
+                          mb: 1,
+                        }}
+                      >
+                        Update History
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                        sx={{ 
+                          textAlign: 'center',
+                          fontSize: { xs: '0.85rem', sm: '0.9rem' },
+                          opacity: 0.7,
+                        }}
+                      >
+                        Previous releases and changelog
+                      </Typography>
+                    </Box>
+                  )}
 
                   {/* Release card */}
                   <Card
@@ -372,26 +434,28 @@ export default function ReleasesPage() {
                       }
                     }}
                   >
-                    <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                    <CardContent sx={{ p: { xs: 2.5, sm: 3, md: 3.5 } }}>
                       {/* Header - Version Number Focus */}
-                      <Box sx={{ mb: { xs: 2, sm: 2.5 } }}>
+                      <Box sx={{ mb: { xs: 2.5, sm: 3 } }}>
                         {/* Version Number - Primary Focus */}
-                        <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
+                        <Box sx={{ mb: { xs: 2, sm: 2.5 } }}>
                           <Typography 
                             id={`release-title-${release.id}`}
-                            variant="h5"
+                            variant="h4"
                             component="h2"
                             sx={{ 
                               fontWeight: 700,
-                              color: isLatest ? 'primary.main' : 'text.primary',
+                              color: isLatest 
+                                ? theme.palette.mode === 'dark' ? '#B794F6' : '#805AD5' 
+                                : 'text.primary',
                               fontSize: { 
-                                xs: isLatest ? '1.5rem' : '1.35rem', 
-                                sm: isLatest ? '1.75rem' : '1.5rem',
-                                md: isLatest ? '2rem' : '1.75rem'
+                                xs: isLatest ? '1.75rem' : '1.5rem', 
+                                sm: isLatest ? '2rem' : '1.75rem',
+                                md: isLatest ? '2.25rem' : '2rem'
                               },
                               lineHeight: 1.2,
                               letterSpacing: '-0.025em',
-                              mb: 0.5,
+                              mb: 0.75,
                             }}
                           >
                             {release.tag_name || title}
@@ -427,9 +491,9 @@ export default function ReleasesPage() {
                           {/* Time Badge */}
                           <Box
                             sx={{
-                              px: { xs: 1.5, sm: 2 },
-                              py: { xs: 0.25, sm: 0.5 },
-                              borderRadius: { xs: 1, sm: 1.5 },
+                              px: { xs: 2, sm: 2.5 },
+                              py: { xs: 0.5, sm: 0.75 },
+                              borderRadius: { xs: 1.5, sm: 2 },
                               bgcolor: alpha(theme.palette.text.primary, 0.08),
                               border: `1px solid ${alpha(theme.palette.divider, 0.15)}`,
                             }}
@@ -437,7 +501,7 @@ export default function ReleasesPage() {
                             <Typography 
                               variant="caption" 
                               sx={{ 
-                                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                fontSize: { xs: '0.75rem', sm: '0.8rem' },
                                 fontWeight: 600,
                                 color: 'text.secondary',
                                 textTransform: 'uppercase',
@@ -454,14 +518,14 @@ export default function ReleasesPage() {
                               label="Latest"
                               size="small"
                               sx={{
-                                height: { xs: 20, sm: 22 },
-                                fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                                height: { xs: 24, sm: 26 },
+                                fontSize: { xs: '0.7rem', sm: '0.75rem' },
                                 fontWeight: 700,
                                 background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
                                 color: 'white',
                                 boxShadow: `0 1px 4px ${alpha(theme.palette.primary.main, 0.4)}`,
                                 '& .MuiChip-label': {
-                                  px: { xs: 1, sm: 1.5 }
+                                  px: { xs: 1.25, sm: 1.75 }
                                 }
                               }}
                             />
@@ -473,14 +537,14 @@ export default function ReleasesPage() {
                               size="small" 
                               label="Draft" 
                               sx={{
-                                height: { xs: 18, sm: 20 },
-                                fontSize: { xs: '0.6rem', sm: '0.65rem' },
+                                height: { xs: 22, sm: 24 },
+                                fontSize: { xs: '0.65rem', sm: '0.7rem' },
                                 fontWeight: 600,
                                 bgcolor: alpha(theme.palette.error.main, 0.12),
                                 color: theme.palette.error.main,
                                 border: `1px solid ${alpha(theme.palette.error.main, 0.25)}`,
                                 '& .MuiChip-label': {
-                                  px: { xs: 0.75, sm: 1 }
+                                  px: { xs: 1, sm: 1.25 }
                                 }
                               }}
                             />
@@ -490,14 +554,14 @@ export default function ReleasesPage() {
                               size="small" 
                               label="Beta" 
                               sx={{
-                                height: { xs: 18, sm: 20 },
-                                fontSize: { xs: '0.6rem', sm: '0.65rem' },
+                                height: { xs: 22, sm: 24 },
+                                fontSize: { xs: '0.65rem', sm: '0.7rem' },
                                 fontWeight: 600,
                                 bgcolor: alpha(theme.palette.warning.main, 0.12),
                                 color: theme.palette.warning.main,
                                 border: `1px solid ${alpha(theme.palette.warning.main, 0.25)}`,
                                 '& .MuiChip-label': {
-                                  px: { xs: 0.75, sm: 1 }
+                                  px: { xs: 1, sm: 1.25 }
                                 }
                               }}
                             />
@@ -506,15 +570,15 @@ export default function ReleasesPage() {
                             size="small" 
                             label={String(releaseType || 'patch').toUpperCase()} 
                             sx={{
-                              height: { xs: 18, sm: 20 },
-                              fontSize: { xs: '0.6rem', sm: '0.65rem' },
+                              height: { xs: 22, sm: 24 },
+                              fontSize: { xs: '0.65rem', sm: '0.7rem' },
                               fontWeight: 700,
                               letterSpacing: '0.5px',
                               bgcolor: alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.12),
                               color: theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main,
                               border: `1px solid ${alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.25)}`,
                               '& .MuiChip-label': {
-                                px: { xs: 0.75, sm: 1 }
+                                px: { xs: 1, sm: 1.25 }
                               }
                             }}
                           />
@@ -523,43 +587,43 @@ export default function ReleasesPage() {
 
                       {/* Release Description - Main Content */}
                       {release.body && (
-                        <Box sx={{ mt: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
+                        <Box sx={{ mt: { xs: 2.5, sm: 3.5 }, mb: { xs: 2.5, sm: 3.5 } }}>
                           <Divider sx={{ 
-                            mb: { xs: 2, sm: 3 }, 
-                            opacity: 0.1, 
+                            mb: { xs: 2.5, sm: 3.5 }, 
+                            opacity: 0.12, 
                             background: 'linear-gradient(90deg, transparent, currentColor, transparent)' 
                           }} />
                           <Box 
                             sx={{ 
                               '& h1, & h2, & h3': { 
-                                fontSize: { xs: '1rem', sm: '1.05rem' },
-                                fontWeight: 600, 
-                                mb: { xs: 1.5, sm: 2 },
+                                fontSize: { xs: '1.25rem', sm: '1.35rem', md: '1.45rem' },
+                                fontWeight: 700, 
+                                mb: { xs: 2, sm: 2.5 },
                                 color: 'primary.main',
-                                lineHeight: 1.3,
+                                lineHeight: 1.25,
                                 '&:first-of-type': {
                                   mt: 0
                                 }
                               },
                               '& p': { 
-                                mb: { xs: 1.5, sm: 2 },
-                                fontSize: { xs: '0.85rem', sm: '0.9rem' },
-                                lineHeight: { xs: 1.6, sm: 1.65 },
+                                mb: { xs: 2, sm: 2.5 },
+                                fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' },
+                                lineHeight: { xs: 1.65, sm: 1.7 },
                                 color: 'text.primary',
-                                opacity: 0.92,
+                                opacity: 0.95,
                                 '&:last-child': {
                                   mb: 0
                                 }
                               },
                               '& ul, & ol': { 
-                                pl: { xs: 2, sm: 2.5 },
-                                mb: { xs: 1.5, sm: 2 },
+                                pl: { xs: 2.5, sm: 3 },
+                                mb: { xs: 2, sm: 2.5 },
                                 '& li': {
-                                  fontSize: { xs: '0.85rem', sm: '0.9rem' },
-                                  lineHeight: { xs: 1.6, sm: 1.65 },
-                                  mb: { xs: 0.5, sm: 0.75 },
+                                  fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' },
+                                  lineHeight: { xs: 1.65, sm: 1.7 },
+                                  mb: { xs: 0.75, sm: 1 },
                                   color: 'text.primary',
-                                  opacity: 0.92,
+                                  opacity: 0.95,
                                   position: 'relative',
                                   '&::marker': {
                                     color: 'primary.main',
@@ -607,18 +671,18 @@ export default function ReleasesPage() {
                                 },
                               },
                               '& blockquote': {
-                                borderLeft: `2px solid ${theme.palette.primary.main}`,
-                                pl: { xs: 1.5, sm: 2 },
+                                borderLeft: `3px solid ${theme.palette.primary.main}`,
+                                pl: { xs: 2, sm: 2.5 },
                                 ml: 0,
-                                py: { xs: 0.75, sm: 1 },
-                                background: alpha(theme.palette.primary.main, 0.04),
-                                borderRadius: 1,
-                                mb: { xs: 1.5, sm: 2 },
+                                py: { xs: 1, sm: 1.25 },
+                                background: alpha(theme.palette.primary.main, 0.05),
+                                borderRadius: 1.5,
+                                mb: { xs: 2, sm: 2.5 },
                                 '& p': {
                                   mb: 0,
                                   fontStyle: 'italic',
-                                  opacity: 0.88,
-                                  fontSize: { xs: '0.82rem', sm: '0.87rem' }
+                                  opacity: 0.9,
+                                  fontSize: { xs: '0.9rem', sm: '0.95rem', md: '1rem' }
                                 }
                               }
                             }}
@@ -645,14 +709,14 @@ export default function ReleasesPage() {
 
                       {/* Assets - Compact */}
                       {Array.isArray(release.assets) && release.assets.length > 0 && (
-                        <Box sx={{ mt: { xs: 2, sm: 2.5 }, pt: { xs: 2, sm: 2.5 }, borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}` }}>
+                        <Box sx={{ mt: { xs: 3, sm: 3.5 }, pt: { xs: 2.5, sm: 3 }, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
                           <Typography 
                             variant="subtitle2" 
                             sx={{ 
-                              mb: { xs: 1.5, sm: 2 }, 
+                              mb: { xs: 2, sm: 2.5 }, 
                               fontWeight: 600,
                               color: 'primary.main',
-                              fontSize: { xs: '0.8rem', sm: '0.85rem' },
+                              fontSize: { xs: '0.85rem', sm: '0.9rem' },
                               textTransform: 'uppercase',
                               letterSpacing: '0.5px'
                             }}
@@ -710,9 +774,9 @@ export default function ReleasesPage() {
                       
                       {/* Actions - Compact */}
                       <Box sx={{ 
-                        mt: { xs: 2.5, sm: 3 }, 
-                        pt: { xs: 2, sm: 2.5 }, 
-                        borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}` 
+                        mt: { xs: 3, sm: 3.5 }, 
+                        pt: { xs: 2.5, sm: 3 }, 
+                        borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` 
                       }}>
                         <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }}>
                           <Button
