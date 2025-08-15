@@ -1,10 +1,11 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Button, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme } from '@mui/material';
+import { Button, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme, IconButton, Slide } from '@mui/material';
 import { Box } from '@mui/system';
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
+import CloseIcon from '@mui/icons-material/Close';
 import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
@@ -16,6 +17,14 @@ import FavoriteToggle from '../../components/FavoriteToggle';
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
+import {
+  fetchLatestRelease,
+  getReleaseType,
+  formatRelativeTimeCompact,
+  setDismissedVersion,
+  getDismissedVersion,
+} from '../../utils/githubReleases';
+
 
 /* --------------------------------- GraphQL -------------------------------- */
 
@@ -115,6 +124,63 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { pathname } = useLocation();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const theme = useTheme();
+
+  // Recent update indicator state
+  const [latestRelease, setLatestRelease] = useState(null);
+  const [dismissedVersion, setDismissedVersionState] = useState(() => getDismissedVersion());
+
+  const hasRecentUndismissedUpdate = useMemo(() => {
+    if (!latestRelease) return false;
+    if (!latestRelease.tag_name) return false;
+    if (dismissedVersion === latestRelease.tag_name) return false;
+    if (!latestRelease.published_at) return false;
+    const published = new Date(latestRelease.published_at).getTime();
+    const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+    return Date.now() - published <= threeDaysMs;
+  }, [latestRelease, dismissedVersion]);
+
+  const statusDotColor = useMemo(() => {
+    if (!latestRelease) return '#22c55e';
+    const isDraft = Boolean(latestRelease.draft);
+    const isPrerelease = Boolean(latestRelease.prerelease);
+    const type = getReleaseType(latestRelease.tag_name);
+    if (isDraft) return (theme?.palette?.error?.main) || '#ef4444';
+    if (isPrerelease) return (theme?.palette?.warning?.main) || '#f59e0b';
+    switch (type) {
+      case 'major':
+        return (theme?.palette?.error?.main) || '#ef4444';
+      case 'minor':
+        return (theme?.palette?.success?.main) || '#22c55e';
+      default:
+        return (theme?.palette?.info?.main) || '#3b82f6';
+    }
+  }, [latestRelease, theme]);
+
+  useEffect(() => {
+    let didCancel = false;
+    const load = async () => {
+      try {
+        const latest = await fetchLatestRelease();
+        if (!didCancel) setLatestRelease(latest);
+      } catch (e) {
+        // silent fail
+      }
+    };
+    load();
+    return () => { didCancel = true };
+  }, []);
+
+  const handleDismissUpdateBanner = useCallback(() => {
+    if (latestRelease?.tag_name) {
+      try {
+        setDismissedVersion(latestRelease.tag_name);
+        setDismissedVersionState(latestRelease.tag_name);
+      } catch (e) {
+        // no-op
+      }
+    }
+  }, [latestRelease]);
 
   // Scroll to top when arriving at this page
   useEffect(() => {
@@ -122,7 +188,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }, [])
 
   // Theme States
-  const theme = useTheme();
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} meme templates from ${metadata?.title}` : defaultBragText);
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
   const [currentThemeFontFamily, setCurrentThemeFontFamily] = useState(metadata?.fontFamily || theme?.typography?.fontFamily);
@@ -235,6 +300,135 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
                 <span />
               </Typography>
+              {hasRecentUndismissedUpdate && (
+                isMobile ? (
+                  <Box
+                    sx={{
+                      mt: { xs: 1, sm: 0.75 },
+                      maxWidth: { xs: 520, sm: 'unset' },
+                      width: { xs: '100%', sm: 'auto' },
+                      display: { xs: 'flex', sm: 'inline-flex' },
+                      position: { xs: 'static', sm: 'fixed' },
+                      top: { xs: 'auto', sm: `${NAVBAR_HEIGHT + 12}px` },
+                      right: { xs: 'auto', sm: 20 },
+                      zIndex: { xs: 'auto', sm: (theme) => (theme?.zIndex?.appBar || 1100) + 1 },
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                      gap: { xs: 1, sm: 1.5 },
+                      px: { xs: 1.25, sm: 2 },
+                      py: { xs: 0.75, sm: 1.25 },
+                      borderRadius: { xs: 2, sm: 2 },
+                      bgcolor: 'rgba(0,0,0,0.45)',
+                      backdropFilter: 'blur(12px)',
+                      color: currentThemeFontColor,
+                      border: '1px solid rgba(255,255,255,0.4)',
+                      boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0, flex: 1 }}>
+                      <Box sx={{
+                        width: { xs: 10, sm: 10 },
+                        height: { xs: 10, sm: 10 },
+                        borderRadius: '50%',
+                        backgroundColor: statusDotColor,
+                        flexShrink: 0
+                      }} />
+                      <Typography 
+                        variant="body2" 
+                        noWrap 
+                        sx={{ 
+                          fontSize: { xs: '1rem', sm: '1rem' }, 
+                          fontWeight: { xs: 700, sm: 700 }
+                        }} 
+                        component="span"
+                      >
+                        Updated to{' '}
+                        <Link 
+                          to="/releases" 
+                          style={{ 
+                            color: 'inherit',
+                            textDecoration: 'none', 
+                            whiteSpace: 'nowrap',
+                            borderBottom: '1px solid rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {latestRelease?.tag_name}
+                        </Link>{' '}
+                      </Typography>
+                      <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 }, ml: 'auto' }}>
+                        {formatRelativeTimeCompact(latestRelease?.published_at)}
+                      </Typography>
+                    </Box>
+                    <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit' }}>
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ) : (
+                  <Slide in direction="left" mountOnEnter unmountOnExit timeout={{ appear: 400, enter: 400 }}>
+                    <Box
+                      sx={{
+                        mt: { xs: 1, sm: 0.75 },
+                        maxWidth: { xs: 520, sm: 'unset' },
+                        width: { xs: '100%', sm: 'auto' },
+                        display: { xs: 'flex', sm: 'inline-flex' },
+                        position: { xs: 'static', sm: 'fixed' },
+                        top: { xs: 'auto', sm: `${NAVBAR_HEIGHT + 12}px` },
+                        right: { xs: 'auto', sm: 20 },
+                        zIndex: { xs: 'auto', sm: (theme) => (theme?.zIndex?.appBar || 1100) + 1 },
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        gap: { xs: 1, sm: 1.5 },
+                        px: { xs: 1.25, sm: 2 },
+                        py: { xs: 0.75, sm: 1.25 },
+                        borderRadius: { xs: 2, sm: 2 },
+                        bgcolor: 'rgba(0,0,0,0.45)',
+                        backdropFilter: 'blur(12px)',
+                        color: currentThemeFontColor,
+                        border: '1px solid rgba(255,255,255,0.4)',
+                        boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0, flex: 1 }}>
+                        <Box sx={{
+                          width: { xs: 10, sm: 10 },
+                          height: { xs: 10, sm: 10 },
+                          borderRadius: '50%',
+                          backgroundColor: statusDotColor,
+                          flexShrink: 0
+                        }} />
+                        <Typography 
+                          variant="body2" 
+                          noWrap 
+                          sx={{ 
+                            fontSize: { xs: '1rem', sm: '1rem' }, 
+                            fontWeight: { xs: 700, sm: 700 }
+                          }}
+                          component="span"
+                        >
+                          Updated to{' '}
+                          <Link 
+                            to="/releases" 
+                            style={{ 
+                              color: 'inherit',
+                              textDecoration: 'none', 
+                              whiteSpace: 'nowrap',
+                              borderBottom: '1px solid rgba(255,255,255,0.4)'
+                            }}
+                          >
+                            {latestRelease?.tag_name}
+                          </Link>{' '}
+                        </Typography>
+                        <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 }, ml: 'auto' }}>
+                          {formatRelativeTimeCompact(latestRelease?.published_at)}
+                        </Typography>
+                      </Box>
+                      <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit' }}>
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Slide>
+                )
+              )}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>

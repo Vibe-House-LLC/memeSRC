@@ -22,33 +22,22 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import DownloadIcon from '@mui/icons-material/Download';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import {
+  DEFAULT_GITHUB_OWNER,
+  DEFAULT_GITHUB_REPO,
+  DEFAULT_PAGE_SIZE,
+  fetchReleases as fetchReleasesApi,
+  GitHubRelease,
+  getReleaseType,
+  getReleaseColor,
+  formatRelativeTimeCompact,
+  processGitHubLinks,
+} from '../utils/githubReleases';
  
 
-type ReleaseType = 'major' | 'minor' | 'patch';
-type ReleaseColor = 'error' | 'warning' | 'success' | 'info';
-
-interface ReleaseAsset {
-  id: number;
-  name?: string;
-  browser_download_url?: string;
-  download_count?: number;
-}
-
-interface GitHubRelease {
-  id: number;
-  name?: string;
-  tag_name?: string;
-  draft?: boolean;
-  prerelease?: boolean;
-  published_at?: string;
-  html_url?: string;
-  body?: string;
-  assets?: ReleaseAsset[];
-}
-
-const GITHUB_OWNER = 'Vibe-House-LLC';
-const GITHUB_REPO = 'memeSRC';
-const PAGE_SIZE = 20;
+const GITHUB_OWNER = DEFAULT_GITHUB_OWNER;
+const GITHUB_REPO = DEFAULT_GITHUB_REPO;
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export default function ReleasesPage(): React.ReactElement {
   const [releases, setReleases] = useState<GitHubRelease[]>([]);
@@ -58,21 +47,11 @@ export default function ReleasesPage(): React.ReactElement {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
 
-  const fetchReleases = useCallback(async (pageNumber: number): Promise<GitHubRelease[]> => {
-    const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases?per_page=${PAGE_SIZE}&page=${pageNumber}`;
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/vnd.github+json',
-      },
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`GitHub API error ${response.status}: ${text}`);
-    }
-
-    return response.json();
-  }, []);
+  const fetchReleases = useCallback(
+    async (pageNumber: number): Promise<GitHubRelease[]> =>
+      fetchReleasesApi({ owner: GITHUB_OWNER, repo: GITHUB_REPO, perPage: PAGE_SIZE, page: pageNumber }),
+    []
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -116,71 +95,7 @@ export default function ReleasesPage(): React.ReactElement {
     }
   }, [fetchReleases, currentPage]);
 
-  const getReleaseType = (tagName?: string): ReleaseType => {
-    if (!tagName || typeof tagName !== 'string') return 'patch';
-    const version = tagName.replace(/^v/, '');
-    const parts = version.split('.');
-    if (parts.length >= 3) {
-      const [, minor, patch] = parts;
-      if (patch === '0' && minor === '0') return 'major';
-      if (patch === '0') return 'minor';
-    }
-    return 'patch';
-  };
-
-  
-
-  const getReleaseColor = (type: ReleaseType, isPrerelease: boolean, isDraft: boolean): ReleaseColor => {
-    if (isDraft) return 'error';
-    if (isPrerelease) return 'warning';
-    switch (type) {
-      case 'major': return 'error';
-      case 'minor': return 'success';
-      default: return 'info';
-    }
-  };
-
   const theme = useTheme();
-
-  const formatRelativeTimeCompact = useCallback((dateString?: string): string => {
-    if (!dateString) return 'Draft';
-    const then = new Date(dateString).getTime();
-    const now = Date.now();
-    const seconds = Math.max(1, Math.floor((now - then) / 1000));
-    if (seconds < 60) return '<1m ago';
-    const units = [
-      { label: 'y', secs: 31536000 },
-      { label: 'mo', secs: 2592000 },
-      { label: 'w', secs: 604800 },
-      { label: 'd', secs: 86400 },
-      { label: 'h', secs: 3600 },
-      { label: 'm', secs: 60 },
-    ];
-    const matchingUnit = units.find((u) => seconds >= u.secs);
-    if (matchingUnit) {
-      const value = Math.floor(seconds / matchingUnit.secs);
-      return `${value}${matchingUnit.label} ago`;
-    }
-    return '<1m ago';
-  }, []);
-
-  const processGitHubLinks = useCallback((text?: string): string => {
-    if (!text || typeof text !== 'string') return text || '';
-
-    const owner = GITHUB_OWNER;
-    const repo = GITHUB_REPO;
-
-    const prRegex = new RegExp(`https://github\\.com/${owner}/${repo}/pull/(\\d+)`, 'g');
-    const issueRegex = new RegExp(`https://github\\.com/${owner}/${repo}/issues/(\\d+)`, 'g');
-    const compareRegex = new RegExp(`https://github\\.com/${owner}/${repo}/compare/([^\\s]+)\\.\\.\\.([^\\s)]+)`, 'g');
-
-    return text
-      .replace(prRegex, `[#$1](https://github.com/${owner}/${repo}/pull/$1)`)
-      .replace(issueRegex, `[#$1](https://github.com/${owner}/${repo}/issues/$1)`)
-      .replace(/\b#(\d+)\b/g, `[#$1](https://github.com/${owner}/${repo}/pull/$1)`)
-      .replace(compareRegex, `[($1...$2)](https://github.com/${owner}/${repo}/compare/$1...$2)`)
-      .replace(/\B@([a-zA-Z0-9-]{1,39})\b/g, '[@$1](https://github.com/$1)');
-  }, []);
 
   const header = useMemo(() => (
     <Box sx={{ mb: { xs: 4, sm: 5, md: 6 }, textAlign: { xs: 'left', md: 'center' } }}>
@@ -190,10 +105,7 @@ export default function ReleasesPage(): React.ReactElement {
         sx={{
           fontWeight: 700,
           fontSize: { xs: '2.5rem', md: '3.5rem' },
-          background: 'linear-gradient(135deg, #F0E6FF 0%, #D4A5FF 50%, #9B59CC 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
+          color: 'common.white',
           mb: 2,
         }}
       >
@@ -507,9 +419,14 @@ export default function ReleasesPage(): React.ReactElement {
                               component="h2"
                               sx={{ 
                                 fontWeight: 700,
-                                color: isLatest 
-                                  ? (theme.palette.mode === 'dark' ? '#B794F6' : '#805AD5') 
-                                  : 'text.primary',
+                                ...(isLatest
+                                  ? {
+                                      background: 'linear-gradient(135deg, #F0E6FF 0%, #D4A5FF 50%, #9B59CC 100%)',
+                                      WebkitBackgroundClip: 'text',
+                                      WebkitTextFillColor: 'transparent',
+                                      backgroundClip: 'text',
+                                    }
+                                  : { color: 'text.primary' }),
                                 fontSize: { 
                                   xs: isLatest ? '1.9rem' : '1.6rem', 
                                   sm: isLatest ? '2.1rem' : '1.8rem',
