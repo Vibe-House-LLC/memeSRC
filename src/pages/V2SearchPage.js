@@ -14,7 +14,7 @@ import { UserContext } from '../UserContext';
 
 import { getWebsiteSetting } from '../graphql/queries';
 
-import ImageSkeleton from '../components/ImageSkeleton';
+import ImageSkeleton from '../components/ImageSkeleton.tsx';
 import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
