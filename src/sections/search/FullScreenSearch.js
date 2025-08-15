@@ -305,42 +305,42 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               {hasRecentUndismissedUpdate && (
                 <Box
                   sx={{
-                    mt: 1,
-                    mx: 'auto',
-                    maxWidth: 520,
-                    display: 'flex',
+                    mt: { xs: 1, sm: 0.75 },
+                    maxWidth: { xs: 520, sm: 'unset' },
+                    width: { xs: '100%', sm: 'auto' },
+                    display: { xs: 'flex', sm: 'inline-flex' },
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 1,
-                    px: 1.25,
-                    py: 0.75,
-                    borderRadius: 2,
+                    justifyContent: 'flex-start',
+                    gap: { xs: 1, sm: 0.75 },
+                    px: { xs: 1.25, sm: 1 },
+                    py: { xs: 0.75, sm: 0.5 },
+                    borderRadius: { xs: 2, sm: 1.5 },
                     bgcolor: 'rgba(0,0,0,0.4)',
                     backdropFilter: 'blur(10px)',
                     color: currentThemeFontColor,
                     border: '1px solid rgba(255,255,255,0.3)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 3px 8px rgba(0,0,0,0.12)' }
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                     <Box sx={{
-                      width: 10,
-                      height: 10,
+                      width: { xs: 10, sm: 8 },
+                      height: { xs: 10, sm: 8 },
                       borderRadius: '50%',
                       backgroundColor: statusDotColor,
                       flexShrink: 0
                     }} />
-                    <Typography variant="body2" noWrap sx={{ fontSize: '1rem', fontWeight: 700 }} component="span">
+                    <Typography variant="body2" noWrap sx={{ fontSize: { xs: '1rem', sm: '0.9rem' }, fontWeight: 700 }} component="span">
                       Updated to{' '}
                       <Link to="/releases" style={{ color: 'inherit', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
                         {latestRelease?.tag_name}
                       </Link>{' '}
                     </Typography>
-                    <Typography variant="body2" noWrap sx={{ opacity: 0.8 }}>
+                    <Typography variant="body2" noWrap sx={{ opacity: 0.8, fontSize: { xs: '0.9rem', sm: '0.8rem' } }}>
                       {formatRelativeTimeCompact(latestRelease?.published_at)}
                     </Typography>
                   </Box>
-                  <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit' }}>
+                  <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit', ml: 'auto' }}>
                     <CloseIcon fontSize="small" />
                   </IconButton>
                 </Box>
