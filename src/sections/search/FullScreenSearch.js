@@ -327,7 +327,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0, flex: 1 }}>
                       <Box sx={{
                         width: { xs: 10, sm: 10 },
                         height: { xs: 10, sm: 10 },
@@ -361,11 +361,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                           {latestRelease?.tag_name}
                         </Link>{' '}
                       </Typography>
-                      <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 } }}>
+                      <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 }, ml: 'auto' }}>
                         {formatRelativeTimeCompact(latestRelease?.published_at)}
                       </Typography>
                     </Box>
-                    <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit', ml: 'auto' }}>
+                    <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit' }}>
                       <CloseIcon fontSize="small" />
                     </IconButton>
                   </Box>
@@ -394,7 +394,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                         boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0, flex: 1 }}>
                         <Box sx={{
                           width: { xs: 10, sm: 10 },
                           height: { xs: 10, sm: 10 },
@@ -428,11 +428,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                             {latestRelease?.tag_name}
                           </Link>{' '}
                         </Typography>
-                        <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 } }}>
+                        <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 }, ml: 'auto' }}>
                           {formatRelativeTimeCompact(latestRelease?.published_at)}
                         </Typography>
                       </Box>
-                      <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit', ml: 'auto' }}>
+                      <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit' }}>
                         <CloseIcon fontSize="small" />
                       </IconButton>
                     </Box>
