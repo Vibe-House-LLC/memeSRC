@@ -103,10 +103,7 @@ export default function ReleasesPage(): React.ReactElement {
         sx={{
           fontWeight: 700,
           fontSize: { xs: '2.5rem', md: '3.5rem' },
-          background: 'linear-gradient(135deg, #F0E6FF 0%, #D4A5FF 50%, #9B59CC 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
+          color: 'common.white',
           mb: 2,
         }}
       >
@@ -420,9 +417,14 @@ export default function ReleasesPage(): React.ReactElement {
                               component="h2"
                               sx={{ 
                                 fontWeight: 700,
-                                color: isLatest 
-                                  ? (theme.palette.mode === 'dark' ? '#B794F6' : '#805AD5') 
-                                  : 'text.primary',
+                                ...(isLatest
+                                  ? {
+                                      background: 'linear-gradient(135deg, #F0E6FF 0%, #D4A5FF 50%, #9B59CC 100%)',
+                                      WebkitBackgroundClip: 'text',
+                                      WebkitTextFillColor: 'transparent',
+                                      backgroundClip: 'text',
+                                    }
+                                  : { color: 'text.primary' }),
                                 fontSize: { 
                                   xs: isLatest ? '1.9rem' : '1.6rem', 
                                   sm: isLatest ? '2.1rem' : '1.8rem',

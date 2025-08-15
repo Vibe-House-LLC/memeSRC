@@ -335,9 +335,29 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                         backgroundColor: statusDotColor,
                         flexShrink: 0
                       }} />
-                      <Typography variant="body2" noWrap sx={{ fontSize: { xs: '1rem', sm: '1rem' }, fontWeight: { xs: 700, sm: 700 } }} component="span">
+                      <Typography 
+                        variant="body2" 
+                        noWrap 
+                        sx={{ 
+                          fontSize: { xs: '1rem', sm: '1rem' }, 
+                          fontWeight: { xs: 700, sm: 700 },
+                          background: 'linear-gradient(135deg, #FFFFFF 0%, #EDE2FF 50%, #D8BFFF 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text'
+                        }} 
+                        component="span"
+                      >
                         Updated to{' '}
-                        <Link to="/releases" style={{ color: 'inherit', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+                        <Link 
+                          to="/releases" 
+                          style={{ 
+                            color: 'inherit',
+                            textDecoration: 'none', 
+                            whiteSpace: 'nowrap',
+                            borderBottom: '1px solid rgba(255,255,255,0.4)'
+                          }}
+                        >
                           {latestRelease?.tag_name}
                         </Link>{' '}
                       </Typography>
@@ -382,9 +402,29 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                           backgroundColor: statusDotColor,
                           flexShrink: 0
                         }} />
-                        <Typography variant="body2" noWrap sx={{ fontSize: { xs: '1rem', sm: '1rem' }, fontWeight: { xs: 700, sm: 700 } }} component="span">
+                        <Typography 
+                          variant="body2" 
+                          noWrap 
+                          sx={{ 
+                            fontSize: { xs: '1rem', sm: '1rem' }, 
+                            fontWeight: { xs: 700, sm: 700 },
+                            background: 'linear-gradient(135deg, #FFFFFF 0%, #EDE2FF 50%, #D8BFFF 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text'
+                          }}
+                          component="span"
+                        >
                           Updated to{' '}
-                          <Link to="/releases" style={{ color: 'inherit', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+                          <Link 
+                            to="/releases" 
+                            style={{ 
+                              color: 'inherit',
+                              textDecoration: 'none', 
+                              whiteSpace: 'nowrap',
+                              borderBottom: '1px solid rgba(255,255,255,0.4)'
+                            }}
+                          >
                             {latestRelease?.tag_name}
                           </Link>{' '}
                         </Typography>
