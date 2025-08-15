@@ -23,6 +23,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import NewReleasesIcon from '@mui/icons-material/NewReleases';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import FeaturesIcon from '@mui/icons-material/AutoAwesome';
+import GitHubIcon from '@mui/icons-material/GitHub';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import { formatDistanceToNow } from 'date-fns';
 
 const GITHUB_OWNER = 'Vibe-House-LLC';
@@ -149,20 +151,7 @@ export default function ReleasesPage() {
   }, []);
 
   const header = useMemo(() => (
-    <Box sx={{ mb: { xs: 4, sm: 5, md: 6 }, textAlign: 'center' }}>
-      <Stack direction="row" alignItems="center" justifyContent="center" spacing={2} sx={{ mb: 3 }}>
-        <Box
-          sx={{
-            p: 2,
-            borderRadius: 3,
-            background: 'linear-gradient(135deg, rgba(155, 89, 204, 0.2) 0%, rgba(131, 71, 184, 0.1) 100%)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(155, 89, 204, 0.2)',
-          }}
-        >
-          <NewReleasesIcon sx={{ fontSize: 48, color: 'primary.main' }} />
-        </Box>
-      </Stack>
+    <Box sx={{ mb: { xs: 4, sm: 5, md: 6 }, textAlign: { xs: 'left', md: 'center' } }}>
       
       <Typography 
         variant="h2" 
@@ -189,43 +178,98 @@ export default function ReleasesPage() {
           opacity: 0.9,
         }}
       >
-        Discover the evolution of memeSRC
+        memeSRC is open source and powered by community support
       </Typography>
       
-      <Box
-        sx={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 1,
-          px: 3,
-          py: 1.5,
-          borderRadius: 25,
-          background: 'rgba(155, 89, 204, 0.1)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(155, 89, 204, 0.2)',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0 8px 25px rgba(155, 89, 204, 0.3)',
-          },
-        }}
+      <Stack 
+        direction="row" 
+        spacing={{ xs: 1, sm: 2 }} 
+        alignItems={{ xs: 'stretch', md: 'center' }} 
+        justifyContent={{ xs: 'stretch', md: 'center' }}
+        sx={{ width: { xs: '100%', md: 'auto' } }}
       >
-        <MUILink 
-          href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          sx={{ 
-            textDecoration: 'none',
-            color: 'primary.light',
-            fontWeight: 500,
+        <Box
+          sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
+            justifyContent: 'center',
+            gap: 1.5,
+            px: 3,
+            py: 1.75,
+            borderRadius: 2,
+            background: alpha(theme.palette.text.primary, 0.04),
+            backdropFilter: 'blur(10px)',
+            border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+            transition: 'all 0.2s ease',
+            minHeight: 48,
+            flex: { xs: 1, md: 'none' },
+            '&:hover': {
+              background: alpha(theme.palette.text.primary, 0.08),
+              transform: 'translateY(-1px)',
+              borderColor: alpha(theme.palette.text.primary, 0.2),
+            },
           }}
         >
-          View on GitHub <OpenInNewIcon sx={{ fontSize: 16 }} />
-        </MUILink>
-      </Box>
+          <MUILink 
+            href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            sx={{ 
+              textDecoration: 'none',
+              color: 'text.primary',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1.5,
+              fontSize: '1rem',
+              width: '100%',
+            }}
+          >
+            <GitHubIcon sx={{ fontSize: 20 }} /> GitHub
+          </MUILink>
+        </Box>
+        
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1.5,
+            px: 3,
+            py: 1.75,
+            borderRadius: 2,
+            background: alpha('#e91e63', 0.06),
+            backdropFilter: 'blur(10px)',
+            border: `1px solid ${alpha('#e91e63', 0.15)}`,
+            transition: 'all 0.2s ease',
+            minHeight: 48,
+            flex: { xs: 1, md: 'none' },
+            '&:hover': {
+              background: alpha('#e91e63', 0.1),
+              transform: 'translateY(-1px)',
+              borderColor: alpha('#e91e63', 0.3),
+            },
+          }}
+        >
+          <MUILink 
+            href="/donate" 
+            sx={{ 
+              textDecoration: 'none',
+              color: '#e91e63',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1.5,
+              fontSize: '1rem',
+              width: '100%',
+            }}
+          >
+            <FavoriteIcon sx={{ fontSize: 20 }} /> Donate
+          </MUILink>
+        </Box>
+      </Stack>
     </Box>
   ), []);
 
@@ -352,7 +396,7 @@ export default function ReleasesPage() {
                           fontWeight: 700,
                           fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
                           color: 'primary.main',
-                          textAlign: 'center',
+                          textAlign: 'left',
                           mb: 1,
                           background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
                           WebkitBackgroundClip: 'text',
@@ -366,7 +410,7 @@ export default function ReleasesPage() {
                         variant="body2" 
                         color="text.secondary"
                         sx={{ 
-                          textAlign: 'center',
+                          textAlign: 'left',
                           fontSize: { xs: '0.9rem', sm: '1rem' },
                           opacity: 0.8,
                         }}
@@ -385,7 +429,7 @@ export default function ReleasesPage() {
                           fontWeight: 600,
                           fontSize: { xs: '1.35rem', sm: '1.5rem', md: '1.75rem' },
                           color: 'text.primary',
-                          textAlign: 'center',
+                          textAlign: 'left',
                           mb: 1,
                         }}
                       >
@@ -395,7 +439,7 @@ export default function ReleasesPage() {
                         variant="body2" 
                         color="text.secondary"
                         sx={{ 
-                          textAlign: 'center',
+                          textAlign: 'left',
                           fontSize: { xs: '0.85rem', sm: '0.9rem' },
                           opacity: 0.7,
                         }}
@@ -854,3 +898,4 @@ export default function ReleasesPage() {
     </>
   );
 }
+
