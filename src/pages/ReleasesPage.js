@@ -25,7 +25,6 @@ import BugReportIcon from '@mui/icons-material/BugReport';
 import FeaturesIcon from '@mui/icons-material/AutoAwesome';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatDistanceToNow } from 'date-fns';
 
 const GITHUB_OWNER = 'Vibe-House-LLC';
@@ -538,29 +537,22 @@ export default function ReleasesPage() {
                           >
                             {release.tag_name || title}
                           </Typography>
-                          <CheckCircleIcon 
-                            sx={{ 
-                              fontSize: { xs: 18, sm: 20 }, 
-                              color: theme.palette.success.main, 
-                              opacity: 0.9 
-                            }} 
+                          <Chip 
+                            size="small" 
+                            label={String(releaseType || 'patch').toUpperCase()} 
+                            sx={{
+                              height: { xs: 20, sm: 22 },
+                              fontSize: { xs: '0.62rem', sm: '0.68rem' },
+                              fontWeight: 700,
+                              letterSpacing: '0.4px',
+                              bgcolor: alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.12),
+                              color: theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main,
+                              border: `1px solid ${alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.25)}`,
+                              '& .MuiChip-label': {
+                                px: { xs: 0.75, sm: 1 }
+                              }
+                            }}
                           />
-                          {isLatest && (
-                            <Chip
-                              label="Latest"
-                              size="small"
-                              sx={{
-                                height: { xs: 20, sm: 22 },
-                                fontSize: { xs: '0.62rem', sm: '0.68rem' },
-                                fontWeight: 700,
-                                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                                color: 'white',
-                                boxShadow: `0 1px 4px ${alpha(theme.palette.primary.main, 0.35)}`,
-                                '& .MuiChip-label': { px: { xs: 0.75, sm: 1 } },
-                                transform: 'translateY(-2px)'
-                              }}
-                            />
-                          )}
                           {release.name && release.name !== release.tag_name && (
                             <Typography 
                               component="span"
@@ -601,6 +593,22 @@ export default function ReleasesPage() {
                             {timeAgoCompact}
                           </Typography>
 
+                          {isLatest && (
+                            <Chip
+                              label="Latest"
+                              size="small"
+                              sx={{
+                                height: { xs: 20, sm: 22 },
+                                fontSize: { xs: '0.62rem', sm: '0.68rem' },
+                                fontWeight: 700,
+                                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                                color: 'white',
+                                boxShadow: `0 1px 4px ${alpha(theme.palette.primary.main, 0.35)}`,
+                                '& .MuiChip-label': { px: { xs: 0.75, sm: 1 } }
+                              }}
+                            />
+                          )}
+
                           {isDraft && (
                             <Chip 
                               size="small" 
@@ -635,22 +643,6 @@ export default function ReleasesPage() {
                               }}
                             />
                           )}
-                          <Chip 
-                            size="small" 
-                            label={String(releaseType || 'patch').toUpperCase()} 
-                            sx={{
-                              height: { xs: 20, sm: 22 },
-                              fontSize: { xs: '0.62rem', sm: '0.68rem' },
-                              fontWeight: 700,
-                              letterSpacing: '0.4px',
-                              bgcolor: alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.12),
-                              color: theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main,
-                              border: `1px solid ${alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.25)}`,
-                              '& .MuiChip-label': {
-                                px: { xs: 0.75, sm: 1 }
-                              }
-                            }}
-                          />
                         </Stack>
                       </Box>
 
