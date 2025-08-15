@@ -47,9 +47,11 @@ export default function ReleasesPage(): React.ReactElement {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
 
-  const fetchReleases = useCallback(async (pageNumber: number): Promise<GitHubRelease[]> => {
-    return fetchReleasesApi({ owner: GITHUB_OWNER, repo: GITHUB_REPO, perPage: PAGE_SIZE, page: pageNumber });
-  }, []);
+  const fetchReleases = useCallback(
+    async (pageNumber: number): Promise<GitHubRelease[]> =>
+      fetchReleasesApi({ owner: GITHUB_OWNER, repo: GITHUB_REPO, perPage: PAGE_SIZE, page: pageNumber }),
+    []
+  );
 
   useEffect(() => {
     let isMounted = true;
