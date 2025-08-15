@@ -469,10 +469,19 @@ export default function ReleasesPage() {
                     }}
                   >
                     <CardContent sx={{ p: { xs: 2.5, sm: 3, md: 3.5 } }}>
-                      {/* Header - Version Number Focus */}
-                      <Box sx={{ mb: { xs: 2.5, sm: 3 } }}>
-                        {/* Version Number - Primary Focus */}
-                        <Box sx={{ mb: { xs: 2, sm: 2.5 } }}>
+                      {/* Header - Compact, single-row layout (like GitHub) */}
+                      <Box
+                        sx={{
+                          mb: { xs: 2, sm: 2.5 },
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: { xs: 1, sm: 1.25 }
+                        }}
+                      >
+                        {/* Left: Version title (and optional name) */}
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', minWidth: 0, gap: { xs: 1, sm: 1.25 } }}>
                           <Typography 
                             id={`release-title-${release.id}`}
                             variant="h4"
@@ -480,105 +489,91 @@ export default function ReleasesPage() {
                             sx={{ 
                               fontWeight: 700,
                               color: isLatest 
-                                ? theme.palette.mode === 'dark' ? '#B794F6' : '#805AD5' 
+                                ? (theme.palette.mode === 'dark' ? '#B794F6' : '#805AD5') 
                                 : 'text.primary',
                               fontSize: { 
-                                xs: isLatest ? '1.75rem' : '1.5rem', 
-                                sm: isLatest ? '2rem' : '1.75rem',
-                                md: isLatest ? '2.25rem' : '2rem'
+                                xs: isLatest ? '1.4rem' : '1.25rem', 
+                                sm: isLatest ? '1.6rem' : '1.4rem',
+                                md: isLatest ? '1.75rem' : '1.6rem'
                               },
                               lineHeight: 1.2,
-                              letterSpacing: '-0.025em',
-                              mb: 0.75,
+                              letterSpacing: '-0.02em',
+                              whiteSpace: 'nowrap'
                             }}
                           >
                             {release.tag_name || title}
                           </Typography>
-                          
-                          {/* Release Name (if different from tag) */}
                           {release.name && release.name !== release.tag_name && (
                             <Typography 
-                              variant="body2" 
+                              component="span"
+                              variant="body2"
                               color="text.secondary"
                               sx={{ 
-                                fontSize: { xs: '0.85rem', sm: '0.9rem' },
+                                fontSize: { xs: '0.85rem', sm: '0.95rem' },
                                 fontWeight: 500,
-                                opacity: 0.8,
+                                opacity: 0.85,
+                                whiteSpace: 'nowrap'
                               }}
                             >
-                              {release.name}
+                              — {release.name}
                             </Typography>
                           )}
                         </Box>
-                        
-                        {/* Compact Metadata Row */}
+
+                        {/* Right: Time + chips */}
                         <Stack 
                           direction="row" 
                           alignItems="center" 
                           spacing={{ xs: 0.75, sm: 1 }}
                           sx={{ 
                             flexWrap: 'wrap',
-                            gap: { xs: 0.5, sm: 0.75 },
-                            mb: 1
+                            rowGap: { xs: 0.5, sm: 0.75 }
                           }}
                         >
-                          {/* Time Badge */}
-                          <Box
-                            sx={{
-                              px: { xs: 2, sm: 2.5 },
-                              py: { xs: 0.5, sm: 0.75 },
-                              borderRadius: { xs: 1.5, sm: 2 },
-                              bgcolor: alpha(theme.palette.text.primary, 0.08),
-                              border: `1px solid ${alpha(theme.palette.divider, 0.15)}`,
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{ 
+                              fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                              fontWeight: 600,
+                              letterSpacing: '0.2px',
+                              whiteSpace: 'nowrap'
                             }}
                           >
-                            <Typography 
-                              variant="caption" 
-                              sx={{ 
-                                fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                                fontWeight: 600,
-                                color: 'text.secondary',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
-                              }}
-                            >
-                              {timeAgo}
-                            </Typography>
-                          </Box>
-                          
-                          {/* Latest Badge */}
+                            {timeAgo}
+                          </Typography>
+
                           {isLatest && (
                             <Chip
                               label="Latest"
                               size="small"
                               sx={{
-                                height: { xs: 24, sm: 26 },
-                                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                height: { xs: 22, sm: 24 },
+                                fontSize: { xs: '0.68rem', sm: '0.72rem' },
                                 fontWeight: 700,
                                 background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
                                 color: 'white',
-                                boxShadow: `0 1px 4px ${alpha(theme.palette.primary.main, 0.4)}`,
+                                boxShadow: `0 1px 4px ${alpha(theme.palette.primary.main, 0.35)}`,
                                 '& .MuiChip-label': {
-                                  px: { xs: 1.25, sm: 1.75 }
+                                  px: { xs: 1, sm: 1.25 }
                                 }
                               }}
                             />
                           )}
-                          
-                          {/* Status Chips */}
+
                           {isDraft && (
                             <Chip 
                               size="small" 
                               label="Draft" 
                               sx={{
-                                height: { xs: 22, sm: 24 },
-                                fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                                height: { xs: 20, sm: 22 },
+                                fontSize: { xs: '0.62rem', sm: '0.68rem' },
                                 fontWeight: 600,
                                 bgcolor: alpha(theme.palette.error.main, 0.12),
                                 color: theme.palette.error.main,
                                 border: `1px solid ${alpha(theme.palette.error.main, 0.25)}`,
                                 '& .MuiChip-label': {
-                                  px: { xs: 1, sm: 1.25 }
+                                  px: { xs: 0.75, sm: 1 }
                                 }
                               }}
                             />
@@ -588,14 +583,14 @@ export default function ReleasesPage() {
                               size="small" 
                               label="Beta" 
                               sx={{
-                                height: { xs: 22, sm: 24 },
-                                fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                                height: { xs: 20, sm: 22 },
+                                fontSize: { xs: '0.62rem', sm: '0.68rem' },
                                 fontWeight: 600,
                                 bgcolor: alpha(theme.palette.warning.main, 0.12),
                                 color: theme.palette.warning.main,
                                 border: `1px solid ${alpha(theme.palette.warning.main, 0.25)}`,
                                 '& .MuiChip-label': {
-                                  px: { xs: 1, sm: 1.25 }
+                                  px: { xs: 0.75, sm: 1 }
                                 }
                               }}
                             />
@@ -604,15 +599,15 @@ export default function ReleasesPage() {
                             size="small" 
                             label={String(releaseType || 'patch').toUpperCase()} 
                             sx={{
-                              height: { xs: 22, sm: 24 },
-                              fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                              height: { xs: 20, sm: 22 },
+                              fontSize: { xs: '0.62rem', sm: '0.68rem' },
                               fontWeight: 700,
-                              letterSpacing: '0.5px',
+                              letterSpacing: '0.4px',
                               bgcolor: alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.12),
                               color: theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main,
                               border: `1px solid ${alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.25)}`,
                               '& .MuiChip-label': {
-                                px: { xs: 1, sm: 1.25 }
+                                px: { xs: 0.75, sm: 1 }
                               }
                             }}
                           />
