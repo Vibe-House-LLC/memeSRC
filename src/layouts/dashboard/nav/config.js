@@ -1,5 +1,5 @@
 // component
-import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections } from '@mui/icons-material';
+import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections, NewReleases } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -96,6 +96,12 @@ const navConfig = [
         path: '/support',
         externalLink: false,
         icon: <MapsUgc />
+      },
+      {
+        title: 'Releases',
+        path: '/releases',
+        externalLink: false,
+        icon: <NewReleases />,
       },
     ]
   },

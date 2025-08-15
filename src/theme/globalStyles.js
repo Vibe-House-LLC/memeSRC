@@ -48,6 +48,14 @@ export default function GlobalStyles() {
           margin: 0,
           padding: 0,
         },
+        '@keyframes pulse': {
+          '0%, 100%': {
+            opacity: 0.4,
+          },
+          '50%': {
+            opacity: 0.8,
+          },
+        },
       }}
     />
   );
