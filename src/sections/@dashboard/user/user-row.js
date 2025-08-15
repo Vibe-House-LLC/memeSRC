@@ -1,10 +1,11 @@
 // UserRow.js
 import { useContext, useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { ListItem, ListItemText, IconButton, Menu, MenuItem, Chip, Divider, Typography, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from '@mui/material';
 import { MoreVert } from '@mui/icons-material';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
-import { createUserNotification, updateUserDetails } from '../../../graphql/mutations';
+import { updateUserDetails } from '../../../graphql/mutations';
 import { SnackbarContext } from '../../../SnackbarContext';
 
 const UserRow = ({ user, isLastItem }) => {
@@ -237,3 +238,17 @@ const UserRow = ({ user, isLastItem }) => {
 };
 
 export default UserRow;
+
+UserRow.propTypes = {
+    user: PropTypes.shape({
+        id: PropTypes.string,
+        username: PropTypes.string,
+        email: PropTypes.string,
+        createdAt: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.instanceOf(Date)]),
+        magicSubscription: PropTypes.any,
+        contributorAccessStatus: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
+        credits: PropTypes.number,
+        status: PropTypes.string,
+    }),
+    isLastItem: PropTypes.bool,
+};

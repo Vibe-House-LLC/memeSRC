@@ -23,7 +23,6 @@ const SignupForm = lazy(() => import('./sections/auth/login/SignupForm'));
 const VerifyForm = lazy(() => import('./sections/auth/login/VerifyForm'));
 const ForgotPasswordForm = lazy(() => import('./sections/auth/login/ForgotPasswordForm'));
 const ForgotUsernameForm = lazy(() => import('./sections/auth/login/ForgotUsernameForm'));
-const UserPage = lazy(() => import('./pages/UserPage'));
 const PrivacyPolicy = lazy(() => import('./sections/legal/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./sections/legal/TermsOfService'));
 const Page404 = lazy(() => import('./pages/Page404'));
