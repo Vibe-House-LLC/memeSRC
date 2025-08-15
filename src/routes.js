@@ -57,6 +57,7 @@ const AccountPage = lazy(() => import('./pages/AccountPage'));
 const FacebookAuthDemo = lazy(() => import('./pages/FacebookAuthDemo'));
 const CollagePageLegacy = lazy(() => import('./pages/CollagePageLegacy'));
 const CollagePage = lazy(() => import('./pages/CollagePage'));
+const UserListPage = lazy(() => import('./pages/UserPage-Refactor'));
 const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
 const CollageAnimatedIconDemoPage = lazy(() => import('./pages/CollageAnimatedIconDemoPage'));
 const ServerPage = lazy(() => import('./pages/ServerPage'));
@@ -117,7 +118,7 @@ export default function Router() {
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },
-        { path: 'user', element: <UserPage /> },
+        { path: 'user', element: <UserListPage /> },
         { path: 'support', element: <ProSupportAdmin /> },
         { path: 'home', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },
