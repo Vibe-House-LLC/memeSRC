@@ -161,16 +161,26 @@ export default function ReleasesPage() {
   // Process GitHub-style links in markdown
   const processGitHubLinks = useCallback((text) => {
     if (!text || typeof text !== 'string') return text || '';
-    
-    // Replace GitHub PR/issue references
+
+    const owner = GITHUB_OWNER;
+    const repo = GITHUB_REPO;
+
+    // Build repo-specific regexes
+    const prRegex = new RegExp(`https://github\\.com/${owner}/${repo}/pull/(\\d+)`, 'g');
+    const issueRegex = new RegExp(`https://github\\.com/${owner}/${repo}/issues/(\\d+)`, 'g');
+    const compareRegex = new RegExp(`https://github\\.com/${owner}/${repo}/compare/([^\\s]+)\\.\\.\\.([^\\s)]+)`, 'g');
+
     return text
-      .replace(/https:\/\/github\.com\/Vibe-House-LLC\/memeSRC\/pull\/(\d+)/g, 
-        `[#$1](https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/pull/$1)`)
-      .replace(/https:\/\/github\.com\/Vibe-House-LLC\/memeSRC\/issues\/(\d+)/g, 
-        `[#$1](https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues/$1)`)
-      // Also handle simple #123 references that might already be in the text
-      .replace(/\b#(\d+)\b/g, 
-        `[#$1](https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/pull/$1)`);
+      // Convert PR links to short [#123] labels
+      .replace(prRegex, `[#$1](https://github.com/${owner}/${repo}/pull/$1)`)
+      // Convert Issue links to short [#123] labels
+      .replace(issueRegex, `[#$1](https://github.com/${owner}/${repo}/issues/$1)`)
+      // Convert simple #123 references to PR links by default
+      .replace(/\b#(\d+)\b/g, `[#$1](https://github.com/${owner}/${repo}/pull/$1)`)
+      // Convert compare links to short labels like [v1.0.0...v1.0.1]
+      .replace(compareRegex, `[($1...$2)](https://github.com/${owner}/${repo}/compare/$1...$2)`)
+      // Convert @username to links
+      .replace(/\B@([a-zA-Z0-9-]{1,39})\b/g, '[@$1](https://github.com/$1)');
   }, []);
 
   const header = useMemo(() => (
@@ -650,7 +660,7 @@ export default function ReleasesPage() {
                                 fontSize: { xs: '1.25rem', sm: '1.35rem', md: '1.45rem' },
                                 fontWeight: 700, 
                                 mb: { xs: 2, sm: 2.5 },
-                                color: 'primary.main',
+                                color: theme.palette.common.white,
                                 lineHeight: 1.25,
                                 '&:first-of-type': {
                                   mt: 0
@@ -711,14 +721,14 @@ export default function ReleasesPage() {
                                 opacity: 1,
                               },
                               '& a': {
-                                color: 'primary.main',
+                                color: theme.palette.common.white,
                                 textDecoration: 'none',
-                                fontWeight: 500,
-                                borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+                                fontWeight: 700,
+                                borderBottom: `1px solid ${alpha('#ffffff', 0.35)}`,
                                 transition: 'all 0.2s ease',
                                 '&:hover': {
-                                  borderBottom: `1px solid ${theme.palette.primary.main}`,
-                                  opacity: 0.8,
+                                  borderBottom: '1px solid #ffffff',
+                                  opacity: 0.9,
                                 },
                               },
                               '& blockquote': {
@@ -740,16 +750,22 @@ export default function ReleasesPage() {
                           >
                             <ReactMarkdown 
                               components={{
-                                a: ({ href, children, ...props }) => (
-                                  <MUILink 
-                                    href={href} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    {...props}
-                                  >
-                                    {children}
-                                  </MUILink>
-                                ),
+                                a: ({ href, children, ...props }) => {
+                                  // If this is a compare link, show only the version range as label
+                                  const compareMatch = href && href.match(new RegExp(`https://github\\.com/${GITHUB_OWNER}/${GITHUB_REPO}/compare/([^\\s]+)\\.\\.\\.([^\\s)]+)`));
+                                  const label = compareMatch ? `${compareMatch[1]}...${compareMatch[2]}` : children;
+                                  return (
+                                    <MUILink 
+                                      href={href} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      sx={{ color: 'common.white', fontWeight: 700, textDecoration: 'none', borderBottom: `1px solid ${alpha('#ffffff', 0.35)}`, '&:hover': { borderBottom: '1px solid #ffffff', opacity: 0.9 } }}
+                                      {...props}
+                                    >
+                                      {label}
+                                    </MUILink>
+                                  );
+                                },
                               }}
                             >
                               {processedBody}
