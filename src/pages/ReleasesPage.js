@@ -166,7 +166,7 @@ export default function ReleasesPage() {
           mb: 2,
         }}
       >
-        Release Timeline
+        Version History
       </Typography>
       
       <Typography 
@@ -239,16 +239,16 @@ export default function ReleasesPage() {
             px: 3,
             py: 1.75,
             borderRadius: 2,
-            background: alpha('#e91e63', 0.06),
+            background: alpha(theme.palette.text.primary, 0.04),
             backdropFilter: 'blur(10px)',
-            border: `1px solid ${alpha('#e91e63', 0.15)}`,
+            border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
             transition: 'all 0.2s ease',
             minHeight: 48,
             flex: { xs: 1, md: 'none' },
             '&:hover': {
-              background: alpha('#e91e63', 0.1),
+              background: alpha(theme.palette.text.primary, 0.08),
               transform: 'translateY(-1px)',
-              borderColor: alpha('#e91e63', 0.3),
+              borderColor: alpha(theme.palette.text.primary, 0.2),
             },
           }}
         >
@@ -256,7 +256,7 @@ export default function ReleasesPage() {
             href="/donate" 
             sx={{ 
               textDecoration: 'none',
-              color: '#e91e63',
+              color: 'text.primary',
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
@@ -266,7 +266,7 @@ export default function ReleasesPage() {
               width: '100%',
             }}
           >
-            <FavoriteIcon sx={{ fontSize: 20 }} /> Donate
+            <FavoriteIcon sx={{ fontSize: 20, color: '#e91e63' }} /> Donate
           </MUILink>
         </Box>
       </Stack>
@@ -393,15 +393,11 @@ export default function ReleasesPage() {
                         variant="h4"
                         component="h2"
                         sx={{
-                          fontWeight: 700,
-                          fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                          color: 'primary.main',
-                          textAlign: 'left',
+                          fontWeight: 600,
+                          fontSize: { xs: '1.35rem', sm: '1.5rem', md: '1.75rem' },
+                          color: 'text.primary',
+                          textAlign: { xs: 'left', md: 'center' },
                           mb: 1,
-                          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          backgroundClip: 'text',
                         }}
                       >
                         Latest Update
@@ -410,7 +406,7 @@ export default function ReleasesPage() {
                         variant="body2" 
                         color="text.secondary"
                         sx={{ 
-                          textAlign: 'left',
+                          textAlign: { xs: 'left', md: 'center' },
                           fontSize: { xs: '0.9rem', sm: '1rem' },
                           opacity: 0.8,
                         }}
@@ -429,7 +425,7 @@ export default function ReleasesPage() {
                           fontWeight: 600,
                           fontSize: { xs: '1.35rem', sm: '1.5rem', md: '1.75rem' },
                           color: 'text.primary',
-                          textAlign: 'left',
+                          textAlign: { xs: 'left', md: 'center' },
                           mb: 1,
                         }}
                       >
@@ -439,7 +435,7 @@ export default function ReleasesPage() {
                         variant="body2" 
                         color="text.secondary"
                         sx={{ 
-                          textAlign: 'left',
+                          textAlign: { xs: 'left', md: 'center' },
                           fontSize: { xs: '0.85rem', sm: '0.9rem' },
                           opacity: 0.7,
                         }}
@@ -469,13 +465,7 @@ export default function ReleasesPage() {
                       boxShadow: isLatest
                         ? `0 4px 20px ${alpha(theme.palette.primary.main, 0.15)}`
                         : `0 2px 12px ${alpha('#000', 0.06)}`,
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-1px)',
-                        boxShadow: isLatest
-                          ? `0 6px 28px ${alpha(theme.palette.primary.main, 0.2)}`
-                          : `0 4px 16px ${alpha('#000', 0.1)}`,
-                      }
+                      transition: 'box-shadow 0.3s ease'
                     }}
                   >
                     <CardContent sx={{ p: { xs: 2.5, sm: 3, md: 3.5 } }}>
