@@ -22,7 +22,7 @@ const UserList = () => {
         API.graphql({
             query: listUserDetails,
             variables: {
-                limit: 10
+                limit: 50
             }
         }).then(response => {
             setUsers(response?.data?.listUserDetails?.items)
@@ -43,7 +43,7 @@ const UserList = () => {
         API.graphql({
             query: listUserDetails,
             variables: {
-                limit: 10,
+                limit: 50,
                 nextToken
             }
         }).then(response => {
@@ -53,6 +53,7 @@ const UserList = () => {
         }).catch(error => {
             alert('Something went wrong loading users')
             console.log(error)
+            setIsLoadingMore(false)
         })
     };
 
