@@ -133,6 +133,29 @@ export default function ReleasesPage() {
 
   const theme = useTheme();
 
+  // Compact relative time formatter (e.g., "1h ago")
+  const formatRelativeTimeCompact = useCallback((dateString) => {
+    if (!dateString) return 'Draft';
+    const then = new Date(dateString).getTime();
+    const now = Date.now();
+    const seconds = Math.max(1, Math.floor((now - then) / 1000));
+    if (seconds < 60) return '<1m ago';
+    const units = [
+      { label: 'y', secs: 31536000 },
+      { label: 'mo', secs: 2592000 },
+      { label: 'w', secs: 604800 },
+      { label: 'd', secs: 86400 },
+      { label: 'h', secs: 3600 },
+      { label: 'm', secs: 60 },
+    ];
+    const matchingUnit = units.find((u) => seconds >= u.secs);
+    if (matchingUnit) {
+      const value = Math.floor(seconds / matchingUnit.secs);
+      return `${value}${matchingUnit.label} ago`;
+    }
+    return '<1m ago';
+  }, []);
+
 
 
   // Process GitHub-style links in markdown
@@ -377,6 +400,7 @@ export default function ReleasesPage() {
               const timeAgo = release.published_at 
                 ? formatDistanceToNow(new Date(release.published_at), { addSuffix: true })
                 : 'Draft';
+              const timeAgoCompact = formatRelativeTimeCompact(release.published_at);
               const isDraft = Boolean(release.draft);
               const isPrerelease = Boolean(release.prerelease);
               const releaseType = getReleaseType(release.tag_name);
@@ -481,7 +505,7 @@ export default function ReleasesPage() {
                         }}
                       >
                         {/* Left: Version title (and optional name) */}
-                        <Box sx={{ display: 'flex', alignItems: 'baseline', minWidth: 0, gap: { xs: 1, sm: 1.25 } }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: { xs: 1, sm: 1.25 } }}>
                           <Typography 
                             id={`release-title-${release.id}`}
                             variant="h4"
@@ -492,9 +516,9 @@ export default function ReleasesPage() {
                                 ? (theme.palette.mode === 'dark' ? '#B794F6' : '#805AD5') 
                                 : 'text.primary',
                               fontSize: { 
-                                xs: isLatest ? '1.4rem' : '1.25rem', 
-                                sm: isLatest ? '1.6rem' : '1.4rem',
-                                md: isLatest ? '1.75rem' : '1.6rem'
+                                xs: isLatest ? '1.9rem' : '1.6rem', 
+                                sm: isLatest ? '2.1rem' : '1.8rem',
+                                md: isLatest ? '2.35rem' : '2rem'
                               },
                               lineHeight: 1.2,
                               letterSpacing: '-0.02em',
@@ -503,6 +527,22 @@ export default function ReleasesPage() {
                           >
                             {release.tag_name || title}
                           </Typography>
+                          {isLatest && (
+                            <Chip
+                              label="Latest"
+                              size="small"
+                              sx={{
+                                height: { xs: 20, sm: 22 },
+                                fontSize: { xs: '0.62rem', sm: '0.68rem' },
+                                fontWeight: 700,
+                                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                                color: 'white',
+                                boxShadow: `0 1px 4px ${alpha(theme.palette.primary.main, 0.35)}`,
+                                '& .MuiChip-label': { px: { xs: 0.75, sm: 1 } },
+                                transform: 'translateY(-2px)'
+                              }}
+                            />
+                          )}
                           {release.name && release.name !== release.tag_name && (
                             <Typography 
                               component="span"
@@ -540,26 +580,8 @@ export default function ReleasesPage() {
                               whiteSpace: 'nowrap'
                             }}
                           >
-                            {timeAgo}
+                            {timeAgoCompact}
                           </Typography>
-
-                          {isLatest && (
-                            <Chip
-                              label="Latest"
-                              size="small"
-                              sx={{
-                                height: { xs: 22, sm: 24 },
-                                fontSize: { xs: '0.68rem', sm: '0.72rem' },
-                                fontWeight: 700,
-                                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                                color: 'white',
-                                boxShadow: `0 1px 4px ${alpha(theme.palette.primary.main, 0.35)}`,
-                                '& .MuiChip-label': {
-                                  px: { xs: 1, sm: 1.25 }
-                                }
-                              }}
-                            />
-                          )}
 
                           {isDraft && (
                             <Chip 
