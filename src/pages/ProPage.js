@@ -7,7 +7,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import FeedbackIcon from '@mui/icons-material/Feedback';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { Box, Button, Card, Chip, CircularProgress, Collapse, Divider, Fade, Grid, IconButton, Typography, useMediaQuery, Stack } from '@mui/material';
+import { Box, Button, Card, Chip, CircularProgress, Divider, Fade, Grid, IconButton, Typography, useMediaQuery, Stack } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { API, graphqlOperation } from 'aws-amplify';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -49,7 +49,6 @@ const ProPage = () => {
 	const { countryCode } = useUserLocation();
 
 	const [selectedPlan, setSelectedPlan] = useState(getInitialPlan());
-	const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(!isCompact);
 	const [loading, setLoading] = useState(false);
 	const [checkoutLink, setCheckoutLink] = useState();
 	const [selectedTitleSubtitle, setSelectedTitleSubtitle] = useState(null);
@@ -66,12 +65,7 @@ const ProPage = () => {
 	}, []);
 
 	useEffect(() => {
-		setCreditOptionsExpanded(!isCompact);
-	}, [isCompact]);
-
-	useEffect(() => {
 		if (user?.userDetails?.subscriptionStatus === 'active') {
-			// If already Pro (or after successful checkout), take them back to dest or account
 			if (dest && dest !== '/pro') {
 				navigate(dest, { replace: true });
 			} else {
@@ -92,9 +86,6 @@ const ProPage = () => {
 
 	const setSelectedPlanAndScroll = (plan) => {
 		setSelectedPlan(plan);
-		if (isCompact) {
-			setCreditOptionsExpanded(false);
-		}
 		subscribeButtonRef.current?.scrollIntoView({ behavior: 'smooth' });
 	};
 
@@ -115,7 +106,7 @@ const ProPage = () => {
 		setLoading(true);
 		API.post('publicapi', '/user/update/getCheckoutSession', {
 			body: {
-				currentUrl: window.location.href, // keep on /pro to handle return and dest routing
+				currentUrl: window.location.href,
 				priceKey: selectedPlan,
 			},
 		}).then(results => {
@@ -188,7 +179,7 @@ const ProPage = () => {
 	];
 
 	return (
-		<Box sx={{ maxWidth: 1100, mx: 'auto', my: 2, px: { xs: 1, sm: 2 } }}>
+		<Box sx={{ maxWidth: 1100, mx: 'auto', my: 0, px: { xs: 1.5, sm: 2 }, pt: { xs: 7, sm: 8 } }}>
 			<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', py: isCompact ? 1.2 : 2 }}>
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 					<img src="/assets/memeSRC-white.svg" alt="memeSRC logo" loading="lazy" style={{ height: isCompact ? 24 : 36 }} />
@@ -256,84 +247,27 @@ const ProPage = () => {
 						</Grid>
 
 						<Grid container spacing={isCompact ? 2 : 4} alignItems="center">
-							<Grid item xs={12} sm={isCompact ? 12 : 5}>
-								<Box display="flex" alignItems="center" mb={isCompact ? 1.5 : 2} ml={2}>
-									<Box sx={{ backgroundColor: getColor(), borderRadius: '50%', width: isCompact ? 28 : 32, height: isCompact ? 28 : 32, display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 2 }}>
-										<CheckIcon sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
-									</Box>
-									<Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>Zero Ads</Typography>
-								</Box>
-								<Box display="flex" alignItems="center" mb={isCompact ? 1.5 : 2} ml={2}>
-									<Box sx={{ backgroundColor: getColor(), borderRadius: '50%', width: isCompact ? 28 : 32, height: isCompact ? 28 : 32, display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 2 }}>
-										<SupportAgentIcon sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
-									</Box>
-									<Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>Pro Support</Typography>
-								</Box>
-								<Box display="flex" alignItems="center" mb={isCompact ? 1.5 : 2} ml={2}>
-									<Box sx={{ backgroundColor: getColor(), borderRadius: '50%', width: isCompact ? 28 : 32, height: isCompact ? 28 : 32, display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 2 }}>
-										<BoltIcon sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
-									</Box>
-									<Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>Exclusive Features</Typography>
-								</Box>
-								<Box display="flex" alignItems="center" ml={2} sx={{ cursor: isCompact ? 'pointer' : 'default' }} onClick={() => { if (isCompact) setCreditOptionsExpanded(!creditOptionsExpanded); }}>
-									<Box sx={{ backgroundColor: getColor(), borderRadius: '50%', width: isCompact ? 28 : 32, height: isCompact ? 28 : 32, display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 2 }}>
-										<AutoFixHighRoundedIcon sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
-									</Box>
-									<Typography fontSize={isCompact ? 16 : 18} fontWeight={500} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-										{getCreditCount()} Magic Credits
-										{isCompact && !creditOptionsExpanded && (
-											<Box component="span" sx={{ color: 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', ml: 1, fontSize: '0.75em', fontWeight: 600, userSelect: 'none', transition: 'all 0.2s', textDecoration: 'underline' }}>
-												change
+							<Grid item xs={12} sm={12}>
+								<Box sx={{ px: { xs: 0, sm: 2 } }}>
+									{[
+										{ plan: 'pro5', credits: 5, color: 'grey.500', hoverColor: 'grey.500', activeColor: 'grey.500' },
+										{ plan: 'pro25', credits: 25, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' },
+										{ plan: 'pro69', credits: 69, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' },
+									].map(({ plan, credits, color, hoverColor, activeColor }) => (
+										<Card key={plan} variant="outlined" sx={{ mb: 2, cursor: 'pointer', borderColor: selectedPlan === plan ? color : 'divider', '&:hover': { borderColor: hoverColor }, position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedPlanAndScroll(plan)}>
+											<Box sx={{ position: 'absolute', top: 0, left: 0, width: 8, height: '100%', backgroundColor: color }} />
+											<Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: selectedPlan === plan ? activeColor : 'transparent', color: selectedPlan === plan ? 'common.black' : 'common.white' }}>
+												<Typography fontSize={18} fontWeight={700} sx={{ ml: 2 }}>{credits} credits / mo.</Typography>
+												<Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
+													{selectedPlan === plan ? 'included' : formatPriceDelta(getPriceForPlan(plan) - getPriceForPlan(selectedPlan))}
+												</Typography>
 											</Box>
-										)}
-									</Typography>
+										</Card>
+									))}
 								</Box>
-							</Grid>
-							<Grid item xs={12} sm={isCompact ? 12 : 7}>
-								<Collapse in={creditOptionsExpanded} timeout={300}>
-									{!isCompact ? (
-										<Box sx={{ px: 2 }}>
-											{[
-												{ plan: 'pro5', credits: 5, color: 'grey.500', hoverColor: 'grey.500', activeColor: 'grey.500' },
-												{ plan: 'pro25', credits: 25, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' },
-												{ plan: 'pro69', credits: 69, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' },
-											].map(({ plan, credits, color, hoverColor, activeColor }) => (
-												<Card key={plan} variant="outlined" sx={{ mb: 2, cursor: 'pointer', borderColor: selectedPlan === plan ? color : 'divider', '&:hover': { borderColor: hoverColor }, position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedPlanAndScroll(plan)}>
-													<Box sx={{ position: 'absolute', top: 0, left: 0, width: 8, height: '100%', backgroundColor: color }} />
-													<Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: selectedPlan === plan ? activeColor : 'transparent', color: selectedPlan === plan ? 'common.black' : 'common.white' }}>
-														<Typography fontSize={18} fontWeight={700} sx={{ ml: 2 }}>{credits} credits / mo.</Typography>
-														<Typography fontSize={18} fontWeight={700} sx={{ mr: 1 }}>
-															{selectedPlan === plan ? 'included' : formatPriceDelta(getPriceForPlan(plan) - getPriceForPlan(selectedPlan))}
-														</Typography>
-													</Box>
-												</Card>
-											))}
-										</Box>
-									) : (
-										<Stack direction="row" spacing={1} sx={{ width: '100%', justifyContent: 'center' }}>
-											{[
-												{ plan: 'pro5', credits: 5, color: 'grey.500', textColor: 'common.black' },
-												{ plan: 'pro25', credits: 25, color: 'rgb(84, 214, 44)', textColor: 'common.black' },
-												{ plan: 'pro69', credits: 69, color: '#ff6900', textColor: 'common.black' },
-											].map(({ plan, credits, color, textColor }) => (
-												<Box key={plan} sx={{ textAlign: 'center', flex: '1 1 0', minWidth: 0, maxWidth: 160, position: 'relative' }}>
-													<Card variant="outlined" onClick={() => setSelectedPlanAndScroll(plan)} sx={{ height: isCompact ? 54 : 80, cursor: 'pointer', borderColor: 'divider', backgroundColor: selectedPlan === plan ? color : 'grey.800', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', '&::before': { content: '""', position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', backgroundColor: color, display: selectedPlan === plan ? 'none' : 'block' } }}>
-														<Box sx={{ display: 'flex', alignItems: 'center', color: selectedPlan === plan ? textColor : 'common.white', fontSize: isCompact ? '1.2rem' : '1.5rem', fontWeight: 600 }}>
-															<AutoFixHighRoundedIcon sx={{ fontSize: isCompact ? 23 : 28, mx: 0.5 }} />
-															{credits}
-														</Box>
-													</Card>
-													<Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1, color: selectedPlan === plan ? 'common.white' : 'grey.500', fontWeight: selectedPlan === plan ? 800 : 550, gap: 0.5, fontSize: isCompact ? '0.7rem' : '0.75rem' }}>
-														{selectedPlan === plan ? 'included' : formatPriceDelta(getPriceForPlan(plan) - getPriceForPlan(selectedPlan))}
-													</Typography>
-												</Box>
-											))}
-										</Stack>
-									)}
-								</Collapse>
 							</Grid>
 						</Grid>
-						<Box mt={creditOptionsExpanded || isCompact ? 2 : 4} textAlign="center">
+						<Box mt={3} textAlign="center">
 							{user?.userDetails ? (
 								<Button ref={subscribeButtonRef} variant="contained" size="large" onClick={() => {
 									if (countryCode === 'US' || countryCode === 'AU' || countryCode === 'CA') {

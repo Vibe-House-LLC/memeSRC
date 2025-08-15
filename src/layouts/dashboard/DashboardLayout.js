@@ -26,7 +26,7 @@ export default function DashboardLayout() {
   const [open, setOpen] = useState(false);
   const { seriesId } = useParams();
   const location = useLocation();
-  const isRootPath = location.pathname === '/' || seriesId || location.pathname.startsWith('/pro');
+  const isRootPath = location.pathname === '/' || seriesId;
 
   useEffect(() => {
     // Close navigation bar whenever the route changes
