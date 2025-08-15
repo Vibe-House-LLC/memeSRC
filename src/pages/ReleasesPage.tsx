@@ -20,12 +20,9 @@ import {
 } from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import DownloadIcon from '@mui/icons-material/Download';
-import NewReleasesIcon from '@mui/icons-material/NewReleases';
-import BugReportIcon from '@mui/icons-material/BugReport';
-import FeaturesIcon from '@mui/icons-material/AutoAwesome';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import { formatDistanceToNow } from 'date-fns';
+ 
 
 type ReleaseType = 'major' | 'minor' | 'patch';
 type ReleaseColor = 'error' | 'warning' | 'success' | 'info';
@@ -124,22 +121,14 @@ export default function ReleasesPage(): React.ReactElement {
     const version = tagName.replace(/^v/, '');
     const parts = version.split('.');
     if (parts.length >= 3) {
-      const [major, minor, patch] = parts;
+      const [, minor, patch] = parts;
       if (patch === '0' && minor === '0') return 'major';
       if (patch === '0') return 'minor';
     }
     return 'patch';
   };
 
-  const getReleaseIcon = (type: ReleaseType, isPrerelease: boolean, isDraft: boolean): React.ReactNode => {
-    if (isDraft) return <BugReportIcon />;
-    if (isPrerelease) return <FeaturesIcon />;
-    switch (type) {
-      case 'major': return <NewReleasesIcon />;
-      case 'minor': return <NewReleasesIcon />;
-      default: return <NewReleasesIcon />;
-    }
-  };
+  
 
   const getReleaseColor = (type: ReleaseType, isPrerelease: boolean, isDraft: boolean): ReleaseColor => {
     if (isDraft) return 'error';
@@ -412,9 +401,6 @@ export default function ReleasesPage(): React.ReactElement {
             <Stack spacing={{ xs: 2, sm: 2.5, md: 3 }}>
               {releases.map((release, index) => {
                 const title = String(release.name || release.tag_name || 'Untitled Release');
-                const timeAgo = release.published_at 
-                  ? formatDistanceToNow(new Date(release.published_at), { addSuffix: true })
-                  : 'Draft';
                 const timeAgoCompact = formatRelativeTimeCompact(release.published_at);
                 const isDraft = Boolean(release.draft);
                 const isPrerelease = Boolean(release.prerelease);
