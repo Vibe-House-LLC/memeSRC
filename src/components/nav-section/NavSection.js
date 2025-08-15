@@ -1,11 +1,12 @@
 import PropTypes from 'prop-types';
-import { Link, NavLink as RouterLink } from 'react-router-dom';
+import { NavLink as RouterLink } from 'react-router-dom';
 // @mui
 import { Box, List, ListItemText, Typography, Chip } from '@mui/material';
 //
-import { Fragment, useContext, useEffect } from 'react';
+import { Fragment, useContext } from 'react';
 import { StyledNavItem, StyledNavItemIcon } from './styles';
 import { UserContext } from '../../UserContext';
+import CollageNavTeaser from './CollageNavTeaser';
 
 // ----------------------------------------------------------------------
 
@@ -62,6 +63,11 @@ NavItem.propTypes = {
 
 function NavItem({ item }) {
   const { title, path, icon, info, chipText, chipColor, externalLink } = item;
+
+  // Use special teaser for collage tool
+  if (title === 'collage') {
+    return <CollageNavTeaser />;
+  }
 
   return (
     <>

@@ -1,66 +1,24 @@
-import MuiAlert from '@mui/material/Alert';
 import PropTypes from 'prop-types';
-import { forwardRef, useContext, useEffect, useRef, useState } from 'react';
-import { Box, Button, Chip, Divider, Fab, Popover, Stack, Typography, css, useTheme } from '@mui/material';
-import { AutoFixHighRounded, Close, SupervisedUserCircle, Verified } from '@mui/icons-material';
-import { API } from 'aws-amplify';
+import { useContext, useState } from 'react';
+import { Box, Chip, Divider, Fab, Popover, Stack, Typography, useTheme } from '@mui/material';
+import { AutoFixHighRounded, Close } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
 import { MagicPopupContext } from '../../MagicPopupContext';
-import { SnackbarContext } from '../../SnackbarContext';
 import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
-
-const Alert = forwardRef((props, ref) =>
-    <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />
-);
 
 MagicPopup.propTypes = {
     children: PropTypes.element
 }
 
 export default function MagicPopup({ children }) {
-    const location = useLocation();
     const navigate = useNavigate();
     const [magicToolsPopoverAnchorEl, setMagicToolsPopoverAnchorEl] = useState(null);
     const { user } = useContext(UserContext);
-    const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
+    const [loadingSubscriptionUrl] = useState(false);
     const theme = useTheme();
     const { openSubscriptionDialog } = useSubscribeDialog();
-    const magicPopupRef = useRef(null);
-
-    useEffect(() => {
-      if (
-        location.pathname === '/pro' &&
-        user !== null &&
-        user.userDetails?.subscriptionStatus === 'active'
-      ) {
-        // console.log(user.userDetails);
-        // Set the anchorEl to magicPopup if the element with ID 'magicPopup' exists
-        const magicPopupElement = document.getElementById('magicChip');
-        if (magicPopupElement) {
-          setMagicToolsPopoverAnchorEl(magicPopupElement);
-        } else {
-          setMagicToolsPopoverAnchorEl(null);
-        }
-      }
-    }, [user, location]);
-
-    const logIntoCustomerPortal = () => {
-        setLoadingSubscriptionUrl(true)
-        API.post('publicapi', '/user/update/getPortalLink', {
-            body: {
-                currentUrl: window.location.href
-            }
-        }).then(results => {
-            console.log(results)
-            setLoadingSubscriptionUrl(false)
-            window.location.href = results
-        }).catch(error => {
-            console.log(error.response)
-            setLoadingSubscriptionUrl(false)
-        })
-    }
 
     const handleSubscribe = () => {
         openSubscriptionDialog();
@@ -97,6 +55,7 @@ export default function MagicPopup({ children }) {
                     color="secondary"
                     aria-label="close"
                     onClick={() => setMagicToolsPopoverAnchorEl(null)}
+                    disabled={!!loadingSubscriptionUrl}
                     sx={{
                         position: 'absolute',
                         top: theme.spacing(1),
@@ -320,12 +279,15 @@ export default function MagicPopup({ children }) {
                             // </Button>
                             <LoadingButton
                                 loading={loadingSubscriptionUrl}
-                                onClick={logIntoCustomerPortal}
+                                onClick={() => { 
+                                    navigate('/account');
+                                    setMagicToolsPopoverAnchorEl(null);
+                                }}
                                 variant="contained"
                                 size="large"
                                 fullWidth
                             >
-                                Manage Subscription
+                                Manage Account
                             </LoadingButton>
                         ) : (
                             <>

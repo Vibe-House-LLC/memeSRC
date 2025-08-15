@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { styled } from '@mui/material/styles';
@@ -72,7 +73,7 @@ export default function InpaintingPage() {
     const image = new Image();
     image.crossOrigin = 'anonymous';
     image.src = newImageSrc;
-    image.onload = function () {
+    image.onload = () => {
       const fabricImage = new fabric.Image(image);
 
       // Scale image to fit canvas
@@ -184,7 +185,7 @@ export default function InpaintingPage() {
 
     const image = new Image();
     image.src = temporaryURL;
-    image.onload = function () {
+    image.onload = () => {
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
 

@@ -3,8 +3,7 @@
 import { Buffer } from "buffer";
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CircularProgress, Container, Typography, Card, CardMedia, CardContent, Button, Grid, useMediaQuery, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText, Skeleton } from '@mui/material';
-import PropTypes from 'prop-types';
+import { Container, Typography, Card, CardMedia, CardContent, Button, Grid, Box, Skeleton } from "@mui/material";
 import { Storage } from "aws-amplify";
 import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
@@ -14,9 +13,6 @@ import getV2Metadata from '../utils/getV2Metadata';
 import EpisodePageBannerAd from '../ads/SearchPageBannerAd';
 import EpisodePageResultsAd from '../ads/SearchPageResultsAd';
 
-V2EpisodePage.propTypes = {
-  setSeriesTitle: PropTypes.func.isRequired,
-};
 
 const formatTimecode = (frameId, fps) => {
   const totalSeconds = Math.floor(frameId / fps);
@@ -27,7 +23,7 @@ const formatTimecode = (frameId, fps) => {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-export default function V2EpisodePage({ setSeriesTitle }) {
+export default function V2EpisodePage() {
   const { user } = useContext(UserContext);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,11 +33,10 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   const [subtitles, setSubtitles] = useState([]);
   const [lastPrev, setLastPrev] = useState(null);
   const [lastNext, setLastNext] = useState(null);
-  const [firstFrame, setFirstFrame] = useState(1);
+  const firstFrame = 1;
   const [lastFrame, setLastFrame] = useState(null);
   const [imagesLoaded, setImagesLoaded] = useState({});
   const fps = 10; // Frames per second
-  const isMd = useMediaQuery(theme => theme.breakpoints.up('md'));
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -191,8 +186,12 @@ export default function V2EpisodePage({ setSeriesTitle }) {
   };
 
   const injectAds = (results, adInterval) => {
-    const injectedResults = [];
+    // Skip ad injection for active subscribers
+    if (user?.userDetails?.subscriptionStatus === 'active') {
+      return results;
+    }
 
+    const injectedResults = [];
     for (let i = 0; i < results.length; i += 1) {
       injectedResults.push(results[i]);
 
@@ -204,7 +203,7 @@ export default function V2EpisodePage({ setSeriesTitle }) {
     return injectedResults;
   };
 
-  const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 9 : Infinity;
+  const adInterval = 9;
   const resultsWithAds = injectAds(results, adInterval);
 
   const handleImageLoad = (fid) => {
@@ -223,11 +222,6 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         {cid} <br />
         <span style={{ fontSize: '18px' }}>Season {season}, Episode {episode}</span>
       </Typography>
-      {user?.userDetails?.subscriptionStatus !== 'active' && (
-        <Box marginBottom="20px">
-          <EpisodePageBannerAd />
-        </Box>
-      )}
       <Box marginBottom="20px">
         {parseInt(frame, 10) > firstFrame && (
           <Button
@@ -313,11 +307,11 @@ export default function V2EpisodePage({ setSeriesTitle }) {
         </Grid>
       )}
 
-      {resultsWithAds.length > 0 && user?.userDetails?.subscriptionStatus !== 'active' && (
         <Box marginTop="20px">
-          <EpisodePageBannerAd />
+          {user?.userDetails?.subscriptionStatus !== 'active' && (
+            <EpisodePageBannerAd />
+          )}
         </Box>
-      )}
 
       <Box marginTop="20px">
         <Button

@@ -245,6 +245,22 @@
           ],
           "category": "function",
           "resourceName": "memesrcRecoverUsername"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcAggregateVotes"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -646,6 +662,11 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcVoteSearchSeries": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcc3c71449PostConfirmation": {
       "build": true,
       "providerPlugin": "awscloudformation",
@@ -779,7 +800,23 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcAggregateVotes_opensearchUser": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAggregateVotes"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcAggregateVotes_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAggregateVotes"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAggregateVotes_secretsPathAmplifyAppId": {
       "usedBy": [
         {
           "category": "function",
@@ -1160,6 +1197,38 @@
         {
           "category": "function",
           "resourceName": "memesrcUserFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVoteSearchSeries_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVoteSearchSeries_opensearchUser": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVoteSearchSeries_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcVoteSearchSeries_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcVoteSearchSeries"
         }
       ]
     },

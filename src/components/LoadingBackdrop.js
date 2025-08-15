@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { Backdrop, Typography, Stack, LinearProgress, Box } from '@mui/material';
 import Logo from './logo';
 import MagicToolsLoadingAd from '../ads/MagicToolsLoadingAd';
@@ -9,17 +10,20 @@ function LoadingBackdrop({ open, duration = 20 }) {
     const [progress, setProgress] = useState(0);
     const [progressVariant, setProgressVariant] = useState('determinate');
     const [messageIndex, setMessageIndex] = useState(0);
-    const messages = [
+    
+    const messages = useMemo(() => [
         "Generating 2 results...",
         "This will take a few seconds...",
         "Magic is hard work, you know?",
         "Just about done!",
         // "I'm gettin' too old for this shit.",
         "Hang tight, wrapping up...",
-    ];
+    ], []);
 
     // Calculate the percentage intervals at which to change messages, excluding the last message
-    const messagePercentages = Array.from({ length: messages.length - 2 }, (_, index) => (index + 1) * (100 / (messages.length - 1)));
+    const messagePercentages = useMemo(() => 
+        Array.from({ length: messages.length - 2 }, (_, index) => (index + 1) * (100 / (messages.length - 1)))
+    , [messages.length]);
 
     useEffect(() => {
         if (open) {
@@ -29,6 +33,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
         }
     }, [open]);
 
+    // Progress bar effect with synchronized message progression
     useEffect(() => {
         if (!open) return () => { };
 
@@ -45,10 +50,18 @@ function LoadingBackdrop({ open, duration = 20 }) {
                     return 100;
                 }
 
-                // Check if we've reached or passed the next message percentage
-                if (messageIndex < messagePercentages.length && newProgress >= messagePercentages[messageIndex]) {
-                    setMessageIndex((prevIndex) => prevIndex + 1);
+                // Calculate which message should be shown based on current progress
+                let targetMessageIndex = 0;
+                for (let i = 0; i < messagePercentages.length; i+=1) {
+                    if (newProgress >= messagePercentages[i]) {
+                        targetMessageIndex = i + 1;
+                    } else {
+                        break;
+                    }
                 }
+                
+                // Update message index if it should change
+                setMessageIndex(targetMessageIndex);
 
                 return newProgress;
             });
@@ -57,7 +70,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
         return () => {
             clearInterval(progressTimer);
         };
-    }, [duration, open, messagePercentages, messages]);
+    }, [duration, open, messagePercentages, messages.length]);
 
     return (
         <Backdrop
@@ -101,5 +114,10 @@ function LoadingBackdrop({ open, duration = 20 }) {
         </Backdrop>
     );
 }
+
+LoadingBackdrop.propTypes = {
+    open: PropTypes.bool,
+    duration: PropTypes.number,
+};
 
 export default LoadingBackdrop;

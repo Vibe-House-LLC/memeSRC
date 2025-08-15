@@ -1,15 +1,13 @@
 import { API } from 'aws-amplify';
 import React, { useState, useCallback, useEffect, useContext, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
-import useSearchDetails from '../hooks/useSearchDetails';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { UserContext } from '../UserContext';
-import { useShows } from '../contexts/useShows';
 
 const prepSessionID = async () => {
-  let sessionID;
   if (!("sessionID" in sessionStorage)) {
     API.get('publicapi', '/uuid')
       .then(generatedSessionID => {
@@ -24,24 +22,32 @@ const prepSessionID = async () => {
 };
 
 export default function SearchPage({ metadata }) {
-  const { setSearchQuery } = useSearchDetails();
-  const { user, defaultShow, shows } = useContext(UserContext)
+  const { defaultShow, shows } = useContext(UserContext)
   const [searchTerm, setSearchTerm] = useState('');
   const [seriesTitle, setSeriesTitle] = useState(shows.some(show => show.isFavorite) ? defaultShow : '_universal');
   const { savedCids, setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
 
-  // useEffect(() => {
-  //   console.log(shows.some(show => show.isFavorite))
-  // }, []);
-
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Make sure API functions are warm
-    API.get('publicapi', '/search', { queryStringParameters: { warmup: true } })
-    API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
-    // Prep sessionID for future use
-    prepSessionID()
+    const runWarmups = () => {
+      API.get('publicapi', '/search', { queryStringParameters: { warmup: true } })
+      API.get('publicapi', '/random', { queryStringParameters: { warmup: true } })
+      // Prep sessionID for future use
+      prepSessionID()
+    }
+
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(runWarmups)
+      : setTimeout(runWarmups, 1000)
+
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId)
+      }
+    }
   }, [])
 
   const handleSearch = useCallback((e) => {
@@ -51,24 +57,7 @@ export default function SearchPage({ metadata }) {
 
     setV2SearchQuery(searchTerm)
     const encodedSearchTerms = encodeURI(searchTerm)
-    // console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
-    // console.log(seriesTitle)
-
-    // const v2 = shows?.find(obj => obj.id === seriesTitle) || savedCids?.find(obj => obj.id === seriesTitle)
-
-    // if (v2 && v2?.version === 2) {
-    //   setV2SearchQuery(searchTerm)
-    //   const encodedSearchTerms = encodeURI(searchTerm)
-    //   console.log(`Navigating to: '${`/v2/search/${seriesTitle}/${encodedSearchTerms}`}'`)
-    //   navigate(`/v2/search/${seriesTitle}/${encodedSearchTerms}`)
-    // } else {
-    //   setSearchQuery(searchTerm)
-    //   const encodedSearchTerms = encodeURI(searchTerm)
-    //   console.log(`Navigating to: '${`/search/${seriesTitle}/${encodedSearchTerms}`}'`)
-    //   navigate(`/search/${seriesTitle}/${encodedSearchTerms}`)
-    // }
-
   }, [seriesTitle, searchTerm, navigate, savedCids]);
 
   const memoizedFullScreenSearch = useMemo(() => (
@@ -92,3 +81,7 @@ export default function SearchPage({ metadata }) {
     </>
   );
 }
+
+SearchPage.propTypes = {
+  metadata: PropTypes.array,
+};

@@ -1,14 +1,12 @@
 // component
-import { Article, Ballot, CardGiftcard, Create, DocumentScanner, Edit, Favorite, FolderShared, Grid3x3, Grid4x4, MapsUgc, PhotoAlbum, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, SupportAgent, Upload } from '@mui/icons-material';
+import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
 
 const icon = (name) => <SvgColor src={`/assets/icons/navbar/${name}.svg`} sx={{ width: 1, height: 1 }} />;
 
-const isElectron = () => {
-  return window && window.process && window.process.type;
-};
+const isElectron = () => window && window.process && window.process.type;
 
 const navConfig = [
   {
@@ -20,8 +18,16 @@ const navConfig = [
         path: '/collage',
         externalLink: false,
         icon: <PhotoLibrary />,
-        chipText: 'Pro',
+        chipText: 'UPDATED',
         chipColor: 'info',
+      },
+      {
+        title: 'Favorites',
+        path: '/favorites',
+        externalLink: false,
+        // chipText: 'Pro',
+        chipColor: 'info',
+        icon: <Star />
       },
       {
         title: 'search',
@@ -35,12 +41,6 @@ const navConfig = [
         externalLink: false,
         icon: <Edit />,
       },
-      {
-        title: 'Vote',
-        path: '/vote',
-        externalLink: false,
-        icon: <Ballot />
-      },
       ...(isElectron() ? [{
         title: 'Server',
         path: '/server',
@@ -53,6 +53,12 @@ const navConfig = [
     sectionTitle: 'Contribute',
     adminOnly: false,
     items: [
+      {
+        title: 'Vote',
+        path: '/vote',
+        externalLink: false,
+        icon: <Ballot />
+      },
       {
         title: 'upload',
         path: '/contribute',
@@ -87,8 +93,8 @@ const navConfig = [
       },
       {
         title: 'Feedback',
-        path: 'https://forms.gle/8CETtVbwYoUmxqbi7',
-        externalLink: true,
+        path: '/support',
+        externalLink: false,
         icon: <MapsUgc />
       },
     ]
@@ -98,6 +104,12 @@ const navConfig = [
     sectionTitle: 'Admin',
     adminOnly: true,
     items: [
+      {
+        title: 'Library',
+        path: '/library',
+        externalLink: false,
+        icon: <Collections />,
+      },
       {
         title: 'dashboard',
         path: '/dashboard/app',

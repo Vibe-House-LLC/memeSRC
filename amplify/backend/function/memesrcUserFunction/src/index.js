@@ -89,40 +89,41 @@ async function processVotes({ allItems, userSub }) {
   const currentUserVotesUp = {};
   const currentUserVotesDown = {};
   const lastUserVoteTimestamps = {};
-  const lastBoostValue = {};
+  const lastBoostValues = {}; // Changed to plural
   const nextVoteTime = {};
-
-  // console.log(`allItems: ${JSON.stringify(allItems)}`)
 
   const seriesIds = new Set(allItems.map(item => item.seriesUserVoteSeriesId));
   const isLastUserVoteOlderThan24Hours = {};
   seriesIds.forEach(id => isLastUserVoteOlderThan24Hours[id] = true);
 
   allItems.forEach((vote) => {
-    // console.log(vote)
+    const seriesId = vote.seriesUserVoteSeriesId;
+
     if (vote.boost > 0) {
-      currentUserVotesUp[vote.seriesUserVoteSeriesId] = (currentUserVotesUp[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      currentUserVotesUp[seriesId] = (currentUserVotesUp[seriesId] || 0) + vote.boost;
+      votesCountUp[seriesId] = (votesCountUp[seriesId] || 0) + vote.boost;
     } else if (vote.boost < 0) {
-      currentUserVotesDown[vote.seriesUserVoteSeriesId] = (currentUserVotesDown[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+      currentUserVotesDown[seriesId] = (currentUserVotesDown[seriesId] || 0) + Math.abs(vote.boost);
+      votesCountDown[seriesId] = (votesCountDown[seriesId] || 0) + Math.abs(vote.boost);
     }
 
-    votesCount[vote.seriesUserVoteSeriesId] = (votesCount[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
-
-    currentUserVotes[vote.seriesUserVoteSeriesId] = (currentUserVotes[vote.seriesUserVoteSeriesId] || 0) + vote.boost;
+    votesCount[seriesId] = (votesCount[seriesId] || 0) + vote.boost;
+    currentUserVotes[seriesId] = (currentUserVotes[seriesId] || 0) + vote.boost;
 
     const voteTime = new Date(vote.createdAt);
-    if (!lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] || voteTime > lastUserVoteTimestamps[vote.seriesUserVoteSeriesId]) {
-      lastUserVoteTimestamps[vote.seriesUserVoteSeriesId] = voteTime;
-      lastBoostValue[vote.seriesUserVoteSeriesId] = vote.boost;
+    if (!lastUserVoteTimestamps[seriesId] || voteTime > lastUserVoteTimestamps[seriesId]) {
+      lastUserVoteTimestamps[seriesId] = voteTime;
+      lastBoostValues[seriesId] = vote.boost; // Store the last boost value
+
       const currentTime = new Date().getTime();
       const diffInHours = (currentTime - voteTime.getTime()) / (1000 * 60 * 60);
-      isLastUserVoteOlderThan24Hours[vote.seriesUserVoteSeriesId] = diffInHours > 24;
+      isLastUserVoteOlderThan24Hours[seriesId] = diffInHours > 24;
 
-      // calculate next vote time
+      // Calculate next vote time
       if (diffInHours < 24) {
-        nextVoteTime[vote.seriesUserVoteSeriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
+        nextVoteTime[seriesId] = new Date(voteTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
       } else {
-        nextVoteTime[vote.seriesUserVoteSeriesId] = null;
+        nextVoteTime[seriesId] = null;
       }
     }
   });
@@ -137,7 +138,7 @@ async function processVotes({ allItems, userSub }) {
     currentUserVotesDown,
     lastUserVoteTimestamps,
     isLastUserVoteOlderThan24Hours,
-    lastBoostValue,
+    lastBoostValues, // Changed to plural
     nextVoteTime
   };
 }
@@ -540,163 +541,607 @@ export const handler = async (event) => {
   if (path === `/${process.env.ENV}/public/vote`) {
     const seriesId = body.seriesId;
     const boost = body.boost;
+    
+    // Validate boost value and calculate cost
+    const absBoost = Math.abs(boost);
+    let boostCost = 0;
+    
+    if (absBoost === 1) {
+        boostCost = 0;  // Free
+    } else if (absBoost === 5) {
+        boostCost = 1;  // 1 credit
+    } else if (absBoost === 10) {
+        boostCost = 2;  // 2 credits
+    } else {
+        response = {
+            statusCode: 400,
+            body: {
+                name: 'InvalidBoostValue',
+                message: 'Boost value must be 1, 5, or 10 (or their negative counterparts).',
+            },
+        };
+        return response;
+    }
 
-    // console.log('LOAD USER');
+    // Fetch user details
+    console.log(`Fetching user details for userSub: ${userSub}`);
     const userDetails = await makeRequest(getUserDetails({ subId: userSub }));
-    // console.log('User Details:', userDetails);
+    const userData = userDetails.body.data.getUserDetails;
+    const userCredits = userData.credits || 0;
 
-    // console.log('SEPARATE USER VOTES');
-    const usersVotes = userDetails.body.data.getUserDetails.votes.items;
-    // console.log('User Votes:', usersVotes);
+    // Check if user has enough credits for the boost
+    if (boostCost > 0 && userCredits < boostCost) {
+        console.log(`User does not have enough credits. Required: ${boostCost}, Available: ${userCredits}`);
+        response = {
+            statusCode: 403,
+            body: {
+                name: 'InsufficientCredits',
+                message: `You need ${boostCost} credits for this boost. You have ${userCredits} credits.`,
+            },
+        };
+        return response;
+    }
 
-    // console.log('CHECK IF VOTE EXISTS FOR SERIES ID');
+    // Extract user votes
+    const usersVotes = userData.votes.items;
+    console.log(`User votes fetched: ${JSON.stringify(usersVotes)}`);
+
+    // Determine if the user can vote based on the last vote time
     const lastVote = usersVotes
       ?.filter((item) => item.series?.id === seriesId)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-    // console.log('Last Vote:', lastVote);
 
-    // Check if the last vote was more than 24 hours ago
+    const currentTime = new Date().toISOString();
+    console.log(`Current time: ${currentTime}`);
+
     let canVote = false;
     if (lastVote) {
       const voteTime = new Date(lastVote.createdAt);
-      // console.log(`Last Vote Time: ${voteTime}`)
-      const diffInHours = (new Date() - voteTime) / 1000 / 60 / 60;
-      // console.log(`diffInHours: ${diffInHours}`)
+      const diffInHours = (new Date() - voteTime) / (1000 * 60 * 60);
+      console.log(`Last vote time: ${voteTime}, Diff in hours: ${diffInHours}`);
       canVote = diffInHours >= 24;
     } else {
       canVote = true;
     }
 
-    // console.log('Can Vote:', canVote);
+    console.log(`User can vote: ${canVote}`);
 
     if (canVote) {
-      // console.log('CREATE VOTE QUERY');
-      const createVote = `
-        mutation createSeriesUserVote {
-            createSeriesUserVote(input: {userDetailsVotesId: "${userSub}", seriesUserVoteSeriesId: "${seriesId}", boost: ${boost > 0 ? 1 : -1
-        }}) {
-              id
+        // Deduct credits if boost costs anything
+        if (boostCost > 0) {
+            const updateUserCreditsQuery = `
+                mutation updateUserDetails {
+                    updateUserDetails(input: {
+                        id: "${userSub}",
+                        credits: ${userCredits - boostCost}
+                    }) {
+                        id
+                        credits
+                    }
+                }
+            `;
+            
+            console.log(`Deducting ${boostCost} credits from user`);
+            const updateCreditsResponse = await makeRequest(updateUserCreditsQuery);
+            
+            if (updateCreditsResponse.statusCode !== 200) {
+                console.log('Failed to update user credits');
+                response = {
+                    statusCode: 500,
+                    body: {
+                        name: 'CreditUpdateFailed',
+                        message: 'Failed to process credit deduction.',
+                    },
+                };
+                return response;
             }
         }
-      `;
-      // console.log('Create Vote Query:', createVote);
 
-      // Hit GraphQL to place vote
-      response = await makeRequest(createVote);
-      // console.log('Vote Response:', response);
+        // Create SeriesUserVote Mutation
+        const createVote = `
+          mutation createSeriesUserVote {
+            createSeriesUserVote(input: {
+              userDetailsVotesId: "${userSub}",
+              seriesUserVoteSeriesId: "${seriesId}",
+              boost: ${boost}
+            }) {
+              id
+            }
+          }
+        `;
+
+        console.log(`Creating vote with boost: ${boost}`);
+        // Execute the mutation
+        response = await makeRequest(createVote);
+
+        // Update user-specific vote aggregation
+        const getUserVoteAggregationQuery = `
+          query GetAnalyticsMetrics {
+            getAnalyticsMetrics(id: "userVotes#${userSub}#${seriesId}") {
+              value
+            }
+          }
+        `;
+
+        console.log(`Fetching user vote aggregation for seriesId: ${seriesId}`);
+        const userVoteAggregation = await makeRequest(getUserVoteAggregationQuery);
+        let currentUserVotes = { upvotes: 0, downvotes: 0, lastVoteTime: currentTime, lastBoost: boost };
+
+        if (userVoteAggregation.body.data.getAnalyticsMetrics) {
+          currentUserVotes = JSON.parse(userVoteAggregation.body.data.getAnalyticsMetrics.value);
+          console.log(`Current user votes before update: ${JSON.stringify(currentUserVotes)}`);
+        }
+
+        if (boost > 0) {
+          currentUserVotes.upvotes += boost;
+        } else if (boost < 0) {
+          currentUserVotes.downvotes += Math.abs(boost);
+        }
+        currentUserVotes.lastVoteTime = currentTime;
+        currentUserVotes.lastBoost = boost;
+
+        console.log(`Updated user votes: ${JSON.stringify(currentUserVotes)}`);
+
+        // Update AnalyticsMetrics Mutation for User/Series Votes
+        const updateUserVoteAggregationMutation = `
+          mutation UpsertAnalyticsMetrics($id: ID!, $value: String!) {
+            updateAnalyticsMetrics(input: {
+              id: $id,
+              value: $value
+            }) {
+              id
+              value
+            }
+          }
+        `;
+
+        const createUserVoteAggregationMutation = `
+          mutation CreateAnalyticsMetrics($id: ID!, $value: String!) {
+            createAnalyticsMetrics(input: {
+              id: $id,
+              value: $value
+            }) {
+              id
+              value
+            }
+          }
+        `;
+
+        const userVoteVariables = {
+          id: `userVotes#${userSub}#${seriesId}`,
+          value: JSON.stringify(currentUserVotes)
+        };
+
+        console.log(`Attempting to update user vote aggregation`);
+        let updateUserVoteResponse = await makeRequestWithVariables(updateUserVoteAggregationMutation, userVoteVariables);
+
+        if (updateUserVoteResponse.statusCode === 400) {
+          console.log('User vote aggregation does not exist. Creating a new one.');
+          updateUserVoteResponse = await makeRequestWithVariables(createUserVoteAggregationMutation, userVoteVariables);
+        }
+        console.log(`User vote aggregation update response: ${JSON.stringify(updateUserVoteResponse)}`);
+
+        // Update overall series vote aggregation
+        const getSeriesVoteAggregationQuery = `
+          query GetAnalyticsMetrics {
+            getAnalyticsMetrics(id: "totalVotes-${seriesId}") {
+              value
+            }
+          }
+        `;
+
+        console.log(`Fetching series vote aggregation for seriesId: ${seriesId}`);
+        const seriesVoteAggregation = await makeRequest(getSeriesVoteAggregationQuery);
+        let currentSeriesVotes = { upvotes: 0, downvotes: 0 };
+
+        if (seriesVoteAggregation.body.data.getAnalyticsMetrics) {
+          currentSeriesVotes = JSON.parse(seriesVoteAggregation.body.data.getAnalyticsMetrics.value);
+          console.log(`Current series votes before update: ${JSON.stringify(currentSeriesVotes)}`);
+        }
+
+        if (boost > 0) {
+          currentSeriesVotes.upvotes += boost;
+        } else if (boost < 0) {
+          currentSeriesVotes.downvotes += Math.abs(boost);
+        }
+
+        console.log(`Updated series votes: ${JSON.stringify(currentSeriesVotes)}`);
+
+        const updateSeriesVoteAggregationMutation = `
+          mutation UpsertAnalyticsMetrics($id: ID!, $value: String!) {
+            updateAnalyticsMetrics(input: {
+              id: $id,
+              value: $value
+            }) {
+              id
+              value
+            }
+          }
+        `;
+
+        const createSeriesVoteAggregationMutation = `
+          mutation CreateAnalyticsMetrics($id: ID!, $value: String!) {
+            createAnalyticsMetrics(input: {
+              id: $id,
+              value: $value
+            }) {
+              id
+              value
+            }
+          }
+        `;
+
+        const seriesVoteVariables = {
+          id: `totalVotes-${seriesId}`,
+          value: JSON.stringify(currentSeriesVotes)
+        };
+
+        console.log(`Attempting to update series vote aggregation`);
+        let updateSeriesVoteResponse = await makeRequestWithVariables(updateSeriesVoteAggregationMutation, seriesVoteVariables);
+
+        if (updateSeriesVoteResponse.statusCode === 400) {
+          console.log('Series vote aggregation does not exist. Creating a new one.');
+          updateSeriesVoteResponse = await makeRequestWithVariables(createSeriesVoteAggregationMutation, seriesVoteVariables);
+        }
+        console.log(`Series vote aggregation update response: ${JSON.stringify(updateSeriesVoteResponse)}`);
+
+        response = {
+          statusCode: 200,
+          body: JSON.stringify({
+            message: 'Vote submitted successfully',
+            userVotes: currentUserVotes,
+            seriesVotes: currentSeriesVotes,
+            creditsUsed: boostCost,
+            creditsRemaining: userCredits - boostCost
+          })
+        };
     } else {
-      // The user has already voted recently. Return a Forbidden error with details
-      response = {
-        statusCode: 403,
-        body: {
-          name: 'VoteTooRecent',
-          message: 'You can only vote once every 24 hours.',
-        },
-      };
-      // console.log('Forbidden Error:', response);
+        // The user has already voted recently. Return a Forbidden error with details
+        console.log('User has already voted recently.');
+        response = {
+            statusCode: 403,
+            body: {
+                name: 'VoteTooRecent',
+                message: 'You can only vote once every 24 hours.',
+            },
+        };
     }
   }
 
-  if (path === `/${process.env.ENV}/public/vote/list`) {
-    // To fix the issue, we need to first check if the user is auth'd. This is going to get their auth type.
-    // If they're not signed in, it will return "unauthenticated". We'll use that below to dictate what to send back.
-    const userAuth = event.requestContext.identity.cognitoAuthenticationType
+  if (path.startsWith(`/${process.env.ENV}/public/votes/`)) {
+    console.log(`Starting vote processing for path: ${path}`);
+  
+    const getAnalyticsMetricsQuery = `
+      query GetAnalyticsMetrics($id: ID!) {
+        getAnalyticsMetrics(id: $id) {
+          value
+        }
+      }
+    `;
+  
+    // Extract seriesId from the path
+    const seriesId = path.split('/').pop();
+  
+    if (seriesId) {
+      const metricId = `totalVotes-${seriesId}`;
+      const userMetricId = `userVotes#${userSub}#${seriesId}`;
+      
+      try {
+        const [totalVotesResponse, userVotesResponse] = await Promise.all([
+          makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId }),
+          makeRequestWithVariables(getAnalyticsMetricsQuery, { id: userMetricId })
+        ]);
+  
+        if (totalVotesResponse.statusCode === 200 && totalVotesResponse.body.data.getAnalyticsMetrics) {
+          const totalVotes = JSON.parse(totalVotesResponse.body.data.getAnalyticsMetrics.value);
+          let responseData = {
+            total_upvotes: totalVotes.upvotes,
+            total_downvotes: totalVotes.downvotes,
+            userUpvotes: 0,
+            userDownvotes: 0,
+            userLastVoteTime: null,
+            userLastBoost: null
+          };
+  
+          if (userVotesResponse.statusCode === 200 && userVotesResponse.body.data.getAnalyticsMetrics) {
+            const userVotes = JSON.parse(userVotesResponse.body.data.getAnalyticsMetrics.value);
+            responseData.userUpvotes = userVotes.upvotes;
+            responseData.userDownvotes = userVotes.downvotes;
+            responseData.userLastVoteTime = userVotes.lastVoteTime;
+            responseData.userLastBoost = userVotes.lastBoost;
+          }
+  
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(responseData)
+          };
+        } else {
+          response = {
+            statusCode: 404,
+            body: JSON.stringify({ error: `Votes data not found for series ${seriesId}` })
+          };
+        }
+      } catch (error) {
+        console.error(`Error fetching votes for series ${seriesId}: ${error.message}`);
+        response = {
+          statusCode: 500,
+          body: JSON.stringify({ error: `Failed to fetch votes for series ${seriesId}: ${error.message}` })
+        };
+      }
+    } else {
+      response = {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid path. Use /votes/{seriesId}" })
+      };
+    }
+  
+    console.log('Vote processing completed');
+  }
 
+  if (path.startsWith(`/${process.env.ENV}/public/vote/new`)) {
+    console.log(`Starting new vote processing for path: ${path}`);
+  
+    const getAnalyticsMetricsQuery = `
+      query GetAnalyticsMetrics($id: ID!) {
+        getAnalyticsMetrics(id: $id) {
+          value
+        }
+      }
+    `;
+  
+    if (path === `/${process.env.ENV}/public/vote/new/top/upvotes` || path === `/${process.env.ENV}/public/vote/new/top/battleground`) {
+      const metricId = path.endsWith('upvotes') ? 'topVotes-upvotes' : 'topVotes-battleground';
+      
+      try {
+        const analyticsResponse = await makeRequestWithVariables(getAnalyticsMetricsQuery, { id: metricId });
+  
+        if (analyticsResponse.statusCode === 200 && analyticsResponse.body.data.getAnalyticsMetrics) {
+          const topVotes = JSON.parse(analyticsResponse.body.data.getAnalyticsMetrics.value);
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(topVotes)
+          };
+        } else {
+          response = {
+            statusCode: 404,
+            body: JSON.stringify({ error: `${metricId} data not found` })
+          };
+        }
+      } catch (error) {
+        console.error(`Error fetching ${metricId}: ${error.message}`);
+        response = {
+          statusCode: 500,
+          body: JSON.stringify({ error: `Failed to fetch ${metricId}: ${error.message}` })
+        };
+      }
+    } else if (path === `/${process.env.ENV}/public/vote/new/count`) {
+      console.log('Getting vote count data');
+      
+      // Extract the seriesIds from the request body
+      let seriesIds;
+      try {
+        const body = JSON.parse(event.body);
+        seriesIds = body.seriesIds;
+      } catch (error) {
+        console.error('Error parsing request body:', error);
+      }
+      
+      if (!seriesIds || !Array.isArray(seriesIds)) {
+        response = {
+          statusCode: 400,
+          body: JSON.stringify({ error: "Missing or invalid seriesIds parameter" })
+        };
+      } else {
+        try {
+          const userVotesPromises = seriesIds.map(async (seriesId) => {
+            const userMetricId = `userVotes#${userSub}#${seriesId}`;
+            const totalMetricId = `totalVotes-${seriesId}`;
+            
+            const [userAnalyticsResponse, totalAnalyticsResponse] = await Promise.all([
+              makeRequestWithVariables(getAnalyticsMetricsQuery, { id: userMetricId }),
+              makeRequestWithVariables(getAnalyticsMetricsQuery, { id: totalMetricId })
+            ]);
+            
+            let userVotes = { upvotes: 0, downvotes: 0 };
+            let totalVotes = { upvotes: 0, downvotes: 0 };
+            
+            if (userAnalyticsResponse.statusCode === 200 && userAnalyticsResponse.body.data.getAnalyticsMetrics) {
+              userVotes = JSON.parse(userAnalyticsResponse.body.data.getAnalyticsMetrics.value);
+            }
+            
+            if (totalAnalyticsResponse.statusCode === 200 && totalAnalyticsResponse.body.data.getAnalyticsMetrics) {
+              totalVotes = JSON.parse(totalAnalyticsResponse.body.data.getAnalyticsMetrics.value);
+            }
+            
+            return { 
+              seriesId, 
+              userVotes: {
+                upvotes: userVotes.upvotes || 0,
+                downvotes: userVotes.downvotes || 0,
+                lastVoteTime: userVotes.lastVoteTime,
+                lastBoost: userVotes.lastBoost
+              },
+              totalVotes: {
+                upvotes: totalVotes.upvotes || 0,
+                downvotes: totalVotes.downvotes || 0
+              }
+            };
+          });
+
+          const userVotesResults = await Promise.all(userVotesPromises);
+
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(userVotesResults)
+          };
+        } catch (error) {
+          console.error(`Error fetching user vote data: ${error.message}`);
+          response = {
+            statusCode: 500,
+            body: JSON.stringify({ error: `Failed to fetch user vote data: ${error.message}` })
+          };
+        }
+      }
+    } else {
+      response = {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid path for /vote/new. Use /top/upvotes, /top/battleground, or /user" })
+      };
+    }
+  
+    console.log('New vote processing completed');
+  }
+
+  if (
+    path === `/${process.env.ENV}/public/vote/list` ||
+    path === `/${process.env.ENV}/public/vote/list/top`
+  ) {
+    console.log(`Starting vote list processing`);
+    // Determine if the user is authenticated
+    const userAuth = event.requestContext.identity.cognitoAuthenticationType;
+    console.log('User authentication type:', userAuth);
+  
     // Extract the seriesId from the query string parameters if present
     const seriesId = event.queryStringParameters && event.queryStringParameters.id;
-
+    console.log('Series ID:', seriesId);
+  
     try {
-      // Pass the seriesId to the getAllVotes function
-      const totalVotes = await getAllVotes(seriesId);
-
+      console.log('Fetching all votes');
+      // Fetch all votes, optionally filtered by seriesId
+      let totalVotes = await getAllVotes(seriesId);
+      console.log('Total votes fetched:', Object.keys(totalVotes).length);
+  
+      // Initialize topSeriesIds if the `/top` path is used
+      let topSeriesIds = null;
+      if (path === `/${process.env.ENV}/public/vote/list/top`) {
+        console.log('Processing top votes');
+        // Get top 100 seriesIds by total upvotes
+        const seriesIdsByUpvotes = Object.keys(totalVotes)
+          .sort((a, b) => totalVotes[b].upvotes - totalVotes[a].upvotes)
+          .slice(0, 100);
+  
+        // Get top 100 seriesIds by net votes (upvotes - downvotes)
+        const seriesIdsByNetVotes = Object.keys(totalVotes)
+          .sort((a, b) => {
+            const netVotesB = totalVotes[b].upvotes - totalVotes[b].downvotes;
+            const netVotesA = totalVotes[a].upvotes - totalVotes[a].downvotes;
+            return netVotesB - netVotesA;
+          })
+          .slice(0, 100);
+  
+        // Combine both lists to get the unique union
+        const topSeriesIdSet = new Set([...seriesIdsByUpvotes, ...seriesIdsByNetVotes]);
+        topSeriesIds = Array.from(topSeriesIdSet);
+        console.log('Number of top series IDs:', topSeriesIds.length);
+  
+        // Filter totalVotes to include only top seriesIds
+        totalVotes = Object.fromEntries(
+          Object.entries(totalVotes).filter(([id]) => topSeriesIds.includes(id))
+        );
+        console.log('Filtered total votes:', Object.keys(totalVotes).length);
+      }
+  
       if (seriesId) {
+        console.log('Returning votes for specific series ID');
         response = {
           statusCode: 200,
           body: JSON.stringify(totalVotes),
         };
       } else {
-        // Now we want to change it so that it only tries to get user votes if a users logged in.
-        // First lets set these as lets
-        let currentUserVotesUp = null
-        let currentUserVotesDown = null
-        let isLastUserVoteOlderThan24Hours = null
-        let lastBoostValue = null
-        let nextVoteTime = null
-        let lastUserVoteTimestamps = null
-        let combinedUserVotes = {};
-
+        console.log('Processing votes for all series');
+        // Initialize variables for user-specific data
+        let currentUserVotesUp = {};
+        let currentUserVotesDown = {};
+        let lastUserVoteTimestamps = {};
+        let lastBoostValues = {};
+  
         if (userAuth !== "unauthenticated") {
-          // Summarize the user's personal votes
+          console.log('Fetching user-specific vote data');
+          // Fetch and process the user's personal votes
           const userVotes = await getAllUserVotes({ subId: userSub });
-          // console.log(`userVotes: ${JSON.stringify(userVotes)}`)
-          // const userVotes = allVotes.body.data.getUserDetails.votes.items;
-
-          // console.log(totalVotes)
-          // The next change is going to be setting these values to the lets. That way they'll be null unless we hit this step.
-          // I'm going to comment out the original code in case we need to come back to it.
-          /* 
-          const {
-            currentUserVotesUp,
-            currentUserVotesDown,
-            isLastUserVoteOlderThan24Hours,
-            lastBoostValue,
-            nextVoteTime,
-            lastUserVoteTimestamps
-          } = await processVotes({ allItems: userVotes, userSub }); 
-          */
-
-          const userProcessedVotes = await processVotes({ allItems: userVotes, userSub });
-          currentUserVotesUp = userProcessedVotes.currentUserVotesUp
-          currentUserVotesDown = userProcessedVotes.currentUserVotesDown
-          isLastUserVoteOlderThan24Hours = userProcessedVotes.isLastUserVoteOlderThan24Hours
-          lastBoostValue = userProcessedVotes.lastBoostValue
-          nextVoteTime = userProcessedVotes.nextVoteTime
-          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps
-          for (let id in currentUserVotesUp) {
-            combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
+          console.log('User votes fetched:', userVotes.length);
+          const userProcessedVotes = await processVotes({
+            allItems: userVotes,
+            userSub,
+          });
+  
+          currentUserVotesUp = userProcessedVotes.currentUserVotesUp || {};
+          currentUserVotesDown = userProcessedVotes.currentUserVotesDown || {};
+          lastUserVoteTimestamps = userProcessedVotes.lastUserVoteTimestamps || {};
+          lastBoostValues = userProcessedVotes.lastBoostValues || {};
+  
+          console.log('Last Boost Values:', JSON.stringify(lastBoostValues, null, 2));
+  
+          // Filter user-specific data if topSeriesIds is defined
+          if (topSeriesIds) {
+            console.log('Filtering user-specific data for top series');
+            currentUserVotesUp = Object.fromEntries(
+              Object.entries(currentUserVotesUp).filter(([id]) => topSeriesIds.includes(id))
+            );
+            currentUserVotesDown = Object.fromEntries(
+              Object.entries(currentUserVotesDown).filter(([id]) => topSeriesIds.includes(id))
+            );
+            lastUserVoteTimestamps = Object.fromEntries(
+              Object.entries(lastUserVoteTimestamps).filter(([id]) => topSeriesIds.includes(id))
+            );
+            lastBoostValues = Object.fromEntries(
+              Object.entries(lastBoostValues).filter(([id]) => topSeriesIds.includes(id))
+            );
           }
         }
-
-        const combinedVotes = {};
-        const votesUp = {};
-        const votesDown = {};
-
+  
+        console.log('Preparing final response data');
+        // Prepare the final response mapping seriesIds to their data
+        const responseData = {};
+        const now = new Date();
+  
         for (let id in totalVotes) {
-          combinedVotes[id] = totalVotes[id].upvotes - totalVotes[id].downvotes;
-          votesUp[id] = totalVotes[id].upvotes;
-          votesDown[id] = -totalVotes[id].downvotes; // To keep the downvotes as negative
+          // Initialize default values
+          let ableToVote = true;
+          let nextVoteTime = null;
+          let lastBoost = null;
+  
+          // Calculate ableToVote, nextVoteTime, and lastBoost per seriesId if the user is authenticated
+          if (userAuth !== "unauthenticated") {
+            if (lastUserVoteTimestamps[id]) {
+              const lastVoteTime = new Date(lastUserVoteTimestamps[id]);
+              const timeSinceLastVote = now - lastVoteTime;
+              const twentyFourHours = 24 * 60 * 60 * 1000; // milliseconds
+  
+              if (timeSinceLastVote < twentyFourHours) {
+                ableToVote = false;
+                nextVoteTime = new Date(lastVoteTime.getTime() + twentyFourHours).toISOString();
+              }
+            }
+  
+            lastBoost = lastBoostValues[id] !== undefined ? lastBoostValues[id] : null;
+          }
+  
+          responseData[id] = {
+            totalVotesUp: totalVotes[id].upvotes,
+            totalVotesDown: totalVotes[id].downvotes,
+            userVotesUp: currentUserVotesUp[id] || 0,
+            userVotesDown: currentUserVotesDown[id] || 0,
+            ableToVote: ableToVote,
+            nextVoteTime: nextVoteTime,
+            lastBoost: lastBoost,
+          };
         }
-
-        // const combinedUserVotes = {};
-        // for (let id in currentUserVotesUp) {
-        //   combinedUserVotes[id] = (currentUserVotesUp[id] || 0) - (currentUserVotesDown[id] || 0);
-        // }
-
-        const result = {
-          votes: combinedVotes,
-          userVotes: combinedUserVotes,
-          votesUp: votesUp,
-          votesDown: votesDown,
-          userVotesUp: currentUserVotesUp,
-          userVotesDown: currentUserVotesDown,
-          ableToVote: isLastUserVoteOlderThan24Hours,
-          lastBoost: lastBoostValue,
-          nextVoteTime: nextVoteTime,
-          lastVoteTime: lastUserVoteTimestamps
-        };
-
+  
+        console.log('Sending response');
         response = {
           statusCode: 200,
-          body: result,
+          body: JSON.stringify(responseData),
         };
       }
     } catch (error) {
       console.log(`Failed to get votes: ${error.message}`);
       response = {
         statusCode: 500,
-        body: `Failed to get votes: ${error.message}`,
+        body: JSON.stringify({ error: `Failed to get votes: ${error.message}` }),
       };
     }
+    console.log('Vote list processing completed');
   }
 
   if (path === `/${process.env.ENV}/public/requests/add`) {
@@ -977,7 +1422,7 @@ export const handler = async (event) => {
       //   }
       // }))
       const session = await stripe.checkout.sessions.create({
-        allow_promotion_codes: true,
+        // allow_promotion_codes: true,
         success_url: `https://api.memesrc.com/${process.env.ENV}/public/stripeVerification?checkoutSessionId={CHECKOUT_SESSION_ID}`,
         cancel_url: body.currentUrl,
         customer: stripeCustomerId,
@@ -986,7 +1431,7 @@ export const handler = async (event) => {
         ],
         mode: 'subscription',
         // discounts: [{
-        //   coupon: `${process.env.ENV === 'beta' ? 'DIdAixG9' : 'GTke5f0s'}`
+        //   coupon: `${process.env.ENV === 'beta' ? '9rKTV0QH' : '1UE38YJK'}`
         // }],
         metadata: {
           callbackUrl: body.currentUrl

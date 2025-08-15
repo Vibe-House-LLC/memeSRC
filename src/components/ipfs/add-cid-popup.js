@@ -14,7 +14,7 @@ export default function AddCidPopup({ open = false, setOpen = () => { } }) {
     const navigate = useNavigate();
     const { user } = useContext(UserContext)
 
-    const { localCids, setLocalCids, savedCids, setSavedCids } = useSearchDetailsV2();
+    const { savedCids, setSavedCids } = useSearchDetailsV2();
 
     const handleClose = () => {
         setCid('')
@@ -112,5 +112,6 @@ export default function AddCidPopup({ open = false, setOpen = () => { } }) {
 }
 
 AddCidPopup.propTypes = {
-    open: PropTypes.bool
-}
+    open: PropTypes.bool,
+    setOpen: PropTypes.func,
+};

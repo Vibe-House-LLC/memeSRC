@@ -6,6 +6,7 @@ import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { UploadFile } from '@mui/icons-material';
 import Dropzone from 'react-dropzone';
 import { LoadingButton } from '@mui/lab';
+import PropTypes from 'prop-types';
 import { getSeries } from '../../../graphql/queries';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -40,9 +41,7 @@ export default function UploadToSeriesPage({ seriesId }) {
 
   const handleUpload = async () => {
     setUploading(true);
-    if (user?.['cognito:groups']?.some((element) => {
-      return element === 'admins' || element === 'mods' || element === 'contributors';
-    })) {
+    if (user?.['cognito:groups']?.some((element) => element === 'admins' || element === 'mods' || element === 'contributors')) {
       try {
         const sourceMediaInput = {
           sourceMediaSeriesId: seriesId,
@@ -221,3 +220,7 @@ export default function UploadToSeriesPage({ seriesId }) {
     </>
   );
 }
+
+UploadToSeriesPage.propTypes = {
+  seriesId: PropTypes.string,
+};

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.388.0",
-    "@aws-sdk/util-dynamodb": "^3.388.0"
+    "@aws-sdk/util-dynamodb": "^3.388.0",
+    "@opensearch-project/opensearch": "^2.12.0"
   }
 }

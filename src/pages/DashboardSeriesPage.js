@@ -1,34 +1,23 @@
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, CardHeader, Avatar, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, Card, CardContent, CircularProgress, IconButton, Collapse, Autocomplete, LinearProgress, Tabs, Tab, Box, Menu, Backdrop } from '@mui/material';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ShareIcon from '@mui/icons-material/Share';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import Popover from '@mui/material/Popover';
-import { grey } from '@mui/material/colors';
-import CardActions from '@mui/material/CardActions';
-import { styled } from '@mui/material/styles';
+import { Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, TextField, List, ListItem, ListItemText, Button, Container, Grid, Stack, Typography, CircularProgress, Tabs, Tab, Box, Menu, Backdrop } from '@mui/material';
+
 // components
 import { useState, useEffect, Fragment, useContext } from 'react';
-import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
+import { API, graphqlOperation } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
-import {
-  ArrowDropDown,
-  ChangeHistoryOutlined,
-  CheckCircle,
-  InfoOutlined,
-  ListAlt,
-  Pending,
-  Poll,
-  RequestPage,
-  StorageOutlined,
-} from '@mui/icons-material';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ChangeHistoryOutlinedIcon from '@mui/icons-material/ChangeHistoryOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import PendingIcon from '@mui/icons-material/Pending';
+import PollIcon from '@mui/icons-material/Poll';
+import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import { listSeriesData, updateSeriesData } from '../utils/migrateSeriesData';
 import Iconify from '../components/iconify';
 import { createSeries, updateSeries, deleteSeries } from '../graphql/mutations';
-import { listSeries } from '../graphql/queries';
 import { onUpdateSeries } from '../graphql/subscriptions';
 import SeriesCard from '../sections/@dashboard/series/SeriesCard';
 import { SnackbarContext } from '../SnackbarContext';
@@ -73,22 +62,12 @@ const FormMode = {
   EDIT: 'edit',
 };
 
-const ExpandMore = styled((props) => {
-  const { ...other } = props;
-  return <IconButton {...other} />;
-})(({ theme, expand }) => ({
-  transform: !expand ? 'rotate(0deg)' : 'rotate(180deg)',
-  marginLeft: 'auto',
-  transition: theme.transitions.create('transform', {
-    duration: theme.transitions.duration.shortest,
-  }),
-}));
 
-async function fetchMetadata(items = [], nextToken = null) {
+async function fetchMetadata(nextToken = null) {
   const result = await API.graphql(
     graphqlOperation(listSeriesAndSeasons, {
       filter: {},
-      limit: 10,
+      limit: 100, // Changed from 10 to 5
       nextToken
     })
   );
@@ -97,12 +76,10 @@ async function fetchMetadata(items = [], nextToken = null) {
     if (a?.name > b?.name) return 1;
     return 0;
   });
-  const allItems = [...items, ...sortedMetadata];
-  const newNextToken = result.data.listSeries.nextToken;
-  if (newNextToken) {
-    return fetchMetadata(allItems, newNextToken);
-  }
-  return allItems;
+  return {
+    items: sortedMetadata,
+    nextToken: result.data.listSeries.nextToken
+  };
 }
 
 let sub;
@@ -126,19 +103,12 @@ export default function DashboardSeriesPage() {
   const [metadataLoaded, setMetadataLoaded] = useState(false);
   const [dialogButtonText, setDialogButtonText] = useState('Next');
   const [dialogButtonLoading, setDialogButtonLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [tvdbSearchopen, setTvdbSearchOpen] = useState(false);
-  const [tvdbResults, setTvdbResults] = useState([]);
-  const [tvdbResultsLoading, setTvdbResultsLoading] = useState(false);
-  const [tvdbSearchQuery, setTvdbSearchQuery] = useState('');
   const [statusText, setStatusText] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [fileLocation, setFileLocation] = useState('');
   const [sortMethod, setSortMethod] = useState('all');
-  const [selectedIndex, setSelectedIndex] = useState(null)
   const [migrationLoading, setMigrationLoading] = useState(false);
+  const [bulkStatusDialogOpen, setBulkStatusDialogOpen] = useState(false);
+  const [newBulkStatus, setNewBulkStatus] = useState('');
+
   const { setMessage, setSeverity, setOpen } = useContext(SnackbarContext);
 
   // Options Menu
@@ -151,27 +121,10 @@ export default function DashboardSeriesPage() {
     setOptionsMenuAnchor(null);
   };
 
-  const handleExpandClick = () => {
-    setExpanded(!expanded);
-  };
-
-  const handleMoreVertClick = (event, itemIndex) => {
-    setSelectedIndex(itemIndex);
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setSelectedIndex(null);
-    setAnchorEl(null);
-  };
-
   const handleCloseForm = () => {
     setShowForm(false);
     clearForm();
   };
-
-  const open = Boolean(anchorEl);
-  const popoverId = open ? 'simple-popover' : undefined;
 
   const clearForm = () => {
     setId('');
@@ -183,10 +136,8 @@ export default function DashboardSeriesPage() {
     setSeriesImage('');
     setSeriesSeasons('');
     setMetadataLoaded(false);
-    setTvdbResults([]);
     if (sub) { sub.unsubscribe(); }
     setStatusText('');
-    setFileLocation('');
   };
 
   // ----------------------------------------------------------------------
@@ -253,9 +204,6 @@ export default function DashboardSeriesPage() {
 
   // ----------------------------------------------------------------------
 
-  const toggleForm = () => {
-    setShowForm(!showForm);
-  };
 
   const handleSubmit = (event) => {
     const seriesData = {
@@ -275,7 +223,6 @@ export default function DashboardSeriesPage() {
     }
     clearForm();
     setShowForm(false);
-    handleClose();
   };
 
   const handleGetMetadata = () => {
@@ -330,40 +277,70 @@ export default function DashboardSeriesPage() {
   };
 
   const handleDelete = (id) => {
-    deleteExistingSeries(id)
-    handleClose();
-  }
+    deleteExistingSeries(id);
+  };
 
+  // Add new state for nextToken
+  const [nextToken, setNextToken] = useState(null);
+
+  // Update the initial data loading
   useEffect(() => {
     async function getData() {
       const data = await fetchMetadata();
-      setMetadata(data);
-      setFilteredMetadata(data);
+      setMetadata(data.items);
+      setFilteredMetadata(data.items);
+      setNextToken(data.nextToken);
       setLoading(false);
     }
     getData();
   }, []);
 
-  const searchTvdb = async () => {
-    setTvdbResultsLoading(true);
-    await API.get('publicapi', '/tvdb/search', {
-      'queryStringParameters': {
-        'query': tvdbSearchQuery
-      }
-    }).then(results => {
-      console.log(results)
-      if (typeof results === 'object') {
-        setTvdbResults(results);
-        setTvdbResultsLoading(false);
-      } else {
-        setTvdbResults([]);
-        setTvdbResultsLoading(false);
-      }
-      results.forEach(element => {
-        console.log(element)
-      });
-    }).catch(error => console.log(error))
-  }
+  // Update the loadMore function
+  const loadMore = async () => {
+    if (!nextToken) return;
+    
+    setLoading(true);
+    const data = await fetchMetadata(nextToken);
+    const newMetadata = [...metadata, ...data.items];
+    setMetadata(newMetadata);
+    
+    // Apply current filter to entire dataset
+    filterMetadataByMethod(sortMethod, newMetadata);
+    
+    setNextToken(data.nextToken);
+    setLoading(false);
+  };
+
+  // Extract filter logic to reusable function
+  const filterMetadataByMethod = (method, dataToFilter) => {
+    switch (method) {
+      case 'live':
+        setFilteredMetadata(dataToFilter.filter(obj => !obj.statusText));
+        break;
+      case 'vote':
+        setFilteredMetadata(dataToFilter.filter(obj => obj.statusText === "requested"));
+        break;
+      case 'requested':
+        setFilteredMetadata(dataToFilter.filter(obj => obj.statusText === "submittedRequest"));
+        break;
+      case 'other':
+        setFilteredMetadata(dataToFilter.filter(obj => 
+          obj.statusText !== "requested" &&
+          obj.statusText !== "submittedRequest" &&
+          !!obj.statusText
+        ));
+        break;
+      default:
+        setFilteredMetadata(dataToFilter);
+    }
+  };
+
+  // Update the filterResults function to use the new helper
+  const filterResults = (event, value) => {
+    setSortMethod(value);
+    filterMetadataByMethod(value, metadata);
+  };
+
 
   const getTvdbSeasons = async () => {
     await API.get('publicapi', `/tvdb/series/${tvdbid}/extended`)
@@ -374,64 +351,13 @@ export default function DashboardSeriesPage() {
       .catch(error => console.log(error))
   }
 
-  const handleUpload = (files) => {
-    setUploading(true);
-    Storage.put(files[0].name, files[0], {
-      resumable: true,
-      level: "protected",
-      completeCallback: (event) => {
-        setUploading(false);
-        console.log('Upload Complete!');
-        Auth.currentUserCredentials().then((creds) => {
-          setUploading(false);
-          console.log(`protected/${creds.identityId}/${event.key}`);
-          setFileLocation(`protected/${creds.identityId}/${event.key}`);
-        });
-      },
-      progressCallback: (progress) => {
-        setUploadProgress(progress.loaded / progress.total * 100);
-        console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
-      },
-      errorCallback: (err) => {
-        console.error('Unexpected error while uploading', err);
-      }
-    })
-  }
 
-  useEffect(() => {
-    const timeOutId = setTimeout(() => searchTvdb(), 100);
-    return () => clearTimeout(timeOutId);
-  }, [tvdbSearchQuery]);
 
   useEffect(() => {
     if (tvdbid !== '') {
       getTvdbSeasons();
     }
   }, [tvdbid]);
-
-  const filterResults = (event, value) => {
-    setSortMethod(value)
-    switch (value) {
-      case 'live':
-        setFilteredMetadata(metadata.filter(obj => !obj.statusText));
-        break;
-      case 'vote':
-        setFilteredMetadata(metadata.filter(obj => obj.statusText === "requested"));
-        break;
-      case 'requested':
-        setFilteredMetadata(metadata.filter(obj => obj.statusText === "submittedRequest"));
-        break;
-      case 'other':
-        setFilteredMetadata(metadata.filter(obj => 
-          obj.statusText !== "requested" &&
-          obj.statusText !== "submittedRequest" &&
-          !!obj.statusText // this ensures we exclude empty or null statusText
-        ));
-        break;
-      default:
-        setFilteredMetadata(metadata);
-    }
-  }
 
   const tvdbIdMigration = () => {
     setMigrationLoading(true)
@@ -460,39 +386,53 @@ export default function DashboardSeriesPage() {
   }
 
   const handleChangeAllStatus = async () => {
-    const newStatus = prompt('Please enter the new status for all items:');
+    setBulkStatusDialogOpen(true);
+  };
 
-    if (newStatus) {
+  const handleBulkStatusUpdate = async () => {
+    if (newBulkStatus) {
       const chunks = chunkArray(filteredMetadata, 3);
 
       const updateSeriesStatus = async (seriesData) => {
-        return API.graphql(
-          graphqlOperation(onUpdateSeries, {
-            filter: { id: { eq: seriesData.id } },
-            update: { statusText: newStatus },
-          })
-        )
-          .then(() => {
-            seriesData.statusText = newStatus;
-          })
-          .catch((error) => {
-            console.warn(`Error updating series with ID ${seriesData.id}:`, error);
-          });
+        try {
+          const result = await API.graphql(
+            graphqlOperation(updateSeries, {
+              input: {
+                id: seriesData.id,
+                statusText: newBulkStatus
+              }
+            })
+          );
+          return result;
+        } catch (error) {
+          console.warn(`Error updating series with ID ${seriesData.id}:`, error);
+          return null;
+        }
       };
 
+      /* eslint-disable no-await-in-loop */
       for (let i = 0; i < chunks.length; i += 1) {
         const chunk = chunks[i];
-        // eslint-disable-next-line no-await-in-loop
         await Promise.all(chunk.map(updateSeriesStatus));
-
-        // If this is not the last chunk, add a delay
         if (i < chunks.length - 1) {
-          // eslint-disable-next-line no-await-in-loop
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
+      /* eslint-enable no-await-in-loop */
 
-      console.log('Status updated for all series.');
+      setMetadata(prevMetadata => 
+        prevMetadata.map(item => ({
+          ...item,
+          statusText: newBulkStatus
+        }))
+      );
+      filterMetadataByMethod(sortMethod, metadata);
+      
+      setMessage('Status updated for all series');
+      setSeverity('success');
+      setOpen(true);
+      setBulkStatusDialogOpen(false);
+      setNewBulkStatus('');
     }
   };
 
@@ -524,7 +464,7 @@ export default function DashboardSeriesPage() {
             aria-haspopup="true"
             onClick={handleOptionsMenuClick}
             variant="contained"
-            startIcon={<ArrowDropDown />}
+            startIcon={<ArrowDropDownIcon />}
           >
             Options
           </Button>
@@ -548,13 +488,16 @@ export default function DashboardSeriesPage() {
               </Button>
             </MenuItem>
             <MenuItem onClick={handleOptionsMenuClose}>
-              <Button fullWidth variant="contained" startIcon={<StorageOutlined />} onClick={tvdbIdMigration}>
+              <Button fullWidth variant="contained" startIcon={<StorageOutlinedIcon />} onClick={tvdbIdMigration}>
                 Migrate Data
               </Button>
             </MenuItem>
             {/* Added menu item for changing the status of all series */}
-            <MenuItem onClick={handleChangeAllStatus}>
-              <Button fullWidth variant="contained" startIcon={<ChangeHistoryOutlined />}>
+            <MenuItem onClick={() => {
+                handleChangeAllStatus();
+                handleOptionsMenuClose();
+              }}>
+              <Button fullWidth variant="contained" startIcon={<ChangeHistoryOutlinedIcon />}>
                 Change All Status
               </Button>
             </MenuItem>
@@ -571,7 +514,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <ListAlt color="success" sx={{ mr: 1 }} />
+                  <ListAltIcon color="success" sx={{ mr: 1 }} />
                   All
                 </Box>
               }
@@ -580,7 +523,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <CheckCircle color="success" sx={{ mr: 1 }} />
+                  <CheckCircleIcon color="success" sx={{ mr: 1 }} />
                   Live
                 </Box>
               }
@@ -589,7 +532,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <Poll color="warning" sx={{ mr: 1 }} />
+                  <PollIcon color="warning" sx={{ mr: 1 }} />
                   Votable
                 </Box>
               }
@@ -598,7 +541,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <Pending color="action" sx={{ mr: 1 }} />
+                  <PendingIcon color="action" sx={{ mr: 1 }} />
                   Requested
                 </Box>
               }
@@ -607,7 +550,7 @@ export default function DashboardSeriesPage() {
             <Tab
               label={
                 <Box display="flex" alignItems="center">
-                  <InfoOutlined color="error" sx={{ mr: 1 }} />
+                  <InfoOutlinedIcon color="error" sx={{ mr: 1 }} />
                   Other
                 </Box>
               }
@@ -615,7 +558,7 @@ export default function DashboardSeriesPage() {
             />
           </Tabs>
           <Grid container spacing={2}>
-            {loading
+            {loading && metadata.length === 0
               ? 'Loading'
               : filteredMetadata.map((seriesItem, index) => (
                   <SeriesCard
@@ -644,9 +587,22 @@ export default function DashboardSeriesPage() {
                   />
                 ))}
           </Grid>
+          
+          {/* Add Load More button */}
+          {nextToken && (
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+              <LoadingButton 
+                variant="contained" 
+                onClick={loadMore}
+                loading={loading}
+              >
+                Load More
+              </LoadingButton>
+            </Box>
+          )}
         </Container>
       </Container>
-      <Dialog open={showForm} onClose={handleClose}>
+      <Dialog open={showForm} onClose={handleCloseForm}>
         <DialogTitle>Create New Content Metadata</DialogTitle>
         <DialogContent>
           <form>
@@ -716,27 +672,16 @@ export default function DashboardSeriesPage() {
                     </FormControl>
                   </Grid>
 
-                  {uploading && (
-                    <>
-                      <Grid item xs={12}>
-                        <LinearProgress variant="determinate" value={uploadProgress} />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Status"
-                          fullWidth
-                          value={statusText}
-                          disabled
-                          onChange={(event) => setStatusText(event.target.value)}
-                        />
-                      </Grid>
-                    </>
-                  )}
                   {seriesSeasons &&
                     seriesSeasons.map((season) =>
                       season.type.id === 1 ? (
-                        <Grid item xs={6} md={4}>
-                          <img src={season.image} alt="season artwork" style={{ width: '100%', height: 'auto' }} />
+                        <Grid item xs={6} md={4} key={season.id}>
+                          <img
+                            src={season.image}
+                            alt="season artwork"
+                            loading="lazy"
+                            style={{ width: '100%', height: 'auto' }}
+                          />
                           <Typography component="h6" variant="h6">
                             Season {season.number}
                           </Typography>
@@ -772,6 +717,46 @@ export default function DashboardSeriesPage() {
           </Typography>
         </Box>
       </Backdrop>
+      <Dialog open={bulkStatusDialogOpen} onClose={() => setBulkStatusDialogOpen(false)}>
+        <DialogTitle>Update Status for Multiple Items</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body1" gutterBottom>
+              The following {filteredMetadata.length} items will be updated:
+            </Typography>
+            <List dense>
+              {filteredMetadata.map((item, index) => (
+                <ListItem key={index}>
+                  <ListItemText primary={`• ${item.name}`} />
+                </ListItem>
+              ))}
+            </List>
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id="bulk-status-select-label">New Status</InputLabel>
+              <Select
+                labelId="bulk-status-select-label"
+                value={newBulkStatus}
+                label="New Status"
+                onChange={(event) => setNewBulkStatus(event.target.value)}
+              >
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="inactive">Inactive</MenuItem>
+                <MenuItem value="requested">Requested</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkStatusDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleBulkStatusUpdate}
+            disabled={!newBulkStatus}
+          >
+            Update All
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

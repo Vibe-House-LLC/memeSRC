@@ -1,5 +1,6 @@
 // ShowContext.js
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import PropTypes from 'prop-types';
 import { API, graphqlOperation, Auth } from 'aws-amplify';
 import { listFavorites } from '../graphql/queries';
 import { UserContext } from '../UserContext';
@@ -38,7 +39,6 @@ const listAliasesQuery = /* GraphQL */ `
 `;
 
 const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
-const CACHE_EXPIRATION_MINUTES = 1; // Define cache expiration minutes
 
 export const ShowContext = createContext();
 
@@ -63,7 +63,7 @@ export const ShowProvider = ({ children }) => {
     async function fetchShowsFromAPI() {
         const aliases = await API.graphql({
             query: listAliasesQuery,
-            variables: { filter: {}, limit: 50 },
+            variables: { filter: {}, limit: 250 },
             authMode: 'API_KEY',
         });
 
@@ -97,6 +97,7 @@ export const ShowProvider = ({ children }) => {
             }));
 
             allFavorites = allFavorites.concat(result.data.listFavorites.items);
+            // eslint-disable-next-line prefer-destructuring
             nextToken = result.data.listFavorites.nextToken;
 
         } while (nextToken);
@@ -162,6 +163,10 @@ export const ShowProvider = ({ children }) => {
             {children}
         </ShowContext.Provider>
     );
+};
+
+ShowProvider.propTypes = {
+    children: PropTypes.node.isRequired,
 };
 
 export const useShows = () => {

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 // @mui
-import { useTheme } from '@mui/material/styles';
 import { Grid, Container, Typography } from '@mui/material';
 // Amplify
 import { API, graphqlOperation } from 'aws-amplify';
@@ -14,12 +13,8 @@ import {
   AppTasks,
   AppHomepageSectionsListPreview,
   AppOrderTimeline,
-  AppCurrentVisits,
-  AppWebsiteVisits,
   AppTrafficBySite,
   AppWidgetSummary,
-  AppCurrentSubject,
-  AppConversionRates,
 } from '../sections/@dashboard/app';
 
 // import { createGlobalMessage } from '../graphql/mutations';
@@ -55,7 +50,6 @@ export default function DashboardAppPage() {
   const [searchesDaily, setSearchesDaily] = useState()
   const [randomsDaily, setRandomsDaily] = useState()
   const [sessionsDaily, setSessionsDaily] = useState()
-  const [popularShows, setPopularShows] = useState([])
 
   const fetchAnalyticsFrameViews = async () => {
     const result = await API.graphql(
@@ -101,28 +95,6 @@ export default function DashboardAppPage() {
     setSessionsDaily(cleaned)
   }
 
-  const fetchAnalyticsPopularShows = async () => {
-    const result = await API.graphql(
-      graphqlOperation(getAnalyticsMetrics, {
-        id: 'popularShows'
-      })
-    )
-    console.log(result)
-    console.log(`POPULAR SHOWS: ${result.data.getAnalyticsMetrics.value}`)
-    const cleaned = JSON.parse(result.data.getAnalyticsMetrics.value).slice(1).map(row => {
-      return {
-        label: row[0],
-        value: parseInt(row[1], 10)
-      };
-    });
-    const cleanedSorted = cleaned.sort((a, b) => {
-      if (a.value < b.value) return 1;
-      if (a.value > b.value) return -1;
-      return 0;
-    });
-    console.log(`Cleaned and sorted: ${cleanedSorted}`)
-    setPopularShows(cleanedSorted)
-  }
 
   // Pull the homepage sections from GraphQL when the component loads
   useEffect(() => {
@@ -140,7 +112,6 @@ export default function DashboardAppPage() {
     fetchAnalyticsRandoms();
     fetchAnalyticsSearches();
     fetchAnalyticsSessions();
-    fetchAnalyticsPopularShows();
     // API.get('publicapi', '/analytics', { "queryStringParameters": { "metric": "totalFrameViews" } }).then(data => {
     //   const result = JSON.parse(data.value)[1][0]
     //   console.log(result)
@@ -175,7 +146,6 @@ export default function DashboardAppPage() {
     // })
   }, [])
 
-  const theme = useTheme();
 
   // async function createNewGlobalMessage(title, message, timestamp) {
   //   const newGlobalMessage = {
@@ -226,28 +196,6 @@ export default function DashboardAppPage() {
               <AppWidgetSummary title={`API Sessions (${process.env.REACT_APP_USER_BRANCH})`} total={sessionsDaily} color="error" icon={'ant-design:bug-filled'} />
             </Grid>
 
-            <Grid item xs={12} md={6} lg={4}>
-              <AppCurrentVisits
-                title={`Popular shows (${process.env.REACT_APP_USER_BRANCH})`}
-                chartData={popularShows}
-                chartColors={[
-                  theme.palette.primary.main,
-                  theme.palette.info.main,
-                  theme.palette.warning.main,
-                  theme.palette.error.main,
-                  theme.palette.grey[500]
-                ]}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6} lg={8}>
-              <AppConversionRates
-                title={`Frame Views per show (${process.env.REACT_APP_USER_BRANCH})`}
-                subheader="all-time"
-                chartData={popularShows}
-              />
-            </Grid>
-
             <Grid item xs={12} md={6} lg={8}>
               <AppHomepageSectionsListPreview
                 title="Homepage Sections"
@@ -287,59 +235,6 @@ export default function DashboardAppPage() {
                     icon: <Iconify icon={'eva:twitter-fill'} color="#1C9CEA" width={32} />,
                   },
                 ]}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6} lg={8}>
-              <AppWebsiteVisits
-                title="Website Visits"
-                subheader="(+43%) than last year"
-                chartLabels={[
-                  '01/01/2003',
-                  '02/01/2003',
-                  '03/01/2003',
-                  '04/01/2003',
-                  '05/01/2003',
-                  '06/01/2003',
-                  '07/01/2003',
-                  '08/01/2003',
-                  '09/01/2003',
-                  '10/01/2003',
-                  '11/01/2003',
-                ]}
-                chartData={[
-                  {
-                    name: 'Team A',
-                    type: 'column',
-                    fill: 'solid',
-                    data: [23, 11, 22, 27, 13, 22, 37, 21, 44, 22, 30],
-                  },
-                  {
-                    name: 'Team B',
-                    type: 'area',
-                    fill: 'gradient',
-                    data: [44, 55, 41, 67, 22, 43, 21, 41, 56, 27, 43],
-                  },
-                  {
-                    name: 'Team C',
-                    type: 'line',
-                    fill: 'solid',
-                    data: [30, 25, 36, 30, 45, 35, 64, 52, 59, 36, 39],
-                  },
-                ]}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6} lg={4}>
-              <AppCurrentSubject
-                title="Current Subject"
-                chartLabels={['English', 'History', 'Physics', 'Geography', 'Chinese', 'Math']}
-                chartData={[
-                  { name: 'Series 1', data: [80, 50, 30, 40, 100, 20] },
-                  { name: 'Series 2', data: [20, 30, 40, 80, 20, 80] },
-                  { name: 'Series 3', data: [44, 76, 78, 13, 43, 10] },
-                ]}
-                chartColors={[...Array(6)].map(() => theme.palette.text.secondary)}
               />
             </Grid>
 

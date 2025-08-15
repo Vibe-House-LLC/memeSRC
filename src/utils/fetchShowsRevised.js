@@ -1,5 +1,4 @@
-import { API, graphqlOperation, Auth } from 'aws-amplify';
-import { listFavorites } from '../graphql/queries';
+import { API, Auth } from 'aws-amplify';
 
 const listAliasesQuery = /* GraphQL */ `
   query ListAliases(
@@ -37,7 +36,7 @@ const listAliasesQuery = /* GraphQL */ `
 async function fetchShows() {
     const aliases = await API.graphql({
         query: listAliasesQuery,
-        variables: { filter: {}, limit: 50 },
+        variables: { filter: {}, limit: 250 },
         authMode: 'API_KEY',
     });
 
@@ -58,30 +57,9 @@ async function fetchShows() {
     return sortedMetadata;
 }
 
-async function fetchFavorites() {
-    let nextToken = null;
-    let allFavorites = [];
-
-    do {
-        // Disable ESLint check for await-in-loop
-        // eslint-disable-next-line no-await-in-loop
-        const result = await API.graphql(graphqlOperation(listFavorites, {
-            limit: 10,
-            nextToken,
-        }));
-
-        allFavorites = allFavorites.concat(result.data.listFavorites.items);
-        nextToken = result.data.listFavorites.nextToken;
-
-    } while (nextToken);
-
-    return allFavorites;
-}
 
 async function getShowsWithFavorites(favorites = []) {
     const shows = await fetchShows();
-
-    console.log(favorites)
     
     try {
         await Auth.currentAuthenticatedUser();

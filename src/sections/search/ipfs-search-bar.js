@@ -1,43 +1,19 @@
 // ipfs-search-bar.js
 
 import styled from "@emotion/styled";
-import { Link, Fab, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
-import { ArrowBack, Close, Favorite, MapsUgc, Search, Shuffle } from "@mui/icons-material";
-import { API, graphqlOperation } from 'aws-amplify';
-import { Children, cloneElement, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { LoadingButton } from "@mui/lab";
-import { Outlet, Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
+import { ArrowBack, Close, Search } from "@mui/icons-material";
+import { Children, cloneElement, useContext, useEffect, useRef, useState } from "react";
+import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { searchPropTypes } from "./SearchPropTypes";
-import Logo from "../../components/logo/Logo";
-import { contentMetadataByStatus, listContentMetadata } from '../../graphql/queries';
-import useSearchDetails from "../../hooks/useSearchDetails";
 import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
 import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
-import fetchShows from "../../utils/fetchShows";
-import useLoadRandomFrame from "../../utils/loadRandomFrame";
-import { useShows } from "../../contexts/useShows";
+import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
+import FloatingActionButtons from "../../components/floating-action-buttons/FloatingActionButtons";
 
 // Define constants for colors and fonts
-const PRIMARY_COLOR = '#4285F4';
-const SECONDARY_COLOR = '#0F9D58';
 const FONT_FAMILY = 'Roboto, sans-serif';
-
-// Create a button component
-const StyledButton = styled(LoadingButton)`
-    font-family: ${FONT_FAMILY};
-    font-size: 18px;
-    color: #fff;
-    background-color: ${SECONDARY_COLOR};
-    border-radius: 8px;
-    padding: 8px 16px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-
-    &:hover {
-      background-color: ${PRIMARY_COLOR};
-    }
-`;
 
 const StyledSearchInput = styled(InputBase)`
   font-family: ${FONT_FAMILY};
@@ -51,31 +27,6 @@ const StyledSearchInput = styled(InputBase)`
   margin-bottom: auto;
 `;
 
-const StyledLeftFooter = styled('footer')`
-    bottom: 0;
-    left: 0;
-    line-height: 0;
-    position: fixed;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: transparent;
-    z-index: 1300;
-`;
-
-const StyledRightFooter = styled('footer')`
-    bottom: 0;
-    right: 0;
-    line-height: 0;
-    position: fixed;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: transparent;
-    z-index: 1300;
-`;
 
 const StyledHeader = styled('header')(() => ({
   lineHeight: 0,
@@ -84,19 +35,27 @@ const StyledHeader = styled('header')(() => ({
   paddingBottom: '10px'
 }));
 
+const StyledAdFooter = styled(Box)`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: black;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1299;
+`;
+
 IpfsSearchBar.propTypes = searchPropTypes;
 
 export default function IpfsSearchBar(props) {
-  const { setShow: setV1Show, setSeriesTitle: setV1SeriesTitle } = useSearchDetails();
   const params = useParams();
-  // const [shows, setShows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const { children } = props
   const { pathname } = useLocation();
-  const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
-  const { show, setShow, searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? params?.cid || defaultShow : params?.cid || '_universal', setCid, localCids, setLocalCids, showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex, savedCids, loadingSavedCids } = useSearchDetailsV2();
-  const { loadRandomFrame, loadingRandom, error } = useLoadRandomFrame();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, shows, defaultShow } = useContext(UserContext);
+  const { searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? params?.cid || defaultShow : params?.cid || '_universal', setCid, selectedFrameIndex, setSelectedFrameIndex, savedCids } = useSearchDetailsV2();
+  const [searchParams] = useSearchParams();
   const searchTerm = searchParams.get('searchTerm');
 
   /* ----------------------------------- New ---------------------------------- */
@@ -117,23 +76,6 @@ export default function IpfsSearchBar(props) {
     setSearch(searchTerm)
   }, [pathname]);
 
-  useEffect(() => {
-    // Function to check and parse the local storage value
-    const checkAndParseLocalStorage = (key) => {
-      const storedValue = localStorage.getItem(key);
-      if (!storedValue) {
-        return null;
-      }
-
-      try {
-        const parsedValue = JSON.parse(storedValue);
-        return Array.isArray(parsedValue) ? parsedValue : null;
-      } catch (e) {
-        // If parsing fails, return null
-        return null;
-      }
-    };
-  });
 
   useEffect(() => {
     if (searchTerm) {
@@ -141,10 +83,6 @@ export default function IpfsSearchBar(props) {
       setSearch(searchTerm);
     }
   }, [searchTerm]);
-
-  // useEffect(() => {
-  //   console.log(cid)
-  // }, [cid]);
 
   const handleSelectSeries = (data) => {
     if (data === "editFavorites") {
@@ -164,35 +102,6 @@ export default function IpfsSearchBar(props) {
   }, [params?.subtitleIndex]);
 
 
-  /* -------------------------------------------------------------------------- */
-
-  // useEffect(() => {
-  //   async function getData() {
-  //     // Get shows
-  //     const shows = await fetchShows();
-  //     console.log(shows)
-  //     setShows(shows);
-  //     setLoading(false);
-  //   }
-  //   getData();
-  // }, []);
-
-  const getSessionID = async () => {
-    let sessionID;
-    if ("sessionID" in sessionStorage) {
-      sessionID = sessionStorage.getItem("sessionID");
-      return Promise.resolve(sessionID);
-    }
-    return API.get('publicapi', '/uuid')
-      .then(generatedSessionID => {
-        sessionStorage.setItem("sessionID", generatedSessionID);
-        return generatedSessionID;
-      })
-      .catch(err => {
-        console.log(`UUID Gen Fetch Error:  ${err}`);
-        throw err;
-      });
-  };
 
   const searchFunction = (searchEvent) => {
     searchEvent?.preventDefault();
@@ -201,21 +110,12 @@ export default function IpfsSearchBar(props) {
     return false
   }
 
+  const showAd = user?.userDetails?.subscriptionStatus !== 'active';
+
   return (
     <>
       <StyledHeader>
         <Grid container mb={1.5} paddingX={2}>
-          {/* <Grid item marginX={{ xs: 'auto', md: 0 }} marginY='auto'>
-            <Grid display='flex' xs={12} marginBottom={{ xs: 3, md: 0 }}>
-              <Link to="/" component={RouterLink} sx={{ display: 'contents' }}>
-                <Logo style={{ float: 'left' }} />
-                <Typography component='h6' variant='h6' marginY='auto' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '6px', display: 'inline' }}>
-                  memeSRC
-                </Typography>
-              </Link>
-            </Grid>
-
-          </Grid> */}
           <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
             <form onSubmit={e => searchFunction(e)}>
               <StyledSearchInput
@@ -237,9 +137,9 @@ export default function IpfsSearchBar(props) {
                   </>
                 }
                 sx={{ width: '100%' }}
-                value={search}
+                value={search || ''} // Ensure value is never null
                 onChange={(e) => {
-                  let value = e.target.value;
+                  let {value} = e.target;
 
                   // Replace curly single quotes with straight single quotes
                   value = value.replace(/[\u2018\u2019]/g, "'");
@@ -317,7 +217,7 @@ export default function IpfsSearchBar(props) {
             <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}><a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>
+            <Typography fontSize={13}><a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
             <Typography fontSize={13}><a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Support the team</a></Typography>
@@ -381,24 +281,15 @@ export default function IpfsSearchBar(props) {
           </Box>
         </Container>
       }
-      {Children.map(props.children, (child) => {
-        return cloneElement(child, { shows });
-      })}
-      <StyledLeftFooter className="bottomBtn">
-        <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-          <Fab color="primary" aria-label="feedback" style={{ margin: "0 10px 0 0", backgroundColor: "black", zIndex: '1300' }} size='medium'>
-            <MapsUgc color="white" />
-          </Fab>
-        </a>
-        <a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
-          <Fab color="primary" aria-label="donate" style={{ backgroundColor: "black", zIndex: '1300' }} size='medium'>
-            <Favorite />
-          </Fab>
-        </a>
-      </StyledLeftFooter>
-      <StyledRightFooter className="bottomBtn">
-        <StyledButton onClick={() => { loadRandomFrame(cid) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
-      </StyledRightFooter>
+      {Children.map(props.children, (child) => cloneElement(child, { shows }))}
+      <FloatingActionButtons shows={cid} showAd={showAd} />
+
+      {showAd && (
+        <StyledAdFooter>
+          <FixedMobileBannerAd />
+        </StyledAdFooter>
+      )}
+      
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
   )

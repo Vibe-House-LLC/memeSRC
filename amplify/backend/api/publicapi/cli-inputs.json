@@ -288,6 +288,34 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/votes/search": {
+      "name": "/votes/search",
+      "lambdaFunction": "memesrcVoteSearchSeries",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/votes/refresh": {
+      "name": "/votes/refresh",
+      "lambdaFunction": "memesrcAggregateVotes",
+      "permissions": {
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ]
+        },
+        "setting": "private"
+      }
     }
   }
 }

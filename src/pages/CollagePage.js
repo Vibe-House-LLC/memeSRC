@@ -1,559 +1,593 @@
-import { useContext, useEffect, useRef, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
-import {
-  Box,
-  Button,
-  Typography,
-  IconButton,
-  Fab,
-  useMediaQuery,
-  Menu,
-  MenuItem,
-  Grid,
-  Stack,
-  Alert,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-} from "@mui/material";
-import { styled } from "@mui/system";
-import { Delete, Add, ArrowBack, ArrowForward, ExpandMore, Close, Edit } from "@mui/icons-material";
+import { useTheme } from "@mui/material/styles";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, IconButton, Tooltip } from "@mui/material";
+import { Dashboard, Save, RestartAlt, Settings } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LoadingButton } from "@mui/lab";
-import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
+import { useCollage } from "../contexts/CollageContext";
+import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
+import UpgradeMessage from "../components/collage/components/UpgradeMessage";
+import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
+import { useCollageState } from "../components/collage/hooks/useCollageState";
+import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
+import CollageResultDialog from "../components/collage/components/CollageResultDialog";
 
-const CollageContainer = styled(Box)({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  marginTop: "32px",
-});
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
+const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
-const CollageImage = styled("img")({
-  maxWidth: "100%",
-  height: "auto",
-  marginBottom: "24px",
-});
+// Development utility removed - welcome screen is no longer shown for users with access
 
-const ImageContainer = styled(Box)({
-  position: "relative",
-  marginBottom: "16px",
-  "&:hover .delete-button, &:active .delete-button, &:hover .edit-button, &:active .edit-button": {
-    display: "flex",
-  },
-});
 
-const ImageWrapper = styled(Box)({
-  position: "relative",
-  width: "350px",
-  margin: "auto",
-});
 
-const UploadButton = styled(Fab)({
-  left: "50%",
-  transform: "translateX(-50%)",
-  zIndex: 1,
-});
+/**
+ * Helper function to get numeric border thickness percentage value from string/option
+ */
+const getBorderThicknessValue = (borderThickness, options) => {
+  // If it's already a number, return it as percentage
+  if (typeof borderThickness === 'number') {
+    return borderThickness;
+  }
+  
+  // Find matching option by label (case insensitive)
+  const normalizedLabel = String(borderThickness).toLowerCase();
+  const option = options.find(opt => 
+    String(opt.label).toLowerCase() === normalizedLabel
+  );
+  
+  // Return the percentage value if found, otherwise default to 2 (medium)
+  return option ? option.value : 2;
+};
 
-const EditButton = styled(IconButton)({
-  position: "absolute",
-  top: "8px",
-  right: "48px",
-  zIndex: 1,
-  backgroundColor: "white",
-  color: "blue",
-  border: "2px solid blue",
-  padding: "4px",
-  display: "none",
-  '&:hover': {
-    backgroundColor: "#e6e6ff",
-  },
-});
+// Utility function to hash username for localStorage (needed for auto-forwarding)
+const hashString = (str) => {
+  let hash = 0;
+  if (str.length === 0) return hash;
+  for (let i = 0; i < str.length; i += 1) {
+    const char = str.charCodeAt(i);
+    hash = ((hash * 33) - hash) + char;
+    hash = Math.imul(hash, 1); // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString();
+};
 
-const DeleteButton = styled(IconButton)({
-  position: "absolute",
-  top: "8px",
-  right: "8px",
-  zIndex: 1,
-  backgroundColor: "white",
-  color: "red",
-  border: "2px solid red",
-  padding: "4px",
-  display: "none",
-  '&:hover': {
-    backgroundColor: "#ffe6e6",
-  },
-});
+// Utility functions for localStorage preference management (needed for auto-forwarding)
+const getCollagePreferenceKey = (user) => {
+  if (!user?.userDetails?.email) return 'memeSRC-collage-preference-anonymous';
+  const hashedUsername = hashString(user.userDetails.email);
+  return `memeSRC-collage-preference-${hashedUsername}`;
+};
 
-const EmptyStateContainer = styled(Box)({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "300px",
-  border: "2px dashed #ccc",
-  borderRadius: "8px",
-  padding: "16px",
-  textAlign: "center",
-  marginBottom: "32px",
-});
+const getCollagePreference = (user) => {
+  const key = getCollagePreferenceKey(user);
+  return localStorage.getItem(key) || 'new';
+};
 
 export default function CollagePage() {
-  const [images, setImages] = useState([]);
-  const [borderThickness, setBorderThickness] = useState(15);
-  const [collageBlob, setCollageBlob] = useState(null);
-  const [editMode, setEditMode] = useState(true);
-  const [accordionExpanded, setAccordionExpanded] = useState(false);
-  const canvasRef = useRef(null);
-  const isMobile = useMediaQuery("(max-width:600px)");
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [menuIndex, setMenuIndex] = useState(null);
-  const imageRefs = useRef([]);
-  const imagesOnly = true; // Set this to true to use images as default option
-
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
-
+  const { clearAll } = useCollage();
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const authorized = (user?.userDetails?.magicSubscription === "true" || isAdmin);
+  
   const navigate = useNavigate();
-
-  const authorized = (user?.userDetails?.magicSubscription === "true" || user?.['cognito:groups']?.includes('admins'));
-
-  useEffect(() => {
-    createCollage();
-  }, [images, borderThickness]);
-
   const location = useLocation();
+  
+  // State to control the result dialog
+  const [showResultDialog, setShowResultDialog] = useState(false);
+  
+  // State to control button animation
+  const [showAnimatedButton, setShowAnimatedButton] = useState(false);
 
+  // State and ref for settings disclosure
+  const settingsRef = useRef(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  
+
+
+
+
+  // Note: BulkUploadSection is now completely hidden when images are present
+  // No need for collapse state management since it's not shown after initial upload
+
+  const {
+    selectedImages, 
+    panelImageMapping,
+    panelTransforms,
+    panelTexts,
+    lastUsedTextSettings,
+    selectedTemplate,
+    setSelectedTemplate,
+    selectedAspectRatio,
+    setSelectedAspectRatio,
+    panelCount,
+    setPanelCount,
+    finalImage,
+    setFinalImage,
+    isCreatingCollage,
+    setIsCreatingCollage,
+    borderThickness,
+    setBorderThickness,
+    borderColor,
+    setBorderColor,
+    addImage,
+    addMultipleImages,
+    removeImage,
+    updateImage,
+    replaceImage,
+    clearImages,
+    updatePanelImageMapping,
+    updatePanelTransform,
+    updatePanelText,
+    libraryRefreshTrigger,
+  } = useCollageState(isAdmin);
+
+  // Check if all panels have images assigned (same logic as CollageImagesStep)
+  const mappedPanels = Object.keys(panelImageMapping || {}).length;
+  const allPanelsHaveImages = mappedPanels === panelCount && 
+    Object.values(panelImageMapping || {}).every(imageIndex => 
+      imageIndex !== undefined && 
+      imageIndex !== null && 
+      selectedImages[imageIndex]
+    );
+
+  // Check if user has added at least one image or wants to start from scratch
+  const hasImages = selectedImages && selectedImages.length > 0;
+
+  const borderThicknessOptions = [
+    { label: "None", value: 0 },        // 0%
+    { label: "Thin", value: 0.5 },      // 0.5%
+    { label: "Medium", value: 1.5 },    // 1.5%
+    { label: "Thicc", value: 4 },       // 4%
+    { label: "Thiccer", value: 7 },     // 7%
+    { label: "XTRA THICC", value: 12 }, // 12%
+    { label: "UNGODLY CHONK'D", value: 20 } // 20%
+  ];
+
+  // Get numeric border thickness value
+  const borderThicknessValue = getBorderThicknessValue(borderThickness, borderThicknessOptions);
+
+  // Log changes to border color and thickness
   useEffect(() => {
-    const storedCollageState = localStorage.getItem('collageState');
-    if (storedCollageState) {
-      const parsedCollageState = JSON.parse(storedCollageState);
-      setImages(parsedCollageState.images);
-      setBorderThickness(parsedCollageState.borderThickness);
-      setEditMode(parsedCollageState.editMode);
-      setAccordionExpanded(parsedCollageState.accordionExpanded);
-      localStorage.removeItem('collageState');
+    debugLog(`[PAGE DEBUG] Border settings: color=${borderColor}, thickness=${borderThickness} (${borderThicknessValue}%)`);
+  }, [borderColor, borderThickness, borderThicknessValue]);
+
+  // Animate button section in with delay when the preview is visible
+  useEffect(() => {
+    if (hasImages && !showResultDialog) {
+      const timer = setTimeout(() => {
+        setShowAnimatedButton(true);
+      }, 800); // 800ms delay for dramatic effect
+
+      return () => clearTimeout(timer);
     }
 
-    if (location.state?.updatedCollageState) {
-      const { images, borderThickness, editMode, accordionExpanded } = location.state.updatedCollageState;
-      setImages(images);
-      setBorderThickness(borderThickness);
-      setEditMode(editMode);
-      setAccordionExpanded(accordionExpanded);
-    }
-  }, [location.state]);
+    setShowAnimatedButton(false);
+    return undefined; // Consistent return for all code paths
+  }, [hasImages, showResultDialog]);
 
-  const handleImageUpload = (event, index) => {
-    const uploadedImage = event.target.files[0];
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const newImage = {
-          id: Date.now().toString(),
-          src: e.target.result,
-          width: img.width,
-          height: img.height,
-        };
-        setImages((prevImages) => {
-          const newImages = [...prevImages];
-          newImages.splice(index, 0, newImage);
-          return newImages;
-        });
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(uploadedImage);
-  };
 
-  const handleEditImage = (index) => {
-    const collageState = {
-      images,
-      editingImageIndex: index,
-      borderThickness,
-      editMode,
-      accordionExpanded,
-    };
-    localStorage.setItem('collageState', JSON.stringify(collageState));
-    navigate(`/editor/project/new`, { state: { collageState } });
-  };
 
-  const addTextArea = (index) => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const text = "My reaction to the collage editor";
-    const fontSize = 24;
-    const padding = 20;
-
-    ctx.font = `${fontSize}px Arial`;
-    const textWidth = ctx.measureText(text).width;
-
-    canvas.width = textWidth + padding * 2;
-    canvas.height = fontSize + padding * 2;
-
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "black";
-    ctx.fillText(text, padding, fontSize + padding);
-
-    const newImage = {
-      id: Date.now().toString(),
-      src: canvas.toDataURL(),
-      width: canvas.width,
-      height: canvas.height,
-    };
-
-    setImages((prevImages) => {
-      const newImages = [...prevImages];
-      newImages.splice(index, 0, newImage);
-      return newImages;
-    });
-  };
-
-  const deleteImage = (index) => {
-    setImages((prevImages) => {
-      const newImages = [...prevImages];
-      newImages.splice(index, 1);
-      return newImages;
-    });
-  };
-
-  const createCollage = () => {
-    if (images.length === 0) return;
-  
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-  
-    const maxWidth = Math.max(...images.map((image) => image.width), 0);
-    let totalHeight = 0;
-  
-    images.forEach((image) => {
-      const scaleFactor = maxWidth / image.width;
-      const scaledHeight = image.height * scaleFactor;
-      totalHeight += scaledHeight;
-    });
-  
-    totalHeight += borderThickness * (images.length + 1);
-    canvas.width = maxWidth + borderThickness * 2;
-    canvas.height = totalHeight;
-  
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-    let currentHeight = borderThickness;
-    images.forEach((image, index) => {
-      const scaleFactor = maxWidth / image.width;
-      const scaledHeight = image.height * scaleFactor;
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, borderThickness, currentHeight, maxWidth, scaledHeight);
-        currentHeight += scaledHeight + borderThickness;
-  
-        if (currentHeight >= totalHeight) {
-          canvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            setCollageBlob(url);
-          }, "image/png");
-        }
-      };
-      img.src = image.src;
-    });
-  };
-
-  const handleMenuClick = (event, index) => {
-    if (imagesOnly) {
-      document.getElementById(`file-input-${index}`).click();
-    } else {
-      setAnchorEl(event.currentTarget);
-      setMenuIndex(index);
-    }
-  };
-
-  const handleMenuClose = (action) => {
-    setAnchorEl(null);
-    if (action === "image") {
-      document.getElementById(`file-input-${menuIndex}`).click();
-    } else if (action === "text") {
-      addTextArea(menuIndex);
-    }
-  };
-
-  const calculateButtonPositions = useCallback(() => {
-    const positions = [];
-    imageRefs.current.forEach((ref, index) => {
-      if (ref) {
-        const { top, height } = ref.getBoundingClientRect();
-        positions[index] = top + height / 2;
+  // Auto-forwarding logic based on user preference
+  useEffect(() => {
+    if (authorized && user) {
+      const preference = getCollagePreference(user);
+      const searchParams = new URLSearchParams(location.search);
+      const isForced = searchParams.get('force') === 'new';
+      
+      // Only auto-forward if not forced to new version
+      if (preference === 'legacy' && !isForced) {
+        navigate('/collage-legacy');
       }
-    });
-    return positions;
-  }, [images]);
+    }
+  }, [user, navigate, location.search, authorized]);
 
-  const buttonPositions = calculateButtonPositions();
+  // Handle images passed from collage
+  useEffect(() => {
+    if (location.state?.fromCollage && location.state?.images) {
+      const loadImages = async () => {
+        debugLog('Loading images from collage:', location.state.images);
 
-  const handleBorderChange = (event) => {
-    const value = parseInt(event.target.value, 10);
-    setBorderThickness(value);
-    setAccordionExpanded(false); // Collapse the accordion
+        // Transform images to the expected format, preserving subtitle data
+        const transformedImages = location.state.images.map(item => {
+          if (typeof item === 'string') {
+            return item; // Already a URL
+          }
+          // Return the complete item with subtitle data preserved
+          return {
+            originalUrl: item.originalUrl || item.displayUrl || item,
+            displayUrl: item.displayUrl || item.originalUrl || item,
+            subtitle: item.subtitle || '',
+            subtitleShowing: item.subtitleShowing || false,
+            metadata: item.metadata || {}
+          };
+        });
+
+        debugLog('Transformed collage images with subtitle data:', transformedImages);
+        await addMultipleImages(transformedImages);
+
+        // Auto-assign images to panels like bulk upload does
+        setTimeout(() => {
+          // First adjust panel count if needed to accommodate all images
+          const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
+          debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
+          debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
+
+          if (transformedImages.length > panelCount && setPanelCount) {
+            setPanelCount(desiredPanelCount);
+            debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
+          }
+
+          // Wait a bit more for template to update if panel count changed
+          setTimeout(() => {
+            debugLog(`[PANEL DEBUG] Template after panel count change:`, selectedTemplate);
+
+            // Then assign images to panels using the updated panel count
+            const newMapping = {};
+            const imagesToAssign = Math.min(transformedImages.length, desiredPanelCount);
+
+            for (let i = 0; i < imagesToAssign; i += 1) {
+              const panelId = selectedTemplate?.layout?.panels?.[i]?.id || `panel-${i + 1}`;
+              newMapping[panelId] = i;
+            }
+
+            debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
+            updatePanelImageMapping(newMapping);
+          }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
+        }, 100); // Small delay to ensure images are added first
+
+        // Clear the navigation state to prevent re-loading on refresh
+        navigate(location.pathname, { replace: true, state: {} });
+      };
+
+      loadImages();
+    }
+  }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
+
+  // Note: BulkUploadSection auto-collapse logic removed since section is now hidden when images are present
+
+  // Handler to go back to edit mode
+  const handleBackToEdit = () => {
+    setShowResultDialog(false);
   };
+
+  // Reset the collage and return to the library
+  const handleResetCollage = () => {
+    if (window.confirm('Resetting the collage will discard your changes.')) {
+      clearImages();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Toggle settings disclosure and scroll when opening
+  const handleToggleSettings = () => {
+    setSettingsOpen(prev => {
+      const next = !prev;
+      if (!prev) {
+        setTimeout(() => {
+          settingsRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+      return next;
+    });
+  };
+
+
+
+  // Handler for floating button - triggers collage generation
+  const handleFloatingButtonClick = async () => {
+    debugLog('Floating button: Generating collage...');
+    setIsCreatingCollage(true);
+    
+    // Find the canvas element instead of the HTML element
+    const canvasElement = document.querySelector('[data-testid="canvas-collage-preview"]');
+
+    if (!canvasElement) {
+      console.error('Canvas collage preview element not found.');
+      setIsCreatingCollage(false);
+      return;
+    }
+
+    try {
+      // Get the canvas blob directly - no need for html2canvas
+      if (canvasElement.getCanvasBlob) {
+        const blob = await canvasElement.getCanvasBlob();
+        if (blob) {
+          setFinalImage(blob);
+          setShowResultDialog(true);
+          debugLog("Floating button: Collage generated directly from canvas.");
+          
+          // Clear the collage items since the collage has been successfully generated
+          clearAll();
+        } else {
+          console.error('Failed to generate canvas blob.');
+        }
+      } else {
+        // Fallback: use canvas toBlob method directly
+        canvasElement.toBlob((blob) => {
+          if (blob) {
+            setFinalImage(blob);
+            setShowResultDialog(true);
+            debugLog("Floating button: Collage generated directly from canvas (fallback method).");
+            
+            // Clear the collage items since the collage has been successfully generated
+            clearAll();
+          } else {
+            console.error('Failed to generate canvas blob using fallback method.');
+          }
+        }, 'image/png');
+      }
+    } catch (err) {
+      console.error('Error generating collage:', err);
+    } finally {
+      setIsCreatingCollage(false);
+    }
+  };
+
+
+  // Props for settings step (selectedImages length might be useful for UI feedback)
+  const settingsStepProps = {
+    selectedImageCount: selectedImages.length, // Pass count instead of full array
+    selectedTemplate,
+    setSelectedTemplate,
+    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
+    setSelectedAspectRatio,
+    panelCount,
+    setPanelCount,
+    aspectRatioPresets,
+    layoutTemplates,
+    borderThickness,
+    setBorderThickness,
+    borderColor,
+    setBorderColor,
+    borderThicknessOptions,
+  };
+
+  // Handler for when collage is generated - show inline result
+  const handleCollageGenerated = () => {
+    setShowResultDialog(true);
+  };
+
+  // Handler for starting from scratch without images
+  const handleStartFromScratch = async () => {
+    debugLog('Starting from scratch - user chose to continue without images');
+    // Add a placeholder to trigger showing the collage interface
+    await addMultipleImages(['__START_FROM_SCRATCH__']);
+    // Scroll to top to show the collage interface
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Props for images step (pass the correct state and actions)
+  const imagesStepProps = {
+            selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
+    panelImageMapping,
+    panelTransforms,
+    panelTexts,
+    lastUsedTextSettings,
+    updatePanelImageMapping,
+    updatePanelTransform,
+    updatePanelText,
+    panelCount,
+    selectedTemplate,
+    selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
+    borderThickness: borderThicknessValue, // Pass the numeric value
+    borderColor,
+    borderThicknessOptions,
+    // Actions
+    addImage,
+    addMultipleImages,
+    removeImage,
+    updateImage,
+    replaceImage,
+    clearImages,
+    // Custom handler for showing inline result
+    onCollageGenerated: handleCollageGenerated,
+    // BulkUploadSection state (kept for compatibility, though section is hidden when images present)
+    bulkUploadSectionOpen: true, // Always true since we don't manage collapse state anymore
+    onBulkUploadSectionToggle: () => {}, // No-op since BulkUploadSection is hidden when images are present
+    onStartFromScratch: handleStartFromScratch, // Handler for starting without images
+    isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
+    libraryRefreshTrigger, // For refreshing library when new images are auto-saved
+  };
+
+  // Log mapping changes for debugging
+  useEffect(() => {
+    if (DEBUG_MODE) {
+      debugLog("CollagePage state update:", {
+        imageCount: selectedImages.length,
+        mappingKeys: Object.keys(panelImageMapping),
+        transformKeys: Object.keys(panelTransforms),
+        borderThickness,
+        borderThicknessValue,
+        borderColor,
+        aspectRatio: selectedAspectRatio,
+      });
+    }
+  }, [panelImageMapping, selectedImages, borderThickness, borderThicknessValue, borderColor, selectedAspectRatio, panelTransforms]);
 
   return (
-    <BasePage
-      pageTitle="Create a collage"
-      breadcrumbLinks={[
-        { name: "Edit", path: "/edit" },
-        { name: "Collage Tool" },
-      ]}
-    >
-      <Helmet>
-        <title>Collage Tool - Editor - memeSRC</title>
-      </Helmet>
+    <>
+      <Helmet><title>Collage Tool - Editor - memeSRC</title></Helmet>
 
       {!authorized ? (
-        <Grid container height="100%" justifyContent="center" alignItems="center" mt={6}>
-          <Grid item>
-            <Stack spacing={3} justifyContent="center">
-              <img
-                src="/assets/memeSRC-white.svg"
-                alt="memeSRC logo"
-                style={{ height: 48, marginBottom: -15 }}
-              />
-              <Typography variant="h3" textAlign="center">
-                memeSRC&nbsp;Collage Tool
-              </Typography>
-              <Typography variant="body" textAlign="center">
-                While in Early Access, the Collage Tool is only available for memeSRC&nbsp;Pro subscribers.
-              </Typography>
-            </Stack>
-            <center>
-                <LoadingButton
-                  onClick={openSubscriptionDialog}
-                  variant="contained"
-                  size="large"
-                  sx={{ mt: 5, fontSize: 17 }}
-                >
-                  Upgrade to Pro
-                </LoadingButton>
-              </center>
-          </Grid>
-        </Grid>
+        <UpgradeMessage openSubscriptionDialog={openSubscriptionDialog} previewImage="/assets/images/products/collage-tool.png" />
       ) : (
-        <>
-          {editMode ? (
-            <>
-              <Typography variant="body1" marginBottom={5} gutterBottom>
-                Add images to create a collage:
+        <Box component="main" sx={{
+          flexGrow: 1,
+          pb: !showResultDialog && hasImages ? 8 : (isMobile ? 2 : 4),
+          width: '100%',
+          overflowX: 'hidden',
+          overflowY: 'visible', // Allow vertical overflow for caption editor
+          minHeight: '100vh',
+          bgcolor: 'background.default'
+        }}>
+          <Container 
+            maxWidth="xl" 
+            sx={{ 
+              mb: 15,
+              pt: isMobile ? 1 : 1.5,
+              px: isMobile ? 1 : 2,
+              width: '100%',
+              overflow: 'visible' // Allow caption editor to overflow container bounds
+            }}
+            disableGutters={isMobile}
+          >
+            {/* Page Header */}
+            <Box sx={{ mb: isMobile ? 1 : 1.5 }}>
+              <Typography variant="h3" gutterBottom sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                fontWeight: '700', 
+                mb: isMobile ? 0.5 : 0.75,
+                pl: isMobile ? 0.5 : 0,
+                ml: isMobile ? 0 : -0.5,
+                color: '#fff',
+                fontSize: isMobile ? '2.2rem' : '2.5rem',
+                textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
+              }}>
+                <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
+                Collage Tool
               </Typography>
-              {images.length > 0 && (
-                <Button
-                  variant="contained"
-                  startIcon={<ArrowForward />}
-                  onClick={() => {
-                    createCollage();
-                    setEditMode(false);
-                    window.scrollTo(0, 0);
+              <Typography variant="subtitle1" sx={{ 
+                color: 'text.secondary',
+                mb: isMobile ? 2 : 1.5,
+                pl: isMobile ? 1 : 0,
+                maxWidth: '85%'
+              }}>
+                Merge images together to create multi-panel memes
+              </Typography>
+            </Box>
+
+            <EarlyAccessFeedback />
+
+            <CollageLayout
+              settingsStepProps={settingsStepProps}
+              imagesStepProps={imagesStepProps}
+              finalImage={finalImage}
+              setFinalImage={setFinalImage}
+              isMobile={isMobile}
+              onBackToEdit={handleBackToEdit}
+              settingsOpen={settingsOpen}
+              setSettingsOpen={setSettingsOpen}
+              settingsRef={settingsRef}
+            />
+
+            {/* Bottom Action Bar */}
+            {!showResultDialog && hasImages && (
+              <Slide direction="up" in={showAnimatedButton} timeout={600}>
+                <Box
+                  sx={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 1000,
+                    bgcolor: 'background.paper',
+                    borderTop: 1,
+                    borderColor: 'divider',
+                    p: isMobile ? 1.5 : 2,
+                    boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
+                    backdropFilter: 'blur(20px)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: 1.5,
                   }}
-                  fullWidth
-                  size="large"
                 >
-                  Continue
-                </Button>
-              )}
-              {images.length === 0 ? (
-                <EmptyStateContainer>
-                  <Typography variant="h6" gutterBottom>
-                    No images added
-                  </Typography>
-                  <Typography variant="body1" marginBottom={2}>
-                    Select your first image
-                  </Typography>
-                  <Fab
-                    color="primary"
+                  <Tooltip title="Reset collage">
+                    <span>
+                      <IconButton
+                        onClick={handleResetCollage}
+                        color="error"
+                        disabled={isCreatingCollage}
+                        aria-label="Reset collage"
+                      >
+                        <RestartAlt />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  <Button
+                    variant="contained"
+                    onClick={handleFloatingButtonClick}
+                    disabled={isCreatingCollage || !allPanelsHaveImages}
+                    fullWidth={isMobile}
                     size="large"
-                    component="label"
-                    onClick={(event) => handleMenuClick(event, 0)}
+                    startIcon={<Save />}
+                    sx={{
+                      py: 1.5,
+                      px: isMobile ? 2.5 : 5,
+                      fontSize: '1.2rem',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      borderRadius: 3,
+                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                      border: '1px solid #8b5cc7',
+                      boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                      color: '#fff',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      maxWidth: isMobile ? 'none' : '400px',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                        boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
+                        transform: 'translateY(-2px) scale(1.02)',
+                      },
+                      '&:active': {
+                        transform: 'translateY(0) scale(0.98)',
+                      },
+                      '&:disabled': {
+                        background: 'linear-gradient(45deg, #757575 30%, #9E9E9E 90%)',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        boxShadow: 'none',
+                        transform: 'none',
+                      },
+                      // Add subtle pulse animation when ready
+                      '@keyframes pulse': {
+                        '0%': {
+                          boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                        },
+                        '50%': {
+                          boxShadow: '0 6px 25px rgba(107, 66, 161, 0.7)',
+                        },
+                        '100%': {
+                          boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                        },
+                      },
+                      animation: !isCreatingCollage && allPanelsHaveImages ? 'pulse 2s ease-in-out infinite' : 'none',
+                    }}
+                    aria-label="Create and save collage"
                   >
-                    <Add />
-                  </Fab>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={() => handleMenuClose(null)}
-                  >
-                    <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
-                    <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
-                  </Menu>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    id="file-input-0"
-                    onChange={(event) => handleImageUpload(event, 0)}
-                  />
-                </EmptyStateContainer>
-              ) : (
-                <Box sx={{ position: "relative" }}>
-                  <UploadButton
-                    color="primary"
-                    size="small"
-                    component="label"
-                    sx={{ marginTop: '16px', marginBottom: '16px' }}
-                    onClick={(event) => handleMenuClick(event, 0)}
-                  >
-                    <Add />
-                  </UploadButton>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={() => handleMenuClose(null)}
-                  >
-                    <MenuItem onClick={() => handleMenuClose("image")}>Add Image</MenuItem>
-                    <MenuItem onClick={() => handleMenuClose("text")}>Add Text</MenuItem>
-                  </Menu>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    id="file-input-0"
-                    onChange={(event) => handleImageUpload(event, 0)}
-                  />
-
-                  {images.map((image, index) => (
-                    <>
-                      <ImageContainer ref={(el) => { imageRefs.current[index] = el; }}>
-                        <ImageWrapper>
-                          <img src={image.src} alt={`layer ${index + 1}`} style={{ width: "100%" }} />
-                          <DeleteButton className="delete-button" onClick={() => deleteImage(index)}>
-                            <Close />
-                          </DeleteButton>
-                          <EditButton className="edit-button" onClick={() => handleEditImage(index)}>
-                            <Edit />
-                          </EditButton>
-                        </ImageWrapper>
-                      </ImageContainer>
-                      {index < images.length - 1 && (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '16px', marginBottom: '16px' }}>
-                          <Fab
-                            color="primary"
-                            size="small"
-                            component="label"
-                            onClick={(event) => handleMenuClick(event, index + 1)}
-                          >
-                            <Add />
-                          </Fab>
-                          <Menu
-                            anchorEl={anchorEl}
-                            open={Boolean(anchorEl)}
-                            onClose={() => handleMenuClose(null)}
-                          >
-                            <MenuItem onClick={() => handleMenuClose("image", index + 1)}>Add Image</MenuItem>
-                            <MenuItem onClick={() => handleMenuClose("text", index + 1)}>Add Text</MenuItem>
-                          </Menu>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            id={`file-input-${index + 1}`}
-                            onChange={(event) => handleImageUpload(event, index + 1)}
-                          />
-                        </Box>
-                      )}
-                    </>
-                  ))}
-
-                  <UploadButton
-                    color="primary"
-                    size="small"
-                    component="label"
-                    onClick={(event) => handleMenuClick(event, images.length)}
-                  >
-                    <Add />
-                  </UploadButton>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={() => handleMenuClose(null)}
-                  >
-                    <MenuItem onClick={() => handleMenuClose("image", images.length)}>Add Image</MenuItem>
-                    <MenuItem onClick={() => handleMenuClose("text", images.length)}>Add Text</MenuItem>
-                  </Menu>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    id={`file-input-${images.length}`}
-                    onChange={(event) => handleImageUpload(event, images.length)}
-                  />
+                    {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
+                  </Button>
+                  <Tooltip title={settingsOpen ? 'Close settings' : 'Open settings'}>
+                    <span>
+                      <IconButton
+                        onClick={handleToggleSettings}
+                        color="primary"
+                        disabled={isCreatingCollage}
+                        aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                      >
+                        <Settings />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                 </Box>
-              )}
+              </Slide>
+            )}
+          </Container>
 
-              {images.length > 0 && (
-                <Button
-                  variant="contained"
-                  startIcon={<ArrowForward />}
-                  onClick={() => {
-                    createCollage();
-                    setEditMode(false);
-                    window.scrollTo(0, 0);
-                  }}
-                  sx={{ marginTop: "32px" }}
-                  fullWidth
-                  size="large"
-                >
-                  Continue
-                </Button>
-              )}
-            </>
-          ) : (
-            <CollageContainer>
-              <Button
-                variant="contained"
-                startIcon={<ArrowBack />}
-                onClick={() => setEditMode(true)}
-                fullWidth
-                sx={{ mb: 2 }}
-              >
-                Edit Photos
-              </Button>
-              <Accordion sx={{ mb: 2 }} expanded={accordionExpanded} onChange={() => setAccordionExpanded(!accordionExpanded)}>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography>Adjust Border Thickness</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <RadioGroup
-                    value={borderThickness.toString()}
-                    onChange={handleBorderChange}
-                  >
-                    <FormControlLabel value="0" control={<Radio />} label="None" />
-                    <FormControlLabel value="10" control={<Radio />} label="Thin" />
-                    <FormControlLabel value="15" control={<Radio />} label="Normal" />
-                    <FormControlLabel value="35" control={<Radio />} label="Thicc" />
-                    <FormControlLabel value="65" control={<Radio />} label="Thiccer" />
-                  </RadioGroup>
-                </AccordionDetails>
-              </Accordion>
-
-              <ImageWrapper>
-                <CollageImage src={collageBlob} alt="Collage Result" />
-              </ImageWrapper>
-              <Alert
-                severity='success'
-                sx={{ marginTop: 1.5 }}
-              >
-                <b>{'ontouchstart' in window ? 'Tap and hold ' : 'Right click '} ☝️ the image to save</b>
-              </Alert>
-            </CollageContainer>
-          )}
-        </>
+          {/* Collage Result Dialog */}
+          <CollageResultDialog
+            open={showResultDialog}
+            onClose={() => setShowResultDialog(false)}
+            finalImage={finalImage}
+          />
+        </Box>
       )}
-
-      <canvas ref={canvasRef} style={{ display: "none" }} />
-    </BasePage>
+    </>
   );
 }

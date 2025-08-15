@@ -1,11 +1,9 @@
 import PropTypes from 'prop-types';
-import { useEffect, useContext } from 'react';
+import { useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 // @mui
 import { styled, alpha } from '@mui/material/styles';
-import { Box, Link, Button, Drawer, Typography, Avatar, Stack, Chip, Divider } from '@mui/material';
-// mock
-import account from '../../../_mock/account';
+import { Box, Link, Drawer, Typography, Stack, Chip, Divider } from '@mui/material';
 // components
 import Logo from '../../../components/logo';
 import Scrollbar from '../../../components/scrollbar';
@@ -31,7 +29,7 @@ Nav.propTypes = {
 };
 
 export default function Nav({ openNav, onCloseNav }) {
-  const { pathname } = useLocation();
+  useLocation();
   const navigate = useNavigate();
   const userDetails = useContext(UserContext)
 
@@ -89,6 +87,7 @@ export default function Nav({ openNav, onCloseNav }) {
           <Box
             component="img"
             src="/assets/illustrations/illustration_avatar.png"
+            alt="illustration avatar"
             sx={{ width: 100, position: 'absolute', top: -50 }}
           />
 

@@ -132,7 +132,7 @@
             "Arn"
           ]
         },
-        "Runtime": "nodejs18.x",
+        "Runtime": "nodejs22.x",
         "MemorySize": 128,
         "Layers": [],
         "Timeout": 25

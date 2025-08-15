@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 // @mui
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify';
 import { useContext, useState } from 'react';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
@@ -13,10 +13,10 @@ import { SnackbarContext } from '../../../SnackbarContext';
 //   username: PropTypes.string.isRequired
 // };
 
-export default function VerifyForm(props) {
+export default function VerifyForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, setUser } = useContext(UserContext)
+  const { user } = useContext(UserContext)
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
   const [code, setCode] = useState('')
   const [username, setUsername] = useState(user.username ? user.username : '');
@@ -38,7 +38,7 @@ export default function VerifyForm(props) {
   const confirmSignUp = () => {
     if (checkForm()) {
       setLoading(true)
-      Auth.confirmSignUp(username, code).then(response => {
+      Auth.confirmSignUp(username, code).then(() => {
         setSeverity('success');
         setMessage(`Account verified! Please log in.`);
         setOpen(true)

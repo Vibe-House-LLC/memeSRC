@@ -1,27 +1,20 @@
-import { API, graphqlOperation, Storage } from 'aws-amplify';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import { Container, Typography, Breadcrumbs, Link, Card, CardActionArea, CardContent, Box, Grid, Paper, Input, Chip, Alert } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import { Container, Typography, CardActionArea, Grid, Paper, Input, Chip, Alert } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import BasePage from './BasePage';
-import { createEditorProject } from '../graphql/mutations';
 
 export default function EditorNewProjectPage() {
-  const [uploadedImage, setUploadedImage] = useState(null);
   const navigate = useNavigate();
 
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = async function() {
+      reader.onloadend = async () => {
         const base64data = reader.result;
-        setUploadedImage(base64data);
   
         // Create an EditorProject object in GraphQL with an empty state value
         try {
@@ -154,7 +147,7 @@ export default function EditorNewProjectPage() {
                 <Typography variant="h5" component="div" gutterBottom>
                   Search Images
                 </Typography>
-                <Typography color="text.secondary">Find 70 million+ on memeSRC</Typography>
+                <Typography color="text.secondary">Find 85 million+ on memeSRC</Typography>
               </Paper>
             </CardActionArea>
           </Grid>

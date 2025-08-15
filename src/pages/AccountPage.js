@@ -1,54 +1,40 @@
-import { useState, useEffect, useContext } from 'react';
-import { Box, Typography, Button, Container, Divider, Grid, Card, TextField, List, ListItem, ListItemIcon, ListItemText, IconButton, Avatar, Chip, Skeleton, LinearProgress, CircularProgress } from '@mui/material';
-import { Receipt, Download, Edit, Save, Cancel, Block, SupportAgent, Bolt, AutoFixHighRounded } from '@mui/icons-material';
-import { API, Auth, Storage } from 'aws-amplify';
-import { LoadingButton } from '@mui/lab';
+import React, { useState, useEffect, useContext } from 'react';
+import { Box, Typography, Button, Container, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, CircularProgress } from '@mui/material';
+import { Navigate, useNavigate } from 'react-router-dom';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import DownloadIcon from '@mui/icons-material/Download';
+import BlockIcon from '@mui/icons-material/Block';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import BoltIcon from '@mui/icons-material/Bolt';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { API, Auth } from 'aws-amplify';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
-import { SnackbarContext } from '../SnackbarContext';
+import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
 
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
   const { openSubscriptionDialog } = useSubscribeDialog();
-  const [email, setEmail] = useState(userDetails?.user?.attributes?.email || '');
-  const [editingEmail, setEditingEmail] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isPasswordValid, setIsPasswordValid] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [updatingPassword, setUpdatingPassword] = useState(false);
-  const [profilePhoto, setProfilePhoto] = useState(userDetails?.user?.profilePhoto || '');
-  const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
+  const [loadingPortalUrl, setLoadingPortalUrl] = useState(false);
   const [page, setPage] = useState(1);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
-  const { setOpen, setSeverity, setMessage } = useContext(SnackbarContext);
-  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [loadingCancelUrl, setLoadingCancelUrl] = useState(false);
+  const [showCopySuccess, setShowCopySuccess] = useState(false);
+  const navigate = useNavigate();
+
+  console.log('User Details:', userDetails?.user);
 
   useEffect(() => {
     fetchInvoices();
     fetchSubscription();
   }, [page]);
-
-  useEffect(() => {
-    setEmail(userDetails?.user?.attributes?.email);
-    console.log(userDetails)
-  }, [userDetails]);
-
-  useEffect(() => {
-    if (newPassword === confirmPassword) {
-      setIsPasswordValid(newPassword.length >= 8);
-      setPasswordError('');
-    } else {
-      setIsPasswordValid(false);
-      setPasswordError('Passwords do not match');
-    }
-  }, [newPassword, confirmPassword]);
 
   const fetchInvoices = async () => {
     try {
@@ -85,349 +71,325 @@ const AccountPage = () => {
   };
 
   const openInvoicePDF = (url) => {
-    window.open(url, '_blank');
-  };
-
-  const handleUpdateEmail = async () => {
-    try {
-      setUpdatingEmail(true);
-      const user = await Auth.currentAuthenticatedUser();
-      await Auth.updateUserAttributes(user, { email });
-      setEditingEmail(false);
-      setIsVerifyingEmail(true);
-      setMessage('Verification code sent to your email. Please enter the code to verify your new email address.');
-      setSeverity('info');
-      setOpen(true);
-    } catch (error) {
-      console.error('Error updating email:', error);
-      setMessage('Something went wrong. Please try again.');
-      setSeverity('error');
-      setOpen(true);
-    } finally {
-      setUpdatingEmail(false);
+    if (url) {
+      window.open(url, '_blank');
     }
   };
 
-  const handleVerifyEmail = async () => {
-    try {
-      await Auth.verifyCurrentUserAttributeSubmit('email', verificationCode);
-      setIsVerifyingEmail(false);
-      setVerificationCode('');
-      setMessage('Email address verified successfully!');
-      setSeverity('success');
-      setOpen(true);
-    } catch (error) {
-      console.error('Error verifying email:', error);
-      setMessage('Invalid verification code. Please try again.');
-      setSeverity('error');
-      setOpen(true);
+  const downloadInvoicePDF = (url) => {
+    if (url) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'invoice.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
-  const handleUpdatePassword = async (event) => {
-    event.preventDefault();
-
-    if (!isPasswordValid) {
-      setPasswordError('Passwords do not match');
-      return;
+  const openCustomerPortal = (isCancel = false) => {
+    if (isCancel) {
+      setLoadingCancelUrl(true);
+    } else {
+      setLoadingPortalUrl(true);
     }
 
-    try {
-      setUpdatingPassword(true);
-      const user = await Auth.currentAuthenticatedUser();
-      await Auth.changePassword(user, currentPassword, newPassword);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setPasswordError('');
-    } catch (error) {
-      console.error('Error updating password:', error);
-      setPasswordError('Failed to update password. Please try again.');
-      setMessage('Something went wrong. Please try again.')
-      setSeverity('error')
-      setOpen(true)
-    } finally {
-      setUpdatingPassword(false);
-      setMessage('Your password has been updated!')
-      setSeverity('success')
-      setOpen(true)
-    }
-  };
-
-  const handleProfilePhotoUpload = async (event) => {
-    setUploadingProfilePhoto(true)
-    console.log(userDetails)
-    if (userDetails?.user?.sub) {
-      const file = event.target.files[0];
-      try {
-        // Upload the profile photo to Storage
-        const response = await Storage.put(`profilePictures/${userDetails?.user?.sub}`, file, {
-          contentType: file.type, // contentType is optional
-        });
-
-        // Get the current authenticated user
-        const userObj = await Auth.currentAuthenticatedUser();
-
-        // Update the user's profile with the uploaded photo key
-        const updatePictureResponse = await Auth.updateUserAttributes(userObj, {
-          picture: response.key
-        });
-
-        const newProfilePicture = await Storage.get(response.key)
-        userDetails?.setUser({
-          ...userDetails.user,
-          profilePhoto: newProfilePicture
-        })
-        console.log(newProfilePicture)
-
-        console.log(updatePictureResponse);
-        setUploadingProfilePhoto(false)
-      } catch (error) {
-        console.error('Error uploading profile photo:', error);
-        setUploadingProfilePhoto(false)
+    API.post('publicapi', '/user/update/getPortalLink', {
+      body: {
+        currentUrl: window.location.href
       }
-      console.log('Uploading profile photo:', file);
-      setUploadingProfilePhoto(false)
-    }
+    }).then(results => {
+      console.log(results);
+      if (isCancel) {
+        setLoadingCancelUrl(false);
+      } else {
+        setLoadingPortalUrl(false);
+      }
+      window.location.href = results;
+    }).catch(error => {
+      console.log(error.response);
+      if (isCancel) {
+        setLoadingCancelUrl(false);
+      } else {
+        setLoadingPortalUrl(false);
+      }
+    });
+  };
+
+  const handleLogout = () => {
+    Auth.signOut().then(() => {
+      userDetails?.setUser(null);
+      window.localStorage.removeItem('memeSRCUserDetails')
+      userDetails?.setDefaultShow('_universal')
+      getShowsWithFavorites().then(loadedShows => {
+        window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
+        userDetails?.setShows(loadedShows)
+      })
+    }).catch((err) => {
+      alert(err)
+    }).finally(() => {
+      navigate('/')
+    })
   };
 
   const isLoading = loadingInvoices || loadingSubscription;
   const recentPaidInvoice = invoices.find((invoice) => invoice.paid);
-  const currentSubscription = recentPaidInvoice?.lines?.data?.[0]?.description
-    ?.replace(/^1\s*×\s*/, '')
-    ?.replace(/\s*\(memeSRC\)/i, '');
+  console.log(recentPaidInvoice?.lines?.data?.[0])
+  // Check if user is logged in
+  if (!userDetails?.user?.userDetails) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const formatAmount = (amount, currency) => new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'usd',
+      minimumFractionDigits: 2,
+    }).format(amount / 100);
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 5 }}>
-      <Typography variant="h4" gutterBottom>
-        Account
-      </Typography>
-      <Divider sx={{ my: 3 }} />
-
-      <Grid container spacing={3}>
+    <Container maxWidth="lg" sx={{ mt: 2 }}>
+      <Grid container spacing={3} alignItems="flex-start">
         <Grid item xs={12} md={6}>
-          <Card sx={{ p: 3, backgroundColor: 'background.paper' }}>
-            <Typography variant="h5" gutterBottom>
-              Subscription
-            </Typography>
-            <Box
-              sx={{
-                width: '100%',
-                backgroundColor: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'success.main' : 'primary.main',
-                borderRadius: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                py: 3,
-                mb: 3,
-              }}
-            >
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" sx={{ color: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'black' : 'white', mb: 1 }}>
-                  {userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'memeSRC Pro' : 'Upgrade to memeSRC Pro'}
+          <Card sx={{ 
+            p: 3, 
+            backgroundColor: 'background.paper',
+            borderRadius: 3,
+          }}>
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Account Details
                 </Typography>
-                {isLoading ? (
-                  <Box sx={{ width: '100%', mt: 1 }}>
-                    <LinearProgress
-                      sx={{
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(to right, red 0%, red 20%, orange 20%, orange 40%, yellow 40%, yellow 60%, green 60%, green 80%, blue 80%, blue 100%)',
-                        },
-                      }}
-                    />
-                  </Box>
-                ) : userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {currentSubscription ? (
-                      <>
-                        <Typography variant="body1" sx={{ color: 'black', mr: 1 }}>
-                          {currentSubscription}
-                        </Typography>
-                        <Chip
-                          label="Active"
-                          color="success"
-                          sx={{ fontWeight: 'bold', backgroundColor: 'common.white', color: 'black' }}
-                        />
-                      </>
+                <Typography 
+                  variant="body2" 
+                  onClick={handleLogout}
+                  sx={{ 
+                    color: 'error.main',
+                    cursor: 'pointer',
+                    '&:hover': { textDecoration: 'underline' }
+                  }}
+                >
+                  Sign Out
+                </Typography>
+              </Box>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 1,
+                p: 2,
+                backgroundColor: 'action.hover',
+                borderRadius: 2,
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Username</Typography>
+                  <Typography variant="body2">{userDetails?.user?.userDetails?.username || 'N/A'}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Email</Typography>
+                  <Typography variant="body2">{userDetails?.user?.userDetails?.email || 'N/A'}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Customer ID</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
+                    onClick={async () => {
+                      if (userDetails?.user?.sub) {
+                        try {
+                          await navigator.clipboard.writeText(userDetails.user.sub);
+                          setShowCopySuccess(true);
+                          setTimeout(() => setShowCopySuccess(false), 2000);
+                          console.log('Copied:', userDetails.user.sub);
+                        } catch (err) {
+                          console.error('Failed to copy:', err);
+                        }
+                      }
+                    }}
+                  >
+                    {showCopySuccess ? (
+                      <CheckCircleIcon sx={{ fontSize: 16, opacity: 0.7, color: 'success.main' }} />
                     ) : (
-                      <Typography variant="body1" sx={{ color: 'black' }}>
-                        No current subscription found.
-                      </Typography>
+                      <ContentCopyIcon sx={{ fontSize: 16, opacity: 0.7 }} />
                     )}
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                      {userDetails?.user?.sub 
+                        ? `${userDetails?.user?.sub.slice(0, 4)}...${userDetails?.user?.sub.slice(-4)}`
+                        : 'N/A'}
+                    </Typography>
                   </Box>
-                ) : (
-                  <Typography variant="body1" sx={{ color: 'white' }}>
-                    Unlock enhanced features and benefits!
+                </Box>
+              </Box>
+            </Box>
+            {isLoading ? (
+              <Box sx={{ width: '100%', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  width: '100%',
+                  backgroundColor: 'background.default',
+                  borderRadius: 2,
+                  p: 3,
+                  mb: 3,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'memeSRC Pro' : 'Free'}
                   </Typography>
+                  {userDetails?.user?.userDetails?.magicSubscription === 'true' && (
+                    <Chip
+                      label={userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment' ? 'Payment Failed' : 'Active'}
+                      size="small"
+                      color={userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment' ? 'error' : 'success'}
+                      sx={{ fontWeight: 600 }}
+                    />
+                  )}
+                </Box>
+
+                {userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment' && (
+                  <Box sx={{ backgroundColor: 'error.light', borderRadius: 2, p: 2, mb: 2 }}>
+                    <Typography sx={{ color: 'error.contrastText', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CreditCardIcon sx={{ fontSize: 20 }} />
+                      Your last payment failed. Please update your payment method to continue using Pro features.
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="error"
+                      onClick={() => openCustomerPortal()}
+                      sx={{ mt: 2 }}
+                    >
+                      Update Payment Method
+                    </Button>
+                  </Box>
+                )}
+
+                {userDetails?.user?.userDetails?.magicSubscription === 'true' && recentPaidInvoice && (
+                  <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Typography sx={{ fontSize: '0.875rem', letterSpacing: '0.01em', opacity: 0.85, textTransform: 'uppercase' }}>
+                        Last Payment
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5 }}>
+                        <CheckCircleIcon sx={{ color: 'success.main', fontSize: 20 }} />
+                        <Typography sx={{ fontWeight: 600, fontSize: '1.25rem' }}>
+                          {formatAmount(
+                            recentPaidInvoice.lines.data[0].amount_excluding_tax -
+                              (recentPaidInvoice.lines.data[0].discount_amounts?.[0]?.amount || 0),
+                            recentPaidInvoice.currency
+                          )}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.75rem', opacity: 0.85 }}>
+                          {new Date(recentPaidInvoice.created * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
+
+                {userDetails?.user?.userDetails?.magicSubscription !== 'true' && (
+                  <Button variant="contained" size="large" onClick={openSubscriptionDialog} sx={{ mt: 2 }}>
+                    Upgrade to Pro
+                  </Button>
+                )}
+
+                <Box sx={{ mt: 2 }}>
+                  {[
+                    { icon: <BlockIcon />, text: 'Ad-Free Experience' },
+                    { icon: <SupportAgentIcon />, text: 'Priority Support' },
+                    { icon: <BoltIcon />, text: 'Early Access to New Features' },
+                    { icon: <AutoFixHighRoundedIcon />, text: 'Monthly Magic Credits' },
+                  ].map(({ icon, text }) => (
+                    <Box key={text} sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                      <Box sx={{
+                        backgroundColor: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'primary.main' : 'grey.700',
+                        borderRadius: '50%',
+                        width: 32,
+                        height: 32,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                      }}>
+                        {React.cloneElement(icon, { sx: { color: 'common.white' } })}
+                      </Box>
+                      <Typography variant="body1" sx={{ fontWeight: 500, textDecoration: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'none' : 'line-through' }}>
+                        {text}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+
+                {userDetails?.user?.userDetails?.magicSubscription !== 'true' && (
+                  <Box onClick={openSubscriptionDialog} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>
+                    <LockOpenIcon sx={{ fontSize: 20 }} />
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      Unlock these features
+                    </Typography>
+                  </Box>
+                )}
+
+                {userDetails?.user?.userDetails?.magicSubscription === 'true' && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2 }}>
+                    <Typography onClick={() => openCustomerPortal(true)} sx={{ color: 'error.main', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1, '&:hover': { textDecoration: 'underline' } }}>
+                      {loadingCancelUrl ? <CircularProgress size={16} color="error" /> : 'Cancel Subscription'}
+                    </Typography>
+                  </Box>
                 )}
               </Box>
-            </Box>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                Subscription Benefits:
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Block sx={{ color: 'action.active', mr: 1 }} />
-                <Typography variant="body2">No Ads</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <SupportAgent sx={{ color: 'action.active', mr: 1 }} />
-                <Typography variant="body2">Pro Support</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Bolt sx={{ color: 'action.active', mr: 1 }} />
-                <Typography variant="body2">Early Access Features</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <AutoFixHighRounded sx={{ color: 'action.active', mr: 1 }} />
-                <Typography variant="body2">Magic Credits</Typography>
-              </Box>
-            </Box>
-            <Box sx={{ mt: 3, textAlign: 'center' }}>
-              {userDetails?.user?.userDetails?.magicSubscription === 'true' ? (
-                <Button variant="contained" size="large" onClick={openSubscriptionDialog}>
-                  Manage Subscription
-                </Button>
-              ) : (
-                <Button variant="contained" size="large" onClick={openSubscriptionDialog}>
-                  Subscribe Now
-                </Button>
-              )}
-            </Box>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 3, backgroundColor: 'background.paper' }}>
-            <Typography variant="h5" gutterBottom>
-              Account Information
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: uploadingProfilePhoto ? 1 : 4 }}>
-              <Avatar src={userDetails?.user?.profilePhoto || null} sx={{ width: 80, height: 80, mr: 3 }} />
-              <Button variant="contained" component="label" disabled={uploadingProfilePhoto}>
-                Upload Photo
-                <input type="file" hidden onChange={handleProfilePhotoUpload} accept="image/*" />
-              </Button>
-            </Box>
-            {uploadingProfilePhoto &&
-              <Box>
-                <Typography textAlign='center' fontSize={14} mb={1}>
-                  Uploading...
-                </Typography>
-                <LinearProgress sx={{ mb: 4 }} />
-              </Box>
-            }
-            <Box sx={{ mb: 3 }}>
-            <TextField
-              label="Email"
-              autoComplete="off"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              fullWidth
-              disabled={!editingEmail || isVerifyingEmail || updatingEmail}
-              InputProps={{
-                endAdornment: editingEmail ? (
-                  <>
-                    <IconButton onClick={handleUpdateEmail} disabled={isVerifyingEmail || updatingEmail}>
-                      {updatingEmail ? <CircularProgress size={24} /> : <Save />}
-                    </IconButton>
-                    <IconButton
-                      onClick={() => {
-                        setEmail(userDetails?.user?.userDetails?.email || '');
-                        setEditingEmail(false);
-                      }}
-                      disabled={isVerifyingEmail || updatingEmail}
-                    >
-                      <Cancel />
-                    </IconButton>
-                  </>
-                ) : (
-                  <IconButton onClick={() => setEditingEmail(true)} disabled={isVerifyingEmail || updatingEmail}>
-                    <Edit />
-                  </IconButton>
-                ),
-              }}
-            />
-              {isVerifyingEmail && (
-                <Box sx={{ mt: 2 }}>
-                  <TextField
-                    label="Verification Code"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    fullWidth
-                    sx={{ mb: 2 }}
-                  />
-                  <Button variant="contained" onClick={handleVerifyEmail}>
-                    Verify Email
-                  </Button>
-                </Box>
-              )}
-            </Box>
-            <Box sx={{ mb: 3 }}>
-              <form onSubmit={handleUpdatePassword}>
-                <TextField
-                  label="Username"
-                  type="text"
-                  autoComplete="username"
-                  value={userDetails?.user?.username || ''}
-                  fullWidth
-                  disabled
-                  sx={{ mb: 2 }}
-                />
-                <TextField
-                  label="Current Password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                />
-                <TextField
-                  label="New Password"
-                  type="password"
-                  autoComplete="new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                  error={!!passwordError}
-                  helperText={passwordError}
-                />
-                <TextField
-                  label="Confirm New Password"
-                  type="password"
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  fullWidth
-                  error={!!passwordError}
-                  helperText={passwordError}
-                />
-                <LoadingButton
-                  type="submit"
-                  variant="contained"
-                  disabled={!isPasswordValid || updatingPassword}
-                  sx={{ mt: 3 }}
-                  loading={updatingPassword}
-                >
-                  {updatingPassword ? 'Updating...' : 'Update Password'}
-                </LoadingButton>
-              </form>
-            </Box>
+            )}
           </Card>
         </Grid>
 
-        <Grid item xs={12}>
-          <Card sx={{ p: 3, backgroundColor: 'background.paper' }}>
-            <Typography variant="h5" gutterBottom>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ p: 3, backgroundColor: 'background.paper', borderRadius: 3, mb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', m: 3 }}>
+              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+                Billing Settings
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3, opacity: 0.8 }}>
+                Update payment methods or cancel your subscription
+              </Typography>
+              <Button 
+                variant="outlined" 
+                size="large" 
+                onClick={() => openCustomerPortal()}
+                disabled={loadingPortalUrl}
+                sx={{ minWidth: '200px' }}
+              >
+                {loadingPortalUrl ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  'Open Settings'
+                )}
+              </Button>
+            </Box>
+          </Card>
+
+          <Card sx={{ p: 3, backgroundColor: 'background.paper', borderRadius: 3 }}>
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
               Invoices
             </Typography>
             <List>
               {invoices.map((invoice) => (
-                <ListItem key={invoice.id} sx={{ backgroundColor: 'action.hover', mb: 1, borderRadius: 1 }}>
+                <ListItem
+                  key={invoice.id}
+                  sx={{
+                    mb: 1.5,
+                    borderRadius: 2,
+                    cursor: invoice.invoice_pdf ? 'pointer' : 'default',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      backgroundColor: invoice.invoice_pdf ? 'action.hover' : 'transparent',
+                      transform: invoice.invoice_pdf ? 'translateY(-1px)' : 'none',
+                    },
+                  }}
+                  onClick={() => openInvoicePDF(invoice.hosted_invoice_url)}
+                >
                   <ListItemIcon>
-                    <Receipt />
+                    <ReceiptIcon />
                   </ListItemIcon>
                   <ListItemText
                     primary={`Invoice #${invoice.number}`}
@@ -435,8 +397,14 @@ const AccountPage = () => {
                       invoice.period_end * 1000
                     ).toLocaleDateString()}`}
                   />
-                  <IconButton onClick={() => openInvoicePDF(invoice.invoice_pdf)} disabled={!invoice.invoice_pdf}>
-                    <Download />
+                  <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadInvoicePDF(invoice.invoice_pdf);
+                    }}
+                    disabled={!invoice.invoice_pdf}
+                  >
+                    <DownloadIcon />
                   </IconButton>
                 </ListItem>
               ))}
@@ -447,7 +415,7 @@ const AccountPage = () => {
               </Button>
             )}
             {loadingInvoices ? (
-              <>
+              <> 
                 {[...Array(3)].map((_, index) => (
                   <Skeleton key={index} variant="rectangular" height={60} sx={{ borderRadius: 1, mb: 1 }} />
                 ))}

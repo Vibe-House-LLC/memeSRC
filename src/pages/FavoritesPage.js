@@ -1,35 +1,13 @@
 // FavoritesPage.js
 
 import React, { useState, useEffect, useContext } from 'react';
-import { API, graphqlOperation, Auth } from 'aws-amplify';
-import { Typography, IconButton, Badge, Fab, Grid, Card, CardContent, Button, Collapse } from '@mui/material';
-import StarBorderIcon from '@mui/icons-material/StarBorder';
-import StarIcon from '@mui/icons-material/Star';
+import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { createFavorite, deleteFavorite } from '../graphql/mutations';
-import { listFavorites } from '../graphql/queries';
+import Container from '@mui/material/Container';
+import { Link } from 'react-router-dom';
 import fetchShows from '../utils/fetchShows';
 import { UserContext } from '../UserContext';
-
-const StyledBadge = styled(Badge)(() => ({
-  '& .MuiBadge-badge': {
-    padding: '0 3px',
-    backgroundColor: 'rgba(0, 0, 0, 1)',
-    fontWeight: 'bold',
-    fontSize: '7pt',
-  },
-  position: 'absolute',
-  top: '8px',
-  right: '8px',
-}));
-
-const StyledFab = styled(Fab)(() => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.35)',
-  zIndex: 0,
-  position: 'relative',
-}));
-
-const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
+import FavoriteToggle from '../components/FavoriteToggle';
 
 const UpgradedIndexBanner = styled('div')(({ show }) => ({
   backgroundImage: 'url("https://api-prod-minimal-v510.vercel.app/assets/images/cover/cover_3.jpg")',
@@ -123,24 +101,17 @@ const MinimizedBannerText = styled(Typography)`
   z-index: 1;
 `;
 
-async function getCacheKey() {
-  try {
-    const currentUser = await Auth.currentAuthenticatedUser();
-    return `showsCache-${currentUser.username}-${APP_VERSION}`;
-  } catch {
-    return `showsCache-${APP_VERSION}`;
-  }
-}
+
 
 const FavoritesPage = () => {
-  const { user, handleUpdateUserDetails } = useContext(UserContext)
+  const { user } = useContext(UserContext);
   const [favorites, setFavorites] = useState([]);
   const [availableIndexes, setAvailableIndexes] = useState([]);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isBannerMinimized, setIsBannerMinimized] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
+
+  const authorized = !!user; // Check if user is logged in
 
   useEffect(() => {
     Promise.all([fetchAvailableIndexes()])
@@ -180,81 +151,6 @@ const FavoritesPage = () => {
     }
   };
 
-  const fetchFavorites = async () => {
-    try {
-      const currentUser = await Auth.currentAuthenticatedUser();
-
-      let nextToken = null;
-      let allFavorites = [];
-
-      do {
-        // eslint-disable-next-line no-await-in-loop
-        const result = await API.graphql(graphqlOperation(listFavorites, {
-          limit: 10,
-          nextToken,
-        }));
-
-        allFavorites = allFavorites.concat(result.data.listFavorites.items);
-        nextToken = result.data.listFavorites.nextToken;
-
-      } while (nextToken);
-
-      const enrichedFavorites = allFavorites.map(favorite => {
-        const match = availableIndexes.find(index => index.id === favorite.cid);
-        return match ? { ...favorite, alias: match } : favorite;
-      });
-
-      // Sort enrichedFavorites alphabetically by alias title
-      enrichedFavorites.sort((a, b) => {
-        const titleA = (a.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
-        const titleB = (b.alias?.title || "").toLowerCase().replace(/^the\s+/, '');
-        return titleA.localeCompare(titleB);
-      });
-
-      setFavorites(enrichedFavorites);
-    } catch (err) {
-      console.error('Error fetching favorites:', err);
-      setError('Failed to fetch favorites.');
-    }
-  };
-
-  const clearSessionCache = async () => {
-    const cacheKey = await getCacheKey();
-    localStorage.removeItem(cacheKey);
-  };
-
-  const addFavorite = (indexId) => {
-    setIsSaving(true);
-    API.post('publicapi', '/user/update/updateFavorites', {
-      body: {
-        favoriteId: indexId
-      }
-    }).then(results => {
-      handleUpdateUserDetails(results?.updatedUserDetails)
-    }).catch(err => {
-      console.error('Error adding favorite:', err);
-      setError('Failed to add favorite.');
-    }).finally( () => {
-      setIsSaving(false);
-    })
-  };
-
-  const removeFavorite = async (favoriteId) => {
-    setIsSaving(true);
-    API.post('publicapi', '/user/update/updateFavorites', {
-      body: {
-        favoriteId,
-        removeFavorite: true
-      }
-    }).then(results => {
-      handleUpdateUserDetails(results?.updatedUserDetails)
-    }).catch(err => {
-      console.error('Error adding favorite:', err);
-      setError('Failed to add favorite.');
-    }).finally( () => {
-      setIsSaving(false);
-    });
-  };
 
   const filteredAvailableIndexes = availableIndexes.filter(
     index => !favorites.find(favorite => favorite.cid === index.id)
@@ -271,8 +167,48 @@ const FavoritesPage = () => {
     return <div style={{ padding: '20px' }}>Loading...</div>;
   }
 
+  if (!authorized) {
+    const redirectTo = encodeURIComponent(window.location.pathname + window.location.search);
+
+    return (
+      <Grid container height="100%" justifyContent="center" alignItems="center" mt={6}>
+        <Grid item>
+          <Stack spacing={3} justifyContent="center" alignItems="center">
+            <img
+              src="/assets/memeSRC-white.svg"
+              alt="memeSRC logo"
+              loading="lazy"
+              style={{ height: 48, marginBottom: -15 }}
+            />
+            <Typography variant="h3" textAlign="center">
+              Favorites
+            </Typography>
+            <Typography variant="body1" textAlign="center" sx={{ paddingX: 2, maxWidth: 400 }}>
+              Create an account or log in to access the Favorites feature and personalize your memeSRC experience.
+            </Typography>
+            <Button
+              component={Link}
+              to={`/signup?dest=${redirectTo}`}
+              variant="contained"
+              size="large"
+              sx={{ fontSize: 17, minWidth: 200, mt: 2 }}
+            >
+              Create Account
+            </Button>
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Already have an account?{' '}
+              <Link to={`/login?dest=${redirectTo}`} style={{ color: '#fff', fontWeight: 'bold', textDecoration: 'none' }}>
+                Log in
+              </Link>
+            </Typography>
+          </Stack>
+        </Grid>
+      </Grid>
+    );
+  }
+
   return (
-    <div style={{ padding: '20px' }}>
+    <Container maxWidth="md" sx={{ padding: '20px' }}>
       <h1>Edit Favorites</h1>
       <Collapse in={showBanner}>
         <UpgradedIndexBanner show={showBanner}>
@@ -283,8 +219,7 @@ const FavoritesPage = () => {
                 Use the ⭐️ to set favorites.
               </UpgradedIndexSubtext>
               <UpgradedIndexSubtext sx={{ fontSize: 12 }}>
-                As a memeSRC Pro, you get early access.{' '}
-                <a href="https://forms.gle/8CETtVbwYoUmxqbi7" target="_blank" rel="noopener noreferrer">
+                <a href="/support" rel="noopener noreferrer">
                   Report&nbsp;a&nbsp;problem
                 </a>
                 .
@@ -293,7 +228,6 @@ const FavoritesPage = () => {
                 <Button
                   variant="contained"
                   onClick={() => {
-                    setIsBannerMinimized(true);
                     setShowBanner(false);
                     localStorage.setItem(`dismissedBanner`, 'true');
                   }}
@@ -321,11 +255,10 @@ const FavoritesPage = () => {
         <MinimizedBanner
           onClick={() => {
             setShowBanner(true);
-            setIsBannerMinimized(false);
             localStorage.removeItem(`dismissedBanner`);
           }}
         >
-          <MinimizedBannerText style={{ fontWeight: 'bold' }}>Favorites (early access)</MinimizedBannerText>
+          <MinimizedBannerText style={{ fontWeight: 'bold' }}>Favorites</MinimizedBannerText>
           <MinimizedBannerText
             style={{
               textDecoration: 'underline',
@@ -341,7 +274,7 @@ const FavoritesPage = () => {
       <div>
         <Typography variant="h4" gutterBottom>Favorites</Typography>
         {favorites.length > 0 ? (
-          <Grid container spacing={2}>
+          <Grid container spacing={2} justifyContent="center">
             {favorites.map((favorite) => (
               <Grid item xs={12} key={favorite.id}>
                 <Card
@@ -349,30 +282,32 @@ const FavoritesPage = () => {
                     backgroundColor: favorite.alias?.colorMain,
                     color: favorite.alias?.colorSecondary,
                     cursor: 'pointer',
+                    minHeight: 150,
+                    width: '100%',
+                    position: 'relative',
+                    overflow: 'visible',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    minHeight: 150,
-                    position: 'relative',
+                    paddingX: 2
                   }}
                 >
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <StyledBadge
-                      anchorOrigin={{
-                        vertical: 'top',
-                        horizontal: 'right',
-                      }}
-                    >
-                      <StyledFab
-                        aria-label="remove-favorite"
-                        onClick={() => removeFavorite(favorite.id)}
-                        disabled={isSaving}
-                        size="small"
-                      >
-                        <StarIcon />
-                      </StyledFab>
-                    </StyledBadge>
+                  <FavoriteToggle
+                    indexId={favorite.id}
+                    initialIsFavorite
+                  />
+                  <CardContent
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      height: '100%',
+                      width: '100%',
+                      padding: '16px',
+                    }}
+                  >
                     <Typography variant="h5" sx={{ mb: 1 }}>
                       {favorite.alias?.emoji} {favorite.alias?.title}
                     </Typography>
@@ -391,7 +326,7 @@ const FavoritesPage = () => {
       <div style={{ marginTop: 20 }}>
         <Typography variant="h4" gutterBottom>Other</Typography>
         {sortedFilteredAvailableIndexes.length > 0 ? (
-          <Grid container spacing={2}>
+          <Grid container spacing={2} justifyContent="center">
             {sortedFilteredAvailableIndexes.map((index) => (
               <Grid item xs={12} key={index.id}>
                 <Card
@@ -399,30 +334,32 @@ const FavoritesPage = () => {
                     backgroundColor: index.colorMain,
                     color: index.colorSecondary,
                     cursor: 'pointer',
+                    minHeight: 150,
+                    width: '100%',
+                    position: 'relative',
+                    overflow: 'visible',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    minHeight: 150,
-                    position: 'relative',
+                    paddingX: 2
                   }}
                 >
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <StyledBadge
-                      anchorOrigin={{
-                        vertical: 'top',
-                        horizontal: 'right',
-                      }}
-                    >
-                      <StyledFab
-                        aria-label="add-favorite"
-                        onClick={() => addFavorite(index.id)}
-                        disabled={isSaving}
-                        size="small"
-                      >
-                        <StarBorderIcon />
-                      </StyledFab>
-                    </StyledBadge>
+                  <FavoriteToggle
+                    indexId={index.id}
+                    initialIsFavorite={false}
+                  />
+                  <CardContent
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      height: '100%',
+                      width: '100%',
+                      padding: '16px',
+                    }}
+                  >
                     <Typography variant="h5" sx={{ mb: 1 }}>
                       {index.emoji} {index.title}
                     </Typography>
@@ -438,7 +375,7 @@ const FavoritesPage = () => {
           <Typography>All indexes are in your favorites.</Typography>
         )}
       </div>
-    </div>
+    </Container>
   );
 };
 

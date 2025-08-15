@@ -2,20 +2,16 @@
 
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
-import { Navigate, Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState, useContext, memo } from 'react';
-import { API } from 'aws-amplify';
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState, useContext, memo } from 'react';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
 import {
-  AppBar,
-  Toolbar,
   IconButton,
   Button,
   Typography,
   Container,
   Card,
-  CardContent,
   CardMedia,
   Grid,
   Chip,
@@ -34,21 +30,20 @@ import {
   List,
   useMediaQuery,
   Box,
-  Link,
   TextField,
   Snackbar,
   Alert,
   FormControl,
   FormLabel,
-  MenuItem, 
+  MenuItem,
   Select,
-  InputLabel,
   ToggleButtonGroup,
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { Add, ArrowBack, ArrowBackIos, ArrowForward, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownload, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatLineSpacing, FormatSize, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Home, Menu, OpenInBrowser, OpenInNew, VerticalAlignBottom, VerticalAlignTop, Visibility, VisibilityOff } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
+import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
@@ -56,6 +51,9 @@ import getV2Metadata from '../utils/getV2Metadata';
 import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+// Removed collage collector usage
+import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -75,50 +73,110 @@ const StyledCardMedia = styled('img')`
   background-color: black;
 `;
 
-export default function FramePage({ shows = [] }) {
-  const { setFrame, fineTuningFrame, setFineTuningFrame } = useSearchDetails();
+export default function FramePage() {
+  const { setFrame } = useSearchDetails();
   const navigate = useNavigate();
   const [frameData, setFrameData] = useState({});
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [surroundingFrames, setSurroundingFrames] = useState([]);
   const [surroundingSubtitles, setSurroundingSubtitles] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { cid, season, episode, frame, fineTuningIndex = null, searchTerms } = useParams();
+  const { cid, season, episode, frame, fineTuningIndex = null } = useParams();
   const [confirmedCid, setConfirmedCid] = useState();
-  const [sliderValue, setSliderValue] = useState(fineTuningFrame || 0);
   const [displayImage, setDisplayImage] = useState();
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
-  const [aspectRatio, setAspectRatio] = useState('16/9');
-  const [showTitle, setShowTitle] = useState('');
+  const aspectRatio = '16/9';
+  const [showTitle] = useState('');
   const [imgSrc, setImgSrc] = useState();
   const [showText, setShowText] = useState(false);
   const [fontSizeScaleFactor, setFontSizeScaleFactor] = useState(1);
   const [fontLineHeightScaleFactor, setFontLineHeightScaleFactor] = useState(1);
   const [fontBottomMarginScaleFactor, setFontBottomMarginScaleFactor] = useState(1);
-  const [enableFineTuningFrames, setEnableFineTuningFrames] = useState(true);
   const [loadingFineTuning, setLoadingFineTuning] = useState(false);
   const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
+
+  const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
+  
+  // Check if user is an admin (same logic as FloatingActionButtons)
+  const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
+
+  // Function to save current frame to library
+  const handleSaveToLibrary = async () => {
+    if (!displayImage || savingToLibrary) return;
+
+    setSavingToLibrary(true);
+    try {
+      // Create a canvas to generate the final image
+      const offScreenCanvas = document.createElement('canvas');
+      const ctx = offScreenCanvas.getContext('2d');
+      
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = displayImage;
+      
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          try {
+            // Set canvas dimensions
+            const maxCanvasWidth = 1000;
+            const canvasAspectRatio = img.width / img.height;
+            const maxCanvasHeight = maxCanvasWidth / canvasAspectRatio;
+            
+            offScreenCanvas.width = maxCanvasWidth;
+            offScreenCanvas.height = maxCanvasHeight;
+            
+                      // Draw the image (original image without any text overlay)
+          ctx.drawImage(img, 0, 0, maxCanvasWidth, maxCanvasHeight);
+            
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        };
+        img.onerror = reject;
+      });
+      
+      // Convert canvas to Blob (prefer toBlob and pass Blob to library saver)
+      const blob = await new Promise((resolve) => offScreenCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+      
+      // Generate filename
+      const showTitleSafe = (showTitle || frameData?.showTitle || 'frame').replace(/[^a-zA-Z0-9]/g, '-');
+      const filename = `${showTitleSafe}-S${season}E${episode}-${frameToTimeCode(frame).replace(/:/g, '-')}`;
+      
+      // Save to library
+      await saveImageToLibrary(blob, filename);
+      
+      setLibrarySnackbarOpen(true);
+    } catch (error) {
+      console.error('Error saving frame to library:', error);
+    } finally {
+      setSavingToLibrary(false);
+    }
+  };
 
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
   const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
-  const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar"];
+  const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "Baveuse", "PULPY", "scrubs", "South Park", "SPIDEY", "HORROR", "IMPACT", "Star Jedi", "twilight", "zuume"];
 
   /* -------------------------------------------------------------------------- */
 
-  const FontSelector = ({ selectedFont, onSelectFont }) => {
-    return (
+  const FontSelector = ({ selectedFont, onSelectFont }) => (
       <Select
         value={selectedFont}
-        onChange={(e) => onSelectFont(e.target.value)}
+        onChange={(e) => {
+          const newFont = e.target.value;
+          onSelectFont(newFont);
+          setIsLowercaseFont(newFont === 'Star Jedi');
+        }}
         displayEmpty
         inputProps={{ 'aria-label': 'Without label' }}
         size='small'
@@ -135,7 +193,11 @@ export default function FramePage({ shows = [] }) {
           <MenuItem key={font} value={font} sx={{ fontFamily: font }}>{font}</MenuItem>
         ))}
       </Select>
-    );
+  );
+
+  FontSelector.propTypes = {
+    selectedFont: PropTypes.string.isRequired,
+    onSelectFont: PropTypes.func.isRequired,
   };
 
   useEffect(() => {
@@ -147,10 +209,10 @@ export default function FramePage({ shows = [] }) {
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
+  // Removed collage snackbar state
+  const [librarySnackbarOpen, setLibrarySnackbarOpen] = useState(false);
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
 
-  const [alertOpenTapToEdit, setAlertOpenTapToEdit] = useState(() => {
-    return sessionStorage.getItem('alertDismissed-98ruio') !== 'true';
-  });
 
   const theme = useTheme();
 
@@ -160,6 +222,12 @@ export default function FramePage({ shows = [] }) {
 
   const handleSnackbarClose = () => {
     setSnackBarOpen(false);
+  }
+
+  // Removed collage snackbar handler
+
+  const handleLibrarySnackbarClose = () => {
+    setLibrarySnackbarOpen(false);
   }
 
   /* ---------------------------- Subtitle Function --------------------------- */
@@ -218,6 +286,18 @@ export default function FramePage({ shows = [] }) {
     return totalLines;
   }
 
+  function getContrastColor(hexColor) {
+    // Convert hex to RGB
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return black for bright colors, white for dark colors
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  }
 
   const updateCanvasUnthrottled = (scaleDown) => {
     const offScreenCanvas = document.createElement('canvas');
@@ -226,7 +306,7 @@ export default function FramePage({ shows = [] }) {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = displayImage;
-    img.onload = function () {
+    img.onload = () => {
       if (throttleTimeoutRef.current !== null) {
         clearTimeout(throttleTimeoutRef.current);
       }
@@ -272,8 +352,8 @@ export default function FramePage({ shows = [] }) {
           ctx.font = `${fontStyle} ${fontWeight} ${isMd ? scaledFontSizeDesktop : scaledFontSizeMobile}px ${fontFamily}`;
           ctx.textAlign = 'center';
           ctx.fillStyle = fontColor;
-          ctx.strokeStyle = 'black';
-          ctx.lineWidth = 6;
+          ctx.strokeStyle = getContrastColor(fontColor);
+          ctx.lineWidth = offScreenCanvas.width * 0.0044; // Adjusted to be between 0.002 and 0.0025
           ctx.lineJoin = 'round'; // Add this line to round the joints
 
           const x = offScreenCanvas.width / 2;
@@ -281,7 +361,7 @@ export default function FramePage({ shows = [] }) {
           const lineHeight = 24; // adjust as per your requirements
           const startY = offScreenCanvas.height - (2 * lineHeight); // adjust to position the text properly
 
-          const text = loadedSubtitle;
+          const text = isLowercaseFont ? loadedSubtitle.toLowerCase() : loadedSubtitle;
 
           // Calculate number of lines without drawing
           const numOfLines = wrapText(ctx, text, x, startY, maxWidth, scaledLineHeight, false);
@@ -367,6 +447,7 @@ export default function FramePage({ shows = [] }) {
           setFrameData(initialInfo);
           setDisplayImage(initialInfo.frame_image);
           setLoadedSubtitle(initialInfo.subtitle);
+          setOriginalSubtitle(initialInfo.subtitle);
           setLoadedSeason(season);
           setLoadedEpisode(episode);
           if (initialInfo.fontFamily && fonts.includes(initialInfo.fontFamily)) {
@@ -397,9 +478,7 @@ export default function FramePage({ shows = [] }) {
           const surroundingFramePromises = fetchFramesSurroundingPromises(confirmedCid, season, episode, frame);
 
           // Initialize an array to keep track of the frames as they load
-          const surroundingFrames = [];
-
-          // Instead of waiting for all promises to resolve, handle each promise individually
+        // Instead of waiting for all promises to resolve, handle each promise individually
           surroundingFramePromises.forEach((promise, index) => {
             promise.then(resolvedFrame => {
               resolvedFrame.cid = confirmedCid;
@@ -430,12 +509,13 @@ export default function FramePage({ shows = [] }) {
       setFrameData(null);
       setDisplayImage(null);
       setLoadedSubtitle(null);
+      setOriginalSubtitle('');
+      setSubtitleUserInteracted(false);
       setSelectedFrameIndex(5);
       setFineTuningFrames([]);
       setFrames([]);
       setSurroundingSubtitles([]);
       setSurroundingFrames(new Array(9).fill('loading'));
-      setEnableFineTuningFrames(false)
       setImgSrc();
       setLoadingFineTuning(false)
       setFineTuningLoadStarted(false)
@@ -470,14 +550,13 @@ export default function FramePage({ shows = [] }) {
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
-      const blobPromises = fineTuningFrames.map((url) => {
-        return fetch(url)
+      const blobPromises = fineTuningFrames.map((url) =>
+        fetch(url)
           .then((response) => response.blob())
           .catch((error) => {
             console.error('Error fetching image:', error);
             return null;
-          });
-      });
+          }));
 
       // Wait for all blob promises to resolve
       Promise.all(blobPromises)
@@ -520,7 +599,6 @@ useEffect(() => {
     return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
   }
 
-
   // useEffect(() => {
   //   updateCanvas(true)
   // }, [fontSizeScaleFactor, fontLineHeightScaleFactor, fontBottomMarginScaleFactor]);
@@ -533,19 +611,19 @@ useEffect(() => {
     setSubtitlesExpanded(!subtitlesExpanded);
   };
 
-  const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
-  const [loadingCsv, setLoadingCsv] = useState();
+  const { selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [frames, setFrames] = useState();
   const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
-  const [loadedSeason, setLoadedSeason] = useState('');  // TODO
-  const [loadedEpisode, setLoadedEpisode] = useState('');  // TODO
-  const [formats, setFormats] = useState(() => ['bold', 'italic']);
+  const [, setOriginalSubtitle] = useState('');
+  const [, setSubtitleUserInteracted] = useState(false);
+  const [, setLoadedSeason] = useState('');
+  const [, setLoadedEpisode] = useState('');
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
   const [mainImageLoaded, setMainImageLoaded] = useState(false);
 
   const [isBold, setIsBold] = useState(() => {
     const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
-    return storedValue ? JSON.parse(storedValue).isBold : true;
+    return storedValue ? JSON.parse(storedValue).isBold : false;
   });
   
   const [isItalic, setIsItalic] = useState(() => {
@@ -568,6 +646,11 @@ useEffect(() => {
     return storedValue ? JSON.parse(storedValue).fontFamily : 'Arial';
   });
 
+  const [isLowercaseFont, setIsLowercaseFont] = useState(() => {
+    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
+    return storedValue ? JSON.parse(storedValue).fontFamily === 'Star Jedi' : false;
+  });
+
   const updateLocalStorage = () => {
     const formattingOptions = {
       isBold,
@@ -584,12 +667,6 @@ useEffect(() => {
 
   const textFieldRef = useRef(null);
 
-  const moveCursorToEnd = () => {
-    if (textFieldRef.current) {
-      const input = textFieldRef.current;
-      input.setSelectionRange(input.value.length, input.value.length);
-    }
-  };
 
   useEffect(() => {
     const moveCursorToEnd = () => {
@@ -650,8 +727,7 @@ useEffect(() => {
     setDisplayImage(fineTuningBlobs?.[newSliderValue] || null);
   };
 
-  const renderFineTuningFrames = (imgSrc) => {
-    return (
+  const renderFineTuningFrames = (imgSrc) => (
       <>
         <div style={{ position: 'relative' }}>
         {!mainImageLoaded && (
@@ -659,7 +735,7 @@ useEffect(() => {
         )}
         <CardMedia
           component={'img'}
-          alt={`Fine-tuning ${sliderValue}`}
+          alt={`Fine-tuning ${selectedFrameIndex}`}
           image={imgSrc}
           id='frameImage'
           onLoad={handleMainImageLoad}
@@ -689,6 +765,7 @@ useEffect(() => {
             </div>
           )}
           <IconButton
+            aria-label="previous frame"
             style={{
               position: 'absolute',
               top: '50%',
@@ -706,6 +783,7 @@ useEffect(() => {
             <ArrowBackIos style={{ fontSize: '2rem' }} />
           </IconButton>
           <IconButton
+            aria-label="next frame"
             disabled={Number(frame) - 1 === 0}
             style={{
               position: 'absolute',
@@ -728,7 +806,7 @@ useEffect(() => {
         {frames && frames?.length > 0 ?
           <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
             <Tooltip title="Fine Tuning">
-              <IconButton>
+              <IconButton aria-label="fine tuning">
                 {loadingFineTuning ? (
                   <CircularProgress size={24} />
                 ) : (
@@ -777,7 +855,7 @@ useEffect(() => {
           :
           <Stack spacing={2} direction="row" p={0} pr={3} pl={3} alignItems={'center'}>
             <Tooltip title="Fine Tuning">
-              <IconButton>
+              <IconButton aria-label="fine tuning">
                 <HistoryToggleOffRounded alt="Fine Tuning" />
               </IconButton>
             </Tooltip>
@@ -822,9 +900,7 @@ useEffect(() => {
           </Stack>
         }
       </>
-
-    );
-  };
+  );
 
   const [imagesLoaded, setImagesLoaded] = useState({});
 
@@ -833,6 +909,8 @@ useEffect(() => {
   };
 
 
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+
   return (
     <>
       <Helmet>
@@ -840,24 +918,24 @@ useEffect(() => {
       </Helmet>
 
       <Container maxWidth="xl" sx={{ pt: 0 }}>
-        <Grid container spacing={2} direction="row" alignItems="center">
-          {/* <img src={imgSrc} alt='alt' /> */}
+        {user?.userDetails?.subscriptionStatus !== 'active' && (
+          <Grid item xs={12} mb={3}>
+            <center>
+              <Box>
+                {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                <RouterLink to="/pro" style={{ textDecoration: 'none' }}>
+                  <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                    ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                  </Typography>
+                </RouterLink>
+              </Box>
+            </center>
+          </Grid>
+        )}
 
-          {user?.userDetails?.subscriptionStatus !== 'active' && isMd && (
-            <Grid item xs={12} mt={2}>
-              <center>
-                <Box sx={{ maxWidth: '800px' }}>
-                  <FramePageBottomBannerAd />
-                </Box>
-              </center>
-            </Grid>
-          )}
+        <Grid container spacing={2} direction="row" alignItems="center">
 
           <Grid item xs={12} md={6}>
-
-            <Typography variant='h2' marginBottom={2}>
-              {showTitle}
-            </Typography>
 
             <Chip
               size='small'
@@ -895,16 +973,6 @@ useEffect(() => {
               }}
             />
 
-            {!isMd && user?.userDetails?.subscriptionStatus !== 'active' && (
-              <Grid item xs={12} mt={2}>
-                <center>
-                  <Box sx={{ maxWidth: '800px' }}>
-                    <FramePageBottomBannerAd />
-                  </Box>
-                </center>
-              </Grid>
-            )}
-
             <Card>
               {renderFineTuningFrames(imgSrc)}
             </Card>
@@ -912,24 +980,6 @@ useEffect(() => {
 
           <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
-              {/* <Card
-                style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-                onClick={(e) => {
-                  // Prevent card click event when clicking on any button or other interactive element inside the card
-                  if (e.target.closest('button, a, input, textarea')) {
-                    return;
-                  }
-
-                  // If showText is already true, do nothing
-                  if (showText) {
-                    return;
-                  }
-
-                  // If showText is false, then set it to true to show the TextField
-                  setShowText(true);
-                }}
-              >
-                <CardContent sx={{ pt: 3 }}> */}
                   {/* Formatting Toolbar */}
                   {showText &&
                     <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
@@ -984,18 +1034,17 @@ useEffect(() => {
                           color={colorPickerColor}
                           colors={[
                             '#FFFFFF',
-                            'yellow',
-                            'black',
-                            'orange',
-                            '#8ED1FC',
-                            '#0693E3',
-                            '#ABB8C3',
-                            '#EB144C',
-                            '#F78DA7',
-                            '#9900EF',
+                            '#FFFF00',
+                            '#000000',
+                            '#FF4136',
+                            '#2ECC40',
+                            '#0052CC',
+                            '#FF851B',
+                            '#B10DC9',
+                            '#39CCCC',
+                            '#F012BE',
                           ]}
                           width="280px"
-                        // TODO: Fix background color to match other cards
                         />
                       </div>
                     </Popover>
@@ -1016,13 +1065,26 @@ useEffect(() => {
                           size="small"
                           placeholder="Type a caption..."
                           value={loadedSubtitle}
-                          onMouseDown={() => setShowText(true)}
+                          onMouseDown={() => {
+                            setShowText(true);
+                            setSubtitleUserInteracted(true);
+                          }}
                           onChange={(e) => setLoadedSubtitle(e.target.value)}
+                          onFocus={() => {
+                            setTextFieldFocused(true);
+                            setSubtitleUserInteracted(true);
+                          }}
+                          onBlur={() => setTextFieldFocused(false)}
                           InputProps={{
                             style: {
                               fontWeight: isBold ? 'bold' : 'normal',
                               fontStyle: isItalic ? 'italic' : 'normal',
                               fontFamily,
+                            },
+                          }}
+                          inputProps={{
+                            style: {
+                              textTransform: isLowercaseFont ? 'lowercase' : 'none',
                             },
                           }}
                           sx={{
@@ -1058,6 +1120,11 @@ useEffect(() => {
                         >
                           Clear Caption
                         </Button>
+                      )}
+                      {textFieldFocused && user?.userDetails?.subscriptionStatus !== 'active' && (
+                        <Box sx={{ mt: 2 }}>
+                          <FixedMobileBannerAd />
+                        </Box>
                       )}
                       {showText &&
                         <>
@@ -1298,7 +1365,8 @@ useEffect(() => {
               sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
               // startIcon={<Edit />}
               onClick={() => {
-                setShowText(true)
+                setShowText(true);
+                setSubtitleUserInteracted(true);
               }}
             >
               Make A Meme
@@ -1316,8 +1384,36 @@ useEffect(() => {
               >
                 Advanced Editor
               </Button>
+
+              {hasCollageAccess && (
+                <>
+                  <Button
+                    size="medium"
+                    fullWidth
+                    variant="outlined"
+                    onClick={handleSaveToLibrary}
+                    disabled={!confirmedCid || !displayImage || savingToLibrary}
+                    sx={{ 
+                      mb: 2, 
+                      borderColor: '#FF9800', 
+                      color: '#FF9800',
+                      '&:hover': { 
+                        borderColor: '#F57C00', 
+                        backgroundColor: 'rgba(255, 152, 0, 0.04)' 
+                      },
+                      '&.Mui-disabled': {
+                        borderColor: '#ccc',
+                        color: '#ccc'
+                      }
+                    }}
+                    startIcon={<Collections />}
+                  >
+                    {savingToLibrary ? 'Saving...' : 'Save to Library'}
+                  </Button>
+                </>
+              )}
           </Grid>
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
+          {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} my={1}>
               <center>
                 <Box sx={{ maxWidth: '800px' }}>
@@ -1325,7 +1421,7 @@ useEffect(() => {
                 </Box>
               </center>
             </Grid>
-          }
+          } */}
           <Grid item xs={12} md={6}>
             <Card sx={{ mt: 0 }}>
               <Accordion expanded={subtitlesExpanded} disableGutters>
@@ -1442,6 +1538,19 @@ useEffect(() => {
             </Alert>
           </Snackbar>
 
+          {/* Removed collage snackbar */}
+
+          <Snackbar
+            open={librarySnackbarOpen}
+            autoHideDuration={3000}
+            onClose={handleLibrarySnackbarClose}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert onClose={handleLibrarySnackbarClose} severity="success" sx={{ width: '100%' }}>
+              Frame saved to library!
+            </Alert>
+          </Snackbar>
+
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
             <Grid container spacing={2} mt={0}>
@@ -1452,7 +1561,7 @@ useEffect(() => {
                 <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${index}`}>
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
-                    <a style={{ textDecoration: 'none' }}>
+                    <Box component="div" sx={{ textDecoration: 'none' }}>
                       <StyledCard
                         sx={{
                           ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
@@ -1479,7 +1588,7 @@ useEffect(() => {
                           <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
                         )}
                       </StyledCard>
-                    </a>
+                    </Box>
                   ) : (
                     // Render a skeleton if the data is not yet available (loading)
                     <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
@@ -1493,6 +1602,15 @@ useEffect(() => {
                 variant="contained"
                 fullWidth
                 href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                sx={{
+                  color: '#e5e7eb',
+                  background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+                  border: '1px solid rgba(255, 255, 255, 0.16)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+                    borderColor: 'rgba(255, 255, 255, 0.24)',
+                  },
+                }}
               >
                 View Episode
               </Button>

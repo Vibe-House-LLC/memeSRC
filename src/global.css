@@ -1,9 +1,71 @@
 @font-face {
     font-family: 'Akbar';
     src: url('./fonts/akbar.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Baveuse';
+    src: url('./fonts/baveuse.ttf') format('truetype');
+    font-display: swap;
 }
 
 @font-face {
     font-family: 'Futurama';
     src: url('./fonts/fr-bold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'HORROR';
+    src: url('./fonts/horror.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'IMPACT';
+    src: url('./fonts/impact.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PULPY';
+    src: url('./fonts/pulpy.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'scrubs';
+    src: url('./fonts/scrubs.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'South Park';
+    src: url('./fonts/south-park.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'SPIDEY';
+    src: url('./fonts/spidey.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Star Jedi';
+    src: url('./fonts/star-jedi.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'twilight';
+    src: url('./fonts/twilight.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'zuume';
+    src: url('./fonts/zuume.ttf') format('truetype');
+    font-display: swap;
 }

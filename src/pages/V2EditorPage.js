@@ -1,14 +1,16 @@
 // V2EditorPage.js
+/* eslint-disable no-unused-vars, func-names */
 
 import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import PropTypes from 'prop-types';
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { styled } from '@mui/material/styles';
-import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Backdrop, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { AccessTime, Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FolderOpen, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, History, HistoryToggleOffRounded, IosShare, Menu, MoreTime, Redo, Save, Share, Timelapse, Timeline, Undo, Update, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -19,8 +21,6 @@ import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
-import { createEditorProject, updateEditorProject } from '../graphql/mutations';
-import { getEditorProject } from '../graphql/queries';
 import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
@@ -28,6 +28,9 @@ import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import getV2Metadata from '../utils/getV2Metadata';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+
+import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from '../utils/editorFunctions';
+import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -80,7 +83,6 @@ const EditorPage = ({ shows }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
 
-  // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid, editorProjectId, fineTuningIndex, searchTerms } = useParams();
   const { user, setUser } = useContext(UserContext);
@@ -98,7 +100,7 @@ const EditorPage = ({ shows }) => {
   const [selectedFid, setSelectedFid] = useState(fid);
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
-  const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
+  const [colorPickerAnchorEl, setColorPickerAnchorEl] = useState(null);
   const [colorPickerColor, setColorPickerColor] = useState({
     r: '0',
     g: '0',
@@ -108,6 +110,8 @@ const EditorPage = ({ shows }) => {
   const [fontSizePickerShowing, setFontSizePickerShowing] = useState(false);
   const [fontSizePickerAnchor, setFontSizePickerAnchor] = useState(null);
   const [selectedFontSize, setSelectedFontSize] = useState(100);
+
+  const [currentColorType, setCurrentColorType] = useState('text');
 
   const [editorAspectRatio, setEditorAspectRatio] = useState(1);
 
@@ -132,7 +136,9 @@ const EditorPage = ({ shows }) => {
   const [showBrushSize, setShowBrushSize] = useState(false);
   const [editorLoaded, setEditorLoaded] = useState(false);
   const [editorStates, setEditorStates] = useState([]);
+  const [canvasSizes, setCanvasSizes] = useState([]);
   const [futureStates, setFutureStates] = useState([]);
+  const [futureCanvasSizes, setFutureCanvasSizes] = useState([]);
   const [bgEditorStates, setBgEditorStates] = useState([]);
   const [bgFutureStates, setBgFutureStates] = useState([]);
   const [loadingFineTuningFrames, setLoadingFineTuningFrames] = useState(true);
@@ -187,42 +193,52 @@ const EditorPage = ({ shows }) => {
   const location = useLocation();
 
   const saveCollageImage = () => {
-    // Create the resulting image blob
     const resultImage = editor.canvas.toDataURL({
       format: 'jpeg',
-      quality: 0.6,
-      multiplier: imageScale
+      quality: 1,
+      multiplier: imageScale || 1
     });
-  
-    fetch(resultImage)
-      .then(res => res.blob())
-      .then(blob => {
-        // Update the collage state with the new image
-        const { images, editingImageIndex } = location.state.collageState;
-        const updatedImages = [...images];
-        updatedImages[editingImageIndex] = {
-          ...updatedImages[editingImageIndex],
+
+          fetch(resultImage)
+        .then(res => res.blob())
+        .then(blob => {
+          if (!location.state || !location.state.collageState) {
+            console.error('Collage state is missing');
+            return;
+          }
+
+                  const { collageState } = location.state;
+
+          if (!Array.isArray(collageState.images) || typeof collageState.editingImageIndex !== 'number') {
+          console.error('Invalid collage state structure');
+          return;
+        }
+
+        const updatedImages = [...collageState.images];
+        updatedImages[collageState.editingImageIndex] = {
+          ...updatedImages[collageState.editingImageIndex],
           src: URL.createObjectURL(blob),
+          width: editor.canvas.width,
+          height: editor.canvas.height,
         };
-  
-        // Create the updated collage state
+
         const updatedCollageState = {
-          ...location.state.collageState,
+          ...collageState,
           images: updatedImages,
           editingImageIndex: null,
         };
-  
-        // Navigate back to the collage page with the updated state
+
         navigate('/collage', { state: { updatedCollageState } });
+      })
+      .catch(error => {
+        console.error('Error in saveCollageImage:', error);
       });
   };
 
   const handleClickDialogOpen = () => {
     if (location.state?.collageState) {
-      // If there's a collage state available
       saveCollageImage();
     } else {
-      // If there's no collage state, proceed with the normal save process
       setOpenDialog(true);
       saveImage();
     }
@@ -232,10 +248,16 @@ const EditorPage = ({ shows }) => {
     setOpenDialog(false);
   };
 
+  const handleAlignment = (index, alignment) => {
+    const textObject = editor.canvas.item(index);
+    textObject.set({ textAlign: alignment });
+    editor?.canvas.renderAll();
+    addToHistory();
+  };
+
   // Canvas resizing
   const resizeCanvas = useCallback((width, height) => {
     if (editor) {
-      // console.log('Resized the canvas');
       editor.canvas.preserveObjectStacking = true;
       editor?.canvas.setWidth(width);
       editor?.canvas.setHeight(height);
@@ -245,7 +267,6 @@ const EditorPage = ({ shows }) => {
 
   // Update the editor size
   const updateEditorSize = useCallback(() => {
-    // console.log()
     const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
     // Calculate scale factor
     const scaleFactorX = desiredWidth / canvasSize.width;
@@ -265,7 +286,21 @@ const EditorPage = ({ shows }) => {
 
   // Warm up the UUID function for faster save dialog response
   useEffect(() => {
-    API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        })
+      : setTimeout(() => {
+          API.get('publicapi', '/uuid', { queryStringParameters: { warmup: true } })
+        }, 1000)
+
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -306,7 +341,7 @@ const EditorPage = ({ shows }) => {
       width: editor?.canvas.getWidth() * 0.9,
       fontSize: editor?.canvas.getWidth() * 0.04,
       fontFamily: 'sans-serif',
-      fontWeight: 900,
+      fontWeight: 400,
       fill: 'white',
       stroke: 'black',
       strokeLineJoin: 'round',
@@ -330,7 +365,7 @@ const EditorPage = ({ shows }) => {
       }
       addToHistory();
     }
-  }, [editor]);
+  }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Function to handle image uploads and add them to the canvas
@@ -345,7 +380,6 @@ const EditorPage = ({ shows }) => {
         // Calculate the scale to fit the image within the canvas, maintaining the aspect ratio
         const canvasWidth = editor.canvas.getWidth();
         const canvasHeight = editor.canvas.getHeight();
-        // Introducing a padding factor of 0.9 for a 10% padding effect
         const paddingFactor = 0.9;
         const scale = Math.min(canvasWidth / imgObj.width, canvasHeight / imgObj.height) * paddingFactor;
 
@@ -355,18 +389,14 @@ const EditorPage = ({ shows }) => {
           scaleX: scale,
           scaleY: scale,
           originX: 'center',
-          originY: 'center'
+          originY: 'center',
+          left: canvasWidth / 2,
+          top: canvasHeight / 2
         });
 
         // Add the image to the canvas and set it as the active object
         editor.canvas.add(image);
-        editor.canvas.setActiveObject(image); // Set the image as the active object
-
-        // Explicitly set the position of the image to the center of the canvas
-        image.set({
-          left: canvasWidth / 2,
-          top: canvasHeight / 2
-        });
+        editor.canvas.setActiveObject(image);
 
         // Update the image object and canvas state
         image.setCoords();
@@ -378,12 +408,13 @@ const EditorPage = ({ shows }) => {
           src: event.target.result,
           scale,
           angle: 0,
-          left: canvasWidth / 2 - (image.width * scale) / 2,
-          top: canvasHeight / 2 - (image.height * scale) / 2
+          left: canvasWidth / 2,
+          top: canvasHeight / 2
         };
 
         // Update the canvasObjects state with the new image object
         setCanvasObjects(prevObjects => [...prevObjects, imageObject]);
+        addToHistory();
       };
     };
     reader.readAsDataURL(imageFile);
@@ -391,53 +422,50 @@ const EditorPage = ({ shows }) => {
 
   const fileInputRef = useRef(null); // Define the ref
 
+  const handleDeleteLayer = (index) => {
+    deleteLayer(editor.canvas, index, setLayerFonts, setCanvasObjects);
+    addToHistory();
+  };
+
   const loadEditorDefaults = useCallback(async () => {
     setLoading(true);
     // Check if the uploadedImage exists in the location state
     const uploadedImage = location.state?.uploadedImage;
-    const collageState = location.state?.collageState;
-  
-    if (collageState) {
-      const { images, editingImageIndex } = collageState;
-  
-      if (images && editingImageIndex !== null) {
-        const imageToEdit = images[editingImageIndex];
-        fabric.Image.fromURL(imageToEdit.src, (oImg) => {
-          setDefaultFrame(oImg);
-  
-          // Set the canvas size based on the image aspect ratio
-          const imageAspectRatio = oImg.width / oImg.height;
-          setEditorAspectRatio(imageAspectRatio);
-          const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
-          setCanvasSize({ height: desiredHeight, width: desiredWidth });
-  
-          // Scale the image to fit the canvas
-          oImg.scale(desiredWidth / oImg.width);
-  
-          // Center the image within the canvas
-          oImg.set({ left: 0, top: 0 });
-          const minWidth = 750;
-          const x = (oImg.width > minWidth) ? oImg.width : minWidth;
-          setImageScale(x / desiredWidth);
-          resizeCanvas(desiredWidth, desiredHeight);
-  
-          editor?.canvas.setBackgroundImage(oImg);
-          setImageLoaded(true);
-  
-          // Rendering the canvas after applying all changes
-          editor.canvas.renderAll();
-          setLoading(false);
-        }, { crossOrigin: 'anonymous' });
-      }
-    } else if (uploadedImage && !defaultFrame) {
-      // Use the uploadedImage as the background instead of the default image
+    const fromCollage = location.state?.fromCollage;
+
+    if (uploadedImage) {
       fabric.Image.fromURL(uploadedImage, (oImg) => {
         setDefaultFrame(oImg);
-        // You can set a default subtitle or any other properties here if needed
-        setLoadedSeriesTitle("");
-        setSurroundingFrames([]);
-        setDefaultSubtitle(false);
+
+        // Set the canvas size based on the image aspect ratio
+        const imageAspectRatio = oImg.width / oImg.height;
+        setEditorAspectRatio(imageAspectRatio);
+        const [desiredHeight, desiredWidth] = calculateEditorSize(imageAspectRatio);
+        setCanvasSize({ height: desiredHeight, width: desiredWidth });
+
+        // Scale the image to fit the canvas
+        oImg.scale(desiredWidth / oImg.width);
+
+        // Center the image within the canvas
+        oImg.set({ left: 0, top: 0 });
+        const minWidth = 750;
+        const x = (oImg.width > minWidth) ? oImg.width : minWidth;
+        setImageScale(x / desiredWidth);
+        resizeCanvas(desiredWidth, desiredHeight);
+
+        editor?.canvas.setBackgroundImage(oImg);
+        setImageLoaded(true);
+
+        // Rendering the canvas after applying all changes
+        editor.canvas.renderAll();
         setLoading(false);
+
+        // If it's from the collage page, set some default states
+        if (fromCollage) {
+          setLoadedSeriesTitle("");
+          setSurroundingFrames([]);
+          setDefaultSubtitle(false);
+        }
       }, { crossOrigin: 'anonymous' });
     } else if (editorProjectId) {
       try {
@@ -513,9 +541,11 @@ const EditorPage = ({ shows }) => {
             { crossOrigin: 'anonymous' }
           );
         })
-        .catch((err) => console.log(err));
+        .catch((err) => {
+          console.error('Error loading frame data:', err);
+        });
     }
-  }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]);
+  }, [resizeCanvas, selectedFid, editor, addText, location, searchDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Look up data for the fid and set defaults
   useEffect(() => {
@@ -559,15 +589,6 @@ const EditorPage = ({ shows }) => {
     }
   }, [defaultSubtitle]);
 
-  // Calculate the desired editor size
-  const calculateEditorSize = (aspectRatio) => {
-    const containerElement = document.getElementById('canvas-container');
-    const availableWidth = containerElement.offsetWidth;
-    const calculatedWidth = availableWidth;
-    const calculatedHeight = availableWidth / aspectRatio;
-    return [calculatedHeight, calculatedWidth]
-  }
-
   const saveImage = () => {
     setImageUploading(true);
     const resultImage = editor.canvas.toDataURL({
@@ -597,10 +618,10 @@ const EditorPage = ({ shows }) => {
               });
             },
             progressCallback: (progress) => {
-              console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
+              // Upload progress
             },
             errorCallback: (err) => {
-              console.error('Unexpected error while uploading', err);
+              console.error('Upload error:', err);
             }
           });
 
@@ -608,10 +629,11 @@ const EditorPage = ({ shows }) => {
       });
   }
 
-  const showColorPicker = (event, index) => {
+  const showColorPicker = (colorType, index, event) => {
     setPickingColor(index);
     setColorPickerShowing(index);
-    setColorPickerAnchor(event.target);
+    setCurrentColorType(colorType);
+    setColorPickerAnchorEl(event.currentTarget);
   }
 
   const showFontSizePicker = (event, index) => {
@@ -624,23 +646,29 @@ const EditorPage = ({ shows }) => {
 
   const changeColor = (color, index) => {
     setColorPickerColor(color);
-    editor.canvas.item(index).set('fill', color.hex);
-    // console.log(`Length of object:  + ${selectedObjects.length}`)
-    setCanvasObjects([...editor.canvas._objects])
-    // console.log(editor.canvas.item(index));
+    const textObject = editor.canvas.item(index);
+  
+    if (currentColorType === 'text') {
+        textObject.set({
+            fill: color.hex,
+        });
+    } else if (currentColorType === 'stroke') {
+        textObject.set({
+            stroke: color.hex,
+            strokeWidth: editor?.canvas.getWidth() * 0.0025,
+            strokeUniform: false
+        });
+    }
+  
+    setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
     addToHistory();
   }
 
   const handleEdit = (event, index) => {
-    // console.log(event)
-    // console.log(index)
-    // setDefaultSubtitle(event.target.value)
     editor.canvas.item(index).set('text', event.target.value);
-    // console.log(`Length of object:  + ${selectedObjects.length}`)
     setCanvasObjects([...editor.canvas._objects])
-    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
   }
 
@@ -653,7 +681,6 @@ const EditorPage = ({ shows }) => {
     const defaultFontSize = editor.canvas.getWidth() * 0.04;
     editor.canvas.item(index).fontSize = defaultFontSize * (event.target.value / 100);
     setCanvasObjects([...editor.canvas._objects])
-    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
   }
 
@@ -674,17 +701,17 @@ const EditorPage = ({ shows }) => {
 
 
   const handleStyle = (index, customStyles) => {
-    console.log("index, customStyles:", index, customStyles)
     // Select the item
     const item = editor.canvas.item(index);
     // Update the style
-    item.fontWeight = customStyles.includes('bold') ? 900 : 400
-    item.fontStyle = customStyles.includes('italic') ? 'italic' : 'normal'
-    item.underline = customStyles.includes('underlined')
+    item.set({
+      fontWeight: customStyles.includes('bold') ? 'bold' : 'normal',
+      fontStyle: customStyles.includes('italic') ? 'italic' : 'normal',
+      underline: customStyles.includes('underlined')
+    });
     // Update the canvas
-    editor.canvas.item(index).dirty = true;
+    item.dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
-    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
     addToHistory();
   }
@@ -695,52 +722,11 @@ const EditorPage = ({ shows }) => {
     // Update the style
     item.fontFamily = font || 'Arial'
     // Update the canvas
-    editor.canvas.item(index).dirty = true;
+    item.dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
-    // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
     addToHistory();
   }
-
-  const deleteLayer = (index) => {
-    editor.canvas.remove(editor.canvas.item(index));
-    setCanvasObjects([...editor.canvas._objects]);
-    editor?.canvas.renderAll();
-    addToHistory();
-  
-    // Update the layerFonts state by adjusting the index numbers
-    setLayerFonts((prevFonts) => {
-      const updatedFonts = {};
-      Object.entries(prevFonts).forEach(([layerIndex, font]) => {
-        if (parseInt(layerIndex, 10) < index) {
-          updatedFonts[layerIndex] = font;
-        } else if (parseInt(layerIndex, 10) > index) {
-          updatedFonts[parseInt(layerIndex, 10) - 1] = font;
-        }
-      });
-      return updatedFonts;
-    });
-  };
-
-  // Function to move a layer up in the stack
-  const moveLayerUp = (index) => {
-    if (index <= 0) return; // Already at the top or invalid index
-
-    const objectToMoveUp = editor.canvas.item(index);
-    if (!objectToMoveUp) return; // Object not found
-
-    // Move the object one step up in the canvas stack
-    editor.canvas.moveTo(objectToMoveUp, index - 1);
-    editor.canvas.renderAll();
-    addToHistory();
-
-    setCanvasObjects(prevCanvasObjects => {
-      const newCanvasObjects = [...prevCanvasObjects];
-      // Swap the positions of the index with the index above
-      [newCanvasObjects[index], newCanvasObjects[index - 1]] = [newCanvasObjects[index - 1], newCanvasObjects[index]];
-      return newCanvasObjects;
-    });
-  };
 
   // Function to move a layer down in the stack
   const moveLayerDown = (index) => {
@@ -776,7 +762,7 @@ const EditorPage = ({ shows }) => {
           }`));
       return result.data.getMagicResult?.results;
     } catch (error) {
-      console.error("Error fetching magic result:", error);
+      console.error('Error fetching magic result:', error);
       return null;
     }
   }
@@ -835,7 +821,6 @@ const EditorPage = ({ shows }) => {
       if (obj instanceof fabric.Path) {
         const path = obj.toObject();
         const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
-        // console.log(path)
         newPath.scale(scale);
         newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
         tempCanvasDrawing.add(newPath);
@@ -859,7 +844,6 @@ const EditorPage = ({ shows }) => {
 
     const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement())
 
-    // console.log(newBackgroundImage)
     const imageWidth = backgroundImage.width
     const imageHeight = backgroundImage.height
     const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
@@ -890,7 +874,7 @@ const EditorPage = ({ shows }) => {
           body: data
         });
 
-        const magicResultId = response.magicResultId;
+        const {magicResultId} = response;
 
         const startTime = Date.now();
 
@@ -1016,13 +1000,16 @@ const EditorPage = ({ shows }) => {
     try {
       // Save the current state of the canvas for local undo/redo before any scaling or modifications
       const serializedCanvas = JSON.stringify(editor.canvas);
-      const backgroundImage = editor.canvas.backgroundImage;
+      const currentCanvasSize = {
+        width: editor.canvas.width,
+        height: editor.canvas.height
+      };
 
       setFutureStates([]);
-      setBgFutureStates([]);
+      setFutureCanvasSizes([]);
 
       setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
-      setBgEditorStates(prevHistory => [...prevHistory, backgroundImage]);
+      setCanvasSizes(prevSizes => [...prevSizes, currentCanvasSize]);
 
     } catch (error) {
       console.error('Failed to update editor state or canvas image in S3:', error);
@@ -1053,19 +1040,19 @@ const EditorPage = ({ shows }) => {
 
     // Move the latest action to futureStates before going back
     setFutureStates(prevFuture => [editorStates[editorStates.length - 1], ...prevFuture]);
-    setBgFutureStates(prevFuture => [bgEditorStates[bgEditorStates.length - 1], ...prevFuture]);
+    setFutureCanvasSizes(prevFuture => [canvasSizes[canvasSizes.length - 1], ...prevFuture]);
 
     // Go back in history
     setEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
-    setBgEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
+    setCanvasSizes(prevSizes => prevSizes.slice(0, prevSizes.length - 1));
 
     // Load the previous state into the canvas
     editor.canvas.loadFromJSON(editorStates[editorStates.length - 2], () => {
-      // After loading the state, set the background image
-      editor.canvas.setBackgroundImage(bgEditorStates[bgEditorStates.length - 2], () => {
-        editor.canvas.renderAll.bind(editor.canvas)()
-        setCanvasObjects([...editor.canvas._objects]);
-      });
+      editor.canvas.setWidth(canvasSizes[canvasSizes.length - 2].width);
+      editor.canvas.setHeight(canvasSizes[canvasSizes.length - 2].height);
+      editor.canvas.renderAll();
+      setCanvasObjects([...editor.canvas._objects]);
+      setWhiteSpaceHeight(canvasSizes[canvasSizes.length - 2].height - canvasSize.height);
     });
   }
 
@@ -1074,25 +1061,23 @@ const EditorPage = ({ shows }) => {
 
     // Move the first future state back to editorStates
     setEditorStates(prevHistory => [...prevHistory, futureStates[0]]);
-    setBgEditorStates(prevHistory => [...prevHistory, bgFutureStates[0]]);
+    setCanvasSizes(prevSizes => [...prevSizes, futureCanvasSizes[0]]);
 
     // Remove the state we've just moved from futureStates
     setFutureStates(prevFuture => prevFuture.slice(1));
-    setBgFutureStates(prevFuture => prevFuture.slice(1));
+    setFutureCanvasSizes(prevFuture => prevFuture.slice(1));
 
     // Load the restored state into the canvas
     editor.canvas.loadFromJSON(futureStates[0], () => {
-      // After loading the state, set the background image
-      editor.canvas.setBackgroundImage(bgFutureStates[0], () => {
-        editor.canvas.renderAll.bind(editor.canvas)()
-        setCanvasObjects([...editor.canvas._objects]);
-      });
+      editor.canvas.setWidth(futureCanvasSizes[0].width);
+      editor.canvas.setHeight(futureCanvasSizes[0].height);
+      editor.canvas.renderAll();
+      setCanvasObjects([...editor.canvas._objects]);
+      setWhiteSpaceHeight(futureCanvasSizes[0].height - canvasSize.height);
     });
   }
 
   useEffect(() => {
-    // console.log('there was a change to Canvas');
-
     if (editor && !editorLoaded) {
       setEditorLoaded(true);
 
@@ -1186,10 +1171,6 @@ const EditorPage = ({ shows }) => {
     }
   }, [editor]);
 
-  // useEffect(() => {
-  //   console.log(editorStates)
-  // }, [editorStates])
-
   const loadFineTuningFrames = () => {
     setLoadingFineTuningFrames(false)
   }
@@ -1204,7 +1185,6 @@ const EditorPage = ({ shows }) => {
   }, [promptEnabled])
 
   useEffect(() => {
-
     if (searchParams.has('magicTools', 'true')) {
       if (!user || user?.userDetails?.credits <= 0) {
         setMagicToolsPopoverAnchorEl(magicToolsButtonRef.current);
@@ -1276,7 +1256,7 @@ const EditorPage = ({ shows }) => {
     getV2Metadata(cid).then(metadata => {
       setConfirmedCid(metadata.id)
     }).catch(error => {
-      console.log(error)
+      // Error getting metadata
     })
   }, [cid]);
 
@@ -1289,8 +1269,6 @@ const EditorPage = ({ shows }) => {
 
   useEffect(() => {
     if (frames && frames.length > 0) {
-      console.log(frames.length)
-      console.log(Math.floor(frames.length / 2))
       setSelectedFrameIndex(fineTuningIndex || Math.floor(frames.length / 2))
 
       // Background image from the given URL
@@ -1320,12 +1298,16 @@ const EditorPage = ({ shows }) => {
 
   useEffect(() => {
     if (confirmedCid) {
+      // Reset whitespace-related state variables
+      setShowWhiteSpaceSlider(false);
+      setWhiteSpaceValue(10);
+      setWhiteSpaceHeight(0);
+
       const loadInitialFrameInfo = async () => {
         setLoading(true);
         try {
           // Fetch initial frame information including the main image and subtitle
           const initialInfo = await fetchFrameInfo(confirmedCid, season, episode, frame, { mainImage: true });
-          console.log("initialInfo: ", initialInfo);
           // setFrame(initialInfo.frame_image);
           // setFrameData(initialInfo);
           // setDisplayImage(initialInfo.frame_image);
@@ -1355,7 +1337,6 @@ const EditorPage = ({ shows }) => {
 
           setFineTuningFrames(fineTuningImageUrls);
           setFrames(fineTuningImageUrls);
-          console.log("Fine Tuning Frames: ", fineTuningImageUrls);
         } catch (error) {
           console.error("Failed to fetch fine tuning frames:", error);
         }
@@ -1365,7 +1346,6 @@ const EditorPage = ({ shows }) => {
         try {
           // Fetch only the surrounding subtitles
           const subtitlesSurrounding = (await fetchFrameInfo(confirmedCid, season, episode, frame, { subtitlesSurrounding: true })).subtitles_surrounding;
-          console.log("setSurroundingSubtitles", subtitlesSurrounding)
           setSurroundingSubtitles(subtitlesSurrounding);
         } catch (error) {
           console.error("Failed to fetch surrounding subtitles:", error);
@@ -1384,7 +1364,6 @@ const EditorPage = ({ shows }) => {
               season: parseInt(season, 10),
               episode: parseInt(episode, 10),
             })));
-            console.log("Loaded Surrounding Frames: ", surroundingFrames);
           }).catch(error => {
             console.error("Failed to fetch surrounding frames:", error);
           });
@@ -1423,19 +1402,16 @@ const EditorPage = ({ shows }) => {
 
   const loadFineTuningImages = () => {
     if (fineTuningFrames && !fineTuningLoadStarted) {
-      console.log('LOADING THE IMAGES');
       setFineTuningLoadStarted(true);
       setLoadingFineTuning(true);
 
       // Create an array of promises for each image load
-      const blobPromises = fineTuningFrames.map((url) => {
-        return fetch(url)
+      const blobPromises = fineTuningFrames.map((url) => fetch(url)
           .then((response) => response.blob())
           .catch((error) => {
             console.error('Error fetching image:', error);
             return null;
-          });
-      });
+          }));
 
       // Wait for all blob promises to resolve
       Promise.all(blobPromises)
@@ -1456,7 +1432,128 @@ const EditorPage = ({ shows }) => {
     }
   };
 
-  // Outputs
+  // Add these state variables near the top of your component, with the other useState declarations
+  const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
+  const [whiteSpaceValue, setWhiteSpaceValue] = useState(20);
+  const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
+  const [whiteSpacePreview, setWhiteSpacePreview] = useState(0);
+  const [isSliding, setIsSliding] = useState(false);
+
+  // Add this function to handle white space changes
+  const handleWhiteSpaceChange = (newValue) => {
+    const newWhiteSpaceHeight = (newValue / 100) * canvasSize.height;
+    setWhiteSpacePreview(newWhiteSpaceHeight);
+  };
+
+  const startWhiteSpaceChange = () => {
+    setIsSliding(true);
+    // Remove whitespace from canvas and reposition elements
+    if (editor) {
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top - whiteSpaceHeight);
+      });
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top - whiteSpaceHeight);
+      }
+      editor.canvas.renderAll();
+    }
+  };
+
+  const applyWhiteSpace = () => {
+    setIsSliding(false);
+    const newHeight = canvasSize.height + whiteSpacePreview;
+    
+    if (editor) {
+      editor.canvas.setHeight(newHeight);
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top + whiteSpacePreview);
+      });
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + whiteSpacePreview);
+      }
+      editor.canvas.renderAll();
+    }
+
+    setWhiteSpaceHeight(whiteSpacePreview);
+    addToHistory();
+  };
+
+  const toggleWhiteSpaceSlider = () => {
+    if (!showWhiteSpaceSlider) {
+      setShowWhiteSpaceSlider(true);
+      const defaultWhiteSpaceValue = 20;
+      setWhiteSpaceValue(defaultWhiteSpaceValue);
+      const newWhiteSpaceHeight = (defaultWhiteSpaceValue / 100) * canvasSize.height;
+      setWhiteSpacePreview(newWhiteSpaceHeight);
+      
+      // Apply the default whitespace immediately
+      if (editor) {
+        const newHeight = canvasSize.height + newWhiteSpaceHeight;
+        editor.canvas.setHeight(newHeight);
+        editor.canvas.getObjects().forEach((obj) => {
+          obj.set('top', obj.top + newWhiteSpaceHeight);
+        });
+        if (editor.canvas.backgroundImage) {
+          editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + newWhiteSpaceHeight);
+        }
+        editor.canvas.renderAll();
+      }
+      setWhiteSpaceHeight(newWhiteSpaceHeight);
+      addToHistory();
+    } else {
+      setShowWhiteSpaceSlider(false);
+      if (editor) {
+        const newHeight = canvasSize.height - whiteSpaceHeight;
+        editor.canvas.setHeight(newHeight);
+        editor.canvas.getObjects().forEach((obj) => {
+          obj.set('top', obj.top - whiteSpaceHeight);
+        });
+        if (editor.canvas.backgroundImage) {
+          editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top - whiteSpaceHeight);
+        }
+        editor.canvas.renderAll();
+      }
+      setWhiteSpaceHeight(0);
+      setWhiteSpacePreview(0);
+      addToHistory();
+    }
+  };
+
+  const updateCanvasSize = useCallback((heightDifference) => {
+    if (editor && canvasSize) {
+      const newHeight = canvasSize.height + whiteSpaceHeight;
+      editor.canvas.setHeight(newHeight);
+      editor.canvas.setWidth(canvasSize.width);
+
+      // Move all objects by the height difference
+      editor.canvas.getObjects().forEach((obj) => {
+        obj.set('top', obj.top + heightDifference);
+      });
+
+      // Move the background image
+      if (editor.canvas.backgroundImage) {
+        editor.canvas.backgroundImage.set('top', editor.canvas.backgroundImage.top + heightDifference);
+      }
+
+      editor.canvas.renderAll();
+    }
+  }, [editor, canvasSize, whiteSpaceHeight]);
+
+  useEffect(() => {
+    updateCanvasSize(0);
+  }, [whiteSpaceHeight, updateCanvasSize]);
+
+  // Add this near the top of the component, with other useEffects
+  useEffect(() => {
+    if (location.state?.fromCollage && location.state?.collageImageFile) {
+      const file = location.state.collageImageFile;
+      addImageLayer(file);
+    }
+  }, [location.state]);
+
+  // Add this state near other useState declarations
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+
   return (
     <>
       <Helmet>
@@ -1465,17 +1562,22 @@ const EditorPage = ({ shows }) => {
       <Container maxWidth='xl' disableGutters>
         <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
 
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
+          {user?.userDetails?.subscriptionStatus !== 'active' && (
             <Grid container>
-              <Grid item xs={12} mt={2}>
+              <Grid item xs={12} mb={3}>
                 <center>
-                  <Box sx={{ maxWidth: '800px' }}>
-                    <EditorPageBottomBannerAd />
+                  <Box>
+                    {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                    <Link to="/pro" style={{ textDecoration: 'none' }}>
+                      <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                        ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                      </Typography>
+                    </Link>
                   </Box>
                 </center>
               </Grid>
             </Grid>
-          }
+          )}
 
           <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
             <Grid container spacing={2}>
@@ -1485,48 +1587,108 @@ const EditorPage = ({ shows }) => {
               <Grid item xs={12} md={7} lg={7} marginRight={{ xs: '', md: 'auto' }}>
                 <Grid container item mb={1.5}>
                   <Grid item xs={12}>
-                    <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                    <Stack direction='column' width='100%' spacing={1}>
+                      <Stack direction='row' width='100%' justifyContent='space-between' alignItems='center'>
+                        <ButtonGroup variant="contained" size="small">
+                          <IconButton
+                            disabled={(editorStates.length <= 1)}
+                            onClick={undo}
+                            aria-label="undo"
+                          >
+                            <Undo />
+                          </IconButton>
+                          <IconButton
+                            disabled={(futureStates.length === 0)}
+                            onClick={redo}
+                            aria-label="redo"
+                          >
+                            <Redo />
+                          </IconButton>
+                        </ButtonGroup>
 
-                      <ButtonGroup variant="contained" size="small">
-                        <IconButton disabled={(editorStates.length <= 1)} onClick={undo}>
-                          <Undo />
-                        </IconButton>
-                        <IconButton disabled={(futureStates.length === 0)} onClick={redo}>
-                          <Redo />
-                        </IconButton>
-                      </ButtonGroup>
+                        <Button
+                          variant="contained"
+                          size="medium"
+                          startIcon={<Save />}
+                          onClick={handleClickDialogOpen}
+                          sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        >
+                          Save
+                        </Button>
+                      </Stack>
 
                       <Button
                         variant="contained"
-                        size="medium"
-                        startIcon={<Save />}
-                        onClick={handleClickDialogOpen}
-                        sx={{ zIndex: '50', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        fullWidth
+                        onClick={toggleWhiteSpaceSlider}
+                        sx={{
+                          color: '#e5e7eb',
+                          background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          '&:hover': {
+                            background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+                            borderColor: 'rgba(255, 255, 255, 0.24)',
+                          },
+                        }}
                       >
-                        {location.state?.collageState ? "Save" : "Save/Copy/Share"}
+                        Add White Space
                       </Button>
 
+                      {showWhiteSpaceSlider && (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography>Whitespace</Typography>
+                          <Slider
+                            value={whiteSpacePreview / canvasSize.height * 100}
+                            onChange={(event, newValue) => handleWhiteSpaceChange(newValue)}
+                            onChangeCommitted={applyWhiteSpace}
+                            onMouseDown={startWhiteSpaceChange}
+                            onTouchStart={startWhiteSpaceChange}
+                            aria-labelledby="white-space-slider"
+                            valueLabelDisplay="auto"
+                            min={0}
+                            max={100}
+                            step={1}
+                            sx={{ flexGrow: 1, zIndex: 100 }}
+                            valueLabelFormat={(value) => `${Math.round(value)}%`}
+                          />
+                          <IconButton onClick={toggleWhiteSpaceSlider} aria-label="close">
+                            <Close />
+                          </IconButton>
+                        </Stack>
+                      )}
                     </Stack>
                   </Grid>
                 </Grid>
-                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative' }} id="canvas-container">
-                  <FabricJSCanvas onReady={onReady} />
-                  {showBrushSize &&
-                    <div style={{
-                      width: brushToolSize,
-                      height: brushToolSize,
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      borderRadius: '50%',
-                      background: 'red',
-                      borderColor: 'black',
-                      borderStyle: 'solid',
-                      borderWidth: '1px',
-                      boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
-                    }} />
-                  }
+                <div style={{ width: '100%', padding: 0, margin: 0, boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }} id="canvas-container">
+                  {showWhiteSpaceSlider && isSliding && (
+                    <div 
+                      style={{
+                        width: '100%',
+                        height: `${whiteSpacePreview}px`,
+                        backgroundColor: 'white',
+                        transition: 'height 0.05s ease-out'
+                      }}
+                    />
+                  )}
+                  <div style={{ height: isSliding ? canvasSize.height : (canvasSize.height + whiteSpaceHeight) }}>
+                    <FabricJSCanvas onReady={onReady} />
+                    {showBrushSize &&
+                      <div style={{
+                        width: brushToolSize,
+                        height: brushToolSize,
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        borderRadius: '50%',
+                        background: 'red',
+                        borderColor: 'black',
+                        borderStyle: 'solid',
+                        borderWidth: '1px',
+                        boxShadow: '0 7px 10px rgba(0, 0, 0, 0.75)'
+                      }} />
+                    }
+                  </div>
                 </div>
 
 
@@ -1613,7 +1775,7 @@ const EditorPage = ({ shows }) => {
                               <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
                                 <div style={{ display: 'inline', position: 'relative' }}>
                                   <TextEditorControls
-                                    showColorPicker={(event) => showColorPicker(event, index)}
+                                    showColorPicker={(colorType, index, event) => showColorPicker(colorType, index, event)}
                                     colorPickerShowing={colorPickerShowing}
                                     index={index}
                                     showFontSizePicker={(event) => showFontSizePicker(event, index)}
@@ -1622,6 +1784,9 @@ const EditorPage = ({ shows }) => {
                                     handleFontChange={handleFontChange}
                                     layerFonts={layerFonts}
                                     setLayerFonts={setLayerFonts}
+                                    layerColor={object.fill}
+                                    layerStrokeColor={object.stroke}
+                                    handleAlignment={handleAlignment}
                                   />
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
@@ -1635,6 +1800,11 @@ const EditorPage = ({ shows }) => {
                                     onBlur={addToHistory}
                                     onChange={(event) => handleEdit(event, index)}
                                     placeholder='(type your caption)'
+                                    InputProps={{
+                                      style: {
+                                        fontFamily: layerFonts[index] || 'Arial',
+                                      },
+                                    }}
                                   />
                                   <Fab
                                     size="small"
@@ -1644,7 +1814,7 @@ const EditorPage = ({ shows }) => {
                                       backgroundColor: theme.palette.background.paper,
                                       boxShadow: 'none'
                                     }}
-                                    onClick={() => deleteLayer(index)}
+                                    onClick={() => handleDeleteLayer(index)}
                                   >
                                     <HighlightOffRounded color="error" />
                                   </Fab>
@@ -1660,7 +1830,7 @@ const EditorPage = ({ shows }) => {
                                     {/* Implement ImageEditorControls according to your app's functionality */}
                                     <ImageEditorControls
                                       index={index}
-                                      deleteLayer={deleteLayer} // Implement this function to handle layer deletion
+                                      deleteLayer={handleDeleteLayer} // Implement this function to handle layer deletion
                                       moveLayerUp={moveLayerUp} // Implement this function to handle moving the layer up
                                       moveLayerDown={moveLayerDown} // Implement this function to handle moving the layer down
                                       src={object.src}
@@ -1675,7 +1845,7 @@ const EditorPage = ({ shows }) => {
                                       backgroundColor: theme.palette.background.paper,
                                       boxShadow: 'none'
                                     }}
-                                    onClick={() => deleteLayer(index)}
+                                    onClick={() => handleDeleteLayer(index)}
                                   >
                                     <HighlightOffRounded color="error" />
                                   </Fab>
@@ -1690,7 +1860,17 @@ const EditorPage = ({ shows }) => {
                           variant="contained"
                           onClick={() => addText('text', true)}
                           fullWidth
-                          sx={{ zIndex: '50', marginTop: '20px' }}
+                          sx={{
+                            zIndex: '50',
+                            marginTop: '20px',
+                            color: '#e5e7eb',
+                            background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+                            border: '1px solid rgba(255, 255, 255, 0.16)',
+                            '&:hover': {
+                              background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+                              borderColor: 'rgba(255, 255, 255, 0.24)',
+                            },
+                          }}
                           startIcon={<AddCircleOutline />}
                         >
                           Add text layer
@@ -1856,16 +2036,14 @@ const EditorPage = ({ shows }) => {
                     startIcon={<Share />}
                     size="large"
                   >
-                    {location.state?.collageState ? "Save" : "Save/Copy/Share"}
+                    Save
                   </Button>
                 </Grid>
 
                 {user?.userDetails?.subscriptionStatus !== 'active' &&
                   <Grid item xs={12} my={2}>
                     <center>
-                      <Box sx={{ maxWidth: '800px' }}>
-                        <HomePageBannerAd />
-                      </Box>
+                        <FixedMobileBannerAd />
                     </center>
                   </Grid>
                 }
@@ -2039,7 +2217,7 @@ const EditorPage = ({ shows }) => {
                 <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
-                    <a style={{ textDecoration: 'none' }}>
+                    <Box component="div" sx={{ textDecoration: 'none' }}>
                       <StyledCard
                         sx={{
                           ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
@@ -2055,7 +2233,7 @@ const EditorPage = ({ shows }) => {
                           }}
                         />
                       </StyledCard>
-                    </a>
+                    </Box>
                   ) : (
                     // Render a skeleton if the data is not yet available (undefined)
                     <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio: `${editorAspectRatio === 1 ? (16 / 9) : editorAspectRatio}/1` }} />
@@ -2068,6 +2246,15 @@ const EditorPage = ({ shows }) => {
                     variant="contained"
                     fullWidth
                     href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                    sx={{
+                      color: '#e5e7eb',
+                      background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+                      border: '1px solid rgba(255, 255, 255, 0.16)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+                        borderColor: 'rgba(255, 255, 255, 0.24)',
+                      },
+                    }}
                   >
                     View Episode
                   </Button>
@@ -2078,8 +2265,11 @@ const EditorPage = ({ shows }) => {
 
           <Popover
             open={colorPickerShowing !== false}
-            anchorEl={colorPickerAnchor}
-            onClose={() => setColorPickerShowing(false)}
+            anchorEl={colorPickerAnchorEl}
+            onClose={() => {
+              setColorPickerShowing(false);
+              setColorPickerAnchorEl(null);
+            }}
             id="colorPicker"
             anchorOrigin={{
               vertical: 'bottom',
@@ -2091,24 +2281,23 @@ const EditorPage = ({ shows }) => {
             }}
           >
             <ColorPickerPopover>
-              <TwitterPickerWrapper
-                onChangeComplete={(color) => changeColor(color, pickingColor)}
-                color={colorPickerColor}
-                colors={[
-                  '#FFFFFF',
-                  'yellow',
-                  'black',
-                  'orange',
-                  '#8ED1FC',
-                  '#0693E3',
-                  '#ABB8C3',
-                  '#EB144C',
-                  '#F78DA7',
-                  '#9900EF',
-                ]}
-                width="280px"
-              // TODO: Fix background color to match other cards
-              />
+            <TwitterPickerWrapper
+              onChange={(color) => changeColor(color, pickingColor)}
+              color={colorPickerColor}
+              colors={[
+                '#FFFFFF', // White (unchanged)
+                '#FFFF00', // Yellow (unchanged)
+                '#000000', // Black (unchanged)
+                '#FF4136', // Bright Red
+                '#2ECC40', // Bright Green
+                '#0052CC', // Darker Blue
+                '#FF851B', // Bright Orange
+                '#B10DC9', // Bright Purple
+                '#39CCCC', // Bright Cyan
+                '#F012BE', // Bright Magenta
+              ]}
+              width="280px"
+            />
             </ColorPickerPopover>
           </Popover>
 
@@ -2365,5 +2554,9 @@ const EditorPage = ({ shows }) => {
     </>
   );
 }
+
+EditorPage.propTypes = {
+  shows: PropTypes.array,
+};
 
 export default EditorPage

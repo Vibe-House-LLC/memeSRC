@@ -76,7 +76,6 @@ export type AmplifyDependentResourcesAttributes = {
     },
     "memesrcAnalyticsAddDailyPartition": {
       "Arn": "string",
-      "CloudWatchEventRule": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
       "Name": "string",
@@ -211,6 +210,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string"
     },
     "memesrcVote": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "memesrcVoteSearchSeries": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
