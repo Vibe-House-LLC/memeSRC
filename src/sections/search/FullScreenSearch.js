@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Button, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme, IconButton } from '@mui/material';
+import { Button, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme, IconButton, Slide } from '@mui/material';
 import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
@@ -303,51 +303,101 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 <span />
               </Typography>
               {hasRecentUndismissedUpdate && (
-                <Box
-                  sx={{
-                    mt: { xs: 1, sm: 0.75 },
-                    maxWidth: { xs: 520, sm: 'unset' },
-                    width: { xs: '100%', sm: 'auto' },
-                    display: { xs: 'flex', sm: 'inline-flex' },
-                    position: { xs: 'static', sm: 'fixed' },
-                    top: { xs: 'auto', sm: `${NAVBAR_HEIGHT + 8}px` },
-                    right: { xs: 'auto', sm: 16 },
-                    zIndex: { xs: 'auto', sm: (theme) => (theme?.zIndex?.appBar || 1100) + 1 },
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                    gap: { xs: 1, sm: 0.75 },
-                    px: { xs: 1.25, sm: 1 },
-                    py: { xs: 0.75, sm: 0.5 },
-                    borderRadius: { xs: 2, sm: 1.5 },
-                    bgcolor: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(10px)',
-                    color: currentThemeFontColor,
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 3px 8px rgba(0,0,0,0.12)' }
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                    <Box sx={{
-                      width: { xs: 10, sm: 8 },
-                      height: { xs: 10, sm: 8 },
-                      borderRadius: '50%',
-                      backgroundColor: statusDotColor,
-                      flexShrink: 0
-                    }} />
-                    <Typography variant="body2" noWrap sx={{ fontSize: { xs: '1rem', sm: '0.9rem' }, fontWeight: 700 }} component="span">
-                      Updated to{' '}
-                      <Link to="/releases" style={{ color: 'inherit', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
-                        {latestRelease?.tag_name}
-                      </Link>{' '}
-                    </Typography>
-                    <Typography variant="body2" noWrap sx={{ opacity: 0.8, fontSize: { xs: '0.9rem', sm: '0.8rem' } }}>
-                      {formatRelativeTimeCompact(latestRelease?.published_at)}
-                    </Typography>
+                isMobile ? (
+                  <Box
+                    sx={{
+                      mt: { xs: 1, sm: 0.75 },
+                      maxWidth: { xs: 520, sm: 'unset' },
+                      width: { xs: '100%', sm: 'auto' },
+                      display: { xs: 'flex', sm: 'inline-flex' },
+                      position: { xs: 'static', sm: 'fixed' },
+                      top: { xs: 'auto', sm: `${NAVBAR_HEIGHT + 12}px` },
+                      right: { xs: 'auto', sm: 20 },
+                      zIndex: { xs: 'auto', sm: (theme) => (theme?.zIndex?.appBar || 1100) + 1 },
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                      gap: { xs: 1, sm: 1.5 },
+                      px: { xs: 1.25, sm: 2 },
+                      py: { xs: 0.75, sm: 1.25 },
+                      borderRadius: { xs: 2, sm: 2 },
+                      bgcolor: 'rgba(0,0,0,0.45)',
+                      backdropFilter: 'blur(12px)',
+                      color: currentThemeFontColor,
+                      border: '1px solid rgba(255,255,255,0.4)',
+                      boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0 }}>
+                      <Box sx={{
+                        width: { xs: 10, sm: 10 },
+                        height: { xs: 10, sm: 10 },
+                        borderRadius: '50%',
+                        backgroundColor: statusDotColor,
+                        flexShrink: 0
+                      }} />
+                      <Typography variant="body2" noWrap sx={{ fontSize: { xs: '1rem', sm: '1rem' }, fontWeight: { xs: 700, sm: 700 } }} component="span">
+                        Updated to{' '}
+                        <Link to="/releases" style={{ color: 'inherit', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+                          {latestRelease?.tag_name}
+                        </Link>{' '}
+                      </Typography>
+                      <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 } }}>
+                        {formatRelativeTimeCompact(latestRelease?.published_at)}
+                      </Typography>
+                    </Box>
+                    <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit', ml: 'auto' }}>
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
                   </Box>
-                  <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit', ml: 'auto' }}>
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </Box>
+                ) : (
+                  <Slide in direction="left" mountOnEnter unmountOnExit timeout={{ appear: 400, enter: 400 }}>
+                    <Box
+                      sx={{
+                        mt: { xs: 1, sm: 0.75 },
+                        maxWidth: { xs: 520, sm: 'unset' },
+                        width: { xs: '100%', sm: 'auto' },
+                        display: { xs: 'flex', sm: 'inline-flex' },
+                        position: { xs: 'static', sm: 'fixed' },
+                        top: { xs: 'auto', sm: `${NAVBAR_HEIGHT + 12}px` },
+                        right: { xs: 'auto', sm: 20 },
+                        zIndex: { xs: 'auto', sm: (theme) => (theme?.zIndex?.appBar || 1100) + 1 },
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        gap: { xs: 1, sm: 1.5 },
+                        px: { xs: 1.25, sm: 2 },
+                        py: { xs: 0.75, sm: 1.25 },
+                        borderRadius: { xs: 2, sm: 2 },
+                        bgcolor: 'rgba(0,0,0,0.45)',
+                        backdropFilter: 'blur(12px)',
+                        color: currentThemeFontColor,
+                        border: '1px solid rgba(255,255,255,0.4)',
+                        boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0 }}>
+                        <Box sx={{
+                          width: { xs: 10, sm: 10 },
+                          height: { xs: 10, sm: 10 },
+                          borderRadius: '50%',
+                          backgroundColor: statusDotColor,
+                          flexShrink: 0
+                        }} />
+                        <Typography variant="body2" noWrap sx={{ fontSize: { xs: '1rem', sm: '1rem' }, fontWeight: { xs: 700, sm: 700 } }} component="span">
+                          Updated to{' '}
+                          <Link to="/releases" style={{ color: 'inherit', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+                            {latestRelease?.tag_name}
+                          </Link>{' '}
+                        </Typography>
+                        <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 } }}>
+                          {formatRelativeTimeCompact(latestRelease?.published_at)}
+                        </Typography>
+                      </Box>
+                      <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit', ml: 'auto' }}>
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Slide>
+                )
               )}
             </Grid>
           </Grid>
