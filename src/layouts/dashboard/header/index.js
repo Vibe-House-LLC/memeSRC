@@ -220,67 +220,59 @@ export default function Header({ onOpenNav }) {
                   }}
                 />
               ) : (
-                <Badge ref={setProChipEl}>
-                  {CURRENT_SALE.isActive ? (
-                    <Box sx={{ position: 'relative' }}>
-                      <SnowEffect />
-                      <Chip
-                        onClick={() => {
-                          setShowProTip(false);
-                          openSubscriptionDialog();
-                        }}
-                        icon={<LocalPoliceRounded />}
-                        label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off)` : 'Pro'}
-                        size="small"
-                        sx={{
-                          background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                          border: '1px solid #8b5cc7',
-                          boxShadow: '0 0 20px rgba(107,66,161,0.5)',
-                          '& .MuiChip-label': {
-                            fontWeight: 'bold',
-                            color: '#fff',
-                          },
-                          '& .MuiChip-icon': {
-                            color: '#fff',
-                          },
-                          '&:hover': {
-                            background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                            boxShadow: '0 0 25px rgba(107,66,161,0.6)',
-                          },
-                        }}
-                      />
-                    </Box>
-                  ) : (
-                    <Chip
-                      onClick={() => {
-                        setShowProTip(false);
-                        openSubscriptionDialog();
-                      }}
-                      icon={<LocalPoliceRounded />}
-                      label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off!)` : 'Pro'}
-                      size="small"
-                      sx={{
-                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                        border: '1px solid #8b5cc7',
-                        boxShadow: '0 0 20px rgba(107,66,161,0.5)',
-                        '& .MuiChip-label': {
-                          fontWeight: 'bold',
-                          color: '#fff',
-                        },
-                        '& .MuiChip-icon': {
-                          color: '#fff',
-                        },
-                        '&:hover': {
-                          background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                          boxShadow: '0 0 25px rgba(107,66,161,0.6)',
-                        },
-                      }}
-                    />
-                  )}
-                </Badge>
+                <Chip
+                  onClick={() => {
+                    setShowProTip(false);
+                    openSubscriptionDialog(location.pathname);
+                  }}
+                  icon={<LocalPoliceRounded />}
+                  label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off)` : 'Pro'}
+                  color='default'
+                  id='proChip'
+                  sx={{
+                    fontWeight: 'bold',
+                    color: '#fff',
+                    background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                    border: '1px solid #8b5cc7',
+                    boxShadow: '0 0 20px rgba(107, 66, 161, 0.4)',
+                    '& .MuiChip-icon': { color: '#fff' },
+                  }}
+                />
               )}
-              <AccountPopover />
+              {(user?.userDetails?.subscriptionStatus !== 'active' && showProTip) && (
+                <>
+                  <Chip
+                    onClick={() => {
+                      setShowProTip(false);
+                      openSubscriptionDialog(location.pathname);
+                    }}
+                    icon={<LocalPoliceRounded />}
+                    label={CURRENT_SALE.isActive ? `Pro (${CURRENT_SALE.discountPercent}% off!)` : 'Pro'}
+                    id='proChipLucas'
+                    sx={{ position: 'absolute', top: 4, left: '45%', boxShadow: '0 0 25px rgba(107,66,161,0.6)', background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)', border: '1px solid #8b5cc7', color: 'white', '& .MuiChip-icon': { color: '#fff' }, }}
+                  />
+                  <MuiSlide in={showProTip} timeout={300}>
+                    <Box sx={{ position: 'absolute', top: 50, left: '26%', color: '#fff', display: 'inline-flex', alignItems: 'center', background: 'linear-gradient(90deg, rgba(61,36,89,0.8) 0%, rgba(107,66,161,0.6) 100%)', borderRadius: 2, p: 1.5, gap: 1.5, border: '1px solid #8b5cc7', boxShadow: '0 4px 30px rgba(107,66,161,0.5)' }}>
+                      <Check sx={{ color: '#4caf50', fontSize: 18 }} />
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        Pro is <b>{CURRENT_SALE.discountPercent}% off</b> today only!
+                      </Typography>
+                      <Button variant="contained" size="small" sx={{ ml: 1, borderRadius: 2, background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)', border: '1px solid #8b5cc7', boxShadow: '0 3px 10px rgba(107,66,161,0.5)' }} onClick={() => {
+                        setShowProTip(false);
+                        openSubscriptionDialog(location.pathname);
+                      }}>
+                        Upgrade
+                      </Button>
+                      <IconButton size="small" onClick={() => setShowProTip(false)} sx={{ ml: 1 }}>
+                        <Close fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </MuiSlide>
+                </>
+              )}
             </>
+
+            <AccountPopover />
           </Stack>
         </StyledToolbar>
       </StyledRoot>
@@ -397,7 +389,7 @@ export default function Header({ onOpenNav }) {
                   return;
                 }
                 setShowProTip(false);
-                openSubscriptionDialog();
+                openSubscriptionDialog(location.pathname);
               }}
               sx={{
                 position: 'relative',

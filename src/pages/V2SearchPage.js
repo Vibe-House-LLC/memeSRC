@@ -381,7 +381,7 @@ export default function SearchPage() {
         <center>
           <Box>
             {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-            <Link to="/pro" style={{ textDecoration: 'none' }}>
+            <Link to={`/pro?dest=${encodeURIComponent(window.location.pathname)}`} style={{ textDecoration: 'none' }}>
               <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
                 ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
               </Typography>

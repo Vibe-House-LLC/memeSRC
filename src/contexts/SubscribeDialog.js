@@ -57,16 +57,8 @@ export const DialogProvider = ({ children }) => {
 
   const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(!isCompact);
 
-  useEffect(() => {
-    if (location.pathname === '/pro' && user !== null) {
-      if (user.userDetails?.subscriptionStatus === 'active') {
-        navigate('/account');
-      } else {
-        setSubscriptionDialogOpen(true);
-        navigate('/', { replace: true });
-      }
-    }
-  }, [user, location, navigate, user?.userDetails?.subscriptionStatus]);
+  // Removed janky /pro side-effect. The upgrade flow now lives on a dedicated /pro page with proper routing.
+
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
@@ -105,7 +97,7 @@ export const DialogProvider = ({ children }) => {
     setLoading(true)
     API.post('publicapi', '/user/update/getCheckoutSession', {
       body: {
-        currentUrl: window.location.href.replace('pro', ''),
+        currentUrl: window.location.href,
         priceKey: selectedPlan
       }
     }).then(results => {
@@ -190,13 +182,16 @@ export const DialogProvider = ({ children }) => {
   };
 
 
-  const openSubscriptionDialog = () => {
-    setSubscriptionDialogOpen(true)
+  const openSubscriptionDialog = (dest) => {
+    const target = dest || `${location.pathname}${location.search || ''}`;
+    navigate(`/pro?dest=${encodeURIComponent(target)}`);
   }
 
   const handleLogin = () => {
     setSubscriptionDialogOpen(false);
-    navigate('/login?dest=%2Fpro')
+    const target = `${location.pathname}${location.search || ''}`;
+    const proWithDest = `/pro?dest=${encodeURIComponent(target)}`;
+    navigate(`/login?dest=${encodeURIComponent(proWithDest)}`);
   }
 
   useEffect(() => {

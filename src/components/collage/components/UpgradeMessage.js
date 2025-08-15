@@ -17,6 +17,7 @@ import {
   LockOpen,
   CheckCircle,
 } from "@mui/icons-material";
+import { useLocation } from 'react-router-dom';
 
 // Define keyframes for animations
 const floatingAnimation = {
@@ -137,6 +138,7 @@ const UpgradeMessage = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isSmall = useMediaQuery(theme.breakpoints.down('md'));
   const isStacked = useMediaQuery(theme.breakpoints.down('md')); // Elements are stacked when below md breakpoint
+  const { pathname } = useLocation();
   
   // Add ref for the PRO EARLY ACCESS card
   const proCardRef = useRef(null);
@@ -269,7 +271,7 @@ const UpgradeMessage = ({
                     zIndex: 1
                   } : {}
                 }}
-                onClick={isStacked ? scrollToProCard : openSubscriptionDialog}
+                onClick={isStacked ? scrollToProCard : () => openSubscriptionDialog(pathname)}
               >
                 {/* Early Access Corner Banner */}
                 <Box
@@ -456,7 +458,7 @@ const UpgradeMessage = ({
                   </Box>
                   
                   <Button
-                    onClick={openSubscriptionDialog}
+                    onClick={() => openSubscriptionDialog(pathname)}
                     variant="contained"
                     size="large"
                     color="primary"

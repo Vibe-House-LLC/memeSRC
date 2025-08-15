@@ -923,7 +923,7 @@ useEffect(() => {
             <center>
               <Box>
                 {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-                <RouterLink to="/pro" style={{ textDecoration: 'none' }}>
+                <RouterLink to={`/pro?dest=${encodeURIComponent(window.location.pathname)}`} style={{ textDecoration: 'none' }}>
                   <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
                     ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
                   </Typography>
