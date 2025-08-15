@@ -1,10 +1,11 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Button, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme } from '@mui/material';
+import { Button, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme, IconButton } from '@mui/material';
 import { Box } from '@mui/system';
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
+import CloseIcon from '@mui/icons-material/Close';
 import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
@@ -16,6 +17,7 @@ import FavoriteToggle from '../../components/FavoriteToggle';
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
+
 
 /* --------------------------------- GraphQL -------------------------------- */
 
@@ -115,6 +117,103 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { pathname } = useLocation();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const theme = useTheme();
+
+  // Recent update indicator state
+  const [latestRelease, setLatestRelease] = useState(null);
+  const [dismissedVersion, setDismissedVersion] = useState(() => {
+    try {
+      return window.localStorage.getItem('updateBannerDismissedVersion') || '';
+    } catch (e) {
+      return '';
+    }
+  });
+
+  const hasRecentUndismissedUpdate = useMemo(() => {
+    if (!latestRelease) return false;
+    if (!latestRelease.tag_name) return false;
+    if (dismissedVersion === latestRelease.tag_name) return false;
+    if (!latestRelease.published_at) return false;
+    const published = new Date(latestRelease.published_at).getTime();
+    const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+    return Date.now() - published <= threeDaysMs;
+  }, [latestRelease, dismissedVersion]);
+
+  const formatRelativeTimeCompact = useCallback((dateString) => {
+    if (!dateString) return '';
+    const then = new Date(dateString).getTime();
+    const now = Date.now();
+    const seconds = Math.max(1, Math.floor((now - then) / 1000));
+    if (seconds < 60) return '<1m ago';
+    const units = [
+      { label: 'y', secs: 31536000 },
+      { label: 'mo', secs: 2592000 },
+      { label: 'w', secs: 604800 },
+      { label: 'd', secs: 86400 },
+      { label: 'h', secs: 3600 },
+      { label: 'm', secs: 60 },
+    ];
+    const unit = units.find((u) => seconds >= u.secs);
+    return unit ? `${Math.floor(seconds / unit.secs)}${unit.label} ago` : '<1m ago';
+  }, []);
+
+  const getReleaseType = useCallback((tagName) => {
+    if (!tagName || typeof tagName !== 'string') return 'patch';
+    const version = tagName.replace(/^v/, '');
+    const parts = version.split('.');
+    if (parts.length >= 3) {
+      const [, minor, patch] = parts;
+      if (patch === '0' && minor === '0') return 'major';
+      if (patch === '0') return 'minor';
+    }
+    return 'patch';
+  }, []);
+
+  const statusDotColor = useMemo(() => {
+    if (!latestRelease) return '#22c55e';
+    const isDraft = Boolean(latestRelease.draft);
+    const isPrerelease = Boolean(latestRelease.prerelease);
+    const type = getReleaseType(latestRelease.tag_name);
+    if (isDraft) return (theme?.palette?.error?.main) || '#ef4444';
+    if (isPrerelease) return (theme?.palette?.warning?.main) || '#f59e0b';
+    switch (type) {
+      case 'major':
+        return (theme?.palette?.error?.main) || '#ef4444';
+      case 'minor':
+        return (theme?.palette?.success?.main) || '#22c55e';
+      default:
+        return (theme?.palette?.info?.main) || '#3b82f6';
+    }
+  }, [latestRelease, getReleaseType, theme]);
+
+  useEffect(() => {
+    let didCancel = false;
+    const fetchLatest = async () => {
+      try {
+        const res = await fetch('https://api.github.com/repos/Vibe-House-LLC/memeSRC/releases?per_page=1');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!didCancel) {
+          setLatestRelease(Array.isArray(json) ? json[0] : null);
+        }
+      } catch (e) {
+        // silent fail
+      }
+    };
+    fetchLatest();
+    return () => { didCancel = true };
+  }, []);
+
+  const handleDismissUpdateBanner = useCallback(() => {
+    if (latestRelease?.tag_name) {
+      try {
+        window.localStorage.setItem('updateBannerDismissedVersion', latestRelease.tag_name);
+        setDismissedVersion(latestRelease.tag_name);
+      } catch (e) {
+        console.error('Failed to save dismissed version to localStorage:', e);
+      }
+    }
+  }, [latestRelease]);
 
   // Scroll to top when arriving at this page
   useEffect(() => {
@@ -122,7 +221,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }, [])
 
   // Theme States
-  const theme = useTheme();
   const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} meme templates from ${metadata?.title}` : defaultBragText);
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
   const [currentThemeFontFamily, setCurrentThemeFontFamily] = useState(metadata?.fontFamily || theme?.typography?.fontFamily);
@@ -235,6 +333,49 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
                 <span />
               </Typography>
+              {hasRecentUndismissedUpdate && (
+                <Box
+                  sx={{
+                    mt: 1,
+                    mx: 'auto',
+                    maxWidth: 520,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1,
+                    px: 1.25,
+                    py: 0.75,
+                    borderRadius: 2,
+                    bgcolor: 'rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(10px)',
+                    color: currentThemeFontColor,
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                    <Box sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      backgroundColor: statusDotColor,
+                      flexShrink: 0
+                    }} />
+                    <Typography variant="body2" noWrap sx={{ fontSize: '1rem', fontWeight: 700 }} component="span">
+                      Updated to{' '}
+                      <Link to="/releases" style={{ color: 'inherit', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+                        {latestRelease?.tag_name}
+                      </Link>{' '}
+                    </Typography>
+                    <Typography variant="body2" noWrap sx={{ opacity: 0.8 }}>
+                      {formatRelativeTimeCompact(latestRelease?.published_at)}
+                    </Typography>
+                  </Box>
+                  <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit' }}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              )}
             </Grid>
           </Grid>
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
