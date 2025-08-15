@@ -340,11 +340,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                         noWrap 
                         sx={{ 
                           fontSize: { xs: '1rem', sm: '1rem' }, 
-                          fontWeight: { xs: 700, sm: 700 },
-                          background: 'linear-gradient(135deg, #FFFFFF 0%, #EDE2FF 50%, #D8BFFF 100%)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          backgroundClip: 'text'
+                          fontWeight: { xs: 700, sm: 700 }
                         }} 
                         component="span"
                       >
@@ -407,11 +403,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                           noWrap 
                           sx={{ 
                             fontSize: { xs: '1rem', sm: '1rem' }, 
-                            fontWeight: { xs: 700, sm: 700 },
-                            background: 'linear-gradient(135deg, #FFFFFF 0%, #EDE2FF 50%, #D8BFFF 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text'
+                            fontWeight: { xs: 700, sm: 700 }
                           }}
                           component="span"
                         >
