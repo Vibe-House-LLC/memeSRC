@@ -1,5 +1,5 @@
 // UserRow.js
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { ListItem, ListItemText, IconButton, Menu, MenuItem, Chip, Divider, Typography, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from '@mui/material';
 import { MoreVert } from '@mui/icons-material';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
@@ -16,6 +16,73 @@ const UserRow = ({ user, isLastItem }) => {
     const [credits, setCredits] = useState(user?.credits || 0);
     const [updatedCredits, setUpdatedCredits] = useState(user?.credits || 0);
     const [updatingCredits, setUpdatingCredits] = useState(false);
+    const [settingStatus, setSettingStatus] = useState(false);
+    const [status, setStatus] = useState(user?.status || 'unverified');
+
+    useEffect(() => {
+        console.log('User Row User')
+        console.log(user)
+    }, [user]);
+
+    async function disableUser() {
+        setSettingStatus(true)
+        const apiName = 'AdminQueries';
+        const path = '/disableUser';
+        const myInit = {
+            body: {
+                "username": user?.username
+            },
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
+            }
+        }
+        const disableUserResponse = await API.post(apiName, path, myInit);
+        console.log('disableUserResponse')
+        console.log(disableUserResponse)
+
+        const disableUserGraphQL = await API.graphql(
+            graphqlOperation(updateUserDetails, { input: { id: user.id, status: 'disabled' } })
+        )
+        console.log('disableUserGraphQL')
+        console.log(disableUserGraphQL)
+        setStatus('disabled')
+        setMessage(`${user.username} has been disabled.`)
+        setSeverity('success');
+        setOpen(true)
+        handleMenuClose();
+        setSettingStatus(false)
+    }
+
+    async function enableUser() {
+        setSettingStatus(true)
+        const apiName = 'AdminQueries';
+        const path = '/enableUser';
+        const myInit = {
+            body: {
+                "username": user?.username
+            },
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `${(await Auth.currentSession()).getAccessToken().getJwtToken()}`
+            }
+        }
+        const disableUserResponse = await API.post(apiName, path, myInit);
+        console.log('disableUserResponse')
+        console.log(disableUserResponse)
+
+        const disableUserGraphQL = await API.graphql(
+            graphqlOperation(updateUserDetails, { input: { id: user.id, status: 'verified' } })
+        )
+        console.log('disableUserGraphQL')
+        console.log(disableUserGraphQL)
+        setStatus('verified')
+        setMessage(`${user.username} has been enabled.`)
+        setSeverity('success');
+        setOpen(true)
+        handleMenuClose();
+        setSettingStatus(false)
+    }
 
     const handleMenuOpen = (event) => {
         setAnchorEl(event.currentTarget);
@@ -60,6 +127,18 @@ const UserRow = ({ user, isLastItem }) => {
         }
     };
 
+    const getStatusChipProps = (status) => {
+        switch (status) {
+            case 'verified':
+                return { color: 'success', label: 'Account Verified' };
+            case 'disabled':
+                return { color: 'error', label: 'Account Disabled' };
+            case 'unverified':
+            default:
+                return { color: 'warning', label: 'Account Unverified' };
+        }
+    };
+
     const makeContributor = async () => {
         setMakingContributor(true)
         const apiName = 'AdminQueries';
@@ -98,8 +177,12 @@ const UserRow = ({ user, isLastItem }) => {
         <>
             <ListItem>
                 <ListItemText
-                    primary={<><b>{user.username}</b> {user.magicSubscription ? <Chip color='success' size='small' label='Pro Subscription' /> : ''} <br />({user.email}) </>}
-                    secondary={<>{contributor === 'approved' ? <><Typography sx={{ color: theme => theme.palette.success.main }} component='span'>Contributor</Typography><br /></> : ''} Credits: {credits || 0}</>}
+                    primary={<><b>{user.username}</b><br /> <Chip {...getStatusChipProps(status)} size='small' variant='outlined' /> {user.magicSubscription ? <><Chip color='success' size='small' label='Pro' /></> : ''} <br />{user.email}<br /> User since: {user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', {
+                        month: '2-digit',
+                        day: '2-digit',
+                        year: 'numeric',
+                    }) : ''}</>}
+                    secondary={<>{contributor === 'approved' ? <><Typography sx={{ color: theme => theme.palette.success.main }} component='span'>Contributor</Typography><br /></> : contributor === 'requested' ? <><Typography sx={{ color: theme => theme.palette.warning.main }} component='span'>Requested To Be A Contributor</Typography><br /></> : ''} Credits: {credits || 0}</>}
                 />
                 <IconButton
                     aria-label="more"
@@ -120,9 +203,11 @@ const UserRow = ({ user, isLastItem }) => {
             >
                 <MenuItem disabled={makingContributor || updatingCredits} onClick={makeContributor}>Make Contributor {makingContributor && <CircularProgress size={16} sx={{ ml: 1 }} />} </MenuItem>
                 <MenuItem disabled={makingContributor || updatingCredits} onClick={handleOpenGiveCredits}>Update Credits</MenuItem>
+                {status === 'disabled' && <MenuItem color='success' disabled={settingStatus} sx={{ color: settingStatus ? 'inherit' : 'green'}} onClick={() => enableUser()}>{settingStatus ? <CircularProgress size={16} sx={{ ml: 1 }} /> : 'Enable User'}</MenuItem>}
+                {status === 'verified' && <MenuItem color='error' sx={{ color: settingStatus ? 'inherit' : 'red'}} disabled={settingStatus} onClick={() => disableUser()}>{settingStatus ? <CircularProgress size={16} sx={{ ml: 1 }} /> : 'Disable User'}</MenuItem>}
             </Menu>
 
-            <Dialog open={openGiveCreditsDialog} onClose={updatingCredits ? () => {} : handleCloseGiveCreditsDialog} maxWidth='xs' fullWidth>
+            <Dialog open={openGiveCreditsDialog} onClose={updatingCredits ? () => { } : handleCloseGiveCreditsDialog} maxWidth='xs' fullWidth>
                 <DialogTitle>Update {user.username}'s Credits</DialogTitle>
                 <DialogContent>
                     <TextField

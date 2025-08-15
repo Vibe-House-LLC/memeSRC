@@ -130,7 +130,7 @@ app.post(`/${process.env.ENV}/admin/disableUser`, async (req, res, next) => {
   }
 });
 
-app.post('/enableUser', async (req, res, next) => {
+app.post(`/${process.env.ENV}/admin/enableUser`, async (req, res, next) => {
   if (!req.body.username) {
     const err = new Error('username is required');
     err.statusCode = 400;

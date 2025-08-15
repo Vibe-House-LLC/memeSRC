@@ -30,7 +30,7 @@
       "function": {
         "AdminQueries9e1cafc6": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/AdminQueries9e1cafc6-723531763152454c346b-build.zip"
+          "s3Key": "amplify-builds/AdminQueries9e1cafc6-4e2f4d6f61622b7a4758-build.zip"
         },
         "memesrcc3c71449": {},
         "SearchFunction": {
@@ -119,7 +119,7 @@
         },
         "frameExtractor": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/frameExtractor-526e412f503439374278-build.zip"
+          "s3Key": "amplify-builds/frameExtractor-7752314969594943776f-build.zip"
         },
         "memesrcSearchV2": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
