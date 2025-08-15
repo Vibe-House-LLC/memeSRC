@@ -25,6 +25,7 @@ import BugReportIcon from '@mui/icons-material/BugReport';
 import FeaturesIcon from '@mui/icons-material/AutoAwesome';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatDistanceToNow } from 'date-fns';
 
 const GITHUB_OWNER = 'Vibe-House-LLC';
@@ -404,7 +405,7 @@ export default function ReleasesPage() {
           role="main"
           aria-label="Releases list"
         >
-          <Stack spacing={{ xs: 3, sm: 3.5, md: 4 }}>
+          <Stack spacing={{ xs: 2, sm: 2.5, md: 3 }}>
             {releases.map((release, index) => {
               const title = String(release.name || release.tag_name || 'Untitled Release');
               const timeAgo = release.published_at 
@@ -502,11 +503,11 @@ export default function ReleasesPage() {
                       transition: 'box-shadow 0.3s ease'
                     }}
                   >
-                    <CardContent sx={{ p: { xs: 2.5, sm: 3, md: 3.5 } }}>
+                    <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
                       {/* Header - Compact, single-row layout (like GitHub) */}
                       <Box
                         sx={{
-                          mb: { xs: 2, sm: 2.5 },
+                          mb: { xs: 1.5, sm: 2 },
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -515,7 +516,7 @@ export default function ReleasesPage() {
                         }}
                       >
                         {/* Left: Version title (and optional name) */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: { xs: 1, sm: 1.25 } }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: { xs: 0.75, sm: 1 } }}>
                           <Typography 
                             id={`release-title-${release.id}`}
                             variant="h4"
@@ -537,6 +538,13 @@ export default function ReleasesPage() {
                           >
                             {release.tag_name || title}
                           </Typography>
+                          <CheckCircleIcon 
+                            sx={{ 
+                              fontSize: { xs: 18, sm: 20 }, 
+                              color: theme.palette.success.main, 
+                              opacity: 0.9 
+                            }} 
+                          />
                           {isLatest && (
                             <Chip
                               label="Latest"
@@ -648,18 +656,19 @@ export default function ReleasesPage() {
 
                       {/* Release Description - Main Content */}
                       {release.body && (
-                        <Box sx={{ mt: { xs: 2.5, sm: 3.5 }, mb: { xs: 2.5, sm: 3.5 } }}>
+                        <Box sx={{ mt: { xs: 1.75, sm: 2.25 }, mb: { xs: 1.75, sm: 2.25 } }}>
                           <Divider sx={{ 
-                            mb: { xs: 2.5, sm: 3.5 }, 
+                            mb: { xs: 1.5, sm: 2 }, 
                             opacity: 0.12, 
                             background: 'linear-gradient(90deg, transparent, currentColor, transparent)' 
                           }} />
                           <Box 
                             sx={{ 
+                              px: { xs: 1, sm: 1.5 },
                               '& h1, & h2, & h3': { 
                                 fontSize: { xs: '1.25rem', sm: '1.35rem', md: '1.45rem' },
                                 fontWeight: 700, 
-                                mb: { xs: 2, sm: 2.5 },
+                                mb: { xs: 1.25, sm: 1.5 },
                                 color: theme.palette.common.white,
                                 lineHeight: 1.25,
                                 '&:first-of-type': {
@@ -667,9 +676,9 @@ export default function ReleasesPage() {
                                 }
                               },
                               '& p': { 
-                                mb: { xs: 2, sm: 2.5 },
+                                mb: { xs: 1.25, sm: 1.5 },
                                 fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' },
-                                lineHeight: { xs: 1.65, sm: 1.7 },
+                                lineHeight: { xs: 1.6, sm: 1.65 },
                                 color: 'text.primary',
                                 opacity: 0.95,
                                 '&:last-child': {
@@ -678,11 +687,11 @@ export default function ReleasesPage() {
                               },
                               '& ul, & ol': { 
                                 pl: { xs: 2.5, sm: 3 },
-                                mb: { xs: 2, sm: 2.5 },
+                                mb: { xs: 1.25, sm: 1.5 },
                                 '& li': {
                                   fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' },
-                                  lineHeight: { xs: 1.65, sm: 1.7 },
-                                  mb: { xs: 0.75, sm: 1 },
+                                  lineHeight: { xs: 1.6, sm: 1.65 },
+                                  mb: { xs: 0.5, sm: 0.75 },
                                   color: 'text.primary',
                                   opacity: 0.95,
                                   position: 'relative',
@@ -705,10 +714,10 @@ export default function ReleasesPage() {
                               '& pre': {
                                 background: alpha(theme.palette.background.paper, 0.4),
                                 borderRadius: { xs: 1.5, sm: 2 },
-                                p: { xs: 1.5, sm: 2 },
+                                p: { xs: 1.25, sm: 1.5 },
                                 overflow: 'auto',
                                 border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                                mb: { xs: 1.5, sm: 2 },
+                                mb: { xs: 1, sm: 1.25 },
                                 '& code': {
                                   background: 'transparent',
                                   border: 'none',
@@ -735,10 +744,10 @@ export default function ReleasesPage() {
                                 borderLeft: `3px solid ${theme.palette.primary.main}`,
                                 pl: { xs: 2, sm: 2.5 },
                                 ml: 0,
-                                py: { xs: 1, sm: 1.25 },
+                                py: { xs: 0.75, sm: 1 },
                                 background: alpha(theme.palette.primary.main, 0.05),
                                 borderRadius: 1.5,
-                                mb: { xs: 2, sm: 2.5 },
+                                mb: { xs: 1.25, sm: 1.5 },
                                 '& p': {
                                   mb: 0,
                                   fontStyle: 'italic',
@@ -776,11 +785,11 @@ export default function ReleasesPage() {
 
                       {/* Assets - Compact */}
                       {Array.isArray(release.assets) && release.assets.length > 0 && (
-                        <Box sx={{ mt: { xs: 3, sm: 3.5 }, pt: { xs: 2.5, sm: 3 }, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                        <Box sx={{ mt: { xs: 2, sm: 2.5 }, pt: { xs: 1.5, sm: 2 }, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
                           <Typography 
                             variant="subtitle2" 
                             sx={{ 
-                              mb: { xs: 2, sm: 2.5 }, 
+                              mb: { xs: 1.25, sm: 1.5 }, 
                               fontWeight: 600,
                               color: 'primary.main',
                               fontSize: { xs: '0.85rem', sm: '0.9rem' },
@@ -841,11 +850,11 @@ export default function ReleasesPage() {
                       
                       {/* Actions - Compact */}
                       <Box sx={{ 
-                        mt: { xs: 3, sm: 3.5 }, 
-                        pt: { xs: 2.5, sm: 3 }, 
+                        mt: { xs: 2, sm: 2.5 }, 
+                        pt: { xs: 1.5, sm: 2 }, 
                         borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` 
                       }}>
-                        <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }}>
+                        <Stack direction="row" spacing={{ xs: 1, sm: 1.25 }}>
                           <Button
                             component={MUILink}
                             href={release.html_url}
@@ -860,7 +869,7 @@ export default function ReleasesPage() {
                               borderRadius: { xs: 1.5, sm: 2 },
                               fontWeight: 600,
                               textTransform: 'none',
-                              py: { xs: 1, sm: 1.25 },
+                              py: { xs: 0.75, sm: 1 },
                               fontSize: { xs: '0.85rem', sm: '0.9rem' },
                               boxShadow: isLatest 
                                 ? `0 2px 12px ${alpha(theme.palette.primary.main, 0.25)}`
