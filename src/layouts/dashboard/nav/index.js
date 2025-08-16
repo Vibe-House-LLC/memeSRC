@@ -52,7 +52,33 @@ export default function Nav({ openNav, onCloseNav }) {
           <Link onClick={() => { navigate('/') }}>
             <Logo />
           </Link>
-          <Chip label={process.env.REACT_APP_USER_BRANCH === 'beta' ? `v${process.env.REACT_APP_VERSION}` : `v${process.env.REACT_APP_VERSION}-${process.env.REACT_APP_USER_BRANCH}`} variant="outlined" />
+          <Chip
+            label={process.env.REACT_APP_USER_BRANCH === 'beta' ? `v${process.env.REACT_APP_VERSION}` : `v${process.env.REACT_APP_VERSION}-${process.env.REACT_APP_USER_BRANCH}`}
+            size="small"
+            clickable
+            aria-label="View releases and version notes"
+            onClick={() => { navigate('/releases'); }}
+            variant="outlined"
+            sx={{
+              ml: 1,
+              height: 22,
+              px: 1,
+              borderRadius: 1.5,
+              fontWeight: 'bold',
+              letterSpacing: 0.25,
+              borderColor: 'primary.main',
+              '& .MuiChip-label': {
+                px: 0.75,
+                background: 'linear-gradient(135deg, #F0E6FF 0%, #D4A5FF 50%, #9B59CC 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              },
+              '&:hover': {
+                bgcolor: 'primary.main',
+              },
+            }}
+          />
         </Stack>
       </Box>
 
