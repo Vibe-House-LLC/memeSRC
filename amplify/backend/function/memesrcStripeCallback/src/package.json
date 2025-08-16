@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.395.0",
+    "aws-sdk": "^2.1692.0",
     "stripe": "^13.2.0"
   }
 }
