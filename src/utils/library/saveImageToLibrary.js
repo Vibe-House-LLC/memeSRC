@@ -1,4 +1,5 @@
 import { put } from './storage';
+import { putMetadataForKey } from './metadata';
 import { resizeImage } from './resizeImage';
 
 function inferExtensionFromType(type) {
@@ -24,7 +25,7 @@ function generateKey(filename, blob) {
  * Save an image to the library. Accepts a Blob/File or a dataURL string.
  * Returns the S3 key string.
  */
-export async function saveImageToLibrary(input, filename = null, { level = 'protected' } = {}) {
+export async function saveImageToLibrary(input, filename = null, { level = 'protected', metadata } = {}) {
   let blob;
   if (typeof input === 'string') {
     // dataURL
@@ -44,5 +45,10 @@ export async function saveImageToLibrary(input, filename = null, { level = 'prot
 
   const key = generateKey(filename, toUpload);
   await put(key, toUpload, { level });
+  if (metadata && typeof metadata === 'object') {
+    try {
+      await putMetadataForKey(key, metadata, { level });
+    } catch (_) { /* ignore metadata failures */ }
+  }
   return key;
 }

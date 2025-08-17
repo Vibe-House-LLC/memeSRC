@@ -150,8 +150,17 @@ export default function FramePage() {
       const showTitleSafe = (showTitle || frameData?.showTitle || 'frame').replace(/[^a-zA-Z0-9]/g, '-');
       const filename = `${showTitleSafe}-S${season}E${episode}-${frameToTimeCode(frame).replace(/:/g, '-')}`;
       
-      // Save to library
-      await saveImageToLibrary(blob, filename);
+      // Save to library with metadata (default caption + show tag)
+      const showName = (showTitle || frameData?.showTitle || '').toString();
+      const defaultCaption = (loadedSubtitle || '').toString();
+      await saveImageToLibrary(blob, filename, {
+        level: 'protected',
+        metadata: {
+          tags: showName ? [showName] : [],
+          description: '',
+          defaultCaption,
+        },
+      });
       
       setLibrarySnackbarOpen(true);
     } catch (error) {
