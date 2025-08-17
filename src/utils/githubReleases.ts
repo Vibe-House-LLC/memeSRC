@@ -168,6 +168,19 @@ export function getReleaseColor(type: ReleaseType, isPrerelease: boolean, isDraf
   }
 }
 
+export function formatReleaseTagForDisplay(tagName?: string): string {
+  if (!tagName) return '';
+  const match = tagName.match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) return tagName;
+  const major = parseInt(match[1], 10);
+  const minor = parseInt(match[2], 10);
+  const patch = parseInt(match[3], 10);
+
+  if (patch > 0) return `v${major}.${minor}.${patch}`;
+  if (minor === 0) return `v${major}`;
+  return `v${major}.${Math.max(0, minor - 1)}`;
+}
+
 export function formatRelativeTimeCompact(dateString?: string): string {
   if (!dateString) return 'Draft';
   const then = new Date(dateString).getTime();
