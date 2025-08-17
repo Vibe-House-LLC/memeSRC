@@ -36,7 +36,8 @@ import {
   ChevronRight, 
   Palette, 
   RotateLeft,
-  Restore
+  Restore,
+  DeleteOutline as DeleteIcon,
 } from '@mui/icons-material';
 import fonts from '../../../utils/fonts';
 
@@ -225,6 +226,7 @@ const CaptionEditor = ({
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
   const [activeSlider, setActiveSlider] = useState(null);
+  
   const textFieldRefs = useRef({});
 
   // State for text color scroll indicators
@@ -536,7 +538,11 @@ const CaptionEditor = ({
         borderRadius: `${borderRadius}px`,
         border: '1px solid rgba(255, 255, 255, 0.3)',
         transition: 'all 0.3s ease-in-out',
-        overflow: 'hidden',
+        // Prevent double scroll and avoid covering bottom fixed bar
+        maxHeight: 'calc(100vh - 140px)',
+        overflowY: 'auto',
+        overscrollBehavior: 'contain',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       <Box sx={{ p: 1 }}>
@@ -1167,20 +1173,62 @@ const CaptionEditor = ({
           </Box>
         )}
 
-        {/* Done button */}
-        <Button
-          fullWidth
-          variant="contained"
-          onClick={onClose}
-          sx={{
-            backgroundColor: '#4CAF50',
-            '&:hover': {
-              backgroundColor: '#45a049',
-            },
-          }}
-        >
-          Done
-        </Button>
+        {/* Actions */}
+        {activeTextSetting === 'content' ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Left: Clear (icon-only) shown only when there is text */}
+            {Boolean((panelTexts[panelId]?.content || '').trim()) && (
+              <IconButton
+                aria-label="Clear caption"
+                onClick={() => {
+                  const currentText = panelTexts[panelId] || {};
+                  if (updatePanelText) updatePanelText(panelId, { ...currentText, content: '' });
+                }}
+                sx={{
+                  width: 40,
+                  height: 40,
+                  color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.35)',
+                  borderRadius: 1,
+                  bgcolor: 'transparent',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
+                }}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            )}
+
+            {/* Done fills remaining space */}
+            <Button
+              variant="contained"
+              onClick={onClose}
+              sx={{
+                flex: 1,
+                height: 40,
+                backgroundColor: '#4CAF50',
+                '&:hover': { backgroundColor: '#45a049' },
+                textTransform: 'none',
+                fontWeight: 800,
+              }}
+            >
+              Done
+            </Button>
+          </Box>
+        ) : (
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={onClose}
+            sx={{
+              backgroundColor: '#4CAF50',
+              '&:hover': { backgroundColor: '#45a049' },
+              textTransform: 'none',
+              fontWeight: 800,
+            }}
+          >
+            Done
+          </Button>
+        )}
       </Box>
 
       {/* Reset Confirmation Dialog */}

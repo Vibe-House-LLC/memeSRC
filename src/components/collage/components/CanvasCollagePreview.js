@@ -3244,18 +3244,18 @@ const CanvasCollagePreview = ({
         />
       )}
 
-      {/* Invisible backdrop for text editor - captures clicks outside the editor */}
+      {/* Invisible backdrop for text editor - container-bound to avoid covering bottom bars */}
       {textEditingPanel !== null && (
         <Box
           onClick={handleTextClose}
           sx={{
-            position: 'fixed', // Fixed to cover entire viewport
+            position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'transparent', // Completely invisible
-            zIndex: 15, // Below text editor (zIndex 20) but above everything else
+            backgroundColor: 'transparent',
+            zIndex: 15,
             cursor: 'default',
           }}
         />
