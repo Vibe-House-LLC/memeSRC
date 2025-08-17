@@ -32,6 +32,7 @@ import {
   getReleaseColor,
   formatRelativeTimeCompact,
   processGitHubLinks,
+  formatReleaseDisplay,
 } from '../utils/githubReleases';
  
 
@@ -437,7 +438,7 @@ export default function ReleasesPage(): React.ReactElement {
                                 whiteSpace: 'nowrap'
                               }}
                             >
-                              {release.tag_name || title}
+                              {formatReleaseDisplay(release.tag_name || title)}
                             </Typography>
                             <Chip 
                               size="small" 

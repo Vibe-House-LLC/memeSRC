@@ -12,6 +12,7 @@ import NavSection from '../../../components/nav-section';
 import navConfig from './config';
 
 import { UserContext } from '../../../UserContext';
+import { formatReleaseDisplay } from '../../../utils/githubReleases';
 
 const NAV_WIDTH = 280;
 
@@ -53,7 +54,9 @@ export default function Nav({ openNav, onCloseNav }) {
             <Logo />
           </Link>
           <Chip
-            label={process.env.REACT_APP_USER_BRANCH === 'beta' ? `v${process.env.REACT_APP_VERSION}` : `v${process.env.REACT_APP_VERSION}-${process.env.REACT_APP_USER_BRANCH}`}
+            label={process.env.REACT_APP_USER_BRANCH === 'beta' 
+              ? formatReleaseDisplay(`v${process.env.REACT_APP_VERSION}`)
+              : `${formatReleaseDisplay(`v${process.env.REACT_APP_VERSION}`)}-${process.env.REACT_APP_USER_BRANCH}`}
             size="small"
             clickable
             aria-label="View releases and version notes"

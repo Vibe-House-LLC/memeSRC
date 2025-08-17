@@ -228,4 +228,31 @@ export function setDismissedVersion(tagName: string): void {
   }
 }
 
+export function formatReleaseDisplay(input?: string): string {
+  if (!input || typeof input !== 'string') return input || '';
+  const trimmed = input.trim();
+
+  const fullSemverMatch = trimmed.match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  if (fullSemverMatch) {
+    const [, major, minor, patch] = fullSemverMatch;
+    if (patch !== '0') return `v${major}.${minor}.${patch}`;
+    if (minor !== '0') return `v${major}.${minor}`;
+    return `v${major}`;
+  }
+
+  const twoPartMatch = trimmed.match(/^v?(\d+)\.(\d+)$/);
+  if (twoPartMatch) {
+    const [, major, minor] = twoPartMatch;
+    return `v${major}.${minor}`;
+  }
+
+  const onePartMatch = trimmed.match(/^v?(\d+)$/);
+  if (onePartMatch) {
+    const [, major] = onePartMatch;
+    return `v${major}`;
+  }
+
+  return trimmed;
+}
+
 

@@ -23,6 +23,7 @@ import {
   formatRelativeTimeCompact,
   setDismissedVersion,
   getDismissedVersion,
+  formatReleaseDisplay,
 } from '../../utils/githubReleases';
 
 
@@ -352,7 +353,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                             borderBottom: '1px solid rgba(255,255,255,0.4)'
                           }}
                         >
-                          {latestRelease?.tag_name}
+                          {formatReleaseDisplay(latestRelease?.tag_name)}
                         </Link>{' '}
                       </Typography>
                       <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 }, ml: 'auto' }}>
@@ -415,7 +416,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                               borderBottom: '1px solid rgba(255,255,255,0.4)'
                             }}
                           >
-                            {latestRelease?.tag_name}
+                            {formatReleaseDisplay(latestRelease?.tag_name)}
                           </Link>{' '}
                         </Typography>
                         <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 }, ml: 'auto' }}>
