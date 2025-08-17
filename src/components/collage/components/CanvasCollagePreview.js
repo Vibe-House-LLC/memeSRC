@@ -415,6 +415,7 @@ const CanvasCollagePreview = ({
   panelTexts = {},
   updatePanelText,
   lastUsedTextSettings = {},
+  onCaptionEditorVisibleChange,
   isGeneratingCollage = false, // New prop to exclude placeholder text during export
 }) => {
   const theme = useTheme();
@@ -436,6 +437,17 @@ const CanvasCollagePreview = ({
   const hoverTimeoutRef = useRef(null);
   const touchStartInfo = useRef(null);
   const defaultCaptionCacheRef = useRef({});
+  // Notify parent when caption editor visibility changes
+  useEffect(() => {
+    if (typeof onCaptionEditorVisibleChange === 'function') {
+      onCaptionEditorVisibleChange(textEditingPanel !== null);
+    }
+    return () => {
+      if (typeof onCaptionEditorVisibleChange === 'function') {
+        onCaptionEditorVisibleChange(false);
+      }
+    };
+  }, [textEditingPanel, onCaptionEditorVisibleChange]);
 
   // Reorder state
   const [isReorderMode, setIsReorderMode] = useState(false);
@@ -3380,6 +3392,7 @@ CanvasCollagePreview.propTypes = {
   panelTexts: PropTypes.object,
   updatePanelText: PropTypes.func,
   lastUsedTextSettings: PropTypes.object,
+  onCaptionEditorVisibleChange: PropTypes.func,
   isGeneratingCollage: PropTypes.bool,
 };
 

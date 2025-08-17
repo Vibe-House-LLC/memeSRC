@@ -59,6 +59,7 @@ const CollagePreview = ({
   updatePanelText,
   lastUsedTextSettings,
   isCreatingCollage = false,
+  onCaptionEditorVisibleChange,
 }) => {
   const fileInputRef = useRef(null);
   const theme = useTheme();
@@ -73,6 +74,7 @@ const CollagePreview = ({
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isReplaceMode, setIsReplaceMode] = useState(false);
   const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
+  
 
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
@@ -362,6 +364,7 @@ const CollagePreview = ({
         panelTexts={panelTexts}
         updatePanelText={updatePanelText}
         lastUsedTextSettings={lastUsedTextSettings}
+        onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
         isGeneratingCollage={isCreatingCollage}
       />
       
@@ -485,6 +488,7 @@ CollagePreview.propTypes = {
   updatePanelText: PropTypes.func,
   lastUsedTextSettings: PropTypes.object,
   isCreatingCollage: PropTypes.bool,
+  onCaptionEditorVisibleChange: PropTypes.func,
 };
 
 export default CollagePreview; 

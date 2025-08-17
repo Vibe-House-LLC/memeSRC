@@ -1,8 +1,8 @@
 import { useContext, useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, IconButton, Tooltip } from "@mui/material";
-import { Dashboard, Save, RestartAlt, Settings } from "@mui/icons-material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack } from "@mui/material";
+import { Dashboard, Save, ArrowBack, Settings } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -87,6 +87,7 @@ export default function CollagePage() {
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
   
 
 
@@ -393,6 +394,7 @@ export default function CollagePage() {
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
     libraryRefreshTrigger, // For refreshing library when new images are auto-saved
+    onCaptionEditorVisibleChange: setIsCaptionEditorOpen,
   };
 
   // Log mapping changes for debugging
@@ -478,8 +480,8 @@ export default function CollagePage() {
             />
 
             {/* Bottom Action Bar */}
-            {!showResultDialog && hasImages && (
-              <Slide direction="up" in={showAnimatedButton} timeout={600}>
+            {!showResultDialog && hasImages && !isCaptionEditorOpen && (
+              <Slide direction="up" in={showAnimatedButton}>
                 <Box
                   sx={{
                     position: 'fixed',
@@ -499,82 +501,71 @@ export default function CollagePage() {
                     gap: 1.5,
                   }}
                 >
-                  <Tooltip title="Reset collage">
-                    <span>
-                      <IconButton
-                        onClick={handleResetCollage}
-                        color="error"
-                        disabled={isCreatingCollage}
-                        aria-label="Reset collage"
-                      >
-                        <RestartAlt />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                  <Button
-                    variant="contained"
-                    onClick={handleFloatingButtonClick}
-                    disabled={isCreatingCollage || !allPanelsHaveImages}
-                    fullWidth={isMobile}
-                    size="large"
-                    startIcon={<Save />}
-                    sx={{
-                      py: 1.5,
-                      px: isMobile ? 2.5 : 5,
-                      fontSize: '1.2rem',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      borderRadius: 3,
-                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                      border: '1px solid #8b5cc7',
-                      boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
-                      color: '#fff',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      maxWidth: isMobile ? 'none' : '400px',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                        boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
-                        transform: 'translateY(-2px) scale(1.02)',
-                      },
-                      '&:active': {
-                        transform: 'translateY(0) scale(0.98)',
-                      },
-                      '&:disabled': {
-                        background: 'linear-gradient(45deg, #757575 30%, #9E9E9E 90%)',
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        boxShadow: 'none',
-                        transform: 'none',
-                      },
-                      // Add subtle pulse animation when ready
-                      '@keyframes pulse': {
-                        '0%': {
-                          boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
-                        },
-                        '50%': {
-                          boxShadow: '0 6px 25px rgba(107, 66, 161, 0.7)',
-                        },
-                        '100%': {
-                          boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
-                        },
-                      },
-                      animation: !isCreatingCollage && allPanelsHaveImages ? 'pulse 2s ease-in-out infinite' : 'none',
-                    }}
-                    aria-label="Create and save collage"
-                  >
-                    {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
-                  </Button>
-                  <Tooltip title={settingsOpen ? 'Close settings' : 'Open settings'}>
-                    <span>
-                      <IconButton
-                        onClick={handleToggleSettings}
-                        color="primary"
-                        disabled={isCreatingCollage}
-                        aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
-                      >
-                        <Settings />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
+                  <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }}>
+                    <Button
+                      variant="contained"
+                      onClick={handleResetCollage}
+                      disabled={isCreatingCollage}
+                      startIcon={!isMobile ? <ArrowBack /> : undefined}
+                      aria-label="Reset collage"
+                      sx={{
+                        minHeight: 48,
+                        minWidth: isMobile ? 48 : undefined,
+                        px: isMobile ? 1.25 : 2,
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                        border: '1px solid #3a3a3a',
+                        boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                        color: '#e0e0e0',
+                        '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                      }}
+                    >
+                      {isMobile ? <ArrowBack /> : 'Reset'}
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={handleFloatingButtonClick}
+                      disabled={isCreatingCollage || !allPanelsHaveImages}
+                      size="large"
+                      startIcon={<Save />}
+                      sx={{
+                        flex: 1,
+                        minHeight: 48,
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                        border: '1px solid #8b5cc7',
+                        boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                        color: '#fff',
+                        '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                      }}
+                      aria-label="Create and save collage"
+                    >
+                      {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={handleToggleSettings}
+                      disabled={isCreatingCollage}
+                      startIcon={!isMobile ? <Settings /> : undefined}
+                      aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                      sx={{
+                        minHeight: 48,
+                        minWidth: isMobile ? 48 : undefined,
+                        px: isMobile ? 1.25 : 2,
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                        border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
+                        boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
+                        color: '#e0e0e0',
+                        '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                      }}
+                    >
+                      {isMobile ? <Settings /> : (settingsOpen ? 'Close' : 'Settings')}
+                    </Button>
+                  </Stack>
                 </Box>
               </Slide>
             )}
