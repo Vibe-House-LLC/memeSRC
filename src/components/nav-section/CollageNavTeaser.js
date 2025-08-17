@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Box, Chip, ListItemText } from '@mui/material';
+import { Box, ListItemText } from '@mui/material';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import { StyledNavItem, StyledNavItemIcon } from './styles';
 
@@ -25,15 +25,6 @@ export default function CollageNavTeaser() {
         </StyledNavItemIcon>
         <ListItemText sx={{ fontSize: 16 }} disableTypography primary="collage" />
       </Box>
-      <Chip
-        label="NEW"
-        color="info"
-        size="small"
-        sx={{
-          fontWeight: 'bold',
-          mx: '10px'
-        }}
-      />
     </StyledNavItem>
   );
 }
