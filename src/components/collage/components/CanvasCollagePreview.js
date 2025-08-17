@@ -5,6 +5,7 @@ import { useTheme } from "@mui/material/styles";
 import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
+import { getMetadataForKey } from '../../../utils/library/metadata';
 
 
 
@@ -434,6 +435,7 @@ const CanvasCollagePreview = ({
   const lastInteractionTime = useRef(0);
   const hoverTimeoutRef = useRef(null);
   const touchStartInfo = useRef(null);
+  const defaultCaptionCacheRef = useRef({});
 
   // Reorder state
   const [isReorderMode, setIsReorderMode] = useState(false);
@@ -1301,6 +1303,51 @@ const CanvasCollagePreview = ({
     const isOpening = textEditingPanel !== panelId;
     setTextEditingPanel(textEditingPanel === panelId ? null : panelId);
     
+    // If opening the editor on a panel without existing text, try to prefill from Library metadata
+    if (isOpening) {
+      try {
+        const existing = (panelTexts[panelId]?.content || '').trim();
+        if (!existing) {
+          const imageIndex = panelImageMapping?.[panelId];
+          if (typeof imageIndex === 'number') {
+            const imgObj = images?.[imageIndex];
+            const libraryKey = imgObj?.metadata?.libraryKey;
+            if (libraryKey) {
+              const cached = defaultCaptionCacheRef.current[libraryKey];
+              const applyCaption = (caption) => {
+                if (caption && !(panelTexts[panelId]?.content || '').trim()) {
+                  if (typeof updatePanelText === 'function') {
+                    const previous = panelTexts[panelId] || {};
+                    const hadPrevContent = Boolean(previous.content && previous.content.trim());
+                    const hasExplicitFontSize = previous.fontSize !== undefined;
+                    const next = {
+                      ...previous,
+                      content: caption,
+                      ...(hadPrevContent || hasExplicitFontSize ? {} : { fontSize: lastUsedTextSettings.fontSize || 26 })
+                    };
+                    updatePanelText(panelId, next);
+                  }
+                }
+              };
+              if (cached !== undefined) {
+                applyCaption(cached);
+              } else {
+                getMetadataForKey(libraryKey)
+                  .then((meta) => {
+                    const caption = meta?.defaultCaption;
+                    defaultCaptionCacheRef.current[libraryKey] = caption || null;
+                    applyCaption(caption);
+                  })
+                  .catch(() => {
+                    defaultCaptionCacheRef.current[libraryKey] = null;
+                  });
+              }
+            }
+          }
+        }
+      } catch (_) { /* ignore prefill errors */ }
+    }
+    
     // Auto-scroll to show the caption editor after it opens
     if (isOpening) {
       setTimeout(() => {
@@ -1441,7 +1488,7 @@ const CanvasCollagePreview = ({
         }
       }, 100); // Small delay to ensure editor is rendered
     }
-  }, [textEditingPanel, panelRects, isReorderMode]);
+  }, [textEditingPanel, panelRects, isReorderMode, panelTexts, panelImageMapping, images, updatePanelText, lastUsedTextSettings]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
