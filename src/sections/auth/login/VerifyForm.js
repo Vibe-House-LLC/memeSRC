@@ -1,4 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 // @mui
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
@@ -110,6 +111,9 @@ export default function VerifyForm() {
 
   return (
     <>
+      <Helmet>
+        <title> Verify Account • memeSRC </title>
+      </Helmet>
       <Typography variant="h4" gutterBottom>
         Check your email
       </Typography>
@@ -217,4 +221,3 @@ export default function VerifyForm() {
     </>
   );
 }
-VerifyForm.pageTitle = 'Verify Account';

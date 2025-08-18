@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Backdrop, CircularProgress, Link, Stack, TextField, Typography, styled } from '@mui/material';
+import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
 import { Auth } from 'aws-amplify';
 import { useContext, useState } from 'react';
@@ -67,6 +68,9 @@ export default function ResetPasswordForm() {
 
   return (
     <>
+      <Helmet>
+        <title> Reset Password • memeSRC </title>
+      </Helmet>
       <Typography variant="h4" textAlign='center'>
         Reset memeSRC password
       </Typography>
@@ -155,4 +159,3 @@ export default function ResetPasswordForm() {
     </>
   );
 }
-ResetPasswordForm.pageTitle = 'Reset Password';

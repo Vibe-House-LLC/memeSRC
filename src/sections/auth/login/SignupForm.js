@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 // import { useNavigate } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, Typography, styled, FormControlLabel, FormGroup } from '@mui/material';
@@ -184,6 +185,9 @@ export default function SignupForm() {
 
   return (
     <>
+      <Helmet>
+        <title> Create Account • memeSRC </title>
+      </Helmet>
       <Typography variant="h4" gutterBottom>
         Create a memeSRC account
       </Typography>
@@ -344,5 +348,4 @@ export default function SignupForm() {
     </>
   );
 };
-SignupForm.pageTitle = 'Create Account';
 
