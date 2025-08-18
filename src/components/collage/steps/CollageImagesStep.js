@@ -44,7 +44,8 @@ const CollageImagesStep = ({
   setFinalImage = () => { console.warn("setFinalImage default prop called"); },
   handleOpenExportDialog = () => { console.warn("handleOpenExportDialog default prop called"); },
   onCollageGenerated = null,
-  isCreatingCollage
+  isCreatingCollage,
+  onCaptionEditorVisibleChange,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -148,6 +149,7 @@ const CollageImagesStep = ({
             handleOpenExportDialog={handleOpenExportDialog}
             onCollageGenerated={onCollageGenerated}
             isCreatingCollage={isCreatingCollage}
+            onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
           />
         </Box>
         
@@ -209,6 +211,7 @@ CollageImagesStep.propTypes = {
   handleOpenExportDialog: PropTypes.func,
   onCollageGenerated: PropTypes.func,
   isCreatingCollage: PropTypes.bool,
+  onCaptionEditorVisibleChange: PropTypes.func,
 };
 
 export default CollageImagesStep;

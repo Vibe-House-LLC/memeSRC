@@ -1,13 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Dialog, IconButton, Typography, useMediaQuery, Button } from '@mui/material';
-import { Delete, Close, KeyboardArrowLeft, KeyboardArrowRight, CheckCircle, CheckCircleOutline } from '@mui/icons-material';
+import { Box, Dialog, IconButton, Typography, useMediaQuery, Button, Popover, TextField, Chip, Stack } from '@mui/material';
+import { Delete, Close, KeyboardArrowLeft, KeyboardArrowRight, CheckCircle, CheckCircleOutline, Info } from '@mui/icons-material';
+import { getMetadataForKey, putMetadataForKey } from '../../utils/library/metadata';
 
-export default function PreviewDialog({ open, onClose, imageUrl, onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected, footerMode = 'default' }) {
+export default function PreviewDialog({ open, onClose, imageUrl, imageKey, storageLevel = 'protected', onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected, footerMode = 'default' }) {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const [infoAnchor, setInfoAnchor] = useState(null);
+  const [meta, setMeta] = useState({ tags: [], description: '', defaultCaption: '' });
+  const canEdit = Boolean(imageKey);
 
-  const [swipeOffsetY, setSwipeOffsetY] = React.useState(0);
-  const touchStartYRef = React.useRef(null);
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMetadata() {
+      if (!open || !imageKey) return;
+      try {
+        const m = await getMetadataForKey(imageKey, { level: storageLevel });
+        if (!cancelled) setMeta(m);
+      } catch (_) { /* ignore */ }
+    }
+    loadMetadata();
+    return () => { cancelled = true; };
+  }, [open, imageKey, storageLevel]);
+
+  const handleSaveMeta = async () => {
+    if (!imageKey) return;
+    try { await putMetadataForKey(imageKey, meta, { level: storageLevel }); } catch (_) { /* ignore */ }
+  };
+
+  const [swipeOffsetY, setSwipeOffsetY] = useState(0);
+  const touchStartYRef = useRef(null);
 
   const handleTouchStart = (e) => {
     if (!isMobile) return;
@@ -75,6 +97,15 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
         </Typography>
         {!isMobile && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {canEdit && (
+              <IconButton
+                onClick={(e) => setInfoAnchor(e.currentTarget)}
+                aria-label="Image info"
+                sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
+              >
+                <Info />
+              </IconButton>
+            )}
             {typeof isSelected === 'boolean' && onToggleSelected && (
               <IconButton
                 onClick={onToggleSelected}
@@ -210,6 +241,15 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
             bgcolor: '#0f0f10',
           }}
         >
+          {canEdit && (
+            <IconButton
+              aria-label="Image info"
+              onClick={(e) => setInfoAnchor(e.currentTarget)}
+              sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
+            >
+              <Info />
+            </IconButton>
+          )}
           {footerMode === 'single' ? (
             <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
               <Button
@@ -301,6 +341,52 @@ export default function PreviewDialog({ open, onClose, imageUrl, onDelete, title
           )}
         </Box>
       )}
+
+      {/* Info / metadata editor */}
+      <Popover
+        open={Boolean(infoAnchor)}
+        anchorEl={infoAnchor}
+        onClose={() => setInfoAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { p: 2, width: 360 } }}
+      >
+        <Stack spacing={1.25}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Image info</Typography>
+          <TextField
+            label="Tags (comma separated)"
+            size="small"
+            placeholder="e.g. south park, cartman"
+            value={Array.isArray(meta.tags) ? meta.tags.join(', ') : (meta.tags || '')}
+            onChange={(e) => setMeta((m) => ({ ...m, tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) }))}
+          />
+          <TextField
+            label="Description"
+            size="small"
+            multiline
+            minRows={2}
+            value={meta.description || ''}
+            onChange={(e) => setMeta((m) => ({ ...m, description: e.target.value }))}
+          />
+          <TextField
+            label="Default caption"
+            size="small"
+            multiline
+            minRows={2}
+            value={meta.defaultCaption || ''}
+            onChange={(e) => setMeta((m) => ({ ...m, defaultCaption: e.target.value }))}
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button onClick={() => setInfoAnchor(null)}>Close</Button>
+            <Button variant="contained" onClick={async () => { await handleSaveMeta(); setInfoAnchor(null); }}>Save</Button>
+          </Box>
+          {Array.isArray(meta.tags) && meta.tags.length > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {meta.tags.map((t) => (<Chip key={t} label={t} size="small" />))}
+            </Box>
+          )}
+        </Stack>
+      </Popover>
     </Dialog>
   );
 }
@@ -309,6 +395,8 @@ PreviewDialog.propTypes = {
   open: PropTypes.bool,
   onClose: PropTypes.func,
   imageUrl: PropTypes.string,
+  imageKey: PropTypes.string,
+  storageLevel: PropTypes.oneOf(['private', 'protected']),
   onDelete: PropTypes.func,
   titleId: PropTypes.string,
   onPrev: PropTypes.func,

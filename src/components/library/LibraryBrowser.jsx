@@ -436,6 +436,8 @@ export default function LibraryBrowser({
         open={Boolean(previewKey)}
         onClose={() => setPreviewKey(null)}
         imageUrl={previewItem?.url}
+        imageKey={previewItem?.key}
+        storageLevel={storageLevel}
         onDelete={deleteEnabled ? () => setConfirm({ keys: [previewKey] }) : undefined}
         titleId="library-preview-title"
         onPrev={handlePrev}
