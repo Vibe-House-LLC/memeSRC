@@ -40,6 +40,12 @@ export default defineConfig(({ mode }) => {
 		root: '.',
 		publicDir: 'public',
 		envPrefix: ['VITE_', 'REACT_APP_', 'PUBLIC_'],
+		resolve: {
+			alias: [
+				{ find: './aws-exports', replacement: '/src/aws-exports.js' },
+				{ find: 'aws-exports', replacement: '/src/aws-exports.js' },
+			],
+		},
 		server: {
 			port: 3000,
 			strictPort: false,
