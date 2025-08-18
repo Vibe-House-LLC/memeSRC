@@ -1,9 +1,8 @@
-import { Helmet } from 'react-helmet-async';
 import { useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import { Container } from '@mui/material';
 import PropTypes from 'prop-types';
-import { Link } from 'react-router-dom';
 import { LoginForm } from '../sections/auth/login';
 import Logo from '../components/logo';
 import VerifyForm from '../sections/auth/login/VerifyForm';
@@ -30,26 +29,26 @@ const StyledContent = styled('div')(({ theme }) => ({
 
 // ----------------------------------------------------------------------
 
-export default function AuthPage({ method }) {
+export default function AuthPage({ method, children }) {
   // Set up the user context
   const { user, setUser } = useContext(UserContext)
-
+  
   // Prep the auth page content depending on the situation
   // TODO: fix issue where you can get "stuck" verifying 
   // TODO: add auto-login functionality after confirmation
-  let formType = method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser} />
-  let formTitle = method === "signup" ? "Create Account" : "Sign in"
-  if (user && user.userConfirmed === false) {
-    formType = <VerifyForm username={user.username} />
-    formTitle = "Verify Account"
+  let formType = children || null;
+
+  if (!formType) {
+    // Fallback to legacy behavior when no children are provided
+    formType = method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser} />
+    if (user && user.userConfirmed === false) {
+      formType = <VerifyForm username={user.username} />
+    }
   }
 
   // Return the page
   return (
     <>
-      <Helmet>
-        <title> {formTitle} • memeSRC </title>
-      </Helmet>
 
       <StyledRoot>
         <Link to='/'>
@@ -73,5 +72,6 @@ export default function AuthPage({ method }) {
 };
 
 AuthPage.propTypes = {
-  method: PropTypes.string.isRequired,
+  method: PropTypes.string,
+  children: PropTypes.node,
 };

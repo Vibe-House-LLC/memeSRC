@@ -1,4 +1,5 @@
 import { useContext, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useNavigate, useLocation } from 'react-router-dom';
 // @mui
 import { Link, Stack, IconButton, InputAdornment, TextField, Checkbox, FormControlLabel, Typography, styled } from '@mui/material';
@@ -120,6 +121,9 @@ export default function LoginForm() {
 
   return (
     <>
+      <Helmet>
+        <title> Sign in • memeSRC </title>
+      </Helmet>
       <Typography variant="h4" gutterBottom>
         Sign In to memeSRC
       </Typography>
