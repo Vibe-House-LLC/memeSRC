@@ -1,9 +1,9 @@
 import { Helmet } from 'react-helmet-async';
 import { useContext } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import { Container } from '@mui/material';
 import PropTypes from 'prop-types';
-import { Link } from 'react-router-dom';
 import { LoginForm } from '../sections/auth/login';
 import Logo from '../components/logo';
 import VerifyForm from '../sections/auth/login/VerifyForm';
@@ -30,18 +30,47 @@ const StyledContent = styled('div')(({ theme }) => ({
 
 // ----------------------------------------------------------------------
 
-export default function AuthPage({ method }) {
+export default function AuthPage({ method, children }) {
   // Set up the user context
   const { user, setUser } = useContext(UserContext)
+  const location = useLocation();
 
   // Prep the auth page content depending on the situation
   // TODO: fix issue where you can get "stuck" verifying 
   // TODO: add auto-login functionality after confirmation
-  let formType = method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser} />
-  let formTitle = method === "signup" ? "Create Account" : "Sign in"
-  if (user && user.userConfirmed === false) {
-    formType = <VerifyForm username={user.username} />
-    formTitle = "Verify Account"
+  let formType = children || null;
+  let formTitle = 'Sign in';
+
+  if (!formType) {
+    // Fallback to legacy behavior when no children are provided
+    formType = method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser} />
+    formTitle = method === "signup" ? "Create Account" : "Sign in"
+    if (user && user.userConfirmed === false) {
+      formType = <VerifyForm username={user.username} />
+      formTitle = "Verify Account"
+    }
+  } else {
+    // Title based on current route when explicit children are provided
+    switch (location.pathname) {
+      case '/login':
+        formTitle = 'Sign in';
+        break;
+      case '/signup':
+        formTitle = 'Create Account';
+        break;
+      case '/verify':
+        formTitle = 'Verify Account';
+        break;
+      case '/forgotpassword':
+        formTitle = 'Reset Password';
+        break;
+      case '/forgotusername':
+        formTitle = 'Recover Username';
+        break;
+      default:
+        formTitle = 'memeSRC';
+        break;
+    }
   }
 
   // Return the page
@@ -73,5 +102,6 @@ export default function AuthPage({ method }) {
 };
 
 AuthPage.propTypes = {
-  method: PropTypes.string.isRequired,
+  method: PropTypes.string,
+  children: PropTypes.node,
 };
