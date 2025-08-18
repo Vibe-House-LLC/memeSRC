@@ -217,3 +217,4 @@ export default function VerifyForm() {
     </>
   );
 }
+VerifyForm.pageTitle = 'Verify Account';

@@ -155,3 +155,4 @@ export default function ResetPasswordForm() {
     </>
   );
 }
+ResetPasswordForm.pageTitle = 'Reset Password';

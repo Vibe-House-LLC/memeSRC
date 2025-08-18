@@ -198,3 +198,4 @@ export default function LoginForm() {
     </>
   );
 }
+LoginForm.pageTitle = 'Sign in';

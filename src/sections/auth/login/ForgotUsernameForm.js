@@ -131,3 +131,4 @@ export default function ResetPasswordForm() {
     </>
   );
 }
+ResetPasswordForm.pageTitle = 'Recover Username';

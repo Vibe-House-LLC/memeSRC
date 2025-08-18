@@ -344,4 +344,5 @@ export default function SignupForm() {
     </>
   );
 };
+SignupForm.pageTitle = 'Create Account';
 

@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { useContext } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import { Container } from '@mui/material';
 import PropTypes from 'prop-types';
@@ -33,7 +33,6 @@ const StyledContent = styled('div')(({ theme }) => ({
 export default function AuthPage({ method, children }) {
   // Set up the user context
   const { user, setUser } = useContext(UserContext)
-  const location = useLocation();
 
   // Prep the auth page content depending on the situation
   // TODO: fix issue where you can get "stuck" verifying 
@@ -44,33 +43,18 @@ export default function AuthPage({ method, children }) {
   if (!formType) {
     // Fallback to legacy behavior when no children are provided
     formType = method === "signin" ? <LoginForm /> : <SignupForm setUser={setUser} />
-    formTitle = method === "signup" ? "Create Account" : "Sign in"
+    // Prefer the child component's declared title if available
+    const legacyChild = method === 'signin' ? LoginForm : SignupForm;
+    const legacyChildTitle = legacyChild && legacyChild.pageTitle;
+    formTitle = method === "signup" ? (legacyChildTitle || "Create Account") : (legacyChildTitle || "Sign in")
     if (user && user.userConfirmed === false) {
       formType = <VerifyForm username={user.username} />
-      formTitle = "Verify Account"
+      formTitle = VerifyForm.pageTitle || "Verify Account"
     }
   } else {
     // Title based on current route when explicit children are provided
-    switch (location.pathname) {
-      case '/login':
-        formTitle = 'Sign in';
-        break;
-      case '/signup':
-        formTitle = 'Create Account';
-        break;
-      case '/verify':
-        formTitle = 'Verify Account';
-        break;
-      case '/forgotpassword':
-        formTitle = 'Reset Password';
-        break;
-      case '/forgotusername':
-        formTitle = 'Recover Username';
-        break;
-      default:
-        formTitle = 'memeSRC';
-        break;
-    }
+    const childDeclaredTitle = children && children.type && children.type.pageTitle;
+    formTitle = childDeclaredTitle || 'memeSRC';
   }
 
   // Return the page
