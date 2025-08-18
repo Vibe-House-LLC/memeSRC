@@ -1,23 +1,29 @@
 version: 1
-backend:
-  phases:
-    build:
-      commands:
-        - '# Execute Amplify CLI with the helper script'
-        - amplifyPush --simple
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm install
-        - node -e "process.stdout.write(require('./package.json').version)" > .version
-    build:
-      commands:
-        - REACT_APP_USER_BRANCH=$USER_BRANCH REACT_APP_VERSION=$(cat .version) GENERATE_SOURCEMAP=false npm run build
-  artifacts:
-    baseDirectory: build
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - node_modules/**/*
+applications:
+  - backend:
+      phases:
+        preBuild:
+          commands:
+            - nvm install 20
+            - nvm use 20
+        build:
+          commands:
+            - npm ci --cache .npm --prefer-offline
+            - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci --cache .npm --prefer-offline
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - .next/cache/**/*
+          - .npm/**/*
+    appRoot: v3 

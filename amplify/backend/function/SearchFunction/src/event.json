@@ -1,7 +1,0 @@
-{
-  "queryStringParameters": {
-    "q": "soup",
-    "series": "seinfeld",
-    "warmup": false
-  }
-}

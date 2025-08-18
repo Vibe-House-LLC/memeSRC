@@ -1,7 +1,0 @@
-{
-  "lambdaLayers": [],
-  "secretNames": [
-    "apikey",
-    "pin"
-  ]
-}
