@@ -1812,15 +1812,17 @@ const CanvasCollagePreview = ({
 
       if (updatePanelText) {
         if (sourceText) {
-          updatePanelText(destinationPanelId, { ...sourceText });
+          // Replace entire text config to avoid lingering style props
+          updatePanelText(destinationPanelId, { ...sourceText }, { replace: true });
         } else {
-          updatePanelText(destinationPanelId, { content: undefined });
+          // Remove text entry completely
+          updatePanelText(destinationPanelId, {}, { replace: true });
         }
 
         if (destinationText) {
-          updatePanelText(reorderSourcePanel, { ...destinationText });
+          updatePanelText(reorderSourcePanel, { ...destinationText }, { replace: true });
         } else {
-          updatePanelText(reorderSourcePanel, { content: undefined });
+          updatePanelText(reorderSourcePanel, {}, { replace: true });
         }
       }
     } else if (sourceImageIndex !== undefined) {
@@ -1830,12 +1832,12 @@ const CanvasCollagePreview = ({
 
       if (updatePanelText) {
         if (sourceText) {
-          updatePanelText(destinationPanelId, { ...sourceText });
+          updatePanelText(destinationPanelId, { ...sourceText }, { replace: true });
         } else {
-          updatePanelText(destinationPanelId, { content: undefined });
+          updatePanelText(destinationPanelId, {}, { replace: true });
         }
 
-        updatePanelText(reorderSourcePanel, { content: undefined });
+        updatePanelText(reorderSourcePanel, {}, { replace: true });
       }
     }
 

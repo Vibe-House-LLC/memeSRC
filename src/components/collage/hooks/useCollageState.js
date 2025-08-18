@@ -594,21 +594,34 @@ export const useCollageState = () => {
    * @param {string} panelId - The ID of the panel to update.
    * @param {object} textConfig - The new text configuration { content, fontSize, fontWeight, fontFamily, color, strokeWidth }.
    */
-  const updatePanelText = useCallback((panelId, textConfig) => {
-    setPanelTexts(prev => ({
-      ...prev,
-      [panelId]: {
-        ...prev[panelId],
-        ...textConfig,
-        autoAssigned: false // Mark as manually edited once user modifies
+  const updatePanelText = useCallback((panelId, textConfig, options = {}) => {
+    setPanelTexts(prev => {
+      const replace = options.replace === true;
+
+      // If replacing with an empty or falsy config, remove the panel's text entry entirely
+      const isEmptyConfig = !textConfig || Object.keys(textConfig).length === 0;
+      if (replace && isEmptyConfig) {
+        const next = { ...prev };
+        delete next[panelId];
+        return next;
       }
-    }));
+
+      // Merge or replace strategy
+      const nextPanelText = replace
+        ? { ...textConfig, autoAssigned: false }
+        : { ...prev[panelId], ...textConfig, autoAssigned: false };
+
+      return {
+        ...prev,
+        [panelId]: nextPanelText
+      };
+    });
     
     // Note: We don't update lastUsedTextSettings here to ensure text settings
     // only affect the specific caption being edited, not other captions
     
     if (DEBUG_MODE) {
-      console.log(`Updating text for panel ${panelId}:`, textConfig);
+      console.log(`Updating text for panel ${panelId} (${options.replace ? 'replace' : 'merge'}):`, textConfig);
     }
   }, []);
 
