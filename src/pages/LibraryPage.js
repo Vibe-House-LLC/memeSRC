@@ -1,5 +1,5 @@
-import { useContext } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useContext, useEffect } from 'react';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Box, Container, Typography } from '@mui/material';
 import { get as getFromLibrary } from '../utils/library/storage';
 import LibraryBrowser from '../components/library/LibraryBrowser';
@@ -9,6 +9,21 @@ export default function LibraryPage() {
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
   const navigate = useNavigate();
+  const location = useLocation();
+  const preselectKeys = Array.isArray(location.state?.preselectKeys) ? location.state.preselectKeys : [];
+  const initialSelectMode = Boolean(location.state?.initialSelectMode);
+
+  // After applying preselection, clear navigation state to avoid reapplying on refresh
+  useEffect(() => {
+    if (preselectKeys.length > 0 || initialSelectMode) {
+      // Use a microtask to ensure child reads props first
+      Promise.resolve().then(() => {
+        navigate(location.pathname, { replace: true, state: {} });
+      });
+    }
+    // Only run when the incoming state changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   if (!isAdmin) {
     return <Navigate to="/404" replace />;
@@ -62,13 +77,14 @@ export default function LibraryPage() {
                   };
                 }
               }));
-              navigate('/collage', { state: { fromCollage: true, images } });
+              navigate('/collage', { state: { fromCollage: true, from: 'library', images, libraryKeys: (selectedItems || []).map((it) => it.key) } });
             } finally {
               try { clear(); } catch (_) { /* ignore */ }
             }
           }}
           showSelectToggle
-          initialSelectMode={false}
+          initialSelectMode={initialSelectMode}
+          initialSelectedKeys={preselectKeys}
         />
       </Box>
     </Container>

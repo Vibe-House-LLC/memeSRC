@@ -60,6 +60,10 @@ const CollagePreview = ({
   lastUsedTextSettings,
   isCreatingCollage = false,
   onCaptionEditorVisibleChange,
+  // Optional controls for reset flow from CollagePage
+  initialLibraryOpen = false,
+  initialLibrarySelectedKeys = [],
+  libraryMultiple = false,
 }) => {
   const fileInputRef = useRef(null);
   const theme = useTheme();
@@ -78,6 +82,13 @@ const CollagePreview = ({
 
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
+
+  // Stable signature for initial preselection
+  const initialSelSig = React.useMemo(() => {
+    return Array.isArray(initialLibrarySelectedKeys)
+      ? initialLibrarySelectedKeys.slice().sort().join('|')
+      : 'none';
+  }, [initialLibrarySelectedKeys]);
 
   // Handle panel click - admins use Library, non-admins use system file picker
   const handlePanelClick = (index, panelId) => {
@@ -116,6 +127,13 @@ const CollagePreview = ({
       }
     }
   };
+
+  // Open library dialog automatically when requested (e.g., returning from reset)
+  React.useEffect(() => {
+    if (isAdmin && initialLibraryOpen) {
+      setIsLibraryOpen(true);
+    }
+  }, [initialLibraryOpen, isAdmin]);
 
   // Open menu for a panel
   const handleMenuOpen = (event, index) => {
@@ -423,15 +441,47 @@ const CollagePreview = ({
           )}
           <DialogContent dividers sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#0f0f0f' }}>
             <LibraryBrowser
-              multiple={false}
+              key={`collage-lib-${isLibraryOpen ? 'open' : 'closed'}-${initialSelSig}-${libraryMultiple ? 'm' : 's'}`}
+              multiple={libraryMultiple}
+              storageLevel="protected"
               uploadEnabled
               deleteEnabled={false}
               onSelect={(arr) => handleLibrarySelect(arr)}
-              showActionBar={false}
+              showActionBar={libraryMultiple}
+              actionBarLabel={libraryMultiple ? 'Use Selected' : undefined}
+              minSelected={libraryMultiple ? 1 : undefined}
+              onActionBarPrimary={libraryMultiple ? async ({ selectedItems, storageLevel, clear }) => {
+                // Convert selected library items to data URLs and add to collage
+                const toDataUrl = (blob) => new Promise((resolve, reject) => {
+                  try {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                  } catch (e) { reject(e); }
+                });
+                try {
+                  const images = await Promise.all((selectedItems || []).map(async (it) => {
+                    try {
+                      const blob = await getFromLibrary(it.key, { level: storageLevel || 'protected' });
+                      const dataUrl = await toDataUrl(blob);
+                      return { originalUrl: dataUrl, displayUrl: dataUrl, metadata: { isFromLibrary: true, libraryKey: it.key } };
+                    } catch (_) {
+                      return { originalUrl: it.url, displayUrl: it.url, metadata: { isFromLibrary: true, libraryKey: it.key } };
+                    }
+                  }));
+                  await addMultipleImages(images);
+                  // Close dialog after adding
+                  setIsLibraryOpen(false);
+                } finally {
+                  try { clear(); } catch (_) { /* ignore */ }
+                }
+              } : undefined}
               selectionEnabled
               previewOnClick
               showSelectToggle
-              initialSelectMode
+              initialSelectMode={libraryMultiple}
+              initialSelectedKeys={Array.isArray(initialLibrarySelectedKeys) ? initialLibrarySelectedKeys : []}
             />
           </DialogContent>
           <DialogActions sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
@@ -489,6 +539,9 @@ CollagePreview.propTypes = {
   lastUsedTextSettings: PropTypes.object,
   isCreatingCollage: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,
+  initialLibraryOpen: PropTypes.bool,
+  initialLibrarySelectedKeys: PropTypes.arrayOf(PropTypes.string),
+  libraryMultiple: PropTypes.bool,
 };
 
 export default CollagePreview; 

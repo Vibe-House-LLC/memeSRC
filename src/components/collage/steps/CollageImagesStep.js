@@ -46,6 +46,8 @@ const CollageImagesStep = ({
   onCollageGenerated = null,
   isCreatingCollage,
   onCaptionEditorVisibleChange,
+  // Optional library dialog controls (for return/reset UX)
+  libraryDialogConfig,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -150,6 +152,10 @@ const CollageImagesStep = ({
             onCollageGenerated={onCollageGenerated}
             isCreatingCollage={isCreatingCollage}
             onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
+            // Reset/return: control built-in library dialog
+            initialLibraryOpen={Boolean(libraryDialogConfig?.open)}
+            initialLibrarySelectedKeys={libraryDialogConfig?.preselectKeys || []}
+            libraryMultiple={Boolean(libraryDialogConfig?.multiple)}
           />
         </Box>
         
@@ -212,6 +218,11 @@ CollageImagesStep.propTypes = {
   onCollageGenerated: PropTypes.func,
   isCreatingCollage: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,
+  libraryDialogConfig: PropTypes.shape({
+    open: PropTypes.bool,
+    preselectKeys: PropTypes.arrayOf(PropTypes.string),
+    multiple: PropTypes.bool,
+  })
 };
 
 export default CollageImagesStep;

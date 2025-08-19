@@ -193,6 +193,7 @@ export const CollageLayout = ({
               onBulkUploadSectionToggle={imagesStepProps.onBulkUploadSectionToggle}
               onStartFromScratch={imagesStepProps.onStartFromScratch}
               libraryRefreshTrigger={imagesStepProps.libraryRefreshTrigger}
+              initialLibrarySelectedKeys={Array.isArray(imagesStepProps?.libraryDialogConfig?.preselectKeys) ? imagesStepProps.libraryDialogConfig.preselectKeys : []}
             />
           </Box>
         ) : isMobile ? (
