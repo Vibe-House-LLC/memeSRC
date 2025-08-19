@@ -35,9 +35,13 @@ export default function useSelection({ multiple = true, maxSelected = Infinity }
       if (multiple) {
         for (let i = 0; i < keysArray.length; i += 1) {
           const k = keysArray[i];
-          if (k == null) continue;
-          if (Number.isFinite(maxSelected) && next.size >= maxSelected) break;
-          next.add(k);
+          if (k == null) {
+            // skip null/undefined without using continue (eslint: no-continue)
+          } else if (Number.isFinite(maxSelected) && next.size >= maxSelected) {
+            break;
+          } else {
+            next.add(k);
+          }
         }
       } else if (keysArray.length > 0 && keysArray[0] != null) {
         next.add(keysArray[0]);
