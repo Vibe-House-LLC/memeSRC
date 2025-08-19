@@ -3,7 +3,7 @@
  * SSR-safe: if window/document not available, returns the original blob.
  * TODO: Handle EXIF orientation
  */
-export function resizeImage(file, maxSize = 1500, quality = 0.85) {
+export function resizeImage(file: Blob, maxSize = 1500, quality = 0.85): Promise<Blob> {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return Promise.resolve(file);
   }
@@ -16,8 +16,8 @@ export function resizeImage(file, maxSize = 1500, quality = 0.85) {
 
       img.onload = () => {
         try {
-          const width = img.naturalWidth || img.width;
-          const height = img.naturalHeight || img.height;
+          const width = (img as any).naturalWidth || img.width;
+          const height = (img as any).naturalHeight || img.height;
           let newWidth = width;
           let newHeight = height;
           if (width >= height) {
@@ -31,24 +31,30 @@ export function resizeImage(file, maxSize = 1500, quality = 0.85) {
           }
           canvas.width = newWidth;
           canvas.height = newHeight;
+          // ctx can be null; fallback to original file if so
+          if (!ctx) {
+            try { URL.revokeObjectURL(url); } catch (_) { /* ignore revoke errors */ }
+            resolve(file);
+            return;
+          }
           ctx.drawImage(img, 0, 0, newWidth, newHeight);
           canvas.toBlob(
             (blob) => {
               try {
                 URL.revokeObjectURL(url);
-              } catch (err) {
+              } catch (_) {
                 // ignore revoke errors
               }
               if (blob) resolve(blob);
               else resolve(file);
             },
-            file.type || 'image/jpeg',
+            (file as any).type || 'image/jpeg',
             quality
           );
         } catch (e) {
           try {
             URL.revokeObjectURL(url);
-          } catch (err) {
+          } catch (_) {
             // ignore revoke errors
           }
           resolve(file);
@@ -57,7 +63,7 @@ export function resizeImage(file, maxSize = 1500, quality = 0.85) {
       img.onerror = () => {
         try {
           URL.revokeObjectURL(url);
-        } catch (err) {
+        } catch (_) {
           // ignore revoke errors
         }
         resolve(file);

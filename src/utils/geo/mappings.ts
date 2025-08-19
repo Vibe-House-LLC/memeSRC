@@ -1,4 +1,4 @@
-export const countries = {
+export const countries: Record<string, string> = {
     AD: "Andorra",
     AE: "United Arab Emirates",
     AF: "Afghanistan",
@@ -250,7 +250,7 @@ export const countries = {
     ZW: "Zimbabwe"
 };
 
-export const timezones = {
+export const timezones: any = {
     "Africa/Abidjan": {
         u: 0,
         c: ["CI", "BF", "GH", "GM", "GN", "ML", "MR", "SH", "SL", "SN", "TG"]
