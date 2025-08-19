@@ -2,7 +2,7 @@ import { useContext, useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack } from "@mui/material";
-import { Dashboard, Save, ArrowBack, Settings } from "@mui/icons-material";
+import { Dashboard, Save, DeleteForever, Settings } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -504,24 +504,24 @@ export default function CollagePage() {
                   <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }}>
                     <Button
                       variant="contained"
-                      onClick={handleResetCollage}
+                      onClick={handleToggleSettings}
                       disabled={isCreatingCollage}
-                      startIcon={!isMobile ? <ArrowBack /> : undefined}
-                      aria-label="Reset collage"
+                      startIcon={!isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : undefined}
+                      aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
                       sx={{
                         minHeight: 48,
                         minWidth: isMobile ? 48 : undefined,
                         px: isMobile ? 1.25 : 2,
                         fontWeight: 700,
                         textTransform: 'none',
-                        background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                        border: '1px solid #3a3a3a',
-                        boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                        background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                        border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
+                        boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
                         color: '#e0e0e0',
-                        '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                        '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
                       }}
                     >
-                      {isMobile ? <ArrowBack /> : 'Reset'}
+                      {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
                     </Button>
                     <Button
                       variant="contained"
@@ -546,24 +546,24 @@ export default function CollagePage() {
                     </Button>
                     <Button
                       variant="contained"
-                      onClick={handleToggleSettings}
+                      onClick={handleResetCollage}
                       disabled={isCreatingCollage}
-                      startIcon={!isMobile ? <Settings /> : undefined}
-                      aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                      startIcon={!isMobile ? <DeleteForever sx={{ color: '#c84b4b' }} /> : undefined}
+                      aria-label="Reset all"
                       sx={{
                         minHeight: 48,
                         minWidth: isMobile ? 48 : undefined,
                         px: isMobile ? 1.25 : 2,
                         fontWeight: 700,
                         textTransform: 'none',
-                        background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                        border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
-                        boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
+                        background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                        border: '1px solid #3a3a3a',
+                        boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
                         color: '#e0e0e0',
-                        '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                        '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
                       }}
                     >
-                      {isMobile ? <Settings /> : (settingsOpen ? 'Close' : 'Settings')}
+                      {isMobile ? <DeleteForever sx={{ color: '#c84b4b' }} /> : 'Reset All'}
                     </Button>
                   </Stack>
                 </Box>
