@@ -1,4 +1,9 @@
-export async function extractVideoFrames(cid, season, episode, frameIndexes) {
+export async function extractVideoFrames(
+  cid: string,
+  season: string | number,
+  episode: string | number,
+  frameIndexes: Array<string | number>
+): Promise<string[]> {
   const frameUrls = frameIndexes.map(
     (frameId) => `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/frame/${cid}/${season}/${episode}/${frameId}`
   );
@@ -6,7 +11,8 @@ export async function extractVideoFrames(cid, season, episode, frameIndexes) {
   return frameUrls;
 }
 
-export async function extractFramesFromVideo() {
+export async function extractFramesFromVideo(): Promise<any[]> {
   console.warn('extractFramesFromVideo is deprecated. Please use extractVideoFrames instead.');
   return [];
 }
+
