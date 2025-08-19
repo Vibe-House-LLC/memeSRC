@@ -1,5 +1,5 @@
 // @mui
-import { alpha } from '@mui/material/styles';
+import { alpha, type SxProps, type Theme } from '@mui/material/styles';
 
 type BlurProps = {
   color?: string;
@@ -8,7 +8,7 @@ type BlurProps = {
   imgUrl?: string;
 };
 
-export function bgBlur(props?: BlurProps): any {
+export function bgBlur(props?: BlurProps): SxProps<Theme> {
   const color = props?.color || '#000000';
   const blur = props?.blur ?? 6;
   const opacity = props?.opacity ?? 0.8;
@@ -48,7 +48,7 @@ type GradientProps = {
   color?: string;
 };
 
-export function bgGradient(props?: GradientProps): any {
+export function bgGradient(props?: GradientProps): SxProps<Theme> {
   const direction = props?.direction || 'to bottom';
   const startColor = props?.startColor;
   const endColor = props?.endColor;
@@ -69,7 +69,7 @@ export function bgGradient(props?: GradientProps): any {
   };
 }
 
-export function textGradient(value: string): any {
+export function textGradient(value: string): SxProps<Theme> {
   return {
     background: `-webkit-linear-gradient(${value})`,
     WebkitBackgroundClip: 'text',
@@ -77,7 +77,7 @@ export function textGradient(value: string): any {
   };
 }
 
-export function filterStyles(value: string): any {
+export function filterStyles(value: string): SxProps<Theme> {
   return {
     filter: value,
     WebkitFilter: value,
@@ -85,7 +85,7 @@ export function filterStyles(value: string): any {
   };
 }
 
-export const hideScrollbarY: any = {
+export const hideScrollbarY: SxProps<Theme> = {
   msOverflowStyle: 'none',
   scrollbarWidth: 'none',
   overflowY: 'scroll',
@@ -94,7 +94,7 @@ export const hideScrollbarY: any = {
   },
 };
 
-export const hideScrollbarX: any = {
+export const hideScrollbarX: SxProps<Theme> = {
   msOverflowStyle: 'none',
   scrollbarWidth: 'none',
   overflowX: 'scroll',
@@ -102,4 +102,3 @@ export const hideScrollbarX: any = {
     display: 'none',
   },
 };
-

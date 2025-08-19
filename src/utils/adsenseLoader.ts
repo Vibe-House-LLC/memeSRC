@@ -4,8 +4,22 @@ import { UserContext } from '../UserContext';
 
 let adsenseLoaded = false;
 
+type UserCtx = {
+  user?: {
+    userDetails?: {
+      subscriptionStatus?: string | null;
+    };
+  } | null | undefined;
+};
+
+type IdleWindow = Window &
+  typeof globalThis & {
+    requestIdleCallback?: (cb: () => void) => number;
+    cancelIdleCallback?: (id: number) => void;
+  };
+
 export const useAdsenseLoader = (): void => {
-  const { user } = useContext(UserContext as any) as any;
+  const { user } = useContext(UserContext) as unknown as UserCtx;
 
   useEffect(() => {
     if (!adsenseLoaded && (!user || user?.userDetails?.subscriptionStatus !== 'active')) {
@@ -19,11 +33,13 @@ export const useAdsenseLoader = (): void => {
         adsenseLoaded = true;
       };
 
-      const win = window as any;
-      const idleId = 'requestIdleCallback' in win ? win.requestIdleCallback(loadScript) : setTimeout(loadScript, 1000);
+      const win = window as IdleWindow;
+      const idleId: number = win.requestIdleCallback
+        ? win.requestIdleCallback(loadScript)
+        : window.setTimeout(loadScript, 1000);
 
       return () => {
-        if ('cancelIdleCallback' in win) {
+        if (win.cancelIdleCallback) {
           win.cancelIdleCallback(idleId);
         } else {
           clearTimeout(idleId);
@@ -39,4 +55,3 @@ export const useAdsenseLoader = (): void => {
     return undefined;
   }, [user]);
 };
-

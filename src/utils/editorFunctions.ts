@@ -1,4 +1,13 @@
 import { fabric } from 'fabric';
+import type React from 'react';
+
+type EditorLike = {
+  canvas: fabric.Canvas & {
+    freeDrawingBrush: fabric.PencilBrush & { color: string };
+  };
+};
+
+type ColorLike = { hex: string };
 
 // Calculate the desired editor size
 export const calculateEditorSize = (aspectRatio: number): [number, number] => {
@@ -21,40 +30,46 @@ export function getContrastColor(hexColor: string): string {
 }
 
 // Update text object style
-export const updateTextStyle = (textObject: any, customStyles: string[], canvas: any): void => {
+export const updateTextStyle = (
+  textObject: fabric.Textbox,
+  customStyles: string[],
+  canvas: fabric.Canvas
+): void => {
   textObject.set({
     fontWeight: customStyles.includes('bold') ? 'bold' : 'normal',
     fontStyle: customStyles.includes('italic') ? 'italic' : 'normal',
     underline: customStyles.includes('underlined'),
   });
-  textObject.dirty = true;
   canvas.renderAll();
 };
 
 // Update text object font
-export const updateTextFont = (textObject: any, font: string, canvas: any): void => {
-  textObject.fontFamily = font || 'Arial';
-  textObject.dirty = true;
+export const updateTextFont = (
+  textObject: fabric.Textbox,
+  font: string,
+  canvas: fabric.Canvas
+): void => {
+  textObject.set({ fontFamily: font || 'Arial' });
   canvas.renderAll();
 };
 
 // Delete layer and update layer fonts
 export const deleteLayer = (
-  canvas: any,
+  canvas: fabric.Canvas,
   index: number,
-  setLayerFonts: (updater: (prev: Record<string, any>) => Record<string, any>) => void,
-  setCanvasObjects: (objs: any[]) => void
+  setLayerFonts: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+  setCanvasObjects: (objs: unknown[]) => void
 ): void => {
   canvas.remove(canvas.item(index));
   canvas.renderAll();
 
   setLayerFonts((prevFonts) => {
-    const updatedFonts: Record<string, any> = {};
+    const updatedFonts: Record<string, string> = {};
     Object.entries(prevFonts).forEach(([layerIndex, font]) => {
       if (parseInt(layerIndex, 10) < index) {
-        updatedFonts[layerIndex] = font;
+        updatedFonts[layerIndex] = font as string;
       } else if (parseInt(layerIndex, 10) > index) {
-        updatedFonts[parseInt(layerIndex, 10) - 1] = font;
+        updatedFonts[parseInt(layerIndex, 10) - 1] = font as string;
       }
     });
     return updatedFonts;
@@ -65,13 +80,16 @@ export const deleteLayer = (
 };
 
 // Move layer up in the stack
-export const moveLayerUp = (canvas: any, index: number): any[] => {
+export const moveLayerUp = (canvas: fabric.Canvas, index: number): fabric.Object[] => {
   if (index <= 0 || !canvas.item(index)) {
     // Already at the top, invalid index, or object not found
     return [...canvas.getObjects()]; // Return current objects without changes
   }
 
   const objectToMoveUp = canvas.item(index);
+  if (!objectToMoveUp) {
+    return [...canvas.getObjects()];
+  }
   canvas.moveTo(objectToMoveUp, index - 1);
   canvas.renderAll();
 
@@ -79,7 +97,7 @@ export const moveLayerUp = (canvas: any, index: number): any[] => {
 };
 
 // Save image as data URL
-export const saveImageAsDataURL = (canvas: any, imageScale: number): string =>
+export const saveImageAsDataURL = (canvas: fabric.Canvas, imageScale: number): string =>
   canvas.toDataURL({
     format: 'jpeg',
     quality: 0.6,
@@ -88,13 +106,14 @@ export const saveImageAsDataURL = (canvas: any, imageScale: number): string =>
 
 // Add text to canvas
 export const addText = (
-  editor: any,
+  editor: EditorLike,
   text: string,
   append: boolean,
   canvasWidth: number,
   canvasHeight: number
-): any[] => {
-  const textbox = new fabric.Textbox(text, {
+): fabric.Object[] => {
+  const textbox = new fabric.Textbox(text);
+  textbox.set({
     left: canvasWidth * 0.05,
     top: canvasHeight * (append ? 0.5 : 0.95),
     originY: 'bottom',
@@ -110,7 +129,7 @@ export const addText = (
     textAlign: 'center',
     selectable: true,
     paintFirst: 'stroke',
-  } as any);
+  });
 
   if (append) {
     editor.canvas.add(textbox);
@@ -125,14 +144,32 @@ export const addText = (
 };
 
 // Add image layer to canvas
-export const addImageLayer = (editor: any, imageFile: File | Blob): Promise<any[]> =>
+type ImageDescriptor = {
+  type: 'image';
+  src: string;
+  scale: number;
+  angle: number;
+  left: number;
+  top: number;
+};
+
+export const addImageLayer = (
+  editor: EditorLike,
+  imageFile: File | Blob
+): Promise<Array<fabric.Object | ImageDescriptor>> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (event: any) => {
+    reader.onload = (event: ProgressEvent<FileReader>) => {
+      const result = event.target?.result;
+      if (typeof result !== 'string') {
+        reject(new Error('Failed to read image file'));
+        return;
+      }
+
       const imgObj = new Image();
-      imgObj.src = event.target.result as string;
+      imgObj.src = result;
       imgObj.onload = () => {
-        const image = new fabric.Image(imgObj) as any;
+        const image = new fabric.Image(imgObj);
 
         const canvasWidth = editor.canvas.getWidth();
         const canvasHeight = editor.canvas.getHeight();
@@ -155,9 +192,9 @@ export const addImageLayer = (editor: any, imageFile: File | Blob): Promise<any[
         image.setCoords();
         editor.canvas.renderAll();
 
-        const imageObject = {
+        const imageObject: ImageDescriptor = {
           type: 'image',
-          src: event.target.result,
+          src: result,
           scale,
           angle: 0,
           left: canvasWidth / 2,
@@ -172,8 +209,12 @@ export const addImageLayer = (editor: any, imageFile: File | Blob): Promise<any[
   });
 
 // Handle color change for text
-export const changeTextColor = (editor: any, color: any, index: number): any[] => {
-  const textObject = editor.canvas.item(index);
+export const changeTextColor = (
+  editor: EditorLike,
+  color: ColorLike,
+  index: number
+): fabric.Object[] => {
+  const textObject = editor.canvas.item(index) as fabric.Textbox;
 
   const fontColor = color.hex;
   const strokeColor = getContrastColor(fontColor);
@@ -191,19 +232,19 @@ export const changeTextColor = (editor: any, color: any, index: number): any[] =
 
 // Handle font size change
 export const changeFontSize = (
-  editor: any,
+  editor: EditorLike,
   value: number,
   index: number,
   defaultFontSize: number
-): any[] => {
-  const textObject = editor.canvas.item(index);
-  textObject.fontSize = defaultFontSize * (value / 100);
+): fabric.Object[] => {
+  const textObject = editor.canvas.item(index) as fabric.Textbox;
+  textObject.set({ fontSize: defaultFontSize * (value / 100) });
   editor.canvas.renderAll();
   return [...editor.canvas.getObjects()];
 };
 
 // Toggle drawing mode
-export const toggleDrawingMode = (editor: any, isDrawingMode: boolean, brushSize: number): void => {
+export const toggleDrawingMode = (editor: EditorLike, isDrawingMode: boolean, brushSize: number): void => {
   if (editor) {
     editor.canvas.isDrawingMode = isDrawingMode;
     if (isDrawingMode) {
@@ -214,8 +255,8 @@ export const toggleDrawingMode = (editor: any, isDrawingMode: boolean, brushSize
 };
 
 // Clear drawing paths
-export const clearDrawingPaths = (editor: any): any[] => {
-  editor.canvas.getObjects().forEach((obj: any) => {
+export const clearDrawingPaths = (editor: EditorLike): fabric.Object[] => {
+  editor.canvas.getObjects().forEach((obj) => {
     if (obj instanceof fabric.Path) {
       editor.canvas.remove(obj);
     }
@@ -225,7 +266,7 @@ export const clearDrawingPaths = (editor: any): any[] => {
 };
 
 // Resize canvas
-export const resizeCanvas = (editor: any, width: number, height: number): void => {
+export const resizeCanvas = (editor: EditorLike, width: number, height: number): void => {
   if (editor) {
     editor.canvas.setWidth(width);
     editor.canvas.setHeight(height);
@@ -233,4 +274,3 @@ export const resizeCanvas = (editor: any, width: number, height: number): void =
     editor.canvas.renderAll();
   }
 };
-
