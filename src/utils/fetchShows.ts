@@ -1,6 +1,4 @@
-// fetchShows.js
-
-import { API, graphqlOperation, Auth } from "aws-amplify";
+import { API, graphqlOperation, Auth } from 'aws-amplify';
 import { listFavorites } from '../graphql/queries';
 
 const listAliasesQuery = /* GraphQL */ `
@@ -37,9 +35,9 @@ const listAliasesQuery = /* GraphQL */ `
 `;
 
 const APP_VERSION = process.env.REACT_APP_VERSION || 'defaultVersion';
-const CACHE_EXPIRATION_MINUTES = 1; // Define cache expiration minutes
+const CACHE_EXPIRATION_MINUTES = 1;
 
-async function getCacheKey() {
+async function getCacheKey(): Promise<string> {
   try {
     const currentUser = await Auth.currentAuthenticatedUser();
     return `showsCache-${currentUser.username}-${APP_VERSION}`;
@@ -48,22 +46,22 @@ async function getCacheKey() {
   }
 }
 
-async function fetchShowsFromAPI() {
-  const aliases = await API.graphql({
+async function fetchShowsFromAPI(): Promise<any[]> {
+  const aliases: any = await (API.graphql({
     query: listAliasesQuery,
     variables: { filter: {}, limit: 250 },
     authMode: 'API_KEY',
-  });
+  }) as Promise<any>);
 
-  const loadedV2Shows = aliases?.data?.listAliases?.items.filter(obj => obj?.v2ContentMetadata) || [];
+  const loadedV2Shows: any[] = aliases?.data?.listAliases?.items.filter((obj: any) => obj?.v2ContentMetadata) || [];
 
-  const finalShows = loadedV2Shows.map(v2Show => ({
+  const finalShows = loadedV2Shows.map((v2Show: any) => ({
     ...v2Show.v2ContentMetadata,
     id: v2Show.id,
-    cid: v2Show.v2ContentMetadata.id
+    cid: v2Show.v2ContentMetadata.id,
   }));
 
-  const sortedMetadata = finalShows.sort((a, b) => {
+  const sortedMetadata = finalShows.sort((a: any, b: any) => {
     const titleA = a.title.toLowerCase().replace(/^the\s+/, '');
     const titleB = b.title.toLowerCase().replace(/^the\s+/, '');
     return titleA.localeCompare(titleB);
@@ -72,41 +70,41 @@ async function fetchShowsFromAPI() {
   return sortedMetadata;
 }
 
-async function fetchFavorites() {
+async function fetchFavorites(): Promise<any[]> {
   await Auth.currentAuthenticatedUser();
 
-  let nextToken = null;
-  let allFavorites = [];
+  let nextToken: string | null = null;
+  let allFavorites: any[] = [];
 
   do {
-    // Disable ESLint check for await-in-loop
     // eslint-disable-next-line no-await-in-loop
-    const result = await API.graphql(graphqlOperation(listFavorites, {
-      limit: 10,
-      nextToken,
-    }));
+    const result: any = await API.graphql(
+      graphqlOperation(listFavorites, {
+        limit: 10,
+        nextToken,
+      }) as any
+    );
 
     const { items, nextToken: newNextToken } = result.data.listFavorites;
     allFavorites = allFavorites.concat(items);
     nextToken = newNextToken;
-
   } while (nextToken);
 
   return allFavorites;
 }
 
-async function updateCacheAndReturnData(data, cacheKey) {
+async function updateCacheAndReturnData(data: any[], cacheKey: string): Promise<any[]> {
   try {
     await Auth.currentAuthenticatedUser();
     const favorites = await fetchFavorites();
-    const favoriteShowIds = new Set(favorites.map(favorite => favorite.cid));
+    const favoriteShowIds = new Set(favorites.map((favorite: any) => favorite.cid));
 
-    data = data.map(show => ({
+    data = data.map((show: any) => ({
       ...show,
-      isFavorite: favoriteShowIds.has(show.id)
+      isFavorite: favoriteShowIds.has(show.id),
     }));
   } catch (error) {
-    // If there's an error fetching favorites (likely due to not being authenticated), return data without favorites.
+    // Not authenticated; return data without favorites.
   }
 
   const cacheData = {
@@ -118,7 +116,7 @@ async function updateCacheAndReturnData(data, cacheKey) {
   return data;
 }
 
-export default async function fetchShows() {
+export default async function fetchShows(): Promise<any[]> {
   const CACHE_KEY = await getCacheKey();
   const cachedData = localStorage.getItem(CACHE_KEY);
 
@@ -132,14 +130,12 @@ export default async function fetchShows() {
     const cacheAge = (Date.now() - updatedAt) / 1000 / 60;
 
     if (cacheAge <= CACHE_EXPIRATION_MINUTES) {
-      return data; // Data is fresh enough, return it directly
+      return data;
     }
-    // Data is stale, kick off a background update
     refreshDataInBackground();
-    return data; // Return the stale data for immediate use
+    return data;
   }
 
-  // No cache found, fetch new data and return after updating cache
   const freshData = await fetchShowsFromAPI();
   return updateCacheAndReturnData(freshData, CACHE_KEY);
 }
