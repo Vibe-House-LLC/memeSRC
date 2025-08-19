@@ -77,7 +77,6 @@ export default function CollagePage() {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const cameFromLibraryPageRef = useRef(false);
   
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
@@ -89,8 +88,6 @@ export default function CollagePage() {
   const settingsRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
-  // When resetting from collage-start flow, open built-in library with preselected items
-  const [libraryDialogConfig, setLibraryDialogConfig] = useState(null);
   
 
 
@@ -191,16 +188,11 @@ export default function CollagePage() {
     }
   }, [user, navigate, location.search, authorized]);
 
-  // Handle images passed from collage (e.g., from /library)
+  // Handle images passed from collage
   useEffect(() => {
     if (location.state?.fromCollage && location.state?.images) {
       const loadImages = async () => {
         debugLog('Loading images from collage:', location.state.images);
-
-        // Mark origin if coming from LibraryPage so reset/back can return there
-        if (location.state?.from === 'library') {
-          cameFromLibraryPageRef.current = true;
-        }
 
         // Transform images to the expected format, preserving subtitle data
         const transformedImages = location.state.images.map(item => {
@@ -265,36 +257,9 @@ export default function CollagePage() {
     setShowResultDialog(false);
   };
 
-  // Reset the collage and return either to library (with preselection) or to a clean collage start
+  // Reset the collage and return to the library
   const handleResetCollage = () => {
-    if (!window.confirm('Resetting the collage will discard your changes.')) return;
-
-    try {
-      // Collect library keys from current collage images
-      const libKeys = (selectedImages || [])
-        .map((img) => img && img.metadata && img.metadata.isFromLibrary ? img.metadata.libraryKey : null)
-        .filter(Boolean);
-
-      // Unique keys preserve relative order of first occurrence
-      const seen = new Set();
-      const uniqueKeys = libKeys.filter((k) => (seen.has(k) ? false : (seen.add(k), true)));
-
-      // Clear collage images
-      clearImages();
-
-      // Decide destination: if originally came from LibraryPage, go back with preselection
-      if (isAdmin && cameFromLibraryPageRef.current && uniqueKeys.length > 0) {
-        navigate('/library', { state: { preselectKeys: uniqueKeys, initialSelectMode: true } });
-        return;
-      }
-
-      // Otherwise (started from /collage): open built-in library dialog with those items preselected
-      if (isAdmin && uniqueKeys.length > 0) {
-        setLibraryDialogConfig({ open: true, preselectKeys: uniqueKeys, multiple: true });
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (e) {
-      // Fallback to previous behavior if anything goes wrong
+    if (window.confirm('Resetting the collage will discard your changes.')) {
       clearImages();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -430,7 +395,6 @@ export default function CollagePage() {
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
     libraryRefreshTrigger, // For refreshing library when new images are auto-saved
     onCaptionEditorVisibleChange: setIsCaptionEditorOpen,
-    libraryDialogConfig,
   };
 
   // Log mapping changes for debugging

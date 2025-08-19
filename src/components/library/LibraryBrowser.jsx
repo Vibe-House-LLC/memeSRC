@@ -40,11 +40,10 @@ export default function LibraryBrowser({
   previewOnClick,
   showSelectToggle = false,
   initialSelectMode = false,
-  initialSelectedKeys,
   onSelectModeChange,
 }) {
   const { items, loading, hasMore, loadMore, reload, uploadMany, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
-  const { selectedKeys, isSelected, toggle, clear, count, atMax, setKeys } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
+  const { selectedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
   const [selectMode, setSelectMode] = useState(Boolean(initialSelectMode));
 
   const [previewKey, setPreviewKey] = useState(null);
@@ -209,34 +208,6 @@ export default function LibraryBrowser({
   }, [previewKey, handlePrev, handleNext]);
 
   // Rely on MUI Dialog's built-in scroll lock; no manual overrides to avoid sticky states
-  
-  // Apply initialSelectedKeys on mount or when keys change.
-  // Re-apply if current selection doesn't match the requested keys (handles reopen/reset flows).
-  const appliedInitialSelRef = useRef(null);
-  useEffect(() => {
-    if (!Array.isArray(initialSelectedKeys) || initialSelectedKeys.length === 0) return;
-    const keySig = initialSelectedKeys.slice().sort().join('|');
-    const currentSig = Array.from(selectedKeys).sort().join('|');
-    // If we've already applied this signature AND current selection already matches, skip
-    if (appliedInitialSelRef.current === keySig && currentSig === keySig) return;
-    // Enable selection mode
-    setSelectMode(true);
-    if (typeof onSelectModeChange === 'function') onSelectModeChange(true);
-    // Ensure selection exactly matches the provided keys atomically
-    setKeys(initialSelectedKeys.filter(Boolean));
-    appliedInitialSelRef.current = keySig;
-  }, [initialSelectedKeys, onSelectModeChange, selectedKeys, setKeys]);
-
-  // If we were given initialSelectedKeys but they aren't visible yet,
-  // keep loading more pages until all selected keys are present or no more items.
-  useEffect(() => {
-    if (!Array.isArray(initialSelectedKeys) || initialSelectedKeys.length === 0) return;
-    const itemKeySet = new Set(items.map((i) => i.key).filter(Boolean));
-    const missing = initialSelectedKeys.filter((k) => k && !itemKeySet.has(k));
-    if (missing.length > 0 && hasMore && !loading) {
-      loadMore();
-    }
-  }, [initialSelectedKeys, items, hasMore, loading, loadMore]);
   
   // Instant select a single item when used as a picker with multiple={false}
   const handleInstantSelect = useCallback((item) => {
@@ -541,6 +512,5 @@ LibraryBrowser.propTypes = {
   previewOnClick: PropTypes.bool,
   showSelectToggle: PropTypes.bool,
   initialSelectMode: PropTypes.bool,
-  initialSelectedKeys: PropTypes.arrayOf(PropTypes.string),
   onSelectModeChange: PropTypes.func,
 };

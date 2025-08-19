@@ -122,8 +122,6 @@ const BulkUploadSection = ({
   replaceImage, // Add replaceImage function
   onStartFromScratch, // Add prop to handle starting without images
   libraryRefreshTrigger, // For refreshing library when new images are auto-saved
-  // Optional: preselect keys when returning from Reset flow
-  initialLibrarySelectedKeys = [],
 }) => {
   const theme = useTheme();
   const { user } = useContext(UserContext);
@@ -921,7 +919,6 @@ const BulkUploadSection = ({
                   actionBarLabel="Make Collage"
                   showSelectToggle
                   initialSelectMode
-                  initialSelectedKeys={Array.isArray(initialLibrarySelectedKeys) ? initialLibrarySelectedKeys : []}
                 />
               ) : (
                 <>

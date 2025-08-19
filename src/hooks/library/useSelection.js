@@ -28,26 +28,8 @@ export default function useSelection({ multiple = true, maxSelected = Infinity }
 
   const clear = useCallback(() => setSelectedKeys(new Set()), []);
 
-  // Replace the entire selection set in one atomic update
-  const setKeys = useCallback((keysArray) => {
-    const next = new Set();
-    if (Array.isArray(keysArray)) {
-      if (multiple) {
-        for (let i = 0; i < keysArray.length; i += 1) {
-          const k = keysArray[i];
-          if (k == null) continue;
-          if (Number.isFinite(maxSelected) && next.size >= maxSelected) break;
-          next.add(k);
-        }
-      } else if (keysArray.length > 0 && keysArray[0] != null) {
-        next.add(keysArray[0]);
-      }
-    }
-    setSelectedKeys(next);
-  }, [multiple, maxSelected]);
-
   const count = useMemo(() => selectedKeys.size, [selectedKeys]);
   const atMax = useMemo(() => Number.isFinite(maxSelected) && count >= maxSelected, [count, maxSelected]);
 
-  return { selectedKeys, isSelected, toggle, clear, count, atMax, setKeys };
+  return { selectedKeys, isSelected, toggle, clear, count, atMax };
 }
