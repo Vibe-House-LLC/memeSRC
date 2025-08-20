@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Popover } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse } from "@mui/material";
 import { Dashboard, Save, DeleteForever, Settings } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
@@ -137,6 +137,7 @@ export default function CollagePage() {
   const generateBtnRef = useRef(null);
   const bottomBarRef = useRef(null);
   const nudgeVisualActiveRef = useRef(false);
+  const [bottomBarHeight, setBottomBarHeight] = useState(0);
   // Suppress frame-level action menus briefly after collage-level long-press
   const frameActionSuppressUntilRef = useRef(0);
 
@@ -183,6 +184,26 @@ export default function CollagePage() {
     setShowAnimatedButton(false);
     return undefined; // Consistent return for all code paths
   }, [hasImages, showResultDialog]);
+
+  // Track bottom bar height for positioning the nudge message above it
+  useEffect(() => {
+    const el = bottomBarRef.current;
+    if (!el) return undefined;
+
+    const update = () => setBottomBarHeight(el.offsetHeight || 0);
+    update();
+
+    let ro;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(update);
+      ro.observe(el);
+    }
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      if (ro) ro.disconnect();
+    };
+  }, [showAnimatedButton]);
 
 
 
@@ -585,7 +606,7 @@ export default function CollagePage() {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    zIndex: 1000,
+                    zIndex: 1600,
                     bgcolor: 'background.paper',
                     borderTop: 1,
                     borderColor: 'divider',
@@ -647,45 +668,7 @@ export default function CollagePage() {
                     >
                       {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
                     </Button>
-                    <Popover
-                      open={nudgeMessageVisible}
-                      anchorEl={bottomBarRef.current}
-                      onClose={() => {
-                        if (nudgeDismissTimeoutRef.current) { clearTimeout(nudgeDismissTimeoutRef.current); nudgeDismissTimeoutRef.current = null; }
-                        setNudgeMessageVisible(false);
-                      }}
-                      TransitionComponent={Slide}
-                      TransitionProps={{ direction: 'up' }}
-                      disableAutoFocus
-                      disableEnforceFocus
-                      disableRestoreFocus
-                      disableScrollLock
-                      hideBackdrop
-                      sx={{ pointerEvents: 'none' }}
-                      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-                      transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                      PaperProps={{
-                        sx: {
-                          bgcolor: 'rgba(25, 25, 25, 0.98)',
-                          color: '#fff',
-                          px: 2,
-                          py: 1.25,
-                          borderRadius: 2,
-                          border: '1px solid rgba(139, 92, 199, 0.5)',
-                          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
-                          pointerEvents: 'none', // purely informative
-                          maxWidth: 320,
-                          textAlign: 'center',
-                          fontWeight: 600,
-                          letterSpacing: 0.2,
-                          mt: -1, // create a small gap above the bar
-                        }
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
-                        <span>You need to generate before saving</span>
-                      </Box>
-                    </Popover>
+                    {/* Nudge message moved outside bar to render behind it */}
                     <Collapse in={!nudgeVisualActive} orientation="horizontal">
                       <Button
                       variant="contained"
@@ -713,6 +696,44 @@ export default function CollagePage() {
                 </Box>
               </Slide>
             )}
+            {/* Render the nudge message as a fixed sibling behind the bar */}
+            <Slide in={nudgeMessageVisible} direction="up" mountOnEnter unmountOnExit>
+              <Box
+                sx={{
+                  position: 'fixed',
+                  left: 0,
+                  right: 0,
+                  bottom: (bottomBarHeight || 0) + 8,
+                  zIndex: 1500, // below bar's 1600 so it appears behind
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  justifyContent: 'center',
+                }}
+              >
+                <Box
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    bgcolor: 'rgba(25, 25, 25, 0.98)',
+                    color: '#fff',
+                    px: 2,
+                    py: 1.25,
+                    borderRadius: 2,
+                    border: '1px solid rgba(139, 92, 199, 0.5)',
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+                    maxWidth: 320,
+                    width: 'max-content',
+                    textAlign: 'center',
+                    fontWeight: 600,
+                    letterSpacing: 0.2,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
+                    <span>You need to generate before saving</span>
+                  </Box>
+                </Box>
+              </Box>
+            </Slide>
           </Container>
 
           {/* Collage Result Dialog */}
