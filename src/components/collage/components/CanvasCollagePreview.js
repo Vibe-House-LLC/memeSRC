@@ -3195,6 +3195,36 @@ const CanvasCollagePreview = ({
               </IconButton>
             )}
 
+            {/* Check icon for the frame in transform (Crop & Zoom) mode */}
+            {isTransformMode?.[panelId] && (
+              <IconButton
+                size="small"
+                onClick={dismissTransformMode}
+                sx={{
+                  position: 'absolute',
+                  top: rect.y + 8,
+                  left: rect.x + rect.width - 48,
+                  width: 40,
+                  height: 40,
+                  backgroundColor: '#4CAF50',
+                  color: '#ffffff',
+                  border: '2px solid #ffffff',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                  opacity: 1,
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor: '#388E3C',
+                    transform: 'scale(1.1)',
+                  },
+                  touchAction: 'manipulation',
+                  cursor: 'pointer',
+                  zIndex: 12,
+                }}
+              >
+                <Check sx={{ fontSize: 20 }} />
+              </IconButton>
+            )}
+
 
             
             {/* Caption editing area - show when not in transform mode and has image, and no other panel is being edited */}
