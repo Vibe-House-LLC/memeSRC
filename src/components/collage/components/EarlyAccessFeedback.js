@@ -48,12 +48,12 @@ const setCollagePreference = (user, preference) => {
   localStorage.setItem(key, preference);
 };
 
-export default function EarlyAccessFeedback() {
+export default function EarlyAccessFeedback({ defaultExpanded = false, onCollapsed }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   
   // Feedback section state
   const [feedbackExpanded, setFeedbackExpanded] = useState(false);
@@ -128,11 +128,20 @@ export default function EarlyAccessFeedback() {
   // Close and reset
   const handleClose = () => {
     setExpanded(false);
+    if (typeof onCollapsed === 'function') onCollapsed();
     setMessageInput('');
     setEmailConsent(false);
     setFormSubmitted(false);
     setMessageError(false);
     setEmailConsentError(false);
+  };
+
+  const toggleExpanded = () => {
+    setExpanded(prev => {
+      const next = !prev;
+      if (!next && typeof onCollapsed === 'function') onCollapsed();
+      return next;
+    });
   };
 
   const validateForm = () => {
@@ -223,7 +232,7 @@ export default function EarlyAccessFeedback() {
             backgroundColor: 'rgba(255, 152, 0, 0.05)'
           }
         }}
-        onClick={() => setExpanded(!expanded)}
+        onClick={toggleExpanded}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <ScienceIcon sx={{ 

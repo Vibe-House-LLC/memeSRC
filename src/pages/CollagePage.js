@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip } from "@mui/material";
 import { Dashboard, Save, DeleteForever, Settings } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
@@ -88,6 +88,7 @@ export default function CollagePage() {
   const settingsRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
+  const [showEarlyAccess, setShowEarlyAccess] = useState(false);
   
 
 
@@ -583,19 +584,34 @@ export default function CollagePage() {
                 textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
               }}>
                 <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
-                Collage Tool
-              </Typography>
-              <Typography variant="subtitle1" sx={{ 
-                color: 'text.secondary',
-                mb: isMobile ? 2 : 1.5,
-                pl: isMobile ? 1 : 0,
-                maxWidth: '85%'
-              }}>
-                Merge images together to create multi-panel memes
+                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                  Collage
+                  {!showEarlyAccess && (
+                    <Chip 
+                      label="BETA" 
+                      size="small" 
+                      onClick={() => setShowEarlyAccess(true)}
+                      sx={{ 
+                        backgroundColor: '#ff9800',
+                        color: '#000',
+                        fontWeight: 'bold',
+                        fontSize: '0.65rem',
+                        height: 20,
+                        ml: 1,
+                        cursor: 'pointer'
+                      }} 
+                    />
+                  )}
+                </Box>
               </Typography>
             </Box>
 
-            <EarlyAccessFeedback />
+            <Collapse in={showEarlyAccess} unmountOnExit>
+              <EarlyAccessFeedback 
+                defaultExpanded
+                onCollapsed={() => setShowEarlyAccess(false)}
+              />
+            </Collapse>
 
             <CollageLayout
               settingsStepProps={settingsStepProps}
