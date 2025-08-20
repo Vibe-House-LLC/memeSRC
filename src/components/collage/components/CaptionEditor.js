@@ -1087,44 +1087,7 @@ const CaptionEditor = ({
 
         {/* Actions */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {/* Left: Clear (icon-only) shown only when there is text */}
-            {Boolean((panelTexts[panelId]?.content || '').trim()) && (
-              <IconButton
-                aria-label="Clear caption"
-                onClick={() => {
-                  const currentText = panelTexts[panelId] || {};
-                  if (updatePanelText) updatePanelText(panelId, { ...currentText, content: '' });
-                }}
-                sx={{
-                  width: 40,
-                  height: 40,
-                  color: '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  borderRadius: 1,
-                  bgcolor: 'transparent',
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
-                }}
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            )}
-
-            {/* Done fills remaining space */}
-            <Button
-              variant="contained"
-              onClick={onClose}
-              sx={{
-                flex: 1,
-                height: 40,
-                backgroundColor: '#4CAF50',
-                '&:hover': { backgroundColor: '#45a049' },
-                textTransform: 'none',
-                fontWeight: 800,
-              }}
-            >
-              Done
-            </Button>
-            {/* Positioning toggle on the right */}
+            {/* Position toggle on the left */}
             <Tooltip title={positioningOnly ? 'Show formatting controls' : 'Show positioning controls'} placement="top">
               <IconButton
                 aria-label="Toggle positioning"
@@ -1142,6 +1105,43 @@ const CaptionEditor = ({
                 <ControlCamera fontSize="small" />
               </IconButton>
             </Tooltip>
+
+            {/* Done fills remaining space */}
+            <Button
+              variant="contained"
+              onClick={onClose}
+              sx={{
+                flex: 1,
+                height: 40,
+                backgroundColor: '#4CAF50',
+                '&:hover': { backgroundColor: '#45a049' },
+                textTransform: 'none',
+                fontWeight: 800,
+              }}
+            >
+              Done
+            </Button>
+
+            {/* Delete on the right; always visible and closes editor */}
+            <IconButton
+              aria-label="Clear caption"
+              onClick={() => {
+                const currentText = panelTexts[panelId] || {};
+                if (updatePanelText) updatePanelText(panelId, { ...currentText, content: '' });
+                if (typeof onClose === 'function') onClose();
+              }}
+              sx={{
+                width: 40,
+                height: 40,
+                color: '#ffffff',
+                border: '1px solid rgba(255,255,255,0.35)',
+                borderRadius: 1,
+                bgcolor: 'transparent',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
         </Box>
       </Box>
 
