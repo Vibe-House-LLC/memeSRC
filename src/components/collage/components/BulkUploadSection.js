@@ -152,6 +152,7 @@ const BulkUploadSection = ({
 
   // Determine if admin has any uploaded (non-placeholder) library items
   const adminHasLibraryItems = isAdmin && Boolean(adminLibraryItems?.some((it) => it?.key));
+  const helperSourceLabel = adminHasLibraryItems ? 'library' : 'device';
 
   // Check if there are any empty frames
   const hasEmptyFrames = () => {
@@ -843,6 +844,15 @@ const BulkUploadSection = ({
       ) : (
         // Starting point: distinct for admins vs non-admins
         <Box>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              color: 'text.secondary',
+              mb: 1.5,
+            }}
+          >
+            Add up to 5 images from your {helperSourceLabel}
+          </Typography>
           {!isAdmin ? (
             // Non-admins: only the collage bulk upload dropzone
             <>
@@ -909,15 +919,6 @@ const BulkUploadSection = ({
             <>
               {adminHasLibraryItems ? (
                 <>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      color: 'text.secondary',
-                      mb: 1.5,
-                    }}
-                  >
-                    Select up to 5 images from your library to make a collage
-                  </Typography>
                   <LibraryBrowser
                   isAdmin
                   multiple
