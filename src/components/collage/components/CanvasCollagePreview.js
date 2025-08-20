@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
@@ -456,6 +456,7 @@ const CanvasCollagePreview = ({
   // Action menu state for per-panel controls
   const [actionMenuAnchorEl, setActionMenuAnchorEl] = useState(null);
   const [actionMenuPanelId, setActionMenuPanelId] = useState(null);
+  const [actionMenuPosition, setActionMenuPosition] = useState(null);
 
   // Border dragging state
   const [borderZones, setBorderZones] = useState([]);
@@ -1846,6 +1847,27 @@ const CanvasCollagePreview = ({
     setReorderSourcePanel(null);
   }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, updatePanelText, panelTexts]);
 
+  // Open/close the action menu (placed before handlers that depend on it)
+  const handleActionMenuOpen = useCallback((event, panelId) => {
+    if (event && typeof event.stopPropagation === 'function') {
+      event.stopPropagation();
+    }
+    if (event && event.currentTarget) {
+      setActionMenuAnchorEl(event.currentTarget);
+      setActionMenuPosition(null);
+    } else if (event && event.clientX != null && event.clientY != null) {
+      setActionMenuPosition({ left: event.clientX, top: event.clientY });
+      setActionMenuAnchorEl(null);
+    }
+    setActionMenuPanelId(panelId);
+  }, []);
+
+  const handleActionMenuClose = useCallback(() => {
+    setActionMenuAnchorEl(null);
+    setActionMenuPosition(null);
+    setActionMenuPanelId(null);
+  }, []);
+
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1927,12 +1949,12 @@ const CanvasCollagePreview = ({
       if (isTransformMode[clickedPanel.panelId]) {
         setIsDragging(true);
         setDragStart({ x, y });
-        } else if (onPanelClick && textEditingPanel === null) {
-          // Desktop/mouse: open immediately on click
-          onPanelClick(clickedPanel.index, clickedPanel.panelId);
-        }
+      } else if (textEditingPanel === null) {
+        // Open actions menu at click position
+        handleActionMenuOpen({ clientX: e.clientX, clientY: e.clientY }, clickedPanel.panelId);
+      }
     }
-  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart]);
+  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -2562,9 +2584,10 @@ const CanvasCollagePreview = ({
       const maxDuration = 500; // milliseconds
       
       if (deltaX < maxMovement && deltaY < maxMovement && deltaScrollY < maxMovement && deltaTime < maxDuration) {
-        // Confirmed tap, now open the library for this panel
-        if (onPanelClick && textEditingPanel === null) {
-          onPanelClick(touchStartInfo.current.panelIndex, touchStartInfo.current.panelId);
+        // Confirmed tap on a frame: open actions menu
+        if (textEditingPanel === null) {
+          const touch = e.changedTouches[0];
+          handleActionMenuOpen({ clientX: touch.clientX, clientY: touch.clientY }, touchStartInfo.current.panelId);
         }
       }
     }
@@ -2589,7 +2612,7 @@ const CanvasCollagePreview = ({
     
     // Always clear touchStartInfo
     touchStartInfo.current = null;
-  }, [handleTextEdit, dismissTransformMode]);
+  }, [handleTextEdit, dismissTransformMode, handleActionMenuOpen]);
 
   // Cancel reorder mode
   const cancelReorderMode = useCallback(() => {
@@ -2621,19 +2644,6 @@ const CanvasCollagePreview = ({
     }));
   }, [isReorderMode]);
 
-  // Open the action menu anchored to a panel's button
-  const handleActionMenuOpen = useCallback((event, panelId) => {
-    event.stopPropagation();
-    setActionMenuAnchorEl(event.currentTarget);
-    setActionMenuPanelId(panelId);
-  }, []);
-
-  // Close the action menu
-  const handleActionMenuClose = useCallback(() => {
-    setActionMenuAnchorEl(null);
-    setActionMenuPanelId(null);
-  }, []);
-
   const handleMenuTransform = useCallback(() => {
     if (actionMenuPanelId) {
       toggleTransformMode(actionMenuPanelId);
@@ -2647,6 +2657,25 @@ const CanvasCollagePreview = ({
     }
     handleActionMenuClose();
   }, [actionMenuPanelId, startReorderMode, handleActionMenuClose]);
+
+  // Trigger replace image through parent handler
+  const handleMenuReplace = useCallback(() => {
+    if (actionMenuPanelId && typeof onPanelClick === 'function') {
+      const rect = panelRects.find(r => r.panelId === actionMenuPanelId);
+      if (rect) {
+        onPanelClick(rect.index, actionMenuPanelId);
+      }
+    }
+    handleActionMenuClose();
+  }, [actionMenuPanelId, onPanelClick, panelRects, handleActionMenuClose]);
+
+  // Open caption editor for the panel
+  const handleMenuEditCaption = useCallback(() => {
+    if (actionMenuPanelId) {
+      handleTextEdit(actionMenuPanelId);
+    }
+    handleActionMenuClose();
+  }, [actionMenuPanelId, handleTextEdit, handleActionMenuClose]);
 
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => new Promise((resolve) => {
@@ -3026,52 +3055,8 @@ const CanvasCollagePreview = ({
         const { panelId } = rect;
         const imageIndex = panelImageMapping[panelId];
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-        const isInTransformMode = isTransformMode[panelId];
-        
-        // Calculate responsive dimensions based on panel size with mobile-friendly minimums
         return (
           <Box key={`controls-${panelId}`}>
-            {/* Single control button with action menu */}
-            {hasImage && textEditingPanel === null &&
-             (!anyPanelInTransformMode || isInTransformMode) &&
-             !isDraggingBorder && !isReorderMode && (
-              <IconButton
-                size="small"
-                onClick={(e) =>
-                  isInTransformMode
-                    ? toggleTransformMode(panelId)
-                    : handleActionMenuOpen(e, panelId)
-                }
-                sx={{
-                  position: 'absolute',
-                  top: rect.y + 8,
-                  left: rect.x + rect.width - 48, // Simplified positioning
-                  width: 40,
-                  height: 40,
-                  backgroundColor: isInTransformMode ? '#4CAF50' : '#2196F3',
-                  color: '#ffffff',
-                  border: '2px solid #ffffff',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                  opacity: 1,
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
-                    transform: 'scale(1.1)',
-                  },
-                  // Better touch handling
-                  touchAction: 'manipulation', // Prevents double-tap zoom but allows scrolling
-                  cursor: 'pointer',
-                  zIndex: 12, // Higher than caption overlay to ensure interactivity
-                }}
-              >
-                {isInTransformMode ? (
-                  <Check sx={{ fontSize: 20 }} />
-                ) : (
-                  <OpenWith sx={{ fontSize: 16 }} />
-                )}
-              </IconButton>
-            )}
-
             {/* Check icon for the frame being moved in reorder mode */}
             {isReorderMode && reorderSourcePanel === panelId && (
               <IconButton
@@ -3348,24 +3333,47 @@ const CanvasCollagePreview = ({
         />
       ))}
 
-      {/* Action menu for panel controls */}
+      {/* Action menu for panel controls (Crop & Zoom, Rearrange, Replace Image) */}
       <Menu
         anchorEl={actionMenuAnchorEl}
-        open={Boolean(actionMenuAnchorEl)}
+        anchorReference={actionMenuPosition ? 'anchorPosition' : 'anchorEl'}
+        anchorPosition={actionMenuPosition || undefined}
+        open={Boolean(actionMenuAnchorEl) || Boolean(actionMenuPosition)}
         onClose={handleActionMenuClose}
       >
-        <MenuItem onClick={handleMenuTransform}>
-          <ListItemIcon>
-            <Crop fontSize="small" />
-          </ListItemIcon>
-          Crop & Zoom
-        </MenuItem>
-        <MenuItem onClick={handleMenuReorder}>
-          <ListItemIcon>
-            <DragIndicator fontSize="small" />
-          </ListItemIcon>
-          Rearrange
-        </MenuItem>
+        {(() => {
+          const imageIndex = actionMenuPanelId ? panelImageMapping[actionMenuPanelId] : undefined;
+          const hasImageForPanel = imageIndex !== undefined && loadedImages[imageIndex];
+          const hasCaption = !!(actionMenuPanelId && panelTexts[actionMenuPanelId] && (panelTexts[actionMenuPanelId].content || '').trim());
+          return (
+            <>
+              <MenuItem onClick={handleMenuTransform} disabled={!hasImageForPanel}>
+                <ListItemIcon>
+                  <Crop fontSize="small" />
+                </ListItemIcon>
+                Crop & Zoom
+              </MenuItem>
+              <MenuItem onClick={handleMenuReorder} disabled={!hasImageForPanel}>
+                <ListItemIcon>
+                  <DragIndicator fontSize="small" />
+                </ListItemIcon>
+                Rearrange
+              </MenuItem>
+              <MenuItem onClick={handleMenuReplace}>
+                <ListItemIcon>
+                  <ImageIcon fontSize="small" />
+                </ListItemIcon>
+                Replace Image
+              </MenuItem>
+              <MenuItem onClick={handleMenuEditCaption} disabled={!hasImageForPanel}>
+                <ListItemIcon>
+                  <Subtitles fontSize="small" />
+                </ListItemIcon>
+                {hasCaption ? 'Edit caption' : 'Add caption'}
+              </MenuItem>
+            </>
+          );
+        })()}
       </Menu>
 
     </Box>
