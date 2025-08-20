@@ -10,8 +10,6 @@ import {
   Select, 
   MenuItem, 
   Button, 
-  Tabs, 
-  Tab, 
   Tooltip, 
   ToggleButtonGroup, 
   ToggleButton, 
@@ -23,21 +21,18 @@ import {
 } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
 import {
-  Edit,
   FormatSize, 
-  BorderOuter, 
   FormatBold, 
   FormatItalic, 
-  ControlCamera, 
   SwapHoriz, 
   SwapVert, 
   Colorize, 
   ChevronLeft, 
   ChevronRight, 
-  Palette, 
   RotateLeft,
   Restore,
   DeleteOutline as DeleteIcon,
+  ControlCamera,
 } from '@mui/icons-material';
 import fonts from '../../../utils/fonts';
 
@@ -222,10 +217,11 @@ const CaptionEditor = ({
   componentWidth,
 }) => {
   const theme = useTheme();
-  const [activeTextSetting, setActiveTextSetting] = useState('content');
+  // Single unified editor view (tabs removed)
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
   const [activeSlider, setActiveSlider] = useState(null);
+  const [positioningOnly, setPositioningOnly] = useState(false);
   
   const textFieldRefs = useRef({});
 
@@ -480,14 +476,14 @@ const CaptionEditor = ({
     };
   }, [handleTextColorScroll]);
 
-  // Check scroll position when fontStyle tab becomes active
+  // Ensure scroll indicators settle after mount
   useEffect(() => {
-    if (activeTextSetting === 'fontStyle' && textColorScrollerRef.current) {
+    if (textColorScrollerRef.current) {
       setTimeout(() => handleTextColorScroll(), 50);
       setTimeout(() => handleTextColorScroll(), 200);
       setTimeout(() => handleTextColorScroll(), 500);
     }
-  }, [activeTextSetting, handleTextColorScroll]);
+  }, [handleTextColorScroll]);
 
   // Effect to update localStorage when custom text color changes
   useEffect(() => {
@@ -502,28 +498,23 @@ const CaptionEditor = ({
 
   // Focus text field when caption editor opens
   useEffect(() => {
-    if (activeTextSetting === 'content') {
-      setTimeout(() => {
-        const inputElement = textFieldRefs.current[panelId];
-        if (inputElement) {
-          inputElement.focus();
-          
-          const textLength = inputElement.value.length;
-          
-          setTimeout(() => {
-            inputElement.setSelectionRange(textLength, textLength);
-            
-            if ('ontouchstart' in window) {
-              inputElement.click();
-              setTimeout(() => {
-                inputElement.setSelectionRange(textLength, textLength);
-              }, 100);
-            }
-          }, 50);
-        }
-      }, 300);
-    }
-  }, [activeTextSetting, panelId]);
+    setTimeout(() => {
+      const inputElement = textFieldRefs.current[panelId];
+      if (inputElement) {
+        inputElement.focus();
+        const textLength = inputElement.value.length;
+        setTimeout(() => {
+          inputElement.setSelectionRange(textLength, textLength);
+          if ('ontouchstart' in window) {
+            inputElement.click();
+            setTimeout(() => {
+              inputElement.setSelectionRange(textLength, textLength);
+            }, 100);
+          }
+        }, 50);
+      }
+    }, 300);
+  }, [panelId]);
 
   return (
     <Box
@@ -546,208 +537,17 @@ const CaptionEditor = ({
       }}
     >
       <Box sx={{ p: 1 }}>
-        {/* Setting tabs */}
-        <Tabs
-          value={activeTextSetting ? ['content', 'format', 'placement', 'fontStyle'].indexOf(activeTextSetting) : 0}
-          onChange={(event, newValue) => {
-            const settings = ['content', 'format', 'placement', 'fontStyle'];
-            const newSetting = settings[newValue];
-            setActiveTextSetting(activeTextSetting === newSetting ? null : newSetting);
-          }}
-          variant="fullWidth"
-          centered
-          sx={{
-            mb: 2,
-            '& .MuiTabs-indicator': {
-              backgroundColor: '#ffffff',
-            },
-            '& .MuiTab-root': {
-              color: 'rgba(255, 255, 255, 0.7)',
-              minHeight: 44,
-              minWidth: 0,
-              '&.Mui-selected': {
-                color: '#ffffff',
-              },
-            },
-          }}
-        >
-          <Tab icon={<Edit />} />
-          <Tab icon={<FormatSize />} />
-          <Tab icon={<ControlCamera />} />
-          <Tab icon={<Palette />} />
-        </Tabs>
 
-        {/* Content Tab */}
-        {activeTextSetting === 'content' && (
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              placeholder="Add Caption"
-              value={panelTexts[panelId]?.content || ''}
-              onChange={(e) => handleTextChange('content', e.target.value)}
-              inputRef={(el) => {
-                if (el) {
-                  textFieldRefs.current[panelId] = el;
-                }
-              }}
-              sx={{
-                '& .MuiInputBase-root': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                  color: '#000000',
-                },
-                '& .MuiInputBase-input': {
-                  textAlign: 'center',
-                },
-              }}
-            />
-          </Box>
-        )}
-
-        {/* Format Tab */}
-        {activeTextSetting === 'format' && (
-          <Box sx={{ mb: 2 }}>
-            {/* Font Size */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Tooltip title="Font Size" placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                  <FormatSize sx={{ color: '#ffffff' }} />
-                </Box>
-              </Tooltip>
-              <Slider
-                value={(() => {
-                  const panelText = panelTexts[panelId] || {};
-                  const hasActualText = panelText.content && panelText.content.trim();
-                  
-                  let baseFontSize;
-                  if (hasActualText && !panelText.fontSize) {
-                    const panel = panelRects.find(p => p.panelId === panelId);
-                    if (panel && calculateOptimalFontSize) {
-                      baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
-                    } else {
-                      baseFontSize = lastUsedTextSettings.fontSize || 26;
-                    }
-                  } else {
-                    baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
-                  }
-                  
-                  return Math.round(baseFontSize * textScaleFactor);
-                })()}
-                onChange={(e, value) => {
-                  if (e.type === 'mousedown') {
-                    return;
-                  }
-                  const baseFontSize = value / textScaleFactor;
-                  handleTextChange('fontSize', baseFontSize);
-                }}
-                onMouseDown={() => handleSliderMouseDown('fontSize')}
-                onMouseUp={handleSliderMouseUp}
-                onTouchStart={() => handleSliderMouseDown('fontSize')}
-                onTouchEnd={handleSliderMouseUp}
-                min={Math.round(8 * textScaleFactor)}
-                max={Math.round(72 * textScaleFactor)}
-                step={1}
-                sx={{ 
-                  flex: 1,
-                  color: '#ffffff',
-                  mx: 1,
-                }}
-              />
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                {activeSlider === `${panelId}-fontSize` ? (
-                  <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
-                    {getCurrentValue('fontSize')}
-                  </Typography>
-                ) : (
-                  <IconButton
-                    size="small"
-                    onClick={() => handleResetClick('format', 'fontSize')}
-                    disabled={isValueAtDefault('fontSize')}
-                    sx={{ 
-                      color: '#ffffff', 
-                      p: 0.5,
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      },
-                      '&.Mui-disabled': {
-                        color: 'rgba(255, 255, 255, 0.3)',
-                      }
-                    }}
-                  >
-                    <Restore fontSize="small" />
-                  </IconButton>
-                )}
-              </Box>
-            </Box>
-            
-            {/* Stroke Width */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Tooltip title="Stroke Width" placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                  <BorderOuter sx={{ color: '#ffffff' }} />
-                </Box>
-              </Tooltip>
-              <Slider
-                value={panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
-                onChange={(e, value) => {
-                  if (e.type === 'mousedown') {
-                    return;
-                  }
-                  handleTextChange('strokeWidth', value);
-                }}
-                onMouseDown={() => handleSliderMouseDown('strokeWidth')}
-                onMouseUp={handleSliderMouseUp}
-                onTouchStart={() => handleSliderMouseDown('strokeWidth')}
-                onTouchEnd={handleSliderMouseUp}
-                min={0}
-                max={10}
-                step={0.5}
-                sx={{ 
-                  flex: 1,
-                  color: '#ffffff',
-                  mx: 1,
-                }}
-              />
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                {activeSlider === `${panelId}-strokeWidth` ? (
-                  <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
-                    {getCurrentValue('strokeWidth')}
-                  </Typography>
-                ) : (
-                  <IconButton
-                    size="small"
-                    onClick={() => handleResetClick('format', 'strokeWidth')}
-                    disabled={isValueAtDefault('strokeWidth')}
-                    sx={{ 
-                      color: '#ffffff', 
-                      p: 0.5,
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      },
-                      '&.Mui-disabled': {
-                        color: 'rgba(255, 255, 255, 0.3)',
-                      }
-                    }}
-                  >
-                    <Restore fontSize="small" />
-                  </IconButton>
-                )}
-              </Box>
-            </Box>
-          </Box>
-        )}
-
-        {/* Font Style Tab */}
-        {activeTextSetting === 'fontStyle' && (
-          <Box sx={{ mb: 2 }}>
-            {/* Font Family */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        {/* Editor Content */}
+        <Box sx={{ mb: 1 }}>
+          {!positioningOnly && (
+            <>
+              {/* Bold/Italic + Font Family (moved above text field) */}
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 0, mb: 1 }}>
               <ToggleButtonGroup
                 value={(() => {
                   const currentWeightRaw = panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || 400;
                   let currentWeight;
-                  
                   if (currentWeightRaw === 'normal') {
                     currentWeight = 400;
                   } else if (currentWeightRaw === 'bold') {
@@ -757,31 +557,25 @@ const CaptionEditor = ({
                   } else {
                     currentWeight = currentWeightRaw;
                   }
-                  
                   const currentStyle = panelTexts[panelId]?.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
                   const result = [];
-                  
                   if (currentWeight >= 500) {
                     result.push('bold');
                   }
-                  
                   if (currentStyle === 'italic') {
                     result.push('italic');
                   }
-                  
                   return result;
                 })()}
                 onChange={(event, newFormats) => {
                   const isBold = newFormats.includes('bold');
                   const isItalic = newFormats.includes('italic');
-                  
                   const currentText = panelTexts[panelId] || {};
                   const updatedText = {
                     ...currentText,
                     fontWeight: isBold ? 700 : 400,
                     fontStyle: isItalic ? 'italic' : 'normal'
                   };
-                  
                   if (updatePanelText) {
                     updatePanelText(panelId, updatedText);
                   }
@@ -860,10 +654,43 @@ const CaptionEditor = ({
                   ))}
                 </Select>
               </FormControl>
-            </Box>
-            
+              </Box>
+
+              {/* Text input field */}
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                placeholder="Add Caption"
+                value={panelTexts[panelId]?.content || ''}
+                onChange={(e) => handleTextChange('content', e.target.value)}
+                inputRef={(el) => {
+                  if (el) {
+                    textFieldRefs.current[panelId] = el;
+                  }
+                }}
+                size="small"
+                sx={{
+                  '& .MuiInputBase-root': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    color: '#000000',
+                    p: 0,
+                  },
+                  '& .MuiInputBase-input': {
+                    textAlign: 'center',
+                  },
+                  '& .MuiInputBase-inputMultiline': {
+                    padding: '8px 12px',
+                    lineHeight: 1.35,
+                  },
+                }}
+              />
+            </>
+          )}
+
             {/* Text Color */}
-            <Box sx={{ position: 'relative' }}>
+            {!positioningOnly && (
+            <Box sx={{ position: 'relative', mb: 1 }}>
               <ScrollButton 
                 direction="left" 
                 onClick={scrollTextColorLeft}
@@ -985,13 +812,83 @@ const CaptionEditor = ({
                 </Box>
               </Box>
             </Box>
-          </Box>
-        )}
+            )}
 
-        {/* Placement Tab */}
-        {activeTextSetting === 'placement' && (
-          <Box sx={{ mb: 2 }}>
-            {/* Vertical Position */}
+            {/* Font Size */}
+            {!positioningOnly && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mb: 1 }}>
+              <Tooltip title="Font Size" placement="left">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                  <FormatSize sx={{ color: '#ffffff' }} />
+                </Box>
+              </Tooltip>
+              <Slider
+                value={(() => {
+                  const panelText = panelTexts[panelId] || {};
+                  const hasActualText = panelText.content && panelText.content.trim();
+                  let baseFontSize;
+                  if (hasActualText && !panelText.fontSize) {
+                    const panel = panelRects.find(p => p.panelId === panelId);
+                    if (panel && calculateOptimalFontSize) {
+                      baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+                    } else {
+                      baseFontSize = lastUsedTextSettings.fontSize || 26;
+                    }
+                  } else {
+                    baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+                  }
+                  return Math.round(baseFontSize * textScaleFactor);
+                })()}
+                onChange={(e, value) => {
+                  if (e.type === 'mousedown') {
+                    return;
+                  }
+                  const baseFontSize = value / textScaleFactor;
+                  handleTextChange('fontSize', baseFontSize);
+                }}
+                onMouseDown={() => handleSliderMouseDown('fontSize')}
+                onMouseUp={handleSliderMouseUp}
+                onTouchStart={() => handleSliderMouseDown('fontSize')}
+                onTouchEnd={handleSliderMouseUp}
+                min={Math.round(8 * textScaleFactor)}
+                max={Math.round(72 * textScaleFactor)}
+                step={1}
+                sx={{ 
+                  flex: 1,
+                  color: '#ffffff',
+                  mx: 1,
+                }}
+              />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                {activeSlider === `${panelId}-fontSize` ? (
+                  <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
+                    {getCurrentValue('fontSize')}
+                  </Typography>
+                ) : (
+                  <IconButton
+                    size="small"
+                    onClick={() => handleResetClick('format', 'fontSize')}
+                    disabled={isValueAtDefault('fontSize')}
+                    sx={{ 
+                      color: '#ffffff', 
+                      p: 0.5,
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                      '&.Mui-disabled': {
+                        color: 'rgba(255, 255, 255, 0.3)',
+                      }
+                    }}
+                  >
+                    <Restore fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+            </Box>
+            )}
+
+            {/* Placement controls (shown only in positioning mode) */}
+            {positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Tooltip title="Vertical Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1058,8 +955,9 @@ const CaptionEditor = ({
                 )}
               </Box>
             </Box>
-            
-            {/* Horizontal Position */}
+            )}
+
+            {positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Tooltip title="Horizontal Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1114,8 +1012,9 @@ const CaptionEditor = ({
                 )}
               </Box>
             </Box>
-            
-            {/* Rotation */}
+            )}
+
+            {positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Tooltip title="Rotation" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1170,12 +1069,18 @@ const CaptionEditor = ({
                 )}
               </Box>
             </Box>
+            )}
+
           </Box>
-        )}
+
+        
+
+        
+
+        
 
         {/* Actions */}
-        {activeTextSetting === 'content' ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {/* Left: Clear (icon-only) shown only when there is text */}
             {Boolean((panelTexts[panelId]?.content || '').trim()) && (
               <IconButton
@@ -1213,22 +1118,25 @@ const CaptionEditor = ({
             >
               Done
             </Button>
-          </Box>
-        ) : (
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={onClose}
-            sx={{
-              backgroundColor: '#4CAF50',
-              '&:hover': { backgroundColor: '#45a049' },
-              textTransform: 'none',
-              fontWeight: 800,
-            }}
-          >
-            Done
-          </Button>
-        )}
+            {/* Positioning toggle on the right */}
+            <Tooltip title={positioningOnly ? 'Show formatting controls' : 'Show positioning controls'} placement="top">
+              <IconButton
+                aria-label="Toggle positioning"
+                onClick={() => setPositioningOnly(v => !v)}
+                sx={{
+                  width: 40,
+                  height: 40,
+                  color: positioningOnly ? '#111' : '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.35)',
+                  borderRadius: 1,
+                  bgcolor: positioningOnly ? '#fff' : 'transparent',
+                  '&:hover': { bgcolor: positioningOnly ? '#f0f0f0' : 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
+                }}
+              >
+                <ControlCamera fontSize="small" />
+              </IconButton>
+            </Tooltip>
+        </Box>
       </Box>
 
       {/* Reset Confirmation Dialog */}
