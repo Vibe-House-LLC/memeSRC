@@ -650,6 +650,12 @@ const CaptionEditor = ({
                   }
                 }}
               >
+                <ToggleButton size='small' value="bold" aria-label="bold">
+                  <FormatBold />
+                </ToggleButton>
+                <ToggleButton size='small' value="italic" aria-label="italic">
+                  <FormatItalic />
+                </ToggleButton>
                 {/* Inline color toggle within the group */}
                 <ToggleButton
                   size='small'
@@ -659,12 +665,6 @@ const CaptionEditor = ({
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInlineColor(true); }}
                 >
                   <Palette sx={{ color: currentTextColor }} />
-                </ToggleButton>
-                <ToggleButton size='small' value="bold" aria-label="bold">
-                  <FormatBold />
-                </ToggleButton>
-                <ToggleButton size='small' value="italic" aria-label="italic">
-                  <FormatItalic />
                 </ToggleButton>
               </ToggleButtonGroup>
               <FormControl sx={{ flex: 1 }}>
