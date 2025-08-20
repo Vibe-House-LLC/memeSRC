@@ -138,6 +138,8 @@ export default function CollagePage() {
   const bottomBarRef = useRef(null);
   const nudgeVisualActiveRef = useRef(false);
   const [bottomBarHeight, setBottomBarHeight] = useState(0);
+  const bottomBarContentRef = useRef(null);
+  const [bottomBarCenterX, setBottomBarCenterX] = useState(null);
   // Suppress frame-level action menus briefly after collage-level long-press
   const frameActionSuppressUntilRef = useRef(0);
 
@@ -185,18 +187,28 @@ export default function CollagePage() {
     return undefined; // Consistent return for all code paths
   }, [hasImages, showResultDialog]);
 
-  // Track bottom bar height for positioning the nudge message above it
+  // Track bottom bar size/center for positioning the nudge message above it
   useEffect(() => {
     const el = bottomBarRef.current;
+    const contentEl = bottomBarContentRef.current;
     if (!el) return undefined;
 
-    const update = () => setBottomBarHeight(el.offsetHeight || 0);
+    const update = () => {
+      setBottomBarHeight(el.offsetHeight || 0);
+      if (contentEl) {
+        const rect = contentEl.getBoundingClientRect();
+        setBottomBarCenterX(rect.left + rect.width / 2);
+      } else {
+        setBottomBarCenterX(typeof window !== 'undefined' ? window.innerWidth / 2 : null);
+      }
+    };
     update();
 
     let ro;
     if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(update);
       ro.observe(el);
+      if (contentEl) ro.observe(contentEl);
     }
     window.addEventListener('resize', update);
     return () => {
@@ -620,7 +632,7 @@ export default function CollagePage() {
                   }}
                 ref={bottomBarRef}
                 >
-                  <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }}>
+                  <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }} ref={bottomBarContentRef}>
                     <Collapse in={!nudgeVisualActive} orientation="horizontal">
                       <Button
                       variant="contained"
@@ -701,19 +713,18 @@ export default function CollagePage() {
               <Box
                 sx={{
                   position: 'fixed',
-                  left: 0,
-                  right: 0,
+                  left: bottomBarCenterX != null ? `${bottomBarCenterX}px` : '50%',
                   bottom: (bottomBarHeight || 0) + 8,
                   zIndex: 1500, // below bar's 1600 so it appears behind
                   pointerEvents: 'none',
-                  display: 'flex',
-                  justifyContent: 'center',
                 }}
               >
                 <Box
                   sx={{
                     display: 'inline-flex',
                     alignItems: 'center',
+                    position: 'relative',
+                    transform: 'translateX(-50%)',
                     bgcolor: 'rgba(25, 25, 25, 0.98)',
                     color: '#fff',
                     px: 2,
