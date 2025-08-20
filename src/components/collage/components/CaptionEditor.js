@@ -580,6 +580,11 @@ const CaptionEditor = ({
                   if (currentStyle === 'italic') {
                     result.push('italic');
                   }
+                  // Mark color toggle as selected when non-default color is active
+                  const defaultColor = (lastUsedTextSettings.color || '#ffffff').toLowerCase();
+                  if (currentTextColor && currentTextColor.toLowerCase() !== defaultColor) {
+                    result.push('color');
+                  }
                   return result;
                 })()}
                 onChange={(event, newFormats) => {
