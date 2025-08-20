@@ -41,13 +41,18 @@ export default function LibraryGrid({ items, renderTile, showUploadTile, uploadT
   return (
     <Box ref={containerRef} sx={{ p: 0, width: '100%' }}>
       <ImageList cols={cols} gap={gap} rowHeight={rowHeight} sx={{ m: 0, width: '100%' }}>
+        {showUploadTile && (
+          <ImageListItem key="upload-start">
+            {uploadTile}
+          </ImageListItem>
+        )}
         {items.map((item) => (
           <ImageListItem key={item.key || item.id}>
             {renderTile(item)}
           </ImageListItem>
         ))}
-        {showUploadTile && (
-          <ImageListItem key="upload">
+        {showUploadTile && items.length >= 15 && (
+          <ImageListItem key="upload-end">
             {uploadTile}
           </ImageListItem>
         )}
