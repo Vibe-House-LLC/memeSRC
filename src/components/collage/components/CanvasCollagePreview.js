@@ -405,6 +405,8 @@ const CanvasCollagePreview = ({
   panelCount,
   images = [],
   onPanelClick,
+  onSaveGestureDetected, // new: notify parent when long-press/right-click implies save intent
+  isFrameActionSuppressed, // optional: function to indicate suppression window
   aspectRatioValue = 1,
   panelImageMapping = {},
   updatePanelImageMapping,
@@ -1603,6 +1605,16 @@ const CanvasCollagePreview = ({
   const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // Cancel pending long-press if the pointer moved notably
+    if (longPressTimerRef.current) {
+      const dx = Math.abs(e.movementX || 0);
+      const dy = Math.abs(e.movementY || 0);
+      if (dx + dy > 4) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+        longPressActiveRef.current = false;
+      }
+    }
     
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -1855,6 +1867,15 @@ const CanvasCollagePreview = ({
 
   // Open/close the action menu (placed before handlers that depend on it)
   const handleActionMenuOpen = useCallback((event, panelId) => {
+    // Respect optional suppression window; guard against unexpected errors
+    const suppressed = (() => {
+      try {
+        return typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed();
+      } catch (e) {
+        return false;
+      }
+    })();
+    if (suppressed) return;
     if (event && typeof event.stopPropagation === 'function') {
       event.stopPropagation();
     }
@@ -1907,7 +1928,11 @@ const CanvasCollagePreview = ({
         longPressStartRef.current = { x: e.clientX, y: e.clientY, scrollY: window.scrollY || window.pageYOffset || 0 };
         longPressTimerRef.current = setTimeout(() => {
           longPressActiveRef.current = true;
-          setSaveHintOpen(true);
+          if (typeof onSaveGestureDetected === 'function') {
+            onSaveGestureDetected();
+          } else {
+            setSaveHintOpen(true);
+          }
         }, 650);
       }
       const clickedPanel = panelRects[clickedPanelIndex];
@@ -1988,6 +2013,12 @@ const CanvasCollagePreview = ({
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
+    }
+    // Cancel any pending long-press if cursor leaves canvas
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+      longPressActiveRef.current = false;
     }
     // Clear hover state when mouse leaves canvas
     setHoveredPanel(null);
@@ -2164,6 +2195,8 @@ const CanvasCollagePreview = ({
     return Math.sqrt(dx * dx + dy * dy);
   }, []);
 
+  // (removed duplicate handleMouseMove; integrated cancellation into main handler below)
+
   // Helper function to get center point between two touches
   const getTouchCenter = useCallback((touches) => {
     if (touches.length < 2) return { x: touches[0].clientX, y: touches[0].clientY };
@@ -2288,7 +2321,11 @@ const CanvasCollagePreview = ({
             longPressActiveRef.current = true;
             // Cancel any pending tap recognition
             if (touchStartInfo.current) touchStartInfo.current = null;
-            setSaveHintOpen(true);
+            if (typeof onSaveGestureDetected === 'function') {
+              onSaveGestureDetected();
+            } else {
+              setSaveHintOpen(true);
+            }
           }, 650);
         }
         
@@ -2644,10 +2681,12 @@ const CanvasCollagePreview = ({
       const maxDuration = 500; // milliseconds
       
       if (deltaX < maxMovement && deltaY < maxMovement && deltaScrollY < maxMovement && deltaTime < maxDuration) {
-        // Confirmed tap on a frame: open actions menu
+        // Confirmed tap on a frame: open actions menu (unless suppressed)
         if (textEditingPanel === null) {
           const touch = e.changedTouches[0];
-          handleActionMenuOpen({ clientX: touch.clientX, clientY: touch.clientY }, touchStartInfo.current.panelId);
+          if (!(typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed())) {
+            handleActionMenuOpen({ clientX: touch.clientX, clientY: touch.clientY }, touchStartInfo.current.panelId);
+          }
         }
       }
     }
@@ -3099,7 +3138,14 @@ const CanvasCollagePreview = ({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchEnd}
-          onContextMenu={(e) => { e.preventDefault(); setSaveHintOpen(true); }}
+          onContextMenu={(e) => { 
+            e.preventDefault(); 
+            if (typeof onSaveGestureDetected === 'function') {
+              onSaveGestureDetected();
+            } else {
+              setSaveHintOpen(true);
+            }
+          }}
                   style={{
             display: 'block',
             width: '100%',
@@ -3477,6 +3523,8 @@ CanvasCollagePreview.propTypes = {
     }),
   ])),
   onPanelClick: PropTypes.func,
+  onSaveGestureDetected: PropTypes.func,
+  isFrameActionSuppressed: PropTypes.func,
   aspectRatioValue: PropTypes.number,
   panelImageMapping: PropTypes.object,
   updatePanelImageMapping: PropTypes.func,

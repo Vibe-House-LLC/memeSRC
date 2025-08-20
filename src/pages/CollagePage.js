@@ -1,7 +1,7 @@
-import { useContext, useEffect, useState, useRef } from "react";
+import { useContext, useEffect, useState, useRef, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Popover } from "@mui/material";
 import { Dashboard, Save, DeleteForever, Settings } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
@@ -127,6 +127,18 @@ export default function CollagePage() {
     updatePanelText,
     libraryRefreshTrigger,
   } = useCollageState(isAdmin);
+
+  // Nudge states: visual hold vs. tooltip visibility
+  const [nudgeVisualActive, setNudgeVisualActive] = useState(false);
+  const [nudgeMessageVisible, setNudgeMessageVisible] = useState(false);
+  const nudgeMessageVisibleRef = useRef(false);
+  // Single replaceable dismissal timer
+  const nudgeDismissTimeoutRef = useRef(null);
+  const generateBtnRef = useRef(null);
+  const bottomBarRef = useRef(null);
+  const nudgeVisualActiveRef = useRef(false);
+  // Suppress frame-level action menus briefly after collage-level long-press
+  const frameActionSuppressUntilRef = useRef(0);
 
   // Check if all panels have images assigned (same logic as CollageImagesStep)
   const mappedPanels = Object.keys(panelImageMapping || {}).length;
@@ -330,6 +342,89 @@ export default function CollagePage() {
     }
   };
 
+  // Triggered by long-press/right-click on the canvas to nudge user to generate
+  const handleGenerateNudgeRequested = useCallback(() => {
+    setNudgeVisualActive(true);
+    nudgeVisualActiveRef.current = true;
+    setNudgeMessageVisible(true);
+    nudgeMessageVisibleRef.current = true;
+    // Cancel any running dismissal and stop countdown immediately
+    if (nudgeDismissTimeoutRef.current) {
+      clearTimeout(nudgeDismissTimeoutRef.current);
+      nudgeDismissTimeoutRef.current = null;
+    }
+    // No countdown while holding; dismissal starts on release
+    // Start a brief suppression window to avoid frame action menu
+    frameActionSuppressUntilRef.current = Date.now() + 800; // ms
+  }, []);
+
+  useEffect(() => () => {
+    if (nudgeDismissTimeoutRef.current) clearTimeout(nudgeDismissTimeoutRef.current);
+  }, []);
+
+  // Close the nudge on global pointer release/blur to avoid feeling stuck.
+  // Mount-once listeners to avoid missing events during state changes.
+  useEffect(() => {
+    const startDismissTimer = () => {
+      if (!nudgeMessageVisibleRef.current) return;
+      // Replace any existing timeout
+      if (nudgeDismissTimeoutRef.current) {
+        clearTimeout(nudgeDismissTimeoutRef.current);
+        nudgeDismissTimeoutRef.current = null;
+      }
+      // Kick off simple dismissal countdown
+      nudgeDismissTimeoutRef.current = setTimeout(() => {
+        setNudgeMessageVisible(false);
+        nudgeMessageVisibleRef.current = false;
+        nudgeDismissTimeoutRef.current = null;
+      }, 2000);
+    };
+
+    const onVisibility = () => {
+      // If tab is hidden, close immediately to avoid lingering UI
+      if (document.hidden) {
+        if (nudgeDismissTimeoutRef.current) { clearTimeout(nudgeDismissTimeoutRef.current); nudgeDismissTimeoutRef.current = null; }
+        setNudgeMessageVisible(false);
+        nudgeMessageVisibleRef.current = false;
+        setNudgeVisualActive(false);
+        nudgeVisualActiveRef.current = false;
+      }
+    };
+
+    const onEndLike = () => {
+      setNudgeVisualActive(false);
+      nudgeVisualActiveRef.current = false;
+      startDismissTimer();
+    };
+
+    const onScroll = () => {
+      if (nudgeMessageVisibleRef.current || nudgeVisualActiveRef.current) onEndLike();
+    };
+
+    window.addEventListener('pointerup', onEndLike, { passive: true });
+    window.addEventListener('mouseup', onEndLike, { passive: true });
+    window.addEventListener('touchend', onEndLike, { passive: true });
+    window.addEventListener('touchcancel', onEndLike, { passive: true });
+    window.addEventListener('pointercancel', onEndLike, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('blur', onVisibility, { passive: true });
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pointerup', onEndLike);
+      window.removeEventListener('mouseup', onEndLike);
+      window.removeEventListener('touchend', onEndLike);
+      window.removeEventListener('touchcancel', onEndLike);
+      window.removeEventListener('pointercancel', onEndLike);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('blur', onVisibility);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
+  // Keep refs in sync with state
+  useEffect(() => { nudgeMessageVisibleRef.current = nudgeMessageVisible; }, [nudgeMessageVisible]);
+  useEffect(() => { nudgeVisualActiveRef.current = nudgeVisualActive; }, [nudgeVisualActive]);
+
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
   const settingsStepProps = {
@@ -395,6 +490,8 @@ export default function CollagePage() {
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
     libraryRefreshTrigger, // For refreshing library when new images are auto-saved
     onCaptionEditorVisibleChange: setIsCaptionEditorOpen,
+    onGenerateNudgeRequested: handleGenerateNudgeRequested,
+    isFrameActionSuppressed: () => Date.now() < frameActionSuppressUntilRef.current,
   };
 
   // Log mapping changes for debugging
@@ -500,9 +597,11 @@ export default function CollagePage() {
                     alignItems: 'center',
                     gap: 1.5,
                   }}
+                ref={bottomBarRef}
                 >
                   <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }}>
-                    <Button
+                    <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                      <Button
                       variant="contained"
                       onClick={handleToggleSettings}
                       disabled={isCreatingCollage}
@@ -520,9 +619,10 @@ export default function CollagePage() {
                         color: '#e0e0e0',
                         '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
                       }}
-                    >
-                      {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
-                    </Button>
+                      >
+                        {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
+                      </Button>
+                    </Collapse>
                     <Button
                       variant="contained"
                       onClick={handleFloatingButtonClick}
@@ -536,15 +636,58 @@ export default function CollagePage() {
                         textTransform: 'none',
                         background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
                         border: '1px solid #8b5cc7',
-                        boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                        boxShadow: nudgeVisualActive ? '0 10px 28px rgba(107, 66, 161, 0.6)' : '0 6px 20px rgba(107, 66, 161, 0.4)',
+                        transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
+                        transition: 'transform 180ms ease, box-shadow 220ms ease',
                         color: '#fff',
                         '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
                       }}
                       aria-label="Create and save collage"
+                      ref={generateBtnRef}
                     >
                       {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
                     </Button>
-                    <Button
+                    <Popover
+                      open={nudgeMessageVisible}
+                      anchorEl={bottomBarRef.current}
+                      onClose={() => {
+                        if (nudgeDismissTimeoutRef.current) { clearTimeout(nudgeDismissTimeoutRef.current); nudgeDismissTimeoutRef.current = null; }
+                        setNudgeMessageVisible(false);
+                      }}
+                      TransitionComponent={Slide}
+                      TransitionProps={{ direction: 'up' }}
+                      disableAutoFocus
+                      disableEnforceFocus
+                      disableRestoreFocus
+                      disableScrollLock
+                      hideBackdrop
+                      sx={{ pointerEvents: 'none' }}
+                      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                      transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                      PaperProps={{
+                        sx: {
+                          bgcolor: 'rgba(25, 25, 25, 0.98)',
+                          color: '#fff',
+                          px: 2,
+                          py: 1.25,
+                          borderRadius: 2,
+                          border: '1px solid rgba(139, 92, 199, 0.5)',
+                          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+                          pointerEvents: 'none', // purely informative
+                          maxWidth: 320,
+                          textAlign: 'center',
+                          fontWeight: 600,
+                          letterSpacing: 0.2,
+                          mt: -1, // create a small gap above the bar
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
+                        <span>You need to generate before saving</span>
+                      </Box>
+                    </Popover>
+                    <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                      <Button
                       variant="contained"
                       onClick={handleResetCollage}
                       disabled={isCreatingCollage}
@@ -562,9 +705,10 @@ export default function CollagePage() {
                         color: '#e0e0e0',
                         '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
                       }}
-                    >
-                      {isMobile ? <DeleteForever sx={{ color: '#c84b4b' }} /> : 'Reset All'}
-                    </Button>
+                      >
+                        {isMobile ? <DeleteForever sx={{ color: '#c84b4b' }} /> : 'Reset All'}
+                      </Button>
+                    </Collapse>
                   </Stack>
                 </Box>
               </Slide>

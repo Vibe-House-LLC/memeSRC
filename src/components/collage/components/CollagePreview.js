@@ -60,6 +60,8 @@ const CollagePreview = ({
   lastUsedTextSettings,
   isCreatingCollage = false,
   onCaptionEditorVisibleChange,
+  onGenerateNudgeRequested,
+  isFrameActionSuppressed,
 }) => {
   const fileInputRef = useRef(null);
   const theme = useTheme();
@@ -354,6 +356,8 @@ const CollagePreview = ({
         images={selectedImages}
         onPanelClick={handlePanelClick}
         onMenuOpen={handleMenuOpen}
+        onSaveGestureDetected={onGenerateNudgeRequested}
+        isFrameActionSuppressed={isFrameActionSuppressed}
         aspectRatioValue={aspectRatioValue}
         panelImageMapping={panelImageMapping}
         updatePanelImageMapping={updatePanelImageMapping}
@@ -489,6 +493,8 @@ CollagePreview.propTypes = {
   lastUsedTextSettings: PropTypes.object,
   isCreatingCollage: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,
+  onGenerateNudgeRequested: PropTypes.func,
+  isFrameActionSuppressed: PropTypes.func,
 };
 
 export default CollagePreview; 

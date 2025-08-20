@@ -46,6 +46,8 @@ const CollageImagesStep = ({
   onCollageGenerated = null,
   isCreatingCollage,
   onCaptionEditorVisibleChange,
+  onGenerateNudgeRequested,
+  isFrameActionSuppressed,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -149,8 +151,10 @@ const CollageImagesStep = ({
             handleOpenExportDialog={handleOpenExportDialog}
             onCollageGenerated={onCollageGenerated}
             isCreatingCollage={isCreatingCollage}
-            onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
-          />
+          onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
+          onGenerateNudgeRequested={onGenerateNudgeRequested}
+          isFrameActionSuppressed={isFrameActionSuppressed}
+        />
         </Box>
         
         <Typography
@@ -212,6 +216,8 @@ CollageImagesStep.propTypes = {
   onCollageGenerated: PropTypes.func,
   isCreatingCollage: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,
+  onGenerateNudgeRequested: PropTypes.func,
+  isFrameActionSuppressed: PropTypes.func,
 };
 
 export default CollageImagesStep;
