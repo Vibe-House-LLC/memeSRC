@@ -555,6 +555,37 @@ const CaptionEditor = ({
         <Box sx={{ mb: 1 }}>
           {!positioningOnly && (
             <>
+              {/* Text input field */}
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                placeholder="Add Caption"
+                value={panelTexts[panelId]?.content || ''}
+                onChange={(e) => handleTextChange('content', e.target.value)}
+                inputRef={(el) => {
+                  if (el) {
+                    textFieldRefs.current[panelId] = el;
+                  }
+                }}
+                size="small"
+                sx={{
+                  mb: 1,
+                  '& .MuiInputBase-root': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    color: '#000000',
+                    p: 0,
+                  },
+                  '& .MuiInputBase-input': {
+                    textAlign: 'center',
+                  },
+                  '& .MuiInputBase-inputMultiline': {
+                    padding: '8px 12px',
+                    lineHeight: 1.35,
+                  },
+                }}
+              />
+
               {/* Bold/Italic + Font Family OR Inline Color (toggleable, no layout shift) */}
               <Box sx={{ display: 'flex', alignItems: 'center', mt: 0, mb: 1, height: 42 }}>
               {!showInlineColor && (
@@ -794,36 +825,6 @@ const CaptionEditor = ({
                 </Box>
               )}
               </Box>
-
-              {/* Text input field */}
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                placeholder="Add Caption"
-                value={panelTexts[panelId]?.content || ''}
-                onChange={(e) => handleTextChange('content', e.target.value)}
-                inputRef={(el) => {
-                  if (el) {
-                    textFieldRefs.current[panelId] = el;
-                  }
-                }}
-                size="small"
-                sx={{
-                  '& .MuiInputBase-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    color: '#000000',
-                    p: 0,
-                  },
-                  '& .MuiInputBase-input': {
-                    textAlign: 'center',
-                  },
-                  '& .MuiInputBase-inputMultiline': {
-                    padding: '8px 12px',
-                    lineHeight: 1.35,
-                  },
-                }}
-              />
             </>
           )}
 
@@ -831,7 +832,7 @@ const CaptionEditor = ({
 
             {/* Font Size */}
             {!positioningOnly && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.25, mb: 0.25 }}>
               <Tooltip title="Font Size" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
                   <FormatSize sx={{ color: '#ffffff' }} />
@@ -904,7 +905,7 @@ const CaptionEditor = ({
 
             {/* Placement controls (shown only in positioning mode) */}
             {positioningOnly && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
               <Tooltip title="Vertical Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
                   <SwapVert sx={{ color: '#ffffff' }} />
@@ -973,7 +974,7 @@ const CaptionEditor = ({
             )}
 
             {positioningOnly && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
               <Tooltip title="Horizontal Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
                   <SwapHoriz sx={{ color: '#ffffff' }} />
