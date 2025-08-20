@@ -585,14 +585,6 @@ export default function CollagePage() {
                 <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
                 Collage Tool
               </Typography>
-              <Typography variant="subtitle1" sx={{ 
-                color: 'text.secondary',
-                mb: isMobile ? 2 : 1.5,
-                pl: isMobile ? 1 : 0,
-                maxWidth: '85%'
-              }}>
-                Merge images together to create multi-panel memes
-              </Typography>
             </Box>
 
             <EarlyAccessFeedback />

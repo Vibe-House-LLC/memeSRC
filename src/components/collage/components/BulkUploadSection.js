@@ -908,7 +908,17 @@ const BulkUploadSection = ({
             // Admins: either show Library only, or an "Add photos to your library" dropzone when empty
             <>
               {adminHasLibraryItems ? (
-                <LibraryBrowser
+                <>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      color: 'text.secondary',
+                      mb: 1.5,
+                    }}
+                  >
+                    Select up to 5 images from your library to make a collage
+                  </Typography>
+                  <LibraryBrowser
                   isAdmin
                   multiple
                   minSelected={2}
@@ -920,6 +930,7 @@ const BulkUploadSection = ({
                   showSelectToggle
                   initialSelectMode
                 />
+                </>
               ) : (
                 <>
                   <Box sx={{ 
