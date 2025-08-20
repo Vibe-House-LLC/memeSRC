@@ -10,8 +10,6 @@ import {
   Select, 
   MenuItem, 
   Button, 
-  Tabs, 
-  Tab, 
   Tooltip, 
   ToggleButtonGroup, 
   ToggleButton, 
@@ -23,21 +21,19 @@ import {
 } from "@mui/material";
 import { useTheme, styled, alpha } from "@mui/material/styles";
 import {
-  Edit,
   FormatSize, 
-  BorderOuter, 
   FormatBold, 
   FormatItalic, 
-  ControlCamera, 
+  Palette,
   SwapHoriz, 
   SwapVert, 
   Colorize, 
   ChevronLeft, 
   ChevronRight, 
-  Palette, 
   RotateLeft,
   Restore,
   DeleteOutline as DeleteIcon,
+  ControlCamera,
 } from '@mui/icons-material';
 import fonts from '../../../utils/fonts';
 
@@ -222,10 +218,15 @@ const CaptionEditor = ({
   componentWidth,
 }) => {
   const theme = useTheme();
-  const [activeTextSetting, setActiveTextSetting] = useState('content');
+  // Current text color for UI bindings (e.g., toolbar swatch)
+  const currentTextColor = panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff';
+  // Single unified editor view (tabs removed)
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
   const [activeSlider, setActiveSlider] = useState(null);
+  const [positioningOnly, setPositioningOnly] = useState(false);
+  // Inline toggle between format controls and color selector
+  const [showInlineColor, setShowInlineColor] = useState(false);
   
   const textFieldRefs = useRef({});
 
@@ -297,6 +298,8 @@ const CaptionEditor = ({
     setSavedCustomTextColor(newColor);
     localStorage.setItem('memeTextCustomColor', newColor);
     handleTextChange('color', newColor);
+    // Auto-close color picker after choosing a custom color
+    setShowInlineColor(false);
   };
 
   const handleTextChange = useCallback((property, value) => {
@@ -480,14 +483,20 @@ const CaptionEditor = ({
     };
   }, [handleTextColorScroll]);
 
-  // Check scroll position when fontStyle tab becomes active
+  // Ensure scroll indicators settle after mount
   useEffect(() => {
-    if (activeTextSetting === 'fontStyle' && textColorScrollerRef.current) {
+    if (textColorScrollerRef.current) {
       setTimeout(() => handleTextColorScroll(), 50);
       setTimeout(() => handleTextColorScroll(), 200);
       setTimeout(() => handleTextColorScroll(), 500);
     }
-  }, [activeTextSetting, handleTextColorScroll]);
+  }, [handleTextColorScroll]);
+
+  // Re-evaluate indicators when toggling inline color view
+  useEffect(() => {
+    setTimeout(() => handleTextColorScroll(), 50);
+    setTimeout(() => handleTextColorScroll(), 200);
+  }, [showInlineColor, handleTextColorScroll]);
 
   // Effect to update localStorage when custom text color changes
   useEffect(() => {
@@ -502,28 +511,23 @@ const CaptionEditor = ({
 
   // Focus text field when caption editor opens
   useEffect(() => {
-    if (activeTextSetting === 'content') {
-      setTimeout(() => {
-        const inputElement = textFieldRefs.current[panelId];
-        if (inputElement) {
-          inputElement.focus();
-          
-          const textLength = inputElement.value.length;
-          
-          setTimeout(() => {
-            inputElement.setSelectionRange(textLength, textLength);
-            
-            if ('ontouchstart' in window) {
-              inputElement.click();
-              setTimeout(() => {
-                inputElement.setSelectionRange(textLength, textLength);
-              }, 100);
-            }
-          }, 50);
-        }
-      }, 300);
-    }
-  }, [activeTextSetting, panelId]);
+    setTimeout(() => {
+      const inputElement = textFieldRefs.current[panelId];
+      if (inputElement) {
+        inputElement.focus();
+        const textLength = inputElement.value.length;
+        setTimeout(() => {
+          inputElement.setSelectionRange(textLength, textLength);
+          if ('ontouchstart' in window) {
+            inputElement.click();
+            setTimeout(() => {
+              inputElement.setSelectionRange(textLength, textLength);
+            }, 100);
+          }
+        }, 50);
+      }
+    }, 300);
+  }, [panelId]);
 
   return (
     <Box
@@ -546,208 +550,50 @@ const CaptionEditor = ({
       }}
     >
       <Box sx={{ p: 1 }}>
-        {/* Setting tabs */}
-        <Tabs
-          value={activeTextSetting ? ['content', 'format', 'placement', 'fontStyle'].indexOf(activeTextSetting) : 0}
-          onChange={(event, newValue) => {
-            const settings = ['content', 'format', 'placement', 'fontStyle'];
-            const newSetting = settings[newValue];
-            setActiveTextSetting(activeTextSetting === newSetting ? null : newSetting);
-          }}
-          variant="fullWidth"
-          centered
-          sx={{
-            mb: 2,
-            '& .MuiTabs-indicator': {
-              backgroundColor: '#ffffff',
-            },
-            '& .MuiTab-root': {
-              color: 'rgba(255, 255, 255, 0.7)',
-              minHeight: 44,
-              minWidth: 0,
-              '&.Mui-selected': {
-                color: '#ffffff',
-              },
-            },
-          }}
-        >
-          <Tab icon={<Edit />} />
-          <Tab icon={<FormatSize />} />
-          <Tab icon={<ControlCamera />} />
-          <Tab icon={<Palette />} />
-        </Tabs>
 
-        {/* Content Tab */}
-        {activeTextSetting === 'content' && (
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              placeholder="Add Caption"
-              value={panelTexts[panelId]?.content || ''}
-              onChange={(e) => handleTextChange('content', e.target.value)}
-              inputRef={(el) => {
-                if (el) {
-                  textFieldRefs.current[panelId] = el;
-                }
-              }}
-              sx={{
-                '& .MuiInputBase-root': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                  color: '#000000',
-                },
-                '& .MuiInputBase-input': {
-                  textAlign: 'center',
-                },
-              }}
-            />
-          </Box>
-        )}
-
-        {/* Format Tab */}
-        {activeTextSetting === 'format' && (
-          <Box sx={{ mb: 2 }}>
-            {/* Font Size */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Tooltip title="Font Size" placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                  <FormatSize sx={{ color: '#ffffff' }} />
-                </Box>
-              </Tooltip>
-              <Slider
-                value={(() => {
-                  const panelText = panelTexts[panelId] || {};
-                  const hasActualText = panelText.content && panelText.content.trim();
-                  
-                  let baseFontSize;
-                  if (hasActualText && !panelText.fontSize) {
-                    const panel = panelRects.find(p => p.panelId === panelId);
-                    if (panel && calculateOptimalFontSize) {
-                      baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
-                    } else {
-                      baseFontSize = lastUsedTextSettings.fontSize || 26;
-                    }
-                  } else {
-                    baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+        {/* Editor Content */}
+        <Box sx={{ mb: 1 }}>
+          {!positioningOnly && (
+            <>
+              {/* Text input field */}
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                placeholder="Add Caption"
+                value={panelTexts[panelId]?.content || ''}
+                onChange={(e) => handleTextChange('content', e.target.value)}
+                inputRef={(el) => {
+                  if (el) {
+                    textFieldRefs.current[panelId] = el;
                   }
-                  
-                  return Math.round(baseFontSize * textScaleFactor);
-                })()}
-                onChange={(e, value) => {
-                  if (e.type === 'mousedown') {
-                    return;
-                  }
-                  const baseFontSize = value / textScaleFactor;
-                  handleTextChange('fontSize', baseFontSize);
                 }}
-                onMouseDown={() => handleSliderMouseDown('fontSize')}
-                onMouseUp={handleSliderMouseUp}
-                onTouchStart={() => handleSliderMouseDown('fontSize')}
-                onTouchEnd={handleSliderMouseUp}
-                min={Math.round(8 * textScaleFactor)}
-                max={Math.round(72 * textScaleFactor)}
-                step={1}
-                sx={{ 
-                  flex: 1,
-                  color: '#ffffff',
-                  mx: 1,
+                size="small"
+                sx={{
+                  mb: 1,
+                  '& .MuiInputBase-root': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    color: '#000000',
+                    p: 0,
+                  },
+                  '& .MuiInputBase-input': {
+                    textAlign: 'center',
+                  },
+                  '& .MuiInputBase-inputMultiline': {
+                    padding: '8px 12px',
+                    lineHeight: 1.35,
+                  },
                 }}
               />
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                {activeSlider === `${panelId}-fontSize` ? (
-                  <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
-                    {getCurrentValue('fontSize')}
-                  </Typography>
-                ) : (
-                  <IconButton
-                    size="small"
-                    onClick={() => handleResetClick('format', 'fontSize')}
-                    disabled={isValueAtDefault('fontSize')}
-                    sx={{ 
-                      color: '#ffffff', 
-                      p: 0.5,
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      },
-                      '&.Mui-disabled': {
-                        color: 'rgba(255, 255, 255, 0.3)',
-                      }
-                    }}
-                  >
-                    <Restore fontSize="small" />
-                  </IconButton>
-                )}
-              </Box>
-            </Box>
-            
-            {/* Stroke Width */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Tooltip title="Stroke Width" placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                  <BorderOuter sx={{ color: '#ffffff' }} />
-                </Box>
-              </Tooltip>
-              <Slider
-                value={panelTexts[panelId]?.strokeWidth || lastUsedTextSettings.strokeWidth || 2}
-                onChange={(e, value) => {
-                  if (e.type === 'mousedown') {
-                    return;
-                  }
-                  handleTextChange('strokeWidth', value);
-                }}
-                onMouseDown={() => handleSliderMouseDown('strokeWidth')}
-                onMouseUp={handleSliderMouseUp}
-                onTouchStart={() => handleSliderMouseDown('strokeWidth')}
-                onTouchEnd={handleSliderMouseUp}
-                min={0}
-                max={10}
-                step={0.5}
-                sx={{ 
-                  flex: 1,
-                  color: '#ffffff',
-                  mx: 1,
-                }}
-              />
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                {activeSlider === `${panelId}-strokeWidth` ? (
-                  <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
-                    {getCurrentValue('strokeWidth')}
-                  </Typography>
-                ) : (
-                  <IconButton
-                    size="small"
-                    onClick={() => handleResetClick('format', 'strokeWidth')}
-                    disabled={isValueAtDefault('strokeWidth')}
-                    sx={{ 
-                      color: '#ffffff', 
-                      p: 0.5,
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      },
-                      '&.Mui-disabled': {
-                        color: 'rgba(255, 255, 255, 0.3)',
-                      }
-                    }}
-                  >
-                    <Restore fontSize="small" />
-                  </IconButton>
-                )}
-              </Box>
-            </Box>
-          </Box>
-        )}
 
-        {/* Font Style Tab */}
-        {activeTextSetting === 'fontStyle' && (
-          <Box sx={{ mb: 2 }}>
-            {/* Font Family */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              {/* Bold/Italic + Font Family OR Inline Color (toggleable, no layout shift) */}
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 0, mb: 1, height: 42 }}>
+              {!showInlineColor && (
+                <>
               <ToggleButtonGroup
                 value={(() => {
                   const currentWeightRaw = panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || 400;
                   let currentWeight;
-                  
                   if (currentWeightRaw === 'normal') {
                     currentWeight = 400;
                   } else if (currentWeightRaw === 'bold') {
@@ -757,31 +603,30 @@ const CaptionEditor = ({
                   } else {
                     currentWeight = currentWeightRaw;
                   }
-                  
                   const currentStyle = panelTexts[panelId]?.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
                   const result = [];
-                  
                   if (currentWeight >= 500) {
                     result.push('bold');
                   }
-                  
                   if (currentStyle === 'italic') {
                     result.push('italic');
                   }
-                  
+                  // Mark color toggle as selected when non-default color is active
+                  const defaultColor = (lastUsedTextSettings.color || '#ffffff').toLowerCase();
+                  if (currentTextColor && currentTextColor.toLowerCase() !== defaultColor) {
+                    result.push('color');
+                  }
                   return result;
                 })()}
                 onChange={(event, newFormats) => {
                   const isBold = newFormats.includes('bold');
                   const isItalic = newFormats.includes('italic');
-                  
                   const currentText = panelTexts[panelId] || {};
                   const updatedText = {
                     ...currentText,
                     fontWeight: isBold ? 700 : 400,
                     fontStyle: isItalic ? 'italic' : 'normal'
                   };
-                  
                   if (updatePanelText) {
                     updatePanelText(panelId, updatedText);
                   }
@@ -810,6 +655,16 @@ const CaptionEditor = ({
                 </ToggleButton>
                 <ToggleButton size='small' value="italic" aria-label="italic">
                   <FormatItalic />
+                </ToggleButton>
+                {/* Inline color toggle within the group */}
+                <ToggleButton
+                  size='small'
+                  value="color"
+                  aria-label="color"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInlineColor(true); }}
+                >
+                  <Palette sx={{ color: currentTextColor }} />
                 </ToggleButton>
               </ToggleButtonGroup>
               <FormControl sx={{ flex: 1 }}>
@@ -860,139 +715,197 @@ const CaptionEditor = ({
                   ))}
                 </Select>
               </FormControl>
-            </Box>
-            
-            {/* Text Color */}
-            <Box sx={{ position: 'relative' }}>
-              <ScrollButton 
-                direction="left" 
-                onClick={scrollTextColorLeft}
-                size="small"
-                aria-label="Scroll left"
-                sx={{ 
-                  display: 'flex',
-                  visibility: textColorLeftScroll ? 'visible' : 'hidden',
-                  opacity: textColorLeftScroll ? 1 : 0,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                }}
-              >
-                <ChevronLeft fontSize="small" />
-              </ScrollButton>
-              
-              <ScrollButton 
-                direction="right" 
-                onClick={scrollTextColorRight}
-                size="small"
-                aria-label="Scroll right"
-                sx={{ 
-                  display: 'flex',
-                  visibility: textColorRightScroll ? 'visible' : 'hidden',
-                  opacity: textColorRightScroll ? 1 : 0,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                }}
-              >
-                <ChevronRight fontSize="small" />
-              </ScrollButton>
-              <Box ref={textColorScrollerRef} sx={{ display: 'flex', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', overflowY: 'hidden', position: 'relative' }}>
-                <Box sx={{ flex: 1, position: 'relative' }}>
-                  <HorizontalScroller 
-                    onScroll={handleTextColorScroll}
-                    sx={{ 
-                      pt: 0, 
-                      mt: 0, 
-                      pb: 0, 
-                      pr: 2,
-                      minHeight: 50,
-                      gap: theme.spacing(1),
+              </>
+              )}
+
+              {showInlineColor && (
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', height: 42 }}>
+                  {/* Square button on left to go back to formatting */}
+                  <Tooltip title="Back" placement="top">
+                    <IconButton
+                      size="small"
+                      onClick={() => setShowInlineColor(false)}
+                      sx={{
+                        mr: 1,
+                        color: '#ffffff',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                        bgcolor: 'transparent',
+                        borderRadius: '6px !important',
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
+                        width: 36,
+                        height: 36,
+                        flexShrink: 0,
+                      }}
+                      aria-label="Back to formatting"
+                    >
+                      <ChevronLeft fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  {/* Inline color scroller (same size as main) with indicators */}
+                  <Box
+                    ref={textColorScrollerRef}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      maxWidth: '100%',
+                      overflowX: 'auto',
+                      overflowY: 'hidden',
+                      position: 'relative',
+                      flex: 1,
                     }}
                   >
-                    {/* Custom color picker */}
-                    <Tooltip title="Pick Custom Color" arrow>
-                      <Box sx={{ 
-                        position: 'relative', 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        height: '60%'
-                      }}>
-                        <ColorSwatch
-                          onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
-                          selected={false}
-                          sx={{ 
-                            position: 'relative',
-                            flexShrink: 0,
-                            backgroundColor: savedCustomTextColor,
-                            backgroundImage: 'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
-                            backgroundSize: '8px 8px',
-                            backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
-                          }}
-                        >
-                          <Colorize fontSize="small" sx={{ color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
-                        </ColorSwatch>
-                        <input
-                          type="color"
-                          value={savedCustomTextColor}
-                          onChange={handleCustomTextColorChange}
-                          ref={textColorPickerRef}
-                          style={{ 
-                            position: 'absolute',
-                            opacity: 0,
-                            width: '100%',
-                            height: '100%',
-                            cursor: 'pointer'
-                          }}
-                        />
-                      </Box>
-                    </Tooltip>
-                    
-                    {/* Show the saved custom color as second option if it exists and is different from presets */}
-                    {hasSavedCustomTextColor && (
-                      <Tooltip title="Custom Color" arrow>
-                        <ColorSwatch
-                          onClick={() => handleTextChange('color', savedCustomTextColor)}
-                          selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === savedCustomTextColor}
-                          sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
-                        />
+                    <Box sx={{ flex: 1, position: 'relative' }}>
+                      <HorizontalScroller
+                        onScroll={handleTextColorScroll}
+                        sx={{
+                          pt: 0,
+                          pb: 0,
+                          mt: 0,
+                          minHeight: 42,
+                          alignItems: 'center',
+                          gap: theme.spacing(1),
+                        }}
+                      >
+                      {/* Custom color picker */}
+                      <Tooltip title="Pick Custom Color" arrow>
+                        <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <ColorSwatch
+                            onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
+                            selected={false}
+                            sx={{
+                              position: 'relative',
+                              flexShrink: 0,
+                              backgroundColor: savedCustomTextColor,
+                              backgroundImage:
+                                'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                              backgroundSize: '8px 8px',
+                              backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                            }}
+                          >
+                            <Colorize fontSize="inherit" sx={{ fontSize: 18, color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
+                          </ColorSwatch>
+                          <input
+                            type="color"
+                            value={savedCustomTextColor}
+                            onChange={handleCustomTextColorChange}
+                            ref={textColorPickerRef}
+                            style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                          />
+                        </Box>
                       </Tooltip>
-                    )}
-                    
-                    {/* Preset colors */}
-                    {TEXT_COLOR_PRESETS.map((colorOption) => (
-                      <Tooltip key={colorOption.color} title={colorOption.name} arrow>
-                        <ColorSwatch
-                          onClick={() => handleTextChange('color', colorOption.color)}
-                          selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
-                          sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
-                        />
-                      </Tooltip>
-                    ))}
-                    
-                    {/* Spacer to ensure last items can be centered when scrolled fully */}
-                    <Box sx={{ minWidth: 4, flexShrink: 0 }} />
-                  </HorizontalScroller>
-                  
-                  {/* Visual indicators for scrolling */}
-                  <ScrollIndicator 
-                    direction="left" 
-                    isVisible={textColorLeftScroll}
-                  />
-                  
-                  <ScrollIndicator 
-                    direction="right" 
-                    isVisible={textColorRightScroll}
-                  />
+
+                      {/* Saved custom color (if not in presets) */}
+                      {hasSavedCustomTextColor && (
+                        <Tooltip title="Custom Color" arrow>
+                          <ColorSwatch
+                            onClick={() => { handleTextChange('color', savedCustomTextColor); setShowInlineColor(false); }}
+                            selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === savedCustomTextColor}
+                            sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
+                          />
+                        </Tooltip>
+                      )}
+
+                      {/* Preset colors */}
+                      {TEXT_COLOR_PRESETS.map((colorOption) => (
+                        <Tooltip key={colorOption.color} title={colorOption.name} arrow>
+                          <ColorSwatch
+                            onClick={() => { handleTextChange('color', colorOption.color); setShowInlineColor(false); }}
+                            selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
+                            sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
+                          />
+                        </Tooltip>
+                      ))}
+                        <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+                      </HorizontalScroller>
+                      {/* Visual indicators for scrolling */}
+                      <ScrollIndicator direction="left" isVisible={textColorLeftScroll} />
+                      <ScrollIndicator direction="right" isVisible={textColorRightScroll} />
+                    </Box>
+                  </Box>
                 </Box>
+              )}
+              </Box>
+            </>
+          )}
+
+            {/* Full-width color section removed: color options only show when toggled inline */}
+
+            {/* Font Size */}
+            {!positioningOnly && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.25, mb: 0.25 }}>
+              <Tooltip title="Font Size" placement="left">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                  <FormatSize sx={{ color: '#ffffff' }} />
+                </Box>
+              </Tooltip>
+              <Slider
+                value={(() => {
+                  const panelText = panelTexts[panelId] || {};
+                  const hasActualText = panelText.content && panelText.content.trim();
+                  let baseFontSize;
+                  if (hasActualText && !panelText.fontSize) {
+                    const panel = panelRects.find(p => p.panelId === panelId);
+                    if (panel && calculateOptimalFontSize) {
+                      baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+                    } else {
+                      baseFontSize = lastUsedTextSettings.fontSize || 26;
+                    }
+                  } else {
+                    baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+                  }
+                  return Math.round(baseFontSize * textScaleFactor);
+                })()}
+                onChange={(e, value) => {
+                  if (e.type === 'mousedown') {
+                    return;
+                  }
+                  const baseFontSize = value / textScaleFactor;
+                  handleTextChange('fontSize', baseFontSize);
+                }}
+                onMouseDown={() => handleSliderMouseDown('fontSize')}
+                onMouseUp={handleSliderMouseUp}
+                onTouchStart={() => handleSliderMouseDown('fontSize')}
+                onTouchEnd={handleSliderMouseUp}
+                min={Math.round(8 * textScaleFactor)}
+                max={Math.round(72 * textScaleFactor)}
+                step={1}
+                sx={{ 
+                  flex: 1,
+                  color: '#ffffff',
+                  mx: 1,
+                }}
+              />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                {activeSlider === `${panelId}-fontSize` ? (
+                  <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
+                    {getCurrentValue('fontSize')}
+                  </Typography>
+                ) : (
+                  <IconButton
+                    size="small"
+                    onClick={() => handleResetClick('format', 'fontSize')}
+                    disabled={isValueAtDefault('fontSize')}
+                    sx={{ 
+                      color: '#ffffff', 
+                      p: 0.5,
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                      '&.Mui-disabled': {
+                        color: 'rgba(255, 255, 255, 0.3)',
+                      }
+                    }}
+                  >
+                    <Restore fontSize="small" />
+                  </IconButton>
+                )}
               </Box>
             </Box>
-          </Box>
-        )}
+            )}
 
-        {/* Placement Tab */}
-        {activeTextSetting === 'placement' && (
-          <Box sx={{ mb: 2 }}>
-            {/* Vertical Position */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            {/* Placement controls (shown only in positioning mode) */}
+            {positioningOnly && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
               <Tooltip title="Vertical Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
                   <SwapVert sx={{ color: '#ffffff' }} />
@@ -1058,9 +971,10 @@ const CaptionEditor = ({
                 )}
               </Box>
             </Box>
-            
-            {/* Horizontal Position */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            )}
+
+            {positioningOnly && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
               <Tooltip title="Horizontal Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
                   <SwapHoriz sx={{ color: '#ffffff' }} />
@@ -1114,8 +1028,9 @@ const CaptionEditor = ({
                 )}
               </Box>
             </Box>
-            
-            {/* Rotation */}
+            )}
+
+            {positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Tooltip title="Rotation" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1170,33 +1085,36 @@ const CaptionEditor = ({
                 )}
               </Box>
             </Box>
+            )}
+
           </Box>
-        )}
+
+        
+
+        
+
+        
 
         {/* Actions */}
-        {activeTextSetting === 'content' ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {/* Left: Clear (icon-only) shown only when there is text */}
-            {Boolean((panelTexts[panelId]?.content || '').trim()) && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Position toggle on the left */}
+            <Tooltip title={positioningOnly ? 'Show formatting controls' : 'Show positioning controls'} placement="top">
               <IconButton
-                aria-label="Clear caption"
-                onClick={() => {
-                  const currentText = panelTexts[panelId] || {};
-                  if (updatePanelText) updatePanelText(panelId, { ...currentText, content: '' });
-                }}
+                aria-label="Toggle positioning"
+                onClick={() => setPositioningOnly(v => !v)}
                 sx={{
                   width: 40,
                   height: 40,
-                  color: '#ffffff',
+                  color: positioningOnly ? '#111' : '#ffffff',
                   border: '1px solid rgba(255,255,255,0.35)',
                   borderRadius: 1,
-                  bgcolor: 'transparent',
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
+                  bgcolor: positioningOnly ? '#fff' : 'transparent',
+                  '&:hover': { bgcolor: positioningOnly ? '#f0f0f0' : 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
                 }}
               >
-                <DeleteIcon fontSize="small" />
+                <ControlCamera fontSize="small" />
               </IconButton>
-            )}
+            </Tooltip>
 
             {/* Done fills remaining space */}
             <Button
@@ -1213,22 +1131,28 @@ const CaptionEditor = ({
             >
               Done
             </Button>
-          </Box>
-        ) : (
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={onClose}
-            sx={{
-              backgroundColor: '#4CAF50',
-              '&:hover': { backgroundColor: '#45a049' },
-              textTransform: 'none',
-              fontWeight: 800,
-            }}
-          >
-            Done
-          </Button>
-        )}
+
+            {/* Delete on the right; always visible and closes editor */}
+            <IconButton
+              aria-label="Clear caption"
+              onClick={() => {
+                const currentText = panelTexts[panelId] || {};
+                if (updatePanelText) updatePanelText(panelId, { ...currentText, content: '' });
+                if (typeof onClose === 'function') onClose();
+              }}
+              sx={{
+                width: 40,
+                height: 40,
+                color: '#ffffff',
+                border: '1px solid rgba(255,255,255,0.35)',
+                borderRadius: 1,
+                bgcolor: 'transparent',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+        </Box>
       </Box>
 
       {/* Reset Confirmation Dialog */}

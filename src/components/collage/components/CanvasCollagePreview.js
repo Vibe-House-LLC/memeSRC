@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon } from "@mui/material";
+import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { OpenWith, Check, Place, Crop, DragIndicator } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
@@ -405,6 +405,8 @@ const CanvasCollagePreview = ({
   panelCount,
   images = [],
   onPanelClick,
+  onSaveGestureDetected, // new: notify parent when long-press/right-click implies save intent
+  isFrameActionSuppressed, // optional: function to indicate suppression window
   aspectRatioValue = 1,
   panelImageMapping = {},
   updatePanelImageMapping,
@@ -456,6 +458,7 @@ const CanvasCollagePreview = ({
   // Action menu state for per-panel controls
   const [actionMenuAnchorEl, setActionMenuAnchorEl] = useState(null);
   const [actionMenuPanelId, setActionMenuPanelId] = useState(null);
+  const [actionMenuPosition, setActionMenuPosition] = useState(null);
 
   // Border dragging state
   const [borderZones, setBorderZones] = useState([]);
@@ -464,6 +467,12 @@ const CanvasCollagePreview = ({
   const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(null);
+
+  // Long-press (press-and-hold) hint state
+  const [saveHintOpen, setSaveHintOpen] = useState(false);
+  const longPressTimerRef = useRef(null);
+  const longPressActiveRef = useRef(false);
+  const longPressStartRef = useRef({ x: 0, y: 0, scrollY: 0 });
 
   // Base canvas size for text scaling calculations
   const BASE_CANVAS_WIDTH = 400;
@@ -1596,6 +1605,16 @@ const CanvasCollagePreview = ({
   const handleMouseMove = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // Cancel pending long-press if the pointer moved notably
+    if (longPressTimerRef.current) {
+      const dx = Math.abs(e.movementX || 0);
+      const dy = Math.abs(e.movementY || 0);
+      if (dx + dy > 4) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+        longPressActiveRef.current = false;
+      }
+    }
     
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -1846,6 +1865,36 @@ const CanvasCollagePreview = ({
     setReorderSourcePanel(null);
   }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, updatePanelText, panelTexts]);
 
+  // Open/close the action menu (placed before handlers that depend on it)
+  const handleActionMenuOpen = useCallback((event, panelId) => {
+    // Respect optional suppression window; guard against unexpected errors
+    const suppressed = (() => {
+      try {
+        return typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed();
+      } catch (e) {
+        return false;
+      }
+    })();
+    if (suppressed) return;
+    if (event && typeof event.stopPropagation === 'function') {
+      event.stopPropagation();
+    }
+    if (event && event.currentTarget) {
+      setActionMenuAnchorEl(event.currentTarget);
+      setActionMenuPosition(null);
+    } else if (event && event.clientX != null && event.clientY != null) {
+      setActionMenuPosition({ left: event.clientX, top: event.clientY });
+      setActionMenuAnchorEl(null);
+    }
+    setActionMenuPanelId(panelId);
+  }, []);
+
+  const handleActionMenuClose = useCallback(() => {
+    setActionMenuAnchorEl(null);
+    setActionMenuPosition(null);
+    setActionMenuPanelId(null);
+  }, []);
+
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1872,6 +1921,20 @@ const CanvasCollagePreview = ({
     );
     
     if (clickedPanelIndex >= 0) {
+      // Start a long-press timer for desktop only when not editing/transforming/reordering
+      if (!Object.values(isTransformMode).some(Boolean) && textEditingPanel === null && !isReorderMode) {
+        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+        longPressActiveRef.current = false;
+        longPressStartRef.current = { x: e.clientX, y: e.clientY, scrollY: window.scrollY || window.pageYOffset || 0 };
+        longPressTimerRef.current = setTimeout(() => {
+          longPressActiveRef.current = true;
+          if (typeof onSaveGestureDetected === 'function') {
+            onSaveGestureDetected();
+          } else {
+            setSaveHintOpen(true);
+          }
+        }, 650);
+      }
       const clickedPanel = panelRects[clickedPanelIndex];
       const imageIndex = panelImageMapping[clickedPanel.panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
@@ -1927,14 +1990,19 @@ const CanvasCollagePreview = ({
       if (isTransformMode[clickedPanel.panelId]) {
         setIsDragging(true);
         setDragStart({ x, y });
-        } else if (onPanelClick && textEditingPanel === null) {
-          // Desktop/mouse: open immediately on click
-          onPanelClick(clickedPanel.index, clickedPanel.panelId);
-        }
+      } else if (textEditingPanel === null) {
+        // Open actions menu at click position
+        handleActionMenuOpen({ clientX: e.clientX, clientY: e.clientY }, clickedPanel.panelId);
+      }
     }
-  }, [panelRects, isTransformMode, onPanelClick, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart]);
+  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen]);
 
   const handleMouseUp = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressActiveRef.current = false;
     setIsDragging(false);
     setIsDraggingBorder(false);
     setDraggedBorder(null);
@@ -1945,6 +2013,12 @@ const CanvasCollagePreview = ({
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
+    }
+    // Cancel any pending long-press if cursor leaves canvas
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+      longPressActiveRef.current = false;
     }
     // Clear hover state when mouse leaves canvas
     setHoveredPanel(null);
@@ -2121,6 +2195,8 @@ const CanvasCollagePreview = ({
     return Math.sqrt(dx * dx + dy * dy);
   }, []);
 
+  // (removed duplicate handleMouseMove; integrated cancellation into main handler below)
+
   // Helper function to get center point between two touches
   const getTouchCenter = useCallback((touches) => {
     if (touches.length < 2) return { x: touches[0].clientX, y: touches[0].clientY };
@@ -2235,6 +2311,23 @@ const CanvasCollagePreview = ({
         }
         
         setSelectedPanel(clickedPanelIndex);
+
+        // Begin long-press detection for mobile when not editing/transforming/reordering
+        if (!anyPanelInTransformMode && textEditingPanel === null && !isReorderMode) {
+          if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+          longPressActiveRef.current = false;
+          longPressStartRef.current = { x: touch.clientX, y: touch.clientY, scrollY: window.scrollY || window.pageYOffset || 0 };
+          longPressTimerRef.current = setTimeout(() => {
+            longPressActiveRef.current = true;
+            // Cancel any pending tap recognition
+            if (touchStartInfo.current) touchStartInfo.current = null;
+            if (typeof onSaveGestureDetected === 'function') {
+              onSaveGestureDetected();
+            } else {
+              setSaveHintOpen(true);
+            }
+          }, 650);
+        }
         
         // Check if we're in reorder mode
         if (isReorderMode) {
@@ -2331,6 +2424,20 @@ const CanvasCollagePreview = ({
     if (anyPanelInTransformMode && (isDragging || touchStartDistance !== null)) {
       e.preventDefault();
       e.stopPropagation();
+    }
+
+    // Cancel long-press when movement/scroll exceeds threshold
+    if (longPressTimerRef.current) {
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - longPressStartRef.current.x);
+      const deltaY = Math.abs(touch.clientY - longPressStartRef.current.y);
+      const deltaScrollY = Math.abs((window.scrollY || window.pageYOffset || 0) - (longPressStartRef.current.scrollY || 0));
+      const scrollThreshold = 10;
+      if (deltaX > scrollThreshold || deltaY > scrollThreshold || deltaScrollY > scrollThreshold) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+        longPressActiveRef.current = false;
+      }
     }
 
     // Handle border dragging
@@ -2522,11 +2629,23 @@ const CanvasCollagePreview = ({
   }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
 
   const handleTouchEnd = useCallback((e) => {
+    // Clear any pending long-press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
     setIsDragging(false);
     setIsDraggingBorder(false);
     setDraggedBorder(null);
     setTouchStartDistance(null);
     setTouchStartScale(1);
+
+    // If a long-press fired, suppress tap actions
+    if (longPressActiveRef.current) {
+      longPressActiveRef.current = false;
+      touchStartInfo.current = null;
+      return;
+    }
     
     // Check if this was a tap on text area
     if (touchStartInfo.current && touchStartInfo.current.isTextArea && e.changedTouches && e.changedTouches[0]) {
@@ -2562,9 +2681,12 @@ const CanvasCollagePreview = ({
       const maxDuration = 500; // milliseconds
       
       if (deltaX < maxMovement && deltaY < maxMovement && deltaScrollY < maxMovement && deltaTime < maxDuration) {
-        // Confirmed tap, now open the library for this panel
-        if (onPanelClick && textEditingPanel === null) {
-          onPanelClick(touchStartInfo.current.panelIndex, touchStartInfo.current.panelId);
+        // Confirmed tap on a frame: open actions menu (unless suppressed)
+        if (textEditingPanel === null) {
+          const touch = e.changedTouches[0];
+          if (!(typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed())) {
+            handleActionMenuOpen({ clientX: touch.clientX, clientY: touch.clientY }, touchStartInfo.current.panelId);
+          }
         }
       }
     }
@@ -2589,7 +2711,7 @@ const CanvasCollagePreview = ({
     
     // Always clear touchStartInfo
     touchStartInfo.current = null;
-  }, [handleTextEdit, dismissTransformMode]);
+  }, [handleTextEdit, dismissTransformMode, handleActionMenuOpen]);
 
   // Cancel reorder mode
   const cancelReorderMode = useCallback(() => {
@@ -2621,19 +2743,6 @@ const CanvasCollagePreview = ({
     }));
   }, [isReorderMode]);
 
-  // Open the action menu anchored to a panel's button
-  const handleActionMenuOpen = useCallback((event, panelId) => {
-    event.stopPropagation();
-    setActionMenuAnchorEl(event.currentTarget);
-    setActionMenuPanelId(panelId);
-  }, []);
-
-  // Close the action menu
-  const handleActionMenuClose = useCallback(() => {
-    setActionMenuAnchorEl(null);
-    setActionMenuPanelId(null);
-  }, []);
-
   const handleMenuTransform = useCallback(() => {
     if (actionMenuPanelId) {
       toggleTransformMode(actionMenuPanelId);
@@ -2647,6 +2756,25 @@ const CanvasCollagePreview = ({
     }
     handleActionMenuClose();
   }, [actionMenuPanelId, startReorderMode, handleActionMenuClose]);
+
+  // Trigger replace image through parent handler
+  const handleMenuReplace = useCallback(() => {
+    if (actionMenuPanelId && typeof onPanelClick === 'function') {
+      const rect = panelRects.find(r => r.panelId === actionMenuPanelId);
+      if (rect) {
+        onPanelClick(rect.index, actionMenuPanelId);
+      }
+    }
+    handleActionMenuClose();
+  }, [actionMenuPanelId, onPanelClick, panelRects, handleActionMenuClose]);
+
+  // Open caption editor for the panel
+  const handleMenuEditCaption = useCallback(() => {
+    if (actionMenuPanelId) {
+      handleTextEdit(actionMenuPanelId);
+    }
+    handleActionMenuClose();
+  }, [actionMenuPanelId, handleTextEdit, handleActionMenuClose]);
 
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => new Promise((resolve) => {
@@ -2983,6 +3111,7 @@ const CanvasCollagePreview = ({
         WebkitUserSelect: 'none',
         // Optimize touch interactions
         WebkitTapHighlightColor: 'transparent',
+        WebkitTouchCallout: 'none',
         // Visual feedback when in transform mode
         ...(anyPanelInTransformMode && {
           boxShadow: '0 0 0 2px #2196F3',
@@ -3009,6 +3138,14 @@ const CanvasCollagePreview = ({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchEnd}
+          onContextMenu={(e) => { 
+            e.preventDefault(); 
+            if (typeof onSaveGestureDetected === 'function') {
+              onSaveGestureDetected();
+            } else {
+              setSaveHintOpen(true);
+            }
+          }}
                   style={{
             display: 'block',
             width: '100%',
@@ -3026,52 +3163,8 @@ const CanvasCollagePreview = ({
         const { panelId } = rect;
         const imageIndex = panelImageMapping[panelId];
         const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
-        const isInTransformMode = isTransformMode[panelId];
-        
-        // Calculate responsive dimensions based on panel size with mobile-friendly minimums
         return (
           <Box key={`controls-${panelId}`}>
-            {/* Single control button with action menu */}
-            {hasImage && textEditingPanel === null &&
-             (!anyPanelInTransformMode || isInTransformMode) &&
-             !isDraggingBorder && !isReorderMode && (
-              <IconButton
-                size="small"
-                onClick={(e) =>
-                  isInTransformMode
-                    ? toggleTransformMode(panelId)
-                    : handleActionMenuOpen(e, panelId)
-                }
-                sx={{
-                  position: 'absolute',
-                  top: rect.y + 8,
-                  left: rect.x + rect.width - 48, // Simplified positioning
-                  width: 40,
-                  height: 40,
-                  backgroundColor: isInTransformMode ? '#4CAF50' : '#2196F3',
-                  color: '#ffffff',
-                  border: '2px solid #ffffff',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                  opacity: 1,
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    backgroundColor: isInTransformMode ? '#388E3C' : '#1976D2',
-                    transform: 'scale(1.1)',
-                  },
-                  // Better touch handling
-                  touchAction: 'manipulation', // Prevents double-tap zoom but allows scrolling
-                  cursor: 'pointer',
-                  zIndex: 12, // Higher than caption overlay to ensure interactivity
-                }}
-              >
-                {isInTransformMode ? (
-                  <Check sx={{ fontSize: 20 }} />
-                ) : (
-                  <OpenWith sx={{ fontSize: 16 }} />
-                )}
-              </IconButton>
-            )}
-
             {/* Check icon for the frame being moved in reorder mode */}
             {isReorderMode && reorderSourcePanel === panelId && (
               <IconButton
@@ -3081,6 +3174,36 @@ const CanvasCollagePreview = ({
                   position: 'absolute',
                   top: rect.y + 8,
                   left: rect.x + rect.width - 48, // Same position as transform button
+                  width: 40,
+                  height: 40,
+                  backgroundColor: '#4CAF50',
+                  color: '#ffffff',
+                  border: '2px solid #ffffff',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                  opacity: 1,
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor: '#388E3C',
+                    transform: 'scale(1.1)',
+                  },
+                  touchAction: 'manipulation',
+                  cursor: 'pointer',
+                  zIndex: 12,
+                }}
+              >
+                <Check sx={{ fontSize: 20 }} />
+              </IconButton>
+            )}
+
+            {/* Check icon for the frame in transform (Crop & Zoom) mode */}
+            {isTransformMode?.[panelId] && (
+              <IconButton
+                size="small"
+                onClick={dismissTransformMode}
+                sx={{
+                  position: 'absolute',
+                  top: rect.y + 8,
+                  left: rect.x + rect.width - 48,
                   width: 40,
                   height: 40,
                   backgroundColor: '#4CAF50',
@@ -3275,6 +3398,29 @@ const CanvasCollagePreview = ({
         />
       )}
 
+      {/* Long-press save hint */}
+      <Snackbar
+        open={saveHintOpen}
+        onClose={() => setSaveHintOpen(false)}
+        autoHideDuration={2400}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSaveHintOpen(false)}
+          severity="info"
+          variant="filled"
+          icon={<SaveAlt fontSize="inherit" />}
+          sx={{
+            bgcolor: 'rgba(33, 150, 243, 0.95)',
+            color: '#fff',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            borderRadius: 2,
+          }}
+        >
+          Press "Generate Collage" to save your image
+        </Alert>
+      </Snackbar>
+
       {/* Invisible backdrop for reorder mode - captures clicks outside panels to cancel */}
       {isReorderMode && (
         <Box
@@ -3348,24 +3494,47 @@ const CanvasCollagePreview = ({
         />
       ))}
 
-      {/* Action menu for panel controls */}
+      {/* Action menu for panel controls (Crop & Zoom, Rearrange, Replace Image) */}
       <Menu
         anchorEl={actionMenuAnchorEl}
-        open={Boolean(actionMenuAnchorEl)}
+        anchorReference={actionMenuPosition ? 'anchorPosition' : 'anchorEl'}
+        anchorPosition={actionMenuPosition || undefined}
+        open={Boolean(actionMenuAnchorEl) || Boolean(actionMenuPosition)}
         onClose={handleActionMenuClose}
       >
-        <MenuItem onClick={handleMenuTransform}>
-          <ListItemIcon>
-            <Crop fontSize="small" />
-          </ListItemIcon>
-          Crop & Zoom
-        </MenuItem>
-        <MenuItem onClick={handleMenuReorder}>
-          <ListItemIcon>
-            <DragIndicator fontSize="small" />
-          </ListItemIcon>
-          Rearrange
-        </MenuItem>
+        {(() => {
+          const imageIndex = actionMenuPanelId ? panelImageMapping[actionMenuPanelId] : undefined;
+          const hasImageForPanel = imageIndex !== undefined && loadedImages[imageIndex];
+          const hasCaption = !!(actionMenuPanelId && panelTexts[actionMenuPanelId] && (panelTexts[actionMenuPanelId].content || '').trim());
+          return (
+            <>
+              <MenuItem onClick={handleMenuTransform} disabled={!hasImageForPanel}>
+                <ListItemIcon>
+                  <Crop fontSize="small" />
+                </ListItemIcon>
+                Crop & Zoom
+              </MenuItem>
+              <MenuItem onClick={handleMenuReorder} disabled={!hasImageForPanel}>
+                <ListItemIcon>
+                  <DragIndicator fontSize="small" />
+                </ListItemIcon>
+                Rearrange
+              </MenuItem>
+              <MenuItem onClick={handleMenuReplace}>
+                <ListItemIcon>
+                  <ImageIcon fontSize="small" />
+                </ListItemIcon>
+                Replace Image
+              </MenuItem>
+              <MenuItem onClick={handleMenuEditCaption} disabled={!hasImageForPanel}>
+                <ListItemIcon>
+                  <Subtitles fontSize="small" />
+                </ListItemIcon>
+                {hasCaption ? 'Edit caption' : 'Add caption'}
+              </MenuItem>
+            </>
+          );
+        })()}
       </Menu>
 
     </Box>
@@ -3384,6 +3553,8 @@ CanvasCollagePreview.propTypes = {
     }),
   ])),
   onPanelClick: PropTypes.func,
+  onSaveGestureDetected: PropTypes.func,
+  isFrameActionSuppressed: PropTypes.func,
   aspectRatioValue: PropTypes.number,
   panelImageMapping: PropTypes.object,
   updatePanelImageMapping: PropTypes.func,

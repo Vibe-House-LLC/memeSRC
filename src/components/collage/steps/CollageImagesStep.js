@@ -46,10 +46,16 @@ const CollageImagesStep = ({
   onCollageGenerated = null,
   isCreatingCollage,
   onCaptionEditorVisibleChange,
+  onGenerateNudgeRequested,
+  isFrameActionSuppressed,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const fileInputRef = useRef(null);
+  const isTouchDevice = typeof window !== 'undefined' && (
+    ('ontouchstart' in window) ||
+    (typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0))
+  );
   
   // Debug the props we're receiving
   debugLog("CollageImagesStep props:", {
@@ -149,8 +155,10 @@ const CollageImagesStep = ({
             handleOpenExportDialog={handleOpenExportDialog}
             onCollageGenerated={onCollageGenerated}
             isCreatingCollage={isCreatingCollage}
-            onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
-          />
+          onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
+          onGenerateNudgeRequested={onGenerateNudgeRequested}
+          isFrameActionSuppressed={isFrameActionSuppressed}
+        />
         </Box>
         
         <Typography
@@ -161,7 +169,7 @@ const CollageImagesStep = ({
             textAlign: 'center'
           }}
         >
-          Fill all frames to generate your collage.
+          {`☝️ ${isTouchDevice ? 'tap' : 'click'} to edit images & captions`}
         </Typography>
         
         {/* Hidden file input for Add Image button */}
@@ -212,6 +220,8 @@ CollageImagesStep.propTypes = {
   onCollageGenerated: PropTypes.func,
   isCreatingCollage: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,
+  onGenerateNudgeRequested: PropTypes.func,
+  isFrameActionSuppressed: PropTypes.func,
 };
 
 export default CollageImagesStep;
