@@ -218,6 +218,8 @@ const CaptionEditor = ({
   componentWidth,
 }) => {
   const theme = useTheme();
+  // Current text color for UI bindings (e.g., toolbar swatch)
+  const currentTextColor = panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff';
   // Single unified editor view (tabs removed)
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
@@ -296,6 +298,8 @@ const CaptionEditor = ({
     setSavedCustomTextColor(newColor);
     localStorage.setItem('memeTextCustomColor', newColor);
     handleTextChange('color', newColor);
+    // Auto-close color picker after choosing a custom color
+    setShowInlineColor(false);
   };
 
   const handleTextChange = useCallback((property, value) => {
@@ -618,7 +622,7 @@ const CaptionEditor = ({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInlineColor(true); }}
                 >
-                  <Palette />
+                  <Palette sx={{ color: currentTextColor }} />
                 </ToggleButton>
                 <ToggleButton size='small' value="bold" aria-label="bold">
                   <FormatBold />
@@ -758,7 +762,7 @@ const CaptionEditor = ({
                       {hasSavedCustomTextColor && (
                         <Tooltip title="Custom Color" arrow>
                           <ColorSwatch
-                            onClick={() => handleTextChange('color', savedCustomTextColor)}
+                            onClick={() => { handleTextChange('color', savedCustomTextColor); setShowInlineColor(false); }}
                             selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === savedCustomTextColor}
                             sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
                           />
@@ -769,7 +773,7 @@ const CaptionEditor = ({
                       {TEXT_COLOR_PRESETS.map((colorOption) => (
                         <Tooltip key={colorOption.color} title={colorOption.name} arrow>
                           <ColorSwatch
-                            onClick={() => handleTextChange('color', colorOption.color)}
+                            onClick={() => { handleTextChange('color', colorOption.color); setShowInlineColor(false); }}
                             selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
                             sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
                           />
