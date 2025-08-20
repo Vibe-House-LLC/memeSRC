@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon } from "@mui/material";
+import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
@@ -465,6 +465,12 @@ const CanvasCollagePreview = ({
   const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(null);
+
+  // Long-press (press-and-hold) hint state
+  const [saveHintOpen, setSaveHintOpen] = useState(false);
+  const longPressTimerRef = useRef(null);
+  const longPressActiveRef = useRef(false);
+  const longPressStartRef = useRef({ x: 0, y: 0, scrollY: 0 });
 
   // Base canvas size for text scaling calculations
   const BASE_CANVAS_WIDTH = 400;
@@ -1894,6 +1900,16 @@ const CanvasCollagePreview = ({
     );
     
     if (clickedPanelIndex >= 0) {
+      // Start a long-press timer for desktop only when not editing/transforming/reordering
+      if (!Object.values(isTransformMode).some(Boolean) && textEditingPanel === null && !isReorderMode) {
+        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+        longPressActiveRef.current = false;
+        longPressStartRef.current = { x: e.clientX, y: e.clientY, scrollY: window.scrollY || window.pageYOffset || 0 };
+        longPressTimerRef.current = setTimeout(() => {
+          longPressActiveRef.current = true;
+          setSaveHintOpen(true);
+        }, 650);
+      }
       const clickedPanel = panelRects[clickedPanelIndex];
       const imageIndex = panelImageMapping[clickedPanel.panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
@@ -1957,6 +1973,11 @@ const CanvasCollagePreview = ({
   }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen]);
 
   const handleMouseUp = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressActiveRef.current = false;
     setIsDragging(false);
     setIsDraggingBorder(false);
     setDraggedBorder(null);
@@ -2257,6 +2278,19 @@ const CanvasCollagePreview = ({
         }
         
         setSelectedPanel(clickedPanelIndex);
+
+        // Begin long-press detection for mobile when not editing/transforming/reordering
+        if (!anyPanelInTransformMode && textEditingPanel === null && !isReorderMode) {
+          if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+          longPressActiveRef.current = false;
+          longPressStartRef.current = { x: touch.clientX, y: touch.clientY, scrollY: window.scrollY || window.pageYOffset || 0 };
+          longPressTimerRef.current = setTimeout(() => {
+            longPressActiveRef.current = true;
+            // Cancel any pending tap recognition
+            if (touchStartInfo.current) touchStartInfo.current = null;
+            setSaveHintOpen(true);
+          }, 650);
+        }
         
         // Check if we're in reorder mode
         if (isReorderMode) {
@@ -2353,6 +2387,20 @@ const CanvasCollagePreview = ({
     if (anyPanelInTransformMode && (isDragging || touchStartDistance !== null)) {
       e.preventDefault();
       e.stopPropagation();
+    }
+
+    // Cancel long-press when movement/scroll exceeds threshold
+    if (longPressTimerRef.current) {
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - longPressStartRef.current.x);
+      const deltaY = Math.abs(touch.clientY - longPressStartRef.current.y);
+      const deltaScrollY = Math.abs((window.scrollY || window.pageYOffset || 0) - (longPressStartRef.current.scrollY || 0));
+      const scrollThreshold = 10;
+      if (deltaX > scrollThreshold || deltaY > scrollThreshold || deltaScrollY > scrollThreshold) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+        longPressActiveRef.current = false;
+      }
     }
 
     // Handle border dragging
@@ -2544,11 +2592,23 @@ const CanvasCollagePreview = ({
   }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
 
   const handleTouchEnd = useCallback((e) => {
+    // Clear any pending long-press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
     setIsDragging(false);
     setIsDraggingBorder(false);
     setDraggedBorder(null);
     setTouchStartDistance(null);
     setTouchStartScale(1);
+
+    // If a long-press fired, suppress tap actions
+    if (longPressActiveRef.current) {
+      longPressActiveRef.current = false;
+      touchStartInfo.current = null;
+      return;
+    }
     
     // Check if this was a tap on text area
     if (touchStartInfo.current && touchStartInfo.current.isTextArea && e.changedTouches && e.changedTouches[0]) {
@@ -3012,6 +3072,7 @@ const CanvasCollagePreview = ({
         WebkitUserSelect: 'none',
         // Optimize touch interactions
         WebkitTapHighlightColor: 'transparent',
+        WebkitTouchCallout: 'none',
         // Visual feedback when in transform mode
         ...(anyPanelInTransformMode && {
           boxShadow: '0 0 0 2px #2196F3',
@@ -3038,6 +3099,7 @@ const CanvasCollagePreview = ({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchEnd}
+          onContextMenu={(e) => { e.preventDefault(); setSaveHintOpen(true); }}
                   style={{
             display: 'block',
             width: '100%',
@@ -3259,6 +3321,29 @@ const CanvasCollagePreview = ({
           }}
         />
       )}
+
+      {/* Long-press save hint */}
+      <Snackbar
+        open={saveHintOpen}
+        onClose={() => setSaveHintOpen(false)}
+        autoHideDuration={2400}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSaveHintOpen(false)}
+          severity="info"
+          variant="filled"
+          icon={<SaveAlt fontSize="inherit" />}
+          sx={{
+            bgcolor: 'rgba(33, 150, 243, 0.95)',
+            color: '#fff',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            borderRadius: 2,
+          }}
+        >
+          Press "Generate Collage" to save your image
+        </Alert>
+      </Snackbar>
 
       {/* Invisible backdrop for reorder mode - captures clicks outside panels to cancel */}
       {isReorderMode && (
