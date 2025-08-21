@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Card, CardContent, CardActions, Typography, Stack, Chip } from '@mui/material';
-import { Add, FolderOpen, Delete } from '@mui/icons-material';
+import { Box, Button, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton } from '@mui/material';
+import { Masonry } from '@mui/lab';
+import { Add, Delete } from '@mui/icons-material';
+import { formatDistanceToNow } from 'date-fns';
 import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
 
@@ -46,26 +48,37 @@ const ProjectCard = ({ project, onOpen, onDelete }) => {
   }, [project.id, project.state]);
 
   return (
-    <Card variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider' }}>
-      <CardContent>
-        <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-          <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{project.name || 'Untitled Collage'}</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Updated {new Date(project.updatedAt).toLocaleString()}
+    <Card variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider', overflow: 'hidden', borderRadius: 2 }}>
+      <Box sx={{ position: 'relative' }}>
+        <CardActionArea onClick={() => onOpen(project.id)}>
+          {thumbUrl ? (
+            <Box
+              component="img"
+              src={thumbUrl}
+              alt="preview"
+              loading="lazy"
+              sx={{ display: 'block', width: '100%', height: 'auto' }}
+            />
+          ) : (
+            <Skeleton variant="rectangular" sx={{ width: '100%', height: 200 }} />
+          )}
+          <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 1.25, color: '#fff', background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%)' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>
+              {project.name || 'Untitled Collage'}
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.85 }}>
+              Updated {formatDistanceToNow(new Date(project.updatedAt || Date.now()), { addSuffix: true })}
             </Typography>
           </Box>
-          {thumbUrl ? (
-            <Box component="img" src={thumbUrl} alt="preview" sx={{ width: 64, height: 64, borderRadius: 1, border: '1px solid', borderColor: 'divider', objectFit: 'cover' }} />
-          ) : (
-            <Chip label="No preview" size="small" />
-          )}
-        </Stack>
-      </CardContent>
-      <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
-        <Button size="small" variant="contained" startIcon={<FolderOpen />} onClick={() => onOpen(project.id)}>Open</Button>
-        <Button size="small" color="error" startIcon={<Delete />} onClick={() => onDelete(project.id)}>Delete</Button>
-      </CardActions>
+        </CardActionArea>
+        <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
+          <Tooltip title="Delete">
+            <IconButton aria-label="delete project" color="error" onClick={(e) => { e.stopPropagation(); onDelete(project.id); }}>
+              <Delete fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
     </Card>
   );
 };
@@ -79,26 +92,30 @@ ProjectCard.propTypes = {
 export default function ProjectPicker({ projects, onCreateNew, onOpen, onDelete }) {
   return (
     <Box sx={{ width: '100%' }}>
-      <Stack spacing={2} sx={{ mb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, color: '#fff' }}>Collage Projects</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Open a previous collage or start a new one. Projects are saved automatically as you edit.
-        </Typography>
-        <Box>
+      <Stack spacing={1.5} sx={{ mb: 2 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: '#fff' }}>Collage Projects</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Open a previous collage or start a new one. Projects are saved automatically as you edit.
+            </Typography>
+          </Box>
           <Button variant="contained" startIcon={<Add />} onClick={onCreateNew}>
             New Collage
           </Button>
-        </Box>
+        </Stack>
       </Stack>
 
       {projects.length === 0 ? (
         <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved projects yet. Click "New Collage" to begin.</Box>
       ) : (
-        <Stack spacing={2}>
+        <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
           {projects.map(p => (
-            <ProjectCard key={p.id} project={p} onOpen={onOpen} onDelete={onDelete} />
+            <div key={p.id}>
+              <ProjectCard project={p} onOpen={onOpen} onDelete={onDelete} />
+            </div>
           ))}
-        </Stack>
+        </Masonry>
       )}
     </Box>
   );
