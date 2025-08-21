@@ -43,6 +43,8 @@ exports.handler = async (event) => {
     const userSub = (event.requestContext?.identity?.cognitoAuthenticationProvider) ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1) : '';
     const body = JSON.parse(event.body);
     const prompt = body.prompt;
+    const requestedSize = body.size; // e.g., "1024x1536" | "1536x1024" | "1024x1024"
+    const inputFidelity = body.input_fidelity; // e.g., "high"
 
     console.log(JSON.stringify(process.env))
 
@@ -120,7 +122,9 @@ exports.handler = async (event) => {
             magicResultId: dynamoRecord.id.S,
             imageKey,
             maskKey,
-            prompt
+            prompt,
+            size: requestedSize,
+            input_fidelity: inputFidelity
         })
     }));
 

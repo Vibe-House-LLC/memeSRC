@@ -145,6 +145,7 @@ const EditorPage = ({ shows }) => {
   // const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
 
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
+  const [lastGenerativeMapping, setLastGenerativeMapping] = useState(null);
 
   // const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   // const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
@@ -795,6 +796,35 @@ const EditorPage = ({ shows }) => {
     link.click();
   };
 
+  // Supported output sizes for gpt-image-1 edits
+  const SUPPORTED_GENERATIVE_SIZES = [
+    { width: 1024, height: 1024 },
+    { width: 1024, height: 1536 },
+    { width: 1536, height: 1024 },
+  ];
+
+  const chooseClosestSupportedSizeFor = (sourceWidth, sourceHeight) => {
+    const aspect = sourceWidth / sourceHeight;
+    let best = SUPPORTED_GENERATIVE_SIZES[0];
+    let bestDiff = Math.abs(aspect - (best.width / best.height));
+    for (let i = 1; i < SUPPORTED_GENERATIVE_SIZES.length; i += 1) {
+      const candidate = SUPPORTED_GENERATIVE_SIZES[i];
+      const diff = Math.abs(aspect - (candidate.width / candidate.height));
+      if (diff < bestDiff) {
+        best = candidate;
+        bestDiff = diff;
+      }
+    }
+    return best;
+  };
+
+  const computeContainScaleAndOffset = (srcWidth, srcHeight, targetWidth, targetHeight) => {
+    const scale = Math.min(targetWidth / srcWidth, targetHeight / srcHeight);
+    const offsetX = (targetWidth - (srcWidth * scale)) / 2;
+    const offsetY = (targetHeight - (srcHeight * scale)) / 2;
+    return { scale, offsetX, offsetY };
+  };
+
   const exportDrawing = async () => {
     setLoadingInpaintingResult(true)
     window.scrollTo(0, 0);
@@ -803,19 +833,18 @@ const EditorPage = ({ shows }) => {
     // let fabricImage = null;
 
     const tempCanvasDrawing = new fabric.Canvas();
-    tempCanvasDrawing.setWidth(1024);
-    tempCanvasDrawing.setHeight(1024);
+    const originalHeight = editor.canvas.height;
+    const originalWidth = editor.canvas.width;
+    const { width: targetWidth, height: targetHeight } = chooseClosestSupportedSizeFor(originalWidth, originalHeight);
+    tempCanvasDrawing.setWidth(targetWidth);
+    tempCanvasDrawing.setHeight(targetHeight);
 
     tempCanvasDrawing.backgroundColor = 'black'
 
     // tempCanvasDrawing.add(solidRect);
 
-    const originalHeight = editor.canvas.height
-    const originalWidth = editor.canvas.width
-
-    const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-    const offsetX = (1024 - originalWidth * scale) / 2;
-    const offsetY = (1024 - originalHeight * scale) / 2;
+    const { scale, offsetX, offsetY } = computeContainScaleAndOffset(originalWidth, originalHeight, targetWidth, targetHeight);
+    setLastGenerativeMapping({ width: targetWidth, height: targetHeight, scale, offsetX, offsetY });
 
     originalCanvas.getObjects().forEach((obj) => {
       if (obj instanceof fabric.Path) {
@@ -846,9 +875,7 @@ const EditorPage = ({ shows }) => {
 
     const imageWidth = backgroundImage.width
     const imageHeight = backgroundImage.height
-    const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
-    const imageOffsetX = (1024 - imageWidth * imageScale) / 2;
-    const imageOffsetY = (1024 - imageHeight * imageScale) / 2;
+    const { scale: imageScale, offsetX: imageOffsetX, offsetY: imageOffsetY } = computeContainScaleAndOffset(imageWidth, imageHeight, targetWidth, targetHeight);
 
     tempCanvasDrawing.clear();
 
@@ -867,6 +894,8 @@ const EditorPage = ({ shows }) => {
         image: dataURLBgImage,
         mask: dataURLDrawing,
         prompt: magicPrompt,
+        size: `${targetWidth}x${targetHeight}`,
+        input_fidelity: 'high',
       };
 
       try {
@@ -917,6 +946,15 @@ const EditorPage = ({ shows }) => {
     }
   };
 
+  const isImprovedImageUrl = (url) => {
+    try {
+      const u = new URL(url);
+      return u.searchParams.get('variant') === 'improved';
+    } catch (e) {
+      return false;
+    }
+  };
+
   const handleAddCanvasBackground = (imgUrl) => {
     try {
       setOpenSelectResult(false);
@@ -939,11 +977,29 @@ const EditorPage = ({ shows }) => {
 
         const originalHeight = editor.canvas.height;
         const originalWidth = editor.canvas.width;
-        const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-        returnedImage.scale(1 / scale);
+        const improved = isImprovedImageUrl(imgUrl);
+        let mapping;
+        if (improved) {
+          // Prefer the last mapping used to generate improved images
+          mapping = lastGenerativeMapping || (() => {
+            const size = chooseClosestSupportedSizeFor(originalWidth, originalHeight);
+            const m = computeContainScaleAndOffset(originalWidth, originalHeight, size.width, size.height);
+            return { width: size.width, height: size.height, ...m };
+          })();
+        } else {
+          // Old square method mapping (1024x1024)
+          const targetSize = { width: 1024, height: 1024 };
+          const m = computeContainScaleAndOffset(originalWidth, originalHeight, targetSize.width, targetSize.height);
+          mapping = { width: targetSize.width, height: targetSize.height, ...m };
+        }
+
+        const invScale = 1 / mapping.scale;
+        returnedImage.scale(invScale);
+        // Position to crop away the letterbox padding used during generation
+        returnedImage.set({ left: -mapping.offsetX * invScale, top: -mapping.offsetY * invScale });
         editor.canvas.setBackgroundImage(returnedImage);
         setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-        editor.canvas.backgroundImage.center();
+        // Do not re-center; we already aligned to crop padding
         editor.canvas.renderAll();
 
         setEditorTool('captions');
@@ -2491,6 +2547,14 @@ const EditorPage = ({ shows }) => {
                       filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none'
                     }}
                   />
+                  {isImprovedImageUrl(image) && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 8,
+                      fontSize: '18px'
+                    }}>✨</div>
+                  )}
                   {selectedImage === image && (
                     <Fab
                       size='small'

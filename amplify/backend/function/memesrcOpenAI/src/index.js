@@ -60,7 +60,7 @@ exports.handler = async (event) => {
     const s3Client = new S3Client({ region: "us-east-1" });
     const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
 
-    const { magicResultId, imageKey, maskKey, prompt } = event;
+    const { magicResultId, imageKey, maskKey, prompt, size, input_fidelity } = event;
 
     const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
     const data = await ssmClient.send(command);
@@ -78,50 +78,75 @@ exports.handler = async (event) => {
     const image_data = await streamToBuffer(imageObject.Body);
     const mask_data = await streamToBuffer(maskObject.Body);
 
-    let formData = new FormData();
-    formData.append('image', image_data, {
-        filename: 'image.png',
-        contentType: 'image/png',
-    });
-    formData.append('mask', mask_data, {
-        filename: 'mask.png',
-        contentType: 'image/png',
-    });
-    formData.append('prompt', prompt);
-    formData.append('n', 2);
-    formData.append('size', "1024x1024");
-
     const headers = {
         'Authorization': `Bearer ${data.Parameter.Value}`,
-        ...formData.getHeaders()
+        // Remaining form headers will be added per request
     };
 
-    const response = await makeRequest(formData, headers);
-
-    const promises = response.data.data.map(async (imageItem) => {
-        const image_url = imageItem.url;
-
-        const imageResponse = await axios({
-            method: 'get',
-            url: image_url,
-            responseType: 'arraybuffer'
+    const buildFormData = (desiredSize, fidelity) => {
+        let fd = new FormData();
+        fd.append('image', image_data, {
+            filename: 'image.png',
+            contentType: 'image/png',
         });
+        fd.append('mask', mask_data, {
+            filename: 'mask.png',
+            contentType: 'image/png',
+        });
+        fd.append('prompt', prompt);
+        fd.append('n', 2);
+        fd.append('size', desiredSize || "1024x1024");
+        if (fidelity) {
+            fd.append('input_fidelity', fidelity);
+        }
+        return fd;
+    };
 
-        const imageBuffer = Buffer.from(imageResponse.data, 'binary');
-        const fileName = `${uuid.v4()}.jpeg`;
-        const s3Params = {
-            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-            Key: `public/${fileName}`,
-            Body: imageBuffer,
-            ContentType: 'image/jpeg',
-        };
+    // Old original square method (2 variations)
+    const formOld = buildFormData("1024x1024", null);
 
-        await s3Client.send(new PutObjectCommand(s3Params));
+    // New and improved method (2 variations)
+    const formNew = buildFormData(size || "1024x1024", input_fidelity);
 
-        return `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
-    });
+    // Run both OpenAI edit requests in parallel
+    const [responseOld, responseNew] = await Promise.all([
+        makeRequest(formOld, { ...headers, ...formOld.getHeaders() }),
+        makeRequest(formNew, { ...headers, ...formNew.getHeaders() })
+    ]);
 
-    const cdnImageUrls = await Promise.all(promises);
+    const saveResponses = async (response, isImproved) => {
+        const promises = response.data.data.map(async (imageItem) => {
+            const image_url = imageItem.url;
+
+            const imageResponse = await axios({
+                method: 'get',
+                url: image_url,
+                responseType: 'arraybuffer'
+            });
+
+            const imageBuffer = Buffer.from(imageResponse.data, 'binary');
+            const fileName = `${uuid.v4()}.jpeg`;
+            const s3Params = {
+                Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+                Key: `public/${fileName}`,
+                Body: imageBuffer,
+                ContentType: 'image/jpeg',
+            };
+
+            await s3Client.send(new PutObjectCommand(s3Params));
+
+            const baseUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+            return isImproved ? `${baseUrl}?variant=improved` : baseUrl;
+        });
+        return Promise.all(promises);
+    };
+
+    // Save both sets of images to S3 in parallel
+    const [oldUrls, newUrls] = await Promise.all([
+        saveResponses(responseOld, false),
+        saveResponses(responseNew, true)
+    ]);
+    const cdnImageUrls = [...oldUrls, ...newUrls];
 
     await dynamoClient.send(new UpdateItemCommand({
         TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
