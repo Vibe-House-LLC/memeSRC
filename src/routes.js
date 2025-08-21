@@ -61,6 +61,7 @@ const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
 const CollageAnimatedIconDemoPage = lazy(() => import('./pages/CollageAnimatedIconDemoPage'));
 const ServerPage = lazy(() => import('./pages/ServerPage'));
 const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
+const StickersPage = lazy(() => import('./pages/StickersPage'));
 
 const DonationRedirect = () => {
   window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
@@ -109,6 +110,7 @@ export default function Router() {
         { path: '/:seriesId', element: <SiteWideMaintenance><DynamicRouteHandler /></SiteWideMaintenance> },
         { path: '/server', element: <SiteWideMaintenance><ServerPage /></SiteWideMaintenance> },
         { path: '/facebook', element: <SiteWideMaintenance><FacebookAuthDemo /></SiteWideMaintenance> },
+        { path: '/stickers', element: <SiteWideMaintenance><StickersPage /></SiteWideMaintenance> },
         { path: '/demo/collage-animated-icon', element: <SiteWideMaintenance><CollageAnimatedIconDemoPage /></SiteWideMaintenance> },
         { path: '/demo/rainbow-icon', element: <SiteWideMaintenance><CollageAnimatedIconDemoPage /></SiteWideMaintenance> },
       ]

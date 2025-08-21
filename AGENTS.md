@@ -33,3 +33,72 @@
 - Environment: CRA uses `REACT_APP_*`. Common keys: `REACT_APP_USER_BRANCH`, `REACT_APP_VERSION`. Store in `.env.local` (never commit secrets).
 - AWS Amplify: Endpoints configured in `src/index.js`. Avoid hardcoding secrets; prefer env and Amplify config.
 
+## Reusable Component Guidelines
+- **Single responsibility**: Keep components focused. If it does more than one clear thing, split it.
+- **Composition first**: Prefer `children` and small composable parts over dozens of config props.
+- **Props API**: Support `className`, `style`, `sx` (for MUI), and forward `...other` props to the root element.
+- **Ref forwarding**: Use `forwardRef` when the root is focusable/measureable. Expose imperative handles sparingly via `useImperativeHandle`.
+- **Controlled/uncontrolled**: For inputs, support both: `value` + `onChange` (controlled) and `defaultValue` (uncontrolled). Mirror for `checked/defaultChecked`, `open/defaultOpen`.
+- **Theming**: Use Emotion/MUI theme tokens (`useTheme`, `sx`, `styled`) and avoid hardcoded colors, spacing, and typography.
+- **Accessibility**: Keyboard support and ARIA labels/roles by default. Ensure focus management and label association; avoid div-only interactivity.
+- **MUI interop**: When wrapping MUI, re-expose common props (`component`, `sx`, `variant`, `color`) and don’t block MUI system props.
+- **Data-agnostic**: Accept data via props; do not fetch inside reusable components. Put I/O in pages/hooks and pass results down.
+- **No global coupling**: Don’t import app-specific contexts (auth, router) in primitives. Accept callbacks/values via props instead.
+- **Stable contracts**: Use PropTypes for runtime validation; document defaults and edge cases in the component JSDoc.
+
+### Minimal Component Template (JS)
+```jsx
+import React, { forwardRef } from 'react';
+import PropTypes from 'prop-types';
+import styled from '@emotion/styled'; // or: `import { styled } from '@mui/material/styles'`
+
+// If using Emotion styled:
+// const Root = styled('div')(({ theme }) => ({ display: 'flex' }));
+
+const MyComponent = forwardRef(function MyComponent(
+  { className, sx, style, children, ...other },
+  ref
+) {
+  return (
+    <div ref={ref} className={className} style={style} {...other}>
+      {children}
+    </div>
+  );
+});
+
+MyComponent.propTypes = {
+  className: PropTypes.string,
+  style: PropTypes.object,
+  sx: PropTypes.object,
+  children: PropTypes.node,
+};
+
+export default MyComponent;
+```
+
+### File Structure
+- **Location**: Place under `src/components/FeatureName/` when part of a feature; primitives under `src/components/`.
+- **Collocation**: Keep `Component.js`, `Component.test.js`, and `Component.styles.js` (if any) together. Re-export via `index.js` for clean imports.
+
+### PR Reusability Checklist
+- [ ] Single, clear responsibility and name.
+- [ ] Accepts `className`, `style`, `sx`, forwards `...other` props.
+- [ ] `forwardRef` used when applicable; ref reaches the interactive root.
+- [ ] Controlled/uncontrolled pattern supported for inputs (`value`/`defaultValue`, etc.).
+- [ ] A11y: Keyboard + ARIA covered; labels and roles correct.
+- [ ] Theme-aware: No hardcoded colors/spacing; uses MUI/Emotion tokens.
+- [ ] No data fetching, routing, or app-specific context inside.
+- [ ] PropTypes defined with sensible defaults and docs in JSDoc.
+- [ ] Tests: Render smoke test and at least one behavior test (RTL). Mocks for network/Amplify if needed.
+- [ ] Story/sandbox optional but encouraged if complex API (can use a simple page under `pages/dev/` during development; do not commit).
+
+### Patterns To Prefer
+- **Compound components** for complex UIs (`<Tabs><Tabs.List/><Tabs.Panel/></Tabs>`), wired via minimal context internal to the component.
+- **Render props** only when children content needs dynamic control and composition fits poorly.
+- **Small hooks** extracted for reusable logic (`useXyz`) placed in `src/hooks/` and unit tested separately.
+
+### Anti-patterns
+- Hardcoded copy or product logic inside primitives.
+- Styling via inline literals instead of theme/system props.
+- Swallowing/overwriting consumer props (`className`, `onClick`, `sx`).
+- One-off variants baked into the component instead of composition.

@@ -43,6 +43,8 @@ exports.handler = async (event) => {
     const userSub = (event.requestContext?.identity?.cognitoAuthenticationProvider) ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1) : '';
     const body = JSON.parse(event.body);
     const prompt = body.prompt;
+    const modeNormalized = (body.mode || 'edit').toLowerCase();
+    const style = body.style || 'realistic';
 
     console.log(JSON.stringify(process.env))
 
@@ -79,23 +81,27 @@ exports.handler = async (event) => {
         };
     }
 
-    // Upload image inputs to S3
-    const imageKey = `tmp/${uuid.v4()}.png`;
-    const maskKey = `tmp/${uuid.v4()}.png`;
+    // Upload image inputs to S3 (only for edit/inpaint mode)
+    let imageKey;
+    let maskKey;
+    if (modeNormalized !== 'sticker') {
+        imageKey = `tmp/${uuid.v4()}.png`;
+        maskKey = `tmp/${uuid.v4()}.png`;
 
-    await s3Client.send(new PutObjectCommand({
-        Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-        Key: imageKey,
-        Body: Buffer.from(body.image.split(",")[1], 'base64'),
-        ContentType: 'image/png',
-    }));
+        await s3Client.send(new PutObjectCommand({
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: imageKey,
+            Body: Buffer.from(body.image.split(",")[1], 'base64'),
+            ContentType: 'image/png',
+        }));
 
-    await s3Client.send(new PutObjectCommand({
-        Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-        Key: maskKey,
-        Body: Buffer.from(body.mask.split(",")[1], 'base64'),
-        ContentType: 'image/png',
-    }));
+        await s3Client.send(new PutObjectCommand({
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: maskKey,
+            Body: Buffer.from(body.mask.split(",")[1], 'base64'),
+            ContentType: 'image/png',
+        }));
+    }
 
     // Create the DynamoDB record for MagicResult
     const dynamoRecord = {
@@ -113,15 +119,19 @@ exports.handler = async (event) => {
     }));
 
     // Invoke the OpenAI processing Lambda asynchronously
+    const payload = {
+        magicResultId: dynamoRecord.id.S,
+        prompt,
+        mode: modeNormalized,
+        style
+    };
+    if (imageKey) payload.imageKey = imageKey;
+    if (maskKey) payload.maskKey = maskKey;
+
     await lambdaClient.send(new InvokeCommand({
         FunctionName: process.env.FUNCTION_MEMESRCOPENAI_NAME,
         InvocationType: "Event",
-        Payload: JSON.stringify({ 
-            magicResultId: dynamoRecord.id.S,
-            imageKey,
-            maskKey,
-            prompt
-        })
+        Payload: JSON.stringify(payload)
     }));
 
     // Return the new MagicResult id
