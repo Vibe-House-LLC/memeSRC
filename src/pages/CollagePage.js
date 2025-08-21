@@ -530,7 +530,7 @@ export default function CollagePage() {
       }
     }
     return () => { if (t) clearTimeout(t); };
-  }, [activeProjectId, borderColor, borderThickness, saveProjectNow]);
+  }, [activeProjectId, borderColor, borderThickness, renderBump, saveProjectNow]);
 
   // 2) Save on layout changes: template, aspect ratio, or panel count
   useEffect(() => {
@@ -542,7 +542,7 @@ export default function CollagePage() {
       }
     }
     return () => { if (t) clearTimeout(t); };
-  }, [activeProjectId, selectedTemplate?.id, selectedAspectRatio, panelCount, saveProjectNow]);
+  }, [activeProjectId, selectedTemplate?.id, selectedAspectRatio, panelCount, renderBump, saveProjectNow]);
 
   // 3) Initial save when images first appear and preview has rendered
   const didInitialSaveRef = useRef(false);
