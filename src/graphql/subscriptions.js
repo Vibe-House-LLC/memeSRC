@@ -1645,6 +1645,8 @@ export const onCreateMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      status
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -1679,6 +1681,8 @@ export const onUpdateMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      status
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -1713,6 +1717,8 @@ export const onDeleteMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      status
+      error
       createdAt
       updatedAt
       magicResultUserId

@@ -275,7 +275,9 @@ type MagicResult @model @auth(
   id: ID!, 
   user: UserDetails @hasOne,
   prompt: String,
-  results: String
+  results: String,
+  status: String,
+  error: String
 }
 
 type EditorProject @model @auth(

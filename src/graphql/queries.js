@@ -1074,6 +1074,8 @@ export const getMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      status
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -1092,6 +1094,8 @@ export const listMagicResults = /* GraphQL */ `
         id
         prompt
         results
+        status
+        error
         createdAt
         updatedAt
         magicResultUserId

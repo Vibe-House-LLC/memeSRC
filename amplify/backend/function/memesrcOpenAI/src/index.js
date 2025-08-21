@@ -62,101 +62,123 @@ exports.handler = async (event) => {
 
     const { magicResultId, imageKey, maskKey, prompt, size, input_fidelity } = event;
 
-    const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
-    const data = await ssmClient.send(command);
+    try {
+        const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
+        const data = await ssmClient.send(command);
+        // Fetch the images from S3
+        const imageObject = await s3Client.send(new GetObjectCommand({
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: imageKey
+        }));
+        const maskObject = await s3Client.send(new GetObjectCommand({
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: maskKey
+        }));
 
-    // Fetch the images from S3
-    const imageObject = await s3Client.send(new GetObjectCommand({
-        Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-        Key: imageKey
-    }));
-    const maskObject = await s3Client.send(new GetObjectCommand({
-        Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-        Key: maskKey
-    }));
+        const image_data = await streamToBuffer(imageObject.Body);
+        const mask_data = await streamToBuffer(maskObject.Body);
 
-    const image_data = await streamToBuffer(imageObject.Body);
-    const mask_data = await streamToBuffer(maskObject.Body);
+        const headers = {
+            'Authorization': `Bearer ${data.Parameter.Value}`,
+            // Remaining form headers will be added per request
+        };
 
-    const headers = {
-        'Authorization': `Bearer ${data.Parameter.Value}`,
-        // Remaining form headers will be added per request
-    };
-
-    const buildFormData = (desiredSize, fidelity) => {
-        let fd = new FormData();
-        fd.append('image', image_data, {
-            filename: 'image.png',
-            contentType: 'image/png',
-        });
-        fd.append('mask', mask_data, {
-            filename: 'mask.png',
-            contentType: 'image/png',
-        });
-        fd.append('prompt', prompt);
-        fd.append('n', 2);
-        fd.append('size', desiredSize || "1024x1024");
-        if (fidelity) {
-            fd.append('input_fidelity', fidelity);
-        }
-        return fd;
-    };
-
-    // Old original square method (2 variations)
-    const formOld = buildFormData("1024x1024", null);
-
-    // New and improved method (2 variations)
-    const formNew = buildFormData(size || "1024x1024", input_fidelity);
-
-    // Run both OpenAI edit requests in parallel
-    const [responseOld, responseNew] = await Promise.all([
-        makeRequest(formOld, { ...headers, ...formOld.getHeaders() }),
-        makeRequest(formNew, { ...headers, ...formNew.getHeaders() })
-    ]);
-
-    const saveResponses = async (response, isImproved) => {
-        const promises = response.data.data.map(async (imageItem) => {
-            const image_url = imageItem.url;
-
-            const imageResponse = await axios({
-                method: 'get',
-                url: image_url,
-                responseType: 'arraybuffer'
+        const buildFormData = (desiredSize, fidelity) => {
+            let fd = new FormData();
+            fd.append('image', image_data, {
+                filename: 'image.png',
+                contentType: 'image/png',
             });
+            fd.append('mask', mask_data, {
+                filename: 'mask.png',
+                contentType: 'image/png',
+            });
+            fd.append('prompt', prompt);
+            fd.append('n', 2);
+            fd.append('size', desiredSize || "1024x1024");
+            if (fidelity) {
+                fd.append('input_fidelity', fidelity);
+            }
+            return fd;
+        };
 
-            const imageBuffer = Buffer.from(imageResponse.data, 'binary');
-            const fileName = `${uuid.v4()}.jpeg`;
-            const s3Params = {
-                Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-                Key: `public/${fileName}`,
-                Body: imageBuffer,
-                ContentType: 'image/jpeg',
-            };
+        // Old original square method (2 variations)
+        const formOld = buildFormData("1024x1024", null);
 
-            await s3Client.send(new PutObjectCommand(s3Params));
+        // New and improved method (2 variations)
+        const formNew = buildFormData(size || "1024x1024", input_fidelity);
 
-            const baseUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
-            return isImproved ? `${baseUrl}?variant=improved` : baseUrl;
-        });
-        return Promise.all(promises);
-    };
+        // Run both OpenAI edit requests in parallel
+        const [responseOld, responseNew] = await Promise.all([
+            makeRequest(formOld, { ...headers, ...formOld.getHeaders() }),
+            makeRequest(formNew, { ...headers, ...formNew.getHeaders() })
+        ]);
 
-    // Save both sets of images to S3 in parallel
-    const [oldUrls, newUrls] = await Promise.all([
-        saveResponses(responseOld, false),
-        saveResponses(responseNew, true)
-    ]);
-    const cdnImageUrls = [...oldUrls, ...newUrls];
+        const saveResponses = async (response, isImproved) => {
+            const promises = response.data.data.map(async (imageItem) => {
+                const image_url = imageItem.url;
 
-    await dynamoClient.send(new UpdateItemCommand({
-        TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
-        Key: {
-            "id": { S: magicResultId }
-        },
-        UpdateExpression: "set results = :results, updatedAt = :updatedAt",
-        ExpressionAttributeValues: {
-            ":results": { S: JSON.stringify(cdnImageUrls) },
-            ":updatedAt": { S: new Date().toISOString() }
-        }
-    }));
+                const imageResponse = await axios({
+                    method: 'get',
+                    url: image_url,
+                    responseType: 'arraybuffer'
+                });
+
+                const imageBuffer = Buffer.from(imageResponse.data, 'binary');
+                const fileName = `${uuid.v4()}.jpeg`;
+                const s3Params = {
+                    Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+                    Key: `public/${fileName}`,
+                    Body: imageBuffer,
+                    ContentType: 'image/jpeg',
+                };
+
+                await s3Client.send(new PutObjectCommand(s3Params));
+
+                const baseUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+                return isImproved ? `${baseUrl}?variant=improved` : baseUrl;
+            });
+            return Promise.all(promises);
+        };
+
+        // Save both sets of images to S3 in parallel
+        const [oldUrls, newUrls] = await Promise.all([
+            saveResponses(responseOld, false),
+            saveResponses(responseNew, true)
+        ]);
+        const cdnImageUrls = [...oldUrls, ...newUrls];
+
+        await dynamoClient.send(new UpdateItemCommand({
+            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+            Key: {
+                "id": { S: magicResultId }
+            },
+            UpdateExpression: "set results = :results, status = :status, updatedAt = :updatedAt REMOVE error",
+            ExpressionAttributeValues: {
+                ":results": { S: JSON.stringify(cdnImageUrls) },
+                ":status": { S: "completed" },
+                ":updatedAt": { S: new Date().toISOString() }
+            }
+        }));
+    } catch (err) {
+        console.error("OpenAI worker failed:", err);
+        const safeError = {
+            message: err?.message || 'Unknown error',
+            code: err?.response?.status || err?.code || 'Unknown',
+            details: err?.response?.data || undefined,
+        };
+        await dynamoClient.send(new UpdateItemCommand({
+            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+            Key: {
+                "id": { S: magicResultId }
+            },
+            UpdateExpression: "set status = :status, error = :error, updatedAt = :updatedAt",
+            ExpressionAttributeValues: {
+                ":status": { S: "failed" },
+                ":error": { S: JSON.stringify(safeError) },
+                ":updatedAt": { S: new Date().toISOString() }
+            }
+        }));
+        // Do not rethrow to avoid Lambda retries writing duplicate errors
+    }
 };

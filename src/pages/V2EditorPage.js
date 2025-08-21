@@ -752,16 +752,18 @@ const EditorPage = ({ shows }) => {
   // ------------------------------------------------------------------------
 
   const QUERY_INTERVAL = 1000; // Every second
-  const TIMEOUT = 60 * 1000;   // 1 minute
+  const TIMEOUT = 90 * 1000;   // 1.5 minutes
 
   async function checkMagicResult(id) {
     try {
       const result = await API.graphql(graphqlOperation(`query MyQuery {
             getMagicResult(id: "${id}") {
               results
+              status
+              error
             }
           }`));
-      return result.data.getMagicResult?.results;
+      return result.data.getMagicResult;
     } catch (error) {
       console.error('Error fetching magic result:', error);
       return null;
@@ -908,18 +910,30 @@ const EditorPage = ({ shows }) => {
         const startTime = Date.now();
 
         const pollInterval = setInterval(async () => {
-          const results = await checkMagicResult(magicResultId);
-          if (results || (Date.now() - startTime) >= TIMEOUT) {
+          const record = await checkMagicResult(magicResultId);
+          const isDone = record?.status === 'completed' || record?.status === 'failed';
+          if (isDone || (Date.now() - startTime) >= TIMEOUT) {
             clearInterval(pollInterval);
             setLoadingInpaintingResult(false);  // Stop the loading spinner
 
-            if (results) {
-              const imageUrls = JSON.parse(results);
+            if (record?.status === 'completed' && record?.results) {
+              const imageUrls = JSON.parse(record.results);
               setReturnedImages([...returnedImages, ...imageUrls]);
               setLoadingInpaintingResult(false);
               setOpenSelectResult(true);
               const newCreditAmount = user?.userDetails.credits - 1;
               setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+            } else if (record?.status === 'failed' && record?.error) {
+              let msg = 'Generation failed';
+              try {
+                const errObj = JSON.parse(record.error);
+                msg = errObj?.message || msg;
+              } catch (parseErr) {
+                // Keep default message if parsing fails
+              }
+              setSeverity('error');
+              setMessage(msg);
+              setOpen(true);
             } else {
               console.error("Timeout reached without fetching magic results.");
               alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
