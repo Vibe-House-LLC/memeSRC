@@ -24,7 +24,7 @@ const ProjectCard = ({ project, onOpen, onDelete }) => {
         // Compute a simple signature; reuse same approach as editor
         const json = JSON.stringify(project.state);
         let hash = 5381; for (let i = 0; i < json.length; i += 1) { hash = (hash * 33 + json.charCodeAt(i)) % 4294967296; }
-        const sig = `v1:${Math.floor(hash)}`;
+        const sig = `v2:${Math.floor(hash)}`;
 
         if (project.thumbnail && project.thumbnailSignature === sig) return;
         const dataUrl = await renderThumbnailFromSnapshot(project.state, { maxDim: 256 });

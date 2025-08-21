@@ -39,50 +39,139 @@ function createLayoutConfigById(templateId, panelCount, customLayout) {
   };
 }
 
-// Parse CSS grid templates to numeric fractions
-function parseFrs(templateStr = '') {
-  if (!templateStr) return [1];
-  if (templateStr.includes('repeat(')) {
-    const m = templateStr.match(/repeat\((\d+),/);
-    if (m) return Array(parseInt(m[1], 10)).fill(1);
-  }
-  const frs = templateStr.match(/(\d*\.?\d*)fr/g);
-  if (frs) return frs.map((s) => { const v = s.replace('fr',''); return v === '' ? 1 : parseFloat(v); });
-  return [1];
+// Parse grid-template-areas string into named area bounds (mirrors preview logic)
+function parseGridTemplateAreas(gridTemplateAreas) {
+  if (!gridTemplateAreas) return {};
+  const areas = {};
+  const rows = gridTemplateAreas
+    .replace(/"/g, '\'')
+    .split("'")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .map((row) => row.split(/\s+/));
+  rows.forEach((row, rowIndex) => {
+    row.forEach((areaName, colIndex) => {
+      if (areaName !== '.' && areaName !== '') {
+        if (!areas[areaName]) {
+          areas[areaName] = { rowStart: rowIndex, rowEnd: rowIndex, colStart: colIndex, colEnd: colIndex };
+        } else {
+          areas[areaName].rowStart = Math.min(areas[areaName].rowStart, rowIndex);
+          areas[areaName].rowEnd = Math.max(areas[areaName].rowEnd, rowIndex);
+          areas[areaName].colStart = Math.min(areas[areaName].colStart, colIndex);
+          areas[areaName].colEnd = Math.max(areas[areaName].colEnd, colIndex);
+        }
+      }
+    });
+  });
+  return areas;
 }
 
-function parseGridToRects(layoutConfig, width, height, panelCount, borderPixels) {
-  const colFrs = parseFrs(layoutConfig.gridTemplateColumns);
-  const rowFrs = parseFrs(layoutConfig.gridTemplateRows);
-  const totalCol = colFrs.reduce((a,b)=>a+b,0);
-  const totalRow = rowFrs.reduce((a,b)=>a+b,0);
-  const hGaps = Math.max(0, colFrs.length - 1) * borderPixels;
-  const vGaps = Math.max(0, rowFrs.length - 1) * borderPixels;
-  const availW = width - (borderPixels * 2) - hGaps;
-  const availH = height - (borderPixels * 2) - vGaps;
-  const colUnit = availW / totalCol;
-  const rowUnit = availH / totalRow;
+// Convert layoutConfig to panel rectangles, honoring borders and template areas (mirrors preview logic)
+function parseGridToRects(layoutConfig, componentWidth, componentHeight, panelCount, borderPixels) {
+  // Determine columns/rows and their fractional sizes
+  let columns = 1;
+  let rows = 1;
+  let columnSizes = [1];
+  let rowSizes = [1];
+
+  if (layoutConfig.gridTemplateColumns) {
+    if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
+      const m = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
+      if (m) {
+        columns = parseInt(m[1], 10);
+        columnSizes = Array(columns).fill(1);
+      }
+    } else {
+      const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
+      if (frMatches) {
+        columns = frMatches.length;
+        columnSizes = frMatches.map((match) => {
+          const value = match.replace('fr', '');
+          return value === '' ? 1 : parseFloat(value);
+        });
+      }
+    }
+  }
+
+  if (layoutConfig.gridTemplateRows) {
+    if (layoutConfig.gridTemplateRows.includes('repeat(')) {
+      const m = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
+      if (m) {
+        rows = parseInt(m[1], 10);
+        rowSizes = Array(rows).fill(1);
+      }
+    } else {
+      const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
+      if (frMatches) {
+        rows = frMatches.length;
+        rowSizes = frMatches.map((match) => {
+          const value = match.replace('fr', '');
+          return value === '' ? 1 : parseFloat(value);
+        });
+      }
+    }
+  }
+
+  // Account for borders as gaps between cells and outer padding
+  const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
+  const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
+  const availableWidth = componentWidth - borderPixels * 2 - horizontalGaps;
+  const availableHeight = componentHeight - borderPixels * 2 - verticalGaps;
+  const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
+  const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
+  const columnFrUnit = availableWidth / totalColumnFr;
+  const rowFrUnit = availableHeight / totalRowFr;
 
   const rects = [];
-  if (layoutConfig.areas && Array.isArray(layoutConfig.areas)) {
-    // Not used by our current dynamic layouts; fallback to sequential mapping
+
+  // Helper to compute rect at grid cell
+  const getRectForCell = (colStart, colEnd, rowStart, rowEnd) => {
+    let x = borderPixels;
+    for (let c = 0; c < colStart; c += 1) {
+      x += columnSizes[c] * columnFrUnit + borderPixels;
+    }
+    let y = borderPixels;
+    for (let r = 0; r < rowStart; r += 1) {
+      y += rowSizes[r] * rowFrUnit + borderPixels;
+    }
+    let width = 0;
+    for (let c = colStart; c < colEnd; c += 1) {
+      width += columnSizes[c] * columnFrUnit;
+      if (c < colEnd - 1) width += borderPixels;
+    }
+    let height = 0;
+    for (let r = rowStart; r < rowEnd; r += 1) {
+      height += rowSizes[r] * rowFrUnit;
+      if (r < rowEnd - 1) height += borderPixels;
+    }
+    return { x, y, width, height };
+  };
+
+  // Prefer named grid areas if provided
+  if (layoutConfig.areas && layoutConfig.areas.length > 0 && layoutConfig.gridTemplateAreas) {
+    const gridAreas = parseGridTemplateAreas(layoutConfig.gridTemplateAreas);
+    layoutConfig.areas.slice(0, panelCount).forEach((areaName, index) => {
+      const areaInfo = gridAreas[areaName];
+      if (areaInfo) {
+        const { x, y, width, height } = getRectForCell(
+          areaInfo.colStart,
+          areaInfo.colEnd + 1,
+          areaInfo.rowStart,
+          areaInfo.rowEnd + 1
+        );
+        rects.push({ x, y, width, height, panelId: `panel-${index + 1}`, index });
+      }
+    });
+  } else {
+    // Fallback: sequential mapping across rows/cols
+    for (let i = 0; i < Math.min(panelCount, columns * rows); i += 1) {
+      const col = i % columns;
+      const row = Math.floor(i / columns);
+      const { x, y, width, height } = getRectForCell(col, col + 1, row, row + 1);
+      rects.push({ x, y, width, height, panelId: `panel-${i + 1}`, index: i });
+    }
   }
 
-  // Build a grid map of positions
-  let y = borderPixels;
-  for (let r = 0; r < rowFrs.length; r += 1) {
-    const rowH = rowFrs[r] * rowUnit;
-    let x = borderPixels;
-    for (let c = 0; c < colFrs.length; c += 1) {
-      const colW = colFrs[c] * colUnit;
-      const index = r * colFrs.length + c;
-      if (index < panelCount) {
-        rects.push({ x, y, width: colW, height: rowH, panelId: `panel-${index+1}`, index });
-      }
-      x += colW + borderPixels;
-    }
-    y += rowH + borderPixels;
-  }
   return rects;
 }
 
@@ -146,6 +235,8 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   const width = maxDim;
   const height = Math.max(1, Math.round(width / ar));
   const dpr = 1;
+  const BASE_CANVAS_WIDTH = 400; // Keep text scale in sync with preview
+  const textScaleFactor = width / BASE_CANVAS_WIDTH;
   const borderPixels = Math.round((borderPct / 100) * width);
 
   const canvas = document.createElement('canvas');
@@ -166,35 +257,196 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   const images = Array.isArray(snap.images) ? snap.images : [];
   const loaded = await Promise.all(images.map(loadImageFromRef));
 
-  // Draw panels (images only; captions omitted for thumbnail compactness)
+  // Helper: text wrapping similar to preview/export
+  const wrapText = (drawCtx, text, maxWidth) => {
+    const lines = [];
+    const manual = String(text || '').split('\n');
+    manual.forEach((line) => {
+      if (drawCtx.measureText(line).width <= maxWidth) {
+        lines.push(line);
+      } else {
+        const words = line.split(' ');
+        let currentLine = '';
+        words.forEach((word) => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const testWidth = drawCtx.measureText(testLine).width;
+          if (testWidth <= maxWidth) {
+            currentLine = testLine;
+          } else if (currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+            if (drawCtx.measureText(word).width > maxWidth) {
+              // Break long word by chars
+              let charLine = '';
+              for (let i = 0; i < word.length; i += 1) {
+                const testChar = charLine + word[i];
+                if (drawCtx.measureText(testChar).width <= maxWidth) {
+                  charLine = testChar;
+                } else {
+                  if (charLine) lines.push(charLine);
+                  charLine = word[i];
+                }
+              }
+              if (charLine) lines.push(charLine);
+              currentLine = '';
+            }
+          } else {
+            // Single long word
+            let charLine = '';
+            for (let i = 0; i < word.length; i += 1) {
+              const testChar = charLine + word[i];
+              if (drawCtx.measureText(testChar).width <= maxWidth) {
+                charLine = testChar;
+              } else {
+                if (charLine) lines.push(charLine);
+                charLine = word[i];
+              }
+            }
+            if (charLine) lines.push(charLine);
+          }
+        });
+        if (currentLine) lines.push(currentLine);
+      }
+    });
+    return lines;
+  };
+
+  // Draw panels: images and captions (to mirror final export)
   rects.forEach(({ x, y, width: w, height: h, panelId }) => {
     const imageIndex = snap.panelImageMapping?.[panelId];
     const hasImage = typeof imageIndex === 'number' && loaded[imageIndex];
+    const panelText = (snap.panelTexts && snap.panelTexts[panelId]) || {};
     ctx.fillStyle = hasImage ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.3)';
     ctx.fillRect(x, y, w, h);
-    if (!hasImage) return;
-    const img = loaded[imageIndex];
-    const transform = snap.panelTransforms?.[panelId] || { scale: 1, positionX: 0, positionY: 0 };
 
-    // cover fit + user transform
-    const imageAspect = img.naturalWidth / img.naturalHeight;
-    const panelAspect = w / h;
-    const initialScale = imageAspect > panelAspect ? (h / img.naturalHeight) : (w / img.naturalWidth);
-    const finalScale = initialScale * (transform.scale || 1);
-    const scaledW = img.naturalWidth * finalScale;
-    const scaledH = img.naturalHeight * finalScale;
-    const centerOffsetX = (w - scaledW) / 2;
-    const centerOffsetY = (h - scaledH) / 2;
-    const finalOffsetX = centerOffsetX + (transform.positionX || 0);
-    const finalOffsetY = centerOffsetY + (transform.positionY || 0);
+    if (hasImage) {
+      const img = loaded[imageIndex];
+      if (img) {
+        const transform = snap.panelTransforms?.[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.clip();
+        const imageAspect = img.naturalWidth / img.naturalHeight;
+        const panelAspect = w / h;
+        const initialScale = imageAspect > panelAspect ? (h / img.naturalHeight) : (w / img.naturalWidth);
+        const finalScale = initialScale * (transform.scale || 1);
+        const scaledW = img.naturalWidth * finalScale;
+        const scaledH = img.naturalHeight * finalScale;
+        const centerOffsetX = (w - scaledW) / 2;
+        const centerOffsetY = (h - scaledH) / 2;
+        const finalOffsetX = centerOffsetX + (transform.positionX || 0);
+        const finalOffsetY = centerOffsetY + (transform.positionY || 0);
+        ctx.drawImage(img, x + finalOffsetX, y + finalOffsetY, scaledW, scaledH);
+        ctx.restore();
+      }
+    }
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x, y, w, h);
-    ctx.clip();
-    ctx.drawImage(img, x + finalOffsetX, y + finalOffsetY, scaledW, scaledH);
-    ctx.restore();
+    // Draw actual text (if present), matching export logic
+    if (hasImage && panelText.content && String(panelText.content).trim()) {
+      ctx.save();
+      // Clip to frame bounds
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.clip();
+
+      // Determine base font size: explicit or auto-fit similar to preview
+      let baseFontSize = panelText.fontSize || 26;
+      if (!panelText.fontSize) {
+        // Auto-calc: try decreasing sizes until it fits 40% of panel height
+        const textPadding = 10;
+        const maxTextWidth = w - textPadding * 2;
+        const maxTextHeight = h * 0.4;
+        const reasonableMax = Math.min(48, Math.max(16, h * 0.15));
+        const probe = document.createElement('canvas').getContext('2d');
+        for (let size = reasonableMax; size >= 8; size -= 2) {
+          probe.font = `700 ${size}px Arial`;
+          const words = String(panelText.content).split(' ');
+          const lines = [];
+          let currentLine = '';
+          words.forEach((word) => {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            if (probe.measureText(testLine).width <= maxTextWidth) {
+              currentLine = testLine;
+            } else {
+              if (currentLine) lines.push(currentLine);
+              currentLine = word;
+            }
+          });
+          if (currentLine) lines.push(currentLine);
+          const lineHeight = size * 1.2;
+          const total = lines.length * lineHeight;
+          if (total <= maxTextHeight) { baseFontSize = Math.max(size, 12); break; }
+        }
+      }
+
+      const fontSize = baseFontSize * textScaleFactor;
+      const fontWeight = panelText.fontWeight || 400;
+      const fontStyle = panelText.fontStyle || 'normal';
+      const fontFamily = panelText.fontFamily || 'Arial';
+      const textColor = panelText.color || '#ffffff';
+      const strokeWidth = panelText.strokeWidth || 2;
+      const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : 0;
+      const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : 0;
+      const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : 0;
+
+      ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+      ctx.fillStyle = textColor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = strokeWidth;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+      ctx.shadowBlur = 3;
+
+      const textPadding = 10;
+      const maxTextWidth = w - textPadding * 2;
+      const textX = x + (w / 2) + (textPositionX / 100) * (w / 2 - textPadding);
+      const lineHeight = fontSize * 1.2;
+      const lines = wrapText(ctx, String(panelText.content), maxTextWidth);
+      const totalTextHeight = lines.length * lineHeight;
+
+      let textAnchorY;
+      if (textPositionY <= 0) {
+        const defaultBottom = y + (h * 0.95);
+        const extendedBottom = y + h + (h * 0.1);
+        const t = Math.abs(textPositionY) / 100;
+        textAnchorY = defaultBottom + t * (extendedBottom - defaultBottom);
+      } else {
+        const defaultBottom = y + (h * 0.95);
+        const frameTop = y;
+        const t = textPositionY / 100;
+        textAnchorY = defaultBottom + t * (frameTop - defaultBottom);
+      }
+
+      const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
+
+      if (textRotation !== 0) {
+        ctx.save();
+        const textCenterX = textX;
+        const textCenterY = textAnchorY - totalTextHeight / 2;
+        ctx.translate(textCenterX, textCenterY);
+        ctx.rotate((textRotation * Math.PI) / 180);
+        ctx.translate(-textCenterX, -textCenterY);
+      }
+
+      lines.forEach((line, idx) => {
+        const lineY = startY + idx * lineHeight;
+        if (strokeWidth > 0) ctx.strokeText(line, textX, lineY);
+        ctx.fillText(line, textX, lineY);
+      });
+
+      if (textRotation !== 0) {
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
   });
 
-  return canvas.toDataURL('image/jpeg', 0.8);
+  return canvas.toDataURL('image/jpeg', 0.92);
 }

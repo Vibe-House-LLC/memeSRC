@@ -26,9 +26,9 @@ function computeSnapshotSignature(snap) {
     for (let i = 0; i < json.length; i += 1) {
       hash = (hash * 33 + json.charCodeAt(i)) % 4294967296;
     }
-    return `v1:${Math.floor(hash)}`;
+    return `v2:${Math.floor(hash)}`;
   } catch (_) {
-    return `v1:${Date.now()}`;
+    return `v2:${Date.now()}`;
   }
 }
 
