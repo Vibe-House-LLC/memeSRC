@@ -946,6 +946,15 @@ const EditorPage = ({ shows }) => {
     }
   };
 
+  const isImprovedImageUrl = (url) => {
+    try {
+      const u = new URL(url);
+      return u.searchParams.get('variant') === 'improved';
+    } catch (e) {
+      return false;
+    }
+  };
+
   const handleAddCanvasBackground = (imgUrl) => {
     try {
       setOpenSelectResult(false);
@@ -968,11 +977,21 @@ const EditorPage = ({ shows }) => {
 
         const originalHeight = editor.canvas.height;
         const originalWidth = editor.canvas.width;
-        const mapping = lastGenerativeMapping || (() => {
-          const size = chooseClosestSupportedSizeFor(originalWidth, originalHeight);
-          const m = computeContainScaleAndOffset(originalWidth, originalHeight, size.width, size.height);
-          return { width: size.width, height: size.height, ...m };
-        })();
+        const improved = isImprovedImageUrl(imgUrl);
+        let mapping;
+        if (improved) {
+          // Prefer the last mapping used to generate improved images
+          mapping = lastGenerativeMapping || (() => {
+            const size = chooseClosestSupportedSizeFor(originalWidth, originalHeight);
+            const m = computeContainScaleAndOffset(originalWidth, originalHeight, size.width, size.height);
+            return { width: size.width, height: size.height, ...m };
+          })();
+        } else {
+          // Old square method mapping (1024x1024)
+          const targetSize = { width: 1024, height: 1024 };
+          const m = computeContainScaleAndOffset(originalWidth, originalHeight, targetSize.width, targetSize.height);
+          mapping = { width: targetSize.width, height: targetSize.height, ...m };
+        }
 
         const invScale = 1 / mapping.scale;
         returnedImage.scale(invScale);
@@ -2528,6 +2547,14 @@ const EditorPage = ({ shows }) => {
                       filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none'
                     }}
                   />
+                  {isImprovedImageUrl(image) && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 8,
+                      fontSize: '18px'
+                    }}>✨</div>
+                  )}
                   {selectedImage === image && (
                     <Fab
                       size='small'
