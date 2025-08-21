@@ -67,6 +67,8 @@ const CollagePreview = ({
   onPreviewRendered,
   // Editing session tracking
   onEditingSessionChange,
+  // Optional persisted custom layout to initialize preview grid
+  customLayout,
 }) => {
   const fileInputRef = useRef(null);
   const theme = useTheme();
@@ -380,6 +382,8 @@ const CollagePreview = ({
         onRendered={onPreviewRendered}
         // Editing session tracking
         onEditingSessionChange={onEditingSessionChange}
+        // Initialize with a custom grid when reloading a project
+        initialCustomLayout={customLayout}
       />
       
       {/* Hidden file input */}

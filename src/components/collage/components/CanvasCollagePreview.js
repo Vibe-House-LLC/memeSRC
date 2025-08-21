@@ -424,6 +424,8 @@ const CanvasCollagePreview = ({
   onRendered,
   // Editing session tracking (crop & zoom / reorder)
   onEditingSessionChange,
+  // When provided, use as initial custom grid config (restored from snapshot)
+  initialCustomLayout,
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -471,7 +473,7 @@ const CanvasCollagePreview = ({
   const [draggedBorder, setDraggedBorder] = useState(null);
   const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
-  const [customLayoutConfig, setCustomLayoutConfig] = useState(null);
+  const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
 
   // Long-press (press-and-hold) hint state
   const [saveHintOpen, setSaveHintOpen] = useState(false);
@@ -1564,10 +1566,11 @@ const CanvasCollagePreview = ({
 
 
 
-  // Reset custom layout when template changes
+  // Reset custom layout whenever collage-level layout settings change
+  // so that selecting a new layout takes effect immediately
   useEffect(() => {
     setCustomLayoutConfig(null);
-  }, [selectedTemplate]);
+  }, [selectedTemplate, panelCount, aspectRatioValue]);
 
   // Global mouse/touch handlers for border dragging
   useEffect(() => {

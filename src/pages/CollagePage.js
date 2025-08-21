@@ -120,6 +120,8 @@ export default function CollagePage() {
   const editingSessionActiveRef = useRef(false);
   const captionOpenPrevRef = useRef(false);
   const exitSaveTimerRef = useRef(null);
+  // Persisted custom grid from border dragging
+  const [customLayout, setCustomLayout] = useState(null);
   
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
@@ -299,6 +301,11 @@ export default function CollagePage() {
     // Note: this relies on the preview tagging the canvas with the serialized layout
     customLayout: (() => {
       try {
+        // When collage-level layout settings change, drop custom layout
+        // and allow a fresh grid from the selected template
+        if (selectedTemplate || selectedAspectRatio || panelCount) {
+          // no-op: fall through to reading live custom layout if present later in the session
+        }
         const canvas = document.querySelector('[data-testid="canvas-collage-preview"]');
         const json = canvas?.dataset?.customLayout;
         if (!json) return null;
@@ -410,6 +417,8 @@ export default function CollagePage() {
 
     if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
     if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
+    // Restore custom layout grid if present
+    setCustomLayout(snap.customLayout || null);
 
     // Resolve images via library or stored URLs
     if (Array.isArray(snap.images) && snap.images.length > 0) {
@@ -563,6 +572,7 @@ export default function CollagePage() {
     setActiveProjectId(p.id);
     setShowProjectPicker(false);
     clearImages();
+    setCustomLayout(null);
     }, [clearImages]);
 
   const handleOpenProject = useCallback((id) => { loadProjectById(id); }, [loadProjectById]);
@@ -843,6 +853,8 @@ export default function CollagePage() {
     onPreviewRendered: (sig) => { lastRenderedSigRef.current = sig; setRenderBump(b => b + 1); },
     // Editing session tracking to gate thumbnail updates
     onEditingSessionChange: handleEditingSessionChange,
+    // Provide persisted custom grid to preview on load
+    customLayout,
   };
 
   // Log mapping changes for debugging

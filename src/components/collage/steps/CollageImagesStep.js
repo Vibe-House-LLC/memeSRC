@@ -53,6 +53,8 @@ const CollageImagesStep = ({
   onPreviewRendered,
   // Editing session tracking
   onEditingSessionChange,
+  // Optional persisted custom layout to initialize preview grid
+  customLayout,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -168,6 +170,8 @@ const CollageImagesStep = ({
           onPreviewRendered={onPreviewRendered}
           // Editing session tracking
           onEditingSessionChange={onEditingSessionChange}
+          // Initialize with custom layout if provided
+          customLayout={customLayout}
         />
         </Box>
         
