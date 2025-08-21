@@ -68,10 +68,10 @@ exports.handler = async (event) => {
     const buildStickerPrompt = (userPrompt, styleName) => {
         const styleMap = {
             realistic: "photorealistic, detailed textures, natural lighting",
-            cartoon: "cartoon, bold outlines, simplified shapes, vibrant colors",
+            cartoon: "cartoon, simplified shapes, vibrant colors",
             "3d": "3D render, soft studio lighting, physically based materials",
-            pixel: "2D pixel art, clean 1px outlines, 32-bit palette",
-            "pixel art": "2D pixel art, clean 1px outlines, 32-bit palette",
+            pixel: "2D pixel art, limited palette",
+            "pixel art": "2D pixel art, limited palette",
             line: "clean vector line art, minimal shading",
             "line art": "clean vector line art, minimal shading",
             watercolor: "watercolor, soft edges, subtle gradients",
@@ -79,13 +79,18 @@ exports.handler = async (event) => {
             clay: "clay render, soft shadows, subsurface scattering"
         };
         const selected = styleMap[(styleName || 'realistic').toString().toLowerCase()] || styleMap.realistic;
+        const normalized = (userPrompt || '').toLowerCase();
+        const wantsOutline = /(\bsticker\b|\boutline\b|\bborder\b|\bstroke\b|\bhalo\b|\bglow\b|\bdrop\s*shadow\b)/.test(normalized);
+        const outlinePhrase = wantsOutline ? ", with the requested outline/border effect as described" : '';
+        const subject = (userPrompt || '').trim();
+        // Descriptive caption for image model (not imperative instructions)
         return [
-            "Create a clean, isolated cutout sticker of the subject with a fully transparent background.",
-            `Subject: ${userPrompt}.`,
-            `Visual style: ${selected}.`,
-            "Requirements: no background or backdrop, no drop shadow, centered composition, crisp anti-aliased edges, high contrast, well-defined silhouette, square composition, suitable for compositing in design tools.",
-            "Output specifics: PNG with alpha transparency, 1024x1024, medium quality."
-        ].join(' ');
+            `A ${subject}${outlinePhrase}`,
+            `${selected}`,
+            "isolated cutout on a fully transparent background",
+			"image layer asset",
+            "seamless, compositing-ready asset"
+        ].join(', ');
     };
 
     if ((mode || '').toLowerCase() === 'sticker') {
