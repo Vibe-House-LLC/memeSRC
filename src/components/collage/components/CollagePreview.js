@@ -62,6 +62,11 @@ const CollagePreview = ({
   onCaptionEditorVisibleChange,
   onGenerateNudgeRequested,
   isFrameActionSuppressed,
+  // New: notify when the canvas has rendered a given signature
+  renderSig,
+  onPreviewRendered,
+  // Editing session tracking
+  onEditingSessionChange,
 }) => {
   const fileInputRef = useRef(null);
   const theme = useTheme();
@@ -370,6 +375,11 @@ const CollagePreview = ({
         lastUsedTextSettings={lastUsedTextSettings}
         onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
         isGeneratingCollage={isCreatingCollage}
+        // Render tracking for autosave thumbnails
+        renderSig={renderSig}
+        onRendered={onPreviewRendered}
+        // Editing session tracking
+        onEditingSessionChange={onEditingSessionChange}
       />
       
       {/* Hidden file input */}
@@ -495,6 +505,9 @@ CollagePreview.propTypes = {
   onCaptionEditorVisibleChange: PropTypes.func,
   onGenerateNudgeRequested: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
+  renderSig: PropTypes.string,
+  onPreviewRendered: PropTypes.func,
+  onEditingSessionChange: PropTypes.func,
 };
 
 export default CollagePreview; 

@@ -1,18 +1,45 @@
-import { useContext, useEffect, useState, useRef, useCallback } from "react";
+import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip } from "@mui/material";
-import { Dashboard, Save, DeleteForever, Settings } from "@mui/icons-material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, IconButton, Tooltip, CircularProgress, Snackbar, Alert } from "@mui/material";
+import { Dashboard, Save, DeleteForever, Settings, CheckCircleOutline, ErrorOutline } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 import { useCollage } from "../contexts/CollageContext";
-import { aspectRatioPresets, layoutTemplates } from "../components/collage/config/CollageConfig";
+import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
+import ProjectPicker from "../components/collage/components/ProjectPicker";
+import { loadProjects, createProject, deleteProject as deleteProjectRecord, upsertProject, buildSnapshotFromState, getProject as getProjectRecord } from "../components/collage/utils/projects";
+import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
+import { get as getFromLibrary } from "../utils/library/storage";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 import CollageResultDialog from "../components/collage/components/CollageResultDialog";
+
+// Pure helpers (module scope) to avoid TDZ and keep stable references
+function computeSnapshotSignature(snap) {
+  try {
+    const json = JSON.stringify(snap);
+    let hash = 5381;
+    for (let i = 0; i < json.length; i += 1) {
+      hash = (hash * 33 + json.charCodeAt(i)) % 4294967296;
+    }
+    return `v1:${Math.floor(hash)}`;
+  } catch (_) {
+    return `v1:${Date.now()}`;
+  }
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -74,9 +101,25 @@ export default function CollagePage() {
   const { clearAll } = useCollage();
   const isAdmin = user?.['cognito:groups']?.includes('admins');
   const authorized = (user?.userDetails?.magicSubscription === "true" || isAdmin);
+
+  // Autosave UI state
+  const lastSavedSigRef = useRef(null);
+  const [saveStatus, setSaveStatus] = useState({ state: 'idle', time: null }); // states: idle | saving | saved
+  const [isDirty, setIsDirty] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Projects state
+  const [projects, setProjects] = useState(() => loadProjects());
+  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [showProjectPicker, setShowProjectPicker] = useState(true);
+  // Simplified autosave: no throttling/deferral; save only on tool exit
+  const lastRenderedSigRef = useRef(null);
+  const editingSessionActiveRef = useRef(false);
+  const captionOpenPrevRef = useRef(false);
+  const exitSaveTimerRef = useRef(null);
   
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
@@ -174,6 +217,8 @@ export default function CollagePage() {
     debugLog(`[PAGE DEBUG] Border settings: color=${borderColor}, thickness=${borderThickness} (${borderThicknessValue}%)`);
   }, [borderColor, borderThickness, borderThicknessValue]);
 
+  
+
   // Animate button section in with delay when the preview is visible
   useEffect(() => {
     if (hasImages && !showResultDialog) {
@@ -226,6 +271,9 @@ export default function CollagePage() {
       const preference = getCollagePreference(user);
       const searchParams = new URLSearchParams(location.search);
       const isForced = searchParams.get('force') === 'new';
+      if (isForced) {
+        setShowProjectPicker(false);
+      }
       
       // Only auto-forward if not forced to new version
       if (preference === 'legacy' && !isForced) {
@@ -233,6 +281,43 @@ export default function CollagePage() {
       }
     }
   }, [user, navigate, location.search, authorized]);
+
+  // Build current snapshot/signature once per state change
+  const [renderBump, setRenderBump] = useState(0);
+
+  const currentSnapshot = useMemo(() => buildSnapshotFromState({
+    selectedImages,
+    panelImageMapping,
+    panelTransforms,
+    panelTexts,
+    selectedTemplate,
+    selectedAspectRatio,
+    panelCount,
+    borderThickness,
+    borderColor,
+    // Include live custom layout from preview dataset if available
+    // Note: this relies on the preview tagging the canvas with the serialized layout
+    customLayout: (() => {
+      try {
+        const canvas = document.querySelector('[data-testid="canvas-collage-preview"]');
+        const json = canvas?.dataset?.customLayout;
+        if (!json) return null;
+        return JSON.parse(json);
+      } catch (_) { return null; }
+    })(),
+  }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, renderBump]);
+
+  const currentSig = useMemo(() => computeSnapshotSignature(currentSnapshot), [currentSnapshot]);
+  const currentSnapshotRef = useRef(currentSnapshot);
+  const currentSigRef = useRef(currentSig);
+  useEffect(() => { currentSnapshotRef.current = currentSnapshot; }, [currentSnapshot]);
+  useEffect(() => { currentSigRef.current = currentSig; }, [currentSig]);
+
+  // Track whether current state differs from last saved snapshot (for UI enablement)
+  useEffect(() => {
+    if (!activeProjectId) return;
+    setIsDirty(currentSig !== lastSavedSigRef.current);
+  }, [activeProjectId, currentSig]);
 
   // Handle images passed from collage
   useEffect(() => {
@@ -295,6 +380,230 @@ export default function CollagePage() {
       loadImages();
     }
   }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
+
+  // Keep local projects list in sync when storage changes (simple refresh on window focus)
+  useEffect(() => {
+    const onFocus = () => setProjects(loadProjects());
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
+
+  // Helpers defined at module scope: blobToDataUrl, computeSnapshotSignature
+
+  // Load a project snapshot into the current editor state
+  const loadProjectById = useCallback(async (projectId) => {
+    const record = getProjectRecord(projectId);
+    if (!record || !record.state) return;
+    const snap = record.state;
+
+    // Clear current state
+    clearImages();
+
+    // Apply layout-level settings first
+    setSelectedAspectRatio(snap.selectedAspectRatio || 'square');
+    setPanelCount(snap.panelCount || 2);
+    try {
+      const templates = getLayoutsForPanelCount(snap.panelCount || 2, snap.selectedAspectRatio || 'square');
+      const tpl = templates.find(t => t.id === snap.selectedTemplateId) || templates[0] || null;
+      if (tpl) setSelectedTemplate(tpl);
+    } catch (_) { /* ignore */ }
+
+    if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
+    if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
+
+    // Resolve images via library or stored URLs
+    if (Array.isArray(snap.images) && snap.images.length > 0) {
+      const resolved = [];
+      // eslint-disable-next-line no-restricted-syntax
+      for (const ref of snap.images) {
+        if (ref?.libraryKey) {
+          try {
+            // Fetch from library and convert to data URL for canvas safety
+            // eslint-disable-next-line no-await-in-loop
+            const blob = await getFromLibrary(ref.libraryKey);
+            // eslint-disable-next-line no-await-in-loop
+            const url = await blobToDataUrl(blob);
+            resolved.push({ originalUrl: url, displayUrl: url, metadata: { libraryKey: ref.libraryKey }, subtitle: ref.subtitle || '', subtitleShowing: !!ref.subtitleShowing });
+          } catch (_) {
+            resolved.push({ originalUrl: ref.url || '', displayUrl: ref.url || '' });
+          }
+        } else if (ref?.url) {
+          resolved.push({ originalUrl: ref.url, displayUrl: ref.url, subtitle: ref.subtitle || '', subtitleShowing: !!ref.subtitleShowing });
+        }
+      }
+      if (resolved.length) {
+        await addMultipleImages(resolved);
+      }
+    }
+
+    if (snap.panelImageMapping) updatePanelImageMapping(snap.panelImageMapping);
+
+    if (snap.panelTransforms && typeof snap.panelTransforms === 'object') {
+      Object.entries(snap.panelTransforms).forEach(([panelId, transform]) => {
+        if (transform) updatePanelTransform(panelId, transform);
+      });
+    }
+
+    if (snap.panelTexts && typeof snap.panelTexts === 'object') {
+      Object.entries(snap.panelTexts).forEach(([panelId, textConfig]) => {
+        if (textConfig) updatePanelText(panelId, textConfig, { replace: true });
+      });
+    }
+
+    setActiveProjectId(projectId);
+    setShowProjectPicker(false);
+    // Mark current snapshot as saved for status UI
+    lastSavedSigRef.current = computeSnapshotSignature(snap);
+    setSaveStatus({ state: 'saved', time: Date.now() });
+  }, [addMultipleImages, clearImages, setBorderColor, setBorderThickness, setPanelCount, setSelectedAspectRatio, setSelectedTemplate, updatePanelImageMapping, updatePanelText, updatePanelTransform]);
+
+  // Centralized save used by autosave-on-exit and manual save
+  const saveProjectNow = useCallback(async ({ showToast = false } = {}) => {
+    if (!activeProjectId) return;
+    const state = currentSnapshotRef.current;
+    const sig = currentSigRef.current;
+    if (sig === lastSavedSigRef.current) return;
+    try {
+      setSaveStatus({ state: 'saving', time: null });
+      upsertProject(activeProjectId, { state });
+      lastSavedSigRef.current = sig;
+      // Generate thumbnail immediately from saved snapshot
+      const dataUrl = await renderThumbnailFromSnapshot(state, { maxDim: 512 });
+      if (dataUrl) {
+        upsertProject(activeProjectId, { thumbnail: dataUrl, thumbnailKey: null, thumbnailSignature: sig, thumbnailUpdatedAt: new Date().toISOString() });
+      }
+      setProjects(loadProjects());
+      setSaveStatus({ state: 'saved', time: Date.now() });
+      if (showToast) setSnackbar({ open: true, message: 'Saved', severity: 'success' });
+    } catch (e) {
+      if (DEBUG_MODE) console.warn('Autosave failed:', e);
+      setTimeout(() => setSaveStatus({ state: 'idle', time: null }), 800);
+      if (showToast) setSnackbar({ open: true, message: 'Save failed', severity: 'error' });
+    }
+  }, [activeProjectId]);
+
+
+  // Receive editing session state from preview and save once editing ends
+  const handleEditingSessionChange = useCallback((active) => {
+    const wasActive = editingSessionActiveRef.current;
+    const isActive = !!active;
+    // Update stored state first
+    editingSessionActiveRef.current = isActive;
+    // Clear any pending exit-save if user re-enters editing quickly
+    if (isActive && exitSaveTimerRef.current) {
+      clearTimeout(exitSaveTimerRef.current);
+      exitSaveTimerRef.current = null;
+    }
+    // Only save on transition from active -> inactive; defer slightly to let state settle
+    if (wasActive && !isActive) {
+      if (exitSaveTimerRef.current) clearTimeout(exitSaveTimerRef.current);
+      exitSaveTimerRef.current = setTimeout(() => {
+        exitSaveTimerRef.current = null;
+        saveProjectNow();
+      }, 60);
+    }
+  }, [saveProjectNow]);
+
+  // Collage-level autosave triggers
+  // 1) Save on border color/thickness changes once rendered settles
+  useEffect(() => {
+    let t = null;
+    if (activeProjectId) {
+      // Only attempt save if we have rendered the new state at least once
+      const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
+      if (hasRendered) {
+        // Defer slightly to batch rapid UI updates
+        t = setTimeout(() => { saveProjectNow(); }, 120);
+      }
+    }
+    return () => { if (t) clearTimeout(t); };
+  }, [activeProjectId, borderColor, borderThickness, saveProjectNow]);
+
+  // 2) Save on layout changes: template, aspect ratio, or panel count
+  useEffect(() => {
+    let t = null;
+    if (activeProjectId) {
+      const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
+      if (hasRendered) {
+        t = setTimeout(() => { saveProjectNow(); }, 120);
+      }
+    }
+    return () => { if (t) clearTimeout(t); };
+  }, [activeProjectId, selectedTemplate?.id, selectedAspectRatio, panelCount, saveProjectNow]);
+
+  // 3) Initial save when images first appear and preview has rendered
+  const didInitialSaveRef = useRef(false);
+  useEffect(() => {
+    if (!activeProjectId) return;
+    if (didInitialSaveRef.current) return;
+    const hasAnyImage = (selectedImages?.length || 0) > 0;
+    const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
+    if (hasAnyImage && hasRendered) {
+      didInitialSaveRef.current = true;
+      saveProjectNow();
+    }
+  }, [activeProjectId, selectedImages?.length, saveProjectNow]);
+
+  // 4) Ensure a project exists once images are present (e.g., coming from external selection)
+  useEffect(() => {
+    if (activeProjectId) return;
+    if ((selectedImages?.length || 0) === 0) return;
+    const p = createProject({ name: 'Untitled Collage' });
+    setProjects(loadProjects());
+    setActiveProjectId(p.id);
+    setShowProjectPicker(false);
+    // Reset initial-save gate so we capture the first render under this new project
+    didInitialSaveRef.current = false;
+  }, [activeProjectId, selectedImages?.length]);
+
+  // Picker handlers
+  const handleCreateNewProject = useCallback(() => {
+    const p = createProject({ name: 'Untitled Collage' });
+    setProjects(loadProjects());
+    setActiveProjectId(p.id);
+    setShowProjectPicker(false);
+    clearImages();
+    }, [clearImages]);
+
+  const handleOpenProject = useCallback((id) => { loadProjectById(id); }, [loadProjectById]);
+  const handleDeleteProject = useCallback((id) => {
+    deleteProjectRecord(id);
+    setProjects(loadProjects());
+    if (activeProjectId === id) {
+      setActiveProjectId(null);
+      clearImages();
+      setShowProjectPicker(true);
+    }
+  }, [activeProjectId, clearImages]);
+
+  // Manual Save handler (forces immediate thumbnail generation)
+  const handleManualSave = useCallback(async () => {
+    saveProjectNow({ showToast: true });
+  }, [saveProjectNow]);
+
+  const formatSavedTime = (ts) => {
+    if (!ts) return '';
+    const diff = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (diff < 5) return 'just now';
+    if (diff < 60) return `${diff}s ago`;
+    const m = Math.floor(diff / 60);
+    return `${m}m ago`;
+  };
+
+  // Keyboard shortcut: Cmd/Ctrl+S to manually save
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (isDirty && saveStatus.state !== 'saving') {
+          handleManualSave();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleManualSave, isDirty, saveStatus.state]);
 
   // Note: BulkUploadSection auto-collapse logic removed since section is now hidden when images are present
 
@@ -523,9 +832,17 @@ export default function CollagePage() {
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
     libraryRefreshTrigger, // For refreshing library when new images are auto-saved
-    onCaptionEditorVisibleChange: setIsCaptionEditorOpen,
+    onCaptionEditorVisibleChange: (open) => {
+      setIsCaptionEditorOpen(open);
+      captionOpenPrevRef.current = open;
+    },
     onGenerateNudgeRequested: handleGenerateNudgeRequested,
     isFrameActionSuppressed: () => Date.now() < frameActionSuppressUntilRef.current,
+    // Render tracking for timely thumbnail capture
+    renderSig: currentSig,
+    onPreviewRendered: (sig) => { lastRenderedSigRef.current = sig; setRenderBump(b => b + 1); },
+    // Editing session tracking to gate thumbnail updates
+    onEditingSessionChange: handleEditingSessionChange,
   };
 
   // Log mapping changes for debugging
@@ -570,40 +887,85 @@ export default function CollagePage() {
             }}
             disableGutters={isMobile}
           >
+            {showProjectPicker && !hasImages ? (
+              <ProjectPicker 
+                projects={projects}
+                onCreateNew={handleCreateNewProject}
+                onOpen={handleOpenProject}
+                onDelete={handleDeleteProject}
+              />
+            ) : (
+              <>
             {/* Page Header */}
             <Box sx={{ mb: isMobile ? 1 : 1.5 }}>
-              <Typography variant="h3" gutterBottom sx={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                fontWeight: '700', 
-                mb: isMobile ? 0.5 : 0.75,
-                pl: isMobile ? 0.5 : 0,
-                ml: isMobile ? 0 : -0.5,
-                color: '#fff',
-                fontSize: isMobile ? '2.2rem' : '2.5rem',
-                textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
-              }}>
-                <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
-                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                  Collage
-                  {!showEarlyAccess && (
-                    <Chip 
-                      label="BETA" 
-                      size="small" 
-                      onClick={() => setShowEarlyAccess(true)}
-                      sx={{ 
-                        backgroundColor: '#ff9800',
-                        color: '#000',
-                        fontWeight: 'bold',
-                        fontSize: '0.65rem',
-                        height: 20,
-                        ml: 1,
-                        cursor: 'pointer'
-                      }} 
-                    />
-                  )}
-                </Box>
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                <Typography variant="h3" gutterBottom sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  fontWeight: '700', 
+                  mb: isMobile ? 0.5 : 0.75,
+                  pl: isMobile ? 0.5 : 0,
+                  ml: isMobile ? 0 : -0.5,
+                  color: '#fff',
+                  fontSize: isMobile ? '2.2rem' : '2.5rem',
+                  textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
+                }}>
+                  <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
+                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                    Collage
+                    {!showEarlyAccess && (
+                      <Chip 
+                        label="BETA" 
+                        size="small" 
+                        onClick={() => setShowEarlyAccess(true)}
+                        sx={{ 
+                          backgroundColor: '#ff9800',
+                          color: '#000',
+                          fontWeight: 'bold',
+                          fontSize: '0.65rem',
+                          height: 20,
+                          ml: 1,
+                          cursor: 'pointer'
+                        }} 
+                      />
+                    )}
+                  </Box>
+                </Typography>
+                {/* Save controls */}
+                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minHeight: 40 }}>
+                  <Tooltip title={
+                    saveStatus.state === 'saving' ? 'Saving changes…' :
+                    saveStatus.state === 'saved' ? `Saved ${formatSavedTime(saveStatus.time)}` :
+                    'No recent changes'
+                  }>
+                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 72, justifyContent: 'flex-end' }}>
+                      {saveStatus.state === 'saving' ? (
+                        <CircularProgress size={16} thickness={5} />
+                      ) : saveStatus.state === 'saved' ? (
+                        <CheckCircleOutline fontSize="small" color="success" />
+                      ) : (
+                        <ErrorOutline fontSize="small" color="disabled" />
+                      )}
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        {saveStatus.state === 'saving' ? 'Saving' : saveStatus.state === 'saved' ? 'Saved' : 'Idle'}
+                      </Typography>
+                    </Stack>
+                  </Tooltip>
+                  <Tooltip title={isDirty ? 'Save (Ctrl/Cmd+S)' : 'No changes to save'}>
+                    <span>
+                      <IconButton 
+                        color="primary" 
+                        onClick={handleManualSave}
+                        disabled={!isDirty || saveStatus.state === 'saving'}
+                        aria-label="Save"
+                        size="small"
+                      >
+                        <Save />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Stack>
+              </Box>
             </Box>
 
             <Collapse in={showEarlyAccess} unmountOnExit>
@@ -624,6 +986,18 @@ export default function CollagePage() {
               setSettingsOpen={setSettingsOpen}
               settingsRef={settingsRef}
             />
+
+            {/* Save snackbar */}
+            <Snackbar 
+              open={snackbar.open}
+              autoHideDuration={2000}
+              onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+              <Alert severity={snackbar.severity} variant="filled" sx={{ width: '100%' }}>
+                {snackbar.message}
+              </Alert>
+            </Snackbar>
 
             {/* Bottom Action Bar */}
             {!showResultDialog && hasImages && !isCaptionEditorOpen && (
@@ -761,6 +1135,8 @@ export default function CollagePage() {
                 </Box>
               </Box>
             </Slide>
+              </>
+            )}
           </Container>
 
           {/* Collage Result Dialog */}

@@ -419,6 +419,11 @@ const CanvasCollagePreview = ({
   lastUsedTextSettings = {},
   onCaptionEditorVisibleChange,
   isGeneratingCollage = false, // New prop to exclude placeholder text during export
+  // Render tracking for upstream autosave/thumbnail logic
+  renderSig,
+  onRendered,
+  // Editing session tracking (crop & zoom / reorder)
+  onEditingSessionChange,
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -1522,7 +1527,40 @@ const CanvasCollagePreview = ({
   // Redraw canvas when dependencies change
   useEffect(() => {
     drawCanvas();
+    // After drawing, tag the canvas and notify parent if requested
+    try {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        if (renderSig !== undefined) {
+          canvas.dataset.renderSig = renderSig;
+        }
+        // Expose custom layout to parent for snapshot persistence
+        if (customLayoutConfig) {
+          canvas.dataset.customLayout = JSON.stringify(customLayoutConfig);
+        } else if (canvas.dataset.customLayout) {
+          delete canvas.dataset.customLayout;
+        }
+        if (typeof onRendered === 'function') {
+          onRendered(renderSig);
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
   }, [drawCanvas]);
+
+  // Notify parent when any editing mode is active/inactive (transform, reorder, captions, border-drag)
+  useEffect(() => {
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(Boolean);
+    const active = anyPanelInTransformMode || isReorderMode || (textEditingPanel !== null) || isDraggingBorder;
+    try {
+      const canvas = canvasRef.current;
+      if (canvas) canvas.dataset.editing = active ? '1' : '0';
+    } catch (_) { /* ignore */ }
+    if (typeof onEditingSessionChange === 'function') {
+      onEditingSessionChange(active);
+    }
+  }, [isTransformMode, isReorderMode, textEditingPanel, isDraggingBorder, onEditingSessionChange]);
 
 
 
@@ -3567,6 +3605,9 @@ CanvasCollagePreview.propTypes = {
   lastUsedTextSettings: PropTypes.object,
   onCaptionEditorVisibleChange: PropTypes.func,
   isGeneratingCollage: PropTypes.bool,
+  renderSig: PropTypes.string,
+  onRendered: PropTypes.func,
+  onEditingSessionChange: PropTypes.func,
 };
 
 export default CanvasCollagePreview;

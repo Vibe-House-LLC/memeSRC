@@ -48,6 +48,11 @@ const CollageImagesStep = ({
   onCaptionEditorVisibleChange,
   onGenerateNudgeRequested,
   isFrameActionSuppressed,
+  // Render tracking passthrough for autosave thumbnails
+  renderSig,
+  onPreviewRendered,
+  // Editing session tracking
+  onEditingSessionChange,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -158,6 +163,11 @@ const CollageImagesStep = ({
           onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
           onGenerateNudgeRequested={onGenerateNudgeRequested}
           isFrameActionSuppressed={isFrameActionSuppressed}
+          // Render tracking
+          renderSig={renderSig}
+          onPreviewRendered={onPreviewRendered}
+          // Editing session tracking
+          onEditingSessionChange={onEditingSessionChange}
         />
         </Box>
         
@@ -218,6 +228,11 @@ CollageImagesStep.propTypes = {
   setFinalImage: PropTypes.func,
   handleOpenExportDialog: PropTypes.func,
   onCollageGenerated: PropTypes.func,
+  // Render tracking for autosave thumbnails
+  renderSig: PropTypes.string,
+  onPreviewRendered: PropTypes.func,
+  // Editing session tracking
+  onEditingSessionChange: PropTypes.func,
   isCreatingCollage: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,
   onGenerateNudgeRequested: PropTypes.func,
