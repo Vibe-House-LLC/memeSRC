@@ -1646,6 +1646,7 @@ export const onCreateMagicResult = /* GraphQL */ `
       prompt
       results
       status
+      currentStatus
       error
       createdAt
       updatedAt
@@ -1682,6 +1683,7 @@ export const onUpdateMagicResult = /* GraphQL */ `
       prompt
       results
       status
+      currentStatus
       error
       createdAt
       updatedAt
@@ -1718,6 +1720,7 @@ export const onDeleteMagicResult = /* GraphQL */ `
       prompt
       results
       status
+      currentStatus
       error
       createdAt
       updatedAt

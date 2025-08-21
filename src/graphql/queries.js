@@ -1075,6 +1075,7 @@ export const getMagicResult = /* GraphQL */ `
       prompt
       results
       status
+      currentStatus
       error
       createdAt
       updatedAt
@@ -1095,6 +1096,7 @@ export const listMagicResults = /* GraphQL */ `
         prompt
         results
         status
+        currentStatus
         error
         createdAt
         updatedAt

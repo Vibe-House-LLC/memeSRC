@@ -38,147 +38,308 @@ const streamToBuffer = (stream) => {
     });
 };
 
-const makeRequest = async (formData, headers) => {
-    try {
-        return await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
-    } catch (error) {
-        if (error.response && error.response.status === 400) {
-            console.error("Received 400 error, retrying in 5 seconds...");
-            await new Promise(resolve => setTimeout(resolve, 5000));  // Wait for 5 seconds
-            return await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
-        } else {
-            throw error;  // If it's another error or a retry after 400 also fails, throw it
-        }
-    }
+// Single attempt requester with fixed timeout. No fallbacks, no retries.
+const makeRequest = async (formData, config, opts = { timeoutMs: 120000 }) => {
+    const { timeoutMs = 120000 } = opts || {};
+    return axios.post('https://api.openai.com/v1/images/edits', formData, {
+        ...config,
+        timeout: timeoutMs,
+        validateStatus: (status) => status >= 200 && status < 300,
+    });
 }
 
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
-exports.handler = async (event) => {
-    const ssmClient = new SSMClient({ region: "us-east-1" });
-    const s3Client = new S3Client({ region: "us-east-1" });
-    const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
+exports.handler = async (event, context) => {
+	const ssmClient = new SSMClient({ region: "us-east-1" });
+	const s3Client = new S3Client({ region: "us-east-1" });
+	const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
 
-    const { magicResultId, imageKey, maskKey, prompt, size, input_fidelity } = event;
+	let finished = false;
+	let watchdog;
 
-    try {
-        const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
-        const data = await ssmClient.send(command);
-        // Fetch the images from S3
-        const imageObject = await s3Client.send(new GetObjectCommand({
-            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-            Key: imageKey
-        }));
-        const maskObject = await s3Client.send(new GetObjectCommand({
-            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-            Key: maskKey
-        }));
+	const { magicResultId, imageKey, maskKey, prompt, size, input_fidelity } = event;
 
-        const image_data = await streamToBuffer(imageObject.Body);
-        const mask_data = await streamToBuffer(maskObject.Body);
+	try {
+		// Watchdog setup: ensure we mark the record as failed just before Lambda timeout
+		try {
+			console.log('Worker start: event summary', { hasId: !!magicResultId, hasImageKey: !!imageKey, hasMaskKey: !!maskKey, size, input_fidelity });
+			const remainingMs = (typeof context?.getRemainingTimeInMillis === 'function') ? context.getRemainingTimeInMillis() : 60000;
+			const watchdogDelay = Math.max(1000, remainingMs - 2000);
+			console.log('Watchdog configured with delay ms', watchdogDelay);
+			watchdog = setTimeout(async () => {
+				if (finished || !magicResultId) return;
+				try {
+					await dynamoClient.send(new UpdateItemCommand({
+						TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+						Key: { id: { S: magicResultId } },
+						UpdateExpression: "set #status = :status, #error = :error, #updatedAt = :updatedAt, #currentStatus = :cs",
+						ExpressionAttributeNames: {
+							"#status": "status",
+							"#error": "error",
+							"#updatedAt": "updatedAt",
+							"#currentStatus": "currentStatus"
+						},
+						ExpressionAttributeValues: {
+							":status": { S: "failed" },
+							":error": { S: JSON.stringify({ message: 'Worker timeout before completion', code: 'LambdaTimeout' }) },
+							":updatedAt": { S: new Date().toISOString() },
+							":cs": { S: "worker: timeout" }
+						}
+					}));
+				} catch (wtErr) {
+					console.error('Failed to write timeout status for MagicResult', wtErr);
+				}
+			}, watchdogDelay);
+		} catch (wtSetupErr) {
+			console.error('Failed to set watchdog timer', wtSetupErr);
+		}
 
-        const headers = {
-            'Authorization': `Bearer ${data.Parameter.Value}`,
-            // Remaining form headers will be added per request
-        };
+		const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
+		const data = await ssmClient.send(command);
+		console.log('Fetched OpenAI API key from SSM');
 
-        const buildFormData = (desiredSize, fidelity) => {
-            let fd = new FormData();
-            fd.append('image', image_data, {
-                filename: 'image.png',
-                contentType: 'image/png',
-            });
-            fd.append('mask', mask_data, {
-                filename: 'mask.png',
-                contentType: 'image/png',
-            });
-            fd.append('prompt', prompt);
-            fd.append('n', 2);
-            fd.append('size', desiredSize || "1024x1024");
-            if (fidelity) {
-                fd.append('input_fidelity', fidelity);
-            }
-            return fd;
-        };
+		// Helper to write current status safely
+		const writeCurrentStatus = async (text) => {
+			try {
+				await dynamoClient.send(new UpdateItemCommand({
+					TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+					Key: { id: { S: magicResultId } },
+					UpdateExpression: "set #currentStatus = :cs, #updatedAt = :updatedAt",
+					ExpressionAttributeNames: {
+						"#currentStatus": "currentStatus",
+						"#updatedAt": "updatedAt"
+					},
+					ExpressionAttributeValues: {
+						":cs": { S: text },
+						":updatedAt": { S: new Date().toISOString() }
+					}
+				}));
+			} catch (e) { console.error('Failed to write currentStatus', text, e); }
+		};
 
-        // Old original square method (2 variations)
-        const formOld = buildFormData("1024x1024", null);
+		await writeCurrentStatus('worker: credentials loaded');
 
-        // New and improved method (2 variations)
-        const formNew = buildFormData(size || "1024x1024", input_fidelity);
+		// Fetch the images from S3
+		const imageObject = await s3Client.send(new GetObjectCommand({
+			Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+			Key: imageKey
+		}));
+		const maskObject = await s3Client.send(new GetObjectCommand({
+			Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+			Key: maskKey
+		}));
+		console.log('Fetched inputs from S3', { imageKey, maskKey });
 
-        // Run both OpenAI edit requests in parallel
-        const [responseOld, responseNew] = await Promise.all([
-            makeRequest(formOld, { ...headers, ...formOld.getHeaders() }),
-            makeRequest(formNew, { ...headers, ...formNew.getHeaders() })
-        ]);
+		const image_data = await streamToBuffer(imageObject.Body);
+		const mask_data = await streamToBuffer(maskObject.Body);
 
-        const saveResponses = async (response, isImproved) => {
-            const promises = response.data.data.map(async (imageItem) => {
-                const image_url = imageItem.url;
+		await writeCurrentStatus('worker: inputs loaded');
 
-                const imageResponse = await axios({
-                    method: 'get',
-                    url: image_url,
-                    responseType: 'arraybuffer'
-                });
+		const headers = {
+			'Authorization': `Bearer ${data.Parameter.Value}`,
+			// Remaining form headers will be added per request
+		};
 
-                const imageBuffer = Buffer.from(imageResponse.data, 'binary');
-                const fileName = `${uuid.v4()}.jpeg`;
-                const s3Params = {
-                    Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-                    Key: `public/${fileName}`,
-                    Body: imageBuffer,
-                    ContentType: 'image/jpeg',
-                };
+		const buildFormData = (desiredSize, fidelity) => {
+			let fd = new FormData();
+			fd.append('model', 'gpt-image-1');
+			fd.append('image', image_data, {
+				filename: 'image.png',
+				contentType: 'image/png',
+			});
+			fd.append('mask', mask_data, {
+				filename: 'mask.png',
+				contentType: 'image/png',
+			});
+			fd.append('prompt', prompt);
+			fd.append('n', 2);
+			fd.append('size', desiredSize || "1024x1024");
+			if (fidelity) {
+				fd.append('input_fidelity', fidelity);
+			}
+			return fd;
+		};
 
-                await s3Client.send(new PutObjectCommand(s3Params));
+		// Single call per variant, no fallbacks
 
-                const baseUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
-                return isImproved ? `${baseUrl}?variant=improved` : baseUrl;
-            });
-            return Promise.all(promises);
-        };
+		await writeCurrentStatus('worker: contacting OpenAI (improved)');
+		const openAiResults = [];
+		try {
+			const fdImproved = buildFormData(size || '1024x1024', input_fidelity);
+			const improved = await makeRequest(fdImproved, { headers: { ...headers, ...fdImproved.getHeaders() } }, { timeoutMs: 120000 });
+			openAiResults[1] = { status: 'fulfilled', value: improved };
+		} catch (e) {
+			openAiResults[1] = { status: 'rejected', reason: e };
+		}
+		await writeCurrentStatus('worker: contacting OpenAI (original)');
+		try {
+			const fdOriginal = buildFormData('1024x1024', null);
+			const original = await makeRequest(fdOriginal, { headers: { ...headers, ...fdOriginal.getHeaders() } }, { timeoutMs: 120000 });
+			openAiResults[0] = { status: 'fulfilled', value: original };
+		} catch (e) {
+			openAiResults[0] = { status: 'rejected', reason: e };
+		}
+		console.log('OpenAI results settled', openAiResults.map(r => ({ status: r.status, err: r.status === 'rejected' ? (r.reason?.message || r.reason) : undefined })));
 
-        // Save both sets of images to S3 in parallel
-        const [oldUrls, newUrls] = await Promise.all([
-            saveResponses(responseOld, false),
-            saveResponses(responseNew, true)
-        ]);
-        const cdnImageUrls = [...oldUrls, ...newUrls];
+		await writeCurrentStatus('worker: processing responses');
 
-        await dynamoClient.send(new UpdateItemCommand({
-            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
-            Key: {
-                "id": { S: magicResultId }
-            },
-            UpdateExpression: "set results = :results, status = :status, updatedAt = :updatedAt REMOVE error",
-            ExpressionAttributeValues: {
-                ":results": { S: JSON.stringify(cdnImageUrls) },
-                ":status": { S: "completed" },
-                ":updatedAt": { S: new Date().toISOString() }
-            }
-        }));
-    } catch (err) {
-        console.error("OpenAI worker failed:", err);
-        const safeError = {
-            message: err?.message || 'Unknown error',
-            code: err?.response?.status || err?.code || 'Unknown',
-            details: err?.response?.data || undefined,
-        };
-        await dynamoClient.send(new UpdateItemCommand({
-            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
-            Key: {
-                "id": { S: magicResultId }
-            },
-            UpdateExpression: "set status = :status, error = :error, updatedAt = :updatedAt",
-            ExpressionAttributeValues: {
-                ":status": { S: "failed" },
-                ":error": { S: JSON.stringify(safeError) },
-                ":updatedAt": { S: new Date().toISOString() }
-            }
-        }));
-        // Do not rethrow to avoid Lambda retries writing duplicate errors
-    }
+		const saveResponses = async (response, isImproved) => {
+			const promises = response.data.data.map(async (imageItem) => {
+				const image_url = imageItem.url;
+
+				const imageResponse = await axios({ method: 'get', url: image_url, responseType: 'arraybuffer', timeout: 90000 });
+
+				const imageBuffer = Buffer.from(imageResponse.data, 'binary');
+				const fileName = `${uuid.v4()}.jpeg`;
+				const s3Params = {
+					Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+					Key: `public/${fileName}`,
+					Body: imageBuffer,
+					ContentType: 'image/jpeg',
+				};
+
+				await s3Client.send(new PutObjectCommand(s3Params));
+
+				const baseUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+				return isImproved ? `${baseUrl}?variant=improved` : baseUrl;
+			});
+			return Promise.all(promises);
+		};
+
+		// For fulfilled responses, save to S3; for rejected, collect errors
+		const errors = [];
+		let fulfilledOld;
+		let fulfilledNew;
+		if (openAiResults[0].status === 'fulfilled') {
+			fulfilledOld = openAiResults[0].value;
+		} else {
+			const err0 = openAiResults[0].reason;
+			errors.push({ variant: 'original_square', stage: 'OpenAIRequest', message: err0?.message || 'Unknown error', code: err0?.response?.status || err0?.code, details: err0?.response?.data });
+		}
+		if (openAiResults[1].status === 'fulfilled') {
+			fulfilledNew = openAiResults[1].value;
+		} else {
+			const err1 = openAiResults[1].reason;
+			errors.push({ variant: 'improved', stage: 'OpenAIRequest', message: err1?.message || 'Unknown error', code: err1?.response?.status || err1?.code, details: err1?.response?.data });
+		}
+
+		const saveTasks = [];
+		if (fulfilledOld) saveTasks.push(saveResponses(fulfilledOld, false));
+		if (fulfilledNew) saveTasks.push(saveResponses(fulfilledNew, true));
+
+		const saved = await Promise.allSettled(saveTasks);
+		console.log('Save tasks settled', saved.map(r => ({ status: r.status, err: r.status === 'rejected' ? (r.reason?.message || r.reason) : undefined })));
+		const urlBatches = [];
+		saved.forEach((res, idx) => {
+			if (res.status === 'fulfilled') {
+				urlBatches.push(res.value);
+			} else {
+				errors.push({ variant: idx === 0 && fulfilledOld ? 'original_square' : 'improved', stage: 'SaveToS3', message: res.reason?.message || 'Failed to save generated images', code: res.reason?.code });
+			}
+		});
+		const cdnImageUrls = urlBatches.flat();
+
+		if (cdnImageUrls.length === 4) {
+			await dynamoClient.send(new UpdateItemCommand({
+				TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+				Key: {
+					"id": { S: magicResultId }
+				},
+				UpdateExpression: "set #results = :results, #status = :status, #updatedAt = :updatedAt, #currentStatus = :cs REMOVE #error",
+				ExpressionAttributeNames: {
+					"#results": "results",
+					"#status": "status",
+					"#updatedAt": "updatedAt",
+					"#currentStatus": "currentStatus",
+					"#error": "error"
+				},
+				ExpressionAttributeValues: {
+					":results": { S: JSON.stringify(cdnImageUrls) },
+					":status": { S: "completed" },
+					":updatedAt": { S: new Date().toISOString() },
+					":cs": { S: "worker: completed" }
+				}
+			}));
+		} else if (cdnImageUrls.length > 0) {
+			await dynamoClient.send(new UpdateItemCommand({
+				TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+				Key: {
+					"id": { S: magicResultId }
+				},
+				UpdateExpression: "set #results = :results, #status = :status, #error = :error, #updatedAt = :updatedAt, #currentStatus = :cs",
+				ExpressionAttributeNames: {
+					"#results": "results",
+					"#status": "status",
+					"#error": "error",
+					"#updatedAt": "updatedAt",
+					"#currentStatus": "currentStatus"
+				},
+				ExpressionAttributeValues: {
+					":results": { S: JSON.stringify(cdnImageUrls) },
+					":status": { S: "completed_partial" },
+					":error": { S: JSON.stringify({ message: 'Partial success', reasons: errors }) },
+					":updatedAt": { S: new Date().toISOString() },
+					":cs": { S: "worker: partial" }
+				}
+			}));
+		} else {
+			await dynamoClient.send(new UpdateItemCommand({
+				TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+				Key: {
+					"id": { S: magicResultId }
+				},
+				UpdateExpression: "set #status = :status, #error = :error, #updatedAt = :updatedAt, #currentStatus = :cs",
+				ExpressionAttributeNames: {
+					"#status": "status",
+					"#error": "error",
+					"#updatedAt": "updatedAt",
+					"#currentStatus": "currentStatus"
+				},
+				ExpressionAttributeValues: {
+					":status": { S: "failed" },
+					":error": { S: JSON.stringify({ message: 'No images generated by OpenAI', stage: 'Finalize', reasons: errors }) },
+					":updatedAt": { S: new Date().toISOString() },
+					":cs": { S: "worker: failed finalize" }
+				}
+			}));
+		}
+
+		finished = true;
+	} catch (err) {
+		console.error("OpenAI worker failed:", err);
+		const safeError = {
+			message: err?.message || 'Unknown error',
+			code: err?.response?.status || err?.code || 'Unknown',
+			details: err?.response?.data || undefined,
+		};
+		try {
+			await dynamoClient.send(new UpdateItemCommand({
+				TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+				Key: {
+					"id": { S: magicResultId }
+				},
+				UpdateExpression: "set #status = :status, #error = :error, #updatedAt = :updatedAt, #currentStatus = :cs",
+				ExpressionAttributeNames: {
+					"#status": "status",
+					"#error": "error",
+					"#updatedAt": "updatedAt",
+					"#currentStatus": "currentStatus"
+				},
+				ExpressionAttributeValues: {
+					":status": { S: "failed" },
+					":error": { S: JSON.stringify({ ...safeError, stage: 'Unhandled' }) },
+					":updatedAt": { S: new Date().toISOString() },
+					":cs": { S: "worker: failed unhandled" }
+				}
+			}));
+		} catch (writeErr) {
+			console.error('Failed to write failure status for MagicResult', writeErr);
+		}
+		finished = true;
+	} finally {
+		if (watchdog) clearTimeout(watchdog);
+	}
+	// Do not rethrow to avoid Lambda retries writing duplicate errors
 };

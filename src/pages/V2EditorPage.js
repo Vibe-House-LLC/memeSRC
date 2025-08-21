@@ -130,6 +130,7 @@ const EditorPage = ({ shows }) => {
   const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinematic cinestill sample')  // , Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
+  const [loadingStatusText, setLoadingStatusText] = useState('');
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
   const [editorTool, setEditorTool] = useState('captions');
   const [brushToolSize, setBrushToolSize] = useState(50);
@@ -752,7 +753,7 @@ const EditorPage = ({ shows }) => {
   // ------------------------------------------------------------------------
 
   const QUERY_INTERVAL = 1000; // Every second
-  const TIMEOUT = 90 * 1000;   // 1.5 minutes
+  const TIMEOUT = 5 * 60 * 1000;   // 5 minutes
 
   async function checkMagicResult(id) {
     try {
@@ -760,6 +761,7 @@ const EditorPage = ({ shows }) => {
             getMagicResult(id: "${id}") {
               results
               status
+              currentStatus
               error
             }
           }`));
@@ -911,18 +913,24 @@ const EditorPage = ({ shows }) => {
 
         const pollInterval = setInterval(async () => {
           const record = await checkMagicResult(magicResultId);
-          const isDone = record?.status === 'completed' || record?.status === 'failed';
+          const isDone = record?.status === 'completed' || record?.status === 'completed_partial' || record?.status === 'failed';
           if (isDone || (Date.now() - startTime) >= TIMEOUT) {
             clearInterval(pollInterval);
             setLoadingInpaintingResult(false);  // Stop the loading spinner
+            setLoadingStatusText('');
 
-            if (record?.status === 'completed' && record?.results) {
+            if ((record?.status === 'completed' || record?.status === 'completed_partial') && record?.results) {
               const imageUrls = JSON.parse(record.results);
               setReturnedImages([...returnedImages, ...imageUrls]);
               setLoadingInpaintingResult(false);
               setOpenSelectResult(true);
               const newCreditAmount = user?.userDetails.credits - 1;
               setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+              if (record?.status === 'completed_partial') {
+                setSeverity('warning');
+                setMessage('Generated partial results. Some variants failed.');
+                setOpen(true);
+              }
             } else if (record?.status === 'failed' && record?.error) {
               let msg = 'Generation failed';
               try {
@@ -938,6 +946,10 @@ const EditorPage = ({ shows }) => {
               console.error("Timeout reached without fetching magic results.");
               alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
             }
+          }
+          // Update loading message with backend currentStatus if available
+          if (record?.currentStatus) {
+            setLoadingStatusText(record.currentStatus);
           }
         }, QUERY_INTERVAL);
 
@@ -2523,7 +2535,7 @@ const EditorPage = ({ shows }) => {
         </Alert>
       </Snackbar>
 
-      <LoadingBackdrop open={loadingInpaintingResult} />
+      <LoadingBackdrop open={loadingInpaintingResult} statusText={loadingStatusText} />
 
       <Dialog
         open={openSelectResult}

@@ -5,7 +5,7 @@ import Logo from './logo';
 import MagicToolsLoadingAd from '../ads/MagicToolsLoadingAd';
 import { UserContext } from '../UserContext';
 
-function LoadingBackdrop({ open, duration = 20 }) {
+function LoadingBackdrop({ open, duration = 20, statusText }) {
     const { user } = useContext(UserContext)
     const [progress, setProgress] = useState(0);
     const [progressVariant, setProgressVariant] = useState('determinate');
@@ -85,7 +85,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
         >
             <Stack alignItems="center" direction="column" spacing={2}>
                 <Logo sx={{ display: 'inline', width: '90px', height: 'auto', margin: '-10px', color: 'yellow' }} color='white' />
-                <Typography variant="h5">{messages[messageIndex]}</Typography>
+                <Typography variant="h5">{statusText || messages[messageIndex]}</Typography>
                 <LinearProgress
                     variant={progressVariant}
                     value={progress}
@@ -118,6 +118,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
 LoadingBackdrop.propTypes = {
     open: PropTypes.bool,
     duration: PropTypes.number,
+    statusText: PropTypes.string,
 };
 
 export default LoadingBackdrop;

@@ -277,6 +277,7 @@ type MagicResult @model @auth(
   prompt: String,
   results: String,
   status: String,
+  currentStatus: String,
   error: String
 }
 

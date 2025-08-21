@@ -41,12 +41,37 @@ exports.handler = async (event) => {
     const s3Client = new S3Client({ region: "us-east-1" });
 
     const userSub = (event.requestContext?.identity?.cognitoAuthenticationProvider) ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1) : '';
-    const body = JSON.parse(event.body);
+    let body;
+    try {
+        body = JSON.parse(event.body);
+    } catch (e) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: { name: 'InvalidRequestBody', message: 'Request body must be valid JSON' } }),
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": "true",
+            },
+        };
+    }
     const prompt = body.prompt;
     const requestedSize = body.size; // e.g., "1024x1536" | "1536x1024" | "1024x1024"
     const inputFidelity = body.input_fidelity; // e.g., "high"
 
-    console.log(JSON.stringify(process.env))
+    if (!body?.image || !body?.mask || typeof prompt !== 'string') {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: { name: 'InvalidInput', message: 'Missing required fields: image, mask, or prompt' } }),
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": "true",
+            },
+        };
+    }
+
+    // Remove noisy env dump to reduce log size
 
     // Deducting credits
     const invokeRequest = {
@@ -58,11 +83,24 @@ exports.handler = async (event) => {
         }),
     };
 
-    const userDetailsResult = await lambdaClient.send(new InvokeCommand(invokeRequest));
-    const userDetailsString = new TextDecoder().decode(userDetailsResult.Payload);
-    const userDetails = JSON.parse(userDetailsString);
-    const userDetailsBody = JSON.parse(userDetails.body);
-    const credits = userDetailsBody?.data?.getUserDetails?.credits;
+    let credits;
+    try {
+        const userDetailsResult = await lambdaClient.send(new InvokeCommand(invokeRequest));
+        const userDetailsString = new TextDecoder().decode(userDetailsResult.Payload);
+        const userDetails = JSON.parse(userDetailsString);
+        const userDetailsBody = JSON.parse(userDetails.body);
+        credits = userDetailsBody?.data?.getUserDetails?.credits;
+    } catch (e) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: { name: 'CreditServiceError', message: 'Failed to fetch user credits' } }),
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": "true",
+            },
+        };
+    }
 
     if (!credits) {
         return {
@@ -119,14 +157,28 @@ exports.handler = async (event) => {
         "magicResultUserId": { S: userSub[0] },
         "prompt": { S: prompt },
         "status": { S: "processing" },
+        "currentStatus": { S: "entry: enqueued" },
         "updatedAt": { S: new Date().toISOString() },
         "__typename": { S: "MagicResult" }
     };
 
-    await dynamoClient.send(new PutItemCommand({
-        TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
-        Item: dynamoRecord
-    }));
+    try {
+        await dynamoClient.send(new PutItemCommand({
+            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+            Item: dynamoRecord
+        }));
+    } catch (e) {
+        console.error('Failed to create MagicResult record', e);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: { name: 'RecordCreateFailed', message: 'Failed to create MagicResult record' } }),
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": "true",
+            },
+        };
+    }
 
     // Invoke the OpenAI processing Lambda asynchronously
     try {
@@ -148,11 +200,13 @@ exports.handler = async (event) => {
         await dynamoClient.send(new UpdateItemCommand({
             TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
             Key: { id: { S: dynamoRecord.id.S } },
-            UpdateExpression: "set status = :status, error = :error, updatedAt = :updatedAt",
+            UpdateExpression: "set #status = :status, #error = :error, #updatedAt = :updatedAt, #currentStatus = :cs",
+            ExpressionAttributeNames: { "#status": "status", "#error": "error", "#updatedAt": "updatedAt", "#currentStatus": "currentStatus" },
             ExpressionAttributeValues: {
                 ":status": { S: "failed" },
                 ":error": { S: JSON.stringify({ name: 'InvocationFailed', message: e.message || 'Failed to start worker' }) },
-                ":updatedAt": { S: new Date().toISOString() }
+                ":updatedAt": { S: new Date().toISOString() },
+                ":cs": { S: "entry: failed to start worker" }
             }
         }));
         return {
