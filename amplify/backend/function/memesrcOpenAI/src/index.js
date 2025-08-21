@@ -104,11 +104,15 @@ exports.handler = async (event) => {
 
     // Old original square method (2 variations)
     const formOld = buildFormData("1024x1024", null);
-    const responseOld = await makeRequest(formOld, { ...headers, ...formOld.getHeaders() });
 
     // New and improved method (2 variations)
     const formNew = buildFormData(size || "1024x1024", input_fidelity);
-    const responseNew = await makeRequest(formNew, { ...headers, ...formNew.getHeaders() });
+
+    // Run both OpenAI edit requests in parallel
+    const [responseOld, responseNew] = await Promise.all([
+        makeRequest(formOld, { ...headers, ...formOld.getHeaders() }),
+        makeRequest(formNew, { ...headers, ...formNew.getHeaders() })
+    ]);
 
     const saveResponses = async (response, isImproved) => {
         const promises = response.data.data.map(async (imageItem) => {
@@ -137,8 +141,11 @@ exports.handler = async (event) => {
         return Promise.all(promises);
     };
 
-    const oldUrls = await saveResponses(responseOld, false);
-    const newUrls = await saveResponses(responseNew, true);
+    // Save both sets of images to S3 in parallel
+    const [oldUrls, newUrls] = await Promise.all([
+        saveResponses(responseOld, false),
+        saveResponses(responseNew, true)
+    ]);
     const cdnImageUrls = [...oldUrls, ...newUrls];
 
     await dynamoClient.send(new UpdateItemCommand({
