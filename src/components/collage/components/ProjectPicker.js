@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import { Box, Button, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton } from '@mui/material';
 import { Masonry } from '@mui/lab';
 import { Add, Delete } from '@mui/icons-material';
-import { formatDistanceToNow } from 'date-fns';
 import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
 
@@ -62,14 +61,7 @@ const ProjectCard = ({ project, onOpen, onDelete }) => {
           ) : (
             <Skeleton variant="rectangular" sx={{ width: '100%', height: 200 }} />
           )}
-          <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 1.25, color: '#fff', background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%)' }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>
-              {project.name || 'Untitled Collage'}
-            </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.85 }}>
-              Updated {formatDistanceToNow(new Date(project.updatedAt || Date.now()), { addSuffix: true })}
-            </Typography>
-          </Box>
+          {/* Overlay with title and updated time removed for cleaner thumbnail */}
         </CardActionArea>
         <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
           <Tooltip title="Delete">
