@@ -60,7 +60,7 @@ exports.handler = async (event) => {
     const s3Client = new S3Client({ region: "us-east-1" });
     const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
 
-    const { magicResultId, imageKey, maskKey, prompt } = event;
+    const { magicResultId, imageKey, maskKey, prompt, size, input_fidelity } = event;
 
     const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
     const data = await ssmClient.send(command);
@@ -89,7 +89,14 @@ exports.handler = async (event) => {
     });
     formData.append('prompt', prompt);
     formData.append('n', 2);
-    formData.append('size', "1024x1024");
+    if (size) {
+        formData.append('size', size);
+    } else {
+        formData.append('size', "1024x1024");
+    }
+    if (input_fidelity) {
+        formData.append('input_fidelity', input_fidelity);
+    }
 
     const headers = {
         'Authorization': `Bearer ${data.Parameter.Value}`,
