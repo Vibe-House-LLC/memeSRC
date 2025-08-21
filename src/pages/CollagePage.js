@@ -120,6 +120,7 @@ export default function CollagePage() {
   const editingSessionActiveRef = useRef(false);
   const captionOpenPrevRef = useRef(false);
   const exitSaveTimerRef = useRef(null);
+  const loadingProjectRef = useRef(false);
   // Persisted custom grid from border dragging
   const [customLayout, setCustomLayout] = useState(null);
   
@@ -399,6 +400,7 @@ export default function CollagePage() {
 
   // Load a project snapshot into the current editor state
   const loadProjectById = useCallback(async (projectId) => {
+    loadingProjectRef.current = true;
     const record = getProjectRecord(projectId);
     if (!record || !record.state) return;
     const snap = record.state;
@@ -464,6 +466,8 @@ export default function CollagePage() {
     // Mark current snapshot as saved for status UI
     lastSavedSigRef.current = computeSnapshotSignature(snap);
     setSaveStatus({ state: 'saved', time: Date.now() });
+    // Allow layout-change clearing logic to resume after state settles
+    setTimeout(() => { loadingProjectRef.current = false; }, 0);
   }, [addMultipleImages, clearImages, setBorderColor, setBorderThickness, setPanelCount, setSelectedAspectRatio, setSelectedTemplate, updatePanelImageMapping, updatePanelText, updatePanelTransform]);
 
   // Centralized save used by autosave-on-exit and manual save
@@ -564,6 +568,12 @@ export default function CollagePage() {
     // Reset initial-save gate so we capture the first render under this new project
     didInitialSaveRef.current = false;
   }, [activeProjectId, selectedImages?.length]);
+
+  // When the user changes layout controls, drop any existing custom grid override
+  useEffect(() => {
+    if (loadingProjectRef.current) return;
+    setCustomLayout(null);
+  }, [selectedTemplate?.id, selectedAspectRatio, panelCount]);
 
   // Picker handlers
   const handleCreateNewProject = useCallback(() => {
@@ -855,6 +865,7 @@ export default function CollagePage() {
     onEditingSessionChange: handleEditingSessionChange,
     // Provide persisted custom grid to preview on load
     customLayout,
+    customLayoutKey: useMemo(() => `${selectedTemplate?.id || 'none'}|${panelCount}|${selectedAspectRatio}`, [selectedTemplate?.id, panelCount, selectedAspectRatio]),
   };
 
   // Log mapping changes for debugging

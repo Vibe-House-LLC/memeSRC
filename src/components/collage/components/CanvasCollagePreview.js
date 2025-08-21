@@ -426,6 +426,7 @@ const CanvasCollagePreview = ({
   onEditingSessionChange,
   // When provided, use as initial custom grid config (restored from snapshot)
   initialCustomLayout,
+  customLayoutKey,
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -475,6 +476,23 @@ const CanvasCollagePreview = ({
   const [hoveredBorder, setHoveredBorder] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
 
+  // If the layout key changes (template/panelCount/aspect), drop any prior custom grid.
+  // This prevents a stale custom grid from overriding a newly selected layout at load time.
+  const prevLayoutKeyRef = useRef(customLayoutKey);
+  useEffect(() => {
+    if (prevLayoutKeyRef.current !== customLayoutKey) {
+      setCustomLayoutConfig(initialCustomLayout || null);
+      prevLayoutKeyRef.current = customLayoutKey;
+    }
+  }, [customLayoutKey, initialCustomLayout]);
+
+  // If a custom layout is provided after mount (e.g., load sequence), adopt it once
+  useEffect(() => {
+    if (initialCustomLayout && !customLayoutConfig) {
+      setCustomLayoutConfig(initialCustomLayout);
+    }
+  }, [initialCustomLayout, customLayoutConfig]);
+
   // Long-press (press-and-hold) hint state
   const [saveHintOpen, setSaveHintOpen] = useState(false);
   const longPressTimerRef = useRef(null);
@@ -489,11 +507,20 @@ const CanvasCollagePreview = ({
 
   // Get layout configuration
   const layoutConfig = useMemo(() => {
-    // Use custom layout if available, otherwise create from template
-    if (customLayoutConfig) {
-      return customLayoutConfig;
+    // Base layout from selected template first
+    const base = selectedTemplate ? createLayoutConfig(selectedTemplate, panelCount) : null;
+    // If a custom grid exists, overlay its grid settings on top of the base layout
+    if (base && customLayoutConfig) {
+      return {
+        ...base,
+        gridTemplateColumns: customLayoutConfig.gridTemplateColumns ?? base.gridTemplateColumns,
+        gridTemplateRows: customLayoutConfig.gridTemplateRows ?? base.gridTemplateRows,
+        gridTemplateAreas: customLayoutConfig.gridTemplateAreas ?? base.gridTemplateAreas,
+        areas: customLayoutConfig.areas ?? base.areas,
+        items: customLayoutConfig.items ?? base.items,
+      };
     }
-    return selectedTemplate ? createLayoutConfig(selectedTemplate, panelCount) : null;
+    return base;
   }, [selectedTemplate, panelCount, customLayoutConfig]);
 
   // Calculate border pixels
@@ -1566,11 +1593,13 @@ const CanvasCollagePreview = ({
 
 
 
-  // Reset custom layout whenever collage-level layout settings change
-  // so that selecting a new layout takes effect immediately
+  // Reset custom layout when user explicitly changes layout controls in-session
+  // This is separate from the initial restore keyed by customLayoutKey above.
   useEffect(() => {
-    setCustomLayoutConfig(null);
-  }, [selectedTemplate, panelCount, aspectRatioValue]);
+    if (!initialCustomLayout) {
+      setCustomLayoutConfig(null);
+    }
+  }, [selectedTemplate, panelCount, aspectRatioValue, initialCustomLayout]);
 
   // Global mouse/touch handlers for border dragging
   useEffect(() => {
