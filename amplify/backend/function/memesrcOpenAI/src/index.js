@@ -60,6 +60,9 @@ exports.handler = async (event, context) => {
 	let watchdog;
 
 	const { magicResultId, imageKey, maskKey, prompt, size, input_fidelity } = event;
+	const sanitizedPrompt = (typeof prompt === 'string' && prompt.trim().length > 0)
+		? prompt
+		: 'Fill the masked areas realistically, matching surrounding pixels.';
 
 	try {
 		// Watchdog setup: ensure we mark the record as failed just before Lambda timeout
@@ -153,33 +156,36 @@ exports.handler = async (event, context) => {
 				filename: 'mask.png',
 				contentType: 'image/png',
 			});
-			fd.append('prompt', prompt);
+			fd.append('prompt', sanitizedPrompt);
 			fd.append('n', 2);
 			fd.append('size', desiredSize || "1024x1024");
-			if (fidelity) {
-				fd.append('input_fidelity', fidelity);
-			}
 			return fd;
 		};
 
 		// Single call per variant, no fallbacks
 
-		await writeCurrentStatus('worker: contacting OpenAI (improved)');
+		await writeCurrentStatus(`worker: contacting OpenAI (improved size=${size || '1024x1024'})`);
 		const openAiResults = [];
 		try {
 			const fdImproved = buildFormData(size || '1024x1024', input_fidelity);
 			const improved = await makeRequest(fdImproved, { headers: { ...headers, ...fdImproved.getHeaders() } }, { timeoutMs: 120000 });
 			openAiResults[1] = { status: 'fulfilled', value: improved };
+			await writeCurrentStatus('worker: improved completed');
 		} catch (e) {
+			console.error('OpenAI improved error', e?.response?.status, e?.response?.data || e?.message);
 			openAiResults[1] = { status: 'rejected', reason: e };
+			await writeCurrentStatus('worker: improved failed');
 		}
-		await writeCurrentStatus('worker: contacting OpenAI (original)');
+		await writeCurrentStatus('worker: contacting OpenAI (original size=1024x1024)');
 		try {
 			const fdOriginal = buildFormData('1024x1024', null);
 			const original = await makeRequest(fdOriginal, { headers: { ...headers, ...fdOriginal.getHeaders() } }, { timeoutMs: 120000 });
 			openAiResults[0] = { status: 'fulfilled', value: original };
+			await writeCurrentStatus('worker: original completed');
 		} catch (e) {
+			console.error('OpenAI original error', e?.response?.status, e?.response?.data || e?.message);
 			openAiResults[0] = { status: 'rejected', reason: e };
+			await writeCurrentStatus('worker: original failed');
 		}
 		console.log('OpenAI results settled', openAiResults.map(r => ({ status: r.status, err: r.status === 'rejected' ? (r.reason?.message || r.reason) : undefined })));
 
@@ -187,17 +193,28 @@ exports.handler = async (event, context) => {
 
 		const saveResponses = async (response, isImproved) => {
 			const promises = response.data.data.map(async (imageItem) => {
-				const image_url = imageItem.url;
+				let imageBuffer;
+				let contentType = 'image/png';
+				if (imageItem?.b64_json) {
+					imageBuffer = Buffer.from(imageItem.b64_json, 'base64');
+					contentType = 'image/png';
+				} else if (imageItem?.url) {
+					const urlStr = imageItem.url.toString().trim();
+					try { new URL(urlStr); } catch { throw new Error('Invalid image URL from OpenAI'); }
+					const imageResponse = await axios({ method: 'get', url: urlStr, responseType: 'arraybuffer', timeout: 90000 });
+					imageBuffer = Buffer.from(imageResponse.data, 'binary');
+					contentType = imageResponse.headers['content-type'] || 'image/png';
+				} else {
+					throw new Error('Unexpected image item format: missing b64_json and url');
+				}
 
-				const imageResponse = await axios({ method: 'get', url: image_url, responseType: 'arraybuffer', timeout: 90000 });
-
-				const imageBuffer = Buffer.from(imageResponse.data, 'binary');
-				const fileName = `${uuid.v4()}.jpeg`;
+				const ext = contentType.includes('jpeg') ? 'jpeg' : 'png';
+				const fileName = `${uuid.v4()}.${ext}`;
 				const s3Params = {
 					Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
 					Key: `public/${fileName}`,
 					Body: imageBuffer,
-					ContentType: 'image/jpeg',
+					ContentType: contentType,
 				};
 
 				await s3Client.send(new PutObjectCommand(s3Params));
@@ -225,6 +242,7 @@ exports.handler = async (event, context) => {
 			errors.push({ variant: 'improved', stage: 'OpenAIRequest', message: err1?.message || 'Unknown error', code: err1?.response?.status || err1?.code, details: err1?.response?.data });
 		}
 
+		await writeCurrentStatus('worker: saving results');
 		const saveTasks = [];
 		if (fulfilledOld) saveTasks.push(saveResponses(fulfilledOld, false));
 		if (fulfilledNew) saveTasks.push(saveResponses(fulfilledNew, true));
