@@ -4,11 +4,11 @@ import { Box, Dialog, IconButton, Typography, useMediaQuery, Button, Popover, Te
 import { Delete, Close, KeyboardArrowLeft, KeyboardArrowRight, CheckCircle, CheckCircleOutline, Info } from '@mui/icons-material';
 import { getMetadataForKey, putMetadataForKey } from '../../utils/library/metadata';
 
-export default function PreviewDialog({ open, onClose, imageUrl, imageKey, storageLevel = 'protected', onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected, footerMode = 'default' }) {
+export default function PreviewDialog({ open, onClose, imageUrl, imageKey, storageLevel = 'protected', onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected, footerMode = 'default', title = 'Image Preview', ctaLabel, onCta, showInfo = true }) {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const [infoAnchor, setInfoAnchor] = useState(null);
   const [meta, setMeta] = useState({ tags: [], description: '', defaultCaption: '' });
-  const canEdit = Boolean(imageKey);
+  const canEdit = showInfo && Boolean(imageKey);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +93,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
         }}
       >
         <Typography id={titleId} variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>
-          Image Preview
+          {title}
         </Typography>
         {!isMobile && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -128,6 +128,27 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
               >
                 <Delete />
               </IconButton>
+            )}
+            {ctaLabel && typeof onCta === 'function' && (
+              <Button
+                onClick={onCta}
+                variant="contained"
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 800,
+                  borderRadius: 1.25,
+                  color: '#0b0f0c',
+                  background: 'linear-gradient(45deg, #16a34a 10%, #22c55e 90%)',
+                  border: '1px solid rgba(34,197,94,0.65)',
+                  boxShadow: '0 6px 16px rgba(34,197,94,0.25)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #12813c 10%, #1fb455 90%)',
+                    boxShadow: '0 8px 18px rgba(34,197,94,0.35)'
+                  }
+                }}
+              >
+                {ctaLabel}
+              </Button>
             )}
             <IconButton
               onClick={onClose}
@@ -273,6 +294,28 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
               >
                 Close
               </Button>
+              {ctaLabel && typeof onCta === 'function' && (
+                <Button
+                  onClick={onCta}
+                  variant="contained"
+                  fullWidth
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 800,
+                    borderRadius: 1.25,
+                    color: '#0b0f0c',
+                    background: 'linear-gradient(45deg, #16a34a 10%, #22c55e 90%)',
+                    border: '1px solid rgba(34,197,94,0.65)',
+                    boxShadow: '0 6px 16px rgba(34,197,94,0.25)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #12813c 10%, #1fb455 90%)',
+                      boxShadow: '0 8px 18px rgba(34,197,94,0.35)'
+                    }
+                  }}
+                >
+                  {ctaLabel}
+                </Button>
+              )}
               {onToggleSelected && (
                 <Button
                   onClick={onToggleSelected}
@@ -334,6 +377,27 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
               >
                 <KeyboardArrowRight />
               </IconButton>
+              {ctaLabel && typeof onCta === 'function' && (
+                <Button
+                  onClick={onCta}
+                  variant="contained"
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 800,
+                    borderRadius: 1.25,
+                    color: '#0b0f0c',
+                    background: 'linear-gradient(45deg, #16a34a 10%, #22c55e 90%)',
+                    border: '1px solid rgba(34,197,94,0.65)',
+                    boxShadow: '0 6px 16px rgba(34,197,94,0.25)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #12813c 10%, #1fb455 90%)',
+                      boxShadow: '0 8px 18px rgba(34,197,94,0.35)'
+                    }
+                  }}
+                >
+                  {ctaLabel}
+                </Button>
+              )}
               <IconButton onClick={onClose} aria-label="Close preview" sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}>
                 <Close />
               </IconButton>

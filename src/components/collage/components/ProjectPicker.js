@@ -5,8 +5,9 @@ import { Masonry } from '@mui/lab';
 import { Add, Delete } from '@mui/icons-material';
 import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
+import PreviewDialog from '../../library/PreviewDialog';
 
-const ProjectCard = ({ project, onOpen, onDelete }) => {
+const ProjectCard = ({ project, onOpen, onDelete, onPreview }) => {
   // Thumbnails are now generated inline from project data and stored locally
   const [thumbUrl, setThumbUrl] = useState(project.thumbnail || null);
 
@@ -49,7 +50,7 @@ const ProjectCard = ({ project, onOpen, onDelete }) => {
   return (
     <Card variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider', overflow: 'hidden', borderRadius: 2 }}>
       <Box sx={{ position: 'relative' }}>
-        <CardActionArea onClick={() => onOpen(project.id)}>
+        <CardActionArea onClick={() => (onPreview ? onPreview() : onOpen(project.id))}>
           {thumbUrl ? (
             <Box
               component="img"
@@ -79,9 +80,65 @@ ProjectCard.propTypes = {
   project: PropTypes.object.isRequired,
   onOpen: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
+  onPreview: PropTypes.func,
 };
 
 export default function ProjectPicker({ projects, onCreateNew, onOpen, onDelete }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [imageCache, setImageCache] = useState({}); // id -> dataUrl
+
+  const getProjectAt = (index) => {
+    if (!Array.isArray(projects) || index < 0 || index >= projects.length) return null;
+    return projects[index];
+  };
+
+  const ensurePreviewForIndex = async (index) => {
+    const proj = getProjectAt(index);
+    if (!proj) return;
+    if (imageCache[proj.id]) return;
+    try {
+      if (proj.state) {
+        const dataUrl = await renderThumbnailFromSnapshot(proj.state, { maxDim: 1024 });
+        if (dataUrl) setImageCache((c) => ({ ...c, [proj.id]: dataUrl }));
+      } else if (proj.thumbnail) {
+        setImageCache((c) => ({ ...c, [proj.id]: proj.thumbnail }));
+      }
+    } catch (_) {
+      if (proj.thumbnail) setImageCache((c) => ({ ...c, [proj.id]: proj.thumbnail }));
+    }
+  };
+
+  const handleOpenPreviewAt = async (index) => {
+    setPreviewIndex(index);
+    setPreviewOpen(true);
+    await ensurePreviewForIndex(index);
+    // Prefetch neighbors
+    ensurePreviewForIndex(index + 1);
+    ensurePreviewForIndex(index - 1);
+  };
+
+  const handlePrev = async () => {
+    const next = Math.max(0, previewIndex - 1);
+    if (next !== previewIndex) {
+      setPreviewIndex(next);
+      await ensurePreviewForIndex(next);
+      ensurePreviewForIndex(next - 1);
+    }
+  };
+
+  const handleNext = async () => {
+    const next = Math.min((projects?.length || 1) - 1, previewIndex + 1);
+    if (next !== previewIndex) {
+      setPreviewIndex(next);
+      await ensurePreviewForIndex(next);
+      ensurePreviewForIndex(next + 1);
+    }
+  };
+
+  const activeProject = getProjectAt(previewIndex);
+  const activeImageUrl = activeProject ? (imageCache[activeProject.id] || activeProject.thumbnail || null) : null;
+
   return (
     <Box sx={{ width: '100%' }}>
       <Stack spacing={1.5} sx={{ mb: 2 }}>
@@ -102,13 +159,28 @@ export default function ProjectPicker({ projects, onCreateNew, onOpen, onDelete 
         <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved projects yet. Click "New Collage" to begin.</Box>
       ) : (
         <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
-          {projects.map(p => (
+          {projects.map((p, idx) => (
             <div key={p.id}>
-              <ProjectCard project={p} onOpen={onOpen} onDelete={onDelete} />
+              <ProjectCard project={p} onOpen={onOpen} onDelete={onDelete} onPreview={() => handleOpenPreviewAt(idx)} />
             </div>
           ))}
         </Masonry>
       )}
+
+      <PreviewDialog
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        imageUrl={activeImageUrl}
+        titleId="collage-preview-title"
+        title="Collage Preview"
+        onPrev={handlePrev}
+        onNext={handleNext}
+        hasPrev={previewIndex > 0}
+        hasNext={previewIndex < (projects?.length || 0) - 1}
+        ctaLabel="Edit collage"
+        onCta={() => { if (activeProject) { onOpen(activeProject.id); setPreviewOpen(false); } }}
+        showInfo={false}
+      />
     </Box>
   );
 }
