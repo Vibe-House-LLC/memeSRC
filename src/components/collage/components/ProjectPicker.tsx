@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import PropTypes from 'prop-types';
-import { Box, Button, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton } from '@mui/material';
+import { Box, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton } from '@mui/material';
+import type { BoxProps } from '@mui/material';
 import { Masonry } from '@mui/lab';
 import { Delete } from '@mui/icons-material';
 import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
-// Preview dialog removed — open editor immediately on tap
+import type { CollageProject } from '../../../types/collage';
 
-const ProjectCard = ({ project, onOpen, onDelete }) => {
-  // Thumbnails are now generated inline from project data and stored locally
-  const [thumbUrl, setThumbUrl] = useState(project.thumbnail || null);
+type ProjectCardProps = {
+  project: CollageProject;
+  onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
+};
+
+const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete }) => {
+  // Thumbnails are generated inline from project data and stored locally
+  const [thumbUrl, setThumbUrl] = useState<string | null>(project.thumbnail || null);
 
   useEffect(() => {
     setThumbUrl(project.thumbnail || null);
@@ -76,19 +82,16 @@ const ProjectCard = ({ project, onOpen, onDelete }) => {
   );
 };
 
-ProjectCard.propTypes = {
-  project: PropTypes.object.isRequired,
-  onOpen: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
+export type ProjectPickerProps = BoxProps & {
+  projects: CollageProject[];
+  onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
 };
 
-export default function ProjectPicker({ projects, onCreateNew, onOpen, onDelete }) {
-  // Preview removed; no local preview state needed
-
-  // Helper removed — direct open on card click
-
+export default function ProjectPicker(props: ProjectPickerProps) {
+  const { projects, onOpen, onDelete, ...rest } = props; // keep onCreateNew in props type for API consistency
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%' }} {...rest}>
       <Stack spacing={1.5} sx={{ mb: 2 }}>
         <Stack spacing={0.5}>
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
@@ -114,10 +117,3 @@ export default function ProjectPicker({ projects, onCreateNew, onOpen, onDelete 
     </Box>
   );
 }
-
-ProjectPicker.propTypes = {
-  projects: PropTypes.array.isRequired,
-  onCreateNew: PropTypes.func.isRequired,
-  onOpen: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
-};

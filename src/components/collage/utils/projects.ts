@@ -1,23 +1,25 @@
 // Lightweight localStorage-backed persistence for collage projects
 // Stores only what’s needed to perfectly reproduce a collage across screen sizes.
 
+import type { CollageProject, CollageSnapshot, AspectRatio } from '../../../types/collage';
+
 const STORAGE_KEY = 'memeSRC_collageProjects_v1';
 
 // Read all projects
-export function loadProjects() {
+export function loadProjects(): CollageProject[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    return arr;
+    return arr as CollageProject[];
   } catch (_) {
     return [];
   }
 }
 
 // Write all projects
-function saveProjectsArray(projects) {
+function saveProjectsArray(projects: CollageProject[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
   } catch (_) {
@@ -26,10 +28,10 @@ function saveProjectsArray(projects) {
 }
 
 // Create a new project shell
-export function createProject({ name } = {}) {
+export function createProject({ name }: { name?: string } = {}): CollageProject {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const ts = new Date().toISOString();
-  const project = {
+  const project: CollageProject = {
     id,
     name: name || 'Untitled Collage',
     createdAt: ts,
@@ -50,32 +52,42 @@ export function createProject({ name } = {}) {
   return project;
 }
 
-export function getProject(id) {
-  return loadProjects().find(p => p.id === id) || null;
+export function getProject(id: string): CollageProject | null {
+  return loadProjects().find((p) => p.id === id) || null;
 }
 
-export function deleteProject(id) {
-  const projects = loadProjects().filter(p => p.id !== id);
+export function deleteProject(id: string): void {
+  const projects = loadProjects().filter((p) => p.id !== id);
   saveProjectsArray(projects);
 }
 
 // Insert or update a project record by id. Accepts partial fields.
-export function upsertProject(id, { name, thumbnail, thumbnailKey, thumbnailSignature, thumbnailUpdatedAt, state }) {
+export function upsertProject(
+  id: string,
+  {
+    name,
+    thumbnail,
+    thumbnailKey,
+    thumbnailSignature,
+    thumbnailUpdatedAt,
+    state,
+  }: Partial<Pick<CollageProject, 'name' | 'thumbnail' | 'thumbnailKey' | 'thumbnailSignature' | 'thumbnailUpdatedAt' | 'state'>>
+): void {
   const projects = loadProjects();
   const ts = new Date().toISOString();
-  const idx = projects.findIndex(p => p.id === id);
+  const idx = projects.findIndex((p) => p.id === id);
   if (idx === -1) {
     // create new if missing
-    const project = {
+    const project: CollageProject = {
       id,
       name: name || 'Untitled Collage',
       createdAt: ts,
       updatedAt: ts,
-      thumbnail: thumbnail || null,
-      thumbnailKey: thumbnailKey || null,
-      thumbnailSignature: thumbnailSignature || null,
-      thumbnailUpdatedAt: thumbnailUpdatedAt || ts,
-      state: state || null,
+      thumbnail: thumbnail ?? null,
+      thumbnailKey: thumbnailKey ?? null,
+      thumbnailSignature: thumbnailSignature ?? null,
+      thumbnailUpdatedAt: thumbnailUpdatedAt ?? ts,
+      state: (state as CollageSnapshot | null) ?? null,
     };
     projects.unshift(project);
   } else {
@@ -88,7 +100,7 @@ export function upsertProject(id, { name, thumbnail, thumbnailKey, thumbnailSign
       thumbnailKey: thumbnailKey === undefined ? prev.thumbnailKey : thumbnailKey,
       thumbnailSignature: thumbnailSignature === undefined ? prev.thumbnailSignature : thumbnailSignature,
       thumbnailUpdatedAt: thumbnailUpdatedAt === undefined ? prev.thumbnailUpdatedAt : thumbnailUpdatedAt,
-      state: state === undefined ? prev.state : state,
+      state: (state === undefined ? prev.state : (state as CollageSnapshot | null)),
     };
   }
   saveProjectsArray(projects);
@@ -111,17 +123,50 @@ export function buildSnapshotFromState({
   // Optional: capture the live preview canvas size to scale transforms correctly when rendering thumbnails
   canvasWidth,
   canvasHeight,
-}) {
-  const images = (selectedImages || []).map(img => {
-    const ref = {};
-    if (img?.metadata?.libraryKey) ref.libraryKey = img.metadata.libraryKey;
+}: {
+  selectedImages: Array<
+    | string
+    | {
+        originalUrl?: string;
+        displayUrl?: string;
+        metadata?: { libraryKey?: string };
+        subtitle?: string;
+        subtitleShowing?: boolean;
+      }
+  >;
+  panelImageMapping: Record<string, number> | undefined;
+  panelTransforms: Record<string, unknown> | undefined;
+  panelTexts: Record<string, unknown> | undefined;
+  selectedTemplate: { id?: string } | null | undefined;
+  selectedAspectRatio: string | undefined;
+  panelCount: number | undefined;
+  borderThickness?: number | string;
+  borderColor?: string;
+  customLayout?: unknown;
+  canvasWidth?: number;
+  canvasHeight?: number;
+}): CollageSnapshot {
+  const images = (selectedImages || []).map((img) => {
+    const ref: { libraryKey?: string; url?: string; subtitle?: string; subtitleShowing?: boolean } = {};
+    if (typeof img === 'string') {
+      ref.url = img;
+      return ref;
+    }
+    const maybeMeta = img?.metadata;
+    if (maybeMeta && typeof maybeMeta.libraryKey === 'string') {
+      ref.libraryKey = maybeMeta.libraryKey;
+    }
     // Store one URL fallback for non-library images (data: or http(s): both supported)
     // Prefer originalUrl if present.
+    const originalUrl = img?.originalUrl;
+    const displayUrl = img?.displayUrl;
     if (!ref.libraryKey) {
-      ref.url = img?.originalUrl || img?.displayUrl || '';
+      ref.url = originalUrl || displayUrl || '';
     }
-    if (img?.subtitle) ref.subtitle = img.subtitle;
-    if (typeof img?.subtitleShowing === 'boolean') ref.subtitleShowing = img.subtitleShowing;
+    const subtitle = img?.subtitle;
+    if (typeof subtitle === 'string' && subtitle.length > 0) ref.subtitle = subtitle;
+    const subtitleShowing = img?.subtitleShowing;
+    if (typeof subtitleShowing === 'boolean') ref.subtitleShowing = !!subtitleShowing;
     return ref;
   });
 
@@ -132,7 +177,7 @@ export function buildSnapshotFromState({
     panelTransforms: panelTransforms || {},
     panelTexts: panelTexts || {},
     selectedTemplateId: selectedTemplate?.id || null,
-    selectedAspectRatio: selectedAspectRatio || 'square',
+    selectedAspectRatio: (selectedAspectRatio ?? 'square') as AspectRatio,
     panelCount: panelCount || 2,
     borderThickness,
     borderColor,
@@ -142,4 +187,9 @@ export function buildSnapshotFromState({
     canvasWidth: typeof canvasWidth === 'number' ? canvasWidth : undefined,
     canvasHeight: typeof canvasHeight === 'number' ? canvasHeight : undefined,
   };
+}
+
+export function getProjectRecord(id: string): CollageProject | null {
+  // Back-compat alias used by existing JS imports
+  return getProject(id);
 }
