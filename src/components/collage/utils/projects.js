@@ -108,6 +108,9 @@ export function buildSnapshotFromState({
   borderThickness,
   borderColor,
   customLayout,
+  // Optional: capture the live preview canvas size to scale transforms correctly when rendering thumbnails
+  canvasWidth,
+  canvasHeight,
 }) {
   const images = (selectedImages || []).map(img => {
     const ref = {};
@@ -135,5 +138,8 @@ export function buildSnapshotFromState({
     borderColor,
     // Persist custom layout grid when user drags inner borders
     customLayout: customLayout || null,
+    // Persist the preview canvas size used when saving so thumbnails can scale pixel-based transforms
+    canvasWidth: typeof canvasWidth === 'number' ? canvasWidth : undefined,
+    canvasHeight: typeof canvasHeight === 'number' ? canvasHeight : undefined,
   };
 }

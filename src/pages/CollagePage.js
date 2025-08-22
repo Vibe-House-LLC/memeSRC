@@ -2,7 +2,7 @@ import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "r
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, IconButton, Tooltip, CircularProgress, Snackbar, Alert } from "@mui/material";
-import { Dashboard, Save, DeleteForever, Settings, CheckCircleOutline, ErrorOutline } from "@mui/icons-material";
+import { Dashboard, Save, Settings, CheckCircleOutline, ErrorOutline, ArrowBack } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -302,16 +302,21 @@ export default function CollagePage() {
     // Note: this relies on the preview tagging the canvas with the serialized layout
     customLayout: (() => {
       try {
-        // When collage-level layout settings change, drop custom layout
-        // and allow a fresh grid from the selected template
-        if (selectedTemplate || selectedAspectRatio || panelCount) {
-          // no-op: fall through to reading live custom layout if present later in the session
-        }
         const canvas = document.querySelector('[data-testid="canvas-collage-preview"]');
         const json = canvas?.dataset?.customLayout;
         if (!json) return null;
         return JSON.parse(json);
       } catch (_) { return null; }
+    })(),
+    // Capture live canvas size for proper transform scaling in thumbnails
+    ...(function() {
+      try {
+        const canvas = document.querySelector('[data-testid="canvas-collage-preview"]');
+        const w = Number(canvas?.dataset?.previewWidth || 0);
+        const h = Number(canvas?.dataset?.previewHeight || 0);
+        if (w > 0 && h > 0) return { canvasWidth: w, canvasHeight: h };
+      } catch (_) { return {}; }
+      return {};
     })(),
   }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, renderBump]);
 
@@ -632,13 +637,7 @@ export default function CollagePage() {
     setShowResultDialog(false);
   };
 
-  // Reset the collage and return to the library
-  const handleResetCollage = () => {
-    if (window.confirm('Resetting the collage will discard your changes.')) {
-      clearImages();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
+  // (Reset All button removed from bottom bar)
 
   // Toggle settings disclosure and scroll when opening
   const handleToggleSettings = () => {
@@ -910,7 +909,7 @@ export default function CollagePage() {
             }}
             disableGutters={isMobile}
           >
-            {showProjectPicker && !hasImages ? (
+            {showProjectPicker ? (
               <ProjectPicker 
                 projects={projects}
                 onCreateNew={handleCreateNewProject}
@@ -1048,25 +1047,25 @@ export default function CollagePage() {
                   <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }} ref={bottomBarContentRef}>
                     <Collapse in={!nudgeVisualActive} orientation="horizontal">
                       <Button
-                      variant="contained"
-                      onClick={handleToggleSettings}
-                      disabled={isCreatingCollage}
-                      startIcon={!isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : undefined}
-                      aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
-                      sx={{
-                        minHeight: 48,
-                        minWidth: isMobile ? 48 : undefined,
-                        px: isMobile ? 1.25 : 2,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                        border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
-                        boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
-                        color: '#e0e0e0',
-                        '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                      }}
+                        variant="contained"
+                        onClick={() => setShowProjectPicker(true)}
+                        disabled={isCreatingCollage}
+                        startIcon={!isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : undefined}
+                        aria-label="Back to projects"
+                        sx={{
+                          minHeight: 48,
+                          minWidth: isMobile ? 48 : undefined,
+                          px: isMobile ? 1.25 : 2,
+                          fontWeight: 700,
+                          textTransform: 'none',
+                          background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                          border: '1px solid #3a3a3a',
+                          boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                          color: '#e0e0e0',
+                          '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                        }}
                       >
-                        {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
+                        {isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : 'Back to Projects'}
                       </Button>
                     </Collapse>
                     <Button
@@ -1096,25 +1095,25 @@ export default function CollagePage() {
                     {/* Nudge message moved outside bar to render behind it */}
                     <Collapse in={!nudgeVisualActive} orientation="horizontal">
                       <Button
-                      variant="contained"
-                      onClick={handleResetCollage}
-                      disabled={isCreatingCollage}
-                      startIcon={!isMobile ? <DeleteForever sx={{ color: '#c84b4b' }} /> : undefined}
-                      aria-label="Reset all"
-                      sx={{
-                        minHeight: 48,
-                        minWidth: isMobile ? 48 : undefined,
-                        px: isMobile ? 1.25 : 2,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                        border: '1px solid #3a3a3a',
-                        boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                        color: '#e0e0e0',
-                        '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                      }}
+                        variant="contained"
+                        onClick={handleToggleSettings}
+                        disabled={isCreatingCollage}
+                        startIcon={!isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : undefined}
+                        aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                        sx={{
+                          minHeight: 48,
+                          minWidth: isMobile ? 48 : undefined,
+                          px: isMobile ? 1.25 : 2,
+                          fontWeight: 700,
+                          textTransform: 'none',
+                          background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                          border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
+                          boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
+                          color: '#e0e0e0',
+                          '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                        }}
                       >
-                        {isMobile ? <DeleteForever sx={{ color: '#c84b4b' }} /> : 'Reset All'}
+                        {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
                       </Button>
                     </Collapse>
                   </Stack>

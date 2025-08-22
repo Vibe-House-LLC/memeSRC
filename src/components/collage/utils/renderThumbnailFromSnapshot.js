@@ -238,6 +238,13 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   const BASE_CANVAS_WIDTH = 400; // Keep text scale in sync with preview
   const textScaleFactor = width / BASE_CANVAS_WIDTH;
   const borderPixels = Math.round((borderPct / 100) * width);
+  
+  // If the snapshot includes the source preview canvas size, compute scale factors
+  // so pixel-based transforms (positionX/positionY) scale proportionally
+  const sourceCanvasWidth = typeof snap.canvasWidth === 'number' ? snap.canvasWidth : null;
+  const sourceCanvasHeight = typeof snap.canvasHeight === 'number' ? snap.canvasHeight : null;
+  const scaleX = sourceCanvasWidth && sourceCanvasWidth > 0 ? (width / sourceCanvasWidth) : 1;
+  const scaleY = sourceCanvasHeight && sourceCanvasHeight > 0 ? (height / sourceCanvasHeight) : 1;
 
   const canvas = document.createElement('canvas');
   canvas.width = width * dpr;
@@ -256,6 +263,31 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   // Load images referenced in snapshot
   const images = Array.isArray(snap.images) ? snap.images : [];
   const loaded = await Promise.all(images.map(loadImageFromRef));
+
+  // Ensure custom fonts are loaded before rendering text so canvas uses intended fonts
+  try {
+    if (typeof document !== 'undefined' && document.fonts) {
+      const families = new Set();
+      if (snap.panelTexts && typeof snap.panelTexts === 'object') {
+        Object.values(snap.panelTexts).forEach((pt) => {
+          if (pt && pt.fontFamily) families.add(pt.fontFamily);
+        });
+      }
+      // Proactively request loads for each family (common weight/size)
+      const loaders = Array.from(families).map((family) => {
+        const fam = String(family);
+        const css = `700 24px ${fam.includes(' ') ? JSON.stringify(fam) : fam}`;
+        try { return document.fonts.load(css); } catch (_) { return Promise.resolve(); }
+      });
+      if (loaders.length) {
+        try { await Promise.all(loaders); } catch (_) {}
+      }
+      // Await overall readiness as a fallback
+      if (document.fonts.ready) {
+        try { await document.fonts.ready; } catch (_) {}
+      }
+    }
+  } catch (_) { /* best-effort only */ }
 
   // Helper: text wrapping similar to preview/export
   const wrapText = (drawCtx, text, maxWidth) => {
@@ -335,8 +367,9 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
         const scaledH = img.naturalHeight * finalScale;
         const centerOffsetX = (w - scaledW) / 2;
         const centerOffsetY = (h - scaledH) / 2;
-        const finalOffsetX = centerOffsetX + (transform.positionX || 0);
-        const finalOffsetY = centerOffsetY + (transform.positionY || 0);
+        // Scale pixel offsets by the ratio between target canvas size and source preview size (if known)
+        const finalOffsetX = centerOffsetX + ((transform.positionX || 0) * scaleX);
+        const finalOffsetY = centerOffsetY + ((transform.positionY || 0) * scaleY);
         ctx.drawImage(img, x + finalOffsetX, y + finalOffsetY, scaledW, scaledH);
         ctx.restore();
       }

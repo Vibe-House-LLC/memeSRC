@@ -1563,6 +1563,9 @@ const CanvasCollagePreview = ({
         if (renderSig !== undefined) {
           canvas.dataset.renderSig = renderSig;
         }
+        // Tag current preview canvas size for snapshot consumers (e.g., thumbnail rendering)
+        canvas.dataset.previewWidth = String(componentWidth || 0);
+        canvas.dataset.previewHeight = String(componentHeight || 0);
         // Expose custom layout to parent for snapshot persistence
         if (customLayoutConfig) {
           canvas.dataset.customLayout = JSON.stringify(customLayoutConfig);
