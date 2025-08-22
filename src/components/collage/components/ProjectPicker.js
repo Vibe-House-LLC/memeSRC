@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Button, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton } from '@mui/material';
 import { Masonry } from '@mui/lab';
-import { Add, Delete } from '@mui/icons-material';
+import { Delete } from '@mui/icons-material';
 import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
 // Preview dialog removed — open editor immediately on tap
@@ -90,39 +90,13 @@ export default function ProjectPicker({ projects, onCreateNew, onOpen, onDelete 
   return (
     <Box sx={{ width: '100%' }}>
       <Stack spacing={1.5} sx={{ mb: 2 }}>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          alignItems={{ xs: 'stretch', sm: 'center' }}
-          justifyContent="space-between"
-          spacing={1.5}
-        >
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="h4" sx={{ fontWeight: 800 }}>
-              Collage Projects
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Open a previous collage or start a new one. Projects are saved automatically as you edit.
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={onCreateNew}
-            startIcon={<Add />}
-            sx={{
-              whiteSpace: 'nowrap',
-              px: 2.5,
-              py: 1.25,
-              fontWeight: 700,
-              textTransform: 'none',
-              letterSpacing: 0.2,
-              alignSelf: { xs: 'stretch', sm: 'auto' },
-              width: { xs: '100%', sm: 'auto' },
-              flexShrink: 0,
-            }}
-          >
-            New Collage
-          </Button>
+        <Stack spacing={0.5}>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Collage Projects
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Open a previous collage or start a new one. Projects are saved automatically as you edit.
+          </Typography>
         </Stack>
       </Stack>
 

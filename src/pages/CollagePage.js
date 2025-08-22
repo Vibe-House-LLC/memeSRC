@@ -2,7 +2,7 @@ import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "r
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, IconButton, Tooltip, CircularProgress, Snackbar, Alert } from "@mui/material";
-import { Dashboard, Save, Settings, CheckCircleOutline, ErrorOutline, ArrowBack, DeleteForever } from "@mui/icons-material";
+import { Dashboard, Save, Settings, CheckCircleOutline, ErrorOutline, ArrowBack, DeleteForever, Add, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -991,12 +991,13 @@ export default function CollagePage() {
                         minHeight: 48,
                         fontWeight: 700,
                         textTransform: 'none',
-                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                        background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
                         border: '1px solid #8b5cc7',
-                        boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                        boxShadow: '0 6px 20px rgba(139, 92, 199, 0.4)',
                         color: '#fff',
-                        '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                        '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
                       }}
+                      startIcon={<Add />}
                     >
                       New Collage
                     </Button>
@@ -1148,12 +1149,13 @@ export default function CollagePage() {
                               minHeight: 48,
                               fontWeight: 700,
                               textTransform: 'none',
-                              background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                              background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
                               border: '1px solid #8b5cc7',
-                              boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                              boxShadow: '0 6px 20px rgba(139, 92, 199, 0.4)',
                               color: '#fff',
-                              '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                              '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
                             }}
+                            startIcon={<Add />}
                           >
                             New Collage
                           </Button>
@@ -1176,6 +1178,7 @@ export default function CollagePage() {
                                 color: '#e0e0e0',
                                 '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
                               }}
+                              startIcon={<Close sx={{ color: '#e0e0e0' }} />}
                             >
                               Cancel
                             </Button>
@@ -1189,12 +1192,13 @@ export default function CollagePage() {
                                 minHeight: 48,
                                 fontWeight: 700,
                                 textTransform: 'none',
-                                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
                                 border: '1px solid #8b5cc7',
-                                boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                                boxShadow: '0 6px 20px rgba(139, 92, 199, 0.4)',
                                 color: '#fff',
-                                '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
                               }}
+                              startIcon={<ArrowForward />}
                             >
                               Continue
                             </Button>
@@ -1238,13 +1242,13 @@ export default function CollagePage() {
                                 minHeight: 48,
                                 fontWeight: 700,
                                 textTransform: 'none',
-                                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
                                 border: '1px solid #8b5cc7',
-                                boxShadow: nudgeVisualActive ? '0 10px 28px rgba(107, 66, 161, 0.6)' : '0 6px 20px rgba(107, 66, 161, 0.4)',
+                                boxShadow: nudgeVisualActive ? '0 10px 28px rgba(139, 92, 199, 0.6)' : '0 6px 20px rgba(139, 92, 199, 0.4)',
                                 transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
                                 transition: 'transform 180ms ease, box-shadow 220ms ease',
                                 color: '#fff',
-                                '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
                               }}
                               aria-label="Create and save collage"
                               ref={generateBtnRef}
@@ -1317,13 +1321,13 @@ export default function CollagePage() {
                               minHeight: 48,
                               fontWeight: 700,
                               textTransform: 'none',
-                              background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                              background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
                               border: '1px solid #8b5cc7',
-                              boxShadow: nudgeVisualActive ? '0 10px 28px rgba(107, 66, 161, 0.6)' : '0 6px 20px rgba(107, 66, 161, 0.4)',
+                              boxShadow: nudgeVisualActive ? '0 10px 28px rgba(139, 92, 199, 0.6)' : '0 6px 20px rgba(139, 92, 199, 0.4)',
                               transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
                               transition: 'transform 180ms ease, box-shadow 220ms ease',
                               color: '#fff',
-                              '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                              '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
                             }}
                             aria-label="Create and save collage"
                             ref={generateBtnRef}
