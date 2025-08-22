@@ -129,8 +129,10 @@ export default function CollagePage() {
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
   
-  // State to control button animation
-  const [showAnimatedButton, setShowAnimatedButton] = useState(false);
+  // Unified bottom bar control (no animation)
+  const [currentView, setCurrentView] = useState('editor'); // 'projects' | 'library' | 'editor'
+  const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 2 });
+  const libraryActionsRef = useRef({ primary: null, clearSelection: null });
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
@@ -224,19 +226,15 @@ export default function CollagePage() {
 
   
 
-  // Animate button section in with delay when the preview is visible
+  // Track current subview for admins
   useEffect(() => {
-    if (hasImages && !showResultDialog) {
-      const timer = setTimeout(() => {
-        setShowAnimatedButton(true);
-      }, 800); // 800ms delay for dramatic effect
-
-      return () => clearTimeout(timer);
+    if (hasLibraryAccess) {
+      if (showProjectPicker) setCurrentView('projects');
+      else setCurrentView(hasImages ? 'editor' : 'library');
+    } else {
+      setCurrentView(hasImages ? 'editor' : 'start');
     }
-
-    setShowAnimatedButton(false);
-    return undefined; // Consistent return for all code paths
-  }, [hasImages, showResultDialog]);
+  }, [hasLibraryAccess, showProjectPicker, hasImages]);
 
   // Track bottom bar size/center for positioning the nudge message above it
   useEffect(() => {
@@ -266,7 +264,7 @@ export default function CollagePage() {
       window.removeEventListener('resize', update);
       if (ro) ro.disconnect();
     };
-  }, [showAnimatedButton]);
+  }, [currentView, showResultDialog, isCaptionEditorOpen]);
 
 
 
@@ -954,12 +952,57 @@ export default function CollagePage() {
             disableGutters={isMobile}
           >
             {hasLibraryAccess && showProjectPicker ? (
-              <ProjectPicker 
-                projects={projects}
-                onCreateNew={handleCreateNewProject}
-                onOpen={handleOpenProject}
-                onDelete={handleDeleteProject}
-              />
+              <>
+                <ProjectPicker 
+                  projects={projects}
+                  onCreateNew={handleCreateNewProject}
+                  onOpen={handleOpenProject}
+                  onDelete={handleDeleteProject}
+                />
+
+                {/* Bottom Action Bar on Projects view (admins) */}
+                <Box
+                  sx={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 1600,
+                    bgcolor: 'background.paper',
+                    borderTop: 1,
+                    borderColor: 'divider',
+                    p: isMobile ? 1.5 : 2,
+                    boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
+                    backdropFilter: 'blur(20px)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: 1.5,
+                  }}
+                  ref={bottomBarRef}
+                >
+                  <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }} ref={bottomBarContentRef}>
+                    <Button
+                      variant="contained"
+                      onClick={handleCreateNewProject}
+                      disabled={isCreatingCollage}
+                      sx={{
+                        flex: 1,
+                        minHeight: 48,
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                        border: '1px solid #8b5cc7',
+                        boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                        color: '#fff',
+                        '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                      }}
+                    >
+                      New Collage
+                    </Button>
+                  </Stack>
+                </Box>
+              </>
             ) : (
               <>
             {/* Page Header */}
@@ -1053,6 +1096,9 @@ export default function CollagePage() {
               settingsOpen={settingsOpen}
               setSettingsOpen={setSettingsOpen}
               settingsRef={settingsRef}
+              onViewChange={(v) => setCurrentView(v)}
+              onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
+              onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
             />
 
             {/* Save snackbar */}
@@ -1067,9 +1113,8 @@ export default function CollagePage() {
               </Alert>
             </Snackbar>
 
-            {/* Bottom Action Bar */}
-            {!showResultDialog && hasImages && !isCaptionEditorOpen && (
-              <Slide direction="up" in={showAnimatedButton}>
+            {/* Bottom Action Bar (admins always see; no animation) */}
+            {(!showResultDialog && !isCaptionEditorOpen) && (
                 <Box
                   sx={{
                     position: 'fixed',
@@ -1091,104 +1136,229 @@ export default function CollagePage() {
                 ref={bottomBarRef}
                 >
                   <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }} ref={bottomBarContentRef}>
-                    <Collapse in={!nudgeVisualActive} orientation="horizontal">
-                      {hasLibraryAccess ? (
-                        <Button
-                          variant="contained"
-                          onClick={handleBackToProjects}
-                          disabled={isCreatingCollage}
-                          startIcon={!isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : undefined}
-                          aria-label="Back to projects"
-                          sx={{
-                            minHeight: 48,
-                            minWidth: isMobile ? 48 : undefined,
-                            px: isMobile ? 1.25 : 2,
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                            border: '1px solid #3a3a3a',
-                            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                            color: '#e0e0e0',
-                            '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                          }}
-                        >
-                          {isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : 'Back to Projects'}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="contained"
-                          onClick={handleConfirmReset}
-                          disabled={isCreatingCollage}
-                          startIcon={!isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : undefined}
-                          aria-label="Start over"
-                          sx={{
-                            minHeight: 48,
-                            minWidth: isMobile ? 48 : undefined,
-                            px: isMobile ? 1.25 : 2,
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                            border: '1px solid #3a3a3a',
-                            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                            color: '#e0e0e0',
-                            '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                          }}
-                        >
-                          {isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : 'Start Over'}
-                        </Button>
-                      )}
-                    </Collapse>
-                  <Button
-                    variant="contained"
-                    onClick={handleFloatingButtonClick}
-                    disabled={isCreatingCollage || !allPanelsHaveImages}
-                    size="large"
-                      startIcon={<Save />}
-                      sx={{
-                        flex: 1,
-                        minHeight: 48,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                        border: '1px solid #8b5cc7',
-                        boxShadow: nudgeVisualActive ? '0 10px 28px rgba(107, 66, 161, 0.6)' : '0 6px 20px rgba(107, 66, 161, 0.4)',
-                        transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
-                        transition: 'transform 180ms ease, box-shadow 220ms ease',
-                        color: '#fff',
-                        '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
-                      }}
-                      aria-label="Create and save collage"
-                      ref={generateBtnRef}
-                    >
-                      {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
-                    </Button>
-                    {/* Nudge message moved outside bar to render behind it */}
-                    <Collapse in={!nudgeVisualActive} orientation="horizontal">
-                      <Button
-                        variant="contained"
-                        onClick={handleToggleSettings}
-                        disabled={isCreatingCollage}
-                        startIcon={!isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : undefined}
-                        aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
-                        sx={{
-                          minHeight: 48,
-                          minWidth: isMobile ? 48 : undefined,
-                          px: isMobile ? 1.25 : 2,
-                          fontWeight: 700,
-                          textTransform: 'none',
-                          background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                          border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
-                          boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
-                          color: '#e0e0e0',
-                          '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                        }}
-                      >
-                        {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
-                      </Button>
-                    </Collapse>
+                    {hasLibraryAccess ? (
+                      <>
+                        {currentView === 'projects' && (
+                          <Button
+                            variant="contained"
+                            onClick={handleCreateNewProject}
+                            disabled={isCreatingCollage}
+                            sx={{
+                              flex: 1,
+                              minHeight: 48,
+                              fontWeight: 700,
+                              textTransform: 'none',
+                              background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                              border: '1px solid #8b5cc7',
+                              boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                              color: '#fff',
+                              '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                            }}
+                          >
+                            New Collage
+                          </Button>
+                        )}
+
+                        {currentView === 'library' && (
+                          <>
+                            <Button
+                              variant="contained"
+                              onClick={() => { libraryActionsRef.current?.clearSelection?.(); setShowProjectPicker(true); }}
+                              disabled={isCreatingCollage}
+                              sx={{
+                                flex: 1,
+                                minHeight: 48,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                border: '1px solid #3a3a3a',
+                                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                color: '#e0e0e0',
+                                '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                              }}
+                            >
+                              Cancel
+                            </Button>
+
+                            <Button
+                              variant="contained"
+                              onClick={() => libraryActionsRef.current?.primary?.()}
+                              disabled={isCreatingCollage || (librarySelection?.count || 0) < (librarySelection?.minSelected || 1)}
+                              sx={{
+                                flex: 1,
+                                minHeight: 48,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                                border: '1px solid #8b5cc7',
+                                boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                                color: '#fff',
+                                '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                              }}
+                            >
+                              Continue
+                            </Button>
+                          </>
+                        )}
+
+                        {currentView === 'editor' && (
+                          <>
+                            <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                              <Button
+                                variant="contained"
+                                onClick={handleBackToProjects}
+                                disabled={isCreatingCollage}
+                                startIcon={!isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : undefined}
+                                aria-label="Back to projects"
+                                sx={{
+                                  minHeight: 48,
+                                  minWidth: isMobile ? 48 : undefined,
+                                  px: isMobile ? 1.25 : 2,
+                                  fontWeight: 700,
+                                  textTransform: 'none',
+                                  background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                  border: '1px solid #3a3a3a',
+                                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                  color: '#e0e0e0',
+                                  '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                                }}
+                              >
+                                {isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : 'Back to Projects'}
+                              </Button>
+                            </Collapse>
+
+                            <Button
+                              variant="contained"
+                              onClick={handleFloatingButtonClick}
+                              disabled={isCreatingCollage || !allPanelsHaveImages}
+                              size="large"
+                              startIcon={<Save />}
+                              sx={{
+                                flex: 1,
+                                minHeight: 48,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                                border: '1px solid #8b5cc7',
+                                boxShadow: nudgeVisualActive ? '0 10px 28px rgba(107, 66, 161, 0.6)' : '0 6px 20px rgba(107, 66, 161, 0.4)',
+                                transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
+                                transition: 'transform 180ms ease, box-shadow 220ms ease',
+                                color: '#fff',
+                                '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                              }}
+                              aria-label="Create and save collage"
+                              ref={generateBtnRef}
+                            >
+                              {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
+                            </Button>
+
+                            <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                              <Button
+                                variant="contained"
+                                onClick={handleToggleSettings}
+                                disabled={isCreatingCollage}
+                                startIcon={!isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : undefined}
+                                aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                                sx={{
+                                  minHeight: 48,
+                                  minWidth: isMobile ? 48 : undefined,
+                                  px: isMobile ? 1.25 : 2,
+                                  fontWeight: 700,
+                                  textTransform: 'none',
+                                  background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                  border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
+                                  boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                  color: '#e0e0e0',
+                                  '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                                }}
+                              >
+                                {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
+                              </Button>
+                            </Collapse>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      // Non-admin: only show in editor when images exist
+                      hasImages && (
+                        <>
+                          <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                            <Button
+                              variant="contained"
+                              onClick={handleConfirmReset}
+                              disabled={isCreatingCollage}
+                              startIcon={!isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : undefined}
+                              aria-label="Start over"
+                              sx={{
+                                minHeight: 48,
+                                minWidth: isMobile ? 48 : undefined,
+                                px: isMobile ? 1.25 : 2,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                border: '1px solid #3a3a3a',
+                                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                color: '#e0e0e0',
+                                '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                              }}
+                            >
+                              {isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : 'Start Over'}
+                            </Button>
+                          </Collapse>
+
+                          <Button
+                            variant="contained"
+                            onClick={handleFloatingButtonClick}
+                            disabled={isCreatingCollage || !allPanelsHaveImages}
+                            size="large"
+                            startIcon={<Save />}
+                            sx={{
+                              flex: 1,
+                              minHeight: 48,
+                              fontWeight: 700,
+                              textTransform: 'none',
+                              background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                              border: '1px solid #8b5cc7',
+                              boxShadow: nudgeVisualActive ? '0 10px 28px rgba(107, 66, 161, 0.6)' : '0 6px 20px rgba(107, 66, 161, 0.4)',
+                              transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
+                              transition: 'transform 180ms ease, box-shadow 220ms ease',
+                              color: '#fff',
+                              '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+                            }}
+                            aria-label="Create and save collage"
+                            ref={generateBtnRef}
+                          >
+                            {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
+                          </Button>
+
+                          <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                            <Button
+                              variant="contained"
+                              onClick={handleToggleSettings}
+                              disabled={isCreatingCollage}
+                              startIcon={!isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : undefined}
+                              aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                              sx={{
+                                minHeight: 48,
+                                minWidth: isMobile ? 48 : undefined,
+                                px: isMobile ? 1.25 : 2,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
+                                boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                color: '#e0e0e0',
+                                '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                              }}
+                            >
+                              {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
+                            </Button>
+                          </Collapse>
+                        </>
+                      )
+                    )}
                   </Stack>
                 </Box>
-              </Slide>
             )}
             {/* Render the nudge message as a fixed sibling behind the bar */}
             <Slide in={nudgeMessageVisible} direction="up" mountOnEnter unmountOnExit>

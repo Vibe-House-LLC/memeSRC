@@ -145,6 +145,9 @@ export const CollageLayout = ({
   settingsOpen,
   setSettingsOpen,
   settingsRef,
+  onViewChange,
+  onLibrarySelectionChange,
+  onLibraryActionsReady,
 }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -154,6 +157,13 @@ export const CollageLayout = ({
 
   // Check if user has added at least one image
   const hasImages = imagesStepProps.selectedImages && imagesStepProps.selectedImages.length > 0;
+
+  // Notify parent about current view (editor vs library)
+  React.useEffect(() => {
+    if (typeof onViewChange === 'function') {
+      onViewChange(hasImages ? 'editor' : 'library');
+    }
+  }, [hasImages, onViewChange]);
 
   debugLog("CollageLayout received props:", {
     settingsStepProps: {
@@ -193,6 +203,8 @@ export const CollageLayout = ({
               onBulkUploadSectionToggle={imagesStepProps.onBulkUploadSectionToggle}
               onStartFromScratch={imagesStepProps.onStartFromScratch}
               libraryRefreshTrigger={imagesStepProps.libraryRefreshTrigger}
+              onLibrarySelectionChange={onLibrarySelectionChange}
+              onLibraryActionsReady={onLibraryActionsReady}
             />
           </Box>
         ) : isMobile ? (
@@ -313,4 +325,7 @@ CollageLayout.propTypes = {
   settingsOpen: PropTypes.bool,
   setSettingsOpen: PropTypes.func,
   settingsRef: PropTypes.object,
+  onViewChange: PropTypes.func,
+  onLibrarySelectionChange: PropTypes.func,
+  onLibraryActionsReady: PropTypes.func,
 };
