@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Button, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton } from '@mui/material';
 import { Masonry } from '@mui/lab';
@@ -6,6 +6,7 @@ import { Add, Delete } from '@mui/icons-material';
 import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
 import PreviewDialog from '../../library/PreviewDialog';
+import { UserContext } from '../../../UserContext';
 
 const ProjectCard = ({ project, onOpen, onDelete, onPreview }) => {
   // Thumbnails are now generated inline from project data and stored locally
@@ -84,6 +85,8 @@ ProjectCard.propTypes = {
 };
 
 export default function ProjectPicker({ projects, onCreateNew, onOpen, onDelete }) {
+  const { user } = useContext(UserContext);
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [imageCache, setImageCache] = useState({}); // id -> dataUrl
@@ -180,6 +183,7 @@ export default function ProjectPicker({ projects, onCreateNew, onOpen, onDelete 
         ctaLabel="Edit collage"
         onCta={() => { if (activeProject) { onOpen(activeProject.id); setPreviewOpen(false); } }}
         showInfo={false}
+        footerMode={isAdmin ? 'collage' : 'default'}
       />
     </Box>
   );

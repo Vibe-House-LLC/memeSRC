@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Dialog, IconButton, Typography, useMediaQuery, Button, Popover, TextField, Chip, Stack } from '@mui/material';
-import { Delete, Close, KeyboardArrowLeft, KeyboardArrowRight, CheckCircle, CheckCircleOutline, Info } from '@mui/icons-material';
+import { Box, Dialog, IconButton, Typography, useMediaQuery, Button, Popover, TextField, Chip, Stack, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Delete, Close, KeyboardArrowLeft, KeyboardArrowRight, CheckCircle, CheckCircleOutline, Info, MoreHoriz } from '@mui/icons-material';
 import { getMetadataForKey, putMetadataForKey } from '../../utils/library/metadata';
 
 export default function PreviewDialog({ open, onClose, imageUrl, imageKey, storageLevel = 'protected', onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected, footerMode = 'default', title = 'Image Preview', ctaLabel, onCta, showInfo = true }) {
@@ -9,6 +9,8 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
   const [infoAnchor, setInfoAnchor] = useState(null);
   const [meta, setMeta] = useState({ tags: [], description: '', defaultCaption: '' });
   const canEdit = showInfo && Boolean(imageKey);
+  const [moreAnchorEl, setMoreAnchorEl] = useState(null);
+  const moreMenuOpen = Boolean(moreAnchorEl);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,7 +131,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
                 <Delete />
               </IconButton>
             )}
-            {ctaLabel && typeof onCta === 'function' && (
+            {footerMode !== 'collage' && ctaLabel && typeof onCta === 'function' && (
               <Button
                 onClick={onCta}
                 variant="contained"
@@ -249,7 +251,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
       </Box>
 
       {/* Footer controls on mobile */}
-      {isMobile && (
+      {isMobile && footerMode !== 'collage' && (
         <Box
           sx={{
             display: 'flex',
@@ -406,6 +408,88 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
         </Box>
       )}
 
+      {/* Collage-style bottom action bar */}
+      {footerMode === 'collage' && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: isMobile ? 1.5 : 2,
+            borderTop: '1px solid',
+            borderColor: 'rgba(255,255,255,0.12)',
+            bgcolor: '#0f0f10',
+            boxShadow: '0 -8px 32px rgba(0,0,0,0.15)'
+          }}
+        >
+          <Box sx={{ width: '100%', maxWidth: 960, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Button
+              onClick={onClose}
+              variant="contained"
+              aria-label="Close"
+              sx={{
+                minHeight: 48,
+                minWidth: isMobile ? 48 : 120,
+                px: isMobile ? 1.25 : 2,
+                fontWeight: 700,
+                textTransform: 'none',
+                background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                border: '1px solid #3a3a3a',
+                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                color: '#e0e0e0',
+                '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+              }}
+              startIcon={!isMobile ? <Close sx={{ color: '#e0e0e0' }} /> : undefined}
+            >
+              {isMobile ? <Close sx={{ color: '#e0e0e0' }} /> : 'Close'}
+            </Button>
+            <Button
+              onClick={onCta}
+              disabled={!onCta}
+              variant="contained"
+              size="large"
+              sx={{
+                flex: 1,
+                minHeight: 48,
+                fontWeight: 800,
+                textTransform: 'none',
+                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                border: '1px solid #8b5cc7',
+                boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                color: '#fff',
+                '&:hover': { background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)' }
+              }}
+              aria-label={ctaLabel || 'Edit Collage'}
+            >
+              {ctaLabel || 'Edit Collage'}
+            </Button>
+            <IconButton
+              aria-label="More options"
+              onClick={(e) => setMoreAnchorEl(e.currentTarget)}
+              sx={{ color: 'rgba(255,255,255,0.9)', bgcolor: 'rgba(255,255,255,0.08)', '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' } }}
+            >
+              <MoreHoriz />
+            </IconButton>
+            <Menu
+              anchorEl={moreAnchorEl}
+              open={moreMenuOpen}
+              onClose={() => setMoreAnchorEl(null)}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              {onDelete && (
+                <MenuItem onClick={() => { setMoreAnchorEl(null); onDelete(); }}>
+                  <ListItemIcon>
+                    <Delete fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Delete project</ListItemText>
+                </MenuItem>
+              )}
+            </Menu>
+          </Box>
+        </Box>
+      )}
+
       {/* Info / metadata editor */}
       <Popover
         open={Boolean(infoAnchor)}
@@ -469,5 +553,5 @@ PreviewDialog.propTypes = {
   hasNext: PropTypes.bool,
   isSelected: PropTypes.bool,
   onToggleSelected: PropTypes.func,
-  footerMode: PropTypes.oneOf(['default', 'single']),
+  footerMode: PropTypes.oneOf(['default', 'single', 'collage']),
 };
