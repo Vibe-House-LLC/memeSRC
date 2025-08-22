@@ -90,14 +90,37 @@ export default function ProjectPicker({ projects, onCreateNew, onOpen, onDelete 
   return (
     <Box sx={{ width: '100%' }}>
       <Stack spacing={1.5} sx={{ mb: 2 }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: '#fff' }}>Collage Projects</Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          justifyContent="space-between"
+          spacing={1.5}
+        >
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="h4" sx={{ fontWeight: 800 }}>
+              Collage Projects
+            </Typography>
             <Typography variant="body2" color="text.secondary">
               Open a previous collage or start a new one. Projects are saved automatically as you edit.
             </Typography>
           </Box>
-          <Button variant="contained" startIcon={<Add />} onClick={onCreateNew}>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={onCreateNew}
+            startIcon={<Add />}
+            sx={{
+              whiteSpace: 'nowrap',
+              px: 2.5,
+              py: 1.25,
+              fontWeight: 700,
+              textTransform: 'none',
+              letterSpacing: 0.2,
+              alignSelf: { xs: 'stretch', sm: 'auto' },
+              width: { xs: '100%', sm: 'auto' },
+              flexShrink: 0,
+            }}
+          >
             New Collage
           </Button>
         </Stack>
