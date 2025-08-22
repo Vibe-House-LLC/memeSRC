@@ -317,9 +317,13 @@ const CollagePreview = ({
 
     try {
       if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
-        // Replace existing image in place with data URL
+        // Replace existing image in place with data URL for display, but preserve library metadata for persistence
         const newUrl = await ensureDataUrl(selected);
-        await replaceImage(activeExistingImageIndex, newUrl);
+        await replaceImage(activeExistingImageIndex, {
+          originalUrl: newUrl,
+          displayUrl: newUrl,
+          metadata: selected?.metadata || {}
+        });
       } else {
         // Assign to empty panel: add to images and map using data URL
         const currentLength = selectedImages.length;

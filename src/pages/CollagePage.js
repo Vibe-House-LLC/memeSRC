@@ -552,6 +552,19 @@ export default function CollagePage() {
     return () => { if (t) clearTimeout(t); };
   }, [activeProjectId, selectedTemplate?.id, selectedAspectRatio, panelCount, renderBump, saveProjectNow]);
 
+  // 2.5) Save on image content changes (e.g., replace/crop) once preview has rendered
+  // This complements (3) which only handles the very first appearance of any images.
+  useEffect(() => {
+    let t = null;
+    if (activeProjectId) {
+      const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
+      if (hasRendered) {
+        t = setTimeout(() => { saveProjectNow(); }, 120);
+      }
+    }
+    return () => { if (t) clearTimeout(t); };
+  }, [activeProjectId, selectedImages, renderBump, saveProjectNow]);
+
   // 3) Initial save when images first appear and preview has rendered
   const didInitialSaveRef = useRef(false);
   useEffect(() => {
@@ -610,6 +623,14 @@ export default function CollagePage() {
   // Manual Save handler (forces immediate thumbnail generation)
   const handleManualSave = useCallback(async () => {
     saveProjectNow({ showToast: true });
+  }, [saveProjectNow]);
+
+  // Save before switching to the project picker so recent changes (e.g., replace image) persist
+  const handleBackToProjects = useCallback(async () => {
+    try {
+      await saveProjectNow();
+    } catch (_) { /* best-effort save */ }
+    setShowProjectPicker(true);
   }, [saveProjectNow]);
 
   const formatSavedTime = (ts) => {
@@ -1074,7 +1095,7 @@ export default function CollagePage() {
                       {hasLibraryAccess ? (
                         <Button
                           variant="contained"
-                          onClick={() => setShowProjectPicker(true)}
+                          onClick={handleBackToProjects}
                           disabled={isCreatingCollage}
                           startIcon={!isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : undefined}
                           aria-label="Back to projects"
