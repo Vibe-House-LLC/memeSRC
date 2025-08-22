@@ -6,6 +6,13 @@
 - `public/assets/`: Project images/icons; prefer importing from `src` when tree‑shaking matters.
 - Config: `package.json` (scripts/deps), `tsconfig.json` (JS/TS opts), `.prettierrc` (format), `.eslintignore`.
 
+### TypeScript Defaults (Net‑New Files)
+- New modules use TypeScript: components/pages `*.tsx`; hooks/utils `*.ts`.
+- Keep incremental migration: existing JS may remain, but prefer TS for all new code.
+- Avoid `any`; prefer specific types or `unknown` with narrowings. Export shared types from `src/types/` when broadly useful.
+- Props/state types: define `ComponentNameProps` and reuse across variants; colocate the type with the component file.
+- Tests for TS files use `*.test.ts` or `*.test.tsx` alongside the module.
+
 ## Build, Test, and Development Commands
 - `npm start`: Start local dev server (CRA, port 3000 by default).
 - `npm run build`: Production build to `build/` with minification and hashing.
@@ -16,11 +23,21 @@
 ## Coding Style & Naming Conventions
 - Formatting: Prettier enforced (120 char width, 2 spaces, single quotes, trailing commas `es5`).
 - Linting: ESLint extends `react-app`. Keep components functional with hooks.
-- Naming: Components `PascalCase` (e.g., `UserListHead.js`), variables/functions `camelCase`, constants `SCREAMING_SNAKE_CASE`.
+- Naming: Components `PascalCase` (e.g., `UserListHead.tsx`), variables/functions `camelCase`, constants `SCREAMING_SNAKE_CASE`.
 - Files: Collocate tests and styles with the component when practical.
+
+### Reusable Component Guidance
+- Composition first: build small primitives that compose via `children` and clear slots over tightly‑coupled monoliths.
+- Props surface: keep minimal and generic (e.g., `variant`, `size` unions), avoid one‑off booleans; expose `className`, `style`, and `...rest` to allow extension.
+- Types: define explicit `Props` interfaces; prefer discriminated unions for variants; type events/handlers precisely (`(e: React.ChangeEvent<HTMLInputElement>) => void`).
+- Accessibility: forward refs when appropriate (`React.forwardRef`), set proper ARIA roles/labels, and ensure keyboard interaction.
+- Control model: prefer controlled components; if supporting uncontrolled usage, document defaults and emit `onChange` consistently.
+- Theming: consume shared tokens/utilities from `src/theme/`; avoid hardcoded colors/sizes.
+- Testing: add smoke tests for render and critical interactions; mock network/Amplify calls.
 
 ## Testing Guidelines
 - Framework: CRA’s Jest + React Testing Library. Place tests as `*.test.js` next to modules (e.g., `Component.test.js`).
+- File patterns: prefer `*.test.ts` / `*.test.tsx` for TypeScript modules.
 - Scope: Add smoke tests for key pages, utilities, and hooks. Mock network and Amplify calls.
 - Run: `npm test` for watch; `CI=true npm test -- --coverage` to collect coverage.
 
@@ -32,4 +49,3 @@
 ## Security & Configuration Tips
 - Environment: CRA uses `REACT_APP_*`. Common keys: `REACT_APP_USER_BRANCH`, `REACT_APP_VERSION`. Store in `.env.local` (never commit secrets).
 - AWS Amplify: Endpoints configured in `src/index.js`. Avoid hardcoding secrets; prefer env and Amplify config.
-
