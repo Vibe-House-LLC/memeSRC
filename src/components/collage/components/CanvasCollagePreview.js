@@ -434,6 +434,53 @@ const CanvasCollagePreview = ({
   const [componentWidth, setComponentWidth] = useState(400);
   const [componentHeight, setComponentHeight] = useState(400);
   const [loadedImages, setLoadedImages] = useState({});
+  // Trigger redraws once custom fonts are ready (especially after loading a saved project)
+  const [fontsReadyVersion, setFontsReadyVersion] = useState(0);
+
+  // Build a stable key of all font families currently in use
+  const fontsKey = useMemo(() => {
+    try {
+      const families = new Set();
+      if (panelTexts && typeof panelTexts === 'object') {
+        Object.values(panelTexts).forEach((pt) => {
+          if (pt && pt.fontFamily) families.add(String(pt.fontFamily));
+        });
+      }
+      if (lastUsedTextSettings?.fontFamily) families.add(String(lastUsedTextSettings.fontFamily));
+      return Array.from(families).sort().join('|');
+    } catch (_) {
+      return '';
+    }
+  }, [panelTexts, lastUsedTextSettings?.fontFamily]);
+
+  // Best-effort font preloading: request families, await readiness, then bump version to trigger redraw
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        if (typeof document === 'undefined' || !document.fonts) return;
+        const list = fontsKey ? fontsKey.split('|').filter(Boolean) : [];
+        if (list.length === 0) return;
+        const loaders = list.map((fam) => {
+          const family = fam.includes(' ') ? JSON.stringify(fam) : fam;
+          const css = `700 24px ${family}`;
+          try { return document.fonts.load(css); } catch (_) { return Promise.resolve(); }
+        });
+        if (loaders.length) {
+          try { await Promise.all(loaders); } catch (_) { /* ignore */ }
+        }
+        if (document.fonts.ready) {
+          try { await document.fonts.ready; } catch (_) { /* ignore */ }
+        }
+      } finally {
+        if (!cancelled) setFontsReadyVersion((v) => v + 1);
+      }
+    };
+    run();
+    // Fallback bump shortly after in case fonts API isn't present or misses
+    const t = setTimeout(() => { if (!cancelled) setFontsReadyVersion((v) => v + 1); }, 800);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [fontsKey]);
   const [panelRects, setPanelRects] = useState([]);
   const [hoveredPanel, setHoveredPanel] = useState(null);
   const [selectedPanel, setSelectedPanel] = useState(null);
@@ -1150,7 +1197,8 @@ const CanvasCollagePreview = ({
     theme.palette.mode,
     isGeneratingCollage,
     calculateOptimalFontSize,
-    textScaleFactor
+    textScaleFactor,
+    fontsReadyVersion
   ]);
 
   // Helper function to calculate text area dimensions for a panel
