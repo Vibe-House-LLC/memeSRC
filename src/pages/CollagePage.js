@@ -1,8 +1,8 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, IconButton, Tooltip, CircularProgress, Snackbar, Alert } from "@mui/material";
-import { Dashboard, Save, Settings, CheckCircleOutline, ErrorOutline, ArrowBack, DeleteForever, Add, ArrowForward, Close } from "@mui/icons-material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert } from "@mui/material";
+import { Dashboard, Save, Settings, ArrowBack, DeleteForever, Add, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -1041,42 +1041,7 @@ export default function CollagePage() {
                     )}
                   </Box>
                 </Typography>
-                {/* Save controls (projects) - library access only */}
-                {hasLibraryAccess && (
-                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minHeight: 40 }}>
-                  <Tooltip title={
-                    saveStatus.state === 'saving' ? 'Saving changes…' :
-                    saveStatus.state === 'saved' ? `Saved ${formatSavedTime(saveStatus.time)}` :
-                    'No recent changes'
-                  }>
-                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 72, justifyContent: 'flex-end' }}>
-                      {saveStatus.state === 'saving' ? (
-                        <CircularProgress size={16} thickness={5} />
-                      ) : saveStatus.state === 'saved' ? (
-                        <CheckCircleOutline fontSize="small" color="success" />
-                      ) : (
-                        <ErrorOutline fontSize="small" color="disabled" />
-                      )}
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        {saveStatus.state === 'saving' ? 'Saving' : saveStatus.state === 'saved' ? 'Saved' : 'Idle'}
-                      </Typography>
-                    </Stack>
-                  </Tooltip>
-                  <Tooltip title={isDirty ? 'Save (Ctrl/Cmd+S)' : 'No changes to save'}>
-                    <span>
-                      <IconButton 
-                        color="primary" 
-                        onClick={handleManualSave}
-                        disabled={!isDirty || saveStatus.state === 'saving'}
-                        aria-label="Save"
-                        size="small"
-                      >
-                        <Save />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Stack>
-                )}
+                {/* Save controls removed from header per request */}
               </Box>
             </Box>
 
