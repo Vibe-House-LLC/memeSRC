@@ -20,6 +20,71 @@ const getBorderPixelSize = (borderThickness, componentWidth = 400) => {
 };
 
 /**
+ * Parse a CSS color string (hex/rgb/rgba) to { r, g, b, a }
+ */
+const parseColorToRGBA = (color) => {
+  if (!color || typeof color !== 'string') return null;
+  const c = color.trim();
+  try {
+    // Hex formats: #RGB, #RRGGBB, #RRGGBBAA
+    if (c[0] === '#') {
+      const hex = c.slice(1);
+      if (hex.length === 3) {
+        const r = parseInt(hex[0] + hex[0], 16);
+        const g = parseInt(hex[1] + hex[1], 16);
+        const b = parseInt(hex[2] + hex[2], 16);
+        return { r, g, b, a: 1 };
+      }
+      if (hex.length === 6 || hex.length === 8) {
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
+        return { r, g, b, a };
+      }
+      return null;
+    }
+
+    // rgb()/rgba()
+    const rgbMatch = c.match(/rgba?\(([^)]+)\)/i);
+    if (rgbMatch) {
+      const parts = rgbMatch[1].split(',').map((v) => v.trim());
+      const r = Math.max(0, Math.min(255, parseFloat(parts[0])));
+      const g = Math.max(0, Math.min(255, parseFloat(parts[1])));
+      const b = Math.max(0, Math.min(255, parseFloat(parts[2])));
+      const a = parts[3] !== undefined ? Math.max(0, Math.min(1, parseFloat(parts[3]))) : 1;
+      return { r, g, b, a };
+    }
+  } catch (_) {
+    // ignore parse errors
+  }
+  return null;
+};
+
+/**
+ * Compute relative luminance for RGB in sRGB space
+ */
+const relativeLuminance = ({ r, g, b }) => {
+  const srgb = [r, g, b].map((v) => v / 255);
+  const lin = srgb.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+};
+
+/**
+ * Return '#000000' or '#FFFFFF' depending on which contrasts better with the text color
+ */
+const getContrastingMonoStroke = (textColor) => {
+  const rgba = parseColorToRGBA(textColor);
+  if (!rgba) return '#000000';
+  const L = relativeLuminance(rgba);
+  const contrastWithBlack = (L + 0.05) / 0.05; // black luminance ~ 0
+  const contrastWithWhite = 1.05 / (L + 0.05); // white luminance ~ 1
+  return contrastWithBlack >= contrastWithWhite ? '#000000' : '#FFFFFF';
+};
+
+const rgbaString = (r, g, b, a = 1) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
+
+/**
  * Helper function to create layout config from template
  */
 const createLayoutConfig = (template, panelCount) => {
@@ -972,7 +1037,7 @@ const CanvasCollagePreview = ({
           const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
           const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
           const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
-          const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
+          const requestedStrokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 0;
           const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
           const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
           const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
@@ -983,8 +1048,10 @@ const CanvasCollagePreview = ({
           let shadowColor;
           if (hasActualText) {
             textColor = baseTextColor;
-            strokeColor = '#000000'; // Black stroke for contrast
-            shadowColor = 'rgba(0, 0, 0, 0.8)';
+            // Choose black or white stroke based on contrast with the text color
+            strokeColor = getContrastingMonoStroke(baseTextColor);
+            // Subtle feathered shadow
+            shadowColor = 'rgba(0, 0, 0, 0.25)';
           } else {
             // For placeholder, use the same default styling but with reduced opacity
             // Parse the base color to apply opacity
@@ -1007,8 +1074,12 @@ const CanvasCollagePreview = ({
             } else {
               textColor = 'rgba(255, 255, 255, 0.4)'; // Fallback
             }
-            strokeColor = 'rgba(0, 0, 0, 0.4)'; // Same stroke color with reduced opacity
-            shadowColor = 'rgba(0, 0, 0, 0.3)'; // Same shadow color with reduced opacity
+            // Stroke uses contrasting mono with reduced opacity
+            const mono = getContrastingMonoStroke(baseTextColor);
+            const monoRGBA = parseColorToRGBA(mono) || { r: 0, g: 0, b: 0, a: 1 };
+            strokeColor = rgbaString(monoRGBA.r, monoRGBA.g, monoRGBA.b, 0.4);
+            // Very subtle feathered shadow for placeholder
+            shadowColor = 'rgba(0, 0, 0, 0.2)';
           }
           
           ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
@@ -1018,15 +1089,18 @@ const CanvasCollagePreview = ({
           
           // Set stroke properties for both actual text and placeholder
           ctx.strokeStyle = strokeColor;
-          ctx.lineWidth = strokeWidth;
+          // Use a thicker, font-relative stroke for better readability
+          const computedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
+          ctx.lineWidth = Math.max(requestedStrokeWidth, computedStrokeWidth);
           ctx.lineJoin = 'round';
           ctx.lineCap = 'round';
-          
+
           // Add text shadow for better readability
           ctx.shadowColor = shadowColor;
-          ctx.shadowOffsetX = 1;
-          ctx.shadowOffsetY = 1;
-          ctx.shadowBlur = 3;
+          // Feathered drop shadow: low alpha, heavy blur, no offset
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+          ctx.shadowBlur = 14;
           
           // Calculate available text area (with padding on sides and bottom)
           const textPadding = 10;
@@ -1163,7 +1237,7 @@ const CanvasCollagePreview = ({
             const lineY = startY + lineIndex * lineHeight;
             
             // Draw stroke first if stroke width > 0 (for both actual text and placeholder)
-            if (strokeWidth > 0) {
+            if (ctx.lineWidth > 0) {
               ctx.strokeText(line, textX, lineY);
             }
             
@@ -3017,24 +3091,27 @@ const CanvasCollagePreview = ({
             const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 400;
             const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
             const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
-            const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
-            const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
+            const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
+            const requestedStrokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 0;
             const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
             const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
             const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
             
             exportCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-            exportCtx.fillStyle = textColor;
+            exportCtx.fillStyle = baseTextColor;
             exportCtx.textAlign = 'center';
             exportCtx.textBaseline = 'middle';
-            exportCtx.strokeStyle = '#000000';
-            exportCtx.lineWidth = strokeWidth;
+            exportCtx.strokeStyle = getContrastingMonoStroke(baseTextColor);
+            // Use an even thicker, font-relative stroke for better readability in exports
+            const exportComputedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
+            exportCtx.lineWidth = Math.max(requestedStrokeWidth, exportComputedStrokeWidth);
             exportCtx.lineJoin = 'round';
             exportCtx.lineCap = 'round';
-            exportCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            exportCtx.shadowOffsetX = 1;
-            exportCtx.shadowOffsetY = 1;
-            exportCtx.shadowBlur = 3;
+            // Subtle feathered shadow for exported image as well
+            exportCtx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+            exportCtx.shadowOffsetX = 0;
+            exportCtx.shadowOffsetY = 0;
+            exportCtx.shadowBlur = 14;
             
             const textPadding = 10;
             const maxTextWidth = width - (textPadding * 2);
@@ -3154,7 +3231,7 @@ const CanvasCollagePreview = ({
             
             lines.forEach((line, lineIndex) => {
               const lineY = startY + lineIndex * lineHeight;
-              if (strokeWidth > 0) {
+              if (exportCtx.lineWidth > 0) {
                 exportCtx.strokeText(line, textX, lineY);
               }
               exportCtx.fillText(line, textX, lineY);
