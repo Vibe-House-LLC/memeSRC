@@ -389,8 +389,8 @@ export const useCollageState = () => {
    * @param {number} index - The index of the image object to replace
    * @param {string} newBase64Image - The new image URL (base64)
    */
-  const replaceImage = useCallback(async (index, newBase64Image) => {
-    if (index >= 0 && index < selectedImages.length && newBase64Image) {
+  const replaceImage = useCallback(async (index, newImage) => {
+    if (index >= 0 && index < selectedImages.length && newImage) {
         const oldImageObj = selectedImages[index];
         // Clean up old blobs
         if (oldImageObj.originalUrl && typeof oldImageObj.originalUrl === 'string' &&
@@ -403,8 +403,24 @@ export const useCollageState = () => {
           URL.revokeObjectURL(oldImageObj.displayUrl);
         }
 
+        // Support both string URL and full image object with metadata
+        let nextImageObj;
+        if (typeof newImage === 'string') {
+          nextImageObj = { originalUrl: newImage, displayUrl: newImage };
+        } else if (typeof newImage === 'object') {
+          nextImageObj = {
+            originalUrl: newImage.originalUrl || newImage.displayUrl || '',
+            displayUrl: newImage.displayUrl || newImage.originalUrl || '',
+            subtitle: newImage.subtitle || '',
+            subtitleShowing: !!newImage.subtitleShowing,
+            metadata: newImage.metadata || {}
+          };
+        } else {
+          return;
+        }
+
         const newImages = [...selectedImages];
-        newImages[index] = { originalUrl: newBase64Image, displayUrl: newBase64Image };
+        newImages[index] = nextImageObj;
         setSelectedImages(newImages);
 
         // Auto-save to library disabled
@@ -426,7 +442,7 @@ export const useCollageState = () => {
           });
         }
 
-        if (DEBUG_MODE) console.log(`Replaced image at index ${index} with new file.`);
+        if (DEBUG_MODE) console.log(`Replaced image at index ${index} with new file.`, nextImageObj?.metadata);
     } else if (DEBUG_MODE) {
       console.warn(`Failed to replace image at index ${index}`);
     }

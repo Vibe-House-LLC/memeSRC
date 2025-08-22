@@ -41,6 +41,8 @@ export default function LibraryBrowser({
   showSelectToggle = false,
   initialSelectMode = false,
   onSelectModeChange,
+  onSelectionChange,
+  exposeActions,
 }) {
   const { items, loading, hasMore, loadMore, reload, uploadMany, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
   const { selectedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
@@ -138,6 +140,20 @@ export default function LibraryBrowser({
       await handleUseSelected();
     }
   }, [clear, handleUseSelected, onActionBarPrimary, selectedItems, storageLevel]);
+
+  // Expose selection count to parent (for external action bars)
+  useEffect(() => {
+    if (typeof onSelectionChange === 'function') {
+      onSelectionChange({ count, minSelected: typeof minSelected === 'number' ? minSelected : 0 });
+    }
+  }, [count, minSelected, onSelectionChange]);
+
+  // Expose primary/clear actions to parent for external bottom bar control
+  useEffect(() => {
+    if (typeof exposeActions === 'function') {
+      exposeActions({ primary: handlePrimary, clearSelection: clear });
+    }
+  }, [exposeActions, handlePrimary, clear]);
 
   const handleDelete = useCallback(async (keys) => {
     try {
@@ -513,4 +529,6 @@ LibraryBrowser.propTypes = {
   showSelectToggle: PropTypes.bool,
   initialSelectMode: PropTypes.bool,
   onSelectModeChange: PropTypes.func,
+  onSelectionChange: PropTypes.func,
+  exposeActions: PropTypes.func,
 };

@@ -122,6 +122,8 @@ const BulkUploadSection = ({
   replaceImage, // Add replaceImage function
   onStartFromScratch, // Add prop to handle starting without images
   libraryRefreshTrigger, // For refreshing library when new images are auto-saved
+  onLibrarySelectionChange,
+  onLibraryActionsReady,
 }) => {
   const theme = useTheme();
   const { user } = useContext(UserContext);
@@ -926,10 +928,12 @@ const BulkUploadSection = ({
                   maxSelected={5}
                   refreshTrigger={libraryRefreshTrigger}
                   onSelect={(items) => handleLibrarySelect(items)}
-                  showActionBar
+                  showActionBar={false}
                   actionBarLabel="Make Collage"
                   showSelectToggle
                   initialSelectMode
+                  onSelectionChange={(info) => { if (onLibrarySelectionChange) onLibrarySelectionChange(info); }}
+                  exposeActions={(actions) => { if (onLibraryActionsReady) onLibraryActionsReady(actions); }}
                 />
                 </>
               ) : (
@@ -1047,6 +1051,8 @@ BulkUploadSection.propTypes = {
   replaceImage: PropTypes.func,
   onStartFromScratch: PropTypes.func,
   libraryRefreshTrigger: PropTypes.any,
+  onLibrarySelectionChange: PropTypes.func,
+  onLibraryActionsReady: PropTypes.func,
 };
 
 export default BulkUploadSection; 
