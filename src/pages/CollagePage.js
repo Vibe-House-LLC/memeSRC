@@ -576,18 +576,22 @@ export default function CollagePage() {
     }
   }, [activeProjectId, selectedImages?.length, saveProjectNow]);
 
-  // 4) Ensure a project exists once images are present (e.g., coming from external selection)
+  // 4) Create a project only after images are present AND preview has rendered
+  //    This avoids leaving blank projects when a user abandons during selection.
   useEffect(() => {
     if (!hasLibraryAccess) return;
     if (activeProjectId) return;
-    if ((selectedImages?.length || 0) === 0) return;
+    const hasAnyImage = (selectedImages?.length || 0) > 0;
+    if (!hasAnyImage) return;
+    const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
+    if (!hasRendered) return;
     const p = createProject({ name: 'Untitled Collage' });
     setProjects(loadProjects());
     setActiveProjectId(p.id);
     setShowProjectPicker(false);
     // Reset initial-save gate so we capture the first render under this new project
     didInitialSaveRef.current = false;
-  }, [hasLibraryAccess, activeProjectId, selectedImages?.length]);
+  }, [hasLibraryAccess, activeProjectId, selectedImages?.length, currentSig]);
 
   // When the user changes layout controls, drop any existing custom grid override
   useEffect(() => {
@@ -598,13 +602,13 @@ export default function CollagePage() {
   // Picker handlers
   const handleCreateNewProject = useCallback(() => {
     if (!hasLibraryAccess) return;
-    const p = createProject({ name: 'Untitled Collage' });
-    setProjects(loadProjects());
-    setActiveProjectId(p.id);
+    // Defer project creation until images are added and the preview renders.
+    // Simply transition into the library flow with a clean state.
     setShowProjectPicker(false);
+    setActiveProjectId(null);
     clearImages();
     setCustomLayout(null);
-    }, [clearImages, hasLibraryAccess]);
+  }, [clearImages, hasLibraryAccess]);
 
   const handleOpenProject = useCallback((id) => { if (hasLibraryAccess) loadProjectById(id); }, [loadProjectById, hasLibraryAccess]);
   const handleDeleteProject = useCallback((id) => {
