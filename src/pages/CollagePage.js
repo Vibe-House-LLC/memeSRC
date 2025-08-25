@@ -957,6 +957,31 @@ export default function CollagePage() {
           >
             {hasLibraryAccess && showProjectPicker ? (
               <>
+                {/* Top Action (desktop): New Collage */}
+                {!isMobile && (
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
+                    <Button
+                      variant="contained"
+                      onClick={handleCreateNewProject}
+                      disabled={isCreatingCollage}
+                      sx={{
+                        minHeight: 40,
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
+                        border: '1px solid #8b5cc7',
+                        boxShadow: '0 4px 14px rgba(139, 92, 199, 0.35)',
+                        color: '#fff',
+                        '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
+                      }}
+                      startIcon={<Add />}
+                      aria-label="Create a new collage"
+                    >
+                      New Collage
+                    </Button>
+                  </Box>
+                )}
+
                 <ProjectPicker 
                   projects={projects}
                   onCreateNew={handleCreateNewProject}
@@ -1045,7 +1070,28 @@ export default function CollagePage() {
                     )}
                   </Box>
                 </Typography>
-                {/* Save controls removed from header per request */}
+                {/* Top Action (desktop): New Collage when in projects view */}
+                {hasLibraryAccess && !isMobile && currentView === 'projects' && (
+                  <Button
+                    variant="contained"
+                    onClick={handleCreateNewProject}
+                    disabled={isCreatingCollage}
+                    sx={{
+                      minHeight: 40,
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
+                      border: '1px solid #8b5cc7',
+                      boxShadow: '0 4px 14px rgba(139, 92, 199, 0.35)',
+                      color: '#fff',
+                      '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
+                    }}
+                    startIcon={<Add />}
+                    aria-label="Create a new collage"
+                  >
+                    New Collage
+                  </Button>
+                )}
               </Box>
             </Box>
 
