@@ -24,6 +24,8 @@ import {
 import { LibraryBrowser } from '../../library';
 import { UserContext } from '../../../UserContext';
 import useLibraryData from '../../../hooks/library/useLibraryData';
+import { resizeImage } from '../../../utils/library/resizeImage';
+import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -230,23 +232,48 @@ const BulkUploadSection = ({
       return;
     }
 
-    // Helper function to load a single file and return a Promise with the data URL
-    const loadFile = (file) => new Promise((resolve, reject) => {
+    // Helper: resize then produce a data URL
+    const toDataUrl = (blob) => new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = (e) => reject(e);
-      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
+    const getImageObject = async (file) => {
+      try {
+        // Create upload-sized JPEG
+        const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(uploadBlob) : await toDataUrl(uploadBlob);
+        // Create editor-sized JPEG from the upload-sized blob (saves work vs original)
+        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(editorBlob) : await toDataUrl(editorBlob);
+        return { originalUrl, displayUrl };
+      } catch (_) {
+        // Fallback: just return the original as both
+        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? URL.createObjectURL(file) : await toDataUrl(file);
+        return { originalUrl: dataUrl, displayUrl: dataUrl };
+      }
+    };
+    const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
 
     debugLog(`Bulk uploading ${files.length} files...`);
 
     try {
-      // Process all files
-      const imageUrls = await Promise.all(files.map(loadFile));
-      debugLog(`Loaded ${imageUrls.length} files for bulk upload`);
+      // Process files sequentially with small yields to keep UI responsive
+      const imageObjs = [];
+      for (let i = 0; i < files.length; i += 1) {
+        // Yield to allow paint/input between heavy operations
+        // Two frames helps noticeably on slower devices
+        await nextFrame();
+        await nextFrame();
+        // eslint-disable-next-line no-await-in-loop
+        const obj = await getImageObject(files[i]);
+        imageObjs.push(obj);
+      }
+      debugLog(`Loaded ${imageObjs.length} files for bulk upload`);
 
       // Add all images at once
-      await addMultipleImages(imageUrls);
+      await addMultipleImages(imageObjs);
 
       // Find currently empty panels by checking existing mapping
       const emptyPanels = [];
@@ -265,7 +292,7 @@ const BulkUploadSection = ({
       }
 
       const numEmptyPanels = emptyPanels.length;
-      const numNewImages = imageUrls.length;
+      const numNewImages = imageObjs.length;
 
       debugLog(`Found ${numEmptyPanels} empty panels (${emptyPanels}) for ${numNewImages} new images`);
 
@@ -517,49 +544,63 @@ const BulkUploadSection = ({
     if (files.length === 0 || !selectedPanelForAction) return;
 
     // Helper function to load a single file and return a Promise with the data URL
-    const loadFile = (file) => new Promise((resolve, reject) => {
+    const toDataUrl = (blob) => new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
+      reader.onload = () => resolve(reader.result);
       reader.onerror = reject;
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(blob);
     });
+    const getImageObject = async (file) => {
+      try {
+        const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+        const originalUrl = await toDataUrl(uploadBlob);
+        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+        const displayUrl = await toDataUrl(editorBlob);
+        return { originalUrl, displayUrl };
+      } catch (_) {
+        const dataUrl = await toDataUrl(file);
+        return { originalUrl: dataUrl, displayUrl: dataUrl };
+      }
+    };
+    const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
 
     debugLog(`Uploading ${files.length} files to specific panel: ${selectedPanelForAction.panelId}`);
 
     try {
-      // Process all files
-      const imageUrls = await Promise.all(files.map(loadFile));
-      debugLog(`Loaded ${imageUrls.length} files for panel ${selectedPanelForAction.panelId}`);
+      // Process files sequentially with small yields to keep UI responsive
+      const imageObjs = [];
+      for (let i = 0; i < files.length; i += 1) {
+        await nextFrame();
+        await nextFrame();
+        // eslint-disable-next-line no-await-in-loop
+        const obj = await getImageObject(files[i]);
+        imageObjs.push(obj);
+      }
+      debugLog(`Loaded ${imageObjs.length} files for panel ${selectedPanelForAction.panelId}`);
 
       if (selectedPanelForAction.hasImage) {
         // Replace existing image
-        const firstImageUrl = imageUrls[0];
+        const firstImageObj = imageObjs[0];
 
         // Update the existing image in the array
         const updatedImages = [...selectedImages];
-        updatedImages[selectedPanelForAction.imageIndex] = {
-          originalUrl: firstImageUrl,
-          displayUrl: firstImageUrl
-        };
+        updatedImages[selectedPanelForAction.imageIndex] = firstImageObj;
 
         // If there are additional images, add them to the collection
-        if (imageUrls.length > 1) {
-          const additionalImages = imageUrls.slice(1).map(url => ({
-            originalUrl: url,
-            displayUrl: url
-          }));
+        if (imageObjs.length > 1) {
+          const additionalImages = imageObjs.slice(1);
           updatedImages.push(...additionalImages);
         }
 
         // Use replaceImage if available, otherwise use addMultipleImages
         if (typeof replaceImage === 'function') {
-          await replaceImage(selectedPanelForAction.imageIndex, firstImageUrl);
-          if (imageUrls.length > 1) {
-            await addMultipleImages(imageUrls.slice(1));
+          await replaceImage(selectedPanelForAction.imageIndex, firstImageObj);
+          if (imageObjs.length > 1) {
+            await addMultipleImages(imageObjs.slice(1));
           }
         } else {
           // Fallback: add all images and update mapping
-          await addMultipleImages(imageUrls);
+          await addMultipleImages(imageObjs);
           const newMapping = { ...panelImageMapping };
           newMapping[selectedPanelForAction.panelId] = selectedImages.length;
           updatePanelImageMapping(newMapping);
@@ -568,7 +609,7 @@ const BulkUploadSection = ({
         debugLog(`Replaced image in panel ${selectedPanelForAction.panelId}`);
       } else {
         // Add new image to empty panel
-        await addMultipleImages(imageUrls);
+        await addMultipleImages(imageObjs);
 
         // Get the starting index for new images
         const currentLength = selectedImages.length;
