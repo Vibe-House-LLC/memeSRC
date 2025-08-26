@@ -176,18 +176,30 @@ function parseGridToRects(layoutConfig, componentWidth, componentHeight, panelCo
 }
 
 function normalizeBorderThickness(value) {
-  if (typeof value === 'number') return value;
-  const map = {
-    none: 0,
-    thin: 0.5,
-    medium: 1.5,
-    thicc: 4,
-    thiccer: 7,
-    'xtra thicc': 12,
-    "ungodly chonk'd": 20,
-  };
-  const key = String(value || 'medium').toLowerCase();
-  return map[key] ?? 1.5;
+  // Accept numeric percent values directly
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+  // Accept numeric-like strings such as '0.5' or '12'
+  if (typeof value === 'string') {
+    const key = value.trim().toLowerCase();
+    const numeric = Number(key);
+    if (!Number.isNaN(numeric) && Number.isFinite(numeric)) {
+      return numeric;
+    }
+    const map = {
+      none: 0,
+      thin: 0.5,
+      medium: 1.5,
+      thicc: 4,
+      thiccer: 7,
+      'xtra thicc': 12,
+      "ungodly chonk'd": 20,
+    };
+    return map[key] ?? 1.5;
+  }
+
+  // Fallback default
+  return 1.5;
 }
 
 async function loadImageFromRef(ref) {
@@ -206,7 +218,8 @@ async function loadImageFromRef(ref) {
     } catch (_) {
       // fallback to url if available
       if (srcUrl) return loadImage(srcUrl);
-      throw _;
+      // Do not rethrow, return null so Promise.all doesn't reject
+      return null;
     }
   }
   if (srcUrl) return loadImage(srcUrl);
