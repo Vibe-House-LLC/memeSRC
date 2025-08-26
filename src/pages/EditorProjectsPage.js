@@ -129,9 +129,9 @@ export default function EditorProjectsPage() {
 
         {/* Recent scroller */}
         {projects.length > 0 && (
-          <Box sx={{ mb: 2 }} aria-label="Recents">
+          <Box sx={{ mb: 2 }} aria-label="Recent edits">
             <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-              Recents
+              Recent edits
             </Typography>
             <Box
               sx={{

@@ -122,9 +122,9 @@ export default function ProjectPicker(props: ProjectPickerProps) {
 
       {/* Recent scroller */}
       {recent.length > 0 && (
-        <Box sx={{ mb: 1.5 }} aria-label="Recents">
+        <Box sx={{ mb: 1.5 }} aria-label="recently edited">
           <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-            Recents
+            recently edited
           </Typography>
           <Box
             sx={{
@@ -254,7 +254,7 @@ const RecentThumb: React.FC<{ project: CollageProject; onOpen: (id: string) => v
   };
 
   return (
-    <Box role="listitem" sx={{ flex: '0 0 auto', width: { xs: 160, sm: 140, md: 128 }, scrollSnapAlign: 'start', textAlign: 'center' }}>
+    <Box role="listitem" sx={{ flex: '0 0 auto', width: { xs: 128, sm: 112, md: 100 }, scrollSnapAlign: 'start', textAlign: 'center' }}>
       <Box
         onClick={() => onOpen(project.id)}
         sx={{
