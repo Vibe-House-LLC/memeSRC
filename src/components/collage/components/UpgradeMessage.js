@@ -469,14 +469,14 @@ const UpgradeMessage = ({
                       textTransform: 'none',
                       width: isStacked ? '100%' : '100%',
                       maxWidth: isStacked ? undefined : '300px',
-                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                      background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
                       border: '1px solid #8b5cc7',
-                      boxShadow: '0 6px 20px rgba(107, 66, 161, 0.4)',
+                      boxShadow: '0 6px 20px rgba(139, 92, 199, 0.4)',
                       color: '#fff',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       '&:hover': {
-                        background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                        boxShadow: '0 8px 25px rgba(107, 66, 161, 0.6)',
+                        background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)',
+                        boxShadow: '0 8px 25px rgba(139, 92, 199, 0.6)',
                         transform: 'translateY(-2px) scale(1.02)',
                       },
                       '&:active': {

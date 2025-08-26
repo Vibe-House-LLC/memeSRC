@@ -69,12 +69,12 @@ function FloatingActionButtons({ shows, showAd }) {
             <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
                 {hasCollageAccess ? (
                     <StyledButton 
-                        onClick={() => navigate('/collage')}
+                        onClick={() => navigate('/projects')}
                         startIcon={<Dashboard />} 
                         variant="contained" 
                         style={{ backgroundColor: "black", zIndex: '1300' }}
                     >
-                        Collage
+                        Projects
                     </StyledButton>
                 ) : (
                     // Show original donate + feedback buttons for users without access

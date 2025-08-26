@@ -20,6 +20,71 @@ const getBorderPixelSize = (borderThickness, componentWidth = 400) => {
 };
 
 /**
+ * Parse a CSS color string (hex/rgb/rgba) to { r, g, b, a }
+ */
+const parseColorToRGBA = (color) => {
+  if (!color || typeof color !== 'string') return null;
+  const c = color.trim();
+  try {
+    // Hex formats: #RGB, #RRGGBB, #RRGGBBAA
+    if (c[0] === '#') {
+      const hex = c.slice(1);
+      if (hex.length === 3) {
+        const r = parseInt(hex[0] + hex[0], 16);
+        const g = parseInt(hex[1] + hex[1], 16);
+        const b = parseInt(hex[2] + hex[2], 16);
+        return { r, g, b, a: 1 };
+      }
+      if (hex.length === 6 || hex.length === 8) {
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
+        return { r, g, b, a };
+      }
+      return null;
+    }
+
+    // rgb()/rgba()
+    const rgbMatch = c.match(/rgba?\(([^)]+)\)/i);
+    if (rgbMatch) {
+      const parts = rgbMatch[1].split(',').map((v) => v.trim());
+      const r = Math.max(0, Math.min(255, parseFloat(parts[0])));
+      const g = Math.max(0, Math.min(255, parseFloat(parts[1])));
+      const b = Math.max(0, Math.min(255, parseFloat(parts[2])));
+      const a = parts[3] !== undefined ? Math.max(0, Math.min(1, parseFloat(parts[3]))) : 1;
+      return { r, g, b, a };
+    }
+  } catch (_) {
+    // ignore parse errors
+  }
+  return null;
+};
+
+/**
+ * Compute relative luminance for RGB in sRGB space
+ */
+const relativeLuminance = ({ r, g, b }) => {
+  const srgb = [r, g, b].map((v) => v / 255);
+  const lin = srgb.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+};
+
+/**
+ * Return '#000000' or '#FFFFFF' depending on which contrasts better with the text color
+ */
+const getContrastingMonoStroke = (textColor) => {
+  const rgba = parseColorToRGBA(textColor);
+  if (!rgba) return '#000000';
+  const L = relativeLuminance(rgba);
+  const contrastWithBlack = (L + 0.05) / 0.05; // black luminance ~ 0
+  const contrastWithWhite = 1.05 / (L + 0.05); // white luminance ~ 1
+  return contrastWithBlack >= contrastWithWhite ? '#000000' : '#FFFFFF';
+};
+
+const rgbaString = (r, g, b, a = 1) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
+
+/**
  * Helper function to create layout config from template
  */
 const createLayoutConfig = (template, panelCount) => {
@@ -419,6 +484,16 @@ const CanvasCollagePreview = ({
   lastUsedTextSettings = {},
   onCaptionEditorVisibleChange,
   isGeneratingCollage = false, // New prop to exclude placeholder text during export
+  // Render tracking for upstream autosave/thumbnail logic
+  renderSig,
+  onRendered,
+  // Editing session tracking (crop & zoom / reorder)
+  onEditingSessionChange,
+  // When provided, use as initial custom grid config (restored from snapshot)
+  initialCustomLayout,
+  customLayoutKey,
+  // New: report preview metrics and layout without DOM queries
+  onPreviewMetaChange,
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -426,6 +501,53 @@ const CanvasCollagePreview = ({
   const [componentWidth, setComponentWidth] = useState(400);
   const [componentHeight, setComponentHeight] = useState(400);
   const [loadedImages, setLoadedImages] = useState({});
+  // Trigger redraws once custom fonts are ready (especially after loading a saved project)
+  const [fontsReadyVersion, setFontsReadyVersion] = useState(0);
+
+  // Build a stable key of all font families currently in use
+  const fontsKey = useMemo(() => {
+    try {
+      const families = new Set();
+      if (panelTexts && typeof panelTexts === 'object') {
+        Object.values(panelTexts).forEach((pt) => {
+          if (pt && pt.fontFamily) families.add(String(pt.fontFamily));
+        });
+      }
+      if (lastUsedTextSettings?.fontFamily) families.add(String(lastUsedTextSettings.fontFamily));
+      return Array.from(families).sort().join('|');
+    } catch (_) {
+      return '';
+    }
+  }, [panelTexts, lastUsedTextSettings?.fontFamily]);
+
+  // Best-effort font preloading: request families, await readiness, then bump version to trigger redraw
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        if (typeof document === 'undefined' || !document.fonts) return;
+        const list = fontsKey ? fontsKey.split('|').filter(Boolean) : [];
+        if (list.length === 0) return;
+        const loaders = list.map((fam) => {
+          const family = fam.includes(' ') ? JSON.stringify(fam) : fam;
+          const css = `700 24px ${family}`;
+          try { return document.fonts.load(css); } catch (_) { return Promise.resolve(); }
+        });
+        if (loaders.length) {
+          try { await Promise.all(loaders); } catch (_) { /* ignore */ }
+        }
+        if (document.fonts.ready) {
+          try { await document.fonts.ready; } catch (_) { /* ignore */ }
+        }
+      } finally {
+        if (!cancelled) setFontsReadyVersion((v) => v + 1);
+      }
+    };
+    run();
+    // Fallback bump shortly after in case fonts API isn't present or misses
+    const t = setTimeout(() => { if (!cancelled) setFontsReadyVersion((v) => v + 1); }, 800);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [fontsKey]);
   const [panelRects, setPanelRects] = useState([]);
   const [hoveredPanel, setHoveredPanel] = useState(null);
   const [selectedPanel, setSelectedPanel] = useState(null);
@@ -466,7 +588,24 @@ const CanvasCollagePreview = ({
   const [draggedBorder, setDraggedBorder] = useState(null);
   const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
-  const [customLayoutConfig, setCustomLayoutConfig] = useState(null);
+  const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
+
+  // If the layout key changes (template/panelCount/aspect), drop any prior custom grid.
+  // This prevents a stale custom grid from overriding a newly selected layout at load time.
+  const prevLayoutKeyRef = useRef(customLayoutKey);
+  useEffect(() => {
+    if (prevLayoutKeyRef.current !== customLayoutKey) {
+      setCustomLayoutConfig(initialCustomLayout || null);
+      prevLayoutKeyRef.current = customLayoutKey;
+    }
+  }, [customLayoutKey, initialCustomLayout]);
+
+  // If a custom layout is provided after mount (e.g., load sequence), adopt it once
+  useEffect(() => {
+    if (initialCustomLayout && !customLayoutConfig) {
+      setCustomLayoutConfig(initialCustomLayout);
+    }
+  }, [initialCustomLayout, customLayoutConfig]);
 
   // Long-press (press-and-hold) hint state
   const [saveHintOpen, setSaveHintOpen] = useState(false);
@@ -480,13 +619,73 @@ const CanvasCollagePreview = ({
   // Calculate text scale factor based on current canvas size vs base size
   const textScaleFactor = useMemo(() => componentWidth / BASE_CANVAS_WIDTH, [componentWidth]);
 
+  // Track previous panel rect sizes to adjust transforms when frames resize (border drag)
+  const prevPanelRectsRef = useRef({});
+
+  // Shared helper: carry transform from one frame to another preserving
+  // absolute zoom and focal point while ensuring the image still covers
+  // the destination frame.
+  const computeCarriedTransformFromImage = useCallback((img, fromRect, toRect, fromTransform) => {
+    try {
+      if (!img || !fromRect || !toRect) return null;
+      const imgW = img.naturalWidth || img.width;
+      const imgH = img.naturalHeight || img.height;
+      const imgAspect = imgW / imgH;
+      const fromAspect = fromRect.width / fromRect.height;
+      const toAspect = toRect.width / toRect.height;
+
+      const fromInit = (imgAspect > fromAspect) ? (fromRect.height / imgH) : (fromRect.width / imgW);
+      const toInit = (imgAspect > toAspect) ? (toRect.height / imgH) : (toRect.width / imgW);
+
+      const fromFinal = fromInit * (fromTransform?.scale || 1);
+      const toFinal = Math.max(fromFinal, toInit);
+      const newScaleParam = toFinal / toInit;
+
+      // Normalize offsets in source frame
+      const fromScaledW = imgW * fromFinal;
+      const fromScaledH = imgH * fromFinal;
+      const fromDx = Math.max(0, (fromScaledW - fromRect.width) / 2);
+      const fromDy = Math.max(0, (fromScaledH - fromRect.height) / 2);
+      const normX = fromDx > 0 ? Math.max(-1, Math.min(1, (fromTransform?.positionX || 0) / fromDx)) : 0;
+      const normY = fromDy > 0 ? Math.max(-1, Math.min(1, (fromTransform?.positionY || 0) / fromDy)) : 0;
+
+      // Map to destination and clamp
+      const toScaledW = imgW * toFinal;
+      const toScaledH = imgH * toFinal;
+      const toDx = Math.max(0, (toScaledW - toRect.width) / 2);
+      const toDy = Math.max(0, (toScaledH - toRect.height) / 2);
+      const newPosX = Math.max(-toDx, Math.min(toDx, normX * toDx));
+      const newPosY = Math.max(-toDy, Math.min(toDy, normY * toDy));
+
+      return { scale: newScaleParam, positionX: newPosX, positionY: newPosY };
+    } catch (_) { return null; }
+  }, []);
+
+  const isTransformNearlyEqual = (a, b, eps = 0.01) => {
+    if (!a || !b) return false;
+    return (
+      Math.abs((a.scale || 1) - (b.scale || 1)) < eps &&
+      Math.abs((a.positionX || 0) - (b.positionX || 0)) < (eps * 10) &&
+      Math.abs((a.positionY || 0) - (b.positionY || 0)) < (eps * 10)
+    );
+  };
+
   // Get layout configuration
   const layoutConfig = useMemo(() => {
-    // Use custom layout if available, otherwise create from template
-    if (customLayoutConfig) {
-      return customLayoutConfig;
+    // Base layout from selected template first
+    const base = selectedTemplate ? createLayoutConfig(selectedTemplate, panelCount) : null;
+    // If a custom grid exists, overlay its grid settings on top of the base layout
+    if (base && customLayoutConfig) {
+      return {
+        ...base,
+        gridTemplateColumns: customLayoutConfig.gridTemplateColumns ?? base.gridTemplateColumns,
+        gridTemplateRows: customLayoutConfig.gridTemplateRows ?? base.gridTemplateRows,
+        gridTemplateAreas: customLayoutConfig.gridTemplateAreas ?? base.gridTemplateAreas,
+        areas: customLayoutConfig.areas ?? base.areas,
+        items: customLayoutConfig.items ?? base.items,
+      };
     }
-    return selectedTemplate ? createLayoutConfig(selectedTemplate, panelCount) : null;
+    return base;
   }, [selectedTemplate, panelCount, customLayoutConfig]);
 
   // Calculate border pixels
@@ -692,6 +891,46 @@ const CanvasCollagePreview = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, [aspectRatioValue, layoutConfig, panelCount, borderPixels]);
 
+  // When panel sizes change (e.g., inner border dragged), carry focal point and clamp to avoid gaps
+  useEffect(() => {
+    if (!panelRects || panelRects.length === 0) return;
+    const prevRects = prevPanelRectsRef.current || {};
+
+    // Build quick lookups for current rects by panelId
+    const currentById = {};
+    panelRects.forEach(r => { currentById[r.panelId] = r; });
+
+
+    const epsilon = 0.5; // ignore subpixel changes
+
+    Object.keys(currentById).forEach(panelId => {
+      const prev = prevRects[panelId];
+      const curr = currentById[panelId];
+      if (!prev) return; // first run; record and skip
+      const wChanged = Math.abs((prev.width || 0) - curr.width) > epsilon;
+      const hChanged = Math.abs((prev.height || 0) - curr.height) > epsilon;
+      if (!wChanged && !hChanged) return;
+
+      // Only adjust if there is an image mapped
+      const imageIndex = panelImageMapping[panelId];
+      if (imageIndex === undefined) return;
+      const fromTransform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+
+      const img = loadedImages[imageIndex];
+      const adjusted = computeCarriedTransformFromImage(img, prev, curr, fromTransform);
+      if (adjusted && typeof updatePanelTransform === 'function' && !isTransformNearlyEqual(adjusted, fromTransform)) {
+        updatePanelTransform(panelId, adjusted);
+      }
+    });
+
+    // Update the ref after processing to be the source-of-truth for next diff
+    const nextMap = {};
+    panelRects.forEach(r => { nextMap[r.panelId] = { width: r.width, height: r.height }; });
+    prevPanelRectsRef.current = nextMap;
+
+    // no-op return
+  }, [panelRects, loadedImages, panelImageMapping, panelTransforms, updatePanelTransform, computeCarriedTransformFromImage]);
+
   // Helper function to calculate optimal font size for text to fit in panel
   const calculateOptimalFontSize = useCallback((text, panelWidth, panelHeight) => {
     if (!text || !text.trim()) return 26; // Default size for empty text
@@ -891,7 +1130,9 @@ const CanvasCollagePreview = ({
           const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
           const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
           const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
-          const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
+          // Respect explicit 0 to disable stroke; fall back only when undefined
+          const requestedStrokeWidth =
+            (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
           const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
           const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
           const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
@@ -902,8 +1143,10 @@ const CanvasCollagePreview = ({
           let shadowColor;
           if (hasActualText) {
             textColor = baseTextColor;
-            strokeColor = '#000000'; // Black stroke for contrast
-            shadowColor = 'rgba(0, 0, 0, 0.8)';
+            // Choose black or white stroke based on contrast with the text color
+            strokeColor = getContrastingMonoStroke(baseTextColor);
+            // Subtle feathered shadow
+            shadowColor = 'rgba(0, 0, 0, 0.25)';
           } else {
             // For placeholder, use the same default styling but with reduced opacity
             // Parse the base color to apply opacity
@@ -926,8 +1169,12 @@ const CanvasCollagePreview = ({
             } else {
               textColor = 'rgba(255, 255, 255, 0.4)'; // Fallback
             }
-            strokeColor = 'rgba(0, 0, 0, 0.4)'; // Same stroke color with reduced opacity
-            shadowColor = 'rgba(0, 0, 0, 0.3)'; // Same shadow color with reduced opacity
+            // Stroke uses contrasting mono with reduced opacity
+            const mono = getContrastingMonoStroke(baseTextColor);
+            const monoRGBA = parseColorToRGBA(mono) || { r: 0, g: 0, b: 0, a: 1 };
+            strokeColor = rgbaString(monoRGBA.r, monoRGBA.g, monoRGBA.b, 0.4);
+            // Very subtle feathered shadow for placeholder
+            shadowColor = 'rgba(0, 0, 0, 0.2)';
           }
           
           ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
@@ -937,15 +1184,25 @@ const CanvasCollagePreview = ({
           
           // Set stroke properties for both actual text and placeholder
           ctx.strokeStyle = strokeColor;
-          ctx.lineWidth = strokeWidth;
+          // Use a thicker, font-relative stroke by default for readability,
+          // but allow explicit 0 to disable strokes entirely.
+          const computedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
+          if (requestedStrokeWidth === 0) {
+            ctx.lineWidth = 0;
+          } else if (requestedStrokeWidth > 0) {
+            ctx.lineWidth = requestedStrokeWidth;
+          } else {
+            ctx.lineWidth = computedStrokeWidth;
+          }
           ctx.lineJoin = 'round';
           ctx.lineCap = 'round';
-          
+
           // Add text shadow for better readability
           ctx.shadowColor = shadowColor;
-          ctx.shadowOffsetX = 1;
-          ctx.shadowOffsetY = 1;
-          ctx.shadowBlur = 3;
+          // Feathered drop shadow: low alpha, heavy blur, no offset
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+          ctx.shadowBlur = 14;
           
           // Calculate available text area (with padding on sides and bottom)
           const textPadding = 10;
@@ -1082,7 +1339,7 @@ const CanvasCollagePreview = ({
             const lineY = startY + lineIndex * lineHeight;
             
             // Draw stroke first if stroke width > 0 (for both actual text and placeholder)
-            if (strokeWidth > 0) {
+            if (ctx.lineWidth > 0) {
               ctx.strokeText(line, textX, lineY);
             }
             
@@ -1116,7 +1373,8 @@ const CanvasCollagePreview = ({
     theme.palette.mode,
     isGeneratingCollage,
     calculateOptimalFontSize,
-    textScaleFactor
+    textScaleFactor,
+    fontsReadyVersion
   ]);
 
   // Helper function to calculate text area dimensions for a panel
@@ -1522,14 +1780,62 @@ const CanvasCollagePreview = ({
   // Redraw canvas when dependencies change
   useEffect(() => {
     drawCanvas();
+    // After drawing, tag the canvas and notify parent if requested
+    try {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        if (renderSig !== undefined) {
+          canvas.dataset.renderSig = renderSig;
+        }
+        // Tag current preview canvas size for snapshot consumers (e.g., thumbnail rendering)
+        canvas.dataset.previewWidth = String(componentWidth || 0);
+        canvas.dataset.previewHeight = String(componentHeight || 0);
+        // Expose custom layout to parent for snapshot persistence
+        if (customLayoutConfig) {
+          canvas.dataset.customLayout = JSON.stringify(customLayoutConfig);
+        } else if (canvas.dataset.customLayout) {
+          delete canvas.dataset.customLayout;
+        }
+        // Also emit a callback with the same info to avoid DOM races
+        if (typeof onPreviewMetaChange === 'function') {
+          onPreviewMetaChange({
+            canvasWidth: componentWidth || 0,
+            canvasHeight: componentHeight || 0,
+            customLayout: customLayoutConfig || null,
+            renderSig,
+          });
+        }
+        if (typeof onRendered === 'function') {
+          onRendered(renderSig);
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
   }, [drawCanvas]);
 
-
-
-  // Reset custom layout when template changes
+  // Notify parent when any editing mode is active/inactive (transform, reorder, captions, border-drag)
   useEffect(() => {
-    setCustomLayoutConfig(null);
-  }, [selectedTemplate]);
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(Boolean);
+    const active = anyPanelInTransformMode || isReorderMode || (textEditingPanel !== null) || isDraggingBorder;
+    try {
+      const canvas = canvasRef.current;
+      if (canvas) canvas.dataset.editing = active ? '1' : '0';
+    } catch (_) { /* ignore */ }
+    if (typeof onEditingSessionChange === 'function') {
+      onEditingSessionChange(active);
+    }
+  }, [isTransformMode, isReorderMode, textEditingPanel, isDraggingBorder, onEditingSessionChange]);
+
+
+
+  // Reset custom layout when user explicitly changes layout controls in-session
+  // This is separate from the initial restore keyed by customLayoutKey above.
+  useEffect(() => {
+    if (!initialCustomLayout) {
+      setCustomLayoutConfig(null);
+    }
+  }, [selectedTemplate, panelCount, aspectRatioValue, initialCustomLayout]);
 
   // Global mouse/touch handlers for border dragging
   useEffect(() => {
@@ -1821,6 +2127,15 @@ const CanvasCollagePreview = ({
     const sourceText = panelTexts[reorderSourcePanel];
     const destinationText = panelTexts[destinationPanelId];
 
+    // Delegate to shared carry helper
+    const computeCarriedTransform = (imageIndex, fromPanelId, toPanelId) => {
+      const img = loadedImages[imageIndex];
+      const fromRect = panelRects.find(r => r.panelId === fromPanelId);
+      const toRect = panelRects.find(r => r.panelId === toPanelId);
+      const fromTransform = panelTransforms[fromPanelId] || { scale: 1, positionX: 0, positionY: 0 };
+      return computeCarriedTransformFromImage(img, fromRect, toRect, fromTransform) || { scale: 1, positionX: 0, positionY: 0 };
+    };
+
     // Create new mapping with swapped images
     const newMapping = { ...panelImageMapping };
 
@@ -1844,6 +2159,18 @@ const CanvasCollagePreview = ({
           updatePanelText(reorderSourcePanel, {}, { replace: true });
         }
       }
+
+      // Carry over transforms proportionally for both swapped images
+      if (typeof updatePanelTransform === 'function') {
+        if (sourceImageIndex !== undefined) {
+          const destTransformForSource = computeCarriedTransform(sourceImageIndex, reorderSourcePanel, destinationPanelId);
+          updatePanelTransform(destinationPanelId, destTransformForSource);
+        }
+        if (destinationImageIndex !== undefined) {
+          const sourceTransformForDest = computeCarriedTransform(destinationImageIndex, destinationPanelId, reorderSourcePanel);
+          updatePanelTransform(reorderSourcePanel, sourceTransformForDest);
+        }
+      }
     } else if (sourceImageIndex !== undefined) {
       // Move image from source to destination (destination was empty)
       newMapping[destinationPanelId] = sourceImageIndex;
@@ -1858,12 +2185,20 @@ const CanvasCollagePreview = ({
 
         updatePanelText(reorderSourcePanel, {}, { replace: true });
       }
+
+      // Carry over transform for moved image and reset source panel transform
+      if (typeof updatePanelTransform === 'function') {
+        const destTransformForSource = computeCarriedTransform(sourceImageIndex, reorderSourcePanel, destinationPanelId);
+        updatePanelTransform(destinationPanelId, destTransformForSource);
+        // Reset source panel to default transform since it's now empty
+        updatePanelTransform(reorderSourcePanel, { scale: 1, positionX: 0, positionY: 0 });
+      }
     }
 
     updatePanelImageMapping(newMapping);
     setIsReorderMode(false);
     setReorderSourcePanel(null);
-  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, updatePanelText, panelTexts]);
+  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, updatePanelText, panelTexts, panelRects, panelTransforms, loadedImages, updatePanelTransform, computeCarriedTransformFromImage]);
 
   // Open/close the action menu (placed before handlers that depend on it)
   const handleActionMenuOpen = useCallback((event, panelId) => {
@@ -2896,24 +3231,36 @@ const CanvasCollagePreview = ({
             const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 400;
             const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
             const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
-            const textColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
-            const strokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 2;
+            const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
+            // Respect explicit 0 to disable stroke; fall back only when undefined
+            const requestedStrokeWidth =
+              (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
             const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
             const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
             const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
             
             exportCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-            exportCtx.fillStyle = textColor;
+            exportCtx.fillStyle = baseTextColor;
             exportCtx.textAlign = 'center';
             exportCtx.textBaseline = 'middle';
-            exportCtx.strokeStyle = '#000000';
-            exportCtx.lineWidth = strokeWidth;
+            exportCtx.strokeStyle = getContrastingMonoStroke(baseTextColor);
+            // Use a font-relative stroke by default for readability in exports,
+            // but allow explicit 0 to disable strokes entirely.
+            const exportComputedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
+            if (requestedStrokeWidth === 0) {
+              exportCtx.lineWidth = 0;
+            } else if (requestedStrokeWidth > 0) {
+              exportCtx.lineWidth = requestedStrokeWidth;
+            } else {
+              exportCtx.lineWidth = exportComputedStrokeWidth;
+            }
             exportCtx.lineJoin = 'round';
             exportCtx.lineCap = 'round';
-            exportCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            exportCtx.shadowOffsetX = 1;
-            exportCtx.shadowOffsetY = 1;
-            exportCtx.shadowBlur = 3;
+            // Subtle feathered shadow for exported image as well
+            exportCtx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+            exportCtx.shadowOffsetX = 0;
+            exportCtx.shadowOffsetY = 0;
+            exportCtx.shadowBlur = 14;
             
             const textPadding = 10;
             const maxTextWidth = width - (textPadding * 2);
@@ -3033,7 +3380,7 @@ const CanvasCollagePreview = ({
             
             lines.forEach((line, lineIndex) => {
               const lineY = startY + lineIndex * lineHeight;
-              if (strokeWidth > 0) {
+              if (exportCtx.lineWidth > 0) {
                 exportCtx.strokeText(line, textX, lineY);
               }
               exportCtx.fillText(line, textX, lineY);
@@ -3567,6 +3914,10 @@ CanvasCollagePreview.propTypes = {
   lastUsedTextSettings: PropTypes.object,
   onCaptionEditorVisibleChange: PropTypes.func,
   isGeneratingCollage: PropTypes.bool,
+  renderSig: PropTypes.string,
+  onRendered: PropTypes.func,
+  onEditingSessionChange: PropTypes.func,
+  onPreviewMetaChange: PropTypes.func,
 };
 
 export default CanvasCollagePreview;
