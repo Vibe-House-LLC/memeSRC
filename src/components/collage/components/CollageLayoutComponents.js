@@ -95,9 +95,9 @@ const MobileControlsBar = ({
     <Box ref={settingsRef} sx={{ mb: 1.5 }}>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
         {showBack && (
-          <Tooltip title="Back to Library" placement="top">
+          <Tooltip title="Back" placement="top">
             <span>
-              <IconButton aria-label="Back to Library" size="medium" onClick={onBack} sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
+              <IconButton aria-label="Back" size="medium" onClick={onBack} sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
                 <ArrowBack />
               </IconButton>
             </span>
@@ -177,9 +177,7 @@ export const CollageLayout = ({
   settingsOpen,
   setSettingsOpen,
   settingsRef,
-  onViewChange,
-  onLibrarySelectionChange,
-  onLibraryActionsReady,
+  
   // New: optional controls for the mobile controls bar
   onBack,
   onGenerate,
@@ -196,12 +194,7 @@ export const CollageLayout = ({
   // Check if user has added at least one image
   const hasImages = imagesStepProps.selectedImages && imagesStepProps.selectedImages.length > 0;
 
-  // Notify parent about current view (editor vs library)
-  React.useEffect(() => {
-    if (typeof onViewChange === 'function') {
-      onViewChange(hasImages ? 'editor' : 'library');
-    }
-  }, [hasImages, onViewChange]);
+  // No embedded library view; parent does not need view change callbacks
 
   debugLog("CollageLayout received props:", {
     settingsStepProps: {
@@ -240,9 +233,7 @@ export const CollageLayout = ({
               bulkUploadSectionOpen={imagesStepProps.bulkUploadSectionOpen}
               onBulkUploadSectionToggle={imagesStepProps.onBulkUploadSectionToggle}
               onStartFromScratch={imagesStepProps.onStartFromScratch}
-              libraryRefreshTrigger={imagesStepProps.libraryRefreshTrigger}
-              onLibrarySelectionChange={onLibrarySelectionChange}
-              onLibraryActionsReady={onLibraryActionsReady}
+              
             />
           </Box>
         ) : isMobile ? (
@@ -365,18 +356,14 @@ CollageLayout.propTypes = {
     bulkUploadSectionOpen: PropTypes.bool.isRequired,
     onBulkUploadSectionToggle: PropTypes.func.isRequired,
     onStartFromScratch: PropTypes.func,
-    libraryRefreshTrigger: PropTypes.number,
   }).isRequired,
   finalImage: PropTypes.string,
   setFinalImage: PropTypes.func.isRequired,
   isMobile: PropTypes.bool.isRequired,
-  onBackToEdit: PropTypes.func,
   settingsOpen: PropTypes.bool,
   setSettingsOpen: PropTypes.func,
   settingsRef: PropTypes.object,
-  onViewChange: PropTypes.func,
-  onLibrarySelectionChange: PropTypes.func,
-  onLibraryActionsReady: PropTypes.func,
+  
   // New controls props
   onBack: PropTypes.func,
   onGenerate: PropTypes.func,

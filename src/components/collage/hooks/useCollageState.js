@@ -27,9 +27,7 @@ export const useCollageState = () => {
     strokeWidth: 2
   });
   
-  // Auto-save to library is disabled; keep state for legacy props but do not use
-  const [autoSaveToLibrary, setAutoSaveToLibrary] = useState(false);
-  const [libraryRefreshTrigger] = useState(null);
+  // Library-specific features removed from collage flow
   
   // Track image data URLs that have been saved to prevent duplicates
   const savedImageDataUrls = useRef(new Set());
@@ -676,10 +674,6 @@ export const useCollageState = () => {
     resetPanelTransforms, // Resets all transforms to defaults
     resetPanelTexts, // NEW: Resets all texts to defaults
     
-    // Library auto-save functionality
-    autoSaveToLibrary,
-    setAutoSaveToLibrary,
-    libraryRefreshTrigger,
     clearSavedImageTracking, // For debugging/reset purposes
   };
 };

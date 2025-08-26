@@ -2,7 +2,7 @@ import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "r
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
-import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
+import { Dashboard, Save, Settings, ArrowBack, DeleteForever } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -128,9 +128,7 @@ export default function CollagePage() {
   const [showResultDialog, setShowResultDialog] = useState(false);
   
   // Unified bottom bar control (no animation)
-  const [currentView, setCurrentView] = useState('editor'); // 'library' | 'editor'
-  const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 2 });
-  const libraryActionsRef = useRef({ primary: null, clearSelection: null });
+  const [currentView, setCurrentView] = useState('editor');
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
@@ -175,7 +173,6 @@ export default function CollagePage() {
     updatePanelImageMapping,
     updatePanelTransform,
     updatePanelText,
-    libraryRefreshTrigger,
   } = useCollageState(isAdmin);
 
   // Nudge states: visual hold vs. tooltip visibility
@@ -225,14 +222,10 @@ export default function CollagePage() {
 
   
 
-  // Track current subview for admins
+  // Track current subview
   useEffect(() => {
-    if (hasLibraryAccess) {
-      setCurrentView(hasImages ? 'editor' : 'library');
-    } else {
-      setCurrentView(hasImages ? 'editor' : 'start');
-    }
-  }, [hasLibraryAccess, hasImages]);
+    setCurrentView(hasImages ? 'editor' : 'start');
+  }, [hasImages]);
 
   // Track bottom bar size/center for positioning the nudge message above it
   useEffect(() => {
@@ -673,12 +666,7 @@ export default function CollagePage() {
   }, [saveProjectNow, hasLibraryAccess, navigate]);
 
   // Cancel from library selection: go back to /projects when on /projects/* routes
-  const handleLibraryCancel = useCallback(() => {
-    try { libraryActionsRef.current?.clearSelection?.(); } catch (_) { /* ignore */ }
-    if (typeof location?.pathname === 'string' && location.pathname.startsWith('/projects')) {
-      navigate('/projects');
-    }
-  }, [navigate, location?.pathname]);
+  // Library selection flow removed; no longer needed
 
   // Removed unused time formatter
 
@@ -933,7 +921,6 @@ export default function CollagePage() {
     onBulkUploadSectionToggle: () => {}, // No-op since BulkUploadSection is hidden when images are present
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
-    libraryRefreshTrigger, // For refreshing library when new images are auto-saved
     onCaptionEditorVisibleChange: (open) => {
       setIsCaptionEditorOpen(open);
       captionOpenPrevRef.current = open;
@@ -1051,13 +1038,10 @@ export default function CollagePage() {
               finalImage={finalImage}
               setFinalImage={setFinalImage}
               isMobile={isMobile}
-              onBackToEdit={handleBackToEdit}
               settingsOpen={settingsOpen}
               setSettingsOpen={setSettingsOpen}
               settingsRef={settingsRef}
-              onViewChange={(v) => setCurrentView(v)}
-              onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
-              onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
+              
               // Mobile controls bar actions
               onBack={hasLibraryAccess ? handleBackToProjects : undefined}
               onReset={!hasLibraryAccess ? openResetDialog : undefined}
@@ -1104,50 +1088,6 @@ export default function CollagePage() {
                   <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }} ref={bottomBarContentRef}>
                     {hasLibraryAccess ? (
                       <>
-                        {currentView === 'library' && (
-                          <>
-                        <Button
-                          variant="contained"
-                          onClick={handleLibraryCancel}
-                          disabled={isCreatingCollage}
-                          sx={{
-                            flex: 1,
-                            minHeight: 48,
-                            fontWeight: 700,
-                                textTransform: 'none',
-                                background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                border: '1px solid #3a3a3a',
-                                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                color: '#e0e0e0',
-                                '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                              }}
-                              startIcon={<Close sx={{ color: '#e0e0e0' }} />}
-                            >
-                              Cancel
-                            </Button>
-
-                            <Button
-                              variant="contained"
-                              onClick={() => libraryActionsRef.current?.primary?.()}
-                              disabled={isCreatingCollage || (librarySelection?.count || 0) < (librarySelection?.minSelected || 1)}
-                              sx={{
-                                flex: 1,
-                                minHeight: 48,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                                border: '1px solid #8b5cc7',
-                                boxShadow: '0 6px 20px rgba(139, 92, 199, 0.4)',
-                                color: '#fff',
-                                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                              }}
-                              startIcon={<ArrowForward />}
-                            >
-                              Continue
-                            </Button>
-                          </>
-                        )}
-
                         {currentView === 'editor' && (
                           <>
                             <Collapse in={!nudgeVisualActive} orientation="horizontal">

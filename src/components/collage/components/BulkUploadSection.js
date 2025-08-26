@@ -9,8 +9,7 @@ import {
   Menu,
   MenuItem,
   Snackbar,
-  Alert,
-  CircularProgress
+  Alert
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
 import {
@@ -21,9 +20,6 @@ import {
   Refresh,
   Clear
 } from '@mui/icons-material';
-import { LibraryBrowser } from '../../library';
-import { UserContext } from '../../../UserContext';
-import useLibraryData from '../../../hooks/library/useLibraryData';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -121,22 +117,14 @@ const BulkUploadSection = ({
   removeImage, // Add removeImage function
   replaceImage, // Add replaceImage function
   onStartFromScratch, // Add prop to handle starting without images
-  libraryRefreshTrigger, // For refreshing library when new images are auto-saved
-  onLibrarySelectionChange,
-  onLibraryActionsReady,
 }) => {
   const theme = useTheme();
-  const { user } = useContext(UserContext);
-  const isAdmin = user?.['cognito:groups']?.includes('admins');
+  // Embedded library removed; device upload only
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
 
-  // Admin: peek at library to decide what to show at start
-  const {
-    items: adminLibraryItems,
-    uploadMany: uploadManyToLibrary,
-  } = useLibraryData({ pageSize: 1, storageLevel: 'protected', refreshToken: libraryRefreshTrigger });
+  // No library peeking; always show device upload
 
   // State for context menu
   const [contextMenu, setContextMenu] = useState(null);
@@ -152,9 +140,8 @@ const BulkUploadSection = ({
   // Check if there are any selected images
   const hasImages = selectedImages && selectedImages.length > 0;
 
-  // Determine if admin has any uploaded (non-placeholder) library items
-  const adminHasLibraryItems = isAdmin && Boolean(adminLibraryItems?.some((it) => it?.key));
-  const helperSourceLabel = adminHasLibraryItems ? 'library' : 'device';
+  // Helper: only device source is supported within collage
+  const helperSourceLabel = 'device';
 
   // Check if there are any empty frames
   const hasEmptyFrames = () => {
@@ -319,25 +306,7 @@ const BulkUploadSection = ({
     }
   };
 
-  // --- Admin-only: upload directly to Library when they have no items yet ---
-  const adminLibraryFileInputRef = useRef(null);
-  const handleAdminLibraryUpload = async (event) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-    try {
-      // Use concurrent uploads with immediate placeholders
-      const results = await uploadManyToLibrary(files, { concurrency: 4 });
-      const successCount = (results || []).filter(Boolean).length;
-      if (successCount === 0) {
-        setToast({ open: true, message: 'Failed to upload images', severity: 'error' });
-      }
-    } catch (e) {
-      console.error('Failed to upload to library:', e);
-      setToast({ open: true, message: 'Failed to upload to library', severity: 'error' });
-    } finally {
-      if (event.target) event.target.value = null;
-    }
-  };
+  // No library upload block; only device uploads handled above
 
   // Handler for removing an image
   const handleRemoveImage = (imageIndex) => {
@@ -594,68 +563,7 @@ const BulkUploadSection = ({
     }
   };
 
-  // Handler for selecting images from LibraryBrowser
-  const handleLibrarySelect = async (items) => {
-    if (!items || items.length === 0) return;
-
-    const emptyPanels = [];
-    const assignedPanelIds = new Set(Object.keys(panelImageMapping));
-
-    for (let panelIndex = 0; panelIndex < panelCount; panelIndex += 1) {
-      const panelId =
-        selectedTemplate?.layout?.panels?.[panelIndex]?.id ||
-        `panel-${panelIndex + 1}`;
-      if (
-        !assignedPanelIds.has(panelId) ||
-        panelImageMapping[panelId] === undefined ||
-        panelImageMapping[panelId] === null
-      ) {
-        emptyPanels.push(panelId);
-      }
-    }
-
-    const numEmptyPanels = emptyPanels.length;
-    const numNewImages = items.length;
-
-    let newPanelCount = panelCount;
-    if (numNewImages > numEmptyPanels) {
-      const additionalPanelsNeeded = numNewImages - numEmptyPanels;
-      newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12);
-      if (setPanelCount && newPanelCount !== panelCount) {
-        setPanelCount(newPanelCount);
-      }
-    }
-
-    const newMapping = { ...panelImageMapping };
-    const currentLength = selectedImages.length;
-    let newImageIndex = currentLength;
-
-    for (let i = 0; i < Math.min(numEmptyPanels, numNewImages); i += 1) {
-      newMapping[emptyPanels[i]] = newImageIndex;
-      newImageIndex += 1;
-    }
-
-    if (numNewImages > numEmptyPanels) {
-      for (
-        let panelIndex = panelCount;
-        panelIndex < newPanelCount &&
-        newImageIndex < currentLength + numNewImages;
-        panelIndex += 1
-      ) {
-        const panelId =
-          selectedTemplate?.layout?.panels?.[panelIndex]?.id ||
-          `panel-${panelIndex + 1}`;
-        newMapping[panelId] = newImageIndex;
-        newImageIndex += 1;
-      }
-    }
-
-    // Add items first so mapping references valid indices
-    await addMultipleImages(items);
-
-    // Update mapping after images are added
-    updatePanelImageMapping(newMapping);
-  };
+  // No library selection handler; selection occurs via device uploads
 
   // Generate panel list data
   const generatePanelList = () => {
@@ -855,7 +763,7 @@ const BulkUploadSection = ({
           >
             Add up to 5 images from your {helperSourceLabel}
           </Typography>
-          {!isAdmin ? (
+          <>
             // Non-admins: only the collage bulk upload dropzone
             <>
               <Box sx={{ 
@@ -916,104 +824,7 @@ const BulkUploadSection = ({
                 </Box>
               )}
             </>
-          ) : (
-            // Admins: either show Library only, or an "Add photos to your library" dropzone when empty
-            <>
-              {adminHasLibraryItems ? (
-                <>
-                  <LibraryBrowser
-                  isAdmin
-                  multiple
-                  minSelected={2}
-                  maxSelected={5}
-                  refreshTrigger={libraryRefreshTrigger}
-                  onSelect={(items) => handleLibrarySelect(items)}
-                  showActionBar={false}
-                  actionBarLabel="Make Collage"
-                  showSelectToggle
-                  initialSelectMode
-                  onSelectionChange={(info) => { if (onLibrarySelectionChange) onLibrarySelectionChange(info); }}
-                  exposeActions={(actions) => { if (onLibraryActionsReady) onLibraryActionsReady(actions); }}
-                />
-                </>
-              ) : (
-                <>
-                  <Box sx={{ 
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: '200px',
-                    border: `2px dashed ${theme.palette.divider}`,
-                    borderRadius: 2,
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      borderColor: theme.palette.primary.main,
-                      backgroundColor: theme.palette.action.hover,
-                    }
-                  }}>
-                    <Box 
-                      onClick={() => adminLibraryFileInputRef.current?.click()}
-                      sx={{ textAlign: 'center', p: 3 }}
-                    >
-                      <Add sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-                      <Typography variant="h6" gutterBottom>
-                        Add photos to your library
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Upload images to build your library, then make collages from them
-                      </Typography>
-                    </Box>
-                    <input
-                      type="file"
-                      ref={adminLibraryFileInputRef}
-                      style={{ display: 'none' }}
-                      accept="image/*"
-                      multiple
-                      onChange={handleAdminLibraryUpload}
-                    />
-                  </Box>
-
-                  {/* Show placeholders and recently added items while uploads are in progress */}
-                  {Array.isArray(adminLibraryItems) && adminLibraryItems.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <HorizontalScroller>
-                        {adminLibraryItems.map((it, idx) => (
-                          <PanelThumbnail key={it.key || it.id || idx} hasImage>
-                            <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
-                              <CardMedia
-                                component="img"
-                                width="100%"
-                                height="100%"
-                                image={it.url}
-                                alt="Uploading"
-                                sx={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                              />
-                              {it.loading && (
-                                <Box
-                                  sx={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    bgcolor: (theme) => theme.palette.action.disabledBackground,
-                                  }}
-                                >
-                                  <CircularProgress size={20} />
-                                </Box>
-                              )}
-                            </Box>
-                          </PanelThumbnail>
-                        ))}
-                      </HorizontalScroller>
-                    </Box>
-                  )}
-                </>
-              )}
-            </>
-          )}
+          </>
         </Box>
       )}
 
@@ -1050,9 +861,6 @@ BulkUploadSection.propTypes = {
   removeImage: PropTypes.func,
   replaceImage: PropTypes.func,
   onStartFromScratch: PropTypes.func,
-  libraryRefreshTrigger: PropTypes.any,
-  onLibrarySelectionChange: PropTypes.func,
-  onLibraryActionsReady: PropTypes.func,
 };
 
 export default BulkUploadSection; 
