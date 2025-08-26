@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UserContext } from "../UserContext";
@@ -137,6 +137,7 @@ export default function CollagePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
   const [showEarlyAccess, setShowEarlyAccess] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
   
 
 
@@ -701,11 +702,10 @@ export default function CollagePage() {
     }
   };
 
-  // Confirm before resetting for non-admins
-  const handleConfirmReset = () => {
-    const confirmed = window.confirm('Start over? This will discard your current collage.');
-    if (confirmed) handleResetToStart();
-  };
+  // Confirm before resetting for non-admins (dialog-based for mobile reliability)
+  const openResetDialog = () => setResetDialogOpen(true);
+  const closeResetDialog = () => setResetDialogOpen(false);
+  const confirmReset = () => { setResetDialogOpen(false); handleResetToStart(); };
 
   // Toggle settings disclosure and scroll when opening
   const handleToggleSettings = () => {
@@ -1040,7 +1040,7 @@ export default function CollagePage() {
               onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
               // Mobile controls bar actions
               onBack={hasLibraryAccess ? handleBackToProjects : undefined}
-              onReset={!hasLibraryAccess ? handleConfirmReset : undefined}
+              onReset={!hasLibraryAccess ? openResetDialog : undefined}
               onGenerate={handleFloatingButtonClick}
               canGenerate={allPanelsHaveImages}
               isGenerating={isCreatingCollage}
@@ -1212,7 +1212,7 @@ export default function CollagePage() {
                           <Collapse in={!nudgeVisualActive} orientation="horizontal">
                             <Button
                               variant="contained"
-                              onClick={handleConfirmReset}
+                              onClick={openResetDialog}
                               disabled={isCreatingCollage}
                               startIcon={!isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : undefined}
                               aria-label="Start over"
@@ -1333,6 +1333,22 @@ export default function CollagePage() {
             onClose={() => setShowResultDialog(false)}
             finalImage={finalImage}
           />
+
+          {/* Confirm Reset Dialog (non-admin) */}
+          <Dialog open={resetDialogOpen} onClose={closeResetDialog} aria-labelledby="confirm-reset-title">
+            <DialogTitle id="confirm-reset-title">Start over?</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                This will discard your current collage and reset the editor.
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={closeResetDialog}>Cancel</Button>
+              <Button onClick={confirmReset} color="error" variant="contained" autoFocus>
+                Start Over
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       )}
     </>
