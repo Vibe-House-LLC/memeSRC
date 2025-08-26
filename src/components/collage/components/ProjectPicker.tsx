@@ -369,7 +369,7 @@ const RecentThumb: React.FC<{ project: CollageProject; onOpen: (id: string) => v
         onClick={() => onOpen(project.id)}
         sx={{
           width: '100%',
-          aspectRatio: '1 / 1',
+          aspectRatio: '4 / 5',
           border: 1,
           borderColor: 'divider',
           bgcolor: '#000',
