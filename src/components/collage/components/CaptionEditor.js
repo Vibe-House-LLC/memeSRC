@@ -19,7 +19,7 @@ import {
   DialogContentText, 
   DialogActions 
 } from "@mui/material";
-import { useTheme, styled, alpha } from "@mui/material/styles";
+import { useTheme, styled } from "@mui/material/styles";
 import {
   FormatSize, 
   FormatBold, 
@@ -29,7 +29,6 @@ import {
   SwapVert, 
   Colorize, 
   ChevronLeft, 
-  ChevronRight, 
   RotateLeft,
   Restore,
   DeleteOutline as DeleteIcon,
@@ -87,51 +86,6 @@ const HorizontalScroller = styled(Box)(({ theme }) => ({
   },
 }));
 
-// Improved ScrollButton for consistent appearance
-const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
-  position: 'absolute',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  zIndex: 10,
-  // Consistent styling across all devices
-  backgroundColor: theme.palette.mode === 'dark' 
-    ? alpha(theme.palette.background.paper, 0.9)
-    : alpha(theme.palette.background.paper, 0.95),
-  // Better shadow for depth without overwhelming the UI
-  boxShadow: `0 2px 6px ${theme.palette.mode === 'dark' 
-    ? 'rgba(0,0,0,0.3)' 
-    : 'rgba(0,0,0,0.15)'}`,
-  // Clean border
-  border: `1px solid ${theme.palette.mode === 'dark'
-    ? alpha(theme.palette.divider, 0.5)
-    : theme.palette.divider}`,
-  // Primary color for better visibility
-  color: theme.palette.primary.main,
-  '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' 
-      ? alpha(theme.palette.background.paper, 0.95)
-      : alpha(theme.palette.background.default, 0.98),
-    color: theme.palette.primary.dark,
-    transform: 'translateY(-50%) scale(1.05)',
-    boxShadow: `0 3px 8px ${theme.palette.mode === 'dark' 
-      ? 'rgba(0,0,0,0.4)' 
-      : 'rgba(0,0,0,0.2)'}`,
-  },
-  // Consistent positioning for both directions
-  ...(direction === 'left' ? { left: -4 } : { right: -4 }),
-  // Consistent sizing across devices
-  width: 24,
-  height: 24,
-  minWidth: 'unset',
-  padding: 0,
-  // Consistent circular shape on all devices
-  borderRadius: '50%',
-  // Better transition for hover states
-  transition: theme.transitions.create(
-    ['background-color', 'color', 'box-shadow', 'transform', 'opacity'], 
-    { duration: theme.transitions.duration.shorter }
-  ),
-}));
 
 // Improved ScrollIndicator with subtle gradient
 const ScrollIndicator = styled(Box, {
@@ -253,26 +207,7 @@ const CaptionEditor = ({
   const sidePadding = Math.max(isMobileSize ? 6 : 4, Math.min(12, rect.width * 0.02));
   const borderRadius = Math.max(3, Math.min(8, minPanelSize * 0.02));
 
-  // Text color scroll handling functions
-  const scrollTextColorLeft = () => {
-    if (textColorScrollerRef.current) {
-      const scrollDistance = Math.min(textColorScrollerRef.current.clientWidth * 0.5, 200);
-      textColorScrollerRef.current.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
-      setTimeout(() => {
-        handleTextColorScroll();
-      }, 350);
-    }
-  };
-
-  const scrollTextColorRight = () => {
-    if (textColorScrollerRef.current) {
-      const scrollDistance = Math.min(textColorScrollerRef.current.clientWidth * 0.5, 200);
-      textColorScrollerRef.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
-      setTimeout(() => {
-        handleTextColorScroll();
-      }, 350);
-    }
-  };
+  // Text color scroll handling uses native gestures and indicators
 
   const checkTextColorScrollPosition = useCallback(() => {
     if (!textColorScrollerRef.current) return;

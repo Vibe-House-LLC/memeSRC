@@ -62,6 +62,15 @@ const CollagePreview = ({
   onCaptionEditorVisibleChange,
   onGenerateNudgeRequested,
   isFrameActionSuppressed,
+  // New: notify when the canvas has rendered a given signature
+  renderSig,
+  onPreviewRendered,
+  onPreviewMetaChange,
+  // Editing session tracking
+  onEditingSessionChange,
+  // Optional persisted custom layout to initialize preview grid
+  customLayout,
+  customLayoutKey,
 }) => {
   const fileInputRef = useRef(null);
   const theme = useTheme();
@@ -309,9 +318,13 @@ const CollagePreview = ({
 
     try {
       if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
-        // Replace existing image in place with data URL
+        // Replace existing image in place with data URL for display, but preserve library metadata for persistence
         const newUrl = await ensureDataUrl(selected);
-        await replaceImage(activeExistingImageIndex, newUrl);
+        await replaceImage(activeExistingImageIndex, {
+          originalUrl: newUrl,
+          displayUrl: newUrl,
+          metadata: selected?.metadata || {}
+        });
       } else {
         // Assign to empty panel: add to images and map using data URL
         const currentLength = selectedImages.length;
@@ -370,6 +383,15 @@ const CollagePreview = ({
         lastUsedTextSettings={lastUsedTextSettings}
         onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
         isGeneratingCollage={isCreatingCollage}
+        // Render tracking for autosave thumbnails
+        renderSig={renderSig}
+        onRendered={onPreviewRendered}
+        onPreviewMetaChange={onPreviewMetaChange}
+        // Editing session tracking
+        onEditingSessionChange={onEditingSessionChange}
+        // Initialize with a custom grid when reloading a project
+        initialCustomLayout={customLayout}
+        customLayoutKey={customLayoutKey}
       />
       
       {/* Hidden file input */}
@@ -495,6 +517,10 @@ CollagePreview.propTypes = {
   onCaptionEditorVisibleChange: PropTypes.func,
   onGenerateNudgeRequested: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
+  renderSig: PropTypes.string,
+  onPreviewRendered: PropTypes.func,
+  onPreviewMetaChange: PropTypes.func,
+  onEditingSessionChange: PropTypes.func,
 };
 
 export default CollagePreview; 

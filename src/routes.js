@@ -56,6 +56,7 @@ const AccountPage = lazy(() => import('./pages/AccountPage'));
 const FacebookAuthDemo = lazy(() => import('./pages/FacebookAuthDemo'));
 const CollagePageLegacy = lazy(() => import('./pages/CollagePageLegacy'));
 const CollagePage = lazy(() => import('./pages/CollagePage'));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const UserListPage = lazy(() => import('./pages/UserPage-Refactor'));
 const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
 const CollageAnimatedIconDemoPage = lazy(() => import('./pages/CollageAnimatedIconDemoPage'));
@@ -84,6 +85,9 @@ export default function Router() {
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
         { path: 'collage', element: <SiteWideMaintenance><CollagePage /></SiteWideMaintenance> },
         { path: 'collage-legacy', element: <SiteWideMaintenance><CollagePageLegacy /></SiteWideMaintenance> },
+        { path: 'projects', element: <SiteWideMaintenance><ProjectsPage /></SiteWideMaintenance> },
+        { path: 'projects/new', element: <SiteWideMaintenance><CollagePage /></SiteWideMaintenance> },
+        { path: 'projects/:projectId', element: <SiteWideMaintenance><CollagePage /></SiteWideMaintenance> },
         { path: 'manageSubscription', element: <SiteWideMaintenance><InvoiceListPage /></SiteWideMaintenance> },
         { path: 'account', element: <SiteWideMaintenance><AccountPage /></SiteWideMaintenance> },
         { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },
