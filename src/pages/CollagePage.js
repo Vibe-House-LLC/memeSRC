@@ -1038,6 +1038,12 @@ export default function CollagePage() {
               onViewChange={(v) => setCurrentView(v)}
               onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
               onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
+              // Mobile controls bar actions
+              onBack={hasLibraryAccess ? handleBackToProjects : undefined}
+              onReset={!hasLibraryAccess ? handleConfirmReset : undefined}
+              onGenerate={handleFloatingButtonClick}
+              canGenerate={allPanelsHaveImages}
+              isGenerating={isCreatingCollage}
             />
 
             {/* Save snackbar */}
@@ -1178,7 +1184,7 @@ export default function CollagePage() {
                                 variant="contained"
                                 onClick={handleToggleSettings}
                                 disabled={isCreatingCollage}
-                                startIcon={!isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : undefined}
+                                startIcon={!isMobile ? <Settings sx={{ color: '#ffffff' }} /> : undefined}
                                 aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
                                 sx={{
                                   minHeight: 48,
@@ -1193,7 +1199,7 @@ export default function CollagePage() {
                                   '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
                                 }}
                               >
-                                {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
+                                {isMobile ? <Settings sx={{ color: '#ffffff' }} /> : (settingsOpen ? 'Close' : 'Settings')}
                               </Button>
                             </Collapse>
                           </>
@@ -1257,7 +1263,7 @@ export default function CollagePage() {
                               variant="contained"
                               onClick={handleToggleSettings}
                               disabled={isCreatingCollage}
-                              startIcon={!isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : undefined}
+                              startIcon={!isMobile ? <Settings sx={{ color: '#ffffff' }} /> : undefined}
                               aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
                               sx={{
                                 minHeight: 48,
@@ -1272,7 +1278,7 @@ export default function CollagePage() {
                                 '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
                               }}
                             >
-                              {isMobile ? <Settings sx={{ color: '#8b5cc7' }} /> : (settingsOpen ? 'Close' : 'Settings')}
+                              {isMobile ? <Settings sx={{ color: '#ffffff' }} /> : (settingsOpen ? 'Close' : 'Settings')}
                             </Button>
                           </Collapse>
                         </>

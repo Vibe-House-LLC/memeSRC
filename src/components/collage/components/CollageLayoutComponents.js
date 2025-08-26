@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import { useTheme } from "@mui/material/styles";
 import {
@@ -7,13 +7,16 @@ import {
   Stack,
   useMediaQuery,
 } from "@mui/material";
-import { Settings, PhotoLibrary } from "@mui/icons-material";
+import { Settings, PhotoLibrary, ArrowBack, DeleteForever, Save as SaveIcon } from "@mui/icons-material";
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 
 import CollageSettingsStep from "../steps/CollageSettingsStep";
 import CollageImagesStep from "../steps/CollageImagesStep";
 import BulkUploadSection from "./BulkUploadSection";
 import { SectionHeading } from './CollageUIComponents';
-import DisclosureCard from './DisclosureCard';
+// (DisclosureCard removed from mobile; using compact controls instead)
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -74,62 +77,91 @@ ContentPaper.propTypes = {
 };
 
 /**
- * Collapsible Settings Section for Mobile
+ * Compact controls bar for mobile: Back, Save, Generate, Settings
  */
-const CollapsibleSettingsSection = ({
-  settingsStepProps,
-  isMobile,
+const MobileControlsBar = ({
+  onBack,
+  onGenerate,
+  onReset,
+  canGenerate,
+  isGenerating,
+  onToggleSettings,
   settingsOpen,
-  setSettingsOpen,
+  showBack,
+  showSettings = true,
   settingsRef,
 }) => {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isOpen = settingsOpen !== undefined ? settingsOpen : internalOpen;
-
-  if (!isMobile) {
-    return null; // Only render on mobile
-  }
-
-  const handleSettingsToggle = (open) => {
-    if (setSettingsOpen) {
-      setSettingsOpen(open);
-    } else {
-      setInternalOpen(open);
-    }
-  };
-
   return (
-    <Box ref={settingsRef}>
-      <DisclosureCard
-        title={isOpen ? "Hide Settings" : "Open Settings"}
-        icon={Settings}
-        defaultOpen={false}
-        isMobile={isMobile}
-        open={isOpen}
-        onToggle={handleSettingsToggle}
-        sx={{ mb: 2 }}
-        contentSx={{ pt: 1 }}
-      >
-        <CollageSettingsStep {...settingsStepProps} />
-      </DisclosureCard>
+    <Box ref={settingsRef} sx={{ mb: 1.5 }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+        {showBack && (
+          <Tooltip title="Back to Library" placement="top">
+            <span>
+              <IconButton aria-label="Back to Library" size="medium" onClick={onBack} sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
+                <ArrowBack />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
+
+        {!showBack && onReset && (
+          <Tooltip title="Start Over" placement="top">
+            <span>
+              <IconButton aria-label="Start Over" size="medium" onClick={onReset} color="error" sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
+                <DeleteForever />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
+
+        <Button
+          variant="contained"
+          onClick={onGenerate}
+          disabled={isGenerating || !canGenerate}
+          startIcon={<SaveIcon />}
+          sx={{
+            flex: 1,
+            minHeight: 44,
+            fontWeight: 700,
+            textTransform: 'none',
+            background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
+            border: '1px solid #8b5cc7',
+            color: '#fff',
+            '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
+          }}
+        >
+          {isGenerating ? 'Generating Meme...' : 'Generate Meme'}
+        </Button>
+
+        {showSettings && (
+          <Tooltip title={settingsOpen ? 'Hide Settings' : 'Show Settings'} placement="top">
+            <span>
+              <IconButton
+                aria-label={settingsOpen ? 'Hide Settings' : 'Show Settings'}
+                size="medium"
+                onClick={onToggleSettings}
+                sx={{ bgcolor: 'background.paper', border: 1, borderColor: settingsOpen ? 'primary.main' : 'divider' }}
+              >
+                <Settings />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
+      </Stack>
     </Box>
   );
 };
 
-CollapsibleSettingsSection.propTypes = {
-  settingsStepProps: PropTypes.shape({
-    selectedAspectRatio: PropTypes.string,
-    selectedTemplate: PropTypes.object,
-    panelCount: PropTypes.number.isRequired,
-    borderThickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    setBorderThickness: PropTypes.func,
-    setPanelCount: PropTypes.func.isRequired,
-    setSelectedAspectRatio: PropTypes.func.isRequired,
-    setSelectedTemplate: PropTypes.func.isRequired,
-  }).isRequired,
-  isMobile: PropTypes.bool.isRequired,
+MobileControlsBar.propTypes = {
+  onBack: PropTypes.func,
+  onGenerate: PropTypes.func,
+  onReset: PropTypes.func,
+  canGenerate: PropTypes.bool,
+  isGenerating: PropTypes.bool,
+  onToggleSettings: PropTypes.func,
   settingsOpen: PropTypes.bool,
-  setSettingsOpen: PropTypes.func,
+  showBack: PropTypes.bool,
+  showSettings: PropTypes.bool,
   settingsRef: PropTypes.object,
 };
 
@@ -148,6 +180,12 @@ export const CollageLayout = ({
   onViewChange,
   onLibrarySelectionChange,
   onLibraryActionsReady,
+  // New: optional controls for the mobile controls bar
+  onBack,
+  onGenerate,
+  onReset,
+  canGenerate,
+  isGenerating,
 }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -210,14 +248,25 @@ export const CollageLayout = ({
         ) : isMobile ? (
           // Mobile: Stack vertically with tighter spacing, NO BulkUploadSection after images are added
           <Stack spacing={1.5} sx={{ p: 1.5, px: 1 }}>
-            {/* Collapsible Settings Section for Mobile */}
-            <CollapsibleSettingsSection
-              settingsStepProps={settingsStepProps}
-              isMobile={isMobile}
-              settingsOpen={settingsOpen}
-              setSettingsOpen={setSettingsOpen}
+            {/* Compact Controls Bar for Mobile */}
+            <MobileControlsBar
+              onBack={onBack}
+              onGenerate={onGenerate}
+              onReset={onReset}
+              canGenerate={Boolean(canGenerate)}
+              isGenerating={Boolean(isGenerating)}
+              onToggleSettings={() => setSettingsOpen?.(!settingsOpen)}
+              settingsOpen={Boolean(settingsOpen)}
+              showBack={Boolean(onBack)}
               settingsRef={settingsRef}
             />
+
+            {/* Collapsible mobile settings panel below controls (open state handled by parent) */}
+            {settingsOpen && (
+              <Box sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 2, p: 1 }}>
+                <CollageSettingsStep {...settingsStepProps} />
+              </Box>
+            )}
 
             {/* Images Section */}
             <Box sx={{ 
@@ -328,4 +377,10 @@ CollageLayout.propTypes = {
   onViewChange: PropTypes.func,
   onLibrarySelectionChange: PropTypes.func,
   onLibraryActionsReady: PropTypes.func,
+  // New controls props
+  onBack: PropTypes.func,
+  onGenerate: PropTypes.func,
+  onReset: PropTypes.func,
+  canGenerate: PropTypes.bool,
+  isGenerating: PropTypes.bool,
 };

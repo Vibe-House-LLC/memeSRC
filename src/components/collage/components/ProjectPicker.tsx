@@ -95,7 +95,7 @@ export default function ProjectPicker(props: ProjectPickerProps) {
       <Stack spacing={1.5} sx={{ mb: 2 }}>
         <Stack spacing={0.5}>
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
-            Meme Projects
+            Projects
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Open a previous meme or start a new one. Projects are saved automatically as you edit.
