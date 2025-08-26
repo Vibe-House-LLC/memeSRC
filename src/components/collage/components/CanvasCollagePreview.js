@@ -622,6 +622,54 @@ const CanvasCollagePreview = ({
   // Track previous panel rect sizes to adjust transforms when frames resize (border drag)
   const prevPanelRectsRef = useRef({});
 
+  // Shared helper: carry transform from one frame to another preserving
+  // absolute zoom and focal point while ensuring the image still covers
+  // the destination frame.
+  const computeCarriedTransformFromImage = useCallback((img, fromRect, toRect, fromTransform) => {
+    try {
+      if (!img || !fromRect || !toRect) return null;
+      const imgW = img.naturalWidth || img.width;
+      const imgH = img.naturalHeight || img.height;
+      const imgAspect = imgW / imgH;
+      const fromAspect = fromRect.width / fromRect.height;
+      const toAspect = toRect.width / toRect.height;
+
+      const fromInit = (imgAspect > fromAspect) ? (fromRect.height / imgH) : (fromRect.width / imgW);
+      const toInit = (imgAspect > toAspect) ? (toRect.height / imgH) : (toRect.width / imgW);
+
+      const fromFinal = fromInit * (fromTransform?.scale || 1);
+      const toFinal = Math.max(fromFinal, toInit);
+      const newScaleParam = toFinal / toInit;
+
+      // Normalize offsets in source frame
+      const fromScaledW = imgW * fromFinal;
+      const fromScaledH = imgH * fromFinal;
+      const fromDx = Math.max(0, (fromScaledW - fromRect.width) / 2);
+      const fromDy = Math.max(0, (fromScaledH - fromRect.height) / 2);
+      const normX = fromDx > 0 ? Math.max(-1, Math.min(1, (fromTransform?.positionX || 0) / fromDx)) : 0;
+      const normY = fromDy > 0 ? Math.max(-1, Math.min(1, (fromTransform?.positionY || 0) / fromDy)) : 0;
+
+      // Map to destination and clamp
+      const toScaledW = imgW * toFinal;
+      const toScaledH = imgH * toFinal;
+      const toDx = Math.max(0, (toScaledW - toRect.width) / 2);
+      const toDy = Math.max(0, (toScaledH - toRect.height) / 2);
+      const newPosX = Math.max(-toDx, Math.min(toDx, normX * toDx));
+      const newPosY = Math.max(-toDy, Math.min(toDy, normY * toDy));
+
+      return { scale: newScaleParam, positionX: newPosX, positionY: newPosY };
+    } catch (_) { return null; }
+  }, []);
+
+  const isTransformNearlyEqual = (a, b, eps = 0.01) => {
+    if (!a || !b) return false;
+    return (
+      Math.abs((a.scale || 1) - (b.scale || 1)) < eps &&
+      Math.abs((a.positionX || 0) - (b.positionX || 0)) < (eps * 10) &&
+      Math.abs((a.positionY || 0) - (b.positionY || 0)) < (eps * 10)
+    );
+  };
+
   // Get layout configuration
   const layoutConfig = useMemo(() => {
     // Base layout from selected template first
@@ -855,44 +903,6 @@ const CanvasCollagePreview = ({
 
     const epsilon = 0.5; // ignore subpixel changes
 
-    // Helper mirrors reorder carry logic to preserve zoom and focal point
-    const computeTransformForResize = (imageIndex, fromRect, toRect, fromTransform) => {
-      const img = loadedImages[imageIndex];
-      if (!img || !fromRect || !toRect) return null;
-
-      const imgW = img.naturalWidth || img.width;
-      const imgH = img.naturalHeight || img.height;
-
-      const imgAspect = imgW / imgH;
-      const fromAspect = fromRect.width / fromRect.height;
-      const toAspect = toRect.width / toRect.height;
-
-      const fromInit = (imgAspect > fromAspect) ? (fromRect.height / imgH) : (fromRect.width / imgW);
-      const toInit = (imgAspect > toAspect) ? (toRect.height / imgH) : (toRect.width / imgW);
-
-      const fromFinal = fromInit * (fromTransform.scale || 1);
-      const toFinal = Math.max(fromFinal, toInit); // ensure cover in new frame
-      const newScaleParam = toFinal / toInit;
-
-      // Normalize previous center offsets
-      const fromScaledW = imgW * fromFinal;
-      const fromScaledH = imgH * fromFinal;
-      const fromDx = Math.max(0, (fromScaledW - fromRect.width) / 2);
-      const fromDy = Math.max(0, (fromScaledH - fromRect.height) / 2);
-      const normX = fromDx > 0 ? Math.max(-1, Math.min(1, (fromTransform.positionX || 0) / fromDx)) : 0;
-      const normY = fromDy > 0 ? Math.max(-1, Math.min(1, (fromTransform.positionY || 0) / fromDy)) : 0;
-
-      // Map to destination and clamp
-      const toScaledW = imgW * toFinal;
-      const toScaledH = imgH * toFinal;
-      const toDx = Math.max(0, (toScaledW - toRect.width) / 2);
-      const toDy = Math.max(0, (toScaledH - toRect.height) / 2);
-      const newPosX = Math.max(-toDx, Math.min(toDx, normX * toDx));
-      const newPosY = Math.max(-toDy, Math.min(toDy, normY * toDy));
-
-      return { scale: newScaleParam, positionX: newPosX, positionY: newPosY };
-    };
-
     Object.keys(currentById).forEach(panelId => {
       const prev = prevRects[panelId];
       const curr = currentById[panelId];
@@ -906,8 +916,9 @@ const CanvasCollagePreview = ({
       if (imageIndex === undefined) return;
       const fromTransform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
 
-      const adjusted = computeTransformForResize(imageIndex, prev, curr, fromTransform);
-      if (adjusted && typeof updatePanelTransform === 'function') {
+      const img = loadedImages[imageIndex];
+      const adjusted = computeCarriedTransformFromImage(img, prev, curr, fromTransform);
+      if (adjusted && typeof updatePanelTransform === 'function' && !isTransformNearlyEqual(adjusted, fromTransform)) {
         updatePanelTransform(panelId, adjusted);
       }
     });
@@ -918,7 +929,7 @@ const CanvasCollagePreview = ({
     prevPanelRectsRef.current = nextMap;
 
     // no-op return
-  }, [panelRects, loadedImages, panelImageMapping, panelTransforms, updatePanelTransform]);
+  }, [panelRects, loadedImages, panelImageMapping, panelTransforms, updatePanelTransform, computeCarriedTransformFromImage]);
 
   // Helper function to calculate optimal font size for text to fit in panel
   const calculateOptimalFontSize = useCallback((text, panelWidth, panelHeight) => {
@@ -2116,58 +2127,13 @@ const CanvasCollagePreview = ({
     const sourceText = panelTexts[reorderSourcePanel];
     const destinationText = panelTexts[destinationPanelId];
 
-    // Helper: compute a carried transform so that an image moved from one frame
-    // keeps similar zoom and focal point in the new frame while guaranteeing cover
+    // Delegate to shared carry helper
     const computeCarriedTransform = (imageIndex, fromPanelId, toPanelId) => {
-      try {
-        const img = loadedImages[imageIndex];
-        const fromRect = panelRects.find(r => r.panelId === fromPanelId);
-        const toRect = panelRects.find(r => r.panelId === toPanelId);
-        if (!img || !fromRect || !toRect) return { scale: 1, positionX: 0, positionY: 0 };
-
-        const fromTransform = panelTransforms[fromPanelId] || { scale: 1, positionX: 0, positionY: 0 };
-
-        const imgW = img.naturalWidth || img.width;
-        const imgH = img.naturalHeight || img.height;
-        const fromW = fromRect.width;
-        const fromH = fromRect.height;
-        const toW = toRect.width;
-        const toH = toRect.height;
-
-        // Initial scales to cover frames
-        const fromAspect = fromW / fromH;
-        const imgAspect = imgW / imgH;
-        const toAspect = toW / toH;
-
-        const fromInitialScale = (imgAspect > fromAspect) ? (fromH / imgH) : (fromW / imgW);
-        const toInitialScale = (imgAspect > toAspect) ? (toH / imgH) : (toW / imgW);
-
-        // Preserve absolute zoom (final scale in pixels per natural pixel)
-        const fromFinalScale = fromInitialScale * (fromTransform.scale || 1);
-        let toFinalScale = Math.max(fromFinalScale, toInitialScale); // ensure cover
-        const newScaleParam = toFinalScale / toInitialScale;
-
-        // Compute normalized center offsets in source frame (-1..1)
-        const fromScaledW = imgW * fromFinalScale;
-        const fromScaledH = imgH * fromFinalScale;
-        const fromDx = Math.max(0, (fromScaledW - fromW) / 2);
-        const fromDy = Math.max(0, (fromScaledH - fromH) / 2);
-
-        const normX = fromDx > 0 ? Math.max(-1, Math.min(1, (fromTransform.positionX || 0) / fromDx)) : 0;
-        const normY = fromDy > 0 ? Math.max(-1, Math.min(1, (fromTransform.positionY || 0) / fromDy)) : 0;
-
-        // Map normalized offsets into destination frame and clamp
-        const toScaledW = imgW * toFinalScale;
-        const toScaledH = imgH * toFinalScale;
-        const toDx = Math.max(0, (toScaledW - toW) / 2);
-        const toDy = Math.max(0, (toScaledH - toH) / 2);
-        const newPosX = Math.max(-toDx, Math.min(toDx, normX * toDx));
-        const newPosY = Math.max(-toDy, Math.min(toDy, normY * toDy));
-
-        return { scale: newScaleParam, positionX: newPosX, positionY: newPosY };
-      } catch (e) {
-        return { scale: 1, positionX: 0, positionY: 0 };
-      }
+      const img = loadedImages[imageIndex];
+      const fromRect = panelRects.find(r => r.panelId === fromPanelId);
+      const toRect = panelRects.find(r => r.panelId === toPanelId);
+      const fromTransform = panelTransforms[fromPanelId] || { scale: 1, positionX: 0, positionY: 0 };
+      return computeCarriedTransformFromImage(img, fromRect, toRect, fromTransform) || { scale: 1, positionX: 0, positionY: 0 };
     };
 
     // Create new mapping with swapped images
@@ -2232,7 +2198,7 @@ const CanvasCollagePreview = ({
     updatePanelImageMapping(newMapping);
     setIsReorderMode(false);
     setReorderSourcePanel(null);
-  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, updatePanelText, panelTexts, panelRects, panelTransforms, loadedImages, updatePanelTransform]);
+  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, updatePanelText, panelTexts, panelRects, panelTransforms, loadedImages, updatePanelTransform, computeCarriedTransformFromImage]);
 
   // Open/close the action menu (placed before handlers that depend on it)
   const handleActionMenuOpen = useCallback((event, panelId) => {
