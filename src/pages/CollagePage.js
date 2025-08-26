@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, Add, ArrowForward, Close } from "@mui/icons-material";
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 import { useCollage } from "../contexts/CollageContext";
@@ -112,11 +112,16 @@ export default function CollagePage() {
   
   const navigate = useNavigate();
   const location = useLocation();
+  const { projectId } = useParams();
   
   // Projects state (restricted to library-access users)
   const [projects, setProjects] = useState(() => (hasLibraryAccess ? loadProjects() : []));
   const [activeProjectId, setActiveProjectId] = useState(null);
-  const [showProjectPicker, setShowProjectPicker] = useState(() => !!hasLibraryAccess);
+  // In the new navigation flow, the projects list lives at /projects. When editing via /projects/new or /projects/:id,
+  // keep the picker hidden. Fall back to picker only on legacy /collage flow.
+  const [showProjectPicker, setShowProjectPicker] = useState(() => (
+    !!hasLibraryAccess && !(typeof window !== 'undefined' && window.location?.pathname?.startsWith('/projects'))
+  ));
   // Simplified autosave: no throttling/deferral; save only on tool exit
   const lastRenderedSigRef = useRef(null);
   const editingSessionActiveRef = useRef(false);
@@ -284,6 +289,38 @@ export default function CollagePage() {
       }
     }
   }, [user, navigate, location.search, authorized]);
+
+  // If user has access and lands on /collage, redirect to /projects as the starting point
+  useEffect(() => {
+    if (!hasLibraryAccess) return;
+    if (location.pathname === '/collage') {
+      navigate('/projects', { replace: true });
+    }
+  }, [hasLibraryAccess, location.pathname, navigate]);
+
+  // Handle navigation-driven project editing (/projects/:projectId)
+  // Moved below loadProjectById declaration to avoid TDZ; this block kept for position
+  // and replaced by a no-op to satisfy linter on early returns.
+  useEffect(() => {
+    let cancelled = false; // uniform cleanup for consistent-return
+    if (hasLibraryAccess && projectId) {
+      // actual loading effect is declared later after loadProjectById
+    }
+    return () => { cancelled = true; };
+  }, [hasLibraryAccess, projectId]);
+
+  // Handle new project route (/projects/new): start with clean state and no picker
+  useEffect(() => {
+    if (!hasLibraryAccess) return;
+    if (location.pathname === '/projects/new') {
+      setShowProjectPicker(false);
+      setActiveProjectId(null);
+      try {
+        clearImages();
+      } catch (_) { /* ignore */ }
+      setCustomLayout(null);
+    }
+  }, [hasLibraryAccess, location.pathname]);
 
   // Build current snapshot/signature once per state change
   const [renderBump, setRenderBump] = useState(0);
@@ -476,6 +513,10 @@ export default function CollagePage() {
     setTimeout(() => { loadingProjectRef.current = false; }, 0);
   }, [addMultipleImages, clearImages, setBorderColor, setBorderThickness, setPanelCount, setSelectedAspectRatio, setSelectedTemplate, updatePanelImageMapping, updatePanelText, updatePanelTransform]);
 
+  // Keep a stable ref to the loader to avoid effect re-runs from changing callback identities
+  const loadProjectByIdRef = useRef(loadProjectById);
+  useEffect(() => { loadProjectByIdRef.current = loadProjectById; }, [loadProjectById]);
+
   // Centralized save used by autosave-on-exit and manual save
   const saveProjectNow = useCallback(async ({ showToast = false } = {}) => {
     if (!activeProjectId) return;
@@ -576,10 +617,32 @@ export default function CollagePage() {
     }
   }, [activeProjectId, selectedImages?.length, saveProjectNow]);
 
+  // Handle navigation-driven project editing (/projects/:projectId) — placed after loadProjectById is defined
+  // Use a ref-backed loader to avoid re-running due to changing callback identity
+  useEffect(() => {
+    let cancelled = false;
+    if (hasLibraryAccess && projectId) {
+      (async () => {
+        try {
+          await loadProjectByIdRef.current(projectId);
+          if (!cancelled) {
+            setActiveProjectId(projectId);
+            setShowProjectPicker(false);
+          }
+        } catch (_) {
+          // ignore
+        }
+      })();
+    }
+    return () => { cancelled = true; };
+  }, [hasLibraryAccess, projectId]);
+
   // 4) Create a project only after images are present AND preview has rendered
   //    This avoids leaving blank projects when a user abandons during selection.
   useEffect(() => {
     if (!hasLibraryAccess) return;
+    // Do not auto-create while actively loading an existing project
+    if (loadingProjectRef.current) return;
     if (activeProjectId) return;
     const hasAnyImage = (selectedImages?.length || 0) > 0;
     if (!hasAnyImage) return;
@@ -632,8 +695,12 @@ export default function CollagePage() {
     try {
       await saveProjectNow();
     } catch (_) { /* best-effort save */ }
-    setShowProjectPicker(true);
-  }, [saveProjectNow]);
+    if (hasLibraryAccess) {
+      navigate('/projects');
+    } else {
+      setShowProjectPicker(true);
+    }
+  }, [saveProjectNow, hasLibraryAccess, navigate]);
 
   const formatSavedTime = (ts) => {
     if (!ts) return '';
