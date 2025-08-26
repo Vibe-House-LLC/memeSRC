@@ -1,17 +1,21 @@
 import React, { useEffect, useState, useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Container, Stack } from '@mui/material';
+import { Box, Button, Container, Stack, TextField, InputAdornment, IconButton } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { Add } from '@mui/icons-material';
+import { Add, Search, Clear } from '@mui/icons-material';
 import ProjectPicker from '../components/collage/components/ProjectPicker';
 import { loadProjects, deleteProject as deleteProjectRecord } from '../components/collage/utils/projects';
 import type { CollageProject } from '../types/collage';
 import { UserContext } from '../UserContext';
+import { normalizeString } from '../utils/search/normalize';
+import { getMetadataForKey, DEFAULT_LIBRARY_METADATA } from '../utils/library/metadata';
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<CollageProject[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [metaByKey, setMetaByKey] = useState<Record<string, { tags: string[]; description: string; defaultCaption: string }>>({});
   const { user } = useContext(UserContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -32,6 +36,37 @@ export default function ProjectsPage() {
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
+  // Background fetch default captions for images referenced by projects
+  useEffect(() => {
+    let cancelled = false;
+    const allKeys = Array.from(new Set(
+      projects
+        .flatMap((p) => (p?.state?.images || []) as any[])
+        .map((img) => (img && typeof img === 'object' ? (img as any).libraryKey : null))
+        .filter((k): k is string => Boolean(k))
+    ));
+    const missing = allKeys.filter((k) => !(k in metaByKey));
+    if (missing.length === 0) return undefined;
+    const worker = async () => {
+      const pool = Math.min(4, missing.length);
+      await Promise.all(
+        Array.from({ length: pool }, async (_, wi) => {
+          for (let idx = wi; idx < missing.length; idx += pool) {
+            const k = missing[idx];
+            try {
+              const meta = await getMetadataForKey(k, { level: 'protected' });
+              if (!cancelled) setMetaByKey((prev) => (prev[k] ? prev : { ...prev, [k]: meta }));
+            } catch (_) {
+              if (!cancelled) setMetaByKey((prev) => (prev[k] ? prev : { ...prev, [k]: { ...DEFAULT_LIBRARY_METADATA } }));
+            }
+          }
+        })
+      );
+    };
+    worker();
+    return () => { cancelled = true; };
+  }, [projects, metaByKey]);
+
   const handleOpen = useCallback((id: string) => {
     navigate(`/projects/${id}`);
   }, [navigate]);
@@ -41,6 +76,33 @@ export default function ProjectsPage() {
     setProjects(loadProjects());
   }, []);
 
+  const normalizedQuery = React.useMemo(() => normalizeString(searchQuery), [searchQuery]);
+
+  const filteredProjects = React.useMemo(() => {
+    if (!normalizedQuery) return projects;
+    return projects.filter((p) => {
+      const name = p?.name || '';
+      const texts = (() => {
+        const pt = (p?.state?.panelTexts || {}) as Record<string, any>;
+        try {
+          return Object.values(pt)
+            .map((t: any) => (t && typeof t === 'object' ? String(t.content || '') : ''))
+            .join(' ');
+        } catch (_) {
+          return '';
+        }
+      })();
+      const defaults = (() => {
+        const imgs = (p?.state?.images || []) as any[];
+        return imgs
+          .map((img: any) => (img?.libraryKey ? (metaByKey[img.libraryKey]?.defaultCaption || '') : ''))
+          .join(' ');
+      })();
+      const combined = [name, texts, defaults].join(' ');
+      return normalizeString(combined).includes(normalizedQuery);
+    });
+  }, [projects, metaByKey, normalizedQuery]);
+
   return (
     <Container
       maxWidth="md"
@@ -49,6 +111,32 @@ export default function ProjectsPage() {
         pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 88px)', sm: 12 },
       }}
     >
+      {/* Search bar */}
+      <Box sx={{ mb: 2, mt: 1 }}>
+        <TextField
+          size="small"
+          fullWidth
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search projects (captions and image defaults)..."
+          aria-label="Search projects"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: searchQuery ? (
+              <InputAdornment position="end">
+                <IconButton size="small" aria-label="Clear search" onClick={() => setSearchQuery('')}>
+                  <Clear fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
+          }}
+          sx={{ '& .MuiInputBase-root': { borderRadius: 1.5 } }}
+        />
+      </Box>
       {!isMobile && (
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mb: 2 }}>
           <Button
@@ -64,7 +152,7 @@ export default function ProjectsPage() {
           <Box sx={{ flex: 1 }} />
         </Stack>
       )}
-      <ProjectPicker projects={projects} onOpen={handleOpen} onDelete={handleDelete} />
+      <ProjectPicker projects={filteredProjects} onOpen={handleOpen} onDelete={handleDelete} />
 
       {/* Bottom Action Bar (mobile-first, consistent with editor) */}
       <Box
