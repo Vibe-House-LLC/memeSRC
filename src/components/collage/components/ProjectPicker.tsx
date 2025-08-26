@@ -6,6 +6,7 @@ import { Delete, Search, Clear, ChevronLeft, ChevronRight } from '@mui/icons-mat
 import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
 import type { CollageProject } from '../../../types/collage';
+import { alpha } from '@mui/material/styles';
 // no responsive hooks needed here
 
 type ProjectCardProps = {
@@ -236,6 +237,23 @@ const RecentScroller: React.FC<{ recent: CollageProject[]; onOpen: (id: string) 
     el.scrollBy({ left: delta, behavior: 'smooth' });
   };
 
+  const fadePx = 40;
+  const edgeMaskSx = React.useMemo(() => {
+    if (canLeft && canRight) {
+      const g = `linear-gradient(to right, transparent 0, black ${fadePx}px, black calc(100% - ${fadePx}px), transparent 100%)`;
+      return { WebkitMaskImage: g, maskImage: g } as const;
+    }
+    if (canLeft) {
+      const g = `linear-gradient(to right, transparent 0, black ${fadePx}px, black 100%)`;
+      return { WebkitMaskImage: g, maskImage: g } as const;
+    }
+    if (canRight) {
+      const g = `linear-gradient(to right, black 0, black calc(100% - ${fadePx}px), transparent 100%)`;
+      return { WebkitMaskImage: g, maskImage: g } as const;
+    }
+    return {} as const;
+  }, [canLeft, canRight]);
+
   return (
     <Box sx={{ position: 'relative' }}>
       <Box
@@ -253,6 +271,7 @@ const RecentScroller: React.FC<{ recent: CollageProject[]; onOpen: (id: string) 
           msOverflowStyle: 'none',
           scrollbarWidth: 'none',
           justifyContent: 'flex-start',
+          ...edgeMaskSx,
         }}
         role="list"
       >
@@ -265,7 +284,19 @@ const RecentScroller: React.FC<{ recent: CollageProject[]; onOpen: (id: string) 
           size="small"
           aria-label="Scroll left"
           onClick={() => scrollByPage('left')}
-          sx={{ position: 'absolute', top: '50%', left: -6, transform: 'translateY(-50%)', bgcolor: 'background.paper', boxShadow: 1, '&:hover': { bgcolor: 'background.paper' } }}
+          sx={(theme) => ({
+            position: 'absolute',
+            top: '50%',
+            left: -6,
+            transform: 'translateY(-50%)',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            border: '1px solid',
+            borderColor: alpha(theme.palette.text.primary, 0.25),
+            boxShadow: '0 6px 16px rgba(0,0,0,0.28)',
+            zIndex: 2,
+            '&:hover': { bgcolor: 'background.paper' },
+          })}
         >
           <ChevronLeft fontSize="small" />
         </IconButton>
@@ -275,7 +306,19 @@ const RecentScroller: React.FC<{ recent: CollageProject[]; onOpen: (id: string) 
           size="small"
           aria-label="Scroll right"
           onClick={() => scrollByPage('right')}
-          sx={{ position: 'absolute', top: '50%', right: -6, transform: 'translateY(-50%)', bgcolor: 'background.paper', boxShadow: 1, '&:hover': { bgcolor: 'background.paper' } }}
+          sx={(theme) => ({
+            position: 'absolute',
+            top: '50%',
+            right: -6,
+            transform: 'translateY(-50%)',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            border: '1px solid',
+            borderColor: alpha(theme.palette.text.primary, 0.25),
+            boxShadow: '0 6px 16px rgba(0,0,0,0.28)',
+            zIndex: 2,
+            '&:hover': { bgcolor: 'background.paper' },
+          })}
         >
           <ChevronRight fontSize="small" />
         </IconButton>
