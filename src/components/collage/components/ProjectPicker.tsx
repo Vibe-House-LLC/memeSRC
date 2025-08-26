@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton, TextField, InputAdornment } from '@mui/material';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Box, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton, TextField, InputAdornment, Chip } from '@mui/material';
 import type { BoxProps } from '@mui/material';
 import { Masonry } from '@mui/lab';
 import { Delete, Search, Clear } from '@mui/icons-material';
@@ -93,6 +93,16 @@ export type ProjectPickerProps = BoxProps & {
 
 export default function ProjectPicker(props: ProjectPickerProps) {
   const { projects, onOpen, onDelete, searchQuery, onSearchChange, ...rest } = props; // keep onCreateNew in props type for API consistency
+  const recent = useMemo(() => {
+    try {
+      return [...projects]
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0, 15);
+    } catch (_) {
+      return projects.slice(0, 15);
+    }
+  }, [projects]);
+
   return (
     <Box sx={{ width: '100%' }} {...rest}>
       <Stack spacing={1.25} sx={{ mb: 1.5 }}>
@@ -110,46 +120,170 @@ export default function ProjectPicker(props: ProjectPickerProps) {
         </Typography>
       </Stack>
 
-      {/* Search input just above the list */}
-      {typeof searchQuery === 'string' && typeof onSearchChange === 'function' && (
-        <Box sx={{ mb: 1.5 }}>
-          <TextField
-            size="small"
-            fullWidth
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search your memes..."
-            aria-label="Search your memes"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search fontSize="small" />
-                </InputAdornment>
-              ),
-              endAdornment: searchQuery ? (
-                <InputAdornment position="end">
-                  <IconButton size="small" aria-label="Clear search" onClick={() => onSearchChange('')}>
-                    <Clear fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ) : null,
+      {/* Recent scroller */}
+      {recent.length > 0 && (
+        <Box sx={{ mb: 1.5 }} aria-label="Recents">
+          <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            Recents
+          </Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              gap: 1,
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              px: 0.5,
+              py: 0.5,
+              scrollSnapType: { xs: 'x proximity', sm: 'none' },
+              '&::-webkit-scrollbar': { display: 'none' },
+              msOverflowStyle: 'none',
+              scrollbarWidth: 'none',
+              justifyContent: 'center',
             }}
-            sx={{ '& .MuiInputBase-root': { borderRadius: 1.5 } }}
-          />
+            role="list"
+          >
+            {recent.map((p) => (
+              <RecentThumb key={`recent-${p.id}`} project={p} onOpen={onOpen} />
+            ))}
+          </Box>
         </Box>
       )}
+
 
       {projects.length === 0 ? (
         <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved memes yet. Click "Create Meme" to begin.</Box>
       ) : (
-        <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
-          {projects.map((p) => (
-            <div key={p.id}>
-              <ProjectCard project={p} onOpen={onOpen} onDelete={onDelete} />
-            </div>
-          ))}
-        </Masonry>
+        <>
+          <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.75, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            All Memes
+          </Typography>
+          {typeof searchQuery === 'string' && typeof onSearchChange === 'function' && (
+            <Box sx={{ mb: 1.5 }}>
+              <TextField
+                size="small"
+                fullWidth
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search your memes..."
+                aria-label="Search your memes"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchQuery ? (
+                    <InputAdornment position="end">
+                      <IconButton size="small" aria-label="Clear search" onClick={() => onSearchChange('')}>
+                        <Clear fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null,
+                }}
+                sx={{ '& .MuiInputBase-root': { borderRadius: 1.5 } }}
+              />
+            </Box>
+          )}
+          <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
+            {projects.map((p) => (
+              <div key={p.id}>
+                <ProjectCard project={p} onOpen={onOpen} onDelete={onDelete} />
+              </div>
+            ))}
+          </Masonry>
+        </>
       )}
     </Box>
   );
 }
+
+// Compact thumbnail used in the horizontal recent scroller
+const RecentThumb: React.FC<{ project: CollageProject; onOpen: (id: string) => void }> = ({ project, onOpen }) => {
+  const [thumbUrl, setThumbUrl] = useState<string | null>(project.thumbnail || null);
+
+  useEffect(() => {
+    setThumbUrl(project.thumbnail || null);
+  }, [project.thumbnail]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        if (!project?.state) return;
+        const json = JSON.stringify(project.state);
+        let hash = 5381; for (let i = 0; i < json.length; i += 1) { hash = (hash * 33 + json.charCodeAt(i)) % 4294967296; }
+        const sig = `v2:${Math.floor(hash)}`;
+        if (project.thumbnail && project.thumbnailSignature === sig) return;
+        const dataUrl = await renderThumbnailFromSnapshot(project.state, { maxDim: 256 });
+        if (!cancelled && dataUrl) {
+          setThumbUrl(dataUrl);
+          upsertProject(project.id, {
+            thumbnail: dataUrl,
+            thumbnailKey: null,
+            thumbnailSignature: sig,
+            thumbnailUpdatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (_) {
+        // ignore best-effort
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id, project.state]);
+
+  const formatAgo = (iso?: string | null) => {
+    if (!iso) return '';
+    const now = Date.now();
+    const then = new Date(iso).getTime();
+    const diff = Math.max(0, now - then);
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d < 7) return `${d}d ago`;
+    const w = Math.floor(d / 7);
+    if (w < 4) return `${w}w ago`;
+    const mo = Math.floor(d / 30);
+    return `${mo}mo ago`;
+  };
+
+  return (
+    <Box role="listitem" sx={{ flex: '0 0 auto', width: { xs: 160, sm: 140, md: 128 }, scrollSnapAlign: 'start', textAlign: 'center' }}>
+      <Box
+        onClick={() => onOpen(project.id)}
+        sx={{
+          width: '100%',
+          aspectRatio: '1 / 1',
+          border: 1,
+          borderColor: 'divider',
+          bgcolor: '#000',
+          overflow: 'hidden',
+          cursor: 'pointer',
+          borderRadius: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          '&:active img': { transform: 'scale(0.985)' },
+        }}
+      >
+        {thumbUrl ? (
+          <Box component="img" src={thumbUrl} alt={project.name || 'meme'} loading="lazy" sx={{ display: 'block', width: 'calc(100% - 8px)', height: 'calc(100% - 8px)', objectFit: 'contain' }} />
+        ) : (
+          <Skeleton variant="rectangular" sx={{ width: '100%', height: '100%' }} />
+        )}
+      </Box>
+      <Chip
+        label={formatAgo(project.updatedAt)}
+        size="small"
+        variant="outlined"
+        sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }}
+      />
+    </Box>
+  );
+};

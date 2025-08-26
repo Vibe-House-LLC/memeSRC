@@ -8,6 +8,7 @@ import {
   Stack,
   Typography,
   useMediaQuery,
+  Chip,
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import { Add } from '@mui/icons-material';
@@ -23,6 +24,25 @@ export default function EditorProjectsPage() {
   const isXs = useMediaQuery(theme.breakpoints.down('sm'));
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const imageCols = isMdUp ? 4 : isXs ? 2 : 3; // mobile-first: 2 cols on phones
+
+  const formatAgo = (iso) => {
+    if (!iso) return '';
+    const now = Date.now();
+    const then = new Date(iso).getTime();
+    const diff = Math.max(0, now - then);
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d < 7) return `${d}d ago`;
+    const w = Math.floor(d / 7);
+    if (w < 4) return `${w}w ago`;
+    const mo = Math.floor(d / 30);
+    return `${mo}mo ago`;
+  };
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -45,12 +65,13 @@ export default function EditorProjectsPage() {
             id: project.id,
             title: project.title,
             imageUrl,
-            createdDate: project.createdAt
+            createdDate: project.createdAt,
+            updatedDate: project.updatedAt || project.createdAt,
           };
         });
   
         const mappedProjects = await Promise.all(mappedProjectsPromises);
-        const sortedProjects = mappedProjects.sort((a, b) => new Date(b.createdDate) - new Date(a.createdDate));
+        const sortedProjects = mappedProjects.sort((a, b) => new Date(b.updatedDate) - new Date(a.updatedDate));
         
         setProjects(sortedProjects);
       } catch (error) {
@@ -106,6 +127,57 @@ export default function EditorProjectsPage() {
           </Typography>
         </Stack>
 
+        {/* Recent scroller */}
+        {projects.length > 0 && (
+          <Box sx={{ mb: 2 }} aria-label="Recents">
+            <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              Recents
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                gap: 1,
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                px: 0.5,
+                py: 0.5,
+                '&::-webkit-scrollbar': { display: 'none' },
+                msOverflowStyle: 'none',
+                scrollbarWidth: 'none',
+                justifyContent: 'center',
+              }}
+              role="list"
+            >
+              {projects.slice(0, 15).map((project) => (
+                <Box key={`recent-${project.id}`} role="listitem" sx={{ flex: '0 0 auto', width: { xs: 160, sm: 140, md: 128 }, textAlign: 'center' }}>
+                  <Box
+                    onClick={() => navigate(`/editor/project/${project.id}`)}
+                    sx={{
+                      width: '100%',
+                      aspectRatio: '1 / 1',
+                      border: 1,
+                      borderColor: 'divider',
+                      bgcolor: '#000',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      borderRadius: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      '&:active img': { transform: 'scale(0.985)' },
+                    }}
+                  >
+                    <Box component="img" src={project.imageUrl} alt={project.title || 'meme'} loading="lazy"
+                         sx={{ display: 'block', width: 'calc(100% - 8px)', height: 'calc(100% - 8px)', objectFit: 'contain' }} />
+                  </Box>
+                  <Chip label={formatAgo(project.updatedDate)} size="small" variant="outlined" sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }} />
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
         {projects.length === 0 ? (
           <Box
             sx={{
@@ -122,7 +194,11 @@ export default function EditorProjectsPage() {
             </Typography>
           </Box>
         ) : (
-          <ImageList variant="masonry" cols={imageCols} gap={8}>
+          <>
+            <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4, px: 0.5 }}>
+              All Memes
+            </Typography>
+            <ImageList variant="masonry" cols={imageCols} gap={8}>
             {projects.map((project) => (
               <ImageListItem
                 key={project.id}
@@ -146,7 +222,8 @@ export default function EditorProjectsPage() {
                 <img src={project.imageUrl} alt={project.title} loading="lazy" />
               </ImageListItem>
             ))}
-          </ImageList>
+            </ImageList>
+          </>
         )}
       </Container>
     </BasePage>
