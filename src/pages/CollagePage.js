@@ -626,9 +626,6 @@ export default function CollagePage() {
       (async () => {
         try {
           await loadProjectByIdRef.current(projectId);
-          if (!cancelled) {
-            setActiveProjectId(projectId);
-          }
         } catch (_) {
           // ignore
         }
