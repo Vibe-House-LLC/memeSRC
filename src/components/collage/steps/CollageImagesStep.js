@@ -51,6 +51,7 @@ const CollageImagesStep = ({
   // Render tracking passthrough for autosave thumbnails
   renderSig,
   onPreviewRendered,
+  onPreviewMetaChange,
   // Editing session tracking
   onEditingSessionChange,
   // Optional persisted custom layout to initialize preview grid
@@ -169,6 +170,7 @@ const CollageImagesStep = ({
           // Render tracking
           renderSig={renderSig}
           onPreviewRendered={onPreviewRendered}
+          onPreviewMetaChange={onPreviewMetaChange}
           // Editing session tracking
           onEditingSessionChange={onEditingSessionChange}
           // Initialize with custom layout if provided
@@ -237,6 +239,7 @@ CollageImagesStep.propTypes = {
   // Render tracking for autosave thumbnails
   renderSig: PropTypes.string,
   onPreviewRendered: PropTypes.func,
+  onPreviewMetaChange: PropTypes.func,
   // Editing session tracking
   onEditingSessionChange: PropTypes.func,
   isCreatingCollage: PropTypes.bool,

@@ -305,6 +305,10 @@ export default function CollagePage() {
 
   // Build current snapshot/signature once per state change
   const [renderBump, setRenderBump] = useState(0);
+  // Live preview meta from CanvasCollagePreview (avoids DOM queries)
+  const [previewCanvasWidth, setPreviewCanvasWidth] = useState(null);
+  const [previewCanvasHeight, setPreviewCanvasHeight] = useState(null);
+  const [liveCustomLayout, setLiveCustomLayout] = useState(null);
 
   const currentSnapshot = useMemo(() => buildSnapshotFromState({
     selectedImages,
@@ -319,6 +323,8 @@ export default function CollagePage() {
     // Include live custom layout from preview dataset if available
     // Note: this relies on the preview tagging the canvas with the serialized layout
     customLayout: (() => {
+      // Prefer state pushed from preview to avoid races
+      if (liveCustomLayout) return liveCustomLayout;
       try {
         const canvas = document.querySelector('[data-testid="canvas-collage-preview"]');
         const json = canvas?.dataset?.customLayout;
@@ -328,15 +334,19 @@ export default function CollagePage() {
     })(),
     // Capture live canvas size for proper transform scaling in thumbnails
     ...(() => {
+      // Prefer state pushed from preview to avoid races
+      const w = Number(previewCanvasWidth || 0);
+      const h = Number(previewCanvasHeight || 0);
+      if (w > 0 && h > 0) return { canvasWidth: w, canvasHeight: h };
       try {
         const canvas = document.querySelector('[data-testid="canvas-collage-preview"]');
-        const w = Number(canvas?.dataset?.previewWidth || 0);
-        const h = Number(canvas?.dataset?.previewHeight || 0);
-        if (w > 0 && h > 0) return { canvasWidth: w, canvasHeight: h };
+        const dw = Number(canvas?.dataset?.previewWidth || 0);
+        const dh = Number(canvas?.dataset?.previewHeight || 0);
+        if (dw > 0 && dh > 0) return { canvasWidth: dw, canvasHeight: dh };
       } catch (_) { /* ignore */ }
       return {};
     })(),
-  }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, renderBump]);
+  }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, renderBump, previewCanvasWidth, previewCanvasHeight, liveCustomLayout]);
 
   const currentSig = useMemo(() => computeSnapshotSignature(currentSnapshot), [currentSnapshot]);
   const currentSnapshotRef = useRef(currentSnapshot);
@@ -936,6 +946,11 @@ export default function CollagePage() {
     // Render tracking for timely thumbnail capture
     renderSig: currentSig,
     onPreviewRendered: (sig) => { lastRenderedSigRef.current = sig; setRenderBump(b => b + 1); },
+    onPreviewMetaChange: ({ canvasWidth, canvasHeight, customLayout }) => {
+      setPreviewCanvasWidth(canvasWidth || null);
+      setPreviewCanvasHeight(canvasHeight || null);
+      if (customLayout) setLiveCustomLayout(customLayout);
+    },
     // Editing session tracking to gate thumbnail updates
     onEditingSessionChange: handleEditingSessionChange,
     // Provide persisted custom grid to preview on load

@@ -492,6 +492,8 @@ const CanvasCollagePreview = ({
   // When provided, use as initial custom grid config (restored from snapshot)
   initialCustomLayout,
   customLayoutKey,
+  // New: report preview metrics and layout without DOM queries
+  onPreviewMetaChange,
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -1693,6 +1695,15 @@ const CanvasCollagePreview = ({
           canvas.dataset.customLayout = JSON.stringify(customLayoutConfig);
         } else if (canvas.dataset.customLayout) {
           delete canvas.dataset.customLayout;
+        }
+        // Also emit a callback with the same info to avoid DOM races
+        if (typeof onPreviewMetaChange === 'function') {
+          onPreviewMetaChange({
+            canvasWidth: componentWidth || 0,
+            canvasHeight: componentHeight || 0,
+            customLayout: customLayoutConfig || null,
+            renderSig,
+          });
         }
         if (typeof onRendered === 'function') {
           onRendered(renderSig);
@@ -3768,6 +3779,7 @@ CanvasCollagePreview.propTypes = {
   renderSig: PropTypes.string,
   onRendered: PropTypes.func,
   onEditingSessionChange: PropTypes.func,
+  onPreviewMetaChange: PropTypes.func,
 };
 
 export default CanvasCollagePreview;

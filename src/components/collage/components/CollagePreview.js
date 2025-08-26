@@ -65,6 +65,7 @@ const CollagePreview = ({
   // New: notify when the canvas has rendered a given signature
   renderSig,
   onPreviewRendered,
+  onPreviewMetaChange,
   // Editing session tracking
   onEditingSessionChange,
   // Optional persisted custom layout to initialize preview grid
@@ -385,6 +386,7 @@ const CollagePreview = ({
         // Render tracking for autosave thumbnails
         renderSig={renderSig}
         onRendered={onPreviewRendered}
+        onPreviewMetaChange={onPreviewMetaChange}
         // Editing session tracking
         onEditingSessionChange={onEditingSessionChange}
         // Initialize with a custom grid when reloading a project
@@ -517,6 +519,7 @@ CollagePreview.propTypes = {
   isFrameActionSuppressed: PropTypes.func,
   renderSig: PropTypes.string,
   onPreviewRendered: PropTypes.func,
+  onPreviewMetaChange: PropTypes.func,
   onEditingSessionChange: PropTypes.func,
 };
 
