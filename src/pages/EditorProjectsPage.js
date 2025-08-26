@@ -64,11 +64,11 @@ export default function EditorProjectsPage() {
 
   return (
     <BasePage
-      pageTitle="My Collages"
+      pageTitle="Meme Projects"
       breadcrumbLinks={[
         { path: '/', name: 'Home' },
         { path: '/editor/new', name: 'Editor' },
-        { path: '/editor/projects', name: 'Collages' },
+        { path: '/editor/projects', name: 'Meme Projects' },
       ]}
     >
       <Container sx={{ p: 0 }}>
@@ -77,7 +77,7 @@ export default function EditorProjectsPage() {
             fullWidth
             variant="contained"
             size="large"
-            aria-label="Create a new collage"
+            aria-label="Create a new meme"
             onClick={() => navigate('/editor/new')}
             startIcon={<Add />}
             sx={(t) => ({
@@ -96,13 +96,13 @@ export default function EditorProjectsPage() {
               },
             })}
           >
-            New Collage
+            New Meme
           </Button>
 
           <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
             {projects.length > 0
-              ? `${projects.length} saved ${projects.length === 1 ? 'collage' : 'collages'}`
-              : 'Create your first collage to get started'}
+              ? `${projects.length} saved ${projects.length === 1 ? 'meme' : 'memes'}`
+              : 'Create your first meme to get started'}
           </Typography>
         </Stack>
 
@@ -118,7 +118,7 @@ export default function EditorProjectsPage() {
             }}
           >
             <Typography variant="body2">
-              No collages yet. Tap “New Collage” to create one.
+              No memes yet. Tap “New Meme” to create one.
             </Typography>
           </Box>
         ) : (

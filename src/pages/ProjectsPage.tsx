@@ -57,9 +57,9 @@ export default function ProjectsPage() {
             startIcon={<Add />}
             onClick={() => navigate('/projects/new')}
             sx={{ fontWeight: 700, textTransform: 'none', py: 1.25 }}
-            aria-label="Create a new collage"
+            aria-label="Create a new meme"
           >
-            New Collage
+            New Meme
           </Button>
           <Box sx={{ flex: 1 }} />
         </Stack>
@@ -104,9 +104,9 @@ export default function ProjectsPage() {
               '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
             }}
             startIcon={<Add />}
-            aria-label="Create a new collage"
+            aria-label="Create a new meme"
           >
-            New Collage
+            New Meme
           </Button>
         </Stack>
       </Box>

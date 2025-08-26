@@ -629,7 +629,7 @@ export default function CollagePage() {
     if (!hasAnyImage) return;
     const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
     if (!hasRendered) return;
-    const p = createProject({ name: 'Untitled Collage' });
+    const p = createProject({ name: 'Untitled Meme' });
     setActiveProjectId(p.id);
     // Reset initial-save gate so we capture the first render under this new project
     didInitialSaveRef.current = false;
@@ -1130,7 +1130,7 @@ export default function CollagePage() {
                                 onClick={handleBackToProjects}
                                 disabled={isCreatingCollage}
                                 startIcon={!isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : undefined}
-                                aria-label="Back to projects"
+                                aria-label="Back to memes"
                                 sx={{
                                   minHeight: 48,
                                   minWidth: isMobile ? 48 : undefined,
@@ -1144,7 +1144,7 @@ export default function CollagePage() {
                                   '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
                                 }}
                               >
-                                {isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : 'Back to Projects'}
+                                {isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : 'Back to Memes'}
                               </Button>
                             </Collapse>
 
@@ -1167,10 +1167,10 @@ export default function CollagePage() {
                                 color: '#fff',
                                 '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
                               }}
-                              aria-label="Create and save collage"
+                              aria-label="Create and save meme"
                               ref={generateBtnRef}
                             >
-                              {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
+                              {isCreatingCollage ? 'Generating Meme...' : 'Generate Meme'}
                             </Button>
 
                             <Collapse in={!nudgeVisualActive} orientation="horizontal">
@@ -1246,10 +1246,10 @@ export default function CollagePage() {
                               color: '#fff',
                               '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
                             }}
-                            aria-label="Create and save collage"
+                            aria-label="Create and save meme"
                             ref={generateBtnRef}
                           >
-                            {isCreatingCollage ? 'Generating Collage...' : 'Generate Collage'}
+                            {isCreatingCollage ? 'Generating Meme...' : 'Generate Meme'}
                           </Button>
 
                           <Collapse in={!nudgeVisualActive} orientation="horizontal">

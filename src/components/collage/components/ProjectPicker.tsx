@@ -95,16 +95,16 @@ export default function ProjectPicker(props: ProjectPickerProps) {
       <Stack spacing={1.5} sx={{ mb: 2 }}>
         <Stack spacing={0.5}>
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
-            Collage Projects
+            Meme Projects
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Open a previous collage or start a new one. Projects are saved automatically as you edit.
+            Open a previous meme or start a new one. Projects are saved automatically as you edit.
           </Typography>
         </Stack>
       </Stack>
 
       {projects.length === 0 ? (
-        <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved projects yet. Click "New Collage" to begin.</Box>
+        <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved memes yet. Click "New Meme" to begin.</Box>
       ) : (
         <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
           {projects.map((p) => (
