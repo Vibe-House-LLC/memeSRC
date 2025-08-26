@@ -418,10 +418,10 @@ export default function CollagePage() {
 
   // Load a project snapshot into the current editor state
   const loadProjectById = useCallback(async (projectId) => {
-    loadingProjectRef.current = true;
     const record = getProjectRecord(projectId);
     if (!record || !record.state) return;
     const snap = record.state;
+    loadingProjectRef.current = true;
 
     // Clear current state
     clearImages();
@@ -451,8 +451,8 @@ export default function CollagePage() {
             // eslint-disable-next-line no-await-in-loop
             const blob = await getFromLibrary(ref.libraryKey);
             // eslint-disable-next-line no-await-in-loop
-            const url = await blobToDataUrl(blob);
-            resolved.push({ originalUrl: url, displayUrl: url, metadata: { libraryKey: ref.libraryKey }, subtitle: ref.subtitle || '', subtitleShowing: !!ref.subtitleShowing });
+            const dataUrl = await blobToDataUrl(blob);
+            resolved.push({ originalUrl: dataUrl, displayUrl: dataUrl, metadata: { libraryKey: ref.libraryKey }, subtitle: ref.subtitle || '', subtitleShowing: !!ref.subtitleShowing });
           } catch (_) {
             resolved.push({ originalUrl: ref.url || '', displayUrl: ref.url || '' });
           }
@@ -484,13 +484,29 @@ export default function CollagePage() {
     // Mark current snapshot as saved for status UI
     lastSavedSigRef.current = computeSnapshotSignature(snap);
     setSaveStatus({ state: 'saved', time: Date.now() });
-    // Allow layout-change clearing logic to resume after state settles
-    setTimeout(() => { loadingProjectRef.current = false; }, 0);
   }, [addMultipleImages, clearImages, setBorderColor, setBorderThickness, setPanelCount, setSelectedAspectRatio, setSelectedTemplate, updatePanelImageMapping, updatePanelText, updatePanelTransform]);
 
+  // Ensure we always release the loading flag, even on errors, and only
+  // after state has settled so custom layouts are not cleared prematurely.
+  // Wrap the original function in a safe caller.
+  const safeLoadProjectById = useCallback(async (projectId) => {
+    try {
+      await loadProjectById(projectId);
+    } finally {
+      const release = () => { loadingProjectRef.current = false; };
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(release);
+        });
+      } else {
+        setTimeout(release, 50);
+      }
+    }
+  }, [loadProjectById]);
+
   // Keep a stable ref to the loader to avoid effect re-runs from changing callback identities
-  const loadProjectByIdRef = useRef(loadProjectById);
-  useEffect(() => { loadProjectByIdRef.current = loadProjectById; }, [loadProjectById]);
+  const loadProjectByIdRef = useRef(safeLoadProjectById);
+  useEffect(() => { loadProjectByIdRef.current = safeLoadProjectById; }, [safeLoadProjectById]);
 
   // Centralized save used by autosave-on-exit and manual save
   const saveProjectNow = useCallback(async ({ showToast = false } = {}) => {

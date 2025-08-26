@@ -145,7 +145,7 @@ export default function EditorProjectsPage() {
                 '&::-webkit-scrollbar': { display: 'none' },
                 msOverflowStyle: 'none',
                 scrollbarWidth: 'none',
-                justifyContent: 'center',
+                justifyContent: 'flex-start',
               }}
               role="list"
             >

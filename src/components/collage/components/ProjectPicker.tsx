@@ -122,9 +122,9 @@ export default function ProjectPicker(props: ProjectPickerProps) {
 
       {/* Recent scroller */}
       {recent.length > 0 && (
-        <Box sx={{ mb: 1.5 }} aria-label="recently edited">
+        <Box sx={{ mb: 1.5 }} aria-label="Recent Edits">
           <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-            recently edited
+            Recent Edits
           </Typography>
           <Box
             sx={{
@@ -139,7 +139,7 @@ export default function ProjectPicker(props: ProjectPickerProps) {
               '&::-webkit-scrollbar': { display: 'none' },
               msOverflowStyle: 'none',
               scrollbarWidth: 'none',
-              justifyContent: 'center',
+              justifyContent: 'flex-start',
             }}
             role="list"
           >
