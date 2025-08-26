@@ -289,15 +289,7 @@ export default function CollagePage() {
     }
   }, [hasLibraryAccess, location.pathname, navigate]);
 
-  // Handle navigation-driven project editing (/projects/:projectId)
-  // Moved below loadProjectById declaration to avoid TDZ; this block kept for position
-  // and replaced by a no-op to satisfy linter on early returns.
-  useEffect(() => {
-    if (hasLibraryAccess && projectId) {
-      // actual loading effect is declared later after loadProjectById
-    }
-    return () => {};
-  }, [hasLibraryAccess, projectId]);
+  // (Removed redundant no-op useEffect for project route; actual loader lives below.)
 
   // Handle new project route (/projects/new): start with clean state
   useEffect(() => {
