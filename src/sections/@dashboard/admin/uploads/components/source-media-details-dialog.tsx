@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
     Dialog, 
     DialogTitle, 
@@ -55,6 +56,7 @@ const formatDate = (dateString: string): string =>
     });
 
 export default function SourceMediaDetailsDialog({ open, onClose, sourceMediaId }: SourceMediaDetailsDialogProps) {
+    const navigate = useNavigate();
     const [sourceMedia, setSourceMedia] = useState<DetailedSourceMedia | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,10 @@ export default function SourceMediaDetailsDialog({ open, onClose, sourceMediaId 
         setError(null);
         setDownloadingFiles(new Set());
         onClose();
+    };
+
+    const handleBeginReview = () => {
+        navigate('/dashboard/review-upload');
     };
 
     const handleDownloadFile = async (fileKey: string, fileId: string) => {
@@ -337,6 +343,13 @@ export default function SourceMediaDetailsDialog({ open, onClose, sourceMediaId 
             </DialogContent>
             <DialogActions>
                 <Button onClick={handleClose}>Close</Button>
+                <Button 
+                    variant="contained" 
+                    onClick={handleBeginReview}
+                    sx={{ ml: 1 }}
+                >
+                    Begin Review
+                </Button>
             </DialogActions>
         </Dialog>
     );

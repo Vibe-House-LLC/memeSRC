@@ -111,8 +111,8 @@ export default function AdminSourceMediaList({ data, loading = false, onViewDeta
       });
     }
 
-    // Sort data
-    filtered.sort((a, b) => {
+    // Sort data - create a copy to avoid mutating the original array
+    const sorted = [...filtered].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
 
@@ -126,10 +126,13 @@ export default function AdminSourceMediaList({ data, loading = false, onViewDeta
           bValue = b.series?.name || '';
           break;
         case 'createdAt':
-        case 'updatedAt':
-          aValue = new Date(a[orderBy]).getTime();
-          bValue = new Date(b[orderBy]).getTime();
+        case 'updatedAt': {
+          const aDate = new Date(a[orderBy]);
+          const bDate = new Date(b[orderBy]);
+          aValue = Number.isNaN(aDate.getTime()) ? 0 : aDate.getTime();
+          bValue = Number.isNaN(bDate.getTime()) ? 0 : bDate.getTime();
           break;
+        }
         default:
           aValue = (a[orderBy] as string) || '';
           bValue = (b[orderBy] as string) || '';
@@ -148,7 +151,7 @@ export default function AdminSourceMediaList({ data, loading = false, onViewDeta
       return 0;
     });
 
-    return filtered;
+    return sorted;
   }, [sourceMedias, searchTerm, orderBy, order]);
 
   // Get paginated data
