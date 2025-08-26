@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton, TextField, InputAdornment, Chip } from '@mui/material';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Box, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton, TextField, InputAdornment } from '@mui/material';
 import type { BoxProps } from '@mui/material';
 import { Masonry } from '@mui/lab';
-import { Delete, Search, Clear } from '@mui/icons-material';
+import { Delete, Search, Clear, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
 import type { CollageProject } from '../../../types/collage';
+// no responsive hooks needed here
 
 type ProjectCardProps = {
   project: CollageProject;
@@ -126,27 +127,7 @@ export default function ProjectPicker(props: ProjectPickerProps) {
           <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
             Recent Edits
           </Typography>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: 1,
-              overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              px: 0.5,
-              py: 0.5,
-              scrollSnapType: { xs: 'x proximity', sm: 'none' },
-              '&::-webkit-scrollbar': { display: 'none' },
-              msOverflowStyle: 'none',
-              scrollbarWidth: 'none',
-              justifyContent: 'flex-start',
-            }}
-            role="list"
-          >
-            {recent.map((p) => (
-              <RecentThumb key={`recent-${p.id}`} project={p} onOpen={onOpen} />
-            ))}
-          </Box>
+          <RecentScroller recent={recent} onOpen={onOpen} />
         </Box>
       )}
 
@@ -198,6 +179,111 @@ export default function ProjectPicker(props: ProjectPickerProps) {
   );
 }
 
+// Horizontal scroller with simple left/right indicators
+const RecentScroller: React.FC<{ recent: CollageProject[]; onOpen: (id: string) => void }> = ({ recent, onOpen }) => {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+  // simple left/right controls; no breakpoint-based logic
+
+  // Recalculate pages on mount, resize, or content changes
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return undefined;
+    const calc = () => {
+      const left = el.scrollLeft || 0;
+      const cw = el.clientWidth || 0;
+      const sw = el.scrollWidth || 0;
+      setCanLeft(left > 0);
+      setCanRight(left + cw < sw - 1);
+    };
+    calc();
+    const ro = new ResizeObserver(calc);
+    ro.observe(el);
+    window.addEventListener('resize', calc);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', calc);
+    };
+  }, [recent.length]);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return undefined;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const left = el.scrollLeft || 0;
+        const cw = el.clientWidth || 0;
+        const sw = el.scrollWidth || 0;
+        setCanLeft(left > 0);
+        setCanRight(left + cw < sw - 1);
+      });
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', onScroll as any);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  const scrollByPage = (dir: 'left' | 'right') => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const cw = el.clientWidth || 0;
+    const delta = dir === 'left' ? -cw : cw;
+    el.scrollBy({ left: delta, behavior: 'smooth' });
+  };
+
+  return (
+    <Box sx={{ position: 'relative' }}>
+      <Box
+        ref={scrollerRef}
+        sx={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: 1,
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          px: 0.5,
+          py: 0.5,
+          scrollSnapType: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+          msOverflowStyle: 'none',
+          scrollbarWidth: 'none',
+          justifyContent: 'flex-start',
+        }}
+        role="list"
+      >
+        {recent.map((p) => (
+          <RecentThumb key={`recent-${p.id}`} project={p} onOpen={onOpen} />
+        ))}
+      </Box>
+      {canLeft && (
+        <IconButton
+          size="small"
+          aria-label="Scroll left"
+          onClick={() => scrollByPage('left')}
+          sx={{ position: 'absolute', top: '50%', left: -6, transform: 'translateY(-50%)', bgcolor: 'background.paper', boxShadow: 1, '&:hover': { bgcolor: 'background.paper' } }}
+        >
+          <ChevronLeft fontSize="small" />
+        </IconButton>
+      )}
+      {canRight && (
+        <IconButton
+          size="small"
+          aria-label="Scroll right"
+          onClick={() => scrollByPage('right')}
+          sx={{ position: 'absolute', top: '50%', right: -6, transform: 'translateY(-50%)', bgcolor: 'background.paper', boxShadow: 1, '&:hover': { bgcolor: 'background.paper' } }}
+        >
+          <ChevronRight fontSize="small" />
+        </IconButton>
+      )}
+    </Box>
+  );
+};
+
 // Compact thumbnail used in the horizontal recent scroller
 const RecentThumb: React.FC<{ project: CollageProject; onOpen: (id: string) => void }> = ({ project, onOpen }) => {
   const [thumbUrl, setThumbUrl] = useState<string | null>(project.thumbnail || null);
@@ -234,27 +320,8 @@ const RecentThumb: React.FC<{ project: CollageProject; onOpen: (id: string) => v
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id, project.state]);
 
-  const formatAgo = (iso?: string | null) => {
-    if (!iso) return '';
-    const now = Date.now();
-    const then = new Date(iso).getTime();
-    const diff = Math.max(0, now - then);
-    const s = Math.floor(diff / 1000);
-    if (s < 60) return `${s}s ago`;
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    const d = Math.floor(h / 24);
-    if (d < 7) return `${d}d ago`;
-    const w = Math.floor(d / 7);
-    if (w < 4) return `${w}w ago`;
-    const mo = Math.floor(d / 30);
-    return `${mo}mo ago`;
-  };
-
   return (
-    <Box role="listitem" sx={{ flex: '0 0 auto', width: { xs: 128, sm: 112, md: 100 }, scrollSnapAlign: 'start', textAlign: 'center' }}>
+    <Box role="listitem" sx={{ flex: '0 0 auto', width: { xs: 96, sm: 96, md: 88 }, textAlign: 'center' }}>
       <Box
         onClick={() => onOpen(project.id)}
         sx={{
@@ -278,12 +345,6 @@ const RecentThumb: React.FC<{ project: CollageProject; onOpen: (id: string) => v
           <Skeleton variant="rectangular" sx={{ width: '100%', height: '100%' }} />
         )}
       </Box>
-      <Chip
-        label={formatAgo(project.updatedAt)}
-        size="small"
-        variant="outlined"
-        sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }}
-      />
     </Box>
   );
 };
