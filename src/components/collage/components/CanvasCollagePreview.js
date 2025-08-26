@@ -1039,7 +1039,9 @@ const CanvasCollagePreview = ({
           const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
           const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
           const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
-          const requestedStrokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 0;
+          // Respect explicit 0 to disable stroke; fall back only when undefined
+          const requestedStrokeWidth =
+            (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
           const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
           const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
           const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
@@ -1091,9 +1093,16 @@ const CanvasCollagePreview = ({
           
           // Set stroke properties for both actual text and placeholder
           ctx.strokeStyle = strokeColor;
-          // Use a thicker, font-relative stroke for better readability
+          // Use a thicker, font-relative stroke by default for readability,
+          // but allow explicit 0 to disable strokes entirely.
           const computedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
-          ctx.lineWidth = Math.max(requestedStrokeWidth, computedStrokeWidth);
+          if (requestedStrokeWidth === 0) {
+            ctx.lineWidth = 0;
+          } else if (requestedStrokeWidth > 0) {
+            ctx.lineWidth = requestedStrokeWidth;
+          } else {
+            ctx.lineWidth = computedStrokeWidth;
+          }
           ctx.lineJoin = 'round';
           ctx.lineCap = 'round';
 
@@ -3103,7 +3112,9 @@ const CanvasCollagePreview = ({
             const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
             const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
             const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
-            const requestedStrokeWidth = panelText.strokeWidth || lastUsedTextSettings.strokeWidth || 0;
+            // Respect explicit 0 to disable stroke; fall back only when undefined
+            const requestedStrokeWidth =
+              (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
             const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
             const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
             const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
@@ -3113,9 +3124,16 @@ const CanvasCollagePreview = ({
             exportCtx.textAlign = 'center';
             exportCtx.textBaseline = 'middle';
             exportCtx.strokeStyle = getContrastingMonoStroke(baseTextColor);
-            // Use an even thicker, font-relative stroke for better readability in exports
+            // Use a font-relative stroke by default for readability in exports,
+            // but allow explicit 0 to disable strokes entirely.
             const exportComputedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
-            exportCtx.lineWidth = Math.max(requestedStrokeWidth, exportComputedStrokeWidth);
+            if (requestedStrokeWidth === 0) {
+              exportCtx.lineWidth = 0;
+            } else if (requestedStrokeWidth > 0) {
+              exportCtx.lineWidth = requestedStrokeWidth;
+            } else {
+              exportCtx.lineWidth = exportComputedStrokeWidth;
+            }
             exportCtx.lineJoin = 'round';
             exportCtx.lineCap = 'round';
             // Subtle feathered shadow for exported image as well
