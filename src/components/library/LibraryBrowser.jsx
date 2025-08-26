@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader } from '@mui/material';
-import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, CloudUpload } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader, TextField, InputAdornment } from '@mui/material';
+import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, CloudUpload, Search } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
@@ -10,6 +10,8 @@ import LibraryGrid from './LibraryGrid';
 import LibraryTile from './LibraryTile';
 import PreviewDialog from './PreviewDialog';
 import ActionBar from './ActionBar';
+import { normalizeString } from '../../utils/search/normalize';
+import { getMetadataForKey, DEFAULT_LIBRARY_METADATA } from '../../utils/library/metadata';
 
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
@@ -54,6 +56,8 @@ export default function LibraryBrowser({
   const [optionsAnchor, setOptionsAnchor] = useState(null);
   const [sortDisclosureOpen, setSortDisclosureOpen] = useState(false);
   const [sortOption, setSortOption] = useState('newest'); // 'newest' | 'oldest' | 'az'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [metaByKey, setMetaByKey] = useState({}); // { [key]: { tags, description, defaultCaption } }
 
   const sentinelRef = useRef(null);
 
@@ -89,6 +93,48 @@ export default function LibraryBrowser({
     arr.sort((a, b) => (sortOption === 'oldest' ? getTime(a) - getTime(b) : getTime(b) - getTime(a)));
     return arr;
   }, [items, sortOption]);
+
+  // Background-load metadata for visible items so search can include tags/description/captions
+  useEffect(() => {
+    let cancelled = false;
+    const keys = displayItems.map((i) => i.key).filter(Boolean);
+    const missing = keys.filter((k) => !(k in metaByKey));
+    if (missing.length === 0) return undefined;
+    const worker = async () => {
+      // Small concurrency to avoid hammering storage
+      const pool = 4;
+      await Promise.all(Array.from({ length: Math.min(pool, missing.length) }, async (_, wi) => {
+        for (let idx = wi; idx < missing.length; idx += pool) {
+          const k = missing[idx];
+          try {
+            const meta = await getMetadataForKey(k, { level: storageLevel });
+            if (!cancelled) setMetaByKey((prev) => (prev[k] ? prev : { ...prev, [k]: meta }));
+          } catch (_) {
+            if (!cancelled) setMetaByKey((prev) => (prev[k] ? prev : { ...prev, [k]: { ...DEFAULT_LIBRARY_METADATA } }));
+          }
+        }
+      }));
+    };
+    worker();
+    return () => { cancelled = true; };
+  }, [displayItems, metaByKey, storageLevel]);
+
+  const normalizedQuery = useMemo(() => normalizeString(searchQuery), [searchQuery]);
+
+  const filteredItems = useMemo(() => {
+    if (!normalizedQuery) return displayItems;
+    return displayItems.filter((it) => {
+      const meta = metaByKey[it.key] || DEFAULT_LIBRARY_METADATA;
+      const combined = [
+        it.key || '',
+        it.url || '',
+        ...(Array.isArray(meta?.tags) ? meta.tags : []),
+        meta?.description || '',
+        meta?.defaultCaption || '',
+      ].join(' ');
+      return normalizeString(combined).includes(normalizedQuery);
+    });
+  }, [displayItems, metaByKey, normalizedQuery]);
 
   const selectedItems = useMemo(() => items.filter((i) => selectedKeys.has(i.key)), [items, selectedKeys]);
 
@@ -172,17 +218,17 @@ export default function LibraryBrowser({
 
   const onTileClick = (key) => setPreviewKey(key);
 
-  const previewIndex = useMemo(() => displayItems.findIndex((i) => i.key === previewKey), [displayItems, previewKey]);
+  const previewIndex = useMemo(() => filteredItems.findIndex((i) => i.key === previewKey), [filteredItems, previewKey]);
 
   const handlePrev = useCallback(() => {
-    if (previewIndex > 0) setPreviewKey(displayItems[previewIndex - 1]?.key ?? null);
-  }, [displayItems, previewIndex]);
+    if (previewIndex > 0) setPreviewKey(filteredItems[previewIndex - 1]?.key ?? null);
+  }, [filteredItems, previewIndex]);
 
   const handleNext = useCallback(() => {
-    if (previewIndex >= 0 && previewIndex < displayItems.length - 1) setPreviewKey(displayItems[previewIndex + 1]?.key ?? null);
-  }, [displayItems, previewIndex]);
+    if (previewIndex >= 0 && previewIndex < filteredItems.length - 1) setPreviewKey(filteredItems[previewIndex + 1]?.key ?? null);
+  }, [filteredItems, previewIndex]);
 
-  const previewItem = useMemo(() => displayItems.find((i) => i.key === previewKey), [displayItems, previewKey]);
+  const previewItem = useMemo(() => filteredItems.find((i) => i.key === previewKey), [filteredItems, previewKey]);
 
   const openOptions = (e) => setOptionsAnchor(e.currentTarget);
   const closeOptions = () => setOptionsAnchor(null);
@@ -243,9 +289,9 @@ export default function LibraryBrowser({
 
   return (
     <Box sx={{ mt: 3, ...(sx || {}) }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-        {/* Left: Upload button */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 2, flexWrap: 'wrap' }}>
+        {/* Left: Upload + Search */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flex: 1, minWidth: 260 }}>
           {uploadEnabled && (
             <Button
               size="small"
@@ -295,6 +341,34 @@ export default function LibraryBrowser({
               Upload
             </Button>
           )}
+          <TextField
+            size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search library..."
+            aria-label="Search library items"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: searchQuery ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" aria-label="Clear search" onClick={() => setSearchQuery('')}>
+                    <Clear fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            }}
+            sx={{
+              flex: 1,
+              minWidth: 220,
+              '& .MuiInputBase-root': {
+                borderRadius: 1.5,
+              },
+            }}
+          />
         </Box>
 
         {/* Right: Select toggle button and options */}
@@ -413,7 +487,7 @@ export default function LibraryBrowser({
       </Box>
 
       <LibraryGrid
-        items={displayItems}
+        items={filteredItems}
         showUploadTile={uploadEnabled}
         uploadTile={<UploadTile disabled={loading} onFiles={async (files) => {
           const results = await uploadMany(files);
