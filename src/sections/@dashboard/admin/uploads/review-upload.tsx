@@ -20,6 +20,7 @@ import {
 } from "@mui/icons-material";
 import { Storage } from "aws-amplify";
 import { SourceMediaFile } from "./types";
+import { FileBrowser } from "../../@components";
 
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status.toLowerCase()) {
@@ -243,6 +244,12 @@ export default function AdminReviewUpload({
                     </CardContent>
                 </Card>
             )}
+            <Box sx={{ my: 2 }}>
+                {/* This is temporarily pointing to an existing show for testing until the extraction function is complete. */}
+                {/* Currently the file browser does not allow for editing, but will once it's setup properly with extractions. */}
+                {/* Generally, this component will be very reusable and I plan to give it an "edit" flag so it can be used as a safe file browser or a browser/editor. */}
+                <FileBrowser pathPrefix={`protected/src`} id={`airplane`} />
+            </Box>
 
             {!loading && files.length === 0 && !error && (
                 <Card>
