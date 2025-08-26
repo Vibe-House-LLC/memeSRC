@@ -2,7 +2,7 @@ import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "r
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert } from "@mui/material";
-import { Dashboard, Save, Settings, ArrowBack, DeleteForever, Add, ArrowForward, Close } from "@mui/icons-material";
+import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -11,8 +11,7 @@ import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "..
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
-import ProjectPicker from "../components/collage/components/ProjectPicker";
-import { loadProjects, createProject, deleteProject as deleteProjectRecord, upsertProject, buildSnapshotFromState, getProject as getProjectRecord } from "../components/collage/utils/projects";
+import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord } from "../components/collage/utils/projects";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { get as getFromLibrary } from "../utils/library/storage";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
@@ -114,14 +113,8 @@ export default function CollagePage() {
   const location = useLocation();
   const { projectId } = useParams();
   
-  // Projects state (restricted to library-access users)
-  const [projects, setProjects] = useState(() => (hasLibraryAccess ? loadProjects() : []));
+  // Projects state: track only the active project id for editor flows
   const [activeProjectId, setActiveProjectId] = useState(null);
-  // In the new navigation flow, the projects list lives at /projects. When editing via /projects/new or /projects/:id,
-  // keep the picker hidden. Fall back to picker only on legacy /collage flow.
-  const [showProjectPicker, setShowProjectPicker] = useState(() => (
-    !!hasLibraryAccess && !(typeof window !== 'undefined' && window.location?.pathname?.startsWith('/projects'))
-  ));
   // Simplified autosave: no throttling/deferral; save only on tool exit
   const lastRenderedSigRef = useRef(null);
   const editingSessionActiveRef = useRef(false);
@@ -135,7 +128,7 @@ export default function CollagePage() {
   const [showResultDialog, setShowResultDialog] = useState(false);
   
   // Unified bottom bar control (no animation)
-  const [currentView, setCurrentView] = useState('editor'); // 'projects' | 'library' | 'editor'
+  const [currentView, setCurrentView] = useState('editor'); // 'library' | 'editor'
   const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 2 });
   const libraryActionsRef = useRef({ primary: null, clearSelection: null });
 
@@ -234,12 +227,11 @@ export default function CollagePage() {
   // Track current subview for admins
   useEffect(() => {
     if (hasLibraryAccess) {
-      if (showProjectPicker) setCurrentView('projects');
-      else setCurrentView(hasImages ? 'editor' : 'library');
+      setCurrentView(hasImages ? 'editor' : 'library');
     } else {
       setCurrentView(hasImages ? 'editor' : 'start');
     }
-  }, [hasLibraryAccess, showProjectPicker, hasImages]);
+  }, [hasLibraryAccess, hasImages]);
 
   // Track bottom bar size/center for positioning the nudge message above it
   useEffect(() => {
@@ -279,9 +271,7 @@ export default function CollagePage() {
       const preference = getCollagePreference(user);
       const searchParams = new URLSearchParams(location.search);
       const isForced = searchParams.get('force') === 'new';
-      if (isForced) {
-        setShowProjectPicker(false);
-      }
+      // no-op for old inline picker; editor-only now
       
       // Only auto-forward if not forced to new version
       if (preference === 'legacy' && !isForced) {
@@ -302,18 +292,16 @@ export default function CollagePage() {
   // Moved below loadProjectById declaration to avoid TDZ; this block kept for position
   // and replaced by a no-op to satisfy linter on early returns.
   useEffect(() => {
-    let cancelled = false; // uniform cleanup for consistent-return
     if (hasLibraryAccess && projectId) {
       // actual loading effect is declared later after loadProjectById
     }
-    return () => { cancelled = true; };
+    return () => {};
   }, [hasLibraryAccess, projectId]);
 
-  // Handle new project route (/projects/new): start with clean state and no picker
+  // Handle new project route (/projects/new): start with clean state
   useEffect(() => {
     if (!hasLibraryAccess) return;
     if (location.pathname === '/projects/new') {
-      setShowProjectPicker(false);
       setActiveProjectId(null);
       try {
         clearImages();
@@ -346,13 +334,13 @@ export default function CollagePage() {
       } catch (_) { return null; }
     })(),
     // Capture live canvas size for proper transform scaling in thumbnails
-    ...(function() {
+    ...(() => {
       try {
         const canvas = document.querySelector('[data-testid="canvas-collage-preview"]');
         const w = Number(canvas?.dataset?.previewWidth || 0);
         const h = Number(canvas?.dataset?.previewHeight || 0);
         if (w > 0 && h > 0) return { canvasWidth: w, canvasHeight: h };
-      } catch (_) { return {}; }
+      } catch (_) { /* ignore */ }
       return {};
     })(),
   }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, renderBump]);
@@ -431,13 +419,7 @@ export default function CollagePage() {
     }
   }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
 
-  // Keep local projects list in sync when storage changes (simple refresh on window focus)
-  useEffect(() => {
-    if (!hasLibraryAccess) return undefined;
-    const onFocus = () => setProjects(loadProjects());
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [hasLibraryAccess]);
+  // Project list sync removed; list now lives solely on /projects page
 
   // Helpers defined at module scope: blobToDataUrl, computeSnapshotSignature
 
@@ -505,7 +487,7 @@ export default function CollagePage() {
     }
 
     setActiveProjectId(projectId);
-    setShowProjectPicker(false);
+    // ensure editor mode when loading an existing project
     // Mark current snapshot as saved for status UI
     lastSavedSigRef.current = computeSnapshotSignature(snap);
     setSaveStatus({ state: 'saved', time: Date.now() });
@@ -532,7 +514,7 @@ export default function CollagePage() {
       if (dataUrl) {
         upsertProject(activeProjectId, { thumbnail: dataUrl, thumbnailKey: null, thumbnailSignature: sig, thumbnailUpdatedAt: new Date().toISOString() });
       }
-      setProjects(loadProjects());
+      // notify ProjectsPage via storage; no local list to update
       setSaveStatus({ state: 'saved', time: Date.now() });
       if (showToast) setSnackbar({ open: true, message: 'Saved', severity: 'success' });
     } catch (e) {
@@ -627,7 +609,6 @@ export default function CollagePage() {
           await loadProjectByIdRef.current(projectId);
           if (!cancelled) {
             setActiveProjectId(projectId);
-            setShowProjectPicker(false);
           }
         } catch (_) {
           // ignore
@@ -649,9 +630,7 @@ export default function CollagePage() {
     const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
     if (!hasRendered) return;
     const p = createProject({ name: 'Untitled Collage' });
-    setProjects(loadProjects());
     setActiveProjectId(p.id);
-    setShowProjectPicker(false);
     // Reset initial-save gate so we capture the first render under this new project
     didInitialSaveRef.current = false;
   }, [hasLibraryAccess, activeProjectId, selectedImages?.length, currentSig]);
@@ -662,28 +641,7 @@ export default function CollagePage() {
     setCustomLayout(null);
   }, [selectedTemplate?.id, selectedAspectRatio, panelCount]);
 
-  // Picker handlers
-  const handleCreateNewProject = useCallback(() => {
-    if (!hasLibraryAccess) return;
-    // Defer project creation until images are added and the preview renders.
-    // Simply transition into the library flow with a clean state.
-    setShowProjectPicker(false);
-    setActiveProjectId(null);
-    clearImages();
-    setCustomLayout(null);
-  }, [clearImages, hasLibraryAccess]);
-
-  const handleOpenProject = useCallback((id) => { if (hasLibraryAccess) loadProjectById(id); }, [loadProjectById, hasLibraryAccess]);
-  const handleDeleteProject = useCallback((id) => {
-    if (!hasLibraryAccess) return;
-    deleteProjectRecord(id);
-    setProjects(loadProjects());
-    if (activeProjectId === id) {
-      setActiveProjectId(null);
-      clearImages();
-      setShowProjectPicker(true);
-    }
-  }, [activeProjectId, clearImages, hasLibraryAccess]);
+  // New/open/delete handlers removed along with inline projects view
 
   // Manual Save handler (forces immediate thumbnail generation)
   const handleManualSave = useCallback(async () => {
@@ -695,21 +653,18 @@ export default function CollagePage() {
     try {
       await saveProjectNow();
     } catch (_) { /* best-effort save */ }
-    if (hasLibraryAccess) {
-      navigate('/projects');
-    } else {
-      setShowProjectPicker(true);
-    }
+    if (hasLibraryAccess) navigate('/projects');
   }, [saveProjectNow, hasLibraryAccess, navigate]);
 
-  const formatSavedTime = (ts) => {
-    if (!ts) return '';
-    const diff = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-    if (diff < 5) return 'just now';
-    if (diff < 60) return `${diff}s ago`;
-    const m = Math.floor(diff / 60);
-    return `${m}m ago`;
-  };
+  // Cancel from library selection: go back to /projects when on /projects/* routes
+  const handleLibraryCancel = useCallback(() => {
+    try { libraryActionsRef.current?.clearSelection?.(); } catch (_) { /* ignore */ }
+    if (typeof location?.pathname === 'string' && location.pathname.startsWith('/projects')) {
+      navigate('/projects');
+    }
+  }, [navigate, location?.pathname]);
+
+  // Removed unused time formatter
 
   // Keyboard shortcut: Cmd/Ctrl+S to manually save
   useEffect(() => {
@@ -1022,86 +977,8 @@ export default function CollagePage() {
             }}
             disableGutters={isMobile}
           >
-            {hasLibraryAccess && showProjectPicker ? (
-              <>
-                {/* Top Action (desktop): New Collage */}
-                {!isMobile && (
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
-                    <Button
-                      variant="contained"
-                      onClick={handleCreateNewProject}
-                      disabled={isCreatingCollage}
-                      sx={{
-                        minHeight: 40,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                        border: '1px solid #8b5cc7',
-                        boxShadow: '0 4px 14px rgba(139, 92, 199, 0.35)',
-                        color: '#fff',
-                        '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                      }}
-                      startIcon={<Add />}
-                      aria-label="Create a new collage"
-                    >
-                      New Collage
-                    </Button>
-                  </Box>
-                )}
-
-                <ProjectPicker 
-                  projects={projects}
-                  onCreateNew={handleCreateNewProject}
-                  onOpen={handleOpenProject}
-                  onDelete={handleDeleteProject}
-                />
-
-                {/* Bottom Action Bar on Projects view (admins) */}
-                <Box
-                  sx={{
-                    position: 'fixed',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 1600,
-                    bgcolor: 'background.paper',
-                    borderTop: 1,
-                    borderColor: 'divider',
-                    p: isMobile ? 1.5 : 2,
-                    boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
-                    backdropFilter: 'blur(20px)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: 1.5,
-                  }}
-                  ref={bottomBarRef}
-                >
-                  <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }} ref={bottomBarContentRef}>
-                    <Button
-                      variant="contained"
-                      onClick={handleCreateNewProject}
-                      disabled={isCreatingCollage}
-                      sx={{
-                        flex: 1,
-                        minHeight: 48,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                        border: '1px solid #8b5cc7',
-                        boxShadow: '0 6px 20px rgba(139, 92, 199, 0.4)',
-                        color: '#fff',
-                        '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                      }}
-                      startIcon={<Add />}
-                    >
-                      New Collage
-                    </Button>
-                  </Stack>
-                </Box>
-              </>
-            ) : (
-              <>
+            {/* Editor UI */}
+            <>
             {/* Page Header */}
             <Box sx={{ mb: isMobile ? 1 : 1.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
@@ -1137,28 +1014,7 @@ export default function CollagePage() {
                     )}
                   </Box>
                 </Typography>
-                {/* Top Action (desktop): New Collage when in projects view */}
-                {hasLibraryAccess && !isMobile && currentView === 'projects' && (
-                  <Button
-                    variant="contained"
-                    onClick={handleCreateNewProject}
-                    disabled={isCreatingCollage}
-                    sx={{
-                      minHeight: 40,
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                      border: '1px solid #8b5cc7',
-                      boxShadow: '0 4px 14px rgba(139, 92, 199, 0.35)',
-                      color: '#fff',
-                      '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                    }}
-                    startIcon={<Add />}
-                    aria-label="Create a new collage"
-                  >
-                    New Collage
-                  </Button>
-                )}
+                {/* Removed top action for inline projects view */}
               </Box>
             </Box>
 
@@ -1209,6 +1065,7 @@ export default function CollagePage() {
                     borderTop: 1,
                     borderColor: 'divider',
                     p: isMobile ? 1.5 : 2,
+                    pb: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
                     boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
                     backdropFilter: 'blur(20px)',
                     display: 'flex',
@@ -1221,38 +1078,16 @@ export default function CollagePage() {
                   <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }} ref={bottomBarContentRef}>
                     {hasLibraryAccess ? (
                       <>
-                        {currentView === 'projects' && (
-                          <Button
-                            variant="contained"
-                            onClick={handleCreateNewProject}
-                            disabled={isCreatingCollage}
-                            sx={{
-                              flex: 1,
-                              minHeight: 48,
-                              fontWeight: 700,
-                              textTransform: 'none',
-                              background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                              border: '1px solid #8b5cc7',
-                              boxShadow: '0 6px 20px rgba(139, 92, 199, 0.4)',
-                              color: '#fff',
-                              '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                            }}
-                            startIcon={<Add />}
-                          >
-                            New Collage
-                          </Button>
-                        )}
-
                         {currentView === 'library' && (
                           <>
-                            <Button
-                              variant="contained"
-                              onClick={() => { libraryActionsRef.current?.clearSelection?.(); setShowProjectPicker(true); }}
-                              disabled={isCreatingCollage}
-                              sx={{
-                                flex: 1,
-                                minHeight: 48,
-                                fontWeight: 700,
+                        <Button
+                          variant="contained"
+                          onClick={handleLibraryCancel}
+                          disabled={isCreatingCollage}
+                          sx={{
+                            flex: 1,
+                            minHeight: 48,
+                            fontWeight: 700,
                                 textTransform: 'none',
                                 background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
                                 border: '1px solid #3a3a3a',
@@ -1484,7 +1319,6 @@ export default function CollagePage() {
               </Box>
             </Slide>
               </>
-            )}
           </Container>
 
           {/* Collage Result Dialog */}
