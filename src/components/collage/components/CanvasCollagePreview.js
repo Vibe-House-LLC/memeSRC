@@ -619,6 +619,9 @@ const CanvasCollagePreview = ({
   // Calculate text scale factor based on current canvas size vs base size
   const textScaleFactor = useMemo(() => componentWidth / BASE_CANVAS_WIDTH, [componentWidth]);
 
+  // Track previous panel rect sizes to adjust transforms when frames resize (border drag)
+  const prevPanelRectsRef = useRef({});
+
   // Get layout configuration
   const layoutConfig = useMemo(() => {
     // Base layout from selected template first
@@ -839,6 +842,83 @@ const CanvasCollagePreview = ({
     
     return () => window.removeEventListener('resize', updateDimensions);
   }, [aspectRatioValue, layoutConfig, panelCount, borderPixels]);
+
+  // When panel sizes change (e.g., inner border dragged), carry focal point and clamp to avoid gaps
+  useEffect(() => {
+    if (!panelRects || panelRects.length === 0) return;
+    const prevRects = prevPanelRectsRef.current || {};
+
+    // Build quick lookups for current rects by panelId
+    const currentById = {};
+    panelRects.forEach(r => { currentById[r.panelId] = r; });
+
+
+    const epsilon = 0.5; // ignore subpixel changes
+
+    // Helper mirrors reorder carry logic to preserve zoom and focal point
+    const computeTransformForResize = (imageIndex, fromRect, toRect, fromTransform) => {
+      const img = loadedImages[imageIndex];
+      if (!img || !fromRect || !toRect) return null;
+
+      const imgW = img.naturalWidth || img.width;
+      const imgH = img.naturalHeight || img.height;
+
+      const imgAspect = imgW / imgH;
+      const fromAspect = fromRect.width / fromRect.height;
+      const toAspect = toRect.width / toRect.height;
+
+      const fromInit = (imgAspect > fromAspect) ? (fromRect.height / imgH) : (fromRect.width / imgW);
+      const toInit = (imgAspect > toAspect) ? (toRect.height / imgH) : (toRect.width / imgW);
+
+      const fromFinal = fromInit * (fromTransform.scale || 1);
+      const toFinal = Math.max(fromFinal, toInit); // ensure cover in new frame
+      const newScaleParam = toFinal / toInit;
+
+      // Normalize previous center offsets
+      const fromScaledW = imgW * fromFinal;
+      const fromScaledH = imgH * fromFinal;
+      const fromDx = Math.max(0, (fromScaledW - fromRect.width) / 2);
+      const fromDy = Math.max(0, (fromScaledH - fromRect.height) / 2);
+      const normX = fromDx > 0 ? Math.max(-1, Math.min(1, (fromTransform.positionX || 0) / fromDx)) : 0;
+      const normY = fromDy > 0 ? Math.max(-1, Math.min(1, (fromTransform.positionY || 0) / fromDy)) : 0;
+
+      // Map to destination and clamp
+      const toScaledW = imgW * toFinal;
+      const toScaledH = imgH * toFinal;
+      const toDx = Math.max(0, (toScaledW - toRect.width) / 2);
+      const toDy = Math.max(0, (toScaledH - toRect.height) / 2);
+      const newPosX = Math.max(-toDx, Math.min(toDx, normX * toDx));
+      const newPosY = Math.max(-toDy, Math.min(toDy, normY * toDy));
+
+      return { scale: newScaleParam, positionX: newPosX, positionY: newPosY };
+    };
+
+    Object.keys(currentById).forEach(panelId => {
+      const prev = prevRects[panelId];
+      const curr = currentById[panelId];
+      if (!prev) return; // first run; record and skip
+      const wChanged = Math.abs((prev.width || 0) - curr.width) > epsilon;
+      const hChanged = Math.abs((prev.height || 0) - curr.height) > epsilon;
+      if (!wChanged && !hChanged) return;
+
+      // Only adjust if there is an image mapped
+      const imageIndex = panelImageMapping[panelId];
+      if (imageIndex === undefined) return;
+      const fromTransform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+
+      const adjusted = computeTransformForResize(imageIndex, prev, curr, fromTransform);
+      if (adjusted && typeof updatePanelTransform === 'function') {
+        updatePanelTransform(panelId, adjusted);
+      }
+    });
+
+    // Update the ref after processing to be the source-of-truth for next diff
+    const nextMap = {};
+    panelRects.forEach(r => { nextMap[r.panelId] = { width: r.width, height: r.height }; });
+    prevPanelRectsRef.current = nextMap;
+
+    // no-op return
+  }, [panelRects, loadedImages, panelImageMapping, panelTransforms, updatePanelTransform]);
 
   // Helper function to calculate optimal font size for text to fit in panel
   const calculateOptimalFontSize = useCallback((text, panelWidth, panelHeight) => {
@@ -2036,6 +2116,60 @@ const CanvasCollagePreview = ({
     const sourceText = panelTexts[reorderSourcePanel];
     const destinationText = panelTexts[destinationPanelId];
 
+    // Helper: compute a carried transform so that an image moved from one frame
+    // keeps similar zoom and focal point in the new frame while guaranteeing cover
+    const computeCarriedTransform = (imageIndex, fromPanelId, toPanelId) => {
+      try {
+        const img = loadedImages[imageIndex];
+        const fromRect = panelRects.find(r => r.panelId === fromPanelId);
+        const toRect = panelRects.find(r => r.panelId === toPanelId);
+        if (!img || !fromRect || !toRect) return { scale: 1, positionX: 0, positionY: 0 };
+
+        const fromTransform = panelTransforms[fromPanelId] || { scale: 1, positionX: 0, positionY: 0 };
+
+        const imgW = img.naturalWidth || img.width;
+        const imgH = img.naturalHeight || img.height;
+        const fromW = fromRect.width;
+        const fromH = fromRect.height;
+        const toW = toRect.width;
+        const toH = toRect.height;
+
+        // Initial scales to cover frames
+        const fromAspect = fromW / fromH;
+        const imgAspect = imgW / imgH;
+        const toAspect = toW / toH;
+
+        const fromInitialScale = (imgAspect > fromAspect) ? (fromH / imgH) : (fromW / imgW);
+        const toInitialScale = (imgAspect > toAspect) ? (toH / imgH) : (toW / imgW);
+
+        // Preserve absolute zoom (final scale in pixels per natural pixel)
+        const fromFinalScale = fromInitialScale * (fromTransform.scale || 1);
+        let toFinalScale = Math.max(fromFinalScale, toInitialScale); // ensure cover
+        const newScaleParam = toFinalScale / toInitialScale;
+
+        // Compute normalized center offsets in source frame (-1..1)
+        const fromScaledW = imgW * fromFinalScale;
+        const fromScaledH = imgH * fromFinalScale;
+        const fromDx = Math.max(0, (fromScaledW - fromW) / 2);
+        const fromDy = Math.max(0, (fromScaledH - fromH) / 2);
+
+        const normX = fromDx > 0 ? Math.max(-1, Math.min(1, (fromTransform.positionX || 0) / fromDx)) : 0;
+        const normY = fromDy > 0 ? Math.max(-1, Math.min(1, (fromTransform.positionY || 0) / fromDy)) : 0;
+
+        // Map normalized offsets into destination frame and clamp
+        const toScaledW = imgW * toFinalScale;
+        const toScaledH = imgH * toFinalScale;
+        const toDx = Math.max(0, (toScaledW - toW) / 2);
+        const toDy = Math.max(0, (toScaledH - toH) / 2);
+        const newPosX = Math.max(-toDx, Math.min(toDx, normX * toDx));
+        const newPosY = Math.max(-toDy, Math.min(toDy, normY * toDy));
+
+        return { scale: newScaleParam, positionX: newPosX, positionY: newPosY };
+      } catch (e) {
+        return { scale: 1, positionX: 0, positionY: 0 };
+      }
+    };
+
     // Create new mapping with swapped images
     const newMapping = { ...panelImageMapping };
 
@@ -2059,6 +2193,18 @@ const CanvasCollagePreview = ({
           updatePanelText(reorderSourcePanel, {}, { replace: true });
         }
       }
+
+      // Carry over transforms proportionally for both swapped images
+      if (typeof updatePanelTransform === 'function') {
+        if (sourceImageIndex !== undefined) {
+          const destTransformForSource = computeCarriedTransform(sourceImageIndex, reorderSourcePanel, destinationPanelId);
+          updatePanelTransform(destinationPanelId, destTransformForSource);
+        }
+        if (destinationImageIndex !== undefined) {
+          const sourceTransformForDest = computeCarriedTransform(destinationImageIndex, destinationPanelId, reorderSourcePanel);
+          updatePanelTransform(reorderSourcePanel, sourceTransformForDest);
+        }
+      }
     } else if (sourceImageIndex !== undefined) {
       // Move image from source to destination (destination was empty)
       newMapping[destinationPanelId] = sourceImageIndex;
@@ -2073,12 +2219,20 @@ const CanvasCollagePreview = ({
 
         updatePanelText(reorderSourcePanel, {}, { replace: true });
       }
+
+      // Carry over transform for moved image and reset source panel transform
+      if (typeof updatePanelTransform === 'function') {
+        const destTransformForSource = computeCarriedTransform(sourceImageIndex, reorderSourcePanel, destinationPanelId);
+        updatePanelTransform(destinationPanelId, destTransformForSource);
+        // Reset source panel to default transform since it's now empty
+        updatePanelTransform(reorderSourcePanel, { scale: 1, positionX: 0, positionY: 0 });
+      }
     }
 
     updatePanelImageMapping(newMapping);
     setIsReorderMode(false);
     setReorderSourcePanel(null);
-  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, updatePanelText, panelTexts]);
+  }, [reorderSourcePanel, panelImageMapping, updatePanelImageMapping, updatePanelText, panelTexts, panelRects, panelTransforms, loadedImages, updatePanelTransform]);
 
   // Open/close the action menu (placed before handlers that depend on it)
   const handleActionMenuOpen = useCallback((event, panelId) => {
