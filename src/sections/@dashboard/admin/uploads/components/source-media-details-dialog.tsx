@@ -90,7 +90,7 @@ export default function SourceMediaDetailsDialog({ open, onClose, sourceMediaId 
     };
 
     const handleBeginReview = () => {
-        navigate('/dashboard/review-upload');
+        navigate(`/dashboard/review-upload?sourceMediaId=${sourceMediaId}`);
     };
 
     const handleDownloadFile = async (fileKey: string, fileId: string) => {

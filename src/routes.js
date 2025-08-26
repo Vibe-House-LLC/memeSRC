@@ -63,6 +63,7 @@ const CollageAnimatedIconDemoPage = lazy(() => import('./pages/CollageAnimatedIc
 const ServerPage = lazy(() => import('./pages/ServerPage'));
 const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
 const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
+const AdminFileReview = lazy(() => import('./pages/AdminFileReview'));
 
 const DonationRedirect = () => {
   window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
@@ -141,6 +142,7 @@ export default function Router() {
         { path: 'addtoseries/:seriesId', element: <AddToSeriesPage /> },
         { path: 'subtitles', element: <SubtitleViewerPage /> },
         { path: 'sourcemedia', element: <AdminSourceMedia /> },
+        { path: 'review-upload', element: <AdminFileReview /> },
       ],
     },
     {
