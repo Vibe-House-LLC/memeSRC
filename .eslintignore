@@ -1,2 +1,7 @@
 amplify-codegen-temp/models
 amplify-codegen-temp/models/models
+# common folders we don't lint
+node_modules
+build
+.next
+public
