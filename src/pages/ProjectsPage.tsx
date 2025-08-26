@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Container, Stack, TextField, InputAdornment, IconButton } from '@mui/material';
+import { Box, Button, Container, Stack } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { Add, Search, Clear } from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import ProjectPicker from '../components/collage/components/ProjectPicker';
 import { loadProjects, deleteProject as deleteProjectRecord } from '../components/collage/utils/projects';
 import type { CollageProject } from '../types/collage';
@@ -111,32 +111,7 @@ export default function ProjectsPage() {
         pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 88px)', sm: 12 },
       }}
     >
-      {/* Search bar */}
-      <Box sx={{ mb: 2, mt: 1 }}>
-        <TextField
-          size="small"
-          fullWidth
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search projects (captions and image defaults)..."
-          aria-label="Search projects"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search fontSize="small" />
-              </InputAdornment>
-            ),
-            endAdornment: searchQuery ? (
-              <InputAdornment position="end">
-                <IconButton size="small" aria-label="Clear search" onClick={() => setSearchQuery('')}>
-                  <Clear fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            ) : null,
-          }}
-          sx={{ '& .MuiInputBase-root': { borderRadius: 1.5 } }}
-        />
-      </Box>
+      {/* Header + actions remain above; search moved just above the list inside ProjectPicker */}
       {!isMobile && (
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mb: 2 }}>
           <Button
@@ -147,12 +122,18 @@ export default function ProjectsPage() {
             sx={{ fontWeight: 700, textTransform: 'none', py: 1.25 }}
             aria-label="Create a new meme"
           >
-            New Meme
+            Create Meme
           </Button>
           <Box sx={{ flex: 1 }} />
         </Stack>
       )}
-      <ProjectPicker projects={filteredProjects} onOpen={handleOpen} onDelete={handleDelete} />
+      <ProjectPicker
+        projects={filteredProjects}
+        onOpen={handleOpen}
+        onDelete={handleDelete}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
 
       {/* Bottom Action Bar (mobile-first, consistent with editor) */}
       <Box
@@ -194,7 +175,7 @@ export default function ProjectsPage() {
             startIcon={<Add />}
             aria-label="Create a new meme"
           >
-            New Meme
+            Create Meme
           </Button>
         </Stack>
       </Box>

@@ -96,7 +96,7 @@ export default function EditorProjectsPage() {
               },
             })}
           >
-            New Meme
+            Create Meme
           </Button>
 
           <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
@@ -118,7 +118,7 @@ export default function EditorProjectsPage() {
             }}
           >
             <Typography variant="body2">
-              No memes yet. Tap “New Meme” to create one.
+              No memes yet. Tap “Create Meme” to create one.
             </Typography>
           </Box>
         ) : (
@@ -129,7 +129,7 @@ export default function EditorProjectsPage() {
                 onClick={() => navigate(`/editor/project/${project.id}`)}
                 sx={{
                   cursor: 'pointer',
-                  borderRadius: 2,
+                  borderRadius: 0,
                   overflow: 'hidden',
                   '& img': {
                     transition: 'transform 120ms ease',

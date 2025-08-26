@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton } from '@mui/material';
+import { Box, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skeleton, TextField, InputAdornment } from '@mui/material';
 import type { BoxProps } from '@mui/material';
 import { Masonry } from '@mui/lab';
-import { Delete } from '@mui/icons-material';
+import { Delete, Search, Clear } from '@mui/icons-material';
 import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
 import type { CollageProject } from '../../../types/collage';
@@ -54,7 +54,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete }) 
   }, [project.id, project.state]);
 
   return (
-    <Card variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider', overflow: 'hidden', borderRadius: 2 }}>
+    <Card variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider', overflow: 'hidden', borderRadius: 0 }}>
       <Box sx={{ position: 'relative' }}>
         <CardActionArea onClick={() => onOpen(project.id)}>
           {thumbUrl ? (
@@ -86,25 +86,61 @@ export type ProjectPickerProps = BoxProps & {
   projects: CollageProject[];
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
+  // Optional search controls rendered just above the list
+  searchQuery?: string;
+  onSearchChange?: (value: string) => void;
 };
 
 export default function ProjectPicker(props: ProjectPickerProps) {
-  const { projects, onOpen, onDelete, ...rest } = props; // keep onCreateNew in props type for API consistency
+  const { projects, onOpen, onDelete, searchQuery, onSearchChange, ...rest } = props; // keep onCreateNew in props type for API consistency
   return (
     <Box sx={{ width: '100%' }} {...rest}>
-      <Stack spacing={1.5} sx={{ mb: 2 }}>
-        <Stack spacing={0.5}>
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>
-            Projects
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Open a previous meme or start a new one. Projects are saved automatically as you edit.
-          </Typography>
-        </Stack>
+      <Stack spacing={1.25} sx={{ mb: 1.5 }}>
+        <Typography
+          variant="h3"
+          sx={{
+            fontWeight: 700,
+            color: '#fff',
+            mb: 0.5,
+            fontSize: { xs: '2.0rem', sm: '2.3rem' },
+            textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
+          }}
+        >
+          Your Memes
+        </Typography>
       </Stack>
 
+      {/* Search input just above the list */}
+      {typeof searchQuery === 'string' && typeof onSearchChange === 'function' && (
+        <Box sx={{ mb: 1.5 }}>
+          <TextField
+            size="small"
+            fullWidth
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search your memes..."
+            aria-label="Search your memes"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: searchQuery ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" aria-label="Clear search" onClick={() => onSearchChange('')}>
+                    <Clear fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            }}
+            sx={{ '& .MuiInputBase-root': { borderRadius: 1.5 } }}
+          />
+        </Box>
+      )}
+
       {projects.length === 0 ? (
-        <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved memes yet. Click "New Meme" to begin.</Box>
+        <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved memes yet. Click "Create Meme" to begin.</Box>
       ) : (
         <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
           {projects.map((p) => (
