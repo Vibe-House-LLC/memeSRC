@@ -134,6 +134,12 @@ const navConfig = [
         externalLink: false,
         icon: <SupportAgent />,
       },
+      // {
+      //   title: 'Source Media',
+      //   path: '/dashboard/sourcemedia',
+      //   externalLink: false,
+      //   icon: icon('ic_analytics'),
+      // },
       {
         title: 'Source Media',
         path: '/dashboard/sourcemedia',

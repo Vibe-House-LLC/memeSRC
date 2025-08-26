@@ -61,6 +61,7 @@ const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
 const CollageAnimatedIconDemoPage = lazy(() => import('./pages/CollageAnimatedIconDemoPage'));
 const ServerPage = lazy(() => import('./pages/ServerPage'));
 const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
+const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
 
 const DonationRedirect = () => {
   window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
@@ -128,13 +129,14 @@ export default function Router() {
         { path: 'series', element: <DashboardSeriesPage /> },
         { path: 'cidmanagement', element: <DashboardCidPage /> },
         { path: 'aliasmanagement', element: <DashboardAliasPageRevised /> },
-        { path: 'sourcemedia', element: <SourceMediaList /> },
-        { path: 'sourcemedia/files/:sourceMediaId', element: <SourceMediaFileList /> },
+        // { path: 'sourcemedia', element: <SourceMediaList /> },
+        // { path: 'sourcemedia/files/:sourceMediaId', element: <SourceMediaFileList /> },
         { path: 'addseries', element: <AddSeriesPage /> },
         { path: 'inpainting', element: <InpaintingPage /> },
         { path: 'websiteSettings', element: <WebsiteSettings /> },
         { path: 'addtoseries/:seriesId', element: <AddToSeriesPage /> },
         { path: 'subtitles', element: <SubtitleViewerPage /> },
+        { path: 'sourcemedia', element: <AdminSourceMedia /> },
       ],
     },
     {
