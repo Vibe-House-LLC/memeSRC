@@ -824,44 +824,46 @@ const CanvasCollagePreview = ({
     return found;
   }, [borderZones]);
 
-  // Load images when they change
+  // Load only images currently mapped to panels (avoid decoding/holding unused images)
   useEffect(() => {
     const loadImage = (src, key) => new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve({ key, img });
-        img.onerror = () => resolve({ key, img: null });
-        
-        if (typeof src === 'string') {
-          img.src = src;
-        } else if (src && typeof src === 'object') {
-          img.src = src.displayUrl || src.originalUrl || '';
-        }
-      });
+      const img = new Image();
+      try { img.decoding = 'async'; } catch (_) { /* ignore */ }
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve({ key, img });
+      img.onerror = () => resolve({ key, img: null });
 
-    const loadAllImages = async () => {
-      const imagePromises = images.map((imageData, index) => 
-        loadImage(imageData, index)
+      if (typeof src === 'string') {
+        img.src = src;
+      } else if (src && typeof src === 'object') {
+        img.src = src.displayUrl || src.originalUrl || '';
+      } else {
+        img.src = '';
+      }
+    });
+
+    const loadMappedImages = async () => {
+      const indices = Array.from(
+        new Set(
+          Object.values(panelImageMapping)
+            .filter((v) => typeof v === 'number' && v >= 0 && v < images.length)
+        )
       );
-      
-      const results = await Promise.all(imagePromises);
+      const promises = indices.map((idx) => loadImage(images[idx], idx));
+      const results = await Promise.all(promises);
       const newLoadedImages = {};
-      
       results.forEach(({ key, img }) => {
-        if (img) {
-          newLoadedImages[key] = img;
-        }
+        if (img) newLoadedImages[key] = img;
       });
-      
       setLoadedImages(newLoadedImages);
-      
-
     };
 
     if (images.length > 0) {
-      loadAllImages();
+      loadMappedImages();
+    } else {
+      setLoadedImages({});
     }
-  }, [images, panelRects, updatePanelText, panelTexts, lastUsedTextSettings]);
+  }, [images, panelImageMapping, panelRects, updatePanelText, panelTexts, lastUsedTextSettings]);
 
   // Update component dimensions and panel rectangles
   useEffect(() => {

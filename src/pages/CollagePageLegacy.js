@@ -37,6 +37,8 @@ import { API } from 'aws-amplify';
 import BasePage from "./BasePage";
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
+import { resizeImage } from '../utils/library/resizeImage';
+import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../constants/imageProcessing';
 
 // Utility function to hash username for localStorage (same as in CollagePage)
 const hashString = (str) => {
@@ -746,34 +748,49 @@ export default function CollagePage() {
   }, [images, borderThickness, borderColor, editMode, accordionExpanded, activeStep, hasAddedImages]);
   
 
-  const handleImageUpload = (event, index) => {
-    const uploadedImages = Array.from(event.target.files);
-  
-    const loadImage = (file) => new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            resolve({
-              id: Date.now().toString(),
-              src: e.target.result,
-              width: img.width,
-              height: img.height,
-            });
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-  
-    Promise.all(uploadedImages.map(loadImage)).then((newImages) => {
-      setImages((prevImages) => {
-        const updatedImages = [...prevImages];
-        updatedImages.splice(index, 0, ...newImages);
-        return updatedImages;
-      });
-      setHasAddedImages(true);
+  const handleImageUpload = async (event, index) => {
+    const uploadedImages = Array.from(event.target.files || []);
+    if (uploadedImages.length === 0) return;
+
+    const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
+
+    const processFile = async (file) => {
+      try {
+        const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+        const dataUrl = await blobToDataUrl(editorBlob);
+        const img = new Image();
+        const dims = await new Promise((resolve) => {
+          img.onload = () => resolve({ width: img.width, height: img.height });
+          img.onerror = () => resolve({ width: 0, height: 0 });
+          img.src = dataUrl;
+        });
+        return { id: Date.now().toString(), src: dataUrl, width: dims.width, height: dims.height };
+      } catch (_) {
+        // Fallback to original file if resizing fails
+        const dataUrl = await blobToDataUrl(file);
+        const img = new Image();
+        const dims = await new Promise((resolve) => {
+          img.onload = () => resolve({ width: img.width, height: img.height });
+          img.onerror = () => resolve({ width: 0, height: 0 });
+          img.src = dataUrl;
+        });
+        return { id: Date.now().toString(), src: dataUrl, width: dims.width, height: dims.height };
+      }
+    };
+
+    const newImages = await Promise.all(uploadedImages.map(processFile));
+    setImages((prevImages) => {
+      const updatedImages = [...prevImages];
+      updatedImages.splice(index, 0, ...newImages);
+      return updatedImages;
+    });
+    setHasAddedImages(true);
   };
 
   const handleEditImage = (index) => {

@@ -182,18 +182,26 @@ export const useCollageState = () => {
 
   }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, resetPanelTexts]);
 
-  // Clean up ObjectURLs when component unmounts or images change
+  // Track latest images so we can safely revoke blobs only on unmount
+  const latestImagesRef = useRef([]);
+  useEffect(() => {
+    latestImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  // Clean up ObjectURLs only when component unmounts
+  // Targeted revocations during lifecycle are already handled in replace/remove/update/clear
   useEffect(() => () => {
-      selectedImages.forEach(imgObj => {
-        if (imgObj.originalUrl && typeof imgObj.originalUrl === 'string' && imgObj.originalUrl.startsWith('blob:')) {
+    try {
+      (latestImagesRef.current || []).forEach(imgObj => {
+        if (imgObj?.originalUrl && typeof imgObj.originalUrl === 'string' && imgObj.originalUrl.startsWith('blob:')) {
           URL.revokeObjectURL(imgObj.originalUrl);
         }
-        // Revoke displayUrl only if it's different from original and is a blob
-        if (imgObj.displayUrl && typeof imgObj.displayUrl === 'string' && imgObj.displayUrl.startsWith('blob:') && imgObj.displayUrl !== imgObj.originalUrl) {
+        if (imgObj?.displayUrl && typeof imgObj.displayUrl === 'string' && imgObj.displayUrl.startsWith('blob:') && imgObj.displayUrl !== imgObj.originalUrl) {
           URL.revokeObjectURL(imgObj.displayUrl);
         }
       });
-    }, [selectedImages]);
+    } catch (_) { /* no-op */ }
+  }, []);
 
   /**
    * Auto-upload to library has been fully disabled per product direction.

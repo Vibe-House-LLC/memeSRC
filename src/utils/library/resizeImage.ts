@@ -37,6 +37,11 @@ export function resizeImage(file: Blob, maxSize = 1500, quality = 0.85): Promise
             resolve(file);
             return;
           }
+          // Fill white background to avoid black when flattening transparency to JPEG
+          try {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, newWidth, newHeight);
+          } catch (_) { /* ignore */ }
           ctx.drawImage(img, 0, 0, newWidth, newHeight);
           canvas.toBlob(
             (blob) => {
@@ -48,7 +53,7 @@ export function resizeImage(file: Blob, maxSize = 1500, quality = 0.85): Promise
               if (blob) resolve(blob);
               else resolve(file);
             },
-            (file as any).type || 'image/jpeg',
+            'image/jpeg',
             quality
           );
         } catch (e) {

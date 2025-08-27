@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getUrl, list, put, remove } from '../../utils/library/storage';
 import { resizeImage } from '../../utils/library/resizeImage';
+import { UPLOAD_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
 
 export default function useLibraryData({ pageSize = 10, storageLevel = 'protected', refreshToken = null } = {}) {
   const [items, setItems] = useState([]); // { key, url }
@@ -76,7 +77,7 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
       await new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
     } catch (_) { /* ignore */ }
     try {
-      const toUpload = await resizeImage(file, 1000);
+      const toUpload = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
       // Yield before network upload to keep UI responsive
       try {
         // eslint-disable-next-line no-unused-expressions
