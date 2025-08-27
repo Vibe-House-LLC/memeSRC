@@ -32,6 +32,22 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== '
 })();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
+// Helper: revoke blob: URLs to avoid memory leaks
+const revokeIfBlobUrl = (url) => {
+  try {
+    if (typeof url === 'string' && url.startsWith('blob:') && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+      URL.revokeObjectURL(url);
+    }
+  } catch (_) {
+    // no-op
+  }
+};
+const revokeImageObjectUrls = (imageObj) => {
+  if (!imageObj) return;
+  revokeIfBlobUrl(imageObj.originalUrl);
+  revokeIfBlobUrl(imageObj.displayUrl);
+};
+
 // Styled components similar to CollageSettingsStep
 const HorizontalScroller = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -382,7 +398,10 @@ const BulkUploadSection = ({
   // Handler for removing an image
   const handleRemoveImage = (imageIndex) => {
     if (removeImage) {
+      const previousImage = selectedImages?.[imageIndex];
       removeImage(imageIndex);
+      // Defer revocation until after state updates
+      setTimeout(() => revokeImageObjectUrls(previousImage), 0);
     }
   };
 
@@ -411,7 +430,9 @@ const BulkUploadSection = ({
     
     // Remove the image from the images array if it exists
     if (hasRemovedImage && removeImage) {
+      const previousImage = selectedImages?.[removedImageIndex];
       removeImage(removedImageIndex);
+      setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       debugLog(`Removed image at index ${removedImageIndex} from images array`);
     }
     
@@ -607,7 +628,9 @@ const BulkUploadSection = ({
 
         // Use replaceImage if available, otherwise use addMultipleImages
         if (typeof replaceImage === 'function') {
+          const previousImage = selectedImages?.[selectedPanelForAction.imageIndex];
           await replaceImage(selectedPanelForAction.imageIndex, firstImageObj);
+          setTimeout(() => revokeImageObjectUrls(previousImage), 0);
           if (imageObjs.length > 1) {
             await addMultipleImages(imageObjs.slice(1));
           }

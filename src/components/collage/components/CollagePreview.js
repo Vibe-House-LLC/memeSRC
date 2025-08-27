@@ -88,6 +88,22 @@ const CollagePreview = ({
   const [isReplaceMode, setIsReplaceMode] = useState(false);
   const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
   
+  // Helper: revoke blob: URLs to avoid memory leaks
+  const revokeIfBlobUrl = (url) => {
+    try {
+      if (typeof url === 'string' && url.startsWith('blob:') && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+        URL.revokeObjectURL(url);
+      }
+    } catch (_) {
+      // no-op
+    }
+  };
+  const revokeImageObjectUrls = (imageObj) => {
+    if (!imageObj) return;
+    revokeIfBlobUrl(imageObj.originalUrl);
+    revokeIfBlobUrl(imageObj.displayUrl);
+  };
+
 
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
@@ -261,7 +277,10 @@ const CollagePreview = ({
       if (existingImageIndex !== undefined && imageObjs.length === 1) {
         // If this panel already has an image and we're only uploading one file, replace it
         debugLog(`Replacing image at index ${existingImageIndex} for panel ${clickedPanelId}`);
+        const previousImage = selectedImages?.[existingImageIndex];
         await replaceImage(existingImageIndex, imageObjs[0]);
+        // Defer revocation to next tick so UI can re-render to new source first
+        setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       } else {
         // Otherwise, add all images sequentially
         const currentLength = selectedImages.length;
@@ -376,7 +395,9 @@ const CollagePreview = ({
       if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
         // Replace existing image in place with data URL for display, but preserve library metadata for persistence
         const normalized = await ensureNormalized(selected);
+        const previousImage = selectedImages?.[activeExistingImageIndex];
         await replaceImage(activeExistingImageIndex, { ...normalized, metadata: selected?.metadata || {} });
+        setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       } else {
         // Assign to empty panel: add to images and map using data URL
         const currentLength = selectedImages.length;
