@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Container, Divider, Grid, Stack, Typography, Box } from '@mui/material';
-import { alpha } from '@mui/material/styles';
+// alpha no longer used here; frosted logic handled in base components
 import { UserContext } from '../UserContext';
 import { BaseButton, BaseCard, BaseInput, BaseModal, BaseSelect, BaseSwitch } from '../components/base';
 
@@ -14,10 +14,11 @@ export default function UIStyleGuidePage() {
   const [switchOn, setSwitchOn] = useState(false);
   const [textValue, setTextValue] = useState('Hello world');
   // Search hero preview state
-  const [searchSeries, setSearchSeries] = useState<string | number>('_universal');
+  const [searchSeries, setSearchSeries] = useState<string | number>('_all');
   const [searchTerm, setSearchTerm] = useState('');
   const [frostColor, setFrostColor] = useState<string>('#000000');
-  const [frostOpacity, setFrostOpacity] = useState<number>(0.8);
+  const [frostOpacity, setFrostOpacity] = useState<number>(0.9);
+  const [frostBlur, setFrostBlur] = useState<number>(5);
 
   if (!isAdmin) {
     return <Navigate to="/404" replace />;
@@ -35,8 +36,14 @@ export default function UIStyleGuidePage() {
       <Grid container spacing={3}>
         {/* Search Hero (Preview) */}
         <Grid item xs={12}>
-          <BaseCard>
-            <Typography variant="h6" sx={{ mb: 2 }}>Homepage Search (Preview)</Typography>
+          <BaseCard
+            sx={{
+              p: { xs: 0, sm: 2 },
+              borderRadius: 2,
+              boxShadow: { xs: 'none', sm: undefined },
+            }}
+          >
+            <Typography variant="h6" sx={{ mb: 2, px: { xs: 2, sm: 0 } }}>Homepage Search (Preview)</Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
               <BaseInput
                 label="Frosted color"
@@ -55,12 +62,23 @@ export default function UIStyleGuidePage() {
                 onChange={(e) => setFrostOpacity(Number(e.target.value))}
                 sx={{ maxWidth: 200 }}
               />
+              <BaseInput
+                label="Frosted blur (px)"
+                size="small"
+                type="number"
+                inputProps={{ step: 1, min: 0, max: 24 }}
+                value={frostBlur}
+                onChange={(e) => setFrostBlur(Number(e.target.value))}
+                sx={{ maxWidth: 200 }}
+              />
             </Stack>
             <Box
               sx={{
                 borderRadius: 2,
                 overflow: 'hidden',
                 p: { xs: 3, sm: 5 },
+                width: { xs: '100vw', sm: 'auto' },
+                ml: { xs: 'calc(-50vw + 50%)', sm: 0 },
                 backgroundImage: `linear-gradient(45deg,
                   #5461c8 12.5%,
                   #c724b1 0, #c724b1 25%,
@@ -88,28 +106,16 @@ export default function UIStyleGuidePage() {
                       value={searchSeries}
                       onChange={setSearchSeries}
                       options={[
+                        { label: 'All Shows & Movies', value: '_all', prefix: '🌈' },
                         { label: 'Universal', value: '_universal', prefix: '🌐' },
                         { label: 'Favorites', value: '_favorites', prefix: '⭐' },
                         { label: 'Example A', value: 'a', prefix: '🅰️' },
                       ]}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: alpha(frostColor, frostOpacity as number),
-                          backdropFilter: 'blur(12px)',
-                          WebkitBackdropFilter: 'blur(12px)',
-                          borderRadius: 2,
-                          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                          '& fieldset': { border: '1px solid rgba(255,255,255,0.2)' },
-                          '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.35)' },
-                          '&.Mui-focused fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
-                        },
-                        '& .MuiInputLabel-root': {
-                          color: 'rgba(255,255,255,0.85)',
-                          '&.Mui-focused': { color: '#fff' },
-                        },
-                        '& .MuiSvgIcon-root': { color: '#fff' },
-                        '& .MuiInputBase-input': { color: '#fff' },
-                      }}
+                      frosted
+                      surface="light"
+                      frostOpacity={frostOpacity}
+                      rounded={2}
+                      frostBlur={frostBlur}
                     />
                   </Grid>
                   <Grid item xs={12} sm={7}>
@@ -118,43 +124,26 @@ export default function UIStyleGuidePage() {
                       placeholder="Search templates"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: alpha(frostColor, frostOpacity as number),
-                          backdropFilter: 'blur(12px)',
-                          WebkitBackdropFilter: 'blur(12px)',
-                          borderRadius: 2,
-                          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                          '& fieldset': { border: '1px solid rgba(255,255,255,0.2)' },
-                          '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.35)' },
-                          '&.Mui-focused fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
-                        },
-                        '& .MuiInputBase-input': { color: '#fff' },
-                        '& .MuiInputLabel-root': {
-                          color: 'rgba(255,255,255,0.85)',
-                          '&.Mui-focused': { color: '#fff' },
-                        },
-                      }}
+                      frosted
+                      surface="light"
+                      frostOpacity={frostOpacity}
+                      frostBlur={frostBlur}
+                      rounded={2}
+                      leadingIcon={"🔎"}
+                      allowClear
+                      onClear={() => setSearchTerm('')}
                     />
                   </Grid>
                   <Grid item xs={12} sm={1.5}>
                     <BaseButton
                       fullWidth
                       size="medium"
-                      sx={{
-                        color: '#fff',
-                        backgroundColor: alpha(frostColor, frostOpacity as number),
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                        '&:hover': {
-                          backgroundColor: alpha(
-                            frostColor,
-                            Math.min(1, (frostOpacity as number) + 0.05)
-                          ),
-                        },
-                      }}
+                      frosted
+                      surface="dark"
+                      frostOpacity={frostOpacity}
+                      frostBlur={frostBlur}
+                      rounded={2}
+                      sx={{ fontWeight: 800, fontSize: { xs: '1rem', sm: '1.125rem' } }}
                     >
                       Search
                     </BaseButton>
