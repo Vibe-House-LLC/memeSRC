@@ -189,15 +189,22 @@ const CollagePreview = ({
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+    // Track blob: URLs created during this handler so we can revoke on failure
+    const tempBlobUrls = [];
+    const trackBlobUrl = (u) => {
+      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
+      return u;
+    };
+
     const getImageObject = async (file) => {
       try {
         const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(uploadBlob) : await toDataUrl(uploadBlob);
+        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
         const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(editorBlob) : await toDataUrl(editorBlob);
+        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
         return { originalUrl, displayUrl };
       } catch (_) {
-        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? URL.createObjectURL(file) : await toDataUrl(file);
+        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? trackBlobUrl(URL.createObjectURL(file)) : await toDataUrl(file);
         return { originalUrl: dataUrl, displayUrl: dataUrl };
       }
     };
@@ -234,6 +241,7 @@ const CollagePreview = ({
       }
     }
 
+    let committed = false;
     try {
       // Process files sequentially with small yields to keep UI responsive
       const imageObjs = [];
@@ -276,8 +284,13 @@ const CollagePreview = ({
           debugLog(`Added ${imageObjs.length} images. Users can now assign them to panels manually.`);
         }
       }
+      committed = true;
     } catch (error) {
       console.error("Error loading files:", error);
+    } finally {
+      if (!committed) {
+        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+      }
     }
     
     // Reset file input and active panel state
@@ -320,12 +333,19 @@ const CollagePreview = ({
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+    // Track blob: URLs created while normalizing; revoke them if we fail to commit
+    const tempBlobUrls = [];
+    const trackBlobUrl = (u) => {
+      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
+      return u;
+    };
+
     const buildNormalizedFromBlob = async (blob) => {
       // Create upload-sized and editor-sized JPEGs from the source blob
       const uploadBlob = await resizeImage(blob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-      const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(uploadBlob) : await toDataUrl(uploadBlob);
+      const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
       const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-      const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(editorBlob) : await toDataUrl(editorBlob);
+      const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
       return { originalUrl, displayUrl };
     };
     const ensureNormalized = async (item) => {
@@ -351,6 +371,7 @@ const CollagePreview = ({
       }
     };
 
+    let committed = false;
     try {
       if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
         // Replace existing image in place with data URL for display, but preserve library metadata for persistence
@@ -368,7 +389,12 @@ const CollagePreview = ({
         };
         updatePanelImageMapping(newMapping);
       }
+      committed = true;
     } finally {
+      // Cleanup any temporary blob URLs if we failed to commit
+      if (!committed) {
+        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+      }
       // Reset active state
       setIsReplaceMode(false);
       setActiveExistingImageIndex(null);

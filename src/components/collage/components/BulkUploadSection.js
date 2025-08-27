@@ -239,18 +239,25 @@ const BulkUploadSection = ({
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+    // Track any blob: URLs created during processing so we can clean them up if the operation fails
+    const tempBlobUrls = [];
+    const trackBlobUrl = (u) => {
+      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
+      return u;
+    };
+
     const getImageObject = async (file) => {
       try {
         // Create upload-sized JPEG
         const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(uploadBlob) : await toDataUrl(uploadBlob);
+        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
         // Create editor-sized JPEG from the upload-sized blob (saves work vs original)
         const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(editorBlob) : await toDataUrl(editorBlob);
+        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
         return { originalUrl, displayUrl };
       } catch (_) {
         // Fallback: just return the original as both
-        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? URL.createObjectURL(file) : await toDataUrl(file);
+        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? trackBlobUrl(URL.createObjectURL(file)) : await toDataUrl(file);
         return { originalUrl: dataUrl, displayUrl: dataUrl };
       }
     };
@@ -258,6 +265,7 @@ const BulkUploadSection = ({
 
     debugLog(`Bulk uploading ${files.length} files...`);
 
+    let committed = false;
     try {
       // Process files sequentially with small yields to keep UI responsive
       const imageObjs = [];
@@ -336,8 +344,13 @@ const BulkUploadSection = ({
       debugLog(`Assigned ${numNewImages} new images to panels`);
 
       // Note: Scroll behavior moved to CollagePage to handle after section collapse
+      committed = true;
     } catch (error) {
       console.error("Error loading files:", error);
+    } finally {
+      if (!committed) {
+        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+      }
     }
 
     // Reset file input

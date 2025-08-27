@@ -93,22 +93,30 @@ const CollageImagesStep = ({
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+    // Track any blob: URLs created during processing so we can clean them up if needed
+    const tempBlobUrls = [];
+    const trackBlobUrl = (u) => {
+      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
+      return u;
+    };
+
     const getImageObject = async (file) => {
       try {
         const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(uploadBlob) : await toDataUrl(uploadBlob);
+        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
         const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(editorBlob) : await toDataUrl(editorBlob);
+        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
         return { originalUrl, displayUrl };
       } catch (_) {
         // Fallback to original file as blob URL or data URL if resize fails
-        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? URL.createObjectURL(file) : await toDataUrl(file);
+        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? trackBlobUrl(URL.createObjectURL(file)) : await toDataUrl(file);
         return { originalUrl: dataUrl, displayUrl: dataUrl };
       }
     };
 
     debugLog(`Add Image button: uploading ${files.length} files...`);
 
+    let committed = false;
     try {
       // Process all files with client-side resizing and data URL conversion
       const imageObjs = await Promise.all(files.map(getImageObject));
@@ -116,10 +124,16 @@ const CollageImagesStep = ({
 
       // Add all images at once - this will trigger the same auto-assignment logic
       await addMultipleImages(imageObjs);
+      committed = true;
 
       debugLog(`Added ${imageObjs.length} new images via Add Image button`);
     } catch (error) {
       console.error("Error loading files from Add Image button:", error);
+    } finally {
+      // If we failed to commit to state, revoke any temporary blob URLs
+      if (!committed) {
+        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+      }
     }
     
     // Reset file input
