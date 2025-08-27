@@ -1094,26 +1094,40 @@ const CaptionEditor = ({
       <Dialog
         open={resetDialogOpen}
         onClose={handleResetCancel}
-        PaperProps={{
+        maxWidth="xs"
+        fullWidth
+        BackdropProps={{
           sx: {
-            backgroundColor: '#1e1e1e',
-            color: '#ffffff',
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(2px)'
           }
         }}
+        PaperProps={{
+          elevation: 16,
+          sx: theme => ({
+            bgcolor: theme.palette.mode === 'dark' ? '#1f2126' : '#ffffff',
+            color: theme.palette.text.primary,
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: 2,
+            boxShadow: theme.palette.mode === 'dark'
+              ? '0 12px 32px rgba(0,0,0,0.7)'
+              : '0 12px 32px rgba(0,0,0,0.25)'
+          })
+        }}
       >
-        <DialogTitle sx={{ color: '#ffffff' }}>
+        <DialogTitle sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>
           Reset to Default
         </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: '#ffffff' }}>
+        <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
+          <Typography variant="body1" sx={{ m: 0, lineHeight: 1.5 }}>
             Are you sure you want to reset this setting to its default value? This action cannot be undone.
-          </DialogContentText>
+          </Typography>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleResetCancel} sx={{ color: '#ffffff' }}>
+        <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
+          <Button onClick={handleResetCancel}>
             Cancel
           </Button>
-          <Button onClick={handleResetConfirm} sx={{ color: '#ffffff' }} autoFocus>
+          <Button onClick={handleResetConfirm} color="error" variant="contained" autoFocus>
             Reset
           </Button>
         </DialogActions>
