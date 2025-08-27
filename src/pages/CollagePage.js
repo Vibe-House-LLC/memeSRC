@@ -880,6 +880,9 @@ export default function CollagePage() {
     setSelectedAspectRatio,
     panelCount,
     setPanelCount,
+    // Needed for safe panel count reduction that may hide an image
+    panelImageMapping,
+    removeImage,
     aspectRatioPresets,
     layoutTemplates,
     borderThickness,

@@ -11,7 +11,11 @@ import {
   Chip,
   IconButton,
   useMediaQuery,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from "@mui/material";
 import {
   KeyboardArrowLeft,
@@ -325,6 +329,9 @@ const CollageLayoutSettings = ({
   borderColor,
   setBorderColor,
   borderThicknessOptions,
+  // New props for safe panel reduction
+  panelImageMapping,
+  removeImage,
 }) => {
   // State for scroll indicators
   const [aspectLeftScroll, setAspectLeftScroll] = useState(false);
@@ -335,6 +342,8 @@ const CollageLayoutSettings = ({
   const [borderRightScroll, setBorderRightScroll] = useState(false);
   const [colorLeftScroll, setColorLeftScroll] = useState(false);
   const [colorRightScroll, setColorRightScroll] = useState(false);
+  // Confirm dialog state for panel reduction when last panel has an image
+  const [confirmState, setConfirmState] = useState({ open: false, imageIndex: null, onConfirm: null });
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -415,21 +424,49 @@ const CollageLayoutSettings = ({
   };
 
   const handlePanelCountDecrease = () => {
-    if (panelCount > 2) {
-      const newCount = panelCount - 1;
+    if (panelCount <= 2) return;
+
+    const newCount = panelCount - 1;
+
+    // Identify the panel that would be removed (last panel in current layout)
+    let lastPanelId = null;
+    try {
+      const panelsArr = selectedTemplate?.layout?.panels || selectedTemplate?.panels || [];
+      lastPanelId = panelsArr?.[panelCount - 1]?.id ?? `panel-${panelCount}`;
+    } catch (_) {
+      lastPanelId = `panel-${panelCount}`;
+    }
+
+    const imageIndexToRemove = panelImageMapping?.[lastPanelId];
+    const hasImageToRemove = typeof imageIndexToRemove === 'number' && imageIndexToRemove >= 0;
+
+    const proceedToDecrease = () => {
       setPanelCount(newCount);
-      
+
       // Get optimized templates for the new panel count
       const newTemplates = (typeof getLayoutsForPanelCount === 'function')
         ? getLayoutsForPanelCount(newCount, selectedAspectRatio)
         : layoutTemplates.filter(t => t.minImages <= newCount && t.maxImages >= newCount);
-      
+
       // Select the best template for the new panel count
       if (newTemplates.length > 0) {
         setSelectedTemplate(newTemplates[0]);
       } else {
         setSelectedTemplate(null);
       }
+    };
+
+    if (hasImageToRemove && typeof removeImage === 'function') {
+      setConfirmState({
+        open: true,
+        imageIndex: imageIndexToRemove,
+        onConfirm: () => {
+          try { removeImage(imageIndexToRemove); } catch (_) { /* ignore */ }
+          proceedToDecrease();
+        },
+      });
+    } else {
+      proceedToDecrease();
     }
   };
   
@@ -703,6 +740,34 @@ const CollageLayoutSettings = ({
   
   return (
     <Box sx={{ pt: 0 }}>
+      {/* Confirm removal when reducing panel count hides an image */}
+      <Dialog
+        open={!!confirmState.open}
+        onClose={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Remove last panel’s image?</DialogTitle>
+        <DialogContent>
+          Reducing the panel count will remove the image in the last panel. Continue?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              const fn = confirmState.onConfirm;
+              setConfirmState({ open: false, imageIndex: null, onConfirm: null });
+              if (typeof fn === 'function') fn();
+            }}
+          >
+            Remove and Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* Panel Count Selector - Moved to the top */}
       <Box sx={{ mb: isMobile ? 0 : 1 }}>
         <StepSectionHeading>
