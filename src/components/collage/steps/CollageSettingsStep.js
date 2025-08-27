@@ -746,12 +746,31 @@ const CollageLayoutSettings = ({
         onClose={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}
         maxWidth="xs"
         fullWidth
+        BackdropProps={{
+          sx: {
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(2px)'
+          }
+        }}
+        PaperProps={{
+          elevation: 16,
+          sx: theme => ({
+            bgcolor: theme.palette.mode === 'dark' ? '#1f2126' : '#ffffff',
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: 2,
+            boxShadow: theme.palette.mode === 'dark'
+              ? '0 12px 32px rgba(0,0,0,0.7)'
+              : '0 12px 32px rgba(0,0,0,0.25)'
+          })
+        }}
       >
-        <DialogTitle>Remove panel?</DialogTitle>
-        <DialogContent>
-          This will remove panel {panelCount} and its image.
+        <DialogTitle sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>Remove panel?</DialogTitle>
+        <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
+          <Typography variant="body1" sx={{ m: 0, letterSpacing: 0, lineHeight: 1.5 }}>
+            This removes a panel and image {panelCount}
+          </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
           <Button onClick={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}>
             Cancel
           </Button>
