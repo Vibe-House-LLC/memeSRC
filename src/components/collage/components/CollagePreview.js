@@ -279,6 +279,9 @@ const CollagePreview = ({
         debugLog(`Replacing image at index ${existingImageIndex} for panel ${clickedPanelId}`);
         const previousImage = selectedImages?.[existingImageIndex];
         await replaceImage(existingImageIndex, imageObjs[0]);
+        // Mark committed immediately after state change so finally won't revoke
+        // blob: URLs that are now referenced in state.
+        committed = true;
         // Defer revocation to next tick so UI can re-render to new source first
         setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       } else {
@@ -288,6 +291,8 @@ const CollagePreview = ({
 
         // Add all images at once
         await addMultipleImages(imageObjs);
+        // Prevent finally from revoking any blob: URLs now stored in state
+        committed = true;
 
         // If this is a single file replacement, update the specific panel mapping
         if (imageObjs.length === 1) {
@@ -303,7 +308,7 @@ const CollagePreview = ({
           debugLog(`Added ${imageObjs.length} images. Users can now assign them to panels manually.`);
         }
       }
-      committed = true;
+      // committed is set above immediately after add/replace
     } catch (error) {
       console.error("Error loading files:", error);
     } finally {
@@ -397,6 +402,8 @@ const CollagePreview = ({
         const normalized = await ensureNormalized(selected);
         const previousImage = selectedImages?.[activeExistingImageIndex];
         await replaceImage(activeExistingImageIndex, { ...normalized, metadata: selected?.metadata || {} });
+        // Mark committed right after state mutation to avoid revoking in-use blob URLs
+        committed = true;
         setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       } else {
         // Assign to empty panel: add to images and map using data URL
@@ -404,13 +411,15 @@ const CollagePreview = ({
         const normalized = await ensureNormalized(selected);
         const imageObj = { ...normalized, metadata: selected?.metadata || {} };
         await addMultipleImages([imageObj]);
+        // Mark committed immediately after adding to state
+        committed = true;
         const newMapping = {
           ...panelImageMapping,
           [clickedPanelId]: currentLength,
         };
         updatePanelImageMapping(newMapping);
       }
-      committed = true;
+      // committed is set above immediately after add/replace
     } finally {
       // Cleanup any temporary blob URLs if we failed to commit
       if (!committed) {

@@ -298,6 +298,9 @@ const BulkUploadSection = ({
 
       // Add all images at once
       await addMultipleImages(imageObjs);
+      // Mark as committed immediately after state update to avoid revoking
+      // blob: URLs that are now in use if a later step throws.
+      committed = true;
 
       // Find currently empty panels by checking existing mapping
       const emptyPanels = [];
@@ -360,7 +363,6 @@ const BulkUploadSection = ({
       debugLog(`Assigned ${numNewImages} new images to panels`);
 
       // Note: Scroll behavior moved to CollagePage to handle after section collapse
-      committed = true;
     } catch (error) {
       console.error("Error loading files:", error);
     } finally {
