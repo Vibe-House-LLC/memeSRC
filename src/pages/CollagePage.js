@@ -16,6 +16,7 @@ import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderT
 import { get as getFromLibrary } from "../utils/library/storage";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 import CollageResultDialog from "../components/collage/components/CollageResultDialog";
+import { BaseModal, BaseButton } from '../components/base';
 
 // Pure helpers (module scope) to avoid TDZ and keep stable references
 function computeSnapshotSignature(snap) {
@@ -1358,45 +1359,23 @@ export default function CollagePage() {
           />
 
           {/* Confirm Reset Dialog (non-admin) */}
-          <Dialog
+          <BaseModal
             open={resetDialogOpen}
             onClose={closeResetDialog}
-            aria-labelledby="confirm-reset-title"
-            maxWidth="xs"
-            fullWidth
-            BackdropProps={{
-              sx: {
-                backgroundColor: 'rgba(0,0,0,0.6)',
-                backdropFilter: 'blur(2px)'
-              }
-            }}
-            PaperProps={{
-              elevation: 16,
-              sx: theme => ({
-                bgcolor: theme.palette.mode === 'dark' ? '#1f2126' : '#ffffff',
-                border: `1px solid ${theme.palette.divider}`,
-                borderRadius: 2,
-                boxShadow: theme.palette.mode === 'dark'
-                  ? '0 12px 32px rgba(0,0,0,0.7)'
-                  : '0 12px 32px rgba(0,0,0,0.25)'
-              })
-            }}
+            title="Start over?"
+            actions={
+              <>
+                <BaseButton variant="text" onClick={closeResetDialog}>Cancel</BaseButton>
+                <BaseButton tone="danger" onClick={confirmReset} autoFocus>
+                  Start Over
+                </BaseButton>
+              </>
+            }
           >
-            <DialogTitle id="confirm-reset-title" sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>
-              Start over?
-            </DialogTitle>
-            <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
-              <Typography variant="body1" sx={{ m: 0, lineHeight: 1.5 }}>
-                This will discard your current collage and reset the editor.
-              </Typography>
-            </DialogContent>
-            <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
-              <Button onClick={closeResetDialog}>Cancel</Button>
-              <Button onClick={confirmReset} color="error" variant="contained" autoFocus>
-                Start Over
-              </Button>
-            </DialogActions>
-          </Dialog>
+            <Typography variant="body1" sx={{ m: 0, lineHeight: 1.5 }}>
+              This will discard your current collage and reset the editor.
+            </Typography>
+          </BaseModal>
         </Box>
       )}
     </>

@@ -2,6 +2,7 @@
 
 ## Project Structure & Module Organization
 - `src/`: React application source (components, pages, contexts, utils, theme, routes). Entry is `src/index.js`, app shell in `src/App.js`.
+- `src/components/base/`: App-standardized base UI primitives (Button, Input, Select, Switch, Card, Modal). New shared primitives live here and export via `index.ts`.
 - `public/`: Static assets and favicons. App serves from here; do not import code from `public`.
 - `public/assets/`: Project images/icons; prefer importing from `src` when tree‑shaking matters.
 - Config: `package.json` (scripts/deps), `tsconfig.json` (JS/TS opts), `.prettierrc` (format), `.eslintignore`.
@@ -34,6 +35,10 @@
 - Control model: prefer controlled components; if supporting uncontrolled usage, document defaults and emit `onChange` consistently.
 - Theming: consume shared tokens/utilities from `src/theme/`; avoid hardcoded colors/sizes.
 - Testing: add smoke tests for render and critical interactions; mock network/Amplify calls.
+
+### Style Guide Page
+- Admin-only component gallery at `/dashboard/style-guide` (see `src/pages/UIStyleGuidePage.tsx`) to preview and QA base primitives in one place.
+- When adding a new base component, add simple examples to the style guide to exercise variants, sizes, and states.
 
 ## Testing Guidelines
 - Framework: CRA’s Jest + React Testing Library. Place tests as `*.test.js` next to modules (e.g., `Component.test.js`).

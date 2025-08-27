@@ -111,6 +111,12 @@ const navConfig = [
     adminOnly: true,
     items: [
       {
+        title: 'UI Style Guide',
+        path: '/dashboard/style-guide',
+        externalLink: false,
+        icon: <Settings />,
+      },
+      {
         title: 'Library',
         path: '/library',
         externalLink: false,

@@ -40,6 +40,7 @@ import { TemplateCard } from "../styled/CollageStyled";
 
 // Import layout configuration
 import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../config/CollageConfig";
+import { BaseModal, BaseButton } from '../../base';
 
 // Color presets for border colors
 const COLOR_PRESETS = [
@@ -741,52 +742,32 @@ const CollageLayoutSettings = ({
   return (
     <Box sx={{ pt: 0 }}>
       {/* Confirm removal when reducing panel count hides an image */}
-      <Dialog
+      <BaseModal
         open={!!confirmState.open}
         onClose={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}
-        maxWidth="xs"
-        fullWidth
-        BackdropProps={{
-          sx: {
-            backgroundColor: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(2px)'
-          }
-        }}
-        PaperProps={{
-          elevation: 16,
-          sx: theme => ({
-            bgcolor: theme.palette.mode === 'dark' ? '#1f2126' : '#ffffff',
-            border: `1px solid ${theme.palette.divider}`,
-            borderRadius: 2,
-            boxShadow: theme.palette.mode === 'dark'
-              ? '0 12px 32px rgba(0,0,0,0.7)'
-              : '0 12px 32px rgba(0,0,0,0.25)'
-          })
-        }}
+        title="Remove panel?"
+        actions={
+          <>
+            <BaseButton variant="text" onClick={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}>
+              Cancel
+            </BaseButton>
+            <BaseButton
+              tone="danger"
+              onClick={() => {
+                const fn = confirmState.onConfirm;
+                setConfirmState({ open: false, imageIndex: null, onConfirm: null });
+                if (typeof fn === 'function') fn();
+              }}
+            >
+              Remove
+            </BaseButton>
+          </>
+        }
       >
-        <DialogTitle sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>Remove panel?</DialogTitle>
-        <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
-          <Typography variant="body1" sx={{ m: 0, letterSpacing: 0, lineHeight: 1.5 }}>
-            This removes a panel and image {panelCount}
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
-          <Button onClick={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}>
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={() => {
-              const fn = confirmState.onConfirm;
-              setConfirmState({ open: false, imageIndex: null, onConfirm: null });
-              if (typeof fn === 'function') fn();
-            }}
-          >
-            Remove
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Typography variant="body1" sx={{ m: 0, letterSpacing: 0, lineHeight: 1.5 }}>
+          This removes a panel and image {panelCount}
+        </Typography>
+      </BaseModal>
       {/* Panel Count Selector - Moved to the top */}
       <Box sx={{ mb: isMobile ? 0 : 1 }}>
         <StepSectionHeading>

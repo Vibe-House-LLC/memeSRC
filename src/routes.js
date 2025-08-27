@@ -62,6 +62,7 @@ const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
 const CollageAnimatedIconDemoPage = lazy(() => import('./pages/CollageAnimatedIconDemoPage'));
 const ServerPage = lazy(() => import('./pages/ServerPage'));
 const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
+const UIStyleGuidePage = lazy(() => import('./pages/UIStyleGuidePage'));
 
 const DonationRedirect = () => {
   window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
@@ -139,6 +140,7 @@ export default function Router() {
         { path: 'websiteSettings', element: <WebsiteSettings /> },
         { path: 'addtoseries/:seriesId', element: <AddToSeriesPage /> },
         { path: 'subtitles', element: <SubtitleViewerPage /> },
+        { path: 'style-guide', element: <UIStyleGuidePage /> },
       ],
     },
     {
