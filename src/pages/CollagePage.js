@@ -40,6 +40,21 @@ function blobToDataUrl(blob) {
   });
 }
 
+// Guard against adopting a stale custom layout from snapshots saved
+// under a different panel count. We only accept if the layout has
+// enough areas/items for the requested panel count.
+function isCustomLayoutCompatible(customLayout, panelCount) {
+  try {
+    if (!customLayout || typeof customLayout !== 'object') return false;
+    const needed = Math.max(2, panelCount || 2);
+    if (Array.isArray(customLayout.areas)) return customLayout.areas.length >= needed;
+    if (Array.isArray(customLayout.items)) return customLayout.items.length >= needed;
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
 })();
@@ -447,8 +462,10 @@ export default function CollagePage() {
 
     if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
     if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
-    // Restore custom layout grid if present
-    setCustomLayout(snap.customLayout || null);
+    // Restore custom layout grid if present and compatible with the saved panel count
+    const wantPanels = snap.panelCount || 2;
+    const restoredCustom = isCustomLayoutCompatible(snap.customLayout, wantPanels) ? (snap.customLayout || null) : null;
+    setCustomLayout(restoredCustom);
 
     // Resolve images via library or stored URLs
     if (Array.isArray(snap.images) && snap.images.length > 0) {
@@ -521,8 +538,9 @@ export default function CollagePage() {
   // Centralized save used by autosave-on-exit and manual save
   const saveProjectNow = useCallback(async ({ showToast = false } = {}) => {
     if (!activeProjectId) return;
+    // Compute signature from the exact snapshot we are about to persist
     const state = currentSnapshotRef.current;
-    const sig = currentSigRef.current;
+    const sig = computeSnapshotSignature(state);
     if (sig === lastSavedSigRef.current) return;
     try {
       setSaveStatus({ state: 'saving', time: null });
@@ -581,13 +599,17 @@ export default function CollagePage() {
   }, [activeProjectId, borderColor, borderThickness, renderBump, saveProjectNow]);
 
   // 2) Save on layout changes: template, aspect ratio, or panel count
+  // Ensure we still save even if render callback is delayed (fallback timer)
   useEffect(() => {
     let t = null;
-    if (activeProjectId) {
-      const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
-      if (hasRendered) {
-        t = setTimeout(() => { saveProjectNow(); }, 120);
-      }
+    if (!activeProjectId) return undefined;
+    const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
+    // Fast path: save shortly after a confirmed render of the new state
+    if (hasRendered) {
+      t = setTimeout(() => { saveProjectNow(); }, 120);
+    } else {
+      // Fallback: if render callback lags (e.g., panel count UI), still save soon
+      t = setTimeout(() => { saveProjectNow(); }, 400);
     }
     return () => { if (t) clearTimeout(t); };
   }, [activeProjectId, selectedTemplate?.id, selectedAspectRatio, panelCount, renderBump, saveProjectNow]);

@@ -591,21 +591,34 @@ const CanvasCollagePreview = ({
   const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
 
   // If the layout key changes (template/panelCount/aspect), drop any prior custom grid.
-  // This prevents a stale custom grid from overriding a newly selected layout at load time.
+  // When a persisted custom layout exists, only adopt it if it supports the current panel count.
   const prevLayoutKeyRef = useRef(customLayoutKey);
+  const isCustomLayoutCompatible = useCallback((layout, count) => {
+    try {
+      if (!layout || typeof layout !== 'object') return false;
+      const needed = Math.max(2, count || 2);
+      if (Array.isArray(layout.areas)) return layout.areas.length >= needed;
+      if (Array.isArray(layout.items)) return layout.items.length >= needed;
+      return false;
+    } catch (_) { return false; }
+  }, []);
   useEffect(() => {
     if (prevLayoutKeyRef.current !== customLayoutKey) {
-      setCustomLayoutConfig(initialCustomLayout || null);
+      // Apply provided layout only if it's compatible; otherwise reset to base
+      const next = isCustomLayoutCompatible(initialCustomLayout, panelCount) ? (initialCustomLayout || null) : null;
+      setCustomLayoutConfig(next);
       prevLayoutKeyRef.current = customLayoutKey;
     }
-  }, [customLayoutKey, initialCustomLayout]);
+  }, [customLayoutKey, initialCustomLayout, panelCount, isCustomLayoutCompatible]);
 
   // If a custom layout is provided after mount (e.g., load sequence), adopt it once
   useEffect(() => {
     if (initialCustomLayout && !customLayoutConfig) {
-      setCustomLayoutConfig(initialCustomLayout);
+      if (isCustomLayoutCompatible(initialCustomLayout, panelCount)) {
+        setCustomLayoutConfig(initialCustomLayout);
+      }
     }
-  }, [initialCustomLayout, customLayoutConfig]);
+  }, [initialCustomLayout, customLayoutConfig, panelCount, isCustomLayoutCompatible]);
 
   // Long-press (press-and-hold) hint state
   const [saveHintOpen, setSaveHintOpen] = useState(false);
