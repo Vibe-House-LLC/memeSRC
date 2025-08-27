@@ -16,3 +16,5 @@ export type { BaseCardProps } from './BaseCard';
 export { BaseModal } from './BaseModal';
 export type { BaseModalProps } from './BaseModal';
 
+export { BaseFrosted } from './BaseFrosted';
+export type { BaseFrostedProps } from './BaseFrosted';
