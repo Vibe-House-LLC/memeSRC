@@ -747,9 +747,9 @@ const CollageLayoutSettings = ({
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>Remove last panel’s image?</DialogTitle>
+        <DialogTitle>Remove panel?</DialogTitle>
         <DialogContent>
-          Reducing the panel count will remove the image in the last panel. Continue?
+          This will remove panel {panelCount} and its image.
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}>
@@ -764,7 +764,7 @@ const CollageLayoutSettings = ({
               if (typeof fn === 'function') fn();
             }}
           >
-            Remove and Continue
+            Remove
           </Button>
         </DialogActions>
       </Dialog>
