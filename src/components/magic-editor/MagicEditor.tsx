@@ -51,6 +51,8 @@ export default function MagicEditor({
   const [error, setError] = useState<string | null>(null);
   const [promptFocused, setPromptFocused] = useState(false);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+  const mobileInputRef = useRef<HTMLInputElement | null>(null);
+  const desktopInputRef = useRef<HTMLInputElement | null>(null);
   type HistoryEntry = {
     id: number;
     src: string;
@@ -211,6 +213,13 @@ export default function MagicEditor({
   }, [commitImage, history.length, imageSrc]);
 
   const canApply = useMemo(() => Boolean(internalSrc) && !processing, [internalSrc, processing]);
+  const canSend = useMemo(() => Boolean(internalSrc) && !processing && prompt.trim().length > 0, [internalSrc, processing, prompt]);
+
+  const blurPromptInputs = useCallback(() => {
+    try { mobileInputRef.current?.blur(); } catch {}
+    try { desktopInputRef.current?.blur(); } catch {}
+    setPromptFocused(false);
+  }, []);
 
   // No upload or library selection inside the editor
 
@@ -311,9 +320,10 @@ export default function MagicEditor({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    if (canApply) void handleApply();
+                    if (canSend) { blurPromptInputs(); void handleApply(); }
                   }
                 }}
+                inputRef={mobileInputRef}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -336,9 +346,10 @@ export default function MagicEditor({
                       <IconButton
                         aria-label="send prompt"
                         size="small"
-                        onClick={handleApply}
-                        disabled={!canApply}
+                        onClick={() => { blurPromptInputs(); if (canSend) void handleApply(); }}
+                        disabled={!canSend}
                         edge="end"
+                        color={canSend ? 'primary' as const : 'default' as const}
                         sx={{ ml: 0.5 }}
                       >
                         <Send />
@@ -443,9 +454,10 @@ export default function MagicEditor({
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                if (canApply) void handleApply();
+                if (canSend) { blurPromptInputs(); void handleApply(); }
               }
             }}
+            inputRef={desktopInputRef}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -468,9 +480,10 @@ export default function MagicEditor({
                   <IconButton
                     aria-label="send prompt"
                     size="small"
-                    onClick={handleApply}
-                    disabled={!canApply}
+                    onClick={() => { blurPromptInputs(); if (canSend) void handleApply(); }}
+                    disabled={!canSend}
                     edge="end"
+                    color={canSend ? 'primary' as const : 'default' as const}
                     sx={{ ml: 0.5 }}
                   >
                     <Send />
