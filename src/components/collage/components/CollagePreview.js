@@ -17,6 +17,7 @@ import {
   useTheme,
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
+import { AutoFixHighRounded } from '@mui/icons-material';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 import MagicEditor from '../../magic-editor/MagicEditor';
@@ -26,7 +27,6 @@ import { saveImageToLibrary } from '../../../utils/library/saveImageToLibrary';
 import { UserContext } from '../../../UserContext';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
-import { AutoFixHighRounded } from '@mui/icons-material';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -669,9 +669,21 @@ const CollagePreview = ({
           }
         }}
       >
+        <DialogTitle sx={{ color: '#eaeaea', pt: 2.5, pb: 1.5 }}>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Magic Editor
+          </Typography>
+        </DialogTitle>
+        {/* Mobile subtitle under the title, aligned to the same left padding */}
+        <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, px: 2, pb: 1 }}>
+          <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+            Ask for edits in plain English
+          </Typography>
+        </Box>
         {/* Desktop action bar (MagicEditor shows its own Save/Cancel on mobile) */}
         {isMagicOpen && (
-          <Box sx={{ display: { xs: 'none', md: 'block' }, px: 2, pt: 2 }}>
+          <Box sx={{ display: { xs: 'none', md: 'block' }, px: 0, pt: 1 }}>
             <Box
               sx={{
                 width: '100%',
@@ -772,6 +784,7 @@ const CollagePreview = ({
               onImageChange={setMagicCurrentSrc}
               onProcessingChange={setMagicProcessing}
               onPromptStateChange={setMagicPromptState}
+              showHeader={false}
               onSave={async (src) => {
                 if (!src || activePanelId == null) return;
                 try {

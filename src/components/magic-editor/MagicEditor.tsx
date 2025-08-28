@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Send, AutoFixHighRounded, Close } from '@mui/icons-material';
+import { Send, AutoFixHighRounded, Close, Check } from '@mui/icons-material';
 import { mockMagicEdit } from '../../utils/mockMagicEdit';
 
 export interface MagicEditorProps {
@@ -30,6 +30,10 @@ export interface MagicEditorProps {
   defaultPrompt?: string;
   className?: string;
   style?: React.CSSProperties;
+  // Allow parent to hide the internal header when rendering an external header
+  showHeader?: boolean;
+  // Customize label for save (kept for flexibility)
+  saveLabel?: string;
 }
 
 export default function MagicEditor({
@@ -43,6 +47,8 @@ export default function MagicEditor({
   defaultPrompt = '',
   className,
   style,
+  showHeader = true,
+  saveLabel = 'Save',
 }: MagicEditorProps) {
   const [internalSrc, setInternalSrc] = useState<string | null>(imageSrc ?? null);
   const [prompt, setPrompt] = useState<string>(defaultPrompt);
@@ -271,6 +277,15 @@ export default function MagicEditor({
         overflowX: 'hidden',
       }}
     >
+      {/* Magic Editor subtitle; can be hidden by parent */}
+      {showHeader && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+            Ask for edits in plain English
+          </Typography>
+        </Box>
+      )}
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 2, md: 3 }} alignItems={{ md: 'flex-start' }}>
         {/* Left: Image + Prompt (mobile combined), Image only on desktop */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -417,7 +432,7 @@ export default function MagicEditor({
 
             {/* Save/Cancel inside the combined unit on mobile */}
             <Box sx={{ display: { xs: 'block', md: 'none' }, px: 0, pb: 0, mb: 1, order: { xs: 1, md: 'initial' }, flexShrink: 0 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                 <Button
                   size="large"
                   fullWidth
@@ -456,8 +471,8 @@ export default function MagicEditor({
                     boxShadow: 'none',
                     '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
                   }}
-                >
-                  Save
+                 startIcon={<Check />}>
+                  {saveLabel}
                 </Button>
               </Box>
             </Box>
