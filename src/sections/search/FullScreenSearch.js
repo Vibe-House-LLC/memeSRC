@@ -321,7 +321,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       borderRadius: { xs: 2, sm: 2 },
                       bgcolor: 'rgba(0,0,0,0.45)',
                       backdropFilter: 'blur(12px)',
-                      color: currentThemeFontColor,
+                      color: '#fff',
                       border: '1px solid rgba(255,255,255,0.4)',
                       boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
                     }}
@@ -384,7 +384,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                         borderRadius: { xs: 2, sm: 2 },
                         bgcolor: 'rgba(0,0,0,0.45)',
                         backdropFilter: 'blur(12px)',
-                        color: currentThemeFontColor,
+                        color: '#fff',
                         border: '1px solid rgba(255,255,255,0.4)',
                         boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
                       }}
