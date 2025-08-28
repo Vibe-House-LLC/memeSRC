@@ -669,13 +669,13 @@ const CollagePreview = ({
           }
         }}
       >
-        <DialogTitle sx={{ color: '#eaeaea', pt: 2.5, pb: 1.5 }}>
+        <DialogTitle sx={{ color: '#eaeaea', pt: 2.5, pb: 1.25 }}>
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
             Magic Editor
           </Typography>
         </DialogTitle>
         {/* Mobile subtitle under the title, aligned to the same left padding */}
-        <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, px: 2, pb: 1 }}>
+        <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, px: 2, pb: 0.5 }}>
           <AutoFixHighRounded sx={{ color: 'primary.main' }} />
           <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
             Ask for edits in plain English
@@ -768,9 +768,10 @@ const CollagePreview = ({
         )}
         {/* Mobile action bar placed outside scroll area for persistent access */}
         {isMagicOpen && (
-          <Box sx={{ display: { xs: 'flex', md: 'none' }, px: 2, pb: 1, gap: 1 }}>
+          <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: '1fr 1fr', gap: 1, px: 2, pt: 0.5, pb: 1 }}>
             <Button
               size="large"
+              fullWidth
               variant="outlined"
               onClick={() => {
                 const hasUnappliedPrompt = Boolean(magicPromptState.value && magicPromptState.value.trim().length > 0);
@@ -798,6 +799,7 @@ const CollagePreview = ({
             </Button>
             <Button
               size="large"
+              fullWidth
               variant="contained"
               onClick={async () => {
                 if (!magicCurrentSrc || activePanelId == null) return;
