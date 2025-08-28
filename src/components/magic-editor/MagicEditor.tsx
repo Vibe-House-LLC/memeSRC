@@ -251,7 +251,7 @@ export default function MagicEditor({
               minHeight: 220,
               display: { xs: 'flex', md: 'block' },
               flexDirection: { xs: 'column', md: 'initial' },
-              height: { xs: '50vh', md: 'auto' },
+              height: { xs: '65vh', md: 'auto' },
             }}
           >
             {/* Image area */}
@@ -344,6 +344,54 @@ export default function MagicEditor({
                   },
                 }}
               />
+            </Box>
+
+            {/* Save/Cancel inside the combined unit on mobile */}
+            <Box sx={{ display: { xs: 'block', md: 'none' }, px: 1, pb: 1 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                <Button
+                  size="large"
+                  fullWidth
+                  variant="contained"
+                  onClick={() => { if (onCancel) onCancel(originalSrcRef.current); }}
+                  disabled={processing}
+                  sx={{
+                    minHeight: 44,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    color: 'rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(17,17,19,0.55)',
+                    backdropFilter: 'saturate(160%) blur(10px)',
+                    WebkitBackdropFilter: 'saturate(160%) blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+                    '&:hover': { backgroundColor: 'rgba(17,17,19,0.7)' },
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="large"
+                  fullWidth
+                  variant="contained"
+                  onClick={() => { if (internalSrc && onSave) onSave(internalSrc); }}
+                  disabled={!internalSrc || processing}
+                  sx={{
+                    minHeight: 44,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
+                    border: '1px solid #8b5cc7',
+                    color: '#fff',
+                    backdropFilter: 'saturate(160%) blur(10px)',
+                    WebkitBackdropFilter: 'saturate(160%) blur(10px)',
+                    boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+                    '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
+                  }}
+                >
+                  Save
+                </Button>
+              </Box>
             </Box>
           </Box>
         </Box>

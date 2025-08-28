@@ -69,6 +69,7 @@ export default function MagicPage() {
           {/* Fixed top controls: Cancel / Save 50/50 */}
           <Box
             sx={(theme) => ({
+              display: { xs: 'none', md: 'block' },
               position: 'fixed',
               // Position just below the app header so we don't overlap it
               top: theme.spacing(6), // ~48px on small screens
@@ -128,7 +129,7 @@ export default function MagicPage() {
             </Container>
           </Box>
           {/* Spacer so content is not hidden under fixed controls */}
-          <Box sx={{ height: { xs: 60, md: 72 }, mb: 1 }} />
+          <Box sx={{ display: { xs: 'none', md: 'block' }, height: { md: 72 }, mb: 1 }} />
         </>
       )}
       <Box sx={{ mb: 2 }}>
