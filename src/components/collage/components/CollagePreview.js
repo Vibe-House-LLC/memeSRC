@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext, useEffect } from 'react';
+import React, { useState, useRef, useContext } from 'react';
 import PropTypes from 'prop-types';
 import {
   Menu,
@@ -17,13 +17,11 @@ import {
   useTheme,
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
-import { AutoFixHighRounded } from '@mui/icons-material';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
-import MagicEditor from '../../magic-editor/MagicEditor';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LibraryBrowser } from '../../library';
 import { get as getFromLibrary } from '../../../utils/library/storage';
-import { saveImageToLibrary } from '../../../utils/library/saveImageToLibrary';
 import { UserContext } from '../../../UserContext';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
@@ -90,22 +88,11 @@ const CollagePreview = ({
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isReplaceMode, setIsReplaceMode] = useState(false);
   const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
+  // Legacy Magic Editor dialog flow removed; navigation to MagicPage is primary
   
-  // Magic editor dialog state
-  const [isMagicOpen, setIsMagicOpen] = useState(false);
-  const [magicChosenSrc, setMagicChosenSrc] = useState(null);
-  const [magicCurrentSrc, setMagicCurrentSrc] = useState(null);
-  const [magicProcessing, setMagicProcessing] = useState(false);
-  const [magicPromptState, setMagicPromptState] = useState({ value: '', focused: false });
-  const [confirmMagicDiscardOpen, setConfirmMagicDiscardOpen] = useState(false);
-  const [confirmMagicCancelOpen, setConfirmMagicCancelOpen] = useState(false);
-  // Choice dialog for original vs frame-view input to Magic Editor
-  const [chooseEditInputOpen, setChooseEditInputOpen] = useState(false);
-  const [pendingMagicContext, setPendingMagicContext] = useState(null); // { index, panelId, meta }
-  const [editPreviewLoading, setEditPreviewLoading] = useState(false);
-  const [editOriginalPreview, setEditOriginalPreview] = useState(null);
-  const [editFramePreview, setEditFramePreview] = useState(null);
-  const [editChoice, setEditChoice] = useState('cropped');
+  // Dialog-based magic editor removed in favor of page navigation
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Helper: revoke blob: URLs to avoid memory leaks
   const revokeIfBlobUrl = (url) => {
@@ -230,44 +217,43 @@ const CollagePreview = ({
       const imageObj = selectedImages?.[imageIndex];
       if (!imageObj) return;
 
-      // If we don't have meta or transforms, default to original without asking
       const panelRect = meta?.panelRect;
       const transform = panelTransforms?.[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+
+      const libKey = imageObj?.metadata?.libraryKey;
+      const getOriginalSrc = async () => {
+        let src = imageObj.originalUrl || imageObj.displayUrl;
+        if (libKey) {
+          try { const blob = await getFromLibrary(libKey, { level: 'protected' }); src = await blobToDataUrl(blob); } catch (_) {}
+        }
+        return src;
+      };
+
       if (!panelRect || !panelRect.width || !panelRect.height) {
-        await openMagicWithOriginal();
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
         return;
       }
 
-      // Load the image to compute ratios and crop percent
+      // Load for crop heuristic
       const ensureImageElement = async () => {
         try {
-          const libKey = imageObj?.metadata?.libraryKey;
           let blob = null;
-          if (libKey) {
-            try { blob = await getFromLibrary(libKey, { level: 'protected' }); } catch (_) {}
-          }
+          if (libKey) { try { blob = await getFromLibrary(libKey, { level: 'protected' }); } catch (_) {} }
           const src = blob ? URL.createObjectURL(blob) : (imageObj.originalUrl || imageObj.displayUrl);
           return await new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-              if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} }
-              resolve(img);
-            };
-            img.onerror = (err) => {
-              if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} }
-              reject(err);
-            };
+            const img = new Image(); img.crossOrigin = 'anonymous';
+            img.onload = () => { if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} } resolve(img); };
+            img.onerror = (err) => { if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} } reject(err); };
             img.src = src;
           });
-        } catch (e) {
-          return null;
-        }
+        } catch (_) { return null; }
       };
 
       const imgEl = await ensureImageElement();
       if (!imgEl) {
-        await openMagicWithOriginal();
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
         return;
       }
 
@@ -275,13 +261,8 @@ const CollagePreview = ({
       const height = Math.max(1, Math.round(panelRect.height || 1));
       const imageAspectRatio = imgEl.naturalWidth / imgEl.naturalHeight;
       const panelAspectRatio = width / height;
-      // cover-fit initial scale
       let initialScale;
-      if (imageAspectRatio > panelAspectRatio) {
-        initialScale = height / imgEl.naturalHeight;
-      } else {
-        initialScale = width / imgEl.naturalWidth;
-      }
+      if (imageAspectRatio > panelAspectRatio) initialScale = height / imgEl.naturalHeight; else initialScale = width / imgEl.naturalWidth;
       const finalScale = initialScale * (transform.scale || 1);
       const scaledWidth = imgEl.naturalWidth * finalScale;
       const scaledHeight = imgEl.naturalHeight * finalScale;
@@ -298,26 +279,35 @@ const CollagePreview = ({
       const srcW = Math.max(1, Math.min(imgEl.naturalWidth - srcX, Math.round(sX1 - sX0)));
       const srcH = Math.max(1, Math.min(imgEl.naturalHeight - srcY, Math.round(sY1 - sY0)));
 
-      // Heuristics
       const originalAR = imageAspectRatio;
       const croppedAR = srcW / srcH;
       const arDiff = Math.abs(originalAR - croppedAR) / Math.max(originalAR, croppedAR);
-      const AR_DIFF_THRESHOLD = 0.20; // 20% relative difference considered significant
-      const CROP_AREA_THRESHOLD = 0.30; // 30% or more cropped -> ask
+      const AR_DIFF_THRESHOLD = 0.20;
+      const CROP_AREA_THRESHOLD = 0.30;
       const originalArea = imgEl.naturalWidth * imgEl.naturalHeight;
       const croppedArea = srcW * srcH;
       const cropFraction = Math.max(0, Math.min(1, 1 - (croppedArea / originalArea)));
-
       const significantArDiff = arDiff > AR_DIFF_THRESHOLD;
       const croppedALot = cropFraction >= CROP_AREA_THRESHOLD;
 
-      if (significantArDiff || croppedALot) {
-        // Ask the user which one; also set context for previews
-        setPendingMagicContext({ index, panelId, meta: meta || null });
-        setChooseEditInputOpen(true);
+      if (!(significantArDiff || croppedALot)) {
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
       } else {
-        // Close enough / minimal crop: go with original automatically
-        await openMagicWithOriginal();
+        const maxDim = 1024;
+        const scaleDown = Math.min(1, maxDim / Math.max(srcW, srcH));
+        const outW = Math.max(1, Math.round(srcW * scaleDown));
+        const outH = Math.max(1, Math.round(srcH * scaleDown));
+        const canvas = document.createElement('canvas');
+        canvas.width = outW; canvas.height = outH;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(imgEl, srcX, srcY, srcW, srcH, 0, 0, outW, outH);
+        }
+        const frameUrl = await dataUrlFromCanvas(canvas);
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { chooseFrom: { originalSrc: initSrc, frameSrc: frameUrl }, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
       }
     } catch (e) {
       console.error('Failed to open magic editor', e);
@@ -325,37 +315,7 @@ const CollagePreview = ({
   };
 
   // Helpers for fetching image blob and cropping
-  const fetchImageBlob = async (imageObj) => {
-    const libKey = imageObj?.metadata?.libraryKey;
-    if (libKey) {
-      try {
-        const blob = await getFromLibrary(libKey, { level: 'protected' });
-        return blob;
-      } catch (_) { /* fallthrough */ }
-    }
-    const url = imageObj.originalUrl || imageObj.displayUrl;
-    if (!url) return null;
-    try {
-      const res = await fetch(url, { mode: 'cors' });
-      return await res.blob();
-    } catch (_) {
-      return null;
-    }
-  };
-
-  const loadImageElement = (blobOrUrl) => new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    if (blobOrUrl instanceof Blob) {
-      const url = URL.createObjectURL(blobOrUrl);
-      img.onload = () => { try { URL.revokeObjectURL(url); } catch {} resolve(img); };
-      img.src = url;
-    } else {
-      img.src = blobOrUrl;
-    }
-  });
+  // (dialog-based magic editor helpers removed; navigation-only flow)
 
   const dataUrlFromCanvas = (canvas) => new Promise((resolve) => {
     try {
@@ -365,198 +325,7 @@ const CollagePreview = ({
     }
   });
 
-  const openMagicWithOriginal = async () => {
-    try {
-      const imageIndex = panelImageMapping?.[activePanelId];
-      if (imageIndex == null) return;
-      const imageObj = selectedImages?.[imageIndex];
-      if (!imageObj) return;
-      const blob = await fetchImageBlob(imageObj);
-      if (blob) {
-        const dataUrl = await blobToDataUrl(blob);
-        setMagicChosenSrc(dataUrl);
-        setMagicCurrentSrc(dataUrl);
-      } else {
-        const url = imageObj.originalUrl || imageObj.displayUrl;
-        if (!url) return;
-        setMagicChosenSrc(url);
-        setMagicCurrentSrc(url);
-      }
-      setIsMagicOpen(true);
-    } catch (e) {
-      console.error('Failed to prepare original image for magic editor', e);
-    }
-  };
-
-  const openMagicWithFrameView = async () => {
-    try {
-      const imageIndex = panelImageMapping?.[activePanelId];
-      if (imageIndex == null) return;
-      const imageObj = selectedImages?.[imageIndex];
-      if (!imageObj) return;
-      const blob = await fetchImageBlob(imageObj);
-      if (!blob) {
-        await openMagicWithOriginal();
-        return;
-      }
-      const img = await loadImageElement(blob);
-      // Determine panel rect size
-      const panelRect = pendingMagicContext?.meta?.panelRect;
-      const width = Math.max(1, Math.round(panelRect?.width || 1));
-      const height = Math.max(1, Math.round(panelRect?.height || 1));
-      // Get transform for this panel
-      const transform = panelTransforms?.[activePanelId] || { scale: 1, positionX: 0, positionY: 0 };
-      // Compute initial scale as in CanvasCollagePreview
-      const imageAspectRatio = img.naturalWidth / img.naturalHeight;
-      const panelAspectRatio = width / height;
-      let initialScale;
-      if (imageAspectRatio > panelAspectRatio) {
-        initialScale = height / img.naturalHeight;
-      } else {
-        initialScale = width / img.naturalWidth;
-      }
-      const finalScale = initialScale * (transform.scale || 1);
-      const scaledWidth = img.naturalWidth * finalScale;
-      const scaledHeight = img.naturalHeight * finalScale;
-      const centerOffsetX = (width - scaledWidth) / 2;
-      const centerOffsetY = (height - scaledHeight) / 2;
-      const finalOffsetX = centerOffsetX + (transform.positionX || 0);
-      const finalOffsetY = centerOffsetY + (transform.positionY || 0);
-      // Map panel bounds to source image coordinates
-      const sX0 = (0 - finalOffsetX) / finalScale;
-      const sY0 = (0 - finalOffsetY) / finalScale;
-      const sX1 = (width - finalOffsetX) / finalScale;
-      const sY1 = (height - finalOffsetY) / finalScale;
-      const srcX = Math.max(0, Math.min(img.naturalWidth, Math.round(sX0)));
-      const srcY = Math.max(0, Math.min(img.naturalHeight, Math.round(sY0)));
-      const srcW = Math.max(1, Math.min(img.naturalWidth - srcX, Math.round(sX1 - sX0)));
-      const srcH = Math.max(1, Math.min(img.naturalHeight - srcY, Math.round(sY1 - sY0)));
-      // Draw to an offscreen canvas, optionally resizing to editor max
-      const maxDim = EDITOR_IMAGE_MAX_DIMENSION_PX;
-      const scaleDown = Math.min(1, maxDim / Math.max(srcW, srcH));
-      const outW = Math.max(1, Math.round(srcW * scaleDown));
-      const outH = Math.max(1, Math.round(srcH * scaleDown));
-      const canvas = document.createElement('canvas');
-      canvas.width = outW;
-      canvas.height = outH;
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(
-        img,
-        srcX,
-        srcY,
-        srcW,
-        srcH,
-        0,
-        0,
-        outW,
-        outH
-      );
-      const dataUrl = await dataUrlFromCanvas(canvas);
-      setMagicChosenSrc(dataUrl);
-      setMagicCurrentSrc(dataUrl);
-      setIsMagicOpen(true);
-    } catch (e) {
-      console.error('Failed to prepare frame-view image for magic editor', e);
-      // Fallback to original
-      await openMagicWithOriginal();
-    }
-  };
-
-  // Build previews when the choice dialog opens
-  useEffect(() => {
-    const buildPreviews = async () => {
-      try {
-        setEditPreviewLoading(true);
-        setEditOriginalPreview(null);
-        setEditFramePreview(null);
-        const imageIndex = panelImageMapping?.[activePanelId];
-        if (imageIndex == null) return;
-        const imageObj = selectedImages?.[imageIndex];
-        if (!imageObj) return;
-        const blob = await fetchImageBlob(imageObj);
-        let imgEl;
-        if (blob) {
-          imgEl = await loadImageElement(blob);
-        } else {
-          const url = imageObj.originalUrl || imageObj.displayUrl;
-          if (!url) return;
-          imgEl = await loadImageElement(url);
-        }
-        // Create original preview (slightly larger to improve quality)
-        const maxPreview = 512;
-        const scaleO = Math.min(1, maxPreview / Math.max(imgEl.naturalWidth, imgEl.naturalHeight));
-        const oW = Math.max(1, Math.round(imgEl.naturalWidth * scaleO));
-        const oH = Math.max(1, Math.round(imgEl.naturalHeight * scaleO));
-        const oCanvas = document.createElement('canvas');
-        oCanvas.width = oW; oCanvas.height = oH;
-        const oCtx = oCanvas.getContext('2d');
-        oCtx.imageSmoothingEnabled = true;
-        oCtx.imageSmoothingQuality = 'high';
-        oCtx.drawImage(imgEl, 0, 0, oW, oH);
-        const originalPreviewUrl = await dataUrlFromCanvas(oCanvas);
-        setEditOriginalPreview(originalPreviewUrl);
-
-        // Create frame-view preview using same cropping math as openMagicWithFrameView
-        const panelRect = pendingMagicContext?.meta?.panelRect;
-        if (panelRect) {
-          const width = Math.max(1, Math.round(panelRect.width || 1));
-          const height = Math.max(1, Math.round(panelRect.height || 1));
-          const transform = panelTransforms?.[activePanelId] || { scale: 1, positionX: 0, positionY: 0 };
-          const imageAspectRatio = imgEl.naturalWidth / imgEl.naturalHeight;
-          const panelAspectRatio = width / height;
-          let initialScale;
-          if (imageAspectRatio > panelAspectRatio) {
-            initialScale = height / imgEl.naturalHeight;
-          } else {
-            initialScale = width / imgEl.naturalWidth;
-          }
-          const finalScale = initialScale * (transform.scale || 1);
-          const scaledWidth = imgEl.naturalWidth * finalScale;
-          const scaledHeight = imgEl.naturalHeight * finalScale;
-          const centerOffsetX = (width - scaledWidth) / 2;
-          const centerOffsetY = (height - scaledHeight) / 2;
-          const finalOffsetX = centerOffsetX + (transform.positionX || 0);
-          const finalOffsetY = centerOffsetY + (transform.positionY || 0);
-          const sX0 = (0 - finalOffsetX) / finalScale;
-          const sY0 = (0 - finalOffsetY) / finalScale;
-          const sX1 = (width - finalOffsetX) / finalScale;
-          const sY1 = (height - finalOffsetY) / finalScale;
-          const srcX = Math.max(0, Math.min(imgEl.naturalWidth, Math.round(sX0)));
-          const srcY = Math.max(0, Math.min(imgEl.naturalHeight, Math.round(sY0)));
-          const srcW = Math.max(1, Math.min(imgEl.naturalWidth - srcX, Math.round(sX1 - sX0)));
-          const srcH = Math.max(1, Math.min(imgEl.naturalHeight - srcY, Math.round(sY1 - sY0)));
-          const scaleF = Math.min(1, maxPreview / Math.max(srcW, srcH));
-          const fW = Math.max(1, Math.round(srcW * scaleF));
-          const fH = Math.max(1, Math.round(srcH * scaleF));
-          const fCanvas = document.createElement('canvas');
-          fCanvas.width = fW; fCanvas.height = fH;
-          const fCtx = fCanvas.getContext('2d');
-          fCtx.imageSmoothingEnabled = true;
-          fCtx.imageSmoothingQuality = 'high';
-          fCtx.drawImage(imgEl, srcX, srcY, srcW, srcH, 0, 0, fW, fH);
-          const framePreviewUrl = await dataUrlFromCanvas(fCanvas);
-          setEditFramePreview(framePreviewUrl);
-        } else {
-          setEditFramePreview(originalPreviewUrl);
-        }
-      } catch (e) {
-        // If preview generation fails, leave previews null
-        console.error('Failed generating edit previews', e);
-      } finally {
-        setEditPreviewLoading(false);
-      }
-    };
-    if (chooseEditInputOpen) {
-      setEditChoice('cropped');
-      buildPreviews();
-    } else {
-      setEditOriginalPreview(null);
-      setEditFramePreview(null);
-      setEditPreviewLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chooseEditInputOpen, activePanelId]);
+  // (Dialog-based magic editor removed; navigation-only flow)
 
   // Handle file selection for a panel
   const handleFileChange = async (event) => {
@@ -943,532 +712,7 @@ const CollagePreview = ({
         <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
       </Menu>
 
-      {/* Choose input for Magic Editor: original vs frame view */}
-      <Dialog
-        open={chooseEditInputOpen}
-        onClose={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }}
-        fullWidth
-        maxWidth="sm"
-        fullScreen={isMobile}
-        scroll={isMobile ? 'paper' : 'body'}
-        PaperProps={{
-          sx: {
-            bgcolor: '#0f0f0f',
-            color: '#fafafa',
-            width: { xs: '100%', md: 'auto' },
-            maxWidth: { xs: '100%', md: '640px' },
-            maxHeight: { xs: '100%', md: '80vh' },
-            m: 0,
-            borderRadius: { xs: 0, md: 2 },
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }
-        }}
-      >
-        {isMobile ? (
-          <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: '#0f0f0f' }}>
-            <Toolbar sx={{ minHeight: 64 }}>
-              <Typography variant="h4" sx={{ fontWeight: 900, flex: 1, letterSpacing: 0.2 }}>Which one?</Typography>
-              <IconButton edge="end" onClick={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }} aria-label="Close" sx={{ color: '#eaeaea' }}>
-                <CloseIcon />
-              </IconButton>
-            </Toolbar>
-          </AppBar>
-        ) : (
-          <DialogTitle sx={{ fontWeight: 900, '& .MuiTypography-root': { fontWeight: 900 } }}>
-            <Typography variant="h3" component="div">Which one?</Typography>
-          </DialogTitle>
-        )}
-
-        <DialogContent
-          dividers={!isMobile}
-          sx={{
-            p: { xs: 2, md: 2.5 },
-            bgcolor: '#0f0f0f',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: { xs: 1.5, md: 2 },
-            flex: 1,
-          }}
-        >
-          {/* Explainer with improved spacing */}
-          <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
-            <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>
-              Which version do you want to edit?
-            </Typography>
-          </Box>
-          {/* Main preview area shows current selection */}
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#0d0d0d', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 2 }}>
-            {editPreviewLoading ? (
-              <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f', borderRadius: 1 }} />
-            ) : (
-              editChoice === 'cropped' ? (
-                editFramePreview ? (
-                  <Box component="img" alt="Cropped preview" src={editFramePreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                ) : (
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>—</Typography>
-                )
-              ) : (
-                editOriginalPreview ? (
-                  <Box component="img" alt="Uncropped preview" src={editOriginalPreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                ) : (
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>—</Typography>
-                )
-              )
-            )}
-          </Box>
-
-          {/* Selector controls */}
-          <Box role="radiogroup" aria-label="Edit input choice" sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-            <Box
-              role="radio"
-              aria-checked={editChoice === 'uncropped'}
-              tabIndex={0}
-              onClick={() => setEditChoice('uncropped')}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditChoice('uncropped'); } }}
-              sx={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.25,
-                px: 1.25, py: 1,
-                border: '2px solid',
-                borderColor: editChoice === 'uncropped' ? 'primary.main' : 'rgba(255,255,255,0.18)',
-                borderRadius: 2,
-                cursor: 'pointer',
-                bgcolor: '#121212',
-                outline: 'none',
-                '&:focus-visible': { boxShadow: '0 0 0 3px rgba(255,255,255,0.24)' },
-              }}
-            >
-              <Typography sx={{ fontWeight: 800 }}>Uncropped</Typography>
-              <Box sx={{ width: 56, height: 40, bgcolor: '#0d0d0d', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {editOriginalPreview ? (
-                  <Box component="img" alt="Uncropped mini" src={editOriginalPreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                ) : (
-                  <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f' }} />
-                )}
-              </Box>
-            </Box>
-            <Box
-              role="radio"
-              aria-checked={editChoice === 'cropped'}
-              tabIndex={0}
-              onClick={() => setEditChoice('cropped')}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditChoice('cropped'); } }}
-              sx={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.25,
-                px: 1.25, py: 1,
-                border: '2px solid',
-                borderColor: editChoice === 'cropped' ? 'primary.main' : 'rgba(255,255,255,0.18)',
-                borderRadius: 2,
-                cursor: 'pointer',
-                bgcolor: '#121212',
-                outline: 'none',
-                '&:focus-visible': { boxShadow: '0 0 0 3px rgba(255,255,255,0.24)' },
-              }}
-            >
-              <Typography sx={{ fontWeight: 800 }}>Cropped</Typography>
-              <Box sx={{ width: 56, height: 40, bgcolor: '#0d0d0d', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {editFramePreview ? (
-                  <Box component="img" alt="Cropped mini" src={editFramePreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                ) : (
-                  <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f' }} />
-                )}
-              </Box>
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
-          <Box sx={{ display: 'flex', gap: 1.25, width: '100%' }}>
-            <Button
-              onClick={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }}
-              variant="contained"
-              disableElevation
-              sx={{
-                flex: 1,
-                bgcolor: '#252525',
-                color: '#f0f0f0',
-                border: '1px solid #3a3a3a',
-                borderRadius: '8px',
-                px: 2,
-                py: 1,
-                textTransform: 'none',
-                fontWeight: 700,
-                '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' }
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                setChooseEditInputOpen(false);
-                const choice = editChoice;
-                setPendingMagicContext(null);
-                if (choice === 'cropped') {
-                  await openMagicWithFrameView();
-                } else {
-                  await openMagicWithOriginal();
-                }
-              }}
-              variant="contained"
-              color="primary"
-              disableElevation
-              sx={{
-                flex: 1,
-                borderRadius: '8px',
-                px: 2,
-                py: 1,
-                textTransform: 'none',
-                fontWeight: 800,
-              }}
-            >
-              Edit
-            </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
-
-      {/* Magic Editor Dialog */}
-      <Dialog
-        open={isMagicOpen}
-        onClose={() => {
-          const hasUnappliedPrompt = Boolean(magicPromptState.value && magicPromptState.value.trim().length > 0);
-          const hasUnsavedEdits = Boolean(magicChosenSrc && magicCurrentSrc && magicChosenSrc !== magicCurrentSrc);
-          if (hasUnappliedPrompt || hasUnsavedEdits) {
-            setConfirmMagicCancelOpen(true);
-          } else {
-            setIsMagicOpen(false);
-            setMagicChosenSrc(null);
-            setMagicCurrentSrc(null);
-            setMagicPromptState({ value: '', focused: false });
-          }
-        }}
-        fullWidth
-        maxWidth="lg"
-        scroll={isMobile ? 'paper' : 'body'}
-        fullScreen={isMobile}
-        PaperProps={{
-          sx: {
-            bgcolor: '#0f0f0f',
-            // Avoid 100vw on iOS which can exceed the visual viewport
-            width: { xs: '100%', md: 'auto' },
-            maxWidth: { xs: '100%', md: 'calc(100% - 64px)' },
-            m: 0,
-            borderRadius: 0,
-            overflowX: 'hidden',
-          }
-        }}
-      >
-        <DialogTitle sx={{ color: '#eaeaea', pt: 2.5, pb: 1.25 }}>
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>
-            Magic Editor
-          </Typography>
-        </DialogTitle>
-        {/* Mobile subtitle under the title, aligned to the same left padding */}
-        <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, px: 2, pb: 0.5 }}>
-          <AutoFixHighRounded sx={{ color: 'primary.main' }} />
-          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-            Ask for edits in plain English
-          </Typography>
-        </Box>
-        {/* Desktop action bar (MagicEditor shows its own Save/Cancel on mobile unless overridden) */}
-        {isMagicOpen && (
-          <Box sx={{ display: { xs: 'none', md: 'block' }, px: 0, pt: 1 }}>
-            <Box
-              sx={{
-                width: '100%',
-                px: 2,
-                py: 1,
-                borderRadius: 2,
-                backgroundColor: '#000',
-                boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
-                border: '1px solid rgba(255,255,255,0.08)'
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: 1.25 }}>
-                  <AutoFixHighRounded sx={{ color: 'primary.main' }} />
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ color: 'common.white', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                  >
-                    Ask for edits in plain English
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Button
-                    size="large"
-                    variant="outlined"
-                    onClick={() => {
-                      const hasUnappliedPrompt = Boolean(magicPromptState.value && magicPromptState.value.trim().length > 0);
-                      const hasUnsavedEdits = Boolean(magicChosenSrc && magicCurrentSrc && magicChosenSrc !== magicCurrentSrc);
-                      if (hasUnappliedPrompt || hasUnsavedEdits) {
-                        setConfirmMagicCancelOpen(true);
-                      } else {
-                        setIsMagicOpen(false);
-                        setMagicChosenSrc(null);
-                        setMagicCurrentSrc(null);
-                        setMagicPromptState({ value: '', focused: false });
-                      }
-                    }}
-                    disabled={magicProcessing}
-                    sx={{ minHeight: 44, fontWeight: 700, textTransform: 'none', color: 'rgba(255,255,255,0.92)', borderColor: 'rgba(255,255,255,0.35)', '&:hover': { borderColor: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.08)' } }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="large"
-                    variant="contained"
-                    onClick={async () => {
-                      if (!magicCurrentSrc || activePanelId == null) return;
-                      if (magicPromptState.value && magicPromptState.value.trim().length > 0) {
-                        setConfirmMagicDiscardOpen(true);
-                        return;
-                      }
-                      try {
-                        const libraryKey = await saveImageToLibrary(magicCurrentSrc, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
-                        const res = await fetch(magicCurrentSrc);
-                        const srcBlob = await res.blob();
-                        const uploadBlob = await resizeImage(srcBlob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-                        const toDataUrl = (blob) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
-                        const originalUrl = await toDataUrl(uploadBlob);
-                        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-                        const displayUrl = await toDataUrl(editorBlob);
-                        const idx = panelImageMapping?.[activePanelId];
-                        if (typeof idx === 'number') {
-                          await replaceImage(idx, { originalUrl, displayUrl, metadata: { libraryKey } });
-                        }
-                        setIsMagicOpen(false);
-                        setMagicChosenSrc(null);
-                        setMagicCurrentSrc(null);
-                        setMagicPromptState({ value: '', focused: false });
-                      } catch (e) {
-                        console.error('Failed to save magic edit', e);
-                      }
-                    }}
-                    disabled={!magicCurrentSrc || magicProcessing}
-                    sx={{ minHeight: 44, fontWeight: 700, textTransform: 'none', background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)', border: '1px solid #8b5cc7', color: '#fff', boxShadow: 'none', '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' } }}
-                  >
-                    Save
-                  </Button>
-                </Box>
-              </Box>
-            </Box>
-          </Box>
-        )}
-        {/* Mobile action bar placed outside scroll area for persistent access */}
-        {isMagicOpen && (
-          <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: '1fr 1fr', gap: 1, px: 2, pt: 0.5, pb: 1 }}>
-            <Button
-              size="large"
-              fullWidth
-              variant="outlined"
-              onClick={() => {
-                const hasUnappliedPrompt = Boolean(magicPromptState.value && magicPromptState.value.trim().length > 0);
-                const hasUnsavedEdits = Boolean(magicChosenSrc && magicCurrentSrc && magicChosenSrc !== magicCurrentSrc);
-                if (hasUnappliedPrompt || hasUnsavedEdits) {
-                  setConfirmMagicCancelOpen(true);
-                } else {
-                  setIsMagicOpen(false);
-                  setMagicChosenSrc(null);
-                  setMagicCurrentSrc(null);
-                  setMagicPromptState({ value: '', focused: false });
-                }
-              }}
-              disabled={magicProcessing}
-              sx={{
-                minHeight: 44,
-                fontWeight: 700,
-                textTransform: 'none',
-                color: 'rgba(255,255,255,0.92)',
-                borderColor: 'rgba(255,255,255,0.35)',
-                '&:hover': { borderColor: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.08)' }
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="large"
-              fullWidth
-              variant="contained"
-              onClick={async () => {
-                if (!magicCurrentSrc || activePanelId == null) return;
-                if (magicPromptState.value && magicPromptState.value.trim().length > 0) {
-                  setConfirmMagicDiscardOpen(true);
-                  return;
-                }
-                try {
-                  const libraryKey = await saveImageToLibrary(magicCurrentSrc, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
-                  const res = await fetch(magicCurrentSrc);
-                  const srcBlob = await res.blob();
-                  const uploadBlob = await resizeImage(srcBlob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-                  const toDataUrl = (blob) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
-                  const originalUrl = await toDataUrl(uploadBlob);
-                  const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-                  const displayUrl = await toDataUrl(editorBlob);
-                  const idx = panelImageMapping?.[activePanelId];
-                  if (typeof idx === 'number') {
-                    await replaceImage(idx, { originalUrl, displayUrl, metadata: { libraryKey } });
-                  }
-                  setIsMagicOpen(false);
-                  setMagicChosenSrc(null);
-                  setMagicCurrentSrc(null);
-                  setMagicPromptState({ value: '', focused: false });
-                } catch (e) {
-                  console.error('Failed to save magic edit', e);
-                }
-              }}
-              disabled={!magicCurrentSrc || magicProcessing}
-              sx={{
-                minHeight: 44,
-                fontWeight: 700,
-                textTransform: 'none',
-                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                border: '1px solid #8b5cc7',
-                color: '#fff',
-                boxShadow: 'none',
-                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
-              }}
-            >
-              Save
-            </Button>
-          </Box>
-        )}
-        <DialogContent
-          dividers={!isMobile}
-          sx={{
-            bgcolor: '#0f0f0f',
-            p: { xs: 0, md: 2 },
-            overflowX: 'hidden',
-            // Ensure content fits within viewport width on mobile
-            maxWidth: { xs: '100%', md: 'initial' },
-            boxSizing: 'border-box',
-          }}
-        >
-          {magicChosenSrc && (
-            <Box sx={{ width: '100%', overflowX: 'hidden' }}>
-            <MagicEditor
-              imageSrc={magicChosenSrc}
-              onImageChange={setMagicCurrentSrc}
-              onProcessingChange={setMagicProcessing}
-              onPromptStateChange={setMagicPromptState}
-              showHeader={false}
-              onSave={async (src) => {
-                if (!src || activePanelId == null) return;
-                try {
-                  const libraryKey = await saveImageToLibrary(src, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
-                  const res = await fetch(src);
-                  const srcBlob = await res.blob();
-                  const uploadBlob = await resizeImage(srcBlob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-                  const toDataUrl = (blob) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
-                  const originalUrl = await toDataUrl(uploadBlob);
-                  const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-                  const displayUrl = await toDataUrl(editorBlob);
-                  const idx = panelImageMapping?.[activePanelId];
-                  if (typeof idx === 'number') {
-                    await replaceImage(idx, { originalUrl, displayUrl, metadata: { libraryKey } });
-                  }
-                  setIsMagicOpen(false);
-                  setMagicChosenSrc(null);
-                  setMagicCurrentSrc(null);
-                  setMagicPromptState({ value: '', focused: false });
-                } catch (e) {
-                  console.error('Failed to save magic edit', e);
-                }
-              }}
-              onCancel={() => {
-                const hasUnappliedPrompt = Boolean(magicPromptState.value && magicPromptState.value.trim().length > 0);
-                const hasUnsavedEdits = Boolean(magicChosenSrc && magicCurrentSrc && magicChosenSrc !== magicCurrentSrc);
-                if (hasUnappliedPrompt || hasUnsavedEdits) {
-                  setConfirmMagicCancelOpen(true);
-                } else {
-                  setIsMagicOpen(false);
-                  setMagicChosenSrc(null);
-                  setMagicCurrentSrc(null);
-                  setMagicPromptState({ value: '', focused: false });
-                }
-              }}
-              showActions={false}
-            />
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirm discard of unapplied prompt when saving from desktop controls */}
-      <Dialog open={confirmMagicDiscardOpen} onClose={() => setConfirmMagicDiscardOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Discard Unapplied Edit?</DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2">
-            Do you want to discard your unapplied edit "
-            <Box component="span" sx={{ fontWeight: 700 }}>{magicPromptState.value}</Box>
-            "?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmMagicDiscardOpen(false)}>Keep Editing</Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={async () => {
-              setConfirmMagicDiscardOpen(false);
-              if (!magicCurrentSrc || activePanelId == null) return;
-              try {
-                const libraryKey = await saveImageToLibrary(magicCurrentSrc, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
-                const res = await fetch(magicCurrentSrc);
-                const srcBlob = await res.blob();
-                const uploadBlob = await resizeImage(srcBlob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-                const toDataUrl = (blob) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
-                const originalUrl = await toDataUrl(uploadBlob);
-                const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-                const displayUrl = await toDataUrl(editorBlob);
-                const idx = panelImageMapping?.[activePanelId];
-                if (typeof idx === 'number') {
-                  await replaceImage(idx, { originalUrl, displayUrl, metadata: { libraryKey } });
-                }
-                setIsMagicOpen(false);
-                setMagicChosenSrc(null);
-                setMagicCurrentSrc(null);
-                setMagicPromptState({ value: '', focused: false });
-              } catch (e) {
-                console.error('Failed to save magic edit', e);
-              }
-            }}
-          >
-            Discard and Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Confirm cancel when there are unsaved or unapplied edits */}
-      <Dialog open={confirmMagicCancelOpen} onClose={() => setConfirmMagicCancelOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Discard Changes?</DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" sx={{ mb: magicPromptState.value ? 1 : 0 }}>
-            You have unsaved changes. Do you want to discard them and exit the editor?
-          </Typography>
-          {magicPromptState.value && (
-            <Typography variant="body2">
-              Unapplied prompt: "<Box component="span" sx={{ fontWeight: 700 }}>{magicPromptState.value}</Box>"
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmMagicCancelOpen(false)}>Keep Editing</Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={() => {
-              setConfirmMagicCancelOpen(false);
-              setIsMagicOpen(false);
-              setMagicChosenSrc(null);
-              setMagicCurrentSrc(null);
-              setMagicPromptState({ value: '', focused: false });
-            }}
-          >
-            Discard and Exit
-          </Button>
-        </DialogActions>
-      </Dialog>
+      
     </Box>
   );
 };

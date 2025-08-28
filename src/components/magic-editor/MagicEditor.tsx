@@ -284,7 +284,7 @@ export default function MagicEditor({
         overflowX: 'hidden',
       }}
     >
-      {/* Magic Editor subtitle; can be hidden by parent */}
+      {/* Magic Editor subtitle; can be hidden by parent
       {showHeader && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <AutoFixHighRounded sx={{ color: 'primary.main' }} />
@@ -292,7 +292,7 @@ export default function MagicEditor({
             Ask for edits in plain English
           </Typography>
         </Box>
-      )}
+      )} */}
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 2, md: 3 }} alignItems={{ md: 'flex-start' }}>
         {/* Left: Image + Prompt (mobile combined), Image only on desktop */}
         {showEditor && (

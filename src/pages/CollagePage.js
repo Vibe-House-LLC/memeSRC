@@ -362,6 +362,23 @@ export default function CollagePage() {
 
   // Handle images passed from collage
   useEffect(() => {
+    // Handle a magic editor return (navigation-based)
+    if (location.state?.magicResult) {
+      const result = location.state.magicResult;
+      const ctx = location.state.magicContext;
+      try {
+        if (ctx?.panelId) {
+          const idx = panelImageMapping?.[ctx.panelId];
+          if (typeof idx === 'number') {
+            replaceImage(idx, result);
+          }
+        }
+      } catch (_) { /* ignore */ }
+      // Clear state to avoid re-application on refresh/back
+      navigate(location.pathname, { replace: true, state: {} });
+      return; // don't also try to process collage import below
+    }
+
     if (location.state?.fromCollage && location.state?.images) {
       const loadImages = async () => {
         debugLog('Loading images from collage:', location.state.images);

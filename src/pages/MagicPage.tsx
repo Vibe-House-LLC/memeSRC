@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
 import { AutoFixHighRounded } from '@mui/icons-material';
 import MagicEditor from '../components/magic-editor/MagicEditor';
@@ -8,9 +8,19 @@ import LibraryBrowser from '../components/library/LibraryBrowser.jsx';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - JS module without types
 import { get as getFromLibrary } from '../utils/library/storage';
+import { useLocation, useNavigate } from 'react-router-dom';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - JS module without types
+import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - JS module without types
+import { resizeImage } from '../utils/library/resizeImage';
+import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../constants/imageProcessing';
 
 export default function MagicPage() {
-  const [stage, setStage] = useState<'pick' | 'edit' | 'done'>('pick');
+  const location = useLocation() as any;
+  const navigate = useNavigate();
+  const [stage, setStage] = useState<'pick' | 'choose' | 'edit' | 'done'>('pick');
   const [chosen, setChosen] = useState<string | null>(null);
   const [finalSrc, setFinalSrc] = useState<string | null>(null);
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
@@ -20,12 +30,54 @@ export default function MagicPage() {
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
 
+  const chooseFrom = useMemo(() => location?.state?.chooseFrom as undefined | { originalSrc?: string; frameSrc?: string }, [location?.state]);
+
   const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+
+  // If navigated here with an initial image (from collage), start in edit stage
+  useEffect(() => {
+    const initSrc: string | undefined = location?.state?.initialSrc;
+    if (chooseFrom && (chooseFrom.originalSrc || chooseFrom.frameSrc)) {
+      setStage('choose');
+    } else if (initSrc) {
+      setChosen(initSrc);
+      setCurrentSrc(initSrc);
+      setStage('edit');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleReturnToCaller = async (src: string) => {
+    const returnTo: string | undefined = location?.state?.returnTo;
+    const context: any = location?.state?.collageEditContext;
+    if (!returnTo) return;
+    try {
+      // Persist + normalize like inline editor flow
+      const res = await fetch(src);
+      const srcBlob = await res.blob();
+      const uploadBlob = await resizeImage(srcBlob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+      const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(blob); });
+      const originalUrl = await toDataUrl(uploadBlob);
+      const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+      const displayUrl = await toDataUrl(editorBlob);
+      const libraryKey = await saveImageToLibrary(src, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
+      navigate(returnTo, {
+        replace: false,
+        state: {
+          magicResult: { originalUrl, displayUrl, metadata: { libraryKey } },
+          magicContext: context || null,
+        },
+      });
+    } catch (_) {
+      // If anything fails, still try to pass back via raw src
+      navigate(returnTo, { replace: false, state: { magicResult: { originalUrl: src, displayUrl: src }, magicContext: context || null } });
+    }
+  };
 
   const handlePick = async (items: Array<{ displayUrl?: string; originalUrl?: string; metadata?: any }>) => {
     const first = items?.[0];
@@ -126,13 +178,13 @@ export default function MagicPage() {
                   size="large"
                   variant="outlined"
                   onClick={() => {
+                    if (location?.state?.returnTo) {
+                      navigate(-1);
+                      return;
+                    }
                     const hasUnappliedPrompt = Boolean(promptState.value && promptState.value.trim().length > 0);
                     const hasUnsavedEdits = Boolean(chosen && currentSrc && chosen !== currentSrc);
-                    if (hasUnappliedPrompt || hasUnsavedEdits) {
-                      setConfirmCancelOpen(true);
-                    } else {
-                      setStage('pick');
-                    }
+                    if (hasUnappliedPrompt || hasUnsavedEdits) { setConfirmCancelOpen(true); } else { setStage('pick'); }
                   }}
                   disabled={processing}
                   sx={{
@@ -154,8 +206,12 @@ export default function MagicPage() {
                     if (promptState.value && promptState.value.trim().length > 0) {
                       setConfirmDiscardOpen(true);
                     } else {
-                      setFinalSrc(currentSrc);
-                      setStage('done');
+                      if (location?.state?.returnTo) {
+                        handleReturnToCaller(currentSrc);
+                      } else {
+                        setFinalSrc(currentSrc);
+                        setStage('done');
+                      }
                     }
                   }}
                   disabled={!currentSrc || processing}
@@ -193,6 +249,47 @@ export default function MagicPage() {
         </Box>
       )}
 
+      {stage === 'choose' && (
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 800, mb: 1.5 }}>
+            Which version do you want to edit?
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+            <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Uncropped</Typography>
+              {chooseFrom?.originalSrc ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <img src={chooseFrom.originalSrc} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
+              ) : (
+                <Box sx={{ width: '100%', aspectRatio: '1 / 1', borderRadius: 1, bgcolor: 'action.hover' }} />
+              )}
+              <Box sx={{ mt: 1.25, textAlign: 'right' }}>
+                <Button variant="contained" onClick={() => { if (!chooseFrom?.originalSrc) return; setChosen(chooseFrom.originalSrc); setCurrentSrc(chooseFrom.originalSrc); setStage('edit'); }}>
+                  Edit Uncropped
+                </Button>
+              </Box>
+            </Box>
+            <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Cropped</Typography>
+              {chooseFrom?.frameSrc ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <img src={chooseFrom.frameSrc} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
+              ) : (
+                <Box sx={{ width: '100%', aspectRatio: '1 / 1', borderRadius: 1, bgcolor: 'action.hover' }} />
+              )}
+              <Box sx={{ mt: 1.25, textAlign: 'right' }}>
+                <Button variant="contained" onClick={() => { if (!chooseFrom?.frameSrc) return; setChosen(chooseFrom.frameSrc); setCurrentSrc(chooseFrom.frameSrc); setStage('edit'); }}>
+                  Edit Cropped
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+          <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+            <Button variant="outlined" onClick={() => navigate(-1)}>Cancel</Button>
+          </Box>
+        </Box>
+      )}
+
       {stage === 'edit' && chosen && (
         <MagicEditor
           imageSrc={chosen}
@@ -201,16 +298,21 @@ export default function MagicPage() {
           onPromptStateChange={setPromptState}
           onSave={(src) => {
             setFinalSrc(src);
-            setStage('done');
+            // If we came from a caller, return result immediately
+            if (location?.state?.returnTo) {
+              handleReturnToCaller(src);
+            } else {
+              setStage('done');
+            }
           }}
           onCancel={() => {
+            if (location?.state?.returnTo) {
+              navigate(-1);
+              return;
+            }
             const hasUnappliedPrompt = Boolean(promptState.value && promptState.value.trim().length > 0);
             const hasUnsavedEdits = Boolean(chosen && currentSrc && chosen !== currentSrc);
-            if (hasUnappliedPrompt || hasUnsavedEdits) {
-              setConfirmCancelOpen(true);
-            } else {
-              setStage('pick');
-            }
+            if (hasUnappliedPrompt || hasUnsavedEdits) { setConfirmCancelOpen(true); } else { setStage('pick'); }
           }}
         />
       )}
@@ -245,8 +347,12 @@ export default function MagicPage() {
           color="error"
           onClick={() => {
             if (currentSrc) {
-              setFinalSrc(currentSrc);
-              setStage('done');
+              if (location?.state?.returnTo) {
+                handleReturnToCaller(currentSrc);
+              } else {
+                setFinalSrc(currentSrc);
+                setStage('done');
+              }
             }
             setConfirmDiscardOpen(false);
           }}
@@ -276,7 +382,11 @@ export default function MagicPage() {
           color="error"
           onClick={() => {
             setConfirmCancelOpen(false);
-            setStage('pick');
+            if (location?.state?.returnTo) {
+              navigate(-1);
+            } else {
+              setStage('pick');
+            }
           }}
         >
           Discard and Exit
