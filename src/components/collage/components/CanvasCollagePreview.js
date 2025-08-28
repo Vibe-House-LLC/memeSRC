@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
@@ -470,6 +470,7 @@ const CanvasCollagePreview = ({
   panelCount,
   images = [],
   onPanelClick,
+  onEditImage, // new: request magic edit for a panel
   onSaveGestureDetected, // new: notify parent when long-press/right-click implies save intent
   isFrameActionSuppressed, // optional: function to indicate suppression window
   aspectRatioValue = 1,
@@ -3105,6 +3106,17 @@ const CanvasCollagePreview = ({
     handleActionMenuClose();
   }, [actionMenuPanelId, onPanelClick, panelRects, handleActionMenuClose]);
 
+  // Trigger magic edit via parent
+  const handleMenuMagicEdit = useCallback(() => {
+    if (actionMenuPanelId && typeof onEditImage === 'function') {
+      const rect = panelRects.find(r => r.panelId === actionMenuPanelId);
+      if (rect) {
+        onEditImage(rect.index, actionMenuPanelId);
+      }
+    }
+    handleActionMenuClose();
+  }, [actionMenuPanelId, onEditImage, panelRects, handleActionMenuClose]);
+
   // Open caption editor for the panel
   const handleMenuEditCaption = useCallback(() => {
     if (actionMenuPanelId) {
@@ -3869,6 +3881,12 @@ const CanvasCollagePreview = ({
                 </ListItemIcon>
                 Rearrange
               </MenuItem>
+              <MenuItem onClick={handleMenuMagicEdit} disabled={!hasImageForPanel}>
+                <ListItemIcon>
+                  <AutoFixHighRounded fontSize="small" />
+                </ListItemIcon>
+                Edit Image
+              </MenuItem>
               <MenuItem onClick={handleMenuReplace}>
                 <ListItemIcon>
                   <ImageIcon fontSize="small" />
@@ -3902,6 +3920,7 @@ CanvasCollagePreview.propTypes = {
     }),
   ])),
   onPanelClick: PropTypes.func,
+  onEditImage: PropTypes.func,
   onSaveGestureDetected: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
   aspectRatioValue: PropTypes.number,

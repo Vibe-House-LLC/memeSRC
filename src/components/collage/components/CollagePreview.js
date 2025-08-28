@@ -19,11 +19,14 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
+import MagicEditor from '../../magic-editor/MagicEditor';
 import { LibraryBrowser } from '../../library';
 import { get as getFromLibrary } from '../../../utils/library/storage';
+import { saveImageToLibrary } from '../../../utils/library/saveImageToLibrary';
 import { UserContext } from '../../../UserContext';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
+import { AutoFixHighRounded } from '@mui/icons-material';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -87,6 +90,15 @@ const CollagePreview = ({
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isReplaceMode, setIsReplaceMode] = useState(false);
   const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
+  
+  // Magic editor dialog state
+  const [isMagicOpen, setIsMagicOpen] = useState(false);
+  const [magicChosenSrc, setMagicChosenSrc] = useState(null);
+  const [magicCurrentSrc, setMagicCurrentSrc] = useState(null);
+  const [magicProcessing, setMagicProcessing] = useState(false);
+  const [magicPromptState, setMagicPromptState] = useState({ value: '', focused: false });
+  const [confirmMagicDiscardOpen, setConfirmMagicDiscardOpen] = useState(false);
+  const [confirmMagicCancelOpen, setConfirmMagicCancelOpen] = useState(false);
   
   // Helper: revoke blob: URLs to avoid memory leaks
   const revokeIfBlobUrl = (url) => {
@@ -191,6 +203,54 @@ const CollagePreview = ({
 
     // Close the menu
     handleMenuClose();
+  };
+
+  // Helper: convert Blob to data URL
+  const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  // Request to edit image for a specific panel
+  const handleEditImageRequest = async (index, panelId) => {
+    try {
+      setActivePanelIndex(index);
+      setActivePanelId(panelId);
+      const imageIndex = panelImageMapping?.[panelId];
+      if (imageIndex == null) return;
+      const imageObj = selectedImages?.[imageIndex];
+      if (!imageObj) return;
+      const libKey = imageObj?.metadata?.libraryKey;
+      if (libKey) {
+        try {
+          const blob = await getFromLibrary(libKey, { level: 'protected' });
+          const dataUrl = await blobToDataUrl(blob);
+          setMagicChosenSrc(dataUrl);
+          setMagicCurrentSrc(dataUrl);
+          setIsMagicOpen(true);
+          return;
+        } catch (_) {
+          // fall through to URL fetch
+        }
+      }
+      const url = imageObj.originalUrl || imageObj.displayUrl;
+      if (!url) return;
+      try {
+        const res = await fetch(url, { mode: 'cors' });
+        const blob = await res.blob();
+        const dataUrl = await blobToDataUrl(blob);
+        setMagicChosenSrc(dataUrl);
+        setMagicCurrentSrc(dataUrl);
+      } catch (_) {
+        setMagicChosenSrc(url);
+        setMagicCurrentSrc(url);
+      }
+      setIsMagicOpen(true);
+    } catch (e) {
+      console.error('Failed to open magic editor', e);
+    }
   };
 
   // Handle file selection for a panel
@@ -451,6 +511,7 @@ const CollagePreview = ({
         panelCount={panelCount}
         images={selectedImages}
         onPanelClick={handlePanelClick}
+        onEditImage={handleEditImageRequest}
         onMenuOpen={handleMenuOpen}
         onSaveGestureDetected={onGenerateNudgeRequested}
         isFrameActionSuppressed={isFrameActionSuppressed}
@@ -576,6 +637,233 @@ const CollagePreview = ({
       >
         <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
       </Menu>
+
+      {/* Magic Editor Dialog */}
+      <Dialog
+        open={isMagicOpen}
+        onClose={() => {
+          const hasUnappliedPrompt = Boolean(magicPromptState.value && magicPromptState.value.trim().length > 0);
+          const hasUnsavedEdits = Boolean(magicChosenSrc && magicCurrentSrc && magicChosenSrc !== magicCurrentSrc);
+          if (hasUnappliedPrompt || hasUnsavedEdits) {
+            setConfirmMagicCancelOpen(true);
+          } else {
+            setIsMagicOpen(false);
+            setMagicChosenSrc(null);
+            setMagicCurrentSrc(null);
+            setMagicPromptState({ value: '', focused: false });
+          }
+        }}
+        fullWidth
+        maxWidth="lg"
+        scroll="body"
+      >
+        {/* Desktop action bar (MagicEditor shows its own Save/Cancel on mobile) */}
+        {isMagicOpen && (
+          <Box sx={{ display: { xs: 'none', md: 'block' }, px: 2, pt: 2 }}>
+            <Box
+              sx={{
+                width: '100%',
+                px: 2,
+                py: 1,
+                borderRadius: 2,
+                backgroundColor: '#000',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
+                border: '1px solid rgba(255,255,255,0.08)'
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: 1.25 }}>
+                  <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ color: 'common.white', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    Ask for edits in plain English
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Button
+                    size="large"
+                    variant="outlined"
+                    onClick={() => {
+                      const hasUnappliedPrompt = Boolean(magicPromptState.value && magicPromptState.value.trim().length > 0);
+                      const hasUnsavedEdits = Boolean(magicChosenSrc && magicCurrentSrc && magicChosenSrc !== magicCurrentSrc);
+                      if (hasUnappliedPrompt || hasUnsavedEdits) {
+                        setConfirmMagicCancelOpen(true);
+                      } else {
+                        setIsMagicOpen(false);
+                        setMagicChosenSrc(null);
+                        setMagicCurrentSrc(null);
+                        setMagicPromptState({ value: '', focused: false });
+                      }
+                    }}
+                    disabled={magicProcessing}
+                    sx={{ minHeight: 44, fontWeight: 700, textTransform: 'none', color: 'rgba(255,255,255,0.92)', borderColor: 'rgba(255,255,255,0.35)', '&:hover': { borderColor: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.08)' } }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="large"
+                    variant="contained"
+                    onClick={async () => {
+                      if (!magicCurrentSrc || activePanelId == null) return;
+                      if (magicPromptState.value && magicPromptState.value.trim().length > 0) {
+                        setConfirmMagicDiscardOpen(true);
+                        return;
+                      }
+                      try {
+                        const libraryKey = await saveImageToLibrary(magicCurrentSrc, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
+                        const res = await fetch(magicCurrentSrc);
+                        const srcBlob = await res.blob();
+                        const uploadBlob = await resizeImage(srcBlob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+                        const toDataUrl = (blob) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
+                        const originalUrl = await toDataUrl(uploadBlob);
+                        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+                        const displayUrl = await toDataUrl(editorBlob);
+                        const idx = panelImageMapping?.[activePanelId];
+                        if (typeof idx === 'number') {
+                          await replaceImage(idx, { originalUrl, displayUrl, metadata: { libraryKey } });
+                        }
+                        setIsMagicOpen(false);
+                        setMagicChosenSrc(null);
+                        setMagicCurrentSrc(null);
+                        setMagicPromptState({ value: '', focused: false });
+                      } catch (e) {
+                        console.error('Failed to save magic edit', e);
+                      }
+                    }}
+                    disabled={!magicCurrentSrc || magicProcessing}
+                    sx={{ minHeight: 44, fontWeight: 700, textTransform: 'none', background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)', border: '1px solid #8b5cc7', color: '#fff', boxShadow: 'none', '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' } }}
+                  >
+                    Save
+                  </Button>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        )}
+        <DialogContent dividers sx={{ bgcolor: '#0f0f0f' }}>
+          {magicChosenSrc && (
+            <MagicEditor
+              imageSrc={magicChosenSrc}
+              onImageChange={setMagicCurrentSrc}
+              onProcessingChange={setMagicProcessing}
+              onPromptStateChange={setMagicPromptState}
+              onSave={async (src) => {
+                if (!src || activePanelId == null) return;
+                try {
+                  const libraryKey = await saveImageToLibrary(src, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
+                  const res = await fetch(src);
+                  const srcBlob = await res.blob();
+                  const uploadBlob = await resizeImage(srcBlob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+                  const toDataUrl = (blob) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
+                  const originalUrl = await toDataUrl(uploadBlob);
+                  const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+                  const displayUrl = await toDataUrl(editorBlob);
+                  const idx = panelImageMapping?.[activePanelId];
+                  if (typeof idx === 'number') {
+                    await replaceImage(idx, { originalUrl, displayUrl, metadata: { libraryKey } });
+                  }
+                  setIsMagicOpen(false);
+                  setMagicChosenSrc(null);
+                  setMagicCurrentSrc(null);
+                  setMagicPromptState({ value: '', focused: false });
+                } catch (e) {
+                  console.error('Failed to save magic edit', e);
+                }
+              }}
+              onCancel={() => {
+                const hasUnappliedPrompt = Boolean(magicPromptState.value && magicPromptState.value.trim().length > 0);
+                const hasUnsavedEdits = Boolean(magicChosenSrc && magicCurrentSrc && magicChosenSrc !== magicCurrentSrc);
+                if (hasUnappliedPrompt || hasUnsavedEdits) {
+                  setConfirmMagicCancelOpen(true);
+                } else {
+                  setIsMagicOpen(false);
+                  setMagicChosenSrc(null);
+                  setMagicCurrentSrc(null);
+                  setMagicPromptState({ value: '', focused: false });
+                }
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm discard of unapplied prompt when saving from desktop controls */}
+      <Dialog open={confirmMagicDiscardOpen} onClose={() => setConfirmMagicDiscardOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Discard Unapplied Edit?</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2">
+            Do you want to discard your unapplied edit "
+            <Box component="span" sx={{ fontWeight: 700 }}>{magicPromptState.value}</Box>
+            "?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmMagicDiscardOpen(false)}>Keep Editing</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={async () => {
+              setConfirmMagicDiscardOpen(false);
+              if (!magicCurrentSrc || activePanelId == null) return;
+              try {
+                const libraryKey = await saveImageToLibrary(magicCurrentSrc, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
+                const res = await fetch(magicCurrentSrc);
+                const srcBlob = await res.blob();
+                const uploadBlob = await resizeImage(srcBlob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+                const toDataUrl = (blob) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
+                const originalUrl = await toDataUrl(uploadBlob);
+                const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+                const displayUrl = await toDataUrl(editorBlob);
+                const idx = panelImageMapping?.[activePanelId];
+                if (typeof idx === 'number') {
+                  await replaceImage(idx, { originalUrl, displayUrl, metadata: { libraryKey } });
+                }
+                setIsMagicOpen(false);
+                setMagicChosenSrc(null);
+                setMagicCurrentSrc(null);
+                setMagicPromptState({ value: '', focused: false });
+              } catch (e) {
+                console.error('Failed to save magic edit', e);
+              }
+            }}
+          >
+            Discard and Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm cancel when there are unsaved or unapplied edits */}
+      <Dialog open={confirmMagicCancelOpen} onClose={() => setConfirmMagicCancelOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Discard Changes?</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ mb: magicPromptState.value ? 1 : 0 }}>
+            You have unsaved changes. Do you want to discard them and exit the editor?
+          </Typography>
+          {magicPromptState.value && (
+            <Typography variant="body2">
+              Unapplied prompt: "<Box component="span" sx={{ fontWeight: 700 }}>{magicPromptState.value}</Box>"
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmMagicCancelOpen(false)}>Keep Editing</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              setConfirmMagicCancelOpen(false);
+              setIsMagicOpen(false);
+              setMagicChosenSrc(null);
+              setMagicCurrentSrc(null);
+              setMagicPromptState({ value: '', focused: false });
+            }}
+          >
+            Discard and Exit
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
