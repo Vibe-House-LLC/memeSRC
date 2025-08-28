@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Send, AutoFixHighRounded } from '@mui/icons-material';
+import { Send, AutoFixHighRounded, Close } from '@mui/icons-material';
 import { mockMagicEdit } from '../../utils/mockMagicEdit';
 
 export interface MagicEditorProps {
@@ -26,6 +26,7 @@ export interface MagicEditorProps {
   onResult?: (src: string) => void; // optional per-edit callback
   onImageChange?: (src: string | null) => void; // notify parent of current image
   onProcessingChange?: (processing: boolean) => void; // notify parent of loading state
+  onPromptStateChange?: (state: { value: string; focused: boolean }) => void; // notify parent about prompt text/focus
   defaultPrompt?: string;
   className?: string;
   style?: React.CSSProperties;
@@ -38,6 +39,7 @@ export default function MagicEditor({
   onResult,
   onImageChange,
   onProcessingChange,
+  onPromptStateChange,
   defaultPrompt = '',
   className,
   style,
@@ -47,6 +49,8 @@ export default function MagicEditor({
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [promptFocused, setPromptFocused] = useState(false);
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   type HistoryEntry = {
     id: number;
     src: string;
@@ -145,6 +149,10 @@ export default function MagicEditor({
   useEffect(() => {
     if (onProcessingChange) onProcessingChange(processing);
   }, [processing, onProcessingChange]);
+
+  useEffect(() => {
+    if (onPromptStateChange) onPromptStateChange({ value: prompt, focused: promptFocused });
+  }, [prompt, promptFocused, onPromptStateChange]);
 
   const commitImage = useCallback((src: string, label: string, source: HistoryEntry['source'], extra?: { prompt?: string; pending?: boolean; progress?: number }) => {
     setImage(src);
@@ -257,7 +265,7 @@ export default function MagicEditor({
             }}
           >
             {/* Image area */}
-            <Box sx={{ position: 'relative', flex: { xs: 1, md: 'initial' }, minHeight: { xs: 0, md: 'initial' } }}>
+            <Box sx={{ position: 'relative', flex: { xs: 1, md: 'initial' }, minHeight: { xs: 0, md: 'initial' }, order: { xs: 2, md: 'initial' } }}>
               {internalSrc ? (
                 // eslint-disable-next-line jsx-a11y/alt-text
                 <Box
@@ -290,12 +298,14 @@ export default function MagicEditor({
             </Box>
 
             {/* Prompt inside the combined unit on mobile */}
-            <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1 }}>
+            <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1, order: { xs: 3, md: 'initial' } }}>
               <TextField
                 fullWidth
                 placeholder={placeholderText}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                onFocus={() => setPromptFocused(true)}
+                onBlur={() => setPromptFocused(false)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -310,6 +320,17 @@ export default function MagicEditor({
                   ),
                   endAdornment: (
                     <InputAdornment position="end">
+                      {prompt?.length ? (
+                        <IconButton
+                          aria-label="clear prompt"
+                          size="small"
+                          onClick={() => setPrompt('')}
+                          edge="end"
+                          sx={{ mr: 0.5 }}
+                        >
+                          <Close fontSize="small" />
+                        </IconButton>
+                      ) : null}
                       <IconButton
                         aria-label="send prompt"
                         size="small"
@@ -343,14 +364,14 @@ export default function MagicEditor({
             </Box>
 
             {/* Save/Cancel inside the combined unit on mobile */}
-            <Box sx={{ display: { xs: 'block', md: 'none' }, px: 1, pb: 1 }}>
+            <Box sx={{ display: { xs: 'block', md: 'none' }, px: 1, pb: 1, order: { xs: 1, md: 'initial' } }}>
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                 <Button
                   size="large"
                   fullWidth
                   variant="outlined"
                   onClick={() => { if (onCancel) onCancel(originalSrcRef.current); }}
-                  disabled={processing}
+                  disabled={processing || (promptFocused && !!prompt)}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -364,8 +385,15 @@ export default function MagicEditor({
                   size="large"
                   fullWidth
                   variant="contained"
-                  onClick={() => { if (internalSrc && onSave) onSave(internalSrc); }}
-                  disabled={!internalSrc || processing}
+                  onClick={() => {
+                    if (!internalSrc || !onSave) return;
+                    if (prompt && prompt.trim().length > 0) {
+                      setConfirmDiscardOpen(true);
+                    } else {
+                      onSave(internalSrc);
+                    }
+                  }}
+                  disabled={!internalSrc || processing || (promptFocused && !!prompt)}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -408,6 +436,8 @@ export default function MagicEditor({
             placeholder={placeholderText}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            onFocus={() => setPromptFocused(true)}
+            onBlur={() => setPromptFocused(false)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -422,6 +452,17 @@ export default function MagicEditor({
               ),
               endAdornment: (
                 <InputAdornment position="end">
+                  {prompt?.length ? (
+                    <IconButton
+                      aria-label="clear prompt"
+                      size="small"
+                      onClick={() => setPrompt('')}
+                      edge="end"
+                      sx={{ mr: 0.5 }}
+                    >
+                      <Close fontSize="small" />
+                    </IconButton>
+                  ) : null}
                   <IconButton
                     aria-label="send prompt"
                     size="small"
@@ -534,6 +575,30 @@ export default function MagicEditor({
             }}
           >
             Restore
+          </Button>
+        </DialogActions>
+  </Dialog>
+      {/* Confirm discard of unapplied prompt when saving */}
+      <Dialog open={confirmDiscardOpen} onClose={() => setConfirmDiscardOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Discard Unapplied Edit?</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2">
+            Do you want to discard your unapplied edit "
+            <Box component="span" sx={{ fontWeight: 700 }}>{prompt}</Box>
+            "?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDiscardOpen(false)}>Keep Editing</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              if (internalSrc && onSave) onSave(internalSrc);
+              setConfirmDiscardOpen(false);
+            }}
+          >
+            Discard and Save
           </Button>
         </DialogActions>
       </Dialog>

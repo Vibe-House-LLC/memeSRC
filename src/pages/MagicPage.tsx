@@ -14,6 +14,8 @@ export default function MagicPage() {
   const [finalSrc, setFinalSrc] = useState<string | null>(null);
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [promptState, setPromptState] = useState<{ value: string; focused: boolean }>({ value: '', focused: false });
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
 
   const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
@@ -62,37 +64,46 @@ export default function MagicPage() {
   };
 
   return (
+    <>
     <Container maxWidth="lg" sx={{ px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 4 } }}>
       {/* Top action bar during editing */}
       {stage === 'edit' && (
         <>
-          {/* Fixed top controls: Cancel / Save 50/50 */}
+          {/* Desktop floating bottom-center frosted controls */}
           <Box
             sx={(theme) => ({
               display: { xs: 'none', md: 'block' },
               position: 'fixed',
-              // Position just below the app header so we don't overlap it
-              top: theme.spacing(6), // ~48px on small screens
-              [theme.breakpoints.up('lg')]: { top: theme.spacing(8) }, // ~64px on large screens
-              left: 0,
-              right: 0,
-              zIndex: theme.zIndex.appBar, // above content, below/alongside header
-              pt: 'env(safe-area-inset-top)',
-              pb: 1,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              bottom: `calc(${theme.spacing(2)} + env(safe-area-inset-bottom))`,
+              zIndex: theme.zIndex.appBar + 1,
             })}
           >
-            <Container maxWidth="lg" sx={{ px: { xs: 1.5, md: 3 } }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+            <Box sx={{
+              px: 1,
+              py: 1,
+              borderRadius: 2,
+              backgroundColor: 'rgba(17,17,19,0.55)',
+              backdropFilter: 'saturate(160%) blur(10px)',
+              WebkitBackdropFilter: 'saturate(160%) blur(10px)',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
+              border: '1px solid rgba(255,255,255,0.08)'
+            }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, minWidth: 320, maxWidth: 560 }}>
                 <Button
                   size="large"
                   fullWidth
                   variant="outlined"
                   onClick={() => setStage('pick')}
-                  disabled={processing}
+                  disabled={processing || (promptState.focused && !!promptState.value)}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
                     textTransform: 'none',
+                    color: 'rgba(255,255,255,0.92)',
+                    borderColor: 'rgba(255,255,255,0.35)',
+                    '&:hover': { borderColor: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.06)' }
                   }}
                 >
                   Cancel
@@ -101,8 +112,16 @@ export default function MagicPage() {
                   size="large"
                   fullWidth
                   variant="contained"
-                  onClick={() => { if (currentSrc) { setFinalSrc(currentSrc); setStage('done'); } }}
-                  disabled={!currentSrc || processing}
+                  onClick={() => {
+                    if (!currentSrc) return;
+                    if (promptState.value && promptState.value.trim().length > 0) {
+                      setConfirmDiscardOpen(true);
+                    } else {
+                      setFinalSrc(currentSrc);
+                      setStage('done');
+                    }
+                  }}
+                  disabled={!currentSrc || processing || (promptState.focused && !!promptState.value)}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -117,10 +136,8 @@ export default function MagicPage() {
                   Save
                 </Button>
               </Box>
-            </Container>
+            </Box>
           </Box>
-          {/* Spacer so content is not hidden under fixed controls */}
-          <Box sx={{ display: { xs: 'none', md: 'block' }, height: { md: 72 }, mb: 1 }} />
         </>
       )}
       <Box sx={{ mb: 2 }}>
@@ -152,6 +169,7 @@ export default function MagicPage() {
           imageSrc={chosen}
           onImageChange={setCurrentSrc}
           onProcessingChange={setProcessing}
+          onPromptStateChange={setPromptState}
           onSave={(src) => {
             setFinalSrc(src);
             setStage('done');
@@ -176,5 +194,33 @@ export default function MagicPage() {
         </Box>
       )}
     </Container>
+    {/* Confirm discard of unapplied prompt when saving from desktop controls */}
+    <Dialog open={confirmDiscardOpen} onClose={() => setConfirmDiscardOpen(false)} fullWidth maxWidth="xs">
+      <DialogTitle>Discard Unapplied Edit?</DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="body2">
+          Do you want to discard your unapplied edit "
+          <Box component="span" sx={{ fontWeight: 700 }}>{promptState.value}</Box>
+          "?
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setConfirmDiscardOpen(false)}>Keep Editing</Button>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={() => {
+            if (currentSrc) {
+              setFinalSrc(currentSrc);
+              setStage('done');
+            }
+            setConfirmDiscardOpen(false);
+          }}
+        >
+          Discard and Save
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 }
