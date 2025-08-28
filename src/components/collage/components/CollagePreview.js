@@ -228,9 +228,96 @@ const CollagePreview = ({
       if (imageIndex == null) return;
       const imageObj = selectedImages?.[imageIndex];
       if (!imageObj) return;
-      // Open choice dialog to select input source
-      setPendingMagicContext({ index, panelId, meta: meta || null });
-      setChooseEditInputOpen(true);
+
+      // If we don't have meta or transforms, default to original without asking
+      const panelRect = meta?.panelRect;
+      const transform = panelTransforms?.[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+      if (!panelRect || !panelRect.width || !panelRect.height) {
+        await openMagicWithOriginal();
+        return;
+      }
+
+      // Load the image to compute ratios and crop percent
+      const ensureImageElement = async () => {
+        try {
+          const libKey = imageObj?.metadata?.libraryKey;
+          let blob = null;
+          if (libKey) {
+            try { blob = await getFromLibrary(libKey, { level: 'protected' }); } catch (_) {}
+          }
+          const src = blob ? URL.createObjectURL(blob) : (imageObj.originalUrl || imageObj.displayUrl);
+          return await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} }
+              resolve(img);
+            };
+            img.onerror = (err) => {
+              if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} }
+              reject(err);
+            };
+            img.src = src;
+          });
+        } catch (e) {
+          return null;
+        }
+      };
+
+      const imgEl = await ensureImageElement();
+      if (!imgEl) {
+        await openMagicWithOriginal();
+        return;
+      }
+
+      const width = Math.max(1, Math.round(panelRect.width || 1));
+      const height = Math.max(1, Math.round(panelRect.height || 1));
+      const imageAspectRatio = imgEl.naturalWidth / imgEl.naturalHeight;
+      const panelAspectRatio = width / height;
+      // cover-fit initial scale
+      let initialScale;
+      if (imageAspectRatio > panelAspectRatio) {
+        initialScale = height / imgEl.naturalHeight;
+      } else {
+        initialScale = width / imgEl.naturalWidth;
+      }
+      const finalScale = initialScale * (transform.scale || 1);
+      const scaledWidth = imgEl.naturalWidth * finalScale;
+      const scaledHeight = imgEl.naturalHeight * finalScale;
+      const centerOffsetX = (width - scaledWidth) / 2;
+      const centerOffsetY = (height - scaledHeight) / 2;
+      const finalOffsetX = centerOffsetX + (transform.positionX || 0);
+      const finalOffsetY = centerOffsetY + (transform.positionY || 0);
+      const sX0 = (0 - finalOffsetX) / finalScale;
+      const sY0 = (0 - finalOffsetY) / finalScale;
+      const sX1 = (width - finalOffsetX) / finalScale;
+      const sY1 = (height - finalOffsetY) / finalScale;
+      const srcX = Math.max(0, Math.min(imgEl.naturalWidth, Math.round(sX0)));
+      const srcY = Math.max(0, Math.min(imgEl.naturalHeight, Math.round(sY0)));
+      const srcW = Math.max(1, Math.min(imgEl.naturalWidth - srcX, Math.round(sX1 - sX0)));
+      const srcH = Math.max(1, Math.min(imgEl.naturalHeight - srcY, Math.round(sY1 - sY0)));
+
+      // Heuristics
+      const originalAR = imageAspectRatio;
+      const croppedAR = srcW / srcH;
+      const arDiff = Math.abs(originalAR - croppedAR) / Math.max(originalAR, croppedAR);
+      const AR_DIFF_THRESHOLD = 0.20; // 20% relative difference considered significant
+      const CROP_AREA_THRESHOLD = 0.30; // 30% or more cropped -> ask
+      const originalArea = imgEl.naturalWidth * imgEl.naturalHeight;
+      const croppedArea = srcW * srcH;
+      const cropFraction = Math.max(0, Math.min(1, 1 - (croppedArea / originalArea)));
+
+      const significantArDiff = arDiff > AR_DIFF_THRESHOLD;
+      const croppedALot = cropFraction >= CROP_AREA_THRESHOLD;
+
+      if (significantArDiff || croppedALot) {
+        // Ask the user which one; also set context for previews
+        setPendingMagicContext({ index, panelId, meta: meta || null });
+        setChooseEditInputOpen(true);
+      } else {
+        // Close enough / minimal crop: go with original automatically
+        await openMagicWithOriginal();
+      }
     } catch (e) {
       console.error('Failed to open magic editor', e);
     }
@@ -395,14 +482,15 @@ const CollagePreview = ({
           if (!url) return;
           imgEl = await loadImageElement(url);
         }
-        // Create original preview
-        const maxPreview = 320;
+        // Create original preview (slightly larger to improve quality)
+        const maxPreview = 512;
         const scaleO = Math.min(1, maxPreview / Math.max(imgEl.naturalWidth, imgEl.naturalHeight));
         const oW = Math.max(1, Math.round(imgEl.naturalWidth * scaleO));
         const oH = Math.max(1, Math.round(imgEl.naturalHeight * scaleO));
         const oCanvas = document.createElement('canvas');
         oCanvas.width = oW; oCanvas.height = oH;
         const oCtx = oCanvas.getContext('2d');
+        oCtx.imageSmoothingEnabled = true;
         oCtx.imageSmoothingQuality = 'high';
         oCtx.drawImage(imgEl, 0, 0, oW, oH);
         const originalPreviewUrl = await dataUrlFromCanvas(oCanvas);
@@ -443,6 +531,7 @@ const CollagePreview = ({
           const fCanvas = document.createElement('canvas');
           fCanvas.width = fW; fCanvas.height = fH;
           const fCtx = fCanvas.getContext('2d');
+          fCtx.imageSmoothingEnabled = true;
           fCtx.imageSmoothingQuality = 'high';
           fCtx.drawImage(imgEl, srcX, srcY, srcW, srcH, 0, 0, fW, fH);
           const framePreviewUrl = await dataUrlFromCanvas(fCanvas);
@@ -878,14 +967,16 @@ const CollagePreview = ({
         {isMobile ? (
           <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: '#0f0f0f' }}>
             <Toolbar sx={{ minHeight: 56 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, flex: 1 }}>Which one?</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 900, flex: 1, letterSpacing: 0.2 }}>Which one?</Typography>
               <IconButton edge="end" onClick={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }} aria-label="Close" sx={{ color: '#eaeaea' }}>
                 <CloseIcon />
               </IconButton>
             </Toolbar>
           </AppBar>
         ) : (
-          <DialogTitle sx={{ fontWeight: 800 }}>Which one?</DialogTitle>
+          <DialogTitle sx={{ fontWeight: 900, '& .MuiTypography-root': { fontWeight: 900 } }}>
+            <Typography variant="h4" component="div">Which one?</Typography>
+          </DialogTitle>
         )}
 
         <DialogContent
@@ -899,6 +990,12 @@ const CollagePreview = ({
             flex: 1,
           }}
         >
+          {/* Simple explainer */}
+          <Box sx={{ mb: { xs: 1, md: 1.5 } }}>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
+              Which version do you want to edit?
+            </Typography>
+          </Box>
           {/* Options container: mobile = vertical split, desktop = two columns */}
           <Box
             sx={{
@@ -913,7 +1010,7 @@ const CollagePreview = ({
             {/* Original */}
             <Box
               role="button"
-              aria-label="Original"
+              aria-label="Uncropped"
               tabIndex={0}
               onClick={async () => { setChooseEditInputOpen(false); await openMagicWithOriginal(); setPendingMagicContext(null); }}
               onKeyDown={async (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChooseEditInputOpen(false); await openMagicWithOriginal(); setPendingMagicContext(null); } }}
@@ -942,7 +1039,7 @@ const CollagePreview = ({
                   )
                 )}
                 <Box sx={{ position: 'absolute', bottom: 12, left: 12, bgcolor: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.24)', color: '#fff', px: 1, py: 0.25, borderRadius: 2, fontWeight: 800, fontSize: 12, letterSpacing: 0.2 }}>
-                  Original
+                  Uncropped
                 </Box>
               </Box>
             </Box>
@@ -985,6 +1082,27 @@ const CollagePreview = ({
             </Box>
           </Box>
         </DialogContent>
+        <DialogActions sx={{ p: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
+          <Button
+            onClick={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }}
+            variant="contained"
+            disableElevation
+            fullWidth={isMobile}
+            sx={{
+              bgcolor: '#252525',
+              color: '#f0f0f0',
+              border: '1px solid #3a3a3a',
+              borderRadius: '8px',
+              px: isMobile ? 2 : 2.5,
+              py: isMobile ? 1.25 : 0.75,
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' }
+            }}
+          >
+            Cancel
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Magic Editor Dialog */}
