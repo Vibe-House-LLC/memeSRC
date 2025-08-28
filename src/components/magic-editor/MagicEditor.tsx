@@ -64,6 +64,7 @@ export default function MagicEditor({
   const [error, setError] = useState<string | null>(null);
   const [promptFocused, setPromptFocused] = useState(false);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+  const [hasCompletedEdit, setHasCompletedEdit] = useState(false);
   const mobileInputRef = useRef<HTMLInputElement | null>(null);
   const desktopInputRef = useRef<HTMLInputElement | null>(null);
   type HistoryEntry = {
@@ -152,6 +153,7 @@ export default function MagicEditor({
     // reset history when a new image arrives
     setHistory([]);
     initialRecordedRef.current = false;
+    setHasCompletedEdit(false);
   }, [imageSrc]);
 
   // (moved below commitImage definition to avoid TS2448)
@@ -255,6 +257,7 @@ export default function MagicEditor({
       // finalize pending entry
       updateHistoryEntry(pendingId, { src: out, pending: false, progress: 100 });
       setImage(out);
+      setHasCompletedEdit(true);
       if (onResult) onResult(out);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Magic edit failed.';
@@ -469,7 +472,7 @@ export default function MagicEditor({
                       onSave(internalSrc);
                     }
                   }}
-                  disabled={!internalSrc || processing}
+                  disabled={!internalSrc || processing || !hasCompletedEdit}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
