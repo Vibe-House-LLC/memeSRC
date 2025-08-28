@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UserContext } from "../UserContext";
@@ -141,6 +141,8 @@ export default function CollagePage() {
   
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
+  // Queue for applying magic edits after state rehydrates (e.g., project load)
+  const pendingMagicRef = useRef({ result: null, ctx: null });
   
   // Unified bottom bar control (no animation)
   const [currentView, setCurrentView] = useState('editor'); // 'library' | 'editor'
@@ -377,6 +379,19 @@ export default function CollagePage() {
 
   // Handle images passed from collage
   useEffect(() => {
+    // Handle a magic editor return (navigation-based)
+    if (location.state?.magicResult) {
+      const result = location.state.magicResult;
+      const ctx = location.state.magicContext;
+      try {
+        // Stash the result and context; actual replace may need to wait
+        pendingMagicRef.current = { result, ctx };
+      } catch (_) { /* ignore */ }
+      // Immediately clear navigation state to avoid duplicate application on back/refresh
+      navigate(location.pathname, { replace: true, state: {} });
+      return; // don't also try to process collage import below
+    }
+
     if (location.state?.fromCollage && location.state?.images) {
       const loadImages = async () => {
         debugLog('Loading images from collage:', location.state.images);
@@ -436,6 +451,29 @@ export default function CollagePage() {
       loadImages();
     }
   }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
+
+  // Apply any pending magic edit once images/mapping are available
+  useEffect(() => {
+    const pending = pendingMagicRef.current;
+    if (!pending || !pending.result) return;
+
+    const ctx = pending.ctx || {};
+    // Resolve target index, preferring the originally edited index
+    const byIndex = (typeof ctx.imageIndex === 'number') ? ctx.imageIndex : null;
+    const byPanel = (ctx.panelId && typeof panelImageMapping?.[ctx.panelId] === 'number')
+      ? panelImageMapping[ctx.panelId]
+      : null;
+    const targetIdx = (typeof byIndex === 'number') ? byIndex : byPanel;
+
+    if (typeof targetIdx === 'number' && targetIdx >= 0 && targetIdx < selectedImages.length) {
+      try {
+        replaceImage(targetIdx, pending.result);
+      } finally {
+        // Clear the pending record once applied
+        pendingMagicRef.current = { result: null, ctx: null };
+      }
+    }
+  }, [selectedImages.length, panelImageMapping, replaceImage]);
 
   // Project list sync removed; list now lives solely on /projects page
 
@@ -643,7 +681,6 @@ export default function CollagePage() {
   // Handle navigation-driven project editing (/projects/:projectId) — placed after loadProjectById is defined
   // Use a ref-backed loader to avoid re-running due to changing callback identity
   useEffect(() => {
-    let cancelled = false;
     if (hasLibraryAccess && projectId) {
       (async () => {
         try {
@@ -653,7 +690,7 @@ export default function CollagePage() {
         }
       })();
     }
-    return () => { cancelled = true; };
+    return () => {};
   }, [hasLibraryAccess, projectId]);
 
   // 4) Create a project only after images are present AND preview has rendered

@@ -19,6 +19,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LibraryBrowser } from '../../library';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { UserContext } from '../../../UserContext';
@@ -87,6 +88,11 @@ const CollagePreview = ({
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isReplaceMode, setIsReplaceMode] = useState(false);
   const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
+  // Legacy Magic Editor dialog flow removed; navigation to MagicPage is primary
+  
+  // Dialog-based magic editor removed in favor of page navigation
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Helper: revoke blob: URLs to avoid memory leaks
   const revokeIfBlobUrl = (url) => {
@@ -192,6 +198,131 @@ const CollagePreview = ({
     // Close the menu
     handleMenuClose();
   };
+
+  // Helper: convert Blob to data URL
+  const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  // Request to edit image for a specific panel
+  const handleEditImageRequest = async (index, panelId, meta) => {
+    try {
+      setActivePanelIndex(index);
+      setActivePanelId(panelId);
+      const imageIndex = panelImageMapping?.[panelId];
+      if (imageIndex == null) return;
+      const imageObj = selectedImages?.[imageIndex];
+      if (!imageObj) return;
+
+      const panelRect = meta?.panelRect;
+      const transform = panelTransforms?.[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+
+      const libKey = imageObj?.metadata?.libraryKey;
+      const getOriginalSrc = async () => {
+        let src = imageObj.originalUrl || imageObj.displayUrl;
+        if (libKey) {
+          try { const blob = await getFromLibrary(libKey, { level: 'protected' }); src = await blobToDataUrl(blob); } catch (_) {}
+        }
+        return src;
+      };
+
+      if (!panelRect || !panelRect.width || !panelRect.height) {
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
+        return;
+      }
+
+      // Load for crop heuristic
+      const ensureImageElement = async () => {
+        try {
+          let blob = null;
+          if (libKey) { try { blob = await getFromLibrary(libKey, { level: 'protected' }); } catch (_) {} }
+          const src = blob ? URL.createObjectURL(blob) : (imageObj.originalUrl || imageObj.displayUrl);
+          return await new Promise((resolve, reject) => {
+            const img = new Image(); img.crossOrigin = 'anonymous';
+            img.onload = () => { if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} } resolve(img); };
+            img.onerror = (err) => { if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} } reject(err); };
+            img.src = src;
+          });
+        } catch (_) { return null; }
+      };
+
+      const imgEl = await ensureImageElement();
+      if (!imgEl) {
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
+        return;
+      }
+
+      const width = Math.max(1, Math.round(panelRect.width || 1));
+      const height = Math.max(1, Math.round(panelRect.height || 1));
+      const imageAspectRatio = imgEl.naturalWidth / imgEl.naturalHeight;
+      const panelAspectRatio = width / height;
+      let initialScale;
+      if (imageAspectRatio > panelAspectRatio) initialScale = height / imgEl.naturalHeight; else initialScale = width / imgEl.naturalWidth;
+      const finalScale = initialScale * (transform.scale || 1);
+      const scaledWidth = imgEl.naturalWidth * finalScale;
+      const scaledHeight = imgEl.naturalHeight * finalScale;
+      const centerOffsetX = (width - scaledWidth) / 2;
+      const centerOffsetY = (height - scaledHeight) / 2;
+      const finalOffsetX = centerOffsetX + (transform.positionX || 0);
+      const finalOffsetY = centerOffsetY + (transform.positionY || 0);
+      const sX0 = (0 - finalOffsetX) / finalScale;
+      const sY0 = (0 - finalOffsetY) / finalScale;
+      const sX1 = (width - finalOffsetX) / finalScale;
+      const sY1 = (height - finalOffsetY) / finalScale;
+      const srcX = Math.max(0, Math.min(imgEl.naturalWidth, Math.round(sX0)));
+      const srcY = Math.max(0, Math.min(imgEl.naturalHeight, Math.round(sY0)));
+      const srcW = Math.max(1, Math.min(imgEl.naturalWidth - srcX, Math.round(sX1 - sX0)));
+      const srcH = Math.max(1, Math.min(imgEl.naturalHeight - srcY, Math.round(sY1 - sY0)));
+
+      // Determine how much of the original is being used in the frame.
+      // Only show the choose step for extremely heavy crops (>= 90%).
+      const CROP_AREA_THRESHOLD = 0.90;
+      const originalArea = imgEl.naturalWidth * imgEl.naturalHeight;
+      const croppedArea = srcW * srcH;
+      const cropFraction = Math.max(0, Math.min(1, 1 - (croppedArea / originalArea)));
+      const croppedALot = cropFraction >= CROP_AREA_THRESHOLD;
+
+      if (!croppedALot) {
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
+      } else {
+        const maxDim = 1024;
+        const scaleDown = Math.min(1, maxDim / Math.max(srcW, srcH));
+        const outW = Math.max(1, Math.round(srcW * scaleDown));
+        const outH = Math.max(1, Math.round(srcH * scaleDown));
+        const canvas = document.createElement('canvas');
+        canvas.width = outW; canvas.height = outH;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(imgEl, srcX, srcY, srcW, srcH, 0, 0, outW, outH);
+        }
+        const frameUrl = await dataUrlFromCanvas(canvas);
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { chooseFrom: { originalSrc: initSrc, frameSrc: frameUrl }, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
+      }
+    } catch (e) {
+      console.error('Failed to open magic editor', e);
+    }
+  };
+
+  // Helpers for fetching image blob and cropping
+  // (dialog-based magic editor helpers removed; navigation-only flow)
+
+  const dataUrlFromCanvas = (canvas) => new Promise((resolve) => {
+    try {
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
+    } catch (_) {
+      resolve(canvas.toDataURL());
+    }
+  });
+
+  // (Dialog-based magic editor removed; navigation-only flow)
 
   // Handle file selection for a panel
   const handleFileChange = async (event) => {
@@ -451,6 +582,8 @@ const CollagePreview = ({
         panelCount={panelCount}
         images={selectedImages}
         onPanelClick={handlePanelClick}
+        onEditImage={isAdmin ? handleEditImageRequest : undefined}
+        canEditImage={isAdmin}
         onMenuOpen={handleMenuOpen}
         onSaveGestureDetected={onGenerateNudgeRequested}
         isFrameActionSuppressed={isFrameActionSuppressed}
@@ -576,6 +709,8 @@ const CollagePreview = ({
       >
         <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
       </Menu>
+
+      
     </Box>
   );
 };
