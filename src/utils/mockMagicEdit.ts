@@ -22,7 +22,7 @@ export async function mockMagicEdit(
   onProgress?: (progress: number) => void,
   options?: MockMagicEditOptions
 ): Promise<string> {
-  const durationMs = options?.durationMs ?? 10000; // default 10s
+  const durationMs = options?.durationMs ?? 3000; // default 3s
   const start = Date.now();
 
   // Simulate progress during the wait
