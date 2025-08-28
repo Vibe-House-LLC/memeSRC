@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
+import { AutoFixHighRounded } from '@mui/icons-material';
 import MagicEditor from '../components/magic-editor/MagicEditor';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - JS module without types
@@ -72,9 +73,22 @@ export default function MagicPage() {
         <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
           Magic Editor (Demo)
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Select a photo from your library, edit it, then save your final result.
-        </Typography>
+        {/* Mobile: always show subheading */}
+        <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, mt: 0.5 }}>
+          <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+            Ask for edits in plain English
+          </Typography>
+        </Box>
+        {/* Desktop: show subheading only when not editing (wide bar covers this during edit) */}
+        {stage !== 'edit' && (
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1, mt: 0.5 }}>
+            <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+              Ask for edits in plain English
+            </Typography>
+          </Box>
+        )}
       </Box>
 
       {/* Desktop action bar during editing: full-width under header/description */}
@@ -83,67 +97,82 @@ export default function MagicPage() {
           <Box
             sx={{
               width: '100%',
-              px: 1,
+              px: 2,
               py: 1,
               borderRadius: 2,
-              backgroundColor: 'rgba(17,17,19,0.55)',
-              backdropFilter: 'saturate(160%) blur(10px)',
-              WebkitBackdropFilter: 'saturate(160%) blur(10px)',
-              boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+              backgroundColor: '#000',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
               border: '1px solid rgba(255,255,255,0.08)'
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-              <Button
-                size="large"
-                variant="outlined"
-                onClick={() => {
-                  const hasUnappliedPrompt = Boolean(promptState.value && promptState.value.trim().length > 0);
-                  const hasUnsavedEdits = Boolean(chosen && currentSrc && chosen !== currentSrc);
-                  if (hasUnappliedPrompt || hasUnsavedEdits) {
-                    setConfirmCancelOpen(true);
-                  } else {
-                    setStage('pick');
-                  }
-                }}
-                disabled={processing}
-                sx={{
-                  minHeight: 44,
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  color: 'rgba(255,255,255,0.92)',
-                  borderColor: 'rgba(255,255,255,0.35)',
-                  '&:hover': { borderColor: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.06)' }
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="large"
-                variant="contained"
-                onClick={() => {
-                  if (!currentSrc) return;
-                  if (promptState.value && promptState.value.trim().length > 0) {
-                    setConfirmDiscardOpen(true);
-                  } else {
-                    setFinalSrc(currentSrc);
-                    setStage('done');
-                  }
-                }}
-                disabled={!currentSrc || processing}
-                sx={{
-                  minHeight: 44,
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                  border: '1px solid #8b5cc7',
-                  color: '#fff',
-                  boxShadow: 'none',
-                  '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
-                }}
-              >
-                Save
-              </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: 1.25 }}>
+                <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    color: 'common.white',
+                    fontWeight: 800,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Ask for edits in plain English
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Button
+                  size="large"
+                  variant="outlined"
+                  onClick={() => {
+                    const hasUnappliedPrompt = Boolean(promptState.value && promptState.value.trim().length > 0);
+                    const hasUnsavedEdits = Boolean(chosen && currentSrc && chosen !== currentSrc);
+                    if (hasUnappliedPrompt || hasUnsavedEdits) {
+                      setConfirmCancelOpen(true);
+                    } else {
+                      setStage('pick');
+                    }
+                  }}
+                  disabled={processing}
+                  sx={{
+                    minHeight: 44,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    color: 'rgba(255,255,255,0.92)',
+                    borderColor: 'rgba(255,255,255,0.35)',
+                    '&:hover': { borderColor: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.08)' }
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="large"
+                  variant="contained"
+                  onClick={() => {
+                    if (!currentSrc) return;
+                    if (promptState.value && promptState.value.trim().length > 0) {
+                      setConfirmDiscardOpen(true);
+                    } else {
+                      setFinalSrc(currentSrc);
+                      setStage('done');
+                    }
+                  }}
+                  disabled={!currentSrc || processing}
+                  sx={{
+                    minHeight: 44,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
+                    border: '1px solid #8b5cc7',
+                    color: '#fff',
+                    boxShadow: 'none',
+                    '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
+                  }}
+                >
+                  Save
+                </Button>
+              </Box>
             </Box>
           </Box>
         </Box>
