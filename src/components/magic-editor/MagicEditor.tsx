@@ -297,7 +297,7 @@ export default function MagicEditor({
                     width: '100%',
                     // Let width drive intrinsic height; cap image height on mobile
                     height: { xs: 'auto', md: 'auto' },
-                    maxHeight: { xs: '60vh', md: '75vh' },
+                    maxHeight: { xs: '55vh', md: '70vh' },
                     objectFit: 'contain',
                   }}
                 />
