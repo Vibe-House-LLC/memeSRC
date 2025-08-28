@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
-import { AutoFixHighRounded } from '@mui/icons-material';
+import { AutoFixHighRounded, CloseRounded } from '@mui/icons-material';
 import MagicEditor from '../components/magic-editor/MagicEditor';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - JS module without types
@@ -28,6 +28,7 @@ export default function MagicPage() {
   const [promptState, setPromptState] = useState<{ value: string; focused: boolean }>({ value: '', focused: false });
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [versionChoice, setVersionChoice] = useState<'frame' | 'original' | null>(null);
   const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
 
   const chooseFrom = useMemo(() => location?.state?.chooseFrom as undefined | { originalSrc?: string; frameSrc?: string }, [location?.state]);
@@ -39,11 +40,30 @@ export default function MagicPage() {
     reader.readAsDataURL(blob);
   });
 
-  // If navigated here with an initial image (from collage), start in edit stage
+  // If navigated here with an initial image (from collage), start in choose/edit stage
   useEffect(() => {
     const initSrc: string | undefined = location?.state?.initialSrc;
     if (chooseFrom && (chooseFrom.originalSrc || chooseFrom.frameSrc)) {
-      setStage('choose');
+      // If both exist, go to a dedicated choose step (default highlight cropped)
+      if (chooseFrom.originalSrc && chooseFrom.frameSrc) {
+        const prefer: 'frame' | 'original' = chooseFrom.frameSrc ? 'frame' : 'original';
+        setVersionChoice(prefer);
+        const initial = prefer === 'frame' ? chooseFrom.frameSrc : chooseFrom.originalSrc;
+        if (initial) {
+          setChosen(initial);
+          setCurrentSrc(initial);
+        }
+        setStage('choose');
+      } else {
+        // Only one available; jump straight to edit
+        const preferred = chooseFrom.frameSrc || chooseFrom.originalSrc;
+        if (preferred) {
+          setChosen(preferred);
+          setCurrentSrc(preferred);
+          setVersionChoice(chooseFrom.frameSrc ? 'frame' : 'original');
+          setStage('edit');
+        }
+      }
     } else if (initSrc) {
       setChosen(initSrc);
       setCurrentSrc(initSrc);
@@ -251,42 +271,191 @@ export default function MagicPage() {
 
       {stage === 'choose' && (
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 800, mb: 1.5 }}>
-            Which version do you want to edit?
-          </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-            <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Uncropped</Typography>
-              {chooseFrom?.originalSrc ? (
-                // eslint-disable-next-line jsx-a11y/alt-text
-                <img src={chooseFrom.originalSrc} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
-              ) : (
-                <Box sx={{ width: '100%', aspectRatio: '1 / 1', borderRadius: 1, bgcolor: 'action.hover' }} />
-              )}
-              <Box sx={{ mt: 1.25, textAlign: 'right' }}>
-                <Button variant="contained" onClick={() => { if (!chooseFrom?.originalSrc) return; setChosen(chooseFrom.originalSrc); setCurrentSrc(chooseFrom.originalSrc); setStage('edit'); }}>
-                  Edit Uncropped
-                </Button>
+      <Typography variant="h5" sx={{ fontWeight: 800, mb: 1.25 }}>
+        Which version do you want to edit?
+      </Typography>
+          {/* Top 50/50 Cancel / Edit actions */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1.25 }}>
+            <Button
+              variant="outlined"
+              startIcon={<CloseRounded />}
+              onClick={() => navigate(-1)}
+              sx={{ fontWeight: 700, textTransform: 'none' }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AutoFixHighRounded />}
+              onClick={() => {
+                if (!versionChoice) return;
+                setStage('edit');
+              }}
+              disabled={!versionChoice}
+              sx={{
+                fontWeight: 800,
+                textTransform: 'none',
+                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
+                border: '1px solid #8b5cc7',
+                color: '#fff',
+                boxShadow: '0 0 16px rgba(139,92,199,0.45)',
+                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
+              }}
+            >
+              Edit
+            </Button>
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {/* Current Frame (cropped) */}
+            <Box
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                if (!chooseFrom?.frameSrc) return;
+                setVersionChoice('frame');
+                setChosen(chooseFrom.frameSrc);
+                setCurrentSrc(chooseFrom.frameSrc);
+                setPromptState({ value: '', focused: false });
+              }}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && chooseFrom?.frameSrc) {
+                  e.preventDefault();
+                  setVersionChoice('frame');
+                  setChosen(chooseFrom.frameSrc);
+                  setCurrentSrc(chooseFrom.frameSrc);
+                  setPromptState({ value: '', focused: false });
+                }
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                p: 1,
+                borderRadius: 1.5,
+                border: '1px solid',
+                borderColor: versionChoice === 'frame' ? 'primary.main' : 'divider',
+                backgroundColor: versionChoice === 'frame' ? 'action.selected' : 'background.paper',
+                cursor: chooseFrom?.frameSrc ? 'pointer' : 'not-allowed',
+                opacity: chooseFrom?.frameSrc ? 1 : 0.5,
+                minHeight: 72,
+              }}
+            >
+              <Box sx={{ width: 72, height: 72, borderRadius: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {chooseFrom?.frameSrc && (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <img src={chooseFrom.frameSrc} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                )}
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.1 }}>Current Frame</Typography>
+                <Typography variant="caption" sx={{ opacity: 0.8 }}>cropped</Typography>
               </Box>
             </Box>
-            <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Cropped</Typography>
-              {chooseFrom?.frameSrc ? (
-                // eslint-disable-next-line jsx-a11y/alt-text
-                <img src={chooseFrom.frameSrc} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
-              ) : (
-                <Box sx={{ width: '100%', aspectRatio: '1 / 1', borderRadius: 1, bgcolor: 'action.hover' }} />
-              )}
-              <Box sx={{ mt: 1.25, textAlign: 'right' }}>
-                <Button variant="contained" onClick={() => { if (!chooseFrom?.frameSrc) return; setChosen(chooseFrom.frameSrc); setCurrentSrc(chooseFrom.frameSrc); setStage('edit'); }}>
-                  Edit Cropped
-                </Button>
+
+            {/* Source Photo (uncropped) */}
+            <Box
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                if (!chooseFrom?.originalSrc) return;
+                setVersionChoice('original');
+                setChosen(chooseFrom.originalSrc);
+                setCurrentSrc(chooseFrom.originalSrc);
+                setPromptState({ value: '', focused: false });
+              }}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && chooseFrom?.originalSrc) {
+                  e.preventDefault();
+                  setVersionChoice('original');
+                  setChosen(chooseFrom.originalSrc);
+                  setCurrentSrc(chooseFrom.originalSrc);
+                  setPromptState({ value: '', focused: false });
+                }
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                p: 1,
+                borderRadius: 1.5,
+                border: '1px solid',
+                borderColor: versionChoice === 'original' ? 'primary.main' : 'divider',
+                backgroundColor: versionChoice === 'original' ? 'action.selected' : 'background.paper',
+                cursor: chooseFrom?.originalSrc ? 'pointer' : 'not-allowed',
+                opacity: chooseFrom?.originalSrc ? 1 : 0.5,
+                minHeight: 72,
+              }}
+            >
+              <Box sx={{ width: 72, height: 72, borderRadius: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {chooseFrom?.originalSrc && (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <img src={chooseFrom.originalSrc} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                )}
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.1 }}>Source Photo</Typography>
+                <Typography variant="caption" sx={{ opacity: 0.8 }}>uncropped</Typography>
               </Box>
             </Box>
           </Box>
-          <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-            <Button variant="outlined" onClick={() => navigate(-1)}>Cancel</Button>
-          </Box>
+          {/* Frosted glass preview with centered glowing Edit button */}
+          {versionChoice && (chosen || currentSrc) && (
+            <Box
+              sx={{
+                position: 'relative',
+                mt: 1.5,
+                borderRadius: 2,
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: 'divider',
+                boxShadow: '0 12px 28px rgba(0,0,0,0.25)'
+              }}
+            >
+              <Box sx={{ position: 'relative' }}>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <img
+                  src={versionChoice === 'frame' ? chooseFrom?.frameSrc : chooseFrom?.originalSrc}
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block',
+                    filter: 'blur(8px) saturate(1.05) brightness(0.98)',
+                    transform: 'scale(1.02)'
+                  }}
+                />
+                {/* subtle frosted overlay */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.15) 100%)',
+                    pointerEvents: 'none'
+                  }}
+                />
+              </Box>
+              <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+                <Button
+                  size="large"
+                  startIcon={<AutoFixHighRounded />}
+                  onClick={() => setStage('edit')}
+                  sx={{
+                    px: 3,
+                    py: 1.25,
+                    fontWeight: 900,
+                    textTransform: 'none',
+                    borderRadius: 999,
+                    background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
+                    border: '1px solid #8b5cc7',
+                    color: '#fff',
+                    boxShadow: '0 0 0 4px rgba(123,76,184,0.35), 0 0 32px rgba(139,92,199,0.75), 0 0 64px rgba(139,92,199,0.35)',
+                    '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
+                  }}
+                >
+                  Edit This
+                </Button>
+              </Box>
+            </Box>
+          )}
         </Box>
       )}
 
