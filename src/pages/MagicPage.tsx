@@ -65,43 +65,71 @@ export default function MagicPage() {
     <Container maxWidth="lg" sx={{ px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 4 } }}>
       {/* Top action bar during editing */}
       {stage === 'edit' && (
-        <Box sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: (theme) => theme.zIndex.appBar,
-          mb: 2,
-          px: { xs: 1, md: 0 },
-          py: 1,
-          borderRadius: 2,
-          backgroundColor: 'rgba(255,255,255,0.7)',
-          backdropFilter: 'saturate(180%) blur(10px)',
-          WebkitBackdropFilter: 'saturate(180%) blur(10px)',
-          boxShadow: '0 6px 20px rgba(0,0,0,0.08)'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Editing</Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                size="large"
-                variant="outlined"
-                color="inherit"
-                onClick={() => setStage('pick')}
-                disabled={processing}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="large"
-                variant="contained"
-                color="secondary"
-                onClick={() => { if (currentSrc) { setFinalSrc(currentSrc); setStage('done'); } }}
-                disabled={!currentSrc || processing}
-              >
-                Save
-              </Button>
-            </Box>
+        <>
+          {/* Fixed top controls: Cancel / Save 50/50 */}
+          <Box
+            sx={(theme) => ({
+              position: 'fixed',
+              // Position just below the app header so we don't overlap it
+              top: theme.spacing(6), // ~48px on small screens
+              [theme.breakpoints.up('lg')]: { top: theme.spacing(8) }, // ~64px on large screens
+              left: 0,
+              right: 0,
+              zIndex: theme.zIndex.appBar, // above content, below/alongside header
+              pt: 'env(safe-area-inset-top)',
+              pb: 1,
+            })}
+          >
+            <Container maxWidth="lg" sx={{ px: { xs: 1.5, md: 3 } }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                <Button
+                  size="large"
+                  fullWidth
+                  variant="contained"
+                  onClick={() => setStage('pick')}
+                  disabled={processing}
+                  sx={{
+                    minHeight: 44,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    color: 'rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(17,17,19,0.55)',
+                    backdropFilter: 'saturate(160%) blur(10px)',
+                    WebkitBackdropFilter: 'saturate(160%) blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+                    '&:hover': { backgroundColor: 'rgba(17,17,19,0.7)' },
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="large"
+                  fullWidth
+                  variant="contained"
+                  onClick={() => { if (currentSrc) { setFinalSrc(currentSrc); setStage('done'); } }}
+                  disabled={!currentSrc || processing}
+                  sx={{
+                    minHeight: 44,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
+                    border: '1px solid #8b5cc7',
+                    color: '#fff',
+                    backdropFilter: 'saturate(160%) blur(10px)',
+                    WebkitBackdropFilter: 'saturate(160%) blur(10px)',
+                    boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+                    '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
+                  }}
+                >
+                  Save
+                </Button>
+              </Box>
+            </Container>
           </Box>
-        </Box>
+          {/* Spacer so content is not hidden under fixed controls */}
+          <Box sx={{ height: { xs: 60, md: 72 }, mb: 1 }} />
+        </>
       )}
       <Box sx={{ mb: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>

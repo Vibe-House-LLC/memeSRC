@@ -240,63 +240,119 @@ export default function MagicEditor({
   return (
     <Box className={className} style={style} sx={{ width: '100%', maxWidth: { xs: '100%', md: 1400 }, mx: 'auto', px: { xs: 1, sm: 2 } }}>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 2, md: 3 }} alignItems={{ md: 'flex-start' }}>
-        {/* Left: Image area */}
-        <Box sx={{ position: 'relative', flex: 1, minWidth: 0, borderRadius: 2, overflow: 'hidden', bgcolor: '#0f0f10', minHeight: 220 }}>
-          {internalSrc ? (
-            // eslint-disable-next-line jsx-a11y/alt-text
-            <img
-              src={internalSrc}
-              alt="Selected"
-              style={{ display: 'block', width: '100%', height: 'auto', maxHeight: '75vh', objectFit: 'contain' }}
-            />
-          ) : (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>No image selected</Typography>
-            </Box>
-          )}
+        {/* Left: Image + Prompt (mobile combined), Image only on desktop */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box
+            sx={{
+              position: 'relative',
+              borderRadius: 2,
+              overflow: 'hidden',
+              bgcolor: '#0f0f10',
+              minHeight: 220,
+              display: { xs: 'flex', md: 'block' },
+              flexDirection: { xs: 'column', md: 'initial' },
+              height: { xs: '50vh', md: 'auto' },
+            }}
+          >
+            {/* Image area */}
+            <Box sx={{ position: 'relative', flex: { xs: 1, md: 'initial' }, minHeight: { xs: 0, md: 'initial' } }}>
+              {internalSrc ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <Box
+                  component="img"
+                  src={internalSrc}
+                  alt="Selected"
+                  sx={{
+                    display: 'block',
+                    width: '100%',
+                    height: { xs: '100%', md: 'auto' },
+                    maxHeight: { xs: '100%', md: '75vh' },
+                    objectFit: 'contain',
+                  }}
+                />
+              ) : (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>No image selected</Typography>
+                </Box>
+              )}
 
-          {processing && (
-            <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1 }}>
-              <CircularProgress size={32} thickness={5} />
-              <Box sx={{ width: '80%', maxWidth: 360 }}>
-                <LinearProgress variant="determinate" value={progress} />
-                <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'center', color: 'common.white' }}>{progress}%</Typography>
-              </Box>
+              {processing && (
+                <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1 }}>
+                  <CircularProgress size={32} thickness={5} />
+                  <Box sx={{ width: '80%', maxWidth: 360 }}>
+                    <LinearProgress variant="determinate" value={progress} />
+                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'center', color: 'common.white' }}>{progress}%</Typography>
+                  </Box>
+                </Box>
+              )}
             </Box>
-          )}
+
+            {/* Prompt inside the combined unit on mobile */}
+            <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1 }}>
+              <TextField
+                fullWidth
+                placeholder={placeholderText}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (canApply) void handleApply();
+                  }
+                }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={handleApply}
+                        disabled={!canApply}
+                        sx={{ ml: 1, whiteSpace: 'nowrap' }}
+                      >
+                        Edit
+                      </Button>
+                    </InputAdornment>
+                  ),
+                }}
+                inputProps={{ 'aria-label': 'Magic edit prompt' }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                    backgroundColor: 'rgba(255,255,255,0.6)',
+                    backdropFilter: 'saturate(180%) blur(12px)',
+                    WebkitBackdropFilter: 'saturate(180%) blur(12px)',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                    transition: 'box-shadow 150ms ease, background-color 150ms ease',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255,255,255,0.8)',
+                  },
+                  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255,255,255,0.9)',
+                  },
+                  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255,255,255,1)',
+                    borderWidth: 1.5,
+                  },
+                  '& .MuiOutlinedInput-input': {
+                    color: 'rgba(0,0,0,0.88)',
+                  },
+                  '& .MuiInputBase-input::placeholder': {
+                    color: 'rgba(0,0,0,0.55)',
+                    opacity: 1,
+                  },
+                }}
+              />
+            </Box>
+          </Box>
         </Box>
 
         {/* Right: Controls + History (stacked) */}
         <Box sx={{ width: { xs: '100%', md: 420 }, position: { md: 'sticky' }, top: { md: 16 }, alignSelf: { md: 'flex-start' } }}>
-          {/* Prompt */}
+          {/* Prompt (desktop/tablet only) */}
           <TextField
-            fullWidth
-            placeholder={placeholderText}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (canApply) void handleApply();
-              }
-            }}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={handleApply}
-                    disabled={!canApply}
-                    sx={{ ml: 1, whiteSpace: 'nowrap' }}
-                  >
-                    Edit
-                  </Button>
-                </InputAdornment>
-              ),
-            }}
-            inputProps={{ 'aria-label': 'Magic edit prompt' }}
-            sx={{
+            sx={{ display: { xs: 'none', md: 'block' },
               mb: 1.5,
               '& .MuiOutlinedInput-root': {
                 borderRadius: 3,
@@ -324,6 +380,32 @@ export default function MagicEditor({
                 opacity: 1,
               },
             }}
+            fullWidth
+            placeholder={placeholderText}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (canApply) void handleApply();
+              }
+            }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleApply}
+                    disabled={!canApply}
+                    sx={{ ml: 1, whiteSpace: 'nowrap' }}
+                  >
+                    Edit
+                  </Button>
+                </InputAdornment>
+              ),
+            }}
+            inputProps={{ 'aria-label': 'Magic edit prompt' }}
           />
 
           {/* Actions */}
@@ -336,7 +418,15 @@ export default function MagicEditor({
                 History
               </Typography>
               {historyOpen && (
-                <Stack spacing={1.25} sx={{ maxHeight: { xs: 320, md: '50vh' }, overflowY: 'auto', pr: 0.5 }}>
+                <Stack
+                  spacing={1.25}
+                  sx={{
+                    // Avoid internal scrolling on mobile; allow full-page scroll
+                    maxHeight: { xs: 'none', md: '50vh' },
+                    overflowY: { xs: 'visible', md: 'auto' },
+                    pr: 0.5,
+                  }}
+                >
                   {[...history].slice().reverse().map((h, idx, arr) => {
                     const isTop = idx === 0; // newest first
                     const isCurrent = isTop && internalSrc === h.src;
