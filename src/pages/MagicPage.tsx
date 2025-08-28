@@ -171,10 +171,11 @@ export default function MagicPage() {
               width: '100%',
               px: 2,
               py: 1,
-              borderRadius: 2,
-              backgroundColor: '#000',
-              boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
-              border: '1px solid rgba(255,255,255,0.08)'
+              // Remove black rounded box styling to make it visually seamless
+              borderRadius: 0,
+              backgroundColor: 'transparent',
+              boxShadow: 'none',
+              border: 'none',
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>

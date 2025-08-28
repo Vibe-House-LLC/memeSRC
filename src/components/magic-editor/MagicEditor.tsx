@@ -277,9 +277,9 @@ export default function MagicEditor({
       sx={{
         width: '100%',
         maxWidth: { xs: '100%', md: 1400 },
+        // Container is gutterless on mobile; keep natural centering
         mx: 'auto',
-        // Add horizontal padding on mobile to prevent edge clipping
-        px: { xs: 1.5, sm: 2 },
+        px: { xs: 0, sm: 2 },
         boxSizing: 'border-box',
         overflowX: 'hidden',
       }}
@@ -300,9 +300,10 @@ export default function MagicEditor({
           <Box
             sx={{
               position: 'relative',
-              borderRadius: 2,
-              overflow: 'hidden',
-              bgcolor: '#0f0f10',
+              // Remove visible box styling; keep as a simple container
+              borderRadius: 0,
+              overflow: 'visible',
+              bgcolor: 'transparent',
               minHeight: 220,
               display: { xs: 'flex', md: 'block' },
               flexDirection: { xs: 'column', md: 'initial' },
@@ -310,7 +311,7 @@ export default function MagicEditor({
               height: { xs: 'auto', md: 'auto' },
               // Remove negative margins that caused horizontal overflow on some mobiles
               mx: { xs: 0, md: 0 },
-              p: { xs: 1, md: 0 },
+              p: { xs: 0, md: 0 },
               boxSizing: 'border-box',
             }}
           >
