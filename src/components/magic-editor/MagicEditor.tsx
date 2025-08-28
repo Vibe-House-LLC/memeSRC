@@ -270,13 +270,21 @@ export default function MagicEditor({
               minHeight: 220,
               display: { xs: 'flex', md: 'block' },
               flexDirection: { xs: 'column', md: 'initial' },
-              height: { xs: '65vh', md: 'auto' },
+              // Natural height; image will cap itself so group can shrink/expand
+              height: { xs: 'auto', md: 'auto' },
               mx: { xs: -1.5, md: 0 },
               p: { xs: 1, md: 0 },
             }}
           >
             {/* Image area */}
-            <Box sx={{ position: 'relative', flex: { xs: 1, md: 'initial' }, minHeight: { xs: 0, md: 'initial' }, order: { xs: 2, md: 'initial' } }}>
+            <Box sx={{
+              position: 'relative',
+              // Natural height for image; do not force flex growth
+              flex: { xs: '0 0 auto', md: 'initial' },
+              minHeight: { xs: 'auto', md: 'initial' },
+              overflow: { xs: 'visible', md: 'visible' },
+              order: { xs: 2, md: 'initial' }
+            }}>
               {internalSrc ? (
                 // eslint-disable-next-line jsx-a11y/alt-text
                 <Box
@@ -286,8 +294,9 @@ export default function MagicEditor({
                   sx={{
                     display: 'block',
                     width: '100%',
-                    height: { xs: '100%', md: 'auto' },
-                    maxHeight: { xs: '100%', md: '75vh' },
+                    // Let width drive intrinsic height; cap image height on mobile
+                    height: { xs: 'auto', md: 'auto' },
+                    maxHeight: { xs: '60vh', md: '75vh' },
                     objectFit: 'contain',
                   }}
                 />
@@ -309,7 +318,7 @@ export default function MagicEditor({
             </Box>
 
             {/* Prompt inside the combined unit on mobile */}
-            <Box sx={{ display: { xs: 'block', md: 'none' }, p: 0, mt: 1, order: { xs: 3, md: 'initial' } }}>
+            <Box sx={{ display: { xs: 'block', md: 'none' }, p: 0, mt: 1, order: { xs: 3, md: 'initial' }, flexShrink: 0 }}>
               <TextField
                 fullWidth
                 placeholder={placeholderText}
@@ -377,7 +386,7 @@ export default function MagicEditor({
             </Box>
 
             {/* Save/Cancel inside the combined unit on mobile */}
-            <Box sx={{ display: { xs: 'block', md: 'none' }, px: 0, pb: 0, mb: 1, order: { xs: 1, md: 'initial' } }}>
+            <Box sx={{ display: { xs: 'block', md: 'none' }, px: 0, pb: 0, mb: 1, order: { xs: 1, md: 'initial' }, flexShrink: 0 }}>
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                 <Button
                   size="large"
