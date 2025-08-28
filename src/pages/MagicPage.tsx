@@ -277,14 +277,16 @@ export default function MagicPage() {
           {/* Top 50/50 Cancel / Edit actions */}
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1.25 }}>
             <Button
+              size="large"
               variant="outlined"
               startIcon={<CloseRounded />}
               onClick={() => navigate(-1)}
-              sx={{ fontWeight: 700, textTransform: 'none' }}
+              sx={{ fontWeight: 800, textTransform: 'none', minHeight: 48 }}
             >
               Cancel
             </Button>
             <Button
+              size="large"
               variant="contained"
               startIcon={<AutoFixHighRounded />}
               onClick={() => {
@@ -293,12 +295,13 @@ export default function MagicPage() {
               }}
               disabled={!versionChoice}
               sx={{
-                fontWeight: 800,
+                minHeight: 48,
+                fontWeight: 900,
                 textTransform: 'none',
                 background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
                 border: '1px solid #8b5cc7',
                 color: '#fff',
-                boxShadow: '0 0 16px rgba(139,92,199,0.45)',
+                boxShadow: '0 10px 28px rgba(139,92,199,0.35)',
                 '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
               }}
             >
@@ -408,7 +411,7 @@ export default function MagicPage() {
                 overflow: 'hidden',
                 border: '1px solid',
                 borderColor: 'divider',
-                boxShadow: '0 12px 28px rgba(0,0,0,0.25)'
+                boxShadow: '0 16px 36px rgba(0,0,0,0.35)'
               }}
             >
               <Box sx={{ position: 'relative' }}>
@@ -419,8 +422,8 @@ export default function MagicPage() {
                     width: '100%',
                     height: 'auto',
                     display: 'block',
-                    filter: 'blur(8px) saturate(1.05) brightness(0.98)',
-                    transform: 'scale(1.02)'
+                    filter: 'blur(12px) saturate(1.05) brightness(0.9)',
+                    transform: 'scale(1.03)'
                   }}
                 />
                 {/* subtle frosted overlay */}
@@ -428,7 +431,9 @@ export default function MagicPage() {
                   sx={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.15) 100%)',
+                    background: 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.6) 100%)',
+                    backdropFilter: 'blur(2px)',
+                    WebkitBackdropFilter: 'blur(2px)',
                     pointerEvents: 'none'
                   }}
                 />
@@ -439,16 +444,15 @@ export default function MagicPage() {
                   startIcon={<AutoFixHighRounded />}
                   onClick={() => setStage('edit')}
                   sx={{
-                    px: 3,
-                    py: 1.25,
+                    px: 3.25,
+                    py: 1.35,
                     fontWeight: 900,
                     textTransform: 'none',
                     borderRadius: 999,
-                    background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                    border: '1px solid #8b5cc7',
+                    background: 'linear-gradient(135deg, #5b2aa8 0%, #7b3fd0 50%, #9a5bef 100%)',
                     color: '#fff',
-                    boxShadow: '0 0 0 4px rgba(123,76,184,0.35), 0 0 32px rgba(139,92,199,0.75), 0 0 64px rgba(139,92,199,0.35)',
-                    '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
+                    boxShadow: '0 8px 28px rgba(122,63,208,0.45), 0 0 0 8px rgba(122,63,208,0.18)',
+                    '&:hover': { background: 'linear-gradient(135deg, #52259a 0%, #6e37bf 50%, #8d50e3 100%)', boxShadow: '0 10px 32px rgba(122,63,208,0.55), 0 0 0 8px rgba(122,63,208,0.22)' },
                   }}
                 >
                   Edit This
