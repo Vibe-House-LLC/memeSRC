@@ -28,6 +28,7 @@ export default function MagicPage() {
   const [finalSrc, setFinalSrc] = useState<string | null>(null);
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [promptState, setPromptState] = useState<{ value: string; focused: boolean }>({ value: '', focused: false });
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
@@ -232,7 +233,7 @@ export default function MagicPage() {
                       }
                     }
                   }}
-                  disabled={processing}
+                  disabled={processing || saving}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -252,15 +253,17 @@ export default function MagicPage() {
                     if (promptState.value && promptState.value.trim().length > 0) {
                       setConfirmDiscardOpen(true);
                     } else {
+                      setSaving(true);
                       if (location?.state?.returnTo) {
-                        handleReturnToCaller(currentSrc);
+                        handleReturnToCaller(currentSrc).finally(() => setSaving(false));
                       } else {
                         setFinalSrc(currentSrc);
                         setStage('done');
+                        setSaving(false);
                       }
                     }
                   }}
-                  disabled={!currentSrc || processing || !hasCompletedEdit}
+                  disabled={!currentSrc || processing || !hasCompletedEdit || saving}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -272,7 +275,7 @@ export default function MagicPage() {
                     '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
                   }}
                 >
-                  Save
+                  {saving ? 'Saving…' : 'Save'}
                 </Button>
               </Box>
             </Box>
@@ -495,14 +498,17 @@ export default function MagicPage() {
           onImageChange={setCurrentSrc}
           onProcessingChange={setProcessing}
           onPromptStateChange={setPromptState}
+          saving={saving}
           onResult={() => setHasCompletedEdit(true)}
           onSave={(src) => {
+            setSaving(true);
             setFinalSrc(src);
             // If we came from a caller, return result immediately
             if (location?.state?.returnTo) {
-              handleReturnToCaller(src);
+              handleReturnToCaller(src).finally(() => setSaving(false));
             } else {
               setStage('done');
+              setSaving(false);
             }
           }}
           onCancel={() => {
@@ -535,7 +541,7 @@ export default function MagicPage() {
       )}
     </Container>
     {/* Confirm discard of unapplied prompt when saving from desktop controls */}
-    <Dialog open={confirmDiscardOpen} onClose={() => setConfirmDiscardOpen(false)} fullWidth maxWidth="xs">
+    <Dialog open={confirmDiscardOpen} onClose={() => { if (!saving) setConfirmDiscardOpen(false); }} disableEscapeKeyDown={saving} fullWidth maxWidth="xs">
       <DialogTitle>Discard Unapplied Edit?</DialogTitle>
       <DialogContent dividers>
         <Typography variant="body2">
@@ -545,23 +551,26 @@ export default function MagicPage() {
         </Typography>
       </DialogContent>
       <DialogActions>
-        <Button onClick={() => setConfirmDiscardOpen(false)}>Keep Editing</Button>
+        <Button onClick={() => setConfirmDiscardOpen(false)} disabled={saving}>Keep Editing</Button>
         <Button
           variant="contained"
           color="error"
           onClick={() => {
             if (currentSrc) {
+              setSaving(true);
               if (location?.state?.returnTo) {
-                handleReturnToCaller(currentSrc);
+                handleReturnToCaller(currentSrc).finally(() => setSaving(false));
               } else {
                 setFinalSrc(currentSrc);
                 setStage('done');
+                setSaving(false);
               }
             }
             setConfirmDiscardOpen(false);
           }}
+          disabled={saving}
         >
-          Discard and Save
+          {saving ? 'Saving…' : 'Discard and Save'}
         </Button>
       </DialogActions>
     </Dialog>

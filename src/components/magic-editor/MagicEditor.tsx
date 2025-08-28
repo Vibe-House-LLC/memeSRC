@@ -27,6 +27,7 @@ export interface MagicEditorProps {
   onImageChange?: (src: string | null) => void; // notify parent of current image
   onProcessingChange?: (processing: boolean) => void; // notify parent of loading state
   onPromptStateChange?: (state: { value: string; focused: boolean }) => void; // notify parent about prompt text/focus
+  saving?: boolean; // external save-in-progress
   defaultPrompt?: string;
   className?: string;
   style?: React.CSSProperties;
@@ -48,6 +49,7 @@ export default function MagicEditor({
   onImageChange,
   onProcessingChange,
   onPromptStateChange,
+  saving = false,
   defaultPrompt = '',
   className,
   style,
@@ -450,7 +452,7 @@ export default function MagicEditor({
                   fullWidth
                   variant="outlined"
                   onClick={() => { if (onCancel) onCancel(originalSrcRef.current); }}
-                  disabled={processing}
+                  disabled={processing || saving}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -472,7 +474,7 @@ export default function MagicEditor({
                       onSave(internalSrc);
                     }
                   }}
-                  disabled={!internalSrc || processing || !hasCompletedEdit}
+                  disabled={!internalSrc || processing || !hasCompletedEdit || saving}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -483,8 +485,8 @@ export default function MagicEditor({
                     boxShadow: 'none',
                     '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
                   }}
-                 startIcon={<Check />}>
-                  {saveLabel}
+                 startIcon={saving ? <CircularProgress size={18} thickness={5} /> : <Check />}>
+                  {saving ? 'Saving…' : saveLabel}
                 </Button>
                </Box>
             </Box>
@@ -677,7 +679,7 @@ export default function MagicEditor({
         </DialogActions>
   </Dialog>
       {/* Confirm discard of unapplied prompt when saving */}
-      <Dialog open={confirmDiscardOpen} onClose={() => setConfirmDiscardOpen(false)} fullWidth maxWidth="xs">
+      <Dialog open={confirmDiscardOpen} onClose={() => { if (!saving) setConfirmDiscardOpen(false); }} disableEscapeKeyDown={saving} fullWidth maxWidth="xs">
         <DialogTitle>Discard Unapplied Edit?</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2">
@@ -687,7 +689,7 @@ export default function MagicEditor({
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDiscardOpen(false)}>Keep Editing</Button>
+          <Button onClick={() => setConfirmDiscardOpen(false)} disabled={saving}>Keep Editing</Button>
           <Button
             variant="contained"
             color="error"
@@ -695,8 +697,9 @@ export default function MagicEditor({
               if (internalSrc && onSave) onSave(internalSrc);
               setConfirmDiscardOpen(false);
             }}
+            disabled={saving}
           >
-            Discard and Save
+            {saving ? 'Saving…' : 'Discard and Save'}
           </Button>
         </DialogActions>
       </Dialog>
