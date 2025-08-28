@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext } from 'react';
+import React, { useState, useRef, useContext, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
   Menu,
@@ -99,6 +99,12 @@ const CollagePreview = ({
   const [magicPromptState, setMagicPromptState] = useState({ value: '', focused: false });
   const [confirmMagicDiscardOpen, setConfirmMagicDiscardOpen] = useState(false);
   const [confirmMagicCancelOpen, setConfirmMagicCancelOpen] = useState(false);
+  // Choice dialog for original vs frame-view input to Magic Editor
+  const [chooseEditInputOpen, setChooseEditInputOpen] = useState(false);
+  const [pendingMagicContext, setPendingMagicContext] = useState(null); // { index, panelId, meta }
+  const [editPreviewLoading, setEditPreviewLoading] = useState(false);
+  const [editOriginalPreview, setEditOriginalPreview] = useState(null);
+  const [editFramePreview, setEditFramePreview] = useState(null);
   
   // Helper: revoke blob: URLs to avoid memory leaks
   const revokeIfBlobUrl = (url) => {
@@ -214,7 +220,7 @@ const CollagePreview = ({
   });
 
   // Request to edit image for a specific panel
-  const handleEditImageRequest = async (index, panelId) => {
+  const handleEditImageRequest = async (index, panelId, meta) => {
     try {
       setActivePanelIndex(index);
       setActivePanelId(panelId);
@@ -222,36 +228,244 @@ const CollagePreview = ({
       if (imageIndex == null) return;
       const imageObj = selectedImages?.[imageIndex];
       if (!imageObj) return;
-      const libKey = imageObj?.metadata?.libraryKey;
-      if (libKey) {
-        try {
-          const blob = await getFromLibrary(libKey, { level: 'protected' });
-          const dataUrl = await blobToDataUrl(blob);
-          setMagicChosenSrc(dataUrl);
-          setMagicCurrentSrc(dataUrl);
-          setIsMagicOpen(true);
-          return;
-        } catch (_) {
-          // fall through to URL fetch
-        }
-      }
-      const url = imageObj.originalUrl || imageObj.displayUrl;
-      if (!url) return;
+      // Open choice dialog to select input source
+      setPendingMagicContext({ index, panelId, meta: meta || null });
+      setChooseEditInputOpen(true);
+    } catch (e) {
+      console.error('Failed to open magic editor', e);
+    }
+  };
+
+  // Helpers for fetching image blob and cropping
+  const fetchImageBlob = async (imageObj) => {
+    const libKey = imageObj?.metadata?.libraryKey;
+    if (libKey) {
       try {
-        const res = await fetch(url, { mode: 'cors' });
-        const blob = await res.blob();
+        const blob = await getFromLibrary(libKey, { level: 'protected' });
+        return blob;
+      } catch (_) { /* fallthrough */ }
+    }
+    const url = imageObj.originalUrl || imageObj.displayUrl;
+    if (!url) return null;
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      return await res.blob();
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const loadImageElement = (blobOrUrl) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    if (blobOrUrl instanceof Blob) {
+      const url = URL.createObjectURL(blobOrUrl);
+      img.onload = () => { try { URL.revokeObjectURL(url); } catch {} resolve(img); };
+      img.src = url;
+    } else {
+      img.src = blobOrUrl;
+    }
+  });
+
+  const dataUrlFromCanvas = (canvas) => new Promise((resolve) => {
+    try {
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
+    } catch (_) {
+      resolve(canvas.toDataURL());
+    }
+  });
+
+  const openMagicWithOriginal = async () => {
+    try {
+      const imageIndex = panelImageMapping?.[activePanelId];
+      if (imageIndex == null) return;
+      const imageObj = selectedImages?.[imageIndex];
+      if (!imageObj) return;
+      const blob = await fetchImageBlob(imageObj);
+      if (blob) {
         const dataUrl = await blobToDataUrl(blob);
         setMagicChosenSrc(dataUrl);
         setMagicCurrentSrc(dataUrl);
-      } catch (_) {
+      } else {
+        const url = imageObj.originalUrl || imageObj.displayUrl;
+        if (!url) return;
         setMagicChosenSrc(url);
         setMagicCurrentSrc(url);
       }
       setIsMagicOpen(true);
     } catch (e) {
-      console.error('Failed to open magic editor', e);
+      console.error('Failed to prepare original image for magic editor', e);
     }
   };
+
+  const openMagicWithFrameView = async () => {
+    try {
+      const imageIndex = panelImageMapping?.[activePanelId];
+      if (imageIndex == null) return;
+      const imageObj = selectedImages?.[imageIndex];
+      if (!imageObj) return;
+      const blob = await fetchImageBlob(imageObj);
+      if (!blob) {
+        await openMagicWithOriginal();
+        return;
+      }
+      const img = await loadImageElement(blob);
+      // Determine panel rect size
+      const panelRect = pendingMagicContext?.meta?.panelRect;
+      const width = Math.max(1, Math.round(panelRect?.width || 1));
+      const height = Math.max(1, Math.round(panelRect?.height || 1));
+      // Get transform for this panel
+      const transform = panelTransforms?.[activePanelId] || { scale: 1, positionX: 0, positionY: 0 };
+      // Compute initial scale as in CanvasCollagePreview
+      const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+      const panelAspectRatio = width / height;
+      let initialScale;
+      if (imageAspectRatio > panelAspectRatio) {
+        initialScale = height / img.naturalHeight;
+      } else {
+        initialScale = width / img.naturalWidth;
+      }
+      const finalScale = initialScale * (transform.scale || 1);
+      const scaledWidth = img.naturalWidth * finalScale;
+      const scaledHeight = img.naturalHeight * finalScale;
+      const centerOffsetX = (width - scaledWidth) / 2;
+      const centerOffsetY = (height - scaledHeight) / 2;
+      const finalOffsetX = centerOffsetX + (transform.positionX || 0);
+      const finalOffsetY = centerOffsetY + (transform.positionY || 0);
+      // Map panel bounds to source image coordinates
+      const sX0 = (0 - finalOffsetX) / finalScale;
+      const sY0 = (0 - finalOffsetY) / finalScale;
+      const sX1 = (width - finalOffsetX) / finalScale;
+      const sY1 = (height - finalOffsetY) / finalScale;
+      const srcX = Math.max(0, Math.min(img.naturalWidth, Math.round(sX0)));
+      const srcY = Math.max(0, Math.min(img.naturalHeight, Math.round(sY0)));
+      const srcW = Math.max(1, Math.min(img.naturalWidth - srcX, Math.round(sX1 - sX0)));
+      const srcH = Math.max(1, Math.min(img.naturalHeight - srcY, Math.round(sY1 - sY0)));
+      // Draw to an offscreen canvas, optionally resizing to editor max
+      const maxDim = EDITOR_IMAGE_MAX_DIMENSION_PX;
+      const scaleDown = Math.min(1, maxDim / Math.max(srcW, srcH));
+      const outW = Math.max(1, Math.round(srcW * scaleDown));
+      const outH = Math.max(1, Math.round(srcH * scaleDown));
+      const canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(
+        img,
+        srcX,
+        srcY,
+        srcW,
+        srcH,
+        0,
+        0,
+        outW,
+        outH
+      );
+      const dataUrl = await dataUrlFromCanvas(canvas);
+      setMagicChosenSrc(dataUrl);
+      setMagicCurrentSrc(dataUrl);
+      setIsMagicOpen(true);
+    } catch (e) {
+      console.error('Failed to prepare frame-view image for magic editor', e);
+      // Fallback to original
+      await openMagicWithOriginal();
+    }
+  };
+
+  // Build previews when the choice dialog opens
+  useEffect(() => {
+    const buildPreviews = async () => {
+      try {
+        setEditPreviewLoading(true);
+        setEditOriginalPreview(null);
+        setEditFramePreview(null);
+        const imageIndex = panelImageMapping?.[activePanelId];
+        if (imageIndex == null) return;
+        const imageObj = selectedImages?.[imageIndex];
+        if (!imageObj) return;
+        const blob = await fetchImageBlob(imageObj);
+        let imgEl;
+        if (blob) {
+          imgEl = await loadImageElement(blob);
+        } else {
+          const url = imageObj.originalUrl || imageObj.displayUrl;
+          if (!url) return;
+          imgEl = await loadImageElement(url);
+        }
+        // Create original preview
+        const maxPreview = 320;
+        const scaleO = Math.min(1, maxPreview / Math.max(imgEl.naturalWidth, imgEl.naturalHeight));
+        const oW = Math.max(1, Math.round(imgEl.naturalWidth * scaleO));
+        const oH = Math.max(1, Math.round(imgEl.naturalHeight * scaleO));
+        const oCanvas = document.createElement('canvas');
+        oCanvas.width = oW; oCanvas.height = oH;
+        const oCtx = oCanvas.getContext('2d');
+        oCtx.imageSmoothingQuality = 'high';
+        oCtx.drawImage(imgEl, 0, 0, oW, oH);
+        const originalPreviewUrl = await dataUrlFromCanvas(oCanvas);
+        setEditOriginalPreview(originalPreviewUrl);
+
+        // Create frame-view preview using same cropping math as openMagicWithFrameView
+        const panelRect = pendingMagicContext?.meta?.panelRect;
+        if (panelRect) {
+          const width = Math.max(1, Math.round(panelRect.width || 1));
+          const height = Math.max(1, Math.round(panelRect.height || 1));
+          const transform = panelTransforms?.[activePanelId] || { scale: 1, positionX: 0, positionY: 0 };
+          const imageAspectRatio = imgEl.naturalWidth / imgEl.naturalHeight;
+          const panelAspectRatio = width / height;
+          let initialScale;
+          if (imageAspectRatio > panelAspectRatio) {
+            initialScale = height / imgEl.naturalHeight;
+          } else {
+            initialScale = width / imgEl.naturalWidth;
+          }
+          const finalScale = initialScale * (transform.scale || 1);
+          const scaledWidth = imgEl.naturalWidth * finalScale;
+          const scaledHeight = imgEl.naturalHeight * finalScale;
+          const centerOffsetX = (width - scaledWidth) / 2;
+          const centerOffsetY = (height - scaledHeight) / 2;
+          const finalOffsetX = centerOffsetX + (transform.positionX || 0);
+          const finalOffsetY = centerOffsetY + (transform.positionY || 0);
+          const sX0 = (0 - finalOffsetX) / finalScale;
+          const sY0 = (0 - finalOffsetY) / finalScale;
+          const sX1 = (width - finalOffsetX) / finalScale;
+          const sY1 = (height - finalOffsetY) / finalScale;
+          const srcX = Math.max(0, Math.min(imgEl.naturalWidth, Math.round(sX0)));
+          const srcY = Math.max(0, Math.min(imgEl.naturalHeight, Math.round(sY0)));
+          const srcW = Math.max(1, Math.min(imgEl.naturalWidth - srcX, Math.round(sX1 - sX0)));
+          const srcH = Math.max(1, Math.min(imgEl.naturalHeight - srcY, Math.round(sY1 - sY0)));
+          const scaleF = Math.min(1, maxPreview / Math.max(srcW, srcH));
+          const fW = Math.max(1, Math.round(srcW * scaleF));
+          const fH = Math.max(1, Math.round(srcH * scaleF));
+          const fCanvas = document.createElement('canvas');
+          fCanvas.width = fW; fCanvas.height = fH;
+          const fCtx = fCanvas.getContext('2d');
+          fCtx.imageSmoothingQuality = 'high';
+          fCtx.drawImage(imgEl, srcX, srcY, srcW, srcH, 0, 0, fW, fH);
+          const framePreviewUrl = await dataUrlFromCanvas(fCanvas);
+          setEditFramePreview(framePreviewUrl);
+        } else {
+          setEditFramePreview(originalPreviewUrl);
+        }
+      } catch (e) {
+        // If preview generation fails, leave previews null
+        console.error('Failed generating edit previews', e);
+      } finally {
+        setEditPreviewLoading(false);
+      }
+    };
+    if (chooseEditInputOpen) {
+      buildPreviews();
+    } else {
+      setEditOriginalPreview(null);
+      setEditFramePreview(null);
+      setEditPreviewLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chooseEditInputOpen, activePanelId]);
 
   // Handle file selection for a panel
   const handleFileChange = async (event) => {
@@ -637,6 +851,141 @@ const CollagePreview = ({
       >
         <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
       </Menu>
+
+      {/* Choose input for Magic Editor: original vs frame view */}
+      <Dialog
+        open={chooseEditInputOpen}
+        onClose={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }}
+        fullWidth
+        maxWidth="sm"
+        fullScreen={isMobile}
+        scroll={isMobile ? 'paper' : 'body'}
+        PaperProps={{
+          sx: {
+            bgcolor: '#0f0f0f',
+            color: '#fafafa',
+            width: { xs: '100%', md: 'auto' },
+            maxWidth: { xs: '100%', md: '640px' },
+            maxHeight: { xs: '100%', md: '80vh' },
+            m: 0,
+            borderRadius: { xs: 0, md: 2 },
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }
+        }}
+      >
+        {isMobile ? (
+          <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: '#0f0f0f' }}>
+            <Toolbar sx={{ minHeight: 56 }}>
+              <Typography variant="h6" sx={{ fontWeight: 800, flex: 1 }}>Which one?</Typography>
+              <IconButton edge="end" onClick={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }} aria-label="Close" sx={{ color: '#eaeaea' }}>
+                <CloseIcon />
+              </IconButton>
+            </Toolbar>
+          </AppBar>
+        ) : (
+          <DialogTitle sx={{ fontWeight: 800 }}>Which one?</DialogTitle>
+        )}
+
+        <DialogContent
+          dividers={!isMobile}
+          sx={{
+            p: { xs: 2, md: 2.5 },
+            bgcolor: '#0f0f0f',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: { xs: 1.5, md: 2 },
+            flex: 1,
+          }}
+        >
+          {/* Options container: mobile = vertical split, desktop = two columns */}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+              gridTemplateRows: { xs: '1fr 1fr', md: 'auto' },
+              gap: { xs: 1.5, md: 2 },
+              flex: 1,
+              minHeight: 0,
+            }}
+          >
+            {/* Original */}
+            <Box
+              role="button"
+              aria-label="Original"
+              tabIndex={0}
+              onClick={async () => { setChooseEditInputOpen(false); await openMagicWithOriginal(); setPendingMagicContext(null); }}
+              onKeyDown={async (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChooseEditInputOpen(false); await openMagicWithOriginal(); setPendingMagicContext(null); } }}
+              sx={{
+                border: '1px solid rgba(255,255,255,0.16)',
+                borderRadius: { xs: 1.5, md: 2 },
+                bgcolor: '#121212',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                outline: 'none',
+                '&:hover': { borderColor: 'rgba(255,255,255,0.28)' },
+                '&:focus-visible': { boxShadow: '0 0 0 3px rgba(255,255,255,0.24)' },
+                minHeight: { xs: 0, md: 'min(50vh, 420px)' },
+              }}
+            >
+              <Box sx={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#0d0d0d' }}>
+                {editPreviewLoading ? (
+                  <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f', borderRadius: 1 }} />
+                ) : (
+                  editOriginalPreview ? (
+                    <Box component="img" alt="Original" src={editOriginalPreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>—</Typography>
+                  )
+                )}
+                <Box sx={{ position: 'absolute', bottom: 12, left: 12, bgcolor: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.24)', color: '#fff', px: 1, py: 0.25, borderRadius: 2, fontWeight: 800, fontSize: 12, letterSpacing: 0.2 }}>
+                  Original
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Cropped */}
+            <Box
+              role="button"
+              aria-label="Cropped"
+              tabIndex={0}
+              onClick={async () => { setChooseEditInputOpen(false); await openMagicWithFrameView(); setPendingMagicContext(null); }}
+              onKeyDown={async (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChooseEditInputOpen(false); await openMagicWithFrameView(); setPendingMagicContext(null); } }}
+              sx={{
+                border: '1px solid rgba(255,255,255,0.16)',
+                borderRadius: { xs: 1.5, md: 2 },
+                bgcolor: '#121212',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                outline: 'none',
+                '&:hover': { borderColor: 'rgba(255,255,255,0.28)' },
+                '&:focus-visible': { boxShadow: '0 0 0 3px rgba(255,255,255,0.24)' },
+                minHeight: { xs: 0, md: 'min(50vh, 420px)' },
+              }}
+            >
+              <Box sx={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#0d0d0d' }}>
+                {editPreviewLoading ? (
+                  <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f', borderRadius: 1 }} />
+                ) : (
+                  editFramePreview ? (
+                    <Box component="img" alt="Cropped" src={editFramePreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>—</Typography>
+                  )
+                )}
+                <Box sx={{ position: 'absolute', bottom: 12, left: 12, bgcolor: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.24)', color: '#fff', px: 1, py: 0.25, borderRadius: 2, fontWeight: 800, fontSize: 12, letterSpacing: 0.2 }}>
+                  Cropped
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
       {/* Magic Editor Dialog */}
       <Dialog

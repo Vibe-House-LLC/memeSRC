@@ -3111,11 +3111,24 @@ const CanvasCollagePreview = ({
     if (actionMenuPanelId && typeof onEditImage === 'function') {
       const rect = panelRects.find(r => r.panelId === actionMenuPanelId);
       if (rect) {
-        onEditImage(rect.index, actionMenuPanelId);
+        try {
+          // Provide panel rect and current canvas/meta to parent to support frame-view cropping
+          const imageIndex = panelImageMapping[actionMenuPanelId];
+          const hasImage = typeof imageIndex === 'number' && loadedImages[imageIndex];
+          const meta = {
+            panelRect: rect,
+            canvasWidth: componentWidth,
+            canvasHeight: componentHeight,
+            hasImage,
+          };
+          onEditImage(rect.index, actionMenuPanelId, meta);
+        } catch (_) {
+          onEditImage(rect.index, actionMenuPanelId);
+        }
       }
     }
     handleActionMenuClose();
-  }, [actionMenuPanelId, onEditImage, panelRects, handleActionMenuClose]);
+  }, [actionMenuPanelId, onEditImage, panelRects, handleActionMenuClose, panelImageMapping, loadedImages, componentWidth, componentHeight]);
 
   // Open caption editor for the panel
   const handleMenuEditCaption = useCallback(() => {
