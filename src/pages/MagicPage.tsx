@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { Box, Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
+import { Box, Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, Typography, CircularProgress } from '@mui/material';
 import { AutoFixHighRounded, CloseRounded } from '@mui/icons-material';
 import MagicEditor from '../components/magic-editor/MagicEditor';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -274,6 +274,7 @@ export default function MagicPage() {
                     boxShadow: 'none',
                     '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
                   }}
+                  startIcon={saving ? <CircularProgress size={18} thickness={5} color="inherit" /> : undefined}
                 >
                   {saving ? 'Saving…' : 'Save'}
                 </Button>

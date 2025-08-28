@@ -485,7 +485,7 @@ export default function MagicEditor({
                     boxShadow: 'none',
                     '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
                   }}
-                 startIcon={saving ? <CircularProgress size={18} thickness={5} /> : <Check />}>
+                 startIcon={saving ? <CircularProgress size={18} thickness={5} color="inherit" /> : <Check />}>
                   {saving ? 'Saving…' : saveLabel}
                 </Button>
                </Box>
