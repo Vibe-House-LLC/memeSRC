@@ -279,18 +279,15 @@ const CollagePreview = ({
       const srcW = Math.max(1, Math.min(imgEl.naturalWidth - srcX, Math.round(sX1 - sX0)));
       const srcH = Math.max(1, Math.min(imgEl.naturalHeight - srcY, Math.round(sY1 - sY0)));
 
-      const originalAR = imageAspectRatio;
-      const croppedAR = srcW / srcH;
-      const arDiff = Math.abs(originalAR - croppedAR) / Math.max(originalAR, croppedAR);
-      const AR_DIFF_THRESHOLD = 0.20;
-      const CROP_AREA_THRESHOLD = 0.30;
+      // Determine how much of the original is being used in the frame.
+      // Only show the choose step for extremely heavy crops (>= 90%).
+      const CROP_AREA_THRESHOLD = 0.90;
       const originalArea = imgEl.naturalWidth * imgEl.naturalHeight;
       const croppedArea = srcW * srcH;
       const cropFraction = Math.max(0, Math.min(1, 1 - (croppedArea / originalArea)));
-      const significantArDiff = arDiff > AR_DIFF_THRESHOLD;
       const croppedALot = cropFraction >= CROP_AREA_THRESHOLD;
 
-      if (!(significantArDiff || croppedALot)) {
+      if (!croppedALot) {
         const initSrc = await getOriginalSrc();
         navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
       } else {
