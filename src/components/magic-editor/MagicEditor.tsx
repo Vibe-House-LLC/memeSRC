@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  InputAdornment,
   CircularProgress,
   Dialog,
   DialogContent,
@@ -52,6 +53,8 @@ export default function MagicEditor({
     source: 'original' | 'upload' | 'library' | 'edit' | 'revert';
     prompt?: string;
     createdAt: number;
+    pending?: boolean;
+    progress?: number;
   };
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen] = useState(true);
@@ -60,8 +63,9 @@ export default function MagicEditor({
   const initialRecordedRef = useRef(false);
 
   const getDisplayLabel = useCallback((h: HistoryEntry): string => {
+    if (h.source === 'edit' && h.prompt && h.pending) return `EDITING: "${h.prompt}"`;
     if (h.source === 'edit' && h.prompt) return `EDITED: "${h.prompt}"`;
-    if (h.source === 'revert' && h.prompt) return `REVERTED TO: "${h.prompt}"`;
+    if (h.source === 'revert' && h.prompt) return `RESTORED: "${h.prompt}"`;
     if (h.source === 'original') return 'ORIGINAL PHOTO';
     if (h.source === 'upload') return 'UPLOADED';
     if (h.source === 'library') return 'LIBRARY';
@@ -90,7 +94,7 @@ export default function MagicEditor({
     if (onImageChange) onImageChange(src);
   }, [onImageChange]);
 
-  const commitImage = useCallback((src: string, label: string, source: HistoryEntry['source'], extra?: { prompt?: string }) => {
+  const commitImage = useCallback((src: string, label: string, source: HistoryEntry['source'], extra?: { prompt?: string; pending?: boolean; progress?: number }) => {
     setImage(src);
     setHistory((prev) => {
       const isFirst = prev.length === 0 && (source === 'upload' || source === 'library' || source === 'original');
@@ -100,6 +104,8 @@ export default function MagicEditor({
         label: isFirst ? 'ORIGINAL PHOTO' : label,
         source: isFirst ? 'original' : source,
         prompt: extra?.prompt,
+        pending: extra?.pending,
+        progress: extra?.progress,
         createdAt: Date.now(),
       };
       const max = 20;
@@ -109,6 +115,32 @@ export default function MagicEditor({
     });
     setNextId((n) => n + 1);
   }, [nextId, setImage]);
+
+  // Add a pending edit entry and return its id
+  const addPendingEdit = useCallback((promptText: string): number => {
+    const id = nextId;
+    const baseSrc = internalSrc ?? '';
+    setHistory((prev) => [
+      ...prev,
+      {
+        id,
+        src: baseSrc,
+        label: 'Applying magic edit…',
+        source: 'edit',
+        prompt: promptText,
+        pending: true,
+        progress: 0,
+        createdAt: Date.now(),
+      },
+    ]);
+    setNextId((n) => n + 1);
+    return id;
+  }, [internalSrc, nextId]);
+
+  // Update a history entry by id
+  const updateHistoryEntry = useCallback((id: number, patch: Partial<HistoryEntry>) => {
+    setHistory((prev) => prev.map((h) => (h.id === id ? { ...h, ...patch } : h)));
+  }, []);
 
   // Ensure there is always an ORIGINAL PHOTO entry as the first history record
   useEffect(() => {
@@ -138,30 +170,50 @@ export default function MagicEditor({
   }, [commitImage]);
 
   const handleApply = useCallback(async () => {
-    if (!internalSrc) return;
+    if (!internalSrc || processing) return;
     setProcessing(true);
     setProgress(0);
+    const currentPrompt = prompt;
+    const pendingId = addPendingEdit(currentPrompt);
+    // Clear prompt immediately for the next edit
+    setPrompt('');
     try {
-      const out = await mockMagicEdit(internalSrc, prompt, (p) => setProgress(p), { durationMs: 3000 });
-      commitImage(out, 'Applied magic edit', 'edit', { prompt });
+      const out = await mockMagicEdit(
+        internalSrc,
+        currentPrompt,
+        (p) => {
+          setProgress(p);
+          updateHistoryEntry(pendingId, { progress: p });
+        },
+        { durationMs: 3000 }
+      );
+      // finalize pending entry
+      updateHistoryEntry(pendingId, { src: out, pending: false, progress: 100 });
+      setImage(out);
       if (onResult) onResult(out);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Magic edit failed.';
       setError(msg);
+      // mark entry as failed
+      updateHistoryEntry(pendingId, { pending: false, label: 'Edit failed', progress: undefined, prompt: undefined });
     } finally {
       setProcessing(false);
       setTimeout(() => setProgress(0), 400);
     }
-  }, [commitImage, internalSrc, onResult, prompt]);
+  }, [addPendingEdit, internalSrc, onResult, processing, prompt, setImage, updateHistoryEntry]);
 
   return (
-    <Box className={className} style={style} sx={{ width: '100%', maxWidth: 720, mx: 'auto' }}>
-      <Stack spacing={2}>
-        {/* Image area */}
-        <Box sx={{ position: 'relative', width: '100%', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f0f10', minHeight: 220 }}>
+    <Box className={className} style={style} sx={{ width: '100%', maxWidth: { xs: '100%', md: 1400 }, mx: 'auto', px: { xs: 1, sm: 2 } }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 2, md: 3 }} alignItems={{ md: 'flex-start' }}>
+        {/* Left: Image area */}
+        <Box sx={{ position: 'relative', flex: 1, minWidth: 0, borderRadius: 2, overflow: 'hidden', bgcolor: '#0f0f10', minHeight: 220 }}>
           {internalSrc ? (
             // eslint-disable-next-line jsx-a11y/alt-text
-            <img src={internalSrc} alt="Selected" style={{ display: 'block', width: '100%', height: 'auto' }} />
+            <img
+              src={internalSrc}
+              alt="Selected"
+              style={{ display: 'block', width: '100%', height: 'auto', maxHeight: '75vh', objectFit: 'contain' }}
+            />
           ) : (
             <Box sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>No image selected</Typography>
@@ -179,28 +231,104 @@ export default function MagicEditor({
           )}
         </Box>
 
-        {/* Prompt */}
-        <TextField
-          fullWidth
-          label="Describe the magic edit"
-          placeholder="e.g. add sparkles, brighten the sky…"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          disabled={processing}
-          inputProps={{ 'aria-label': 'Magic edit prompt' }}
-        />
+        {/* Right: Controls + History (stacked) */}
+        <Box sx={{ width: { xs: '100%', md: 420 }, position: { md: 'sticky' }, top: { md: 16 }, alignSelf: { md: 'flex-start' } }}>
+          {/* Prompt */}
+          <TextField
+            fullWidth
+            placeholder="Describe the magic edit…"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (canApply) void handleApply();
+              }
+            }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleApply}
+                    disabled={!canApply}
+                    sx={{ ml: 1, whiteSpace: 'nowrap' }}
+                  >
+                    Apply
+                  </Button>
+                </InputAdornment>
+              ),
+            }}
+            inputProps={{ 'aria-label': 'Magic edit prompt' }}
+            sx={{
+              mb: 1.5,
+              '& .MuiOutlinedInput-root': { borderRadius: 3 },
+            }}
+          />
 
-        {/* Actions */}
-        <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <Button variant="contained" onClick={handleUploadClick} disabled={processing}>Upload Photo</Button>
-            <Button variant="outlined" onClick={() => setLibraryOpen(true)} disabled={processing}>Choose from Library</Button>
-            <Button variant="text" color="inherit" onClick={() => setImage(null)} disabled={processing}>Clear</Button>
+          {/* Actions */}
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', mb: 2 }}>
+            <Button size="small" variant="text" onClick={handleUploadClick} disabled={processing}>Upload</Button>
+            <Button size="small" variant="text" onClick={() => setLibraryOpen(true)} disabled={processing}>Library</Button>
+            <Button size="small" variant="text" color="inherit" onClick={() => setImage(null)} disabled={processing}>Clear</Button>
           </Stack>
-          <Button variant="contained" color="secondary" onClick={handleApply} disabled={!canApply}>
-            Apply Magic
-          </Button>
-        </Stack>
+
+          {/* History */}
+          {history.length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                History
+              </Typography>
+              {historyOpen && (
+                <Stack spacing={1.25} sx={{ maxHeight: { xs: 320, md: '50vh' }, overflowY: 'auto', pr: 0.5 }}>
+                  {[...history].slice().reverse().map((h, idx, arr) => {
+                    const isTop = idx === 0; // newest first
+                    const isCurrent = isTop && internalSrc === h.src;
+                    return (
+                      <Box key={h.id} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', p: 1, borderRadius: 1.5, border: '1px solid', borderColor: isCurrent ? 'primary.main' : 'divider', bgcolor: isCurrent ? 'rgba(139,92,199,0.08)' : 'transparent' }}>
+                        {/* Thumbnail opens preview */}
+                        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                        <Box sx={{ position: 'relative' }}>
+                          <img
+                            src={h.src}
+                            alt={h.label}
+                            onClick={() => { if (!h.pending) setPreviewEntry(h); }}
+                            style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, cursor: h.pending ? 'default' : 'pointer', filter: h.pending ? 'grayscale(0.4)' : 'none', opacity: h.pending ? 0.9 : 1 }}
+                          />
+                          {h.pending && (
+                            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.25)', borderRadius: 1 }}>
+                              <CircularProgress size={18} thickness={5} />
+                            </Box>
+                          )}
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mt: 0.5 }}>
+                            {getDisplayLabel(h)}
+                          </Typography>
+                          {h.pending && (
+                            <Box sx={{ pr: 2, pt: 0.5 }}>
+                              <LinearProgress variant="determinate" value={h.progress ?? 0} />
+                            </Box>
+                          )}
+                        </Box>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => commitImage(h.src, `Reverted to #${h.id}`, 'revert', { prompt: h.prompt })}
+                          disabled={processing || isCurrent || h.pending}
+                          aria-label={`Restore version #${h.id}`}
+                        >
+                          Restore
+                        </Button>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Box>
+          )}
+        </Box>
       </Stack>
 
       {/* Library picker dialog */}
@@ -250,48 +378,7 @@ export default function MagicEditor({
           />
         </DialogContent>
       </Dialog>
-      {/* History */}
-      {history.length > 0 && (
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-            History
-          </Typography>
-          {historyOpen && (
-            <Stack spacing={1.25}>
-              {[...history].slice().reverse().map((h, idx, arr) => {
-                const isTop = idx === 0; // newest first
-                const isCurrent = isTop && internalSrc === h.src;
-                return (
-                  <Box key={h.id} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', p: 1, borderRadius: 1.5, border: '1px solid', borderColor: isCurrent ? 'primary.main' : 'divider', bgcolor: isCurrent ? 'rgba(139,92,199,0.08)' : 'transparent' }}>
-                    {/* Thumbnail opens preview */}
-                    {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                    <img
-                      src={h.src}
-                      alt={h.label}
-                      onClick={() => setPreviewEntry(h)}
-                      style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, cursor: 'pointer' }}
-                    />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mt: 0.5 }}>
-                        {getDisplayLabel(h)}
-                      </Typography>
-                    </Box>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => commitImage(h.src, `Reverted to #${h.id}`, 'revert', { prompt: h.prompt })}
-                      disabled={processing || isCurrent}
-                      aria-label={`Restore version #${h.id}`}
-                    >
-                      Restore
-                    </Button>
-                  </Box>
-                );
-              })}
-            </Stack>
-          )}
-        </Box>
-      )}
+      
       {/* Preview dialog for a historical entry */}
       <Dialog open={Boolean(previewEntry)} onClose={() => setPreviewEntry(null)} fullWidth maxWidth="sm">
         <DialogTitle>Preview</DialogTitle>

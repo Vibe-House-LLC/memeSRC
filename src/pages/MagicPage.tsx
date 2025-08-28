@@ -6,7 +6,7 @@ export default function MagicPage() {
   const [image, setImage] = useState<string | null>(null);
 
   return (
-    <Container maxWidth="sm" sx={{ py: { xs: 2, md: 4 } }}>
+    <Container maxWidth="lg" sx={{ px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 4 } }}>
       <Box sx={{ mb: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
           Magic Editor (Demo)
@@ -19,4 +19,3 @@ export default function MagicPage() {
     </Container>
   );
 }
-
