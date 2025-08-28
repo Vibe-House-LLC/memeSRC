@@ -105,6 +105,7 @@ const CollagePreview = ({
   const [editPreviewLoading, setEditPreviewLoading] = useState(false);
   const [editOriginalPreview, setEditOriginalPreview] = useState(null);
   const [editFramePreview, setEditFramePreview] = useState(null);
+  const [editChoice, setEditChoice] = useState('cropped');
   
   // Helper: revoke blob: URLs to avoid memory leaks
   const revokeIfBlobUrl = (url) => {
@@ -547,6 +548,7 @@ const CollagePreview = ({
       }
     };
     if (chooseEditInputOpen) {
+      setEditChoice('cropped');
       buildPreviews();
     } else {
       setEditOriginalPreview(null);
@@ -966,8 +968,8 @@ const CollagePreview = ({
       >
         {isMobile ? (
           <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: '#0f0f0f' }}>
-            <Toolbar sx={{ minHeight: 56 }}>
-              <Typography variant="h5" sx={{ fontWeight: 900, flex: 1, letterSpacing: 0.2 }}>Which one?</Typography>
+            <Toolbar sx={{ minHeight: 64 }}>
+              <Typography variant="h4" sx={{ fontWeight: 900, flex: 1, letterSpacing: 0.2 }}>Which one?</Typography>
               <IconButton edge="end" onClick={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }} aria-label="Close" sx={{ color: '#eaeaea' }}>
                 <CloseIcon />
               </IconButton>
@@ -975,7 +977,7 @@ const CollagePreview = ({
           </AppBar>
         ) : (
           <DialogTitle sx={{ fontWeight: 900, '& .MuiTypography-root': { fontWeight: 900 } }}>
-            <Typography variant="h4" component="div">Which one?</Typography>
+            <Typography variant="h3" component="div">Which one?</Typography>
           </DialogTitle>
         )}
 
@@ -990,118 +992,138 @@ const CollagePreview = ({
             flex: 1,
           }}
         >
-          {/* Simple explainer */}
-          <Box sx={{ mb: { xs: 1, md: 1.5 } }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
+          {/* Explainer with improved spacing */}
+          <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
+            <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>
               Which version do you want to edit?
             </Typography>
           </Box>
-          {/* Options container: mobile = vertical split, desktop = two columns */}
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-              gridTemplateRows: { xs: '1fr 1fr', md: 'auto' },
-              gap: { xs: 1.5, md: 2 },
-              flex: 1,
-              minHeight: 0,
-            }}
-          >
-            {/* Original */}
+          {/* Main preview area shows current selection */}
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#0d0d0d', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 2 }}>
+            {editPreviewLoading ? (
+              <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f', borderRadius: 1 }} />
+            ) : (
+              editChoice === 'cropped' ? (
+                editFramePreview ? (
+                  <Box component="img" alt="Cropped preview" src={editFramePreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>—</Typography>
+                )
+              ) : (
+                editOriginalPreview ? (
+                  <Box component="img" alt="Uncropped preview" src={editOriginalPreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>—</Typography>
+                )
+              )
+            )}
+          </Box>
+
+          {/* Selector controls */}
+          <Box role="radiogroup" aria-label="Edit input choice" sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
             <Box
-              role="button"
-              aria-label="Uncropped"
+              role="radio"
+              aria-checked={editChoice === 'uncropped'}
               tabIndex={0}
-              onClick={async () => { setChooseEditInputOpen(false); await openMagicWithOriginal(); setPendingMagicContext(null); }}
-              onKeyDown={async (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChooseEditInputOpen(false); await openMagicWithOriginal(); setPendingMagicContext(null); } }}
+              onClick={() => setEditChoice('uncropped')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditChoice('uncropped'); } }}
               sx={{
-                border: '1px solid rgba(255,255,255,0.16)',
-                borderRadius: { xs: 1.5, md: 2 },
-                bgcolor: '#121212',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.25,
+                px: 1.25, py: 1,
+                border: '2px solid',
+                borderColor: editChoice === 'uncropped' ? 'primary.main' : 'rgba(255,255,255,0.18)',
+                borderRadius: 2,
                 cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
+                bgcolor: '#121212',
                 outline: 'none',
-                '&:hover': { borderColor: 'rgba(255,255,255,0.28)' },
                 '&:focus-visible': { boxShadow: '0 0 0 3px rgba(255,255,255,0.24)' },
-                minHeight: { xs: 0, md: 'min(50vh, 420px)' },
               }}
             >
-              <Box sx={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#0d0d0d' }}>
-                {editPreviewLoading ? (
-                  <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f', borderRadius: 1 }} />
+              <Typography sx={{ fontWeight: 800 }}>Uncropped</Typography>
+              <Box sx={{ width: 56, height: 40, bgcolor: '#0d0d0d', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {editOriginalPreview ? (
+                  <Box component="img" alt="Uncropped mini" src={editOriginalPreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (
-                  editOriginalPreview ? (
-                    <Box component="img" alt="Original" src={editOriginalPreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  ) : (
-                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>—</Typography>
-                  )
+                  <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f' }} />
                 )}
-                <Box sx={{ position: 'absolute', bottom: 12, left: 12, bgcolor: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.24)', color: '#fff', px: 1, py: 0.25, borderRadius: 2, fontWeight: 800, fontSize: 12, letterSpacing: 0.2 }}>
-                  Uncropped
-                </Box>
               </Box>
             </Box>
-
-            {/* Cropped */}
             <Box
-              role="button"
-              aria-label="Cropped"
+              role="radio"
+              aria-checked={editChoice === 'cropped'}
               tabIndex={0}
-              onClick={async () => { setChooseEditInputOpen(false); await openMagicWithFrameView(); setPendingMagicContext(null); }}
-              onKeyDown={async (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChooseEditInputOpen(false); await openMagicWithFrameView(); setPendingMagicContext(null); } }}
+              onClick={() => setEditChoice('cropped')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditChoice('cropped'); } }}
               sx={{
-                border: '1px solid rgba(255,255,255,0.16)',
-                borderRadius: { xs: 1.5, md: 2 },
-                bgcolor: '#121212',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.25,
+                px: 1.25, py: 1,
+                border: '2px solid',
+                borderColor: editChoice === 'cropped' ? 'primary.main' : 'rgba(255,255,255,0.18)',
+                borderRadius: 2,
                 cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
+                bgcolor: '#121212',
                 outline: 'none',
-                '&:hover': { borderColor: 'rgba(255,255,255,0.28)' },
                 '&:focus-visible': { boxShadow: '0 0 0 3px rgba(255,255,255,0.24)' },
-                minHeight: { xs: 0, md: 'min(50vh, 420px)' },
               }}
             >
-              <Box sx={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#0d0d0d' }}>
-                {editPreviewLoading ? (
-                  <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f', borderRadius: 1 }} />
+              <Typography sx={{ fontWeight: 800 }}>Cropped</Typography>
+              <Box sx={{ width: 56, height: 40, bgcolor: '#0d0d0d', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {editFramePreview ? (
+                  <Box component="img" alt="Cropped mini" src={editFramePreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (
-                  editFramePreview ? (
-                    <Box component="img" alt="Cropped" src={editFramePreview} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  ) : (
-                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>—</Typography>
-                  )
+                  <Box sx={{ width: '60%', height: '60%', bgcolor: '#1f1f1f' }} />
                 )}
-                <Box sx={{ position: 'absolute', bottom: 12, left: 12, bgcolor: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.24)', color: '#fff', px: 1, py: 0.25, borderRadius: 2, fontWeight: 800, fontSize: 12, letterSpacing: 0.2 }}>
-                  Cropped
-                </Box>
               </Box>
             </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
-          <Button
-            onClick={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }}
-            variant="contained"
-            disableElevation
-            fullWidth={isMobile}
-            sx={{
-              bgcolor: '#252525',
-              color: '#f0f0f0',
-              border: '1px solid #3a3a3a',
-              borderRadius: '8px',
-              px: isMobile ? 2 : 2.5,
-              py: isMobile ? 1.25 : 0.75,
-              textTransform: 'none',
-              fontWeight: 600,
-              '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' }
-            }}
-          >
-            Cancel
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1.25, width: '100%' }}>
+            <Button
+              onClick={() => { setChooseEditInputOpen(false); setPendingMagicContext(null); }}
+              variant="contained"
+              disableElevation
+              sx={{
+                flex: 1,
+                bgcolor: '#252525',
+                color: '#f0f0f0',
+                border: '1px solid #3a3a3a',
+                borderRadius: '8px',
+                px: 2,
+                py: 1,
+                textTransform: 'none',
+                fontWeight: 700,
+                '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' }
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                setChooseEditInputOpen(false);
+                const choice = editChoice;
+                setPendingMagicContext(null);
+                if (choice === 'cropped') {
+                  await openMagicWithFrameView();
+                } else {
+                  await openMagicWithOriginal();
+                }
+              }}
+              variant="contained"
+              color="primary"
+              disableElevation
+              sx={{
+                flex: 1,
+                borderRadius: '8px',
+                px: 2,
+                py: 1,
+                textTransform: 'none',
+                fontWeight: 800,
+              }}
+            >
+              Edit
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
 
