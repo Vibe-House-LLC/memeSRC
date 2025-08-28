@@ -34,6 +34,10 @@ export interface MagicEditorProps {
   showHeader?: boolean;
   // Customize label for save (kept for flexibility)
   saveLabel?: string;
+  // Optionally hide internal actions/editor/history for split layouts
+  showActions?: boolean;
+  showEditor?: boolean;
+  showHistory?: boolean;
 }
 
 export default function MagicEditor({
@@ -49,6 +53,9 @@ export default function MagicEditor({
   style,
   showHeader = true,
   saveLabel = 'Save',
+  showActions = true,
+  showEditor = true,
+  showHistory = true,
 }: MagicEditorProps) {
   const [internalSrc, setInternalSrc] = useState<string | null>(imageSrc ?? null);
   const [prompt, setPrompt] = useState<string>(defaultPrompt);
@@ -288,6 +295,7 @@ export default function MagicEditor({
       )}
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 2, md: 3 }} alignItems={{ md: 'flex-start' }}>
         {/* Left: Image + Prompt (mobile combined), Image only on desktop */}
+        {showEditor && (
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box
             sx={{
@@ -431,8 +439,9 @@ export default function MagicEditor({
             </Box>
 
             {/* Save/Cancel inside the combined unit on mobile */}
-            <Box sx={{ display: { xs: 'block', md: 'none' }, px: 0, pb: 0, mb: 1, order: { xs: 1, md: 'initial' }, flexShrink: 0 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+            {showActions && (
+            <Box sx={{ display: { xs: 'block', md: 'none' }, px: 0, mb: 1, order: { xs: 1, md: 'initial' }, flexShrink: 0 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                 <Button
                   size="large"
                   fullWidth
@@ -474,10 +483,12 @@ export default function MagicEditor({
                  startIcon={<Check />}>
                   {saveLabel}
                 </Button>
-              </Box>
+               </Box>
             </Box>
+            )}
           </Box>
         </Box>
+        )}
 
         {/* Right: Controls + History (stacked) */}
         <Box sx={{ width: { xs: '100%', md: 420 }, position: { md: 'sticky' }, top: { md: 16 }, alignSelf: { md: 'flex-start' } }}>
@@ -567,7 +578,7 @@ export default function MagicEditor({
           {/* Global actions are handled by parent top bar */}
 
           {/* History */}
-          {history.length > 0 && (
+          {showHistory && history.length > 0 && (
             <Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
                 History

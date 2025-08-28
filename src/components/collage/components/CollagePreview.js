@@ -681,7 +681,7 @@ const CollagePreview = ({
             Ask for edits in plain English
           </Typography>
         </Box>
-        {/* Desktop action bar (MagicEditor shows its own Save/Cancel on mobile) */}
+        {/* Desktop action bar (MagicEditor shows its own Save/Cancel on mobile unless overridden) */}
         {isMagicOpen && (
           <Box sx={{ display: { xs: 'none', md: 'block' }, px: 0, pt: 1 }}>
             <Box
@@ -766,6 +766,82 @@ const CollagePreview = ({
             </Box>
           </Box>
         )}
+        {/* Mobile action bar placed outside scroll area for persistent access */}
+        {isMagicOpen && (
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, px: 2, pb: 1, gap: 1 }}>
+            <Button
+              size="large"
+              variant="outlined"
+              onClick={() => {
+                const hasUnappliedPrompt = Boolean(magicPromptState.value && magicPromptState.value.trim().length > 0);
+                const hasUnsavedEdits = Boolean(magicChosenSrc && magicCurrentSrc && magicChosenSrc !== magicCurrentSrc);
+                if (hasUnappliedPrompt || hasUnsavedEdits) {
+                  setConfirmMagicCancelOpen(true);
+                } else {
+                  setIsMagicOpen(false);
+                  setMagicChosenSrc(null);
+                  setMagicCurrentSrc(null);
+                  setMagicPromptState({ value: '', focused: false });
+                }
+              }}
+              disabled={magicProcessing}
+              sx={{
+                minHeight: 44,
+                fontWeight: 700,
+                textTransform: 'none',
+                color: 'rgba(255,255,255,0.92)',
+                borderColor: 'rgba(255,255,255,0.35)',
+                '&:hover': { borderColor: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.08)' }
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="large"
+              variant="contained"
+              onClick={async () => {
+                if (!magicCurrentSrc || activePanelId == null) return;
+                if (magicPromptState.value && magicPromptState.value.trim().length > 0) {
+                  setConfirmMagicDiscardOpen(true);
+                  return;
+                }
+                try {
+                  const libraryKey = await saveImageToLibrary(magicCurrentSrc, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
+                  const res = await fetch(magicCurrentSrc);
+                  const srcBlob = await res.blob();
+                  const uploadBlob = await resizeImage(srcBlob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+                  const toDataUrl = (blob) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
+                  const originalUrl = await toDataUrl(uploadBlob);
+                  const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+                  const displayUrl = await toDataUrl(editorBlob);
+                  const idx = panelImageMapping?.[activePanelId];
+                  if (typeof idx === 'number') {
+                    await replaceImage(idx, { originalUrl, displayUrl, metadata: { libraryKey } });
+                  }
+                  setIsMagicOpen(false);
+                  setMagicChosenSrc(null);
+                  setMagicCurrentSrc(null);
+                  setMagicPromptState({ value: '', focused: false });
+                } catch (e) {
+                  console.error('Failed to save magic edit', e);
+                }
+              }}
+              disabled={!magicCurrentSrc || magicProcessing}
+              sx={{
+                minHeight: 44,
+                fontWeight: 700,
+                textTransform: 'none',
+                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
+                border: '1px solid #8b5cc7',
+                color: '#fff',
+                boxShadow: 'none',
+                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
+              }}
+            >
+              Save
+            </Button>
+          </Box>
+        )}
         <DialogContent
           dividers={!isMobile}
           sx={{
@@ -820,6 +896,7 @@ const CollagePreview = ({
                   setMagicPromptState({ value: '', focused: false });
                 }
               }}
+              showActions={false}
             />
             </Box>
           )}
