@@ -248,7 +248,7 @@ export default function MagicEditor({
   }, [addPendingEdit, internalSrc, onResult, processing, prompt, setImage, updateHistoryEntry]);
 
   return (
-    <Box className={className} style={style} sx={{ width: '100%', maxWidth: { xs: '100%', md: 1400 }, mx: 'auto', px: { xs: 1, sm: 2 } }}>
+    <Box className={className} style={style} sx={{ width: '100%', maxWidth: { xs: '100%', md: 1400 }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 2, md: 3 }} alignItems={{ md: 'flex-start' }}>
         {/* Left: Image + Prompt (mobile combined), Image only on desktop */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -262,6 +262,8 @@ export default function MagicEditor({
               display: { xs: 'flex', md: 'block' },
               flexDirection: { xs: 'column', md: 'initial' },
               height: { xs: '65vh', md: 'auto' },
+              mx: { xs: -1.5, md: 0 },
+              p: { xs: 1, md: 0 },
             }}
           >
             {/* Image area */}
@@ -298,7 +300,7 @@ export default function MagicEditor({
             </Box>
 
             {/* Prompt inside the combined unit on mobile */}
-            <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1, order: { xs: 3, md: 'initial' } }}>
+            <Box sx={{ display: { xs: 'block', md: 'none' }, p: 0, mt: 1, order: { xs: 3, md: 'initial' } }}>
               <TextField
                 fullWidth
                 placeholder={placeholderText}
@@ -364,7 +366,7 @@ export default function MagicEditor({
             </Box>
 
             {/* Save/Cancel inside the combined unit on mobile */}
-            <Box sx={{ display: { xs: 'block', md: 'none' }, px: 1, pb: 1, order: { xs: 1, md: 'initial' } }}>
+            <Box sx={{ display: { xs: 'block', md: 'none' }, px: 0, pb: 0, mb: 1, order: { xs: 1, md: 'initial' } }}>
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                 <Button
                   size="large"
