@@ -384,7 +384,7 @@ export default function MagicEditor({
                   fullWidth
                   variant="outlined"
                   onClick={() => { if (onCancel) onCancel(originalSrcRef.current); }}
-                  disabled={processing || (promptFocused && !!prompt)}
+                  disabled={processing}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -406,7 +406,7 @@ export default function MagicEditor({
                       onSave(internalSrc);
                     }
                   }}
-                  disabled={!internalSrc || processing || (promptFocused && !!prompt)}
+                  disabled={!internalSrc || processing}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,

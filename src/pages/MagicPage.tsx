@@ -16,6 +16,7 @@ export default function MagicPage() {
   const [processing, setProcessing] = useState(false);
   const [promptState, setPromptState] = useState<{ value: string; focused: boolean }>({ value: '', focused: false });
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
 
   const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
@@ -95,8 +96,16 @@ export default function MagicPage() {
                   size="large"
                   fullWidth
                   variant="outlined"
-                  onClick={() => setStage('pick')}
-                  disabled={processing || (promptState.focused && !!promptState.value)}
+                  onClick={() => {
+                    const hasUnappliedPrompt = Boolean(promptState.value && promptState.value.trim().length > 0);
+                    const hasUnsavedEdits = Boolean(chosen && currentSrc && chosen !== currentSrc);
+                    if (hasUnappliedPrompt || hasUnsavedEdits) {
+                      setConfirmCancelOpen(true);
+                    } else {
+                      setStage('pick');
+                    }
+                  }}
+                  disabled={processing}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -121,7 +130,7 @@ export default function MagicPage() {
                       setStage('done');
                     }
                   }}
-                  disabled={!currentSrc || processing || (promptState.focused && !!promptState.value)}
+                  disabled={!currentSrc || processing}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -175,8 +184,13 @@ export default function MagicPage() {
             setStage('done');
           }}
           onCancel={() => {
-            // back to picker, discard changes
-            setStage('pick');
+            const hasUnappliedPrompt = Boolean(promptState.value && promptState.value.trim().length > 0);
+            const hasUnsavedEdits = Boolean(chosen && currentSrc && chosen !== currentSrc);
+            if (hasUnappliedPrompt || hasUnsavedEdits) {
+              setConfirmCancelOpen(true);
+            } else {
+              setStage('pick');
+            }
           }}
         />
       )}
@@ -218,6 +232,34 @@ export default function MagicPage() {
           }}
         >
           Discard and Save
+        </Button>
+      </DialogActions>
+    </Dialog>
+
+    {/* Confirm cancel when there are unsaved or unapplied edits */}
+    <Dialog open={confirmCancelOpen} onClose={() => setConfirmCancelOpen(false)} fullWidth maxWidth="xs">
+      <DialogTitle>Discard Changes?</DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="body2" sx={{ mb: promptState.value ? 1 : 0 }}>
+          You have unsaved changes. Do you want to discard them and exit the editor?
+        </Typography>
+        {promptState.value && (
+          <Typography variant="body2">
+            Unapplied prompt: "<Box component="span" sx={{ fontWeight: 700 }}>{promptState.value}</Box>"
+          </Typography>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setConfirmCancelOpen(false)}>Keep Editing</Button>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={() => {
+            setConfirmCancelOpen(false);
+            setStage('pick');
+          }}
+        >
+          Discard and Exit
         </Button>
       </DialogActions>
     </Dialog>
