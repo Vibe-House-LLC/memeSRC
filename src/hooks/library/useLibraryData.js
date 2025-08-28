@@ -97,7 +97,8 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
         try { URL.revokeObjectURL(previewUrl); } catch (_) { /* ignore */ }
       }
       setAllKeys((prev) => [{ key, lastModified: new Date().toISOString(), size: toUpload?.size || file.size }, ...prev]);
-      if (id) setItems((prev) => prev.map((it) => (it.id === id ? { key, url, createdAt: timestamp } : it)));
+      // Preserve the temporary placeholder id so any in-progress selection remains valid
+      if (id) setItems((prev) => prev.map((it) => (it.id === id ? { id, key, url, createdAt: timestamp } : it)));
       setLoadedCount((prev) => prev + 1);
       return { key, url };
     } catch (e) {

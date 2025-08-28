@@ -60,6 +60,7 @@ export default function LibraryBrowser({
   const [metaByKey, setMetaByKey] = useState({}); // { [key]: { tags, description, defaultCaption } }
 
   const sentinelRef = useRef(null);
+  const headerFileInputRef = useRef(null);
 
   // Infinite scroll
   useEffect(() => {
@@ -136,12 +137,14 @@ export default function LibraryBrowser({
     });
   }, [displayItems, metaByKey, normalizedQuery]);
 
-  const selectedItems = useMemo(() => items.filter((i) => selectedKeys.has(i.key)), [items, selectedKeys]);
+  const getItemId = useCallback((it) => (it?.id ?? it?.key), []);
+  const selectedItems = useMemo(() => items.filter((i) => selectedKeys.has(getItemId(i))), [items, selectedKeys, getItemId]);
 
   const handleUseSelected = useCallback(async () => {
     try {
       const concurrency = 5;
-      const arr = selectedItems;
+      // Only operate on fully uploaded items (with a storage key)
+      const arr = selectedItems.filter((i) => Boolean(i?.key));
       const results = new Array(arr.length);
       /* eslint-disable no-await-in-loop */
       const processIndex = async (idx) => {
@@ -190,9 +193,11 @@ export default function LibraryBrowser({
   // Expose selection count to parent (for external action bars)
   useEffect(() => {
     if (typeof onSelectionChange === 'function') {
-      onSelectionChange({ count, minSelected: typeof minSelected === 'number' ? minSelected : 0 });
+      // Report only fully ready selections (with keys) so parents can enable actions accurately
+      const readyCount = items.filter((i) => selectedKeys.has(getItemId(i)) && Boolean(i?.key)).length;
+      onSelectionChange({ count: readyCount, minSelected: typeof minSelected === 'number' ? minSelected : 0 });
     }
-  }, [count, minSelected, onSelectionChange]);
+  }, [items, selectedKeys, getItemId, minSelected, onSelectionChange]);
 
   // Expose primary/clear actions to parent for external bottom bar control
   useEffect(() => {
@@ -296,21 +301,8 @@ export default function LibraryBrowser({
             <Button
               size="small"
               startIcon={<CloudUpload fontSize="small" />}
-              onClick={async () => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
-                input.multiple = multiple;
-                input.onchange = async (e) => {
-                  const files = Array.from(e.target.files || []);
-                  const results = await uploadMany(files);
-                  const successes = results.filter(Boolean);
-                  const last = successes[successes.length - 1];
-                  if (!multiple && instantSelectOnClick && last && last.key) {
-                    await handleInstantSelect({ key: last.key, url: last.url });
-                  }
-                };
-                input.click();
+              onClick={() => {
+                try { headerFileInputRef.current?.click(); } catch (_) { /* ignore */ }
               }}
               sx={{
                 minHeight: 34,
@@ -341,6 +333,30 @@ export default function LibraryBrowser({
               Upload
             </Button>
           )}
+          {/* Hidden file input for header Upload button to ensure browser allows chooser */}
+          <input
+            type="file"
+            ref={headerFileInputRef}
+            style={{ display: 'none' }}
+            accept="image/*"
+            multiple={multiple}
+            onChange={async (e) => {
+              try {
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
+                const results = await uploadMany(files);
+                const successes = results.filter(Boolean);
+                const last = successes[successes.length - 1];
+                if (!multiple && instantSelectOnClick && last && last.key) {
+                  await handleInstantSelect({ key: last.key, url: last.url });
+                }
+              } catch (err) {
+                setSnack({ open: true, message: 'Upload failed to start', severity: 'error' });
+              } finally {
+                if (e?.target) e.target.value = null;
+              }
+            }}
+          />
           <TextField
             size="small"
             value={searchQuery}
@@ -501,8 +517,8 @@ export default function LibraryBrowser({
         renderTile={(item) => (
           <LibraryTile
             item={item}
-            selected={effectiveSelectionEnabled ? isSelected(item.key) : false}
-            disabled={effectiveSelectionEnabled ? (Boolean(maxSelected) && atMax && !isSelected(item.key)) : false}
+            selected={effectiveSelectionEnabled ? isSelected(getItemId(item)) : false}
+            disabled={effectiveSelectionEnabled ? (Boolean(maxSelected) && atMax && !isSelected(getItemId(item))) : false}
             showPreviewIcon={effectiveSelectionEnabled}
             selectionMode={effectiveSelectionEnabled}
             onClick={() => {
@@ -511,7 +527,7 @@ export default function LibraryBrowser({
               } else if (!multiple && instantSelectOnClick) {
                 handleInstantSelect(item);
               } else if (effectiveSelectionEnabled) {
-                toggle(item.key);
+                toggle(getItemId(item));
               }
             }}
             onPreview={() => item.key && onTileClick(item.key)}
@@ -534,7 +550,7 @@ export default function LibraryBrowser({
         onNext={handleNext}
         hasPrev={previewIndex > 0}
         hasNext={previewIndex >= 0 && previewIndex < displayItems.length - 1}
-        isSelected={previewKey ? isSelected(previewKey) : false}
+        isSelected={previewItem ? isSelected(getItemId(previewItem)) : false}
         onToggleSelected={previewKey ? async () => {
           // In single-select mode, immediately pass selection to caller and close
           if (multiple === false) {
@@ -550,7 +566,7 @@ export default function LibraryBrowser({
             setSelectMode(true);
             if (typeof onSelectModeChange === 'function') onSelectModeChange(true);
           }
-          toggle(previewKey);
+          toggle(getItemId(previewItem));
           setPreviewKey(null);
         } : undefined}
         footerMode={!multiple ? 'single' : 'default'}
