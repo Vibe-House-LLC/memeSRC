@@ -229,8 +229,7 @@ export default function MagicEditor({
     setProgress(0);
     const currentPrompt = prompt;
     const pendingId = addPendingEdit(currentPrompt);
-    // Clear prompt immediately for the next edit
-    setPrompt('');
+    // Keep prompt visible while processing so users see what's loading
     try {
       const out = await mockMagicEdit(
         internalSrc,
@@ -253,6 +252,8 @@ export default function MagicEditor({
     } finally {
       setProcessing(false);
       setTimeout(() => setProgress(0), 400);
+      // Now clear the prompt after processing completes
+      setPrompt('');
     }
   }, [addPendingEdit, internalSrc, onResult, processing, prompt, setImage, updateHistoryEntry]);
 
@@ -326,6 +327,7 @@ export default function MagicEditor({
                 onChange={(e) => setPrompt(e.target.value)}
                 onFocus={() => setPromptFocused(true)}
                 onBlur={() => setPromptFocused(false)}
+                disabled={processing}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -336,12 +338,12 @@ export default function MagicEditor({
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+                      <AutoFixHighRounded sx={{ color: processing ? 'grey.500' : 'primary.main' }} />
                     </InputAdornment>
                   ),
                   endAdornment: (
                     <InputAdornment position="end">
-                      {prompt?.length ? (
+                      {prompt?.length && !processing ? (
                         <IconButton
                           aria-label="clear prompt"
                           size="small"
@@ -352,17 +354,21 @@ export default function MagicEditor({
                           <Close fontSize="small" />
                         </IconButton>
                       ) : null}
-                      <IconButton
-                        aria-label="send prompt"
-                        size="small"
-                        onClick={() => { blurPromptInputs(); if (canSend) void handleApply(); }}
-                        disabled={!canSend}
-                        edge="end"
-                        color={canSend ? 'primary' as const : 'default' as const}
-                        sx={{ ml: 0.5 }}
-                      >
-                        <Send />
-                      </IconButton>
+                      {processing ? (
+                        <CircularProgress size={18} thickness={5} sx={{ ml: 0.5 }} />
+                      ) : (
+                        <IconButton
+                          aria-label="send prompt"
+                          size="small"
+                          onClick={() => { blurPromptInputs(); if (canSend) void handleApply(); }}
+                          disabled={!canSend}
+                          edge="end"
+                          color={canSend ? 'primary' as const : 'default' as const}
+                          sx={{ ml: 0.5, color: canSend ? 'primary.main' : undefined }}
+                        >
+                          <Send />
+                        </IconButton>
+                      )}
                     </InputAdornment>
                   ),
                 }}
@@ -372,9 +378,19 @@ export default function MagicEditor({
                     borderRadius: 2,
                     backgroundColor: '#fff',
                   },
+                  '& .MuiOutlinedInput-root.Mui-disabled': {
+                    backgroundColor: '#f5f5f5',
+                  },
                   '& .MuiOutlinedInput-input': {
                     color: 'rgba(0,0,0,0.9)',
                     fontWeight: 700,
+                  },
+                  '& .MuiOutlinedInput-input.Mui-disabled': {
+                    color: 'rgba(0,0,0,0.55)',
+                    WebkitTextFillColor: 'rgba(0,0,0,0.55)',
+                  },
+                  '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(0,0,0,0.12)',
                   },
                   '& .MuiInputBase-input::placeholder': {
                     color: 'rgba(0,0,0,0.6)',
@@ -444,9 +460,19 @@ export default function MagicEditor({
                 borderRadius: 2,
                 backgroundColor: '#fff',
               },
+              '& .MuiOutlinedInput-root.Mui-disabled': {
+                backgroundColor: '#f5f5f5',
+              },
               '& .MuiOutlinedInput-input': {
                 color: 'rgba(0,0,0,0.9)',
                 fontWeight: 700,
+              },
+              '& .MuiOutlinedInput-input.Mui-disabled': {
+                color: 'rgba(0,0,0,0.55)',
+                WebkitTextFillColor: 'rgba(0,0,0,0.55)',
+              },
+              '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(0,0,0,0.12)',
               },
               '& .MuiInputBase-input::placeholder': {
                 color: 'rgba(0,0,0,0.6)',
@@ -460,6 +486,7 @@ export default function MagicEditor({
             onChange={(e) => setPrompt(e.target.value)}
             onFocus={() => setPromptFocused(true)}
             onBlur={() => setPromptFocused(false)}
+            disabled={processing}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -470,12 +497,12 @@ export default function MagicEditor({
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+                  <AutoFixHighRounded sx={{ color: processing ? 'grey.500' : 'primary.main' }} />
                 </InputAdornment>
               ),
               endAdornment: (
                 <InputAdornment position="end">
-                  {prompt?.length ? (
+                  {prompt?.length && !processing ? (
                     <IconButton
                       aria-label="clear prompt"
                       size="small"
@@ -486,17 +513,21 @@ export default function MagicEditor({
                       <Close fontSize="small" />
                     </IconButton>
                   ) : null}
-                  <IconButton
-                    aria-label="send prompt"
-                    size="small"
-                    onClick={() => { blurPromptInputs(); if (canSend) void handleApply(); }}
-                    disabled={!canSend}
-                    edge="end"
-                    color={canSend ? 'primary' as const : 'default' as const}
-                    sx={{ ml: 0.5 }}
-                  >
-                    <Send />
-                  </IconButton>
+                  {processing ? (
+                    <CircularProgress size={18} thickness={5} sx={{ ml: 0.5 }} />
+                  ) : (
+                    <IconButton
+                      aria-label="send prompt"
+                      size="small"
+                      onClick={() => { blurPromptInputs(); if (canSend) void handleApply(); }}
+                      disabled={!canSend}
+                      edge="end"
+                      color={canSend ? 'primary' as const : 'default' as const}
+                      sx={{ ml: 0.5, color: canSend ? 'primary.main' : undefined }}
+                    >
+                      <Send />
+                    </IconButton>
+                  )}
                 </InputAdornment>
               ),
             }}
