@@ -15,17 +15,15 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import LibraryBrowser from '../library/LibraryBrowser.jsx';
 import { mockMagicEdit } from '../../utils/mockMagicEdit';
-// Use the same storage helper as LibraryBrowser for reliable S3 blob access
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore - JS module without types
-import { get as getFromLibrary } from '../../utils/library/storage';
 
 export interface MagicEditorProps {
-  imageSrc?: string | null;
-  onImageChange?: (src: string | null) => void;
-  onResult?: (src: string) => void;
+  imageSrc: string; // required input photo
+  onSave?: (finalSrc: string) => void; // commit edited image
+  onCancel?: (originalSrc: string) => void; // cancel to original
+  onResult?: (src: string) => void; // optional per-edit callback
+  onImageChange?: (src: string | null) => void; // notify parent of current image
+  onProcessingChange?: (processing: boolean) => void; // notify parent of loading state
   defaultPrompt?: string;
   className?: string;
   style?: React.CSSProperties;
@@ -33,18 +31,19 @@ export interface MagicEditorProps {
 
 export default function MagicEditor({
   imageSrc,
-  onImageChange,
+  onSave,
+  onCancel,
   onResult,
+  onImageChange,
+  onProcessingChange,
   defaultPrompt = '',
   className,
   style,
 }: MagicEditorProps) {
-  const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
   const [internalSrc, setInternalSrc] = useState<string | null>(imageSrc ?? null);
   const [prompt, setPrompt] = useState<string>(defaultPrompt);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [libraryOpen, setLibraryOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   type HistoryEntry = {
     id: number;
@@ -61,6 +60,59 @@ export default function MagicEditor({
   const [nextId, setNextId] = useState(1);
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null);
   const initialRecordedRef = useRef(false);
+  const originalSrcRef = useRef<string>(imageSrc);
+
+  // Animated placeholder examples
+  const examples = useMemo(
+    () => [
+      'Remove the text…',
+      'Add a tophat…',
+      'Make him laugh…',
+      'Add an angry cat…',
+    ],
+    []
+  );
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const [placeholderText, setPlaceholderText] = useState<string>('');
+  const [phase, setPhase] = useState<'typing' | 'pausing' | 'deleting'>('typing');
+  const [charIndex, setCharIndex] = useState(0);
+
+  useEffect(() => {
+    let timeout: number | undefined;
+    // If user is typing or an edit is processing, keep placeholder empty and pause animation
+    if ((prompt && prompt.length > 0) || processing) {
+      setPlaceholderText('');
+      return () => {
+        if (timeout) window.clearTimeout(timeout);
+      };
+    }
+    const full = examples[exampleIndex] || '';
+    if (phase === 'typing') {
+      if (charIndex < full.length) {
+        timeout = window.setTimeout(() => {
+          setCharIndex((c) => c + 1);
+          setPlaceholderText(full.slice(0, charIndex + 1));
+        }, 60);
+      } else {
+        setPhase('pausing');
+      }
+    } else if (phase === 'pausing') {
+      timeout = window.setTimeout(() => setPhase('deleting'), 1000);
+    } else if (phase === 'deleting') {
+      if (charIndex > 0) {
+        timeout = window.setTimeout(() => {
+          setCharIndex((c) => c - 1);
+          setPlaceholderText(full.slice(0, Math.max(0, charIndex - 1)));
+        }, 35);
+      } else {
+        setPhase('typing');
+        setExampleIndex((i) => (i + 1) % examples.length);
+      }
+    }
+    return () => {
+      if (timeout) window.clearTimeout(timeout);
+    };
+  }, [prompt, processing, examples, exampleIndex, phase, charIndex]);
 
   const getDisplayLabel = useCallback((h: HistoryEntry): string => {
     if (h.source === 'edit' && h.prompt && h.pending) return `EDITING: "${h.prompt}"`;
@@ -71,20 +123,14 @@ export default function MagicEditor({
     if (h.source === 'library') return 'LIBRARY';
     return h.label || 'CHANGE';
   }, []);
-  const blobToDataUrl = useCallback((blob: Blob): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  }), []);
-  const toDataUrl = useCallback(async (url: string): Promise<string> => {
-    const res = await fetch(url, { mode: 'cors' });
-    const blob = await res.blob();
-    return blobToDataUrl(blob);
-  }, []);
+  // No upload/library here: parent must provide an input photo
 
   useEffect(() => {
     setInternalSrc(imageSrc ?? null);
+    originalSrcRef.current = imageSrc;
+    // reset history when a new image arrives
+    setHistory([]);
+    initialRecordedRef.current = false;
   }, [imageSrc]);
 
   // (moved below commitImage definition to avoid TS2448)
@@ -93,6 +139,10 @@ export default function MagicEditor({
     setInternalSrc(src);
     if (onImageChange) onImageChange(src);
   }, [onImageChange]);
+
+  useEffect(() => {
+    if (onProcessingChange) onProcessingChange(processing);
+  }, [processing, onProcessingChange]);
 
   const commitImage = useCallback((src: string, label: string, source: HistoryEntry['source'], extra?: { prompt?: string; pending?: boolean; progress?: number }) => {
     setImage(src);
@@ -152,22 +202,7 @@ export default function MagicEditor({
 
   const canApply = useMemo(() => Boolean(internalSrc) && !processing, [internalSrc, processing]);
 
-  const handleUploadClick = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    // Helps mobile browsers offer camera/library options
-    input.capture = 'environment';
-    input.onchange = async (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      const file = (target.files && target.files[0]) || null;
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => commitImage(String(reader.result), 'Selected photo (upload)', 'upload');
-      reader.readAsDataURL(file);
-    };
-    input.click();
-  }, [commitImage]);
+  // No upload or library selection inside the editor
 
   const handleApply = useCallback(async () => {
     if (!internalSrc || processing) return;
@@ -236,7 +271,7 @@ export default function MagicEditor({
           {/* Prompt */}
           <TextField
             fullWidth
-            placeholder="Describe the magic edit…"
+            placeholder={placeholderText}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
@@ -255,7 +290,7 @@ export default function MagicEditor({
                     disabled={!canApply}
                     sx={{ ml: 1, whiteSpace: 'nowrap' }}
                   >
-                    Apply
+                    Edit
                   </Button>
                 </InputAdornment>
               ),
@@ -263,16 +298,36 @@ export default function MagicEditor({
             inputProps={{ 'aria-label': 'Magic edit prompt' }}
             sx={{
               mb: 1.5,
-              '& .MuiOutlinedInput-root': { borderRadius: 3 },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 3,
+                backgroundColor: 'rgba(255,255,255,0.6)',
+                backdropFilter: 'saturate(180%) blur(12px)',
+                WebkitBackdropFilter: 'saturate(180%) blur(12px)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                transition: 'box-shadow 150ms ease, background-color 150ms ease',
+              },
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(255,255,255,0.8)',
+              },
+              '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(255,255,255,0.9)',
+              },
+              '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(255,255,255,1)',
+                borderWidth: 1.5,
+              },
+              '& .MuiOutlinedInput-input': {
+                color: 'rgba(0,0,0,0.88)',
+              },
+              '& .MuiInputBase-input::placeholder': {
+                color: 'rgba(0,0,0,0.55)',
+                opacity: 1,
+              },
             }}
           />
 
           {/* Actions */}
-          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', mb: 2 }}>
-            <Button size="small" variant="text" onClick={handleUploadClick} disabled={processing}>Upload</Button>
-            <Button size="small" variant="text" onClick={() => setLibraryOpen(true)} disabled={processing}>Library</Button>
-            <Button size="small" variant="text" color="inherit" onClick={() => setImage(null)} disabled={processing}>Clear</Button>
-          </Stack>
+          {/* Global actions are handled by parent top bar */}
 
           {/* History */}
           {history.length > 0 && (
@@ -331,53 +386,7 @@ export default function MagicEditor({
         </Box>
       </Stack>
 
-      {/* Library picker dialog */}
-      <Dialog open={libraryOpen} onClose={() => setLibraryOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle>Select from Library</DialogTitle>
-        <DialogContent dividers>
-          {/** The library browser is a JS component with PropTypes; cast to any for TS. */}
-          <AnyLibraryBrowser
-            multiple={false}
-            instantSelectOnClick
-            showActionBar
-            actionBarLabel="Use Selected"
-            onSelect={async (items: Array<{ displayUrl?: string; originalUrl?: string; metadata?: any }>) => {
-              const first = items?.[0];
-              const url = first?.displayUrl || first?.originalUrl || null;
-              const libKey: string | undefined = (first as any)?.metadata?.libraryKey;
-              if (libKey) {
-                try {
-                  // Prefer fetching via Storage to avoid CORS and get a Blob directly
-                  const blob: Blob = await getFromLibrary(libKey, { level: 'protected' });
-                  const dataUrl = await blobToDataUrl(blob);
-                  commitImage(dataUrl, 'Selected photo (library)', 'library');
-                } catch (e) {
-                  // Fallback to URL → data URL conversion
-                  if (url) {
-                    try {
-                      const dataUrl = url.startsWith('data:') ? url : await toDataUrl(url);
-                      commitImage(dataUrl, 'Selected photo (library)', 'library');
-                    } catch (_) {
-                      setImage(url);
-                      setError('Selected image may be cross-origin; edit export could fail.');
-                    }
-                  }
-                }
-              } else if (url) {
-                try {
-                  const finalUrl = url.startsWith('data:') ? url : await toDataUrl(url);
-                  commitImage(finalUrl, 'Selected photo (library)', 'library');
-                } catch (_) {
-                  // Fall back to original URL and warn; edit may fail due to CORS
-                  setImage(url);
-                  setError('Selected image may be cross-origin; edit export could fail.');
-                }
-              }
-              setLibraryOpen(false);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* No internal library/upload pickers; parent supplies image */}
       
       {/* Preview dialog for a historical entry */}
       <Dialog open={Boolean(previewEntry)} onClose={() => setPreviewEntry(null)} fullWidth maxWidth="sm">
