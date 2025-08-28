@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  IconButton,
   InputAdornment,
   CircularProgress,
   Dialog,
@@ -15,6 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { Send, AutoFixHighRounded } from '@mui/icons-material';
 import { mockMagicEdit } from '../../utils/mockMagicEdit';
 
 export interface MagicEditorProps {
@@ -301,46 +303,40 @@ export default function MagicEditor({
                   }
                 }}
                 InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+                    </InputAdornment>
+                  ),
                   endAdornment: (
                     <InputAdornment position="end">
-                      <Button
-                        variant="contained"
+                      <IconButton
+                        aria-label="send prompt"
                         size="small"
                         onClick={handleApply}
                         disabled={!canApply}
-                        sx={{ ml: 1, whiteSpace: 'nowrap' }}
+                        edge="end"
+                        sx={{ ml: 0.5 }}
                       >
-                        Edit
-                      </Button>
+                        <Send />
+                      </IconButton>
                     </InputAdornment>
                   ),
                 }}
                 inputProps={{ 'aria-label': 'Magic edit prompt' }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 3,
-                    backgroundColor: 'rgba(255,255,255,0.6)',
-                    backdropFilter: 'saturate(180%) blur(12px)',
-                    WebkitBackdropFilter: 'saturate(180%) blur(12px)',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                    transition: 'box-shadow 150ms ease, background-color 150ms ease',
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255,255,255,0.8)',
-                  },
-                  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255,255,255,0.9)',
-                  },
-                  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255,255,255,1)',
-                    borderWidth: 1.5,
+                    borderRadius: 2,
+                    backgroundColor: '#fff',
                   },
                   '& .MuiOutlinedInput-input': {
-                    color: 'rgba(0,0,0,0.88)',
+                    color: 'rgba(0,0,0,0.9)',
+                    fontWeight: 700,
                   },
                   '& .MuiInputBase-input::placeholder': {
-                    color: 'rgba(0,0,0,0.55)',
+                    color: 'rgba(0,0,0,0.6)',
                     opacity: 1,
+                    fontWeight: 600,
                   },
                 }}
               />
@@ -352,20 +348,14 @@ export default function MagicEditor({
                 <Button
                   size="large"
                   fullWidth
-                  variant="contained"
+                  variant="outlined"
                   onClick={() => { if (onCancel) onCancel(originalSrcRef.current); }}
                   disabled={processing}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
                     textTransform: 'none',
-                    color: 'rgba(255,255,255,0.95)',
-                    backgroundColor: 'rgba(17,17,19,0.55)',
-                    backdropFilter: 'saturate(160%) blur(10px)',
-                    WebkitBackdropFilter: 'saturate(160%) blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
-                    '&:hover': { backgroundColor: 'rgba(17,17,19,0.7)' },
+                    color: 'text.primary',
                   }}
                 >
                   Cancel
@@ -383,9 +373,7 @@ export default function MagicEditor({
                     background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
                     border: '1px solid #8b5cc7',
                     color: '#fff',
-                    backdropFilter: 'saturate(160%) blur(10px)',
-                    WebkitBackdropFilter: 'saturate(160%) blur(10px)',
-                    boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+                    boxShadow: 'none',
                     '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' },
                   }}
                 >
@@ -403,29 +391,17 @@ export default function MagicEditor({
             sx={{ display: { xs: 'none', md: 'block' },
               mb: 1.5,
               '& .MuiOutlinedInput-root': {
-                borderRadius: 3,
-                backgroundColor: 'rgba(255,255,255,0.6)',
-                backdropFilter: 'saturate(180%) blur(12px)',
-                WebkitBackdropFilter: 'saturate(180%) blur(12px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                transition: 'box-shadow 150ms ease, background-color 150ms ease',
-              },
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255,255,255,0.8)',
-              },
-              '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255,255,255,0.9)',
-              },
-              '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255,255,255,1)',
-                borderWidth: 1.5,
+                borderRadius: 2,
+                backgroundColor: '#fff',
               },
               '& .MuiOutlinedInput-input': {
-                color: 'rgba(0,0,0,0.88)',
+                color: 'rgba(0,0,0,0.9)',
+                fontWeight: 700,
               },
               '& .MuiInputBase-input::placeholder': {
-                color: 'rgba(0,0,0,0.55)',
+                color: 'rgba(0,0,0,0.6)',
                 opacity: 1,
+                fontWeight: 600,
               },
             }}
             fullWidth
@@ -439,17 +415,23 @@ export default function MagicEditor({
               }
             }}
             InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <AutoFixHighRounded sx={{ color: 'primary.main' }} />
+                </InputAdornment>
+              ),
               endAdornment: (
                 <InputAdornment position="end">
-                  <Button
-                    variant="contained"
+                  <IconButton
+                    aria-label="send prompt"
                     size="small"
                     onClick={handleApply}
                     disabled={!canApply}
-                    sx={{ ml: 1, whiteSpace: 'nowrap' }}
+                    edge="end"
+                    sx={{ ml: 0.5 }}
                   >
-                    Edit
-                  </Button>
+                    <Send />
+                  </IconButton>
                 </InputAdornment>
               ),
             }}
