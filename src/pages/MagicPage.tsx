@@ -32,6 +32,7 @@ export default function MagicPage() {
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [versionChoice, setVersionChoice] = useState<'frame' | 'original' | null>(null);
+  const [hasCompletedEdit, setHasCompletedEdit] = useState(false);
   const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
 
   // Gate this page to admins only
@@ -86,6 +87,11 @@ export default function MagicPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reset completed-edit flag whenever a new base image is chosen
+  useEffect(() => {
+    setHasCompletedEdit(false);
+  }, [chosen]);
 
   const handleReturnToCaller = async (src: string) => {
     const returnTo: string | undefined = location?.state?.returnTo;
@@ -214,13 +220,17 @@ export default function MagicPage() {
                   size="large"
                   variant="outlined"
                   onClick={() => {
-                    if (location?.state?.returnTo) {
-                      navigate(-1);
-                      return;
-                    }
                     const hasUnappliedPrompt = Boolean(promptState.value && promptState.value.trim().length > 0);
                     const hasUnsavedEdits = Boolean(chosen && currentSrc && chosen !== currentSrc);
-                    if (hasUnappliedPrompt || hasUnsavedEdits) { setConfirmCancelOpen(true); } else { setStage('pick'); }
+                    if (hasUnappliedPrompt || hasUnsavedEdits) {
+                      setConfirmCancelOpen(true);
+                    } else {
+                      if (location?.state?.returnTo) {
+                        navigate(-1);
+                      } else {
+                        setStage('pick');
+                      }
+                    }
                   }}
                   disabled={processing}
                   sx={{
@@ -250,7 +260,7 @@ export default function MagicPage() {
                       }
                     }
                   }}
-                  disabled={!currentSrc || processing}
+                  disabled={!currentSrc || processing || !hasCompletedEdit}
                   sx={{
                     minHeight: 44,
                     fontWeight: 700,
@@ -485,6 +495,7 @@ export default function MagicPage() {
           onImageChange={setCurrentSrc}
           onProcessingChange={setProcessing}
           onPromptStateChange={setPromptState}
+          onResult={() => setHasCompletedEdit(true)}
           onSave={(src) => {
             setFinalSrc(src);
             // If we came from a caller, return result immediately
@@ -495,13 +506,17 @@ export default function MagicPage() {
             }
           }}
           onCancel={() => {
-            if (location?.state?.returnTo) {
-              navigate(-1);
-              return;
-            }
             const hasUnappliedPrompt = Boolean(promptState.value && promptState.value.trim().length > 0);
             const hasUnsavedEdits = Boolean(chosen && currentSrc && chosen !== currentSrc);
-            if (hasUnappliedPrompt || hasUnsavedEdits) { setConfirmCancelOpen(true); } else { setStage('pick'); }
+            if (hasUnappliedPrompt || hasUnsavedEdits) {
+              setConfirmCancelOpen(true);
+            } else {
+              if (location?.state?.returnTo) {
+                navigate(-1);
+              } else {
+                setStage('pick');
+              }
+            }
           }}
         />
       )}
