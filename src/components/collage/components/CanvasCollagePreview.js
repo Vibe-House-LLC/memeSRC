@@ -471,6 +471,7 @@ const CanvasCollagePreview = ({
   images = [],
   onPanelClick,
   onEditImage, // new: request magic edit for a panel
+  canEditImage = false, // new: control visibility of magic edit option
   onSaveGestureDetected, // new: notify parent when long-press/right-click implies save intent
   isFrameActionSuppressed, // optional: function to indicate suppression window
   aspectRatioValue = 1,
@@ -3894,12 +3895,14 @@ const CanvasCollagePreview = ({
                 </ListItemIcon>
                 Rearrange
               </MenuItem>
-              <MenuItem onClick={handleMenuMagicEdit} disabled={!hasImageForPanel}>
-                <ListItemIcon>
-                  <AutoFixHighRounded fontSize="small" />
-                </ListItemIcon>
-                Edit Image
-              </MenuItem>
+              {canEditImage && (
+                <MenuItem onClick={handleMenuMagicEdit} disabled={!hasImageForPanel}>
+                  <ListItemIcon>
+                    <AutoFixHighRounded fontSize="small" />
+                  </ListItemIcon>
+                  Edit Image
+                </MenuItem>
+              )}
               <MenuItem onClick={handleMenuReplace}>
                 <ListItemIcon>
                   <ImageIcon fontSize="small" />
@@ -3934,6 +3937,7 @@ CanvasCollagePreview.propTypes = {
   ])),
   onPanelClick: PropTypes.func,
   onEditImage: PropTypes.func,
+  canEditImage: PropTypes.bool,
   onSaveGestureDetected: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
   aspectRatioValue: PropTypes.number,

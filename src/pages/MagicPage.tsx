@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
 import { AutoFixHighRounded, CloseRounded } from '@mui/icons-material';
 import MagicEditor from '../components/magic-editor/MagicEditor';
@@ -16,10 +16,13 @@ import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 // @ts-ignore - JS module without types
 import { resizeImage } from '../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../constants/imageProcessing';
+import { UserContext } from '../UserContext';
 
 export default function MagicPage() {
   const location = useLocation() as any;
   const navigate = useNavigate();
+  const { user } = useContext(UserContext);
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
   const [stage, setStage] = useState<'pick' | 'choose' | 'edit' | 'done'>('pick');
   const [chosen, setChosen] = useState<string | null>(null);
   const [finalSrc, setFinalSrc] = useState<string | null>(null);
@@ -30,6 +33,18 @@ export default function MagicPage() {
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [versionChoice, setVersionChoice] = useState<'frame' | 'original' | null>(null);
   const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
+
+  // Gate this page to admins only
+  useEffect(() => {
+    if (isAdmin === false) {
+      const returnTo: string | undefined = location?.state?.returnTo;
+      if (returnTo) {
+        navigate(returnTo, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [isAdmin, navigate, location?.state]);
 
   const chooseFrom = useMemo(() => location?.state?.chooseFrom as undefined | { originalSrc?: string; frameSrc?: string }, [location?.state]);
 
