@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UserContext } from "../UserContext";
@@ -659,7 +659,6 @@ export default function CollagePage() {
   // Handle navigation-driven project editing (/projects/:projectId) — placed after loadProjectById is defined
   // Use a ref-backed loader to avoid re-running due to changing callback identity
   useEffect(() => {
-    let cancelled = false;
     if (hasLibraryAccess && projectId) {
       (async () => {
         try {
@@ -669,7 +668,7 @@ export default function CollagePage() {
         }
       })();
     }
-    return () => { cancelled = true; };
+    return () => {};
   }, [hasLibraryAccess, projectId]);
 
   // 4) Create a project only after images are present AND preview has rendered

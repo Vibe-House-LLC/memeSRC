@@ -225,7 +225,6 @@ export default function MagicEditor({
     }
   }, [commitImage, history.length, imageSrc]);
 
-  const canApply = useMemo(() => Boolean(internalSrc) && !processing, [internalSrc, processing]);
   const canSend = useMemo(() => Boolean(internalSrc) && !processing && prompt.trim().length > 0, [internalSrc, processing, prompt]);
 
   const blurPromptInputs = useCallback(() => {
