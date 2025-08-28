@@ -258,7 +258,19 @@ export default function MagicEditor({
   }, [addPendingEdit, internalSrc, onResult, processing, prompt, setImage, updateHistoryEntry]);
 
   return (
-    <Box className={className} style={style} sx={{ width: '100%', maxWidth: { xs: '100%', md: 1400 }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
+    <Box
+      className={className}
+      style={style}
+      sx={{
+        width: '100%',
+        maxWidth: { xs: '100%', md: 1400 },
+        mx: 'auto',
+        // Add horizontal padding on mobile to prevent edge clipping
+        px: { xs: 1.5, sm: 2 },
+        boxSizing: 'border-box',
+        overflowX: 'hidden',
+      }}
+    >
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 2, md: 3 }} alignItems={{ md: 'flex-start' }}>
         {/* Left: Image + Prompt (mobile combined), Image only on desktop */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -273,8 +285,10 @@ export default function MagicEditor({
               flexDirection: { xs: 'column', md: 'initial' },
               // Natural height; image will cap itself so group can shrink/expand
               height: { xs: 'auto', md: 'auto' },
-              mx: { xs: -1.5, md: 0 },
+              // Remove negative margins that caused horizontal overflow on some mobiles
+              mx: { xs: 0, md: 0 },
               p: { xs: 1, md: 0 },
+              boxSizing: 'border-box',
             }}
           >
             {/* Image area */}

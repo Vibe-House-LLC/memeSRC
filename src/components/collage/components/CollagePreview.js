@@ -655,7 +655,19 @@ const CollagePreview = ({
         }}
         fullWidth
         maxWidth="lg"
-        scroll="body"
+        scroll={isMobile ? 'paper' : 'body'}
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: {
+            bgcolor: '#0f0f0f',
+            // Avoid 100vw on iOS which can exceed the visual viewport
+            width: { xs: '100%', md: 'auto' },
+            maxWidth: { xs: '100%', md: 'calc(100% - 64px)' },
+            m: 0,
+            borderRadius: 0,
+            overflowX: 'hidden',
+          }
+        }}
       >
         {/* Desktop action bar (MagicEditor shows its own Save/Cancel on mobile) */}
         {isMagicOpen && (
@@ -742,8 +754,19 @@ const CollagePreview = ({
             </Box>
           </Box>
         )}
-        <DialogContent dividers sx={{ bgcolor: '#0f0f0f' }}>
+        <DialogContent
+          dividers={!isMobile}
+          sx={{
+            bgcolor: '#0f0f0f',
+            p: { xs: 0, md: 2 },
+            overflowX: 'hidden',
+            // Ensure content fits within viewport width on mobile
+            maxWidth: { xs: '100%', md: 'initial' },
+            boxSizing: 'border-box',
+          }}
+        >
           {magicChosenSrc && (
+            <Box sx={{ width: '100%', overflowX: 'hidden' }}>
             <MagicEditor
               imageSrc={magicChosenSrc}
               onImageChange={setMagicCurrentSrc}
@@ -785,6 +808,7 @@ const CollagePreview = ({
                 }
               }}
             />
+            </Box>
           )}
         </DialogContent>
       </Dialog>
