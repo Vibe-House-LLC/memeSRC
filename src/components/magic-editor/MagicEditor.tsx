@@ -22,6 +22,116 @@ import { API, graphqlOperation } from 'aws-amplify';
 // @ts-ignore - generated JS module
 import { getMagicResult } from '../../graphql/queries';
 
+// Utilities to ensure the image payload is a browser-safe data URL in a format
+// the backend (and Gemini) can process reliably across subsequent edits.
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function isImageDataUrl(src: string): boolean {
+  return typeof src === 'string' && src.startsWith('data:image/');
+}
+
+function getDataUrlMime(src: string): string | null {
+  try {
+    const match = /^data:([^;]+);base64,/i.exec(src);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function convertBlobToPngDataUrl(blob: Blob): Promise<string> {
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return await blobToDataUrl(blob);
+      ctx.drawImage(bitmap, 0, 0);
+      return canvas.toDataURL('image/png');
+    }
+  } catch {}
+  // Fallback via HTMLImageElement
+  try {
+    const url = URL.createObjectURL(blob);
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = url;
+      // Allow CORS-friendly draw; if not permitted, fallback to original blob
+      try { image.crossOrigin = 'anonymous'; } catch {}
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return await blobToDataUrl(blob);
+    ctx.drawImage(img, 0, 0);
+    try { URL.revokeObjectURL(url); } catch {}
+    return canvas.toDataURL('image/png');
+  } catch {
+    // Last resort: return original blob as data URL (keeps original mime)
+    return await blobToDataUrl(blob);
+  }
+}
+
+async function ensureImageDataUrl(src: string): Promise<string> {
+  // If already a PNG/JPEG data URL, keep as-is
+  if (isImageDataUrl(src)) {
+    const mime = getDataUrlMime(src);
+    if (mime === 'image/png' || mime === 'image/jpeg' || mime === 'image/jpg') return src;
+    // Convert other inline formats (e.g., webp) to PNG
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      return await convertBlobToPngDataUrl(blob);
+    } catch {
+      return src; // fall back to original
+    }
+  }
+
+  // For blob: or http(s): URLs, fetch bytes then convert to a PNG data URL
+  try {
+    const res = await fetch(src, { mode: 'cors' as RequestMode });
+    const blob = await res.blob();
+    // Prefer PNG to avoid provider-specific mime quirks
+    if (blob.type === 'image/png' || blob.type === 'image/jpeg') {
+      return await blobToDataUrl(blob);
+    }
+    return await convertBlobToPngDataUrl(blob);
+  } catch {
+    // As a last resort, try drawing via Image element to bypass fetch CORS
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        try { image.crossOrigin = 'anonymous'; } catch {}
+        image.src = src;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context unavailable');
+      ctx.drawImage(img, 0, 0);
+      return canvas.toDataURL('image/png');
+    } catch {
+      // Give up and return original; backend may still handle
+      return src;
+    }
+  }
+}
+
 export interface MagicEditorProps {
   imageSrc: string; // required input photo
   onSave?: (finalSrc: string) => void; // commit edited image
@@ -250,9 +360,11 @@ export default function MagicEditor({
     const pendingId = addPendingEdit(currentPrompt);
     // Keep prompt visible while processing so users see what's loading
     try {
+      // Normalize current image into a PNG/JPEG data URL to keep backend input consistent
+      const imageForApi = await ensureImageDataUrl(internalSrc);
       // 1) Kick off backend job via existing /inpaint route, maskless
       const resp: any = await API.post('publicapi', '/inpaint', {
-        body: { image: internalSrc, prompt: currentPrompt },
+        body: { image: imageForApi, prompt: currentPrompt },
       });
       const magicResultId: string = resp?.magicResultId;
       if (!magicResultId) throw new Error('Failed to start edit');
