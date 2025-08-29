@@ -21,6 +21,8 @@ import { API, graphqlOperation } from 'aws-amplify';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - generated JS module
 import { getMagicResult } from '../../graphql/queries';
+import { resizeImage } from '../../utils/library/resizeImage';
+import { EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
 
 // Utilities to ensure the image payload is a browser-safe data URL in a format
 // the backend (and Gemini) can process reliably across subsequent edits.
@@ -360,11 +362,20 @@ export default function MagicEditor({
     const pendingId = addPendingEdit(currentPrompt);
     // Keep prompt visible while processing so users see what's loading
     try {
-      // Normalize current image into a PNG/JPEG data URL to keep backend input consistent
+      // Normalize current image into a PNG/JPEG data URL, then enforce max dimensions
       const imageForApi = await ensureImageDataUrl(internalSrc);
+      let payloadImage = imageForApi;
+      try {
+        const fetched = await fetch(imageForApi as string);
+        const srcBlob = await fetched.blob();
+        const resizedBlob = await resizeImage(srcBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+        payloadImage = await blobToDataUrl(resizedBlob);
+      } catch {
+        // If resizing fails for any reason, fall back to normalized image
+      }
       // 1) Kick off backend job via existing /inpaint route, maskless
       const resp: any = await API.post('publicapi', '/inpaint', {
-        body: { image: imageForApi, prompt: currentPrompt },
+        body: { image: payloadImage, prompt: currentPrompt },
       });
       const magicResultId: string = resp?.magicResultId;
       if (!magicResultId) throw new Error('Failed to start edit');
