@@ -178,6 +178,18 @@ export default function MagicEditor({
   const [prompt, setPrompt] = useState<string>(defaultPrompt);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [progressVariant, setProgressVariant] = useState<'determinate' | 'indeterminate'>('determinate');
+  const [messageIndex, setMessageIndex] = useState(0);
+  const messages = useMemo(() => [
+    'Generating 2 results...',
+    'This will take a few seconds...',
+    'Magic is hard work, you know?',
+    'Just about done!',
+    'Hang tight, wrapping up...',
+  ], []);
+  const messagePercentages = useMemo(() =>
+    Array.from({ length: Math.max(0, messages.length - 2) }, (_, index) => (index + 1) * (100 / (messages.length - 1))),
+  [messages.length]);
   const [error, setError] = useState<string | null>(null);
   const [promptFocused, setPromptFocused] = useState(false);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
@@ -200,6 +212,7 @@ export default function MagicEditor({
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null);
   const initialRecordedRef = useRef(false);
   const originalSrcRef = useRef<string>(imageSrc);
+  const progressTimerRef = useRef<number | null>(null);
 
   // Animated placeholder examples
   const examples = useMemo(
@@ -344,6 +357,16 @@ export default function MagicEditor({
     }
   }, [commitImage, history.length, imageSrc]);
 
+  // Clear any running progress timer on unmount
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) {
+        try { window.clearInterval(progressTimerRef.current); } catch {}
+        progressTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const canSend = useMemo(() => Boolean(internalSrc) && !processing && prompt.trim().length > 0, [internalSrc, processing, prompt]);
 
   const blurPromptInputs = useCallback(() => {
@@ -358,6 +381,8 @@ export default function MagicEditor({
     if (!internalSrc || processing) return;
     setProcessing(true);
     setProgress(0);
+    setProgressVariant('determinate');
+    setMessageIndex(0);
     const currentPrompt = prompt;
     const pendingId = addPendingEdit(currentPrompt);
     // Keep prompt visible while processing so users see what's loading
@@ -386,13 +411,42 @@ export default function MagicEditor({
       const start = Date.now();
 
       // Simulate progress while polling
-      const progressTimer = window.setInterval(() => {
+      if (progressTimerRef.current) {
+        try { window.clearInterval(progressTimerRef.current); } catch {}
+        progressTimerRef.current = null;
+      }
+      const DURATION_SECONDS = 15;
+      const UPDATES_PER_SECOND = 2;
+      const INCREMENT = 100 / (DURATION_SECONDS * UPDATES_PER_SECOND);
+      progressTimerRef.current = window.setInterval(() => {
         setProgress((prev) => {
-          const next = Math.min(95, prev + 2);
+          // Once we hit 100%, flip to indeterminate "wrapping up"
+          if (prev >= 100) {
+            setProgressVariant('indeterminate');
+            setMessageIndex(messages.length - 1);
+            return 100;
+          }
+          const next = Math.min(100, prev + INCREMENT);
+          if (next >= 100) {
+            setProgressVariant('indeterminate');
+            updateHistoryEntry(pendingId, { progress: 100 });
+            setMessageIndex(messages.length - 1);
+            return 100;
+          }
           updateHistoryEntry(pendingId, { progress: next });
+          // Update message index based on determinate progress thresholds
+          let targetMessageIndex = 0;
+          for (let i = 0; i < messagePercentages.length; i+=1) {
+            if (next >= messagePercentages[i]) {
+              targetMessageIndex = i + 1;
+            } else {
+              break;
+            }
+          }
+          setMessageIndex(targetMessageIndex);
           return next;
         });
-      }, 600);
+      }, 1000 / UPDATES_PER_SECOND);
 
       let finalUrl: string | null = null;
       // eslint-disable-next-line no-constant-condition
@@ -431,8 +485,13 @@ export default function MagicEditor({
       // mark entry as failed
       updateHistoryEntry(pendingId, { pending: false, label: 'Edit failed', progress: undefined, prompt: undefined });
     } finally {
+      if (progressTimerRef.current) {
+        try { window.clearInterval(progressTimerRef.current); } catch {}
+        progressTimerRef.current = null;
+      }
       setProcessing(false);
       setTimeout(() => setProgress(0), 400);
+      setProgressVariant('determinate');
       // Now clear the prompt after processing completes
       setPrompt('');
     }
@@ -505,6 +564,8 @@ export default function MagicEditor({
                     height: { xs: 'auto', md: 'auto' },
                     maxHeight: { xs: '55vh', md: '70vh' },
                     objectFit: 'contain',
+                    filter: processing ? 'blur(2px) brightness(0.7)' : 'none',
+                    transition: 'filter 200ms ease',
                   }}
                 />
               ) : (
@@ -517,8 +578,10 @@ export default function MagicEditor({
                 <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1 }}>
                   <CircularProgress size={32} thickness={5} />
                   <Box sx={{ width: '80%', maxWidth: 360 }}>
-                    <LinearProgress variant="determinate" value={progress} />
-                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'center', color: 'common.white' }}>{progress}%</Typography>
+                    <LinearProgress variant={progressVariant} value={progress} />
+                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'center', color: 'common.white' }}>
+                      {progressVariant === 'determinate' ? `${Math.round(progress)}%` : messages[messageIndex]}
+                    </Typography>
                   </Box>
                 </Box>
               )}
