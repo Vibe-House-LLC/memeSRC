@@ -17,7 +17,122 @@ import {
   Typography,
 } from '@mui/material';
 import { Send, AutoFixHighRounded, Close, Check } from '@mui/icons-material';
-import { mockMagicEdit } from '../../utils/mockMagicEdit';
+import { API, graphqlOperation } from 'aws-amplify';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - generated JS module
+import { getMagicResult } from '../../graphql/queries';
+import { resizeImage } from '../../utils/library/resizeImage';
+import { EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
+
+// Utilities to ensure the image payload is a browser-safe data URL in a format
+// the backend (and Gemini) can process reliably across subsequent edits.
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function isImageDataUrl(src: string): boolean {
+  return typeof src === 'string' && src.startsWith('data:image/');
+}
+
+function getDataUrlMime(src: string): string | null {
+  try {
+    const match = /^data:([^;]+);base64,/i.exec(src);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function convertBlobToPngDataUrl(blob: Blob): Promise<string> {
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return await blobToDataUrl(blob);
+      ctx.drawImage(bitmap, 0, 0);
+      return canvas.toDataURL('image/png');
+    }
+  } catch {}
+  // Fallback via HTMLImageElement
+  try {
+    const url = URL.createObjectURL(blob);
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = url;
+      // Allow CORS-friendly draw; if not permitted, fallback to original blob
+      try { image.crossOrigin = 'anonymous'; } catch {}
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return await blobToDataUrl(blob);
+    ctx.drawImage(img, 0, 0);
+    try { URL.revokeObjectURL(url); } catch {}
+    return canvas.toDataURL('image/png');
+  } catch {
+    // Last resort: return original blob as data URL (keeps original mime)
+    return await blobToDataUrl(blob);
+  }
+}
+
+async function ensureImageDataUrl(src: string): Promise<string> {
+  // If already a PNG/JPEG data URL, keep as-is
+  if (isImageDataUrl(src)) {
+    const mime = getDataUrlMime(src);
+    if (mime === 'image/png' || mime === 'image/jpeg' || mime === 'image/jpg') return src;
+    // Convert other inline formats (e.g., webp) to PNG
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      return await convertBlobToPngDataUrl(blob);
+    } catch {
+      return src; // fall back to original
+    }
+  }
+
+  // For blob: or http(s): URLs, fetch bytes then convert to a PNG data URL
+  try {
+    const res = await fetch(src, { mode: 'cors' as RequestMode });
+    const blob = await res.blob();
+    // Prefer PNG to avoid provider-specific mime quirks
+    if (blob.type === 'image/png' || blob.type === 'image/jpeg') {
+      return await blobToDataUrl(blob);
+    }
+    return await convertBlobToPngDataUrl(blob);
+  } catch {
+    // As a last resort, try drawing via Image element to bypass fetch CORS
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        try { image.crossOrigin = 'anonymous'; } catch {}
+        image.src = src;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context unavailable');
+      ctx.drawImage(img, 0, 0);
+      return canvas.toDataURL('image/png');
+    } catch {
+      // Give up and return original; backend may still handle
+      return src;
+    }
+  }
+}
 
 export interface MagicEditorProps {
   imageSrc: string; // required input photo
@@ -63,6 +178,19 @@ export default function MagicEditor({
   const [prompt, setPrompt] = useState<string>(defaultPrompt);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [progressVariant, setProgressVariant] = useState<'determinate' | 'indeterminate'>('determinate');
+  const [messageIndex, setMessageIndex] = useState(0);
+  const [hasJobStarted, setHasJobStarted] = useState(false);
+  const messages = useMemo(() => [
+    'Generating 2 results...',
+    'This will take a few seconds...',
+    'Magic is hard work, you know?',
+    'Just about done!',
+    'Hang tight, wrapping up...',
+  ], []);
+  const messagePercentages = useMemo(() =>
+    Array.from({ length: Math.max(0, messages.length - 2) }, (_, index) => (index + 1) * (100 / (messages.length - 1))),
+  [messages.length]);
   const [error, setError] = useState<string | null>(null);
   const [promptFocused, setPromptFocused] = useState(false);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
@@ -85,6 +213,10 @@ export default function MagicEditor({
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null);
   const initialRecordedRef = useRef(false);
   const originalSrcRef = useRef<string>(imageSrc);
+  const progressTimerRef = useRef<number | null>(null);
+
+  // Elegant, subtle glow around the progress card
+  const accentColor = '#8b5cc7';
 
   // Animated placeholder examples
   const examples = useMemo(
@@ -229,6 +361,16 @@ export default function MagicEditor({
     }
   }, [commitImage, history.length, imageSrc]);
 
+  // Clear any running progress timer on unmount
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) {
+        try { window.clearInterval(progressTimerRef.current); } catch {}
+        progressTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const canSend = useMemo(() => Boolean(internalSrc) && !processing && prompt.trim().length > 0, [internalSrc, processing, prompt]);
 
   const blurPromptInputs = useCallback(() => {
@@ -243,32 +385,122 @@ export default function MagicEditor({
     if (!internalSrc || processing) return;
     setProcessing(true);
     setProgress(0);
+    setProgressVariant('indeterminate'); // initial: waiting for job to start
+    setHasJobStarted(false);
+    setMessageIndex(0);
     const currentPrompt = prompt;
     const pendingId = addPendingEdit(currentPrompt);
     // Keep prompt visible while processing so users see what's loading
     try {
-      const out = await mockMagicEdit(
-        internalSrc,
-        currentPrompt,
-        (p) => {
-          setProgress(p);
-          updateHistoryEntry(pendingId, { progress: p });
-        },
-        { durationMs: 3000 }
-      );
+      // Normalize current image into a PNG/JPEG data URL, then enforce max dimensions
+      const imageForApi = await ensureImageDataUrl(internalSrc);
+      let payloadImage = imageForApi;
+      try {
+        const fetched = await fetch(imageForApi as string);
+        const srcBlob = await fetched.blob();
+        const resizedBlob = await resizeImage(srcBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+        payloadImage = await blobToDataUrl(resizedBlob);
+      } catch {
+        // If resizing fails for any reason, fall back to normalized image
+      }
+      // 1) Kick off backend job via existing /inpaint route, maskless
+      const resp: any = await API.post('publicapi', '/inpaint', {
+        body: { image: payloadImage, prompt: currentPrompt },
+      });
+      const magicResultId: string = resp?.magicResultId;
+      if (!magicResultId) throw new Error('Failed to start edit');
+      // Switch from initial indeterminate to determinate once job has started
+      setHasJobStarted(true);
+      setProgressVariant('determinate');
+
+      // 2) Poll for result
+      const QUERY_INTERVAL = 1500;
+      const TIMEOUT = 60 * 1000;
+      const start = Date.now();
+
+      // Simulate progress while polling
+      if (progressTimerRef.current) {
+        try { window.clearInterval(progressTimerRef.current); } catch {}
+        progressTimerRef.current = null;
+      }
+      const DURATION_SECONDS = 10; // main phase target duration
+      const UPDATES_PER_SECOND = 2;
+      const INCREMENT = 100 / (DURATION_SECONDS * UPDATES_PER_SECOND);
+      progressTimerRef.current = window.setInterval(() => {
+        setProgress((prev) => {
+          // Once we hit 100%, flip to indeterminate "wrapping up"
+          if (prev >= 100) {
+            setProgressVariant('indeterminate');
+            setMessageIndex(messages.length - 1);
+            return 100;
+          }
+          const next = Math.min(100, prev + INCREMENT);
+          if (next >= 100) {
+            setProgressVariant('indeterminate');
+            updateHistoryEntry(pendingId, { progress: 100 });
+            setMessageIndex(messages.length - 1);
+            return 100;
+          }
+          updateHistoryEntry(pendingId, { progress: next });
+          // Update message index based on determinate progress thresholds
+          let targetMessageIndex = 0;
+          for (let i = 0; i < messagePercentages.length; i+=1) {
+            if (next >= messagePercentages[i]) {
+              targetMessageIndex = i + 1;
+            } else {
+              break;
+            }
+          }
+          setMessageIndex(targetMessageIndex);
+          return next;
+        });
+      }, 1000 / UPDATES_PER_SECOND);
+
+      let finalUrl: string | null = null;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        // timeout check
+        if (Date.now() - start > TIMEOUT) {
+          throw new Error('Timed out waiting for magic result');
+        }
+        try {
+          const result: any = await API.graphql(
+            graphqlOperation(getMagicResult, { id: magicResultId })
+          );
+          const resultsStr: string | null = result?.data?.getMagicResult?.results ?? null;
+          if (resultsStr) {
+            const urls = JSON.parse(resultsStr);
+            finalUrl = urls?.[0] ?? null;
+            break;
+          }
+        } catch (e) {
+          // swallow transient errors; keep polling
+        }
+        await new Promise((r) => setTimeout(r, QUERY_INTERVAL));
+      }
+
+      if (!finalUrl) throw new Error('No result image returned');
+
       // finalize pending entry
-      updateHistoryEntry(pendingId, { src: out, pending: false, progress: 100 });
-      setImage(out);
+      updateHistoryEntry(pendingId, { src: finalUrl, pending: false, progress: 100 });
+      setProgress(100);
+      setImage(finalUrl);
       setHasCompletedEdit(true);
-      if (onResult) onResult(out);
+      if (onResult) onResult(finalUrl);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Magic edit failed.';
       setError(msg);
       // mark entry as failed
       updateHistoryEntry(pendingId, { pending: false, label: 'Edit failed', progress: undefined, prompt: undefined });
     } finally {
+      if (progressTimerRef.current) {
+        try { window.clearInterval(progressTimerRef.current); } catch {}
+        progressTimerRef.current = null;
+      }
       setProcessing(false);
       setTimeout(() => setProgress(0), 400);
+      setProgressVariant('determinate');
+      setHasJobStarted(false);
       // Now clear the prompt after processing completes
       setPrompt('');
     }
@@ -341,6 +573,8 @@ export default function MagicEditor({
                     height: { xs: 'auto', md: 'auto' },
                     maxHeight: { xs: '55vh', md: '70vh' },
                     objectFit: 'contain',
+                    filter: processing ? 'blur(2px) brightness(0.7)' : 'none',
+                    transition: 'filter 200ms ease',
                   }}
                 />
               ) : (
@@ -350,11 +584,37 @@ export default function MagicEditor({
               )}
 
               {processing && (
-                <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1 }}>
-                  <CircularProgress size={32} thickness={5} />
-                  <Box sx={{ width: '80%', maxWidth: 360 }}>
-                    <LinearProgress variant="determinate" value={progress} />
-                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'center', color: 'common.white' }}>{progress}%</Typography>
+                <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', p: 2 }}>
+                  <Box sx={{ position: 'relative', width: { xs: 320, sm: 380 }, maxWidth: '92%' }}>
+                    {/* Simple glass card */}
+                    <Box sx={{ p: { xs: 1.75, sm: 2 }, borderRadius: 3, bgcolor: 'rgba(22,22,26,0.72)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 10px 35px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                        <CircularProgress size={32} thickness={5} sx={{ color: '#fff' }} />
+                      </Box>
+                      <LinearProgress 
+                        variant={progressVariant} 
+                        value={progress}
+                        sx={{
+                          height: 10,
+                          borderRadius: 5,
+                          bgcolor: 'rgba(255,255,255,0.14)',
+                          overflow: 'hidden',
+                          '& .MuiLinearProgress-bar': {
+                            backgroundColor: accentColor,
+                          }
+                        }}
+                      />
+                      <Typography 
+                        variant="body2"
+                        sx={{ 
+                          display: 'block', mt: 1.25, textAlign: 'center', color: '#fff', fontWeight: 800,
+                          letterSpacing: 0.2,
+                          textShadow: '0 2px 10px rgba(0,0,0,0.35)'
+                        }}
+                      >
+                        {progressVariant === 'determinate' ? `${Math.round(progress)}%` : messages[hasJobStarted ? messageIndex : 0]}
+                      </Typography>
+                    </Box>
                   </Box>
                 </Box>
               )}

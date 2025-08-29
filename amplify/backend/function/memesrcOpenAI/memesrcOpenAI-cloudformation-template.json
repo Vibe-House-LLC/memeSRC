@@ -134,6 +134,28 @@
             },
             "STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME": {
               "Ref": "storagememesrcGeneratedImagesBucketName"
+            },
+            "gemini_api_key": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Sub": [
+                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
+                      {
+                        "appId": {
+                          "Ref": "secretsPathAmplifyAppId"
+                        },
+                        "env": {
+                          "Ref": "env"
+                        },
+                        "functionName": "memesrcOpenAI"
+                      }
+                    ]
+                  },
+                  "gemini_api_key"
+                ]
+              ]
             }
           }
         },
