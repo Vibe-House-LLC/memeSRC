@@ -5,7 +5,7 @@ const aws = require('aws-sdk');
 
 const { Parameters } = await (new aws.SSM())
   .getParameters({
-    Names: ["openai_apikey"].map(secretName => process.env[secretName]),
+    Names: ["openai_apikey","gemini_api_key"].map(secretName => process.env[secretName]),
     WithDecryption: true,
   })
   .promise();
@@ -28,6 +28,13 @@ const uuid = require('uuid');
 const axios = require('axios');
 const FormData = require('form-data');
 const { Buffer } = require('buffer');
+// Gemini client (lazy dependency; only used when no mask is provided)
+let GoogleGenerativeAI;
+try {
+  ({ GoogleGenerativeAI } = require('@google/generative-ai'));
+} catch (_) {
+  // Defer require issues to runtime in environments without the package
+}
 
 const streamToBuffer = (stream) => {
     return new Promise((resolve, reject) => {
@@ -61,6 +68,74 @@ exports.handler = async (event) => {
     const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
 
     const { magicResultId, imageKey, maskKey, prompt } = event;
+
+    // Branch: if maskKey is provided, run existing OpenAI edit flow; otherwise run Gemini image+prompt flow
+    if (!maskKey) {
+        // Gemini path: single image + prompt → new image
+        const paramName = process.env.gemini_api_key;
+        if (!paramName) {
+            throw new Error('Missing env var gemini_api_key');
+        }
+
+        const keyResp = await ssmClient.send(new GetParameterCommand({ Name: paramName, WithDecryption: true }));
+        if (!keyResp?.Parameter?.Value) {
+            throw new Error('Failed to load Gemini API key from SSM');
+        }
+
+        if (!GoogleGenerativeAI) {
+            // Attempt require again (useful after deployment when deps are installed)
+            ({ GoogleGenerativeAI } = require('@google/generative-ai'));
+        }
+
+        const genAI = new GoogleGenerativeAI(keyResp.Parameter.Value);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' });
+
+        // Read input image from S3
+        const imgObj = await s3Client.send(new GetObjectCommand({
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: imageKey,
+        }));
+        const imgBuffer = await streamToBuffer(imgObj.Body);
+        const imageBase64 = imgBuffer.toString('base64');
+        const mimeType = 'image/png';
+
+        // Generate
+        const promptText = prompt || 'Enhance this image';
+        const response = await model.generateContent([
+            promptText,
+            { inlineData: { data: imageBase64, mimeType } },
+        ]);
+
+        const parts = response?.response?.candidates?.[0]?.content?.parts || [];
+        const imagePart = parts.find(p => p?.inlineData?.mimeType?.startsWith('image/')) || parts.find(p => p?.inlineData?.data);
+        if (!imagePart?.inlineData?.data) {
+            throw new Error('No image was returned by Gemini');
+        }
+        const outBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
+
+        const fileName = `${uuid.v4()}.jpeg`;
+        await s3Client.send(new PutObjectCommand({
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: `public/${fileName}`,
+            Body: outBuffer,
+            ContentType: 'image/jpeg',
+        }));
+        const cdnUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+
+        await dynamoClient.send(new UpdateItemCommand({
+            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+            Key: {
+                "id": { S: magicResultId }
+            },
+            UpdateExpression: "set results = :results, updatedAt = :updatedAt",
+            ExpressionAttributeValues: {
+                ":results": { S: JSON.stringify([cdnUrl]) },
+                ":updatedAt": { S: new Date().toISOString() }
+            }
+        }));
+
+        return; // done with Gemini branch
+    }
 
     const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
     const data = await ssmClient.send(command);

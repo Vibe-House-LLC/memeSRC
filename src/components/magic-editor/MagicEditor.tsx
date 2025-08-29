@@ -17,7 +17,10 @@ import {
   Typography,
 } from '@mui/material';
 import { Send, AutoFixHighRounded, Close, Check } from '@mui/icons-material';
-import { mockMagicEdit } from '../../utils/mockMagicEdit';
+import { API, graphqlOperation } from 'aws-amplify';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - generated JS module
+import { getMagicResult } from '../../graphql/queries';
 
 export interface MagicEditorProps {
   imageSrc: string; // required input photo
@@ -247,20 +250,58 @@ export default function MagicEditor({
     const pendingId = addPendingEdit(currentPrompt);
     // Keep prompt visible while processing so users see what's loading
     try {
-      const out = await mockMagicEdit(
-        internalSrc,
-        currentPrompt,
-        (p) => {
-          setProgress(p);
-          updateHistoryEntry(pendingId, { progress: p });
-        },
-        { durationMs: 3000 }
-      );
+      // 1) Kick off backend job via existing /inpaint route, maskless
+      const resp: any = await API.post('publicapi', '/inpaint', {
+        body: { image: internalSrc, prompt: currentPrompt },
+      });
+      const magicResultId: string = resp?.magicResultId;
+      if (!magicResultId) throw new Error('Failed to start edit');
+
+      // 2) Poll for result
+      const QUERY_INTERVAL = 1500;
+      const TIMEOUT = 60 * 1000;
+      const start = Date.now();
+
+      // Simulate progress while polling
+      const progressTimer = window.setInterval(() => {
+        setProgress((prev) => {
+          const next = Math.min(95, prev + 2);
+          updateHistoryEntry(pendingId, { progress: next });
+          return next;
+        });
+      }, 600);
+
+      let finalUrl: string | null = null;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        // timeout check
+        if (Date.now() - start > TIMEOUT) {
+          throw new Error('Timed out waiting for magic result');
+        }
+        try {
+          const result: any = await API.graphql(
+            graphqlOperation(getMagicResult, { id: magicResultId })
+          );
+          const resultsStr: string | null = result?.data?.getMagicResult?.results ?? null;
+          if (resultsStr) {
+            const urls = JSON.parse(resultsStr);
+            finalUrl = urls?.[0] ?? null;
+            break;
+          }
+        } catch (e) {
+          // swallow transient errors; keep polling
+        }
+        await new Promise((r) => setTimeout(r, QUERY_INTERVAL));
+      }
+
+      if (!finalUrl) throw new Error('No result image returned');
+
       // finalize pending entry
-      updateHistoryEntry(pendingId, { src: out, pending: false, progress: 100 });
-      setImage(out);
+      updateHistoryEntry(pendingId, { src: finalUrl, pending: false, progress: 100 });
+      setProgress(100);
+      setImage(finalUrl);
       setHasCompletedEdit(true);
-      if (onResult) onResult(out);
+      if (onResult) onResult(finalUrl);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Magic edit failed.';
       setError(msg);
