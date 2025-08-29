@@ -678,6 +678,18 @@ export default function CollagePage() {
     }
   }, [activeProjectId, selectedImages?.length, saveProjectNow]);
 
+  // After the first save of a newly created project on /projects/new, navigate to /projects/<id>
+  const didNavigateToProjectRef = useRef(false);
+  useEffect(() => {
+    if (!hasLibraryAccess) return;
+    if (didNavigateToProjectRef.current) return;
+    if (location.pathname !== '/projects/new') return;
+    if (!activeProjectId) return;
+    if (saveStatus.state !== 'saved') return;
+    didNavigateToProjectRef.current = true;
+    navigate(`/projects/${activeProjectId}`, { replace: true });
+  }, [hasLibraryAccess, location.pathname, activeProjectId, saveStatus.state, navigate]);
+
   // Handle navigation-driven project editing (/projects/:projectId) — placed after loadProjectById is defined
   // Use a ref-backed loader to avoid re-running due to changing callback identity
   useEffect(() => {
