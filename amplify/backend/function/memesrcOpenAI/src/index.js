@@ -99,26 +99,111 @@ exports.handler = async (event) => {
         const imageBase64 = imgBuffer.toString('base64');
         const mimeType = 'image/png';
 
+        console.log('[Gemini] Input', {
+            magicResultId,
+            imageKey,
+            promptLength: (prompt || '').length,
+            mimeType,
+            s3ContentLength: imgObj?.ContentLength || imgBuffer.length,
+        });
+
         // Generate
         const promptText = prompt || 'Enhance this image';
-        const response = await model.generateContent([
-            promptText,
-            { inlineData: { data: imageBase64, mimeType } },
-        ]);
+        console.log('[Gemini] Invoking model', {
+            model: 'gemini-2.5-flash-image-preview',
+            promptPreview: String(promptText).slice(0, 120),
+            generationConfig: { responseModalities: ['IMAGE'], temperature: 0 },
+        });
+        let response;
+        try {
+            response = await model.generateContent({
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        { text: promptText },
+                        { inlineData: { data: imageBase64, mimeType } },
+                    ],
+                }],
+                generationConfig: {
+                    responseModalities: ['IMAGE'],
+                    temperature: 0,
+                },
+            });
+        } catch (err) {
+            console.error('[Gemini] generateContent error', {
+                message: err?.message,
+                name: err?.name,
+                stack: err?.stack,
+            });
+            throw err;
+        }
 
+        const numCandidates = response?.response?.candidates?.length || 0;
         const parts = response?.response?.candidates?.[0]?.content?.parts || [];
-        const imagePart = parts.find(p => p?.inlineData?.mimeType?.startsWith('image/')) || parts.find(p => p?.inlineData?.data);
-        if (!imagePart?.inlineData?.data) {
+        const partsSummary = Array.isArray(parts)
+            ? parts.map((p, idx) => ({
+                idx,
+                hasInlineData: Boolean(p?.inlineData),
+                mimeType: p?.inlineData?.mimeType,
+                dataLength: p?.inlineData?.data ? String(p.inlineData.data).length : 0,
+                hasMedia: Boolean(p?.media),
+                mediaDataLength: p?.media ? (Array.isArray(p.media) ? (p.media[0]?.data ? String(p.media[0].data).length : 0) : (p.media?.data ? String(p.media.data).length : 0)) : 0,
+                textPreview: typeof p?.text === 'string' ? p.text.slice(0, 80) : undefined,
+            }))
+            : [];
+
+        console.log('[Gemini] Response summary', {
+            hasResponse: Boolean(response?.response),
+            numCandidates,
+            partsCount: parts?.length || 0,
+            partsSummary,
+            usage: response?.response?.usageMetadata || null,
+            safety: response?.response?.promptFeedback?.safetyRatings || null,
+        });
+
+        // Try to extract image from inlineData or media
+        const imagePartInline = parts.find(p => p?.inlineData?.data);
+        const imagePartMedia = parts.find(p => p?.media && (Array.isArray(p.media) ? p.media[0]?.data : p.media?.data));
+
+        let outBuffer;
+        let outMime = 'image/jpeg';
+        if (imagePartInline?.inlineData?.data) {
+            try {
+                outBuffer = Buffer.from(imagePartInline.inlineData.data, 'base64');
+                outMime = imagePartInline.inlineData.mimeType || 'image/jpeg';
+            } catch (e) {
+                console.warn('[Gemini] Failed to decode inlineData as base64, will try raw bytes');
+                outBuffer = Buffer.isBuffer(imagePartInline.inlineData.data)
+                    ? Buffer.from(imagePartInline.inlineData.data)
+                    : undefined;
+            }
+        } else if (imagePartMedia?.media) {
+            const media = Array.isArray(imagePartMedia.media) ? imagePartMedia.media[0] : imagePartMedia.media;
+            const data = media?.data;
+            try {
+                if (typeof data === 'string') {
+                    outBuffer = Buffer.from(data, 'base64');
+                } else if (data) {
+                    outBuffer = Buffer.from(data);
+                }
+                outMime = media?.mimeType || 'image/jpeg';
+            } catch (e) {
+                console.warn('[Gemini] Failed to decode media data');
+            }
+        }
+
+        if (!outBuffer) {
+            const textParts = parts.filter(p => typeof p?.text === 'string').map(p => p.text);
+            console.error('[Gemini] No image returned; parts detail', { partsSummary, textPreview: (textParts.join('\n') || '').slice(0, 200) });
             throw new Error('No image was returned by Gemini');
         }
-        const outBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
 
         const fileName = `${uuid.v4()}.jpeg`;
         await s3Client.send(new PutObjectCommand({
             Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
             Key: `public/${fileName}`,
             Body: outBuffer,
-            ContentType: 'image/jpeg',
+            ContentType: outMime || 'image/jpeg',
         }));
         const cdnUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
 
