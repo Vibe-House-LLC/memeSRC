@@ -14,7 +14,9 @@ import {
     Alert,
     Divider,
     Autocomplete,
-    TextField
+    TextField,
+    Grid,
+    Paper
 } from "@mui/material";
 import {
     Download as DownloadIcon,
@@ -26,7 +28,8 @@ import { SourceMediaFile } from "./types";
 import { FileBrowser } from "../../@components";
 import listAliases from "./functions/list-aliases";
 import updateSourceMedia from "./functions/update-source-media";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
+import { SnackbarContext } from "../../../../SnackbarContext";
 
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status.toLowerCase()) {
@@ -52,6 +55,60 @@ const formatDate = (dateString: string): string =>
         minute: '2-digit',
     });
 
+// Placeholder component that mimics FileBrowser appearance
+const FileBrowserPlaceholder = () => (
+    <Box sx={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
+        <Typography variant="h6" gutterBottom>
+            File Browser: Waiting for extraction...
+        </Typography>
+        
+        <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
+            {/* File Tree Placeholder */}
+            <Grid item xs={12} md={4} sx={{ height: '100%' }}>
+                <Paper sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    overflow: 'hidden'
+                }}>
+                    <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
+                        <Typography variant="subtitle2">
+                            Files (0)
+                        </Typography>
+                    </Box>
+                    <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Box sx={{ textAlign: 'center', p: 3 }}>
+                            <CircularProgress size={40} sx={{ mb: 2 }} />
+                            <Typography variant="body2" color="text.secondary">
+                                Waiting for extraction...
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Paper>
+            </Grid>
+            
+            {/* File Viewer Placeholder */}
+            <Grid item xs={12} md={8} sx={{ height: '100%' }}>
+                <Paper sx={{ 
+                    height: '100%', 
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    <Box sx={{ textAlign: 'center', p: 4 }}>
+                        <Typography variant="h6" color="text.secondary" gutterBottom>
+                            No files to display
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Files will appear here once extraction is complete
+                        </Typography>
+                    </Box>
+                </Paper>
+            </Grid>
+        </Grid>
+    </Box>
+);
+
 interface AdminReviewUploadProps {
     files: SourceMediaFile[];
     loading: boolean;
@@ -63,6 +120,7 @@ interface AdminReviewUploadProps {
     setError: React.Dispatch<React.SetStateAction<string | null>>;
     sourceMediaId?: string;
     initialAlias?: string;
+    filePathPrefix?: string;
 }
 
 export default function AdminReviewUpload({
@@ -75,13 +133,17 @@ export default function AdminReviewUpload({
     setExtractingFiles,
     setError,
     sourceMediaId,
-    initialAlias = ''
+    initialAlias = '',
+    filePathPrefix = ''
 }: AdminReviewUploadProps) {
     const [aliases, setAliases] = useState<string[]>([]);
     const [aliasesLoading, setAliasesLoading] = useState(false);
     const [pendingAlias, setPendingAlias] = useState<string>(initialAlias);
     const [savingAlias, setSavingAlias] = useState(false);
     const [savedAlias, setSavedAlias] = useState<string>(initialAlias);
+    
+    // Snackbar context for success messages
+    const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
 
     useEffect(() => {
         if (!pendingAlias) {
@@ -123,7 +185,11 @@ export default function AdminReviewUpload({
             await updateSourceMedia(sourceMediaId, { pendingAlias });
             setSavedAlias(pendingAlias); // Update saved alias after successful save
             setError(null);
-            // TODO: Show success message or refresh data
+            
+            // Show success message
+            setSeverity('success');
+            setMessage('Alias saved successfully!');
+            setOpen(true);
         } catch (err) {
             console.error('Failed to save alias:', err);
             setError('Failed to save alias');
@@ -371,7 +437,11 @@ export default function AdminReviewUpload({
                 {/* This is temporarily pointing to an existing show for testing until the extraction function is complete. */}
                 {/* Currently the file browser does not allow for editing, but will once it's setup properly with extractions. */}
                 {/* Generally, this component will be very reusable and I plan to give it an "edit" flag so it can be used as a safe file browser or a browser/editor. */}
-                <FileBrowser pathPrefix={`protected/src`} id={`airplane`} />
+                {filePathPrefix ? (
+                    <FileBrowser pathPrefix={filePathPrefix} id={savedAlias} />
+                ) : (
+                    <FileBrowserPlaceholder />
+                )}
             </Box>
 
             {!loading && files.length === 0 && !error && (
