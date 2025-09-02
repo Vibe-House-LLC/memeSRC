@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "description": "SES Layer for sending emails via AWS SES",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-ses": "^3.450.0"
+  },
+  "devDependencies": {}
+}

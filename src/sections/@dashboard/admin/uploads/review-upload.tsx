@@ -5,55 +5,25 @@ import {
     Card,
     CardContent,
     List,
-    ListItem,
-    ListItemText,
-    Button,
-    Chip,
-    Tooltip,
     CircularProgress,
     Alert,
-    Divider,
     Autocomplete,
     TextField,
     Grid,
-    Paper
+    Paper,
+    Button
 } from "@mui/material";
 import {
-    Download as DownloadIcon,
-    CloudUpload as ExtractIcon,
     Save as SaveIcon
 } from "@mui/icons-material";
 import { Storage } from "aws-amplify";
 import { SourceMediaFile } from "./types";
-import { FileBrowser } from "../../@components";
+import { FileBrowser, FileCard } from "../../@components";
+import type { FileCardData } from "../../@components";
 import listAliases from "./functions/list-aliases";
 import updateSourceMedia from "./functions/update-source-media";
 import { useEffect, useState, useContext } from "react";
 import { SnackbarContext } from "../../../../SnackbarContext";
-
-const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
-    switch (status.toLowerCase()) {
-        case 'completed':
-            return 'success';
-        case 'processing':
-            return 'info';
-        case 'failed':
-            return 'error';
-        case 'uploaded':
-            return 'warning';
-        default:
-            return 'default';
-    }
-};
-
-const formatDate = (dateString: string): string =>
-    new Date(dateString).toLocaleString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
 
 // Placeholder component that mimics FileBrowser appearance
 const FileBrowserPlaceholder = () => (
@@ -134,13 +104,14 @@ export default function AdminReviewUpload({
     setError,
     sourceMediaId,
     initialAlias = '',
-    filePathPrefix = ''
 }: AdminReviewUploadProps) {
     const [aliases, setAliases] = useState<string[]>([]);
     const [aliasesLoading, setAliasesLoading] = useState(false);
     const [pendingAlias, setPendingAlias] = useState<string>(initialAlias);
     const [savingAlias, setSavingAlias] = useState(false);
     const [savedAlias, setSavedAlias] = useState<string>(initialAlias);
+    const [filePathPrefix, setFilePathPrefix] = useState<string>('');
+    const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
     
     // Snackbar context for success messages
     const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -261,6 +232,18 @@ export default function AdminReviewUpload({
         }, 2000);
     };
 
+    const handleFileSelect = (fileId: string, unzippedPath: string | null) => {
+        if (unzippedPath) {
+            // If selecting a new file, update both selected file and path prefix
+            setSelectedFileId(fileId);
+            setFilePathPrefix(unzippedPath);
+        } else {
+            // If deselecting, clear both selected file and path prefix
+            setSelectedFileId(null);
+            setFilePathPrefix('');
+        }
+    };
+
     return (
         <>
 
@@ -345,87 +328,29 @@ export default function AdminReviewUpload({
                             </Typography>
                             <List>
                                 {files.map((file, index) => {
-                                    const fileName = file.key.split('/').pop() || file.key;
                                     const isDownloading = downloadingFiles.has(file.id);
                                     const isExtracting = extractingFiles.has(file.id);
+                                    const isSelected = selectedFileId === file.id;
+                                    
+                                    // Cast file to FileCardData to include unzippedPath
+                                    const fileCardData: FileCardData = {
+                                        ...file,
+                                        unzippedPath: (file as any).unzippedPath || null
+                                    };
 
                                     return (
-                                        <Box key={file.id}>
-                                            <ListItem
-                                                sx={{
-                                                    px: 0,
-                                                    py: 1.5,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 2
-                                                }}
-                                            >
-                                                <Box sx={{ flex: 1, minWidth: 0 }}>
-                                                    <ListItemText
-                                                        primary={
-                                                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                                                {fileName}
-                                                            </Typography>
-                                                        }
-                                                        secondary={
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                                                <Chip
-                                                                    label={file.status}
-                                                                    color={getStatusColor(file.status)}
-                                                                    size="small"
-                                                                    variant="outlined"
-                                                                    sx={{ height: 20, fontSize: '0.75rem' }}
-                                                                />
-                                                                <Typography variant="caption" color="text.secondary">
-                                                                    Updated: {formatDate(file.updatedAt)}
-                                                                </Typography>
-                                                            </Box>
-                                                        }
-                                                    />
-                                                </Box>
-
-                                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                                    <Tooltip title="Download File">
-                                                        <Button
-                                                            variant="outlined"
-                                                            size="small"
-                                                            startIcon={
-                                                                isDownloading ? (
-                                                                    <CircularProgress size={16} />
-                                                                ) : (
-                                                                    <DownloadIcon />
-                                                                )
-                                                            }
-                                                            onClick={() => handleDownloadFile(file.key, file.id)}
-                                                            disabled={isDownloading}
-                                                            sx={{ minWidth: 100 }}
-                                                        >
-                                                            Download
-                                                        </Button>
-                                                    </Tooltip>
-
-                                                    <Tooltip title="Extract to Staging">
-                                                        <Button
-                                                            variant="contained"
-                                                            size="small"
-                                                            startIcon={
-                                                                isExtracting ? (
-                                                                    <CircularProgress size={16} />
-                                                                ) : (
-                                                                    <ExtractIcon />
-                                                                )
-                                                            }
-                                                            onClick={() => handleExtractToStaging(file.key, file.id)}
-                                                            disabled={isExtracting || !isAliasSaved}
-                                                            sx={{ minWidth: 130 }}
-                                                        >
-                                                            Extract to Staging
-                                                        </Button>
-                                                    </Tooltip>
-                                                </Box>
-                                            </ListItem>
-                                            {index < files.length - 1 && <Divider />}
-                                        </Box>
+                                        <FileCard
+                                            key={file.id}
+                                            file={fileCardData}
+                                            isDownloading={isDownloading}
+                                            isExtracting={isExtracting}
+                                            isAliasSaved={isAliasSaved}
+                                            isSelected={isSelected}
+                                            onDownload={handleDownloadFile}
+                                            onExtract={handleExtractToStaging}
+                                            onSelect={handleFileSelect}
+                                            showDivider={index < files.length - 1}
+                                        />
                                     );
                                 })}
                             </List>

@@ -323,4 +323,3 @@ type LocationLeads @model @auth(
   id: ID!,
   countryCode: String
 }
-

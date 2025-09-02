@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "api": {
+      "memesrc": [
+        "Query",
+        "Mutation",
+        "Subscription"
+      ]
+    },
+    "storage": {
+      "memesrcGeneratedImages": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}
