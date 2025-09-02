@@ -19,9 +19,12 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LibraryBrowser } from '../../library';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { UserContext } from '../../../UserContext';
+import { resizeImage } from '../../../utils/library/resizeImage';
+import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -85,7 +88,28 @@ const CollagePreview = ({
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isReplaceMode, setIsReplaceMode] = useState(false);
   const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
+  // Legacy Magic Editor dialog flow removed; navigation to MagicPage is primary
   
+  // Dialog-based magic editor removed in favor of page navigation
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Helper: revoke blob: URLs to avoid memory leaks
+  const revokeIfBlobUrl = (url) => {
+    try {
+      if (typeof url === 'string' && url.startsWith('blob:') && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+        URL.revokeObjectURL(url);
+      }
+    } catch (_) {
+      // no-op
+    }
+  };
+  const revokeImageObjectUrls = (imageObj) => {
+    if (!imageObj) return;
+    revokeIfBlobUrl(imageObj.originalUrl);
+    revokeIfBlobUrl(imageObj.displayUrl);
+  };
+
 
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
@@ -175,18 +199,163 @@ const CollagePreview = ({
     handleMenuClose();
   };
 
+  // Helper: convert Blob to data URL
+  const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  // Request to edit image for a specific panel
+  const handleEditImageRequest = async (index, panelId, meta) => {
+    try {
+      setActivePanelIndex(index);
+      setActivePanelId(panelId);
+      const imageIndex = panelImageMapping?.[panelId];
+      if (imageIndex == null) return;
+      const imageObj = selectedImages?.[imageIndex];
+      if (!imageObj) return;
+
+      const panelRect = meta?.panelRect;
+      const transform = panelTransforms?.[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+
+      const libKey = imageObj?.metadata?.libraryKey;
+      const getOriginalSrc = async () => {
+        let src = imageObj.originalUrl || imageObj.displayUrl;
+        if (libKey) {
+          try { const blob = await getFromLibrary(libKey, { level: 'protected' }); src = await blobToDataUrl(blob); } catch (_) {}
+        }
+        return src;
+      };
+
+      if (!panelRect || !panelRect.width || !panelRect.height) {
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
+        return;
+      }
+
+      // Load for crop heuristic
+      const ensureImageElement = async () => {
+        try {
+          let blob = null;
+          if (libKey) { try { blob = await getFromLibrary(libKey, { level: 'protected' }); } catch (_) {} }
+          const src = blob ? URL.createObjectURL(blob) : (imageObj.originalUrl || imageObj.displayUrl);
+          return await new Promise((resolve, reject) => {
+            const img = new Image(); img.crossOrigin = 'anonymous';
+            img.onload = () => { if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} } resolve(img); };
+            img.onerror = (err) => { if (blob && src && src.startsWith('blob:')) { try { URL.revokeObjectURL(src); } catch {} } reject(err); };
+            img.src = src;
+          });
+        } catch (_) { return null; }
+      };
+
+      const imgEl = await ensureImageElement();
+      if (!imgEl) {
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
+        return;
+      }
+
+      const width = Math.max(1, Math.round(panelRect.width || 1));
+      const height = Math.max(1, Math.round(panelRect.height || 1));
+      const imageAspectRatio = imgEl.naturalWidth / imgEl.naturalHeight;
+      const panelAspectRatio = width / height;
+      let initialScale;
+      if (imageAspectRatio > panelAspectRatio) initialScale = height / imgEl.naturalHeight; else initialScale = width / imgEl.naturalWidth;
+      const finalScale = initialScale * (transform.scale || 1);
+      const scaledWidth = imgEl.naturalWidth * finalScale;
+      const scaledHeight = imgEl.naturalHeight * finalScale;
+      const centerOffsetX = (width - scaledWidth) / 2;
+      const centerOffsetY = (height - scaledHeight) / 2;
+      const finalOffsetX = centerOffsetX + (transform.positionX || 0);
+      const finalOffsetY = centerOffsetY + (transform.positionY || 0);
+      const sX0 = (0 - finalOffsetX) / finalScale;
+      const sY0 = (0 - finalOffsetY) / finalScale;
+      const sX1 = (width - finalOffsetX) / finalScale;
+      const sY1 = (height - finalOffsetY) / finalScale;
+      const srcX = Math.max(0, Math.min(imgEl.naturalWidth, Math.round(sX0)));
+      const srcY = Math.max(0, Math.min(imgEl.naturalHeight, Math.round(sY0)));
+      const srcW = Math.max(1, Math.min(imgEl.naturalWidth - srcX, Math.round(sX1 - sX0)));
+      const srcH = Math.max(1, Math.min(imgEl.naturalHeight - srcY, Math.round(sY1 - sY0)));
+
+      // Determine how much of the original is being used in the frame.
+      // Only show the choose step for extremely heavy crops (>= 90%).
+      const CROP_AREA_THRESHOLD = 0.90;
+      const originalArea = imgEl.naturalWidth * imgEl.naturalHeight;
+      const croppedArea = srcW * srcH;
+      const cropFraction = Math.max(0, Math.min(1, 1 - (croppedArea / originalArea)));
+      const croppedALot = cropFraction >= CROP_AREA_THRESHOLD;
+
+      if (!croppedALot) {
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { initialSrc: initSrc, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
+      } else {
+        const maxDim = 1024;
+        const scaleDown = Math.min(1, maxDim / Math.max(srcW, srcH));
+        const outW = Math.max(1, Math.round(srcW * scaleDown));
+        const outH = Math.max(1, Math.round(srcH * scaleDown));
+        const canvas = document.createElement('canvas');
+        canvas.width = outW; canvas.height = outH;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(imgEl, srcX, srcY, srcW, srcH, 0, 0, outW, outH);
+        }
+        const frameUrl = await dataUrlFromCanvas(canvas);
+        const initSrc = await getOriginalSrc();
+        navigate('/magic', { state: { chooseFrom: { originalSrc: initSrc, frameSrc: frameUrl }, returnTo: (location.pathname + location.search), collageEditContext: { panelId, imageIndex } } });
+      }
+    } catch (e) {
+      console.error('Failed to open magic editor', e);
+    }
+  };
+
+  // Helpers for fetching image blob and cropping
+  // (dialog-based magic editor helpers removed; navigation-only flow)
+
+  const dataUrlFromCanvas = (canvas) => new Promise((resolve) => {
+    try {
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
+    } catch (_) {
+      resolve(canvas.toDataURL());
+    }
+  });
+
+  // (Dialog-based magic editor removed; navigation-only flow)
+
   // Handle file selection for a panel
   const handleFileChange = async (event) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0 || activePanelIndex === null) return;
 
-    // Helper function to load a single file and return a Promise with the data URL
-    const loadFile = (file) => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (e) => reject(e);
-        reader.readAsDataURL(file);
-      });
+    // Helper: resize then produce a data URL
+    const toDataUrl = (blob) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    // Track blob: URLs created during this handler so we can revoke on failure
+    const tempBlobUrls = [];
+    const trackBlobUrl = (u) => {
+      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
+      return u;
+    };
+
+    const getImageObject = async (file) => {
+      try {
+        const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
+        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
+        return { originalUrl, displayUrl };
+      } catch (_) {
+        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? trackBlobUrl(URL.createObjectURL(file)) : await toDataUrl(file);
+        return { originalUrl: dataUrl, displayUrl: dataUrl };
+      }
+    };
+    const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
 
     // Debug selected template and active panel
     debugLog("File upload for panel:", {
@@ -219,29 +388,45 @@ const CollagePreview = ({
       }
     }
 
+    let committed = false;
     try {
-      // Process all files
-      const imageUrls = await Promise.all(files.map(loadFile));
-      debugLog(`Loaded ${imageUrls.length} files for panel ${clickedPanelId}`);
+      // Process files sequentially with small yields to keep UI responsive
+      const imageObjs = [];
+      for (let i = 0; i < files.length; i += 1) {
+        await nextFrame();
+        await nextFrame();
+        // eslint-disable-next-line no-await-in-loop
+        const obj = await getImageObject(files[i]);
+        imageObjs.push(obj);
+      }
+      debugLog(`Loaded ${imageObjs.length} files for panel ${clickedPanelId}`);
 
       // Check if this is a replacement operation for the first file
       const existingImageIndex = panelImageMapping[clickedPanelId];
       debugLog(`Panel ${clickedPanelId}: existingImageIndex=${existingImageIndex}`);
 
-      if (existingImageIndex !== undefined && imageUrls.length === 1) {
+      if (existingImageIndex !== undefined && imageObjs.length === 1) {
         // If this panel already has an image and we're only uploading one file, replace it
         debugLog(`Replacing image at index ${existingImageIndex} for panel ${clickedPanelId}`);
-        await replaceImage(existingImageIndex, imageUrls[0]);
+        const previousImage = selectedImages?.[existingImageIndex];
+        await replaceImage(existingImageIndex, imageObjs[0]);
+        // Mark committed immediately after state change so finally won't revoke
+        // blob: URLs that are now referenced in state.
+        committed = true;
+        // Defer revocation to next tick so UI can re-render to new source first
+        setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       } else {
         // Otherwise, add all images sequentially
         const currentLength = selectedImages.length;
-        debugLog(`Adding ${imageUrls.length} new images starting at index ${currentLength}`);
+        debugLog(`Adding ${imageObjs.length} new images starting at index ${currentLength}`);
 
         // Add all images at once
-        await addMultipleImages(imageUrls);
+        await addMultipleImages(imageObjs);
+        // Prevent finally from revoking any blob: URLs now stored in state
+        committed = true;
 
         // If this is a single file replacement, update the specific panel mapping
-        if (imageUrls.length === 1) {
+        if (imageObjs.length === 1) {
           const newMapping = {
             ...panelImageMapping,
             [clickedPanelId]: currentLength
@@ -251,11 +436,16 @@ const CollagePreview = ({
         } else {
           // For multiple files, don't auto-assign them to panels
           // Let the user manually assign them by clicking on panels
-          debugLog(`Added ${imageUrls.length} images. Users can now assign them to panels manually.`);
+          debugLog(`Added ${imageObjs.length} images. Users can now assign them to panels manually.`);
         }
       }
+      // committed is set above immediately after add/replace
     } catch (error) {
       console.error("Error loading files:", error);
+    } finally {
+      if (!committed) {
+        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+      }
     }
     
     // Reset file input and active panel state
@@ -291,57 +481,81 @@ const CollagePreview = ({
     const selected = items[0];
 
     // Helper to ensure we use a data URL for canvas safety
-    const ensureDataUrl = async (item) => {
+    // Build a normalized image object (originalUrl at upload size, displayUrl at editor size)
+    const toDataUrl = (blob) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    // Track blob: URLs created while normalizing; revoke them if we fail to commit
+    const tempBlobUrls = [];
+    const trackBlobUrl = (u) => {
+      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
+      return u;
+    };
+
+    const buildNormalizedFromBlob = async (blob) => {
+      // Create upload-sized and editor-sized JPEGs from the source blob
+      const uploadBlob = await resizeImage(blob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+      const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
+      const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+      const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
+      return { originalUrl, displayUrl };
+    };
+    const ensureNormalized = async (item) => {
       const srcUrl = item?.originalUrl || item?.displayUrl || item?.url || item;
-      const isData = typeof srcUrl === 'string' && srcUrl.startsWith('data:');
       const libraryKey = item?.metadata?.libraryKey;
-      if (isData) {
-        return srcUrl;
-      }
+      // Prefer fetching by library key to get a Blob we can normalize
       if (libraryKey) {
         try {
           const blob = await getFromLibrary(libraryKey);
-          const dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          return dataUrl;
+          return await buildNormalizedFromBlob(blob);
         } catch (e) {
-          // Fallback to provided URL if conversion fails
-          return srcUrl;
+          // Fall back to treating the URL directly below
         }
       }
-      return srcUrl;
+      // If we already have a data URL or http url, fetch and normalize
+      try {
+        const res = await fetch(srcUrl);
+        const blob = await res.blob();
+        return await buildNormalizedFromBlob(blob);
+      } catch (_) {
+        // As a last resort, pass through
+        return { originalUrl: srcUrl, displayUrl: srcUrl, metadata: item?.metadata || {} };
+      }
     };
 
+    let committed = false;
     try {
       if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
         // Replace existing image in place with data URL for display, but preserve library metadata for persistence
-        const newUrl = await ensureDataUrl(selected);
-        await replaceImage(activeExistingImageIndex, {
-          originalUrl: newUrl,
-          displayUrl: newUrl,
-          metadata: selected?.metadata || {}
-        });
+        const normalized = await ensureNormalized(selected);
+        const previousImage = selectedImages?.[activeExistingImageIndex];
+        await replaceImage(activeExistingImageIndex, { ...normalized, metadata: selected?.metadata || {} });
+        // Mark committed right after state mutation to avoid revoking in-use blob URLs
+        committed = true;
+        setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       } else {
         // Assign to empty panel: add to images and map using data URL
         const currentLength = selectedImages.length;
-        const newUrl = await ensureDataUrl(selected);
-        const imageObj = {
-          originalUrl: newUrl,
-          displayUrl: newUrl,
-          metadata: selected?.metadata || {},
-        };
+        const normalized = await ensureNormalized(selected);
+        const imageObj = { ...normalized, metadata: selected?.metadata || {} };
         await addMultipleImages([imageObj]);
+        // Mark committed immediately after adding to state
+        committed = true;
         const newMapping = {
           ...panelImageMapping,
           [clickedPanelId]: currentLength,
         };
         updatePanelImageMapping(newMapping);
       }
+      // committed is set above immediately after add/replace
     } finally {
+      // Cleanup any temporary blob URLs if we failed to commit
+      if (!committed) {
+        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+      }
       // Reset active state
       setIsReplaceMode(false);
       setActiveExistingImageIndex(null);
@@ -368,6 +582,8 @@ const CollagePreview = ({
         panelCount={panelCount}
         images={selectedImages}
         onPanelClick={handlePanelClick}
+        onEditImage={isAdmin ? handleEditImageRequest : undefined}
+        canEditImage={isAdmin}
         onMenuOpen={handleMenuOpen}
         onSaveGestureDetected={onGenerateNudgeRequested}
         isFrameActionSuppressed={isFrameActionSuppressed}
@@ -493,6 +709,8 @@ const CollagePreview = ({
       >
         <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
       </Menu>
+
+      
     </Box>
   );
 };

@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UserContext } from "../UserContext";
@@ -38,6 +38,21 @@ function blobToDataUrl(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+// Guard against adopting a stale custom layout from snapshots saved
+// under a different panel count. We only accept if the layout has
+// enough areas/items for the requested panel count.
+function isCustomLayoutCompatible(customLayout, panelCount) {
+  try {
+    if (!customLayout || typeof customLayout !== 'object') return false;
+    const needed = Math.max(2, panelCount || 2);
+    if (Array.isArray(customLayout.areas)) return customLayout.areas.length >= needed;
+    if (Array.isArray(customLayout.items)) return customLayout.items.length >= needed;
+    return false;
+  } catch (_) {
+    return false;
+  }
 }
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
@@ -126,6 +141,8 @@ export default function CollagePage() {
   
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
+  // Queue for applying magic edits after state rehydrates (e.g., project load)
+  const pendingMagicRef = useRef({ result: null, ctx: null });
   
   // Unified bottom bar control (no animation)
   const [currentView, setCurrentView] = useState('editor'); // 'library' | 'editor'
@@ -362,6 +379,19 @@ export default function CollagePage() {
 
   // Handle images passed from collage
   useEffect(() => {
+    // Handle a magic editor return (navigation-based)
+    if (location.state?.magicResult) {
+      const result = location.state.magicResult;
+      const ctx = location.state.magicContext;
+      try {
+        // Stash the result and context; actual replace may need to wait
+        pendingMagicRef.current = { result, ctx };
+      } catch (_) { /* ignore */ }
+      // Immediately clear navigation state to avoid duplicate application on back/refresh
+      navigate(location.pathname, { replace: true, state: {} });
+      return; // don't also try to process collage import below
+    }
+
     if (location.state?.fromCollage && location.state?.images) {
       const loadImages = async () => {
         debugLog('Loading images from collage:', location.state.images);
@@ -422,6 +452,29 @@ export default function CollagePage() {
     }
   }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
 
+  // Apply any pending magic edit once images/mapping are available
+  useEffect(() => {
+    const pending = pendingMagicRef.current;
+    if (!pending || !pending.result) return;
+
+    const ctx = pending.ctx || {};
+    // Resolve target index, preferring the originally edited index
+    const byIndex = (typeof ctx.imageIndex === 'number') ? ctx.imageIndex : null;
+    const byPanel = (ctx.panelId && typeof panelImageMapping?.[ctx.panelId] === 'number')
+      ? panelImageMapping[ctx.panelId]
+      : null;
+    const targetIdx = (typeof byIndex === 'number') ? byIndex : byPanel;
+
+    if (typeof targetIdx === 'number' && targetIdx >= 0 && targetIdx < selectedImages.length) {
+      try {
+        replaceImage(targetIdx, pending.result);
+      } finally {
+        // Clear the pending record once applied
+        pendingMagicRef.current = { result: null, ctx: null };
+      }
+    }
+  }, [selectedImages.length, panelImageMapping, replaceImage]);
+
   // Project list sync removed; list now lives solely on /projects page
 
   // Helpers defined at module scope: blobToDataUrl, computeSnapshotSignature
@@ -447,8 +500,10 @@ export default function CollagePage() {
 
     if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
     if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
-    // Restore custom layout grid if present
-    setCustomLayout(snap.customLayout || null);
+    // Restore custom layout grid if present and compatible with the saved panel count
+    const wantPanels = snap.panelCount || 2;
+    const restoredCustom = isCustomLayoutCompatible(snap.customLayout, wantPanels) ? (snap.customLayout || null) : null;
+    setCustomLayout(restoredCustom);
 
     // Resolve images via library or stored URLs
     if (Array.isArray(snap.images) && snap.images.length > 0) {
@@ -521,8 +576,9 @@ export default function CollagePage() {
   // Centralized save used by autosave-on-exit and manual save
   const saveProjectNow = useCallback(async ({ showToast = false } = {}) => {
     if (!activeProjectId) return;
+    // Compute signature from the exact snapshot we are about to persist
     const state = currentSnapshotRef.current;
-    const sig = currentSigRef.current;
+    const sig = computeSnapshotSignature(state);
     if (sig === lastSavedSigRef.current) return;
     try {
       setSaveStatus({ state: 'saving', time: null });
@@ -581,13 +637,17 @@ export default function CollagePage() {
   }, [activeProjectId, borderColor, borderThickness, renderBump, saveProjectNow]);
 
   // 2) Save on layout changes: template, aspect ratio, or panel count
+  // Ensure we still save even if render callback is delayed (fallback timer)
   useEffect(() => {
     let t = null;
-    if (activeProjectId) {
-      const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
-      if (hasRendered) {
-        t = setTimeout(() => { saveProjectNow(); }, 120);
-      }
+    if (!activeProjectId) return undefined;
+    const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
+    // Fast path: save shortly after a confirmed render of the new state
+    if (hasRendered) {
+      t = setTimeout(() => { saveProjectNow(); }, 120);
+    } else {
+      // Fallback: if render callback lags (e.g., panel count UI), still save soon
+      t = setTimeout(() => { saveProjectNow(); }, 400);
     }
     return () => { if (t) clearTimeout(t); };
   }, [activeProjectId, selectedTemplate?.id, selectedAspectRatio, panelCount, renderBump, saveProjectNow]);
@@ -618,10 +678,21 @@ export default function CollagePage() {
     }
   }, [activeProjectId, selectedImages?.length, saveProjectNow]);
 
+  // After the first save of a newly created project on /projects/new, navigate to /projects/<id>
+  const didNavigateToProjectRef = useRef(false);
+  useEffect(() => {
+    if (!hasLibraryAccess) return;
+    if (didNavigateToProjectRef.current) return;
+    if (location.pathname !== '/projects/new') return;
+    if (!activeProjectId) return;
+    if (saveStatus.state !== 'saved') return;
+    didNavigateToProjectRef.current = true;
+    navigate(`/projects/${activeProjectId}`, { replace: true });
+  }, [hasLibraryAccess, location.pathname, activeProjectId, saveStatus.state, navigate]);
+
   // Handle navigation-driven project editing (/projects/:projectId) — placed after loadProjectById is defined
   // Use a ref-backed loader to avoid re-running due to changing callback identity
   useEffect(() => {
-    let cancelled = false;
     if (hasLibraryAccess && projectId) {
       (async () => {
         try {
@@ -631,7 +702,7 @@ export default function CollagePage() {
         }
       })();
     }
-    return () => { cancelled = true; };
+    return () => {};
   }, [hasLibraryAccess, projectId]);
 
   // 4) Create a project only after images are present AND preview has rendered
@@ -880,6 +951,9 @@ export default function CollagePage() {
     setSelectedAspectRatio,
     panelCount,
     setPanelCount,
+    // Needed for safe panel count reduction that may hide an image
+    panelImageMapping,
+    removeImage,
     aspectRatioPresets,
     layoutTemplates,
     borderThickness,
@@ -1355,14 +1429,39 @@ export default function CollagePage() {
           />
 
           {/* Confirm Reset Dialog (non-admin) */}
-          <Dialog open={resetDialogOpen} onClose={closeResetDialog} aria-labelledby="confirm-reset-title">
-            <DialogTitle id="confirm-reset-title">Start over?</DialogTitle>
-            <DialogContent>
-              <DialogContentText>
+          <Dialog
+            open={resetDialogOpen}
+            onClose={closeResetDialog}
+            aria-labelledby="confirm-reset-title"
+            maxWidth="xs"
+            fullWidth
+            BackdropProps={{
+              sx: {
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(2px)'
+              }
+            }}
+            PaperProps={{
+              elevation: 16,
+              sx: theme => ({
+                bgcolor: theme.palette.mode === 'dark' ? '#1f2126' : '#ffffff',
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 2,
+                boxShadow: theme.palette.mode === 'dark'
+                  ? '0 12px 32px rgba(0,0,0,0.7)'
+                  : '0 12px 32px rgba(0,0,0,0.25)'
+              })
+            }}
+          >
+            <DialogTitle id="confirm-reset-title" sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>
+              Start over?
+            </DialogTitle>
+            <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
+              <Typography variant="body1" sx={{ m: 0, lineHeight: 1.5 }}>
                 This will discard your current collage and reset the editor.
-              </DialogContentText>
+              </Typography>
             </DialogContent>
-            <DialogActions>
+            <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
               <Button onClick={closeResetDialog}>Cancel</Button>
               <Button onClick={confirmReset} color="error" variant="contained" autoFocus>
                 Start Over

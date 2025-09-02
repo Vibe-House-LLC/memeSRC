@@ -5,6 +5,8 @@ import { useTheme } from '@mui/material/styles';
 
 // Import our new dynamic CollagePreview component
 import CollagePreview from '../components/CollagePreview';
+import { resizeImage } from '../../../utils/library/resizeImage';
+import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 
 // Debugging utils
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
@@ -84,27 +86,54 @@ const CollageImagesStep = ({
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
-    // Helper function to load a single file and return a Promise with the data URL
-    const loadFile = (file) => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+    // Normalize like library: resize to cap and convert to data URL (JPEG)
+    const toDataUrl = (blob) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    // Track any blob: URLs created during processing so we can clean them up if needed
+    const tempBlobUrls = [];
+    const trackBlobUrl = (u) => {
+      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
+      return u;
+    };
+
+    const getImageObject = async (file) => {
+      try {
+        const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
+        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
+        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
+        return { originalUrl, displayUrl };
+      } catch (_) {
+        // Fallback to original file as blob URL or data URL if resize fails
+        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? trackBlobUrl(URL.createObjectURL(file)) : await toDataUrl(file);
+        return { originalUrl: dataUrl, displayUrl: dataUrl };
+      }
+    };
 
     debugLog(`Add Image button: uploading ${files.length} files...`);
 
+    let committed = false;
     try {
-      // Process all files using the same logic as BulkUploadSection
-      const imageUrls = await Promise.all(files.map(loadFile));
-      debugLog(`Loaded ${imageUrls.length} files from Add Image button`);
+      // Process all files with client-side resizing and data URL conversion
+      const imageObjs = await Promise.all(files.map(getImageObject));
+      debugLog(`Loaded ${imageObjs.length} files from Add Image button`);
 
       // Add all images at once - this will trigger the same auto-assignment logic
-      await addMultipleImages(imageUrls);
+      await addMultipleImages(imageObjs);
+      committed = true;
 
-      debugLog(`Added ${imageUrls.length} new images via Add Image button`);
+      debugLog(`Added ${imageObjs.length} new images via Add Image button`);
     } catch (error) {
       console.error("Error loading files from Add Image button:", error);
+    } finally {
+      // If we failed to commit to state, revoke any temporary blob URLs
+      if (!committed) {
+        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+      }
     }
     
     // Reset file input

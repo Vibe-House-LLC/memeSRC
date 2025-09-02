@@ -43,6 +43,7 @@ exports.handler = async (event) => {
     const userSub = (event.requestContext?.identity?.cognitoAuthenticationProvider) ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1) : '';
     const body = JSON.parse(event.body);
     const prompt = body.prompt;
+    const hasMask = Boolean(body.mask);
 
     console.log(JSON.stringify(process.env))
 
@@ -79,23 +80,25 @@ exports.handler = async (event) => {
         };
     }
 
-    // Upload image inputs to S3
+    // Upload image inputs to S3 (mask optional)
     const imageKey = `tmp/${uuid.v4()}.png`;
-    const maskKey = `tmp/${uuid.v4()}.png`;
-
     await s3Client.send(new PutObjectCommand({
         Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
         Key: imageKey,
-        Body: Buffer.from(body.image.split(",")[1], 'base64'),
+        Body: Buffer.from(String(body.image).split(",")[1] || '', 'base64'),
         ContentType: 'image/png',
     }));
 
-    await s3Client.send(new PutObjectCommand({
-        Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-        Key: maskKey,
-        Body: Buffer.from(body.mask.split(",")[1], 'base64'),
-        ContentType: 'image/png',
-    }));
+    let maskKey = undefined;
+    if (hasMask) {
+        maskKey = `tmp/${uuid.v4()}.png`;
+        await s3Client.send(new PutObjectCommand({
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: maskKey,
+            Body: Buffer.from(String(body.mask).split(",")[1] || '', 'base64'),
+            ContentType: 'image/png',
+        }));
+    }
 
     // Create the DynamoDB record for MagicResult
     const dynamoRecord = {
@@ -119,7 +122,8 @@ exports.handler = async (event) => {
         Payload: JSON.stringify({ 
             magicResultId: dynamoRecord.id.S,
             imageKey,
-            maskKey,
+            // Only include maskKey if present; background will branch accordingly
+            ...(maskKey ? { maskKey } : {}),
             prompt
         })
     }));

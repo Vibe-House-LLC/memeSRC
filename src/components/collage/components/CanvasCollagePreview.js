@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
@@ -470,6 +470,8 @@ const CanvasCollagePreview = ({
   panelCount,
   images = [],
   onPanelClick,
+  onEditImage, // new: request magic edit for a panel
+  canEditImage = false, // new: control visibility of magic edit option
   onSaveGestureDetected, // new: notify parent when long-press/right-click implies save intent
   isFrameActionSuppressed, // optional: function to indicate suppression window
   aspectRatioValue = 1,
@@ -591,21 +593,34 @@ const CanvasCollagePreview = ({
   const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
 
   // If the layout key changes (template/panelCount/aspect), drop any prior custom grid.
-  // This prevents a stale custom grid from overriding a newly selected layout at load time.
+  // When a persisted custom layout exists, only adopt it if it supports the current panel count.
   const prevLayoutKeyRef = useRef(customLayoutKey);
+  const isCustomLayoutCompatible = useCallback((layout, count) => {
+    try {
+      if (!layout || typeof layout !== 'object') return false;
+      const needed = Math.max(2, count || 2);
+      if (Array.isArray(layout.areas)) return layout.areas.length >= needed;
+      if (Array.isArray(layout.items)) return layout.items.length >= needed;
+      return false;
+    } catch (_) { return false; }
+  }, []);
   useEffect(() => {
     if (prevLayoutKeyRef.current !== customLayoutKey) {
-      setCustomLayoutConfig(initialCustomLayout || null);
+      // Apply provided layout only if it's compatible; otherwise reset to base
+      const next = isCustomLayoutCompatible(initialCustomLayout, panelCount) ? (initialCustomLayout || null) : null;
+      setCustomLayoutConfig(next);
       prevLayoutKeyRef.current = customLayoutKey;
     }
-  }, [customLayoutKey, initialCustomLayout]);
+  }, [customLayoutKey, initialCustomLayout, panelCount, isCustomLayoutCompatible]);
 
   // If a custom layout is provided after mount (e.g., load sequence), adopt it once
   useEffect(() => {
     if (initialCustomLayout && !customLayoutConfig) {
-      setCustomLayoutConfig(initialCustomLayout);
+      if (isCustomLayoutCompatible(initialCustomLayout, panelCount)) {
+        setCustomLayoutConfig(initialCustomLayout);
+      }
     }
-  }, [initialCustomLayout, customLayoutConfig]);
+  }, [initialCustomLayout, customLayoutConfig, panelCount, isCustomLayoutCompatible]);
 
   // Long-press (press-and-hold) hint state
   const [saveHintOpen, setSaveHintOpen] = useState(false);
@@ -824,44 +839,46 @@ const CanvasCollagePreview = ({
     return found;
   }, [borderZones]);
 
-  // Load images when they change
+  // Load only images currently mapped to panels (avoid decoding/holding unused images)
   useEffect(() => {
     const loadImage = (src, key) => new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve({ key, img });
-        img.onerror = () => resolve({ key, img: null });
-        
-        if (typeof src === 'string') {
-          img.src = src;
-        } else if (src && typeof src === 'object') {
-          img.src = src.displayUrl || src.originalUrl || '';
-        }
-      });
+      const img = new Image();
+      try { img.decoding = 'async'; } catch (_) { /* ignore */ }
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve({ key, img });
+      img.onerror = () => resolve({ key, img: null });
 
-    const loadAllImages = async () => {
-      const imagePromises = images.map((imageData, index) => 
-        loadImage(imageData, index)
+      if (typeof src === 'string') {
+        img.src = src;
+      } else if (src && typeof src === 'object') {
+        img.src = src.displayUrl || src.originalUrl || '';
+      } else {
+        img.src = '';
+      }
+    });
+
+    const loadMappedImages = async () => {
+      const indices = Array.from(
+        new Set(
+          Object.values(panelImageMapping)
+            .filter((v) => typeof v === 'number' && v >= 0 && v < images.length)
+        )
       );
-      
-      const results = await Promise.all(imagePromises);
+      const promises = indices.map((idx) => loadImage(images[idx], idx));
+      const results = await Promise.all(promises);
       const newLoadedImages = {};
-      
       results.forEach(({ key, img }) => {
-        if (img) {
-          newLoadedImages[key] = img;
-        }
+        if (img) newLoadedImages[key] = img;
       });
-      
       setLoadedImages(newLoadedImages);
-      
-
     };
 
     if (images.length > 0) {
-      loadAllImages();
+      loadMappedImages();
+    } else {
+      setLoadedImages({});
     }
-  }, [images, panelRects, updatePanelText, panelTexts, lastUsedTextSettings]);
+  }, [images, panelImageMapping, panelRects, updatePanelText, panelTexts, lastUsedTextSettings]);
 
   // Update component dimensions and panel rectangles
   useEffect(() => {
@@ -3103,6 +3120,30 @@ const CanvasCollagePreview = ({
     handleActionMenuClose();
   }, [actionMenuPanelId, onPanelClick, panelRects, handleActionMenuClose]);
 
+  // Trigger magic edit via parent
+  const handleMenuMagicEdit = useCallback(() => {
+    if (actionMenuPanelId && typeof onEditImage === 'function') {
+      const rect = panelRects.find(r => r.panelId === actionMenuPanelId);
+      if (rect) {
+        try {
+          // Provide panel rect and current canvas/meta to parent to support frame-view cropping
+          const imageIndex = panelImageMapping[actionMenuPanelId];
+          const hasImage = typeof imageIndex === 'number' && loadedImages[imageIndex];
+          const meta = {
+            panelRect: rect,
+            canvasWidth: componentWidth,
+            canvasHeight: componentHeight,
+            hasImage,
+          };
+          onEditImage(rect.index, actionMenuPanelId, meta);
+        } catch (_) {
+          onEditImage(rect.index, actionMenuPanelId);
+        }
+      }
+    }
+    handleActionMenuClose();
+  }, [actionMenuPanelId, onEditImage, panelRects, handleActionMenuClose, panelImageMapping, loadedImages, componentWidth, componentHeight]);
+
   // Open caption editor for the panel
   const handleMenuEditCaption = useCallback(() => {
     if (actionMenuPanelId) {
@@ -3867,6 +3908,14 @@ const CanvasCollagePreview = ({
                 </ListItemIcon>
                 Rearrange
               </MenuItem>
+              {canEditImage && (
+                <MenuItem onClick={handleMenuMagicEdit} disabled={!hasImageForPanel}>
+                  <ListItemIcon>
+                    <AutoFixHighRounded fontSize="small" />
+                  </ListItemIcon>
+                  Edit Image
+                </MenuItem>
+              )}
               <MenuItem onClick={handleMenuReplace}>
                 <ListItemIcon>
                   <ImageIcon fontSize="small" />
@@ -3900,6 +3949,8 @@ CanvasCollagePreview.propTypes = {
     }),
   ])),
   onPanelClick: PropTypes.func,
+  onEditImage: PropTypes.func,
+  canEditImage: PropTypes.bool,
   onSaveGestureDetected: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
   aspectRatioValue: PropTypes.number,

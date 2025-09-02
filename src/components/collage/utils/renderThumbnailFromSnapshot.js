@@ -7,11 +7,33 @@
 import { layoutDefinitions } from '../config/layouts';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 
+// Determine if a persisted custom layout is compatible with the requested panel count
+function isCustomLayoutCompatible(customLayout, panelCount) {
+  try {
+    if (!customLayout || typeof customLayout !== 'object') return false;
+    // Prefer explicit areas length when present
+    if (Array.isArray(customLayout.areas)) {
+      return customLayout.areas.length >= Math.max(2, panelCount || 2);
+    }
+    // Fallback to items array length if provided
+    if (Array.isArray(customLayout.items)) {
+      return customLayout.items.length >= Math.max(2, panelCount || 2);
+    }
+    // If neither is present, be conservative and treat as incompatible
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
 // Create layout config by id, optionally using a persisted custom layout
 function createLayoutConfigById(templateId, panelCount, customLayout) {
+  // Only apply a persisted custom layout if it can support the requested panel count
   if (customLayout && (customLayout.gridTemplateColumns || customLayout.gridTemplateRows)) {
     try {
-      return customLayout;
+      if (isCustomLayoutCompatible(customLayout, panelCount)) {
+        return customLayout;
+      }
     } catch (_) {}
   }
   try {

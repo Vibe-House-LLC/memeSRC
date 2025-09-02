@@ -1,6 +1,7 @@
 import { put } from './storage';
 import { putMetadataForKey } from './metadata';
 import { resizeImage } from './resizeImage';
+import { UPLOAD_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
 
 function inferExtensionFromType(type?: string | null): string {
   if (!type) return 'jpg';
@@ -39,10 +40,10 @@ export async function saveImageToLibrary(
     blob = input;
   }
 
-  // Resize client-side to max 1000px; fall back to original on failure
+  // Resize client-side using shared max; fall back to original on failure
   let toUpload: Blob;
   try {
-    toUpload = await resizeImage(blob, 1000);
+    toUpload = await resizeImage(blob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
   } catch {
     toUpload = blob;
   }
@@ -58,4 +59,3 @@ export async function saveImageToLibrary(
   }
   return key;
 }
-
