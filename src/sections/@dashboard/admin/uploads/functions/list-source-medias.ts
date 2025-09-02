@@ -15,6 +15,7 @@ const listSourceMediasQuery = /* GraphQL */ `
         updatedAt
         userDetailsSourceMediaId
         sourceMediaSeriesId
+        pendingAlias
         user {
           id
           username

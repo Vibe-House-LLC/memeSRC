@@ -50,13 +50,40 @@ export interface SourceMediaFile {
   createdAt: string;
   updatedAt: string;
   sourceMediaFilesId: string;
+  pendingAlias: string | null;
   __typename?: "SourceMediaFiles";
+}
+
+export interface File {
+  id: string;
+  sourceMedia: SourceMedia;
+  key: string;
+  unzippedPath: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  sourceMediaFilesId: string;
+  __typename: "File";
+}
+
+export interface Alias {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  aliasV2ContentMetadataId: string;
+  __typename: "Alias";
 }
 
 export interface ModelSourceMediaFilesConnection {
   items: SourceMediaFile[];
   nextToken: string | null;
   __typename: "ModelSourceMediaFilesConnection";
+}
+
+export interface ModelAliasConnection {
+  items: Alias[];
+  nextToken: string | null;
+  __typename: "ModelAliasConnection";
 }
 
 export interface DetailedSourceMedia {
@@ -69,6 +96,7 @@ export interface DetailedSourceMedia {
   updatedAt: string;
   userDetailsSourceMediaId: string | null;
   sourceMediaSeriesId: string;
+  pendingAlias: string | null;
   __typename: "SourceMedia";
 }
 
@@ -104,6 +132,30 @@ export interface GetSourceMediaResponse {
 
 export interface GetSourceMediaApiResponse {
   data: GetSourceMediaResponse;
+}
+
+export interface UpdateSourceMediaResponse {
+  updateSourceMedia: DetailedSourceMedia;
+}
+
+export interface UpdateSourceMediaApiResponse {
+  data: UpdateSourceMediaResponse;
+}
+
+export interface UpdateFileResponse {
+  updateFile: File;
+}
+
+export interface UpdateFileApiResponse {
+  data: UpdateFileResponse;
+}
+
+export interface ListAliasesResponse {
+  listAliases: ModelAliasConnection;
+}
+
+export interface ListAliasesApiResponse {
+  data: ListAliasesResponse;
 }
 
 // Utility types for common operations
@@ -255,4 +307,70 @@ export const isGetSourceMediaApiResponse = (obj: unknown): obj is GetSourceMedia
     typeof record.data === "object" &&
     record.data !== null &&
     isDetailedSourceMedia(data.getSourceMedia);
+};
+
+export const isUpdateSourceMediaApiResponse = (obj: unknown): obj is UpdateSourceMediaApiResponse => {
+  const record = obj as Record<string, unknown>;
+  const data = record.data as Record<string, unknown>;
+  return typeof obj === "object" &&
+    obj !== null &&
+    typeof record.data === "object" &&
+    record.data !== null &&
+    isDetailedSourceMedia(data.updateSourceMedia);
+};
+
+export const isFile = (obj: unknown): obj is File => {
+  const record = obj as Record<string, unknown>;
+  return typeof obj === "object" &&
+    obj !== null &&
+    typeof record.id === "string" &&
+    isSourceMedia(record.sourceMedia) &&
+    typeof record.key === "string" &&
+    (record.unzippedPath === null || typeof record.unzippedPath === "string") &&
+    typeof record.status === "string" &&
+    typeof record.createdAt === "string" &&
+    typeof record.updatedAt === "string" &&
+    typeof record.sourceMediaFilesId === "string" &&
+    record.__typename === "File";
+};
+
+export const isUpdateFileApiResponse = (obj: unknown): obj is UpdateFileApiResponse => {
+  const record = obj as Record<string, unknown>;
+  const data = record.data as Record<string, unknown>;
+  return typeof obj === "object" &&
+    obj !== null &&
+    typeof record.data === "object" &&
+    record.data !== null &&
+    isFile(data.updateFile);
+};
+
+export const isAlias = (obj: unknown): obj is Alias => {
+  const record = obj as Record<string, unknown>;
+  return typeof obj === "object" &&
+    obj !== null &&
+    typeof record.id === "string" &&
+    typeof record.createdAt === "string" &&
+    typeof record.updatedAt === "string" &&
+    typeof record.aliasV2ContentMetadataId === "string" &&
+    record.__typename === "Alias";
+};
+
+export const isModelAliasConnection = (obj: unknown): obj is ModelAliasConnection => {
+  const record = obj as Record<string, unknown>;
+  return typeof obj === "object" &&
+    obj !== null &&
+    Array.isArray(record.items) &&
+    record.items.every(isAlias) &&
+    (record.nextToken === null || typeof record.nextToken === "string") &&
+    record.__typename === "ModelAliasConnection";
+};
+
+export const isListAliasesApiResponse = (obj: unknown): obj is ListAliasesApiResponse => {
+  const record = obj as Record<string, unknown>;
+  const data = record.data as Record<string, unknown>;
+  return typeof obj === "object" &&
+    obj !== null &&
+    typeof record.data === "object" &&
+    record.data !== null &&
+    isModelAliasConnection(data.listAliases);
 };

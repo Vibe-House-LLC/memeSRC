@@ -12,15 +12,21 @@ import {
     Tooltip,
     CircularProgress,
     Alert,
-    Divider
+    Divider,
+    Autocomplete,
+    TextField
 } from "@mui/material";
 import {
     Download as DownloadIcon,
-    CloudUpload as ExtractIcon
+    CloudUpload as ExtractIcon,
+    Save as SaveIcon
 } from "@mui/icons-material";
 import { Storage } from "aws-amplify";
 import { SourceMediaFile } from "./types";
 import { FileBrowser } from "../../@components";
+import listAliases from "./functions/list-aliases";
+import updateSourceMedia from "./functions/update-source-media";
+import { useEffect, useState } from "react";
 
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status.toLowerCase()) {
@@ -55,6 +61,8 @@ interface AdminReviewUploadProps {
     setDownloadingFiles: React.Dispatch<React.SetStateAction<Set<string>>>;
     setExtractingFiles: React.Dispatch<React.SetStateAction<Set<string>>>;
     setError: React.Dispatch<React.SetStateAction<string | null>>;
+    sourceMediaId?: string;
+    initialAlias?: string;
 }
 
 export default function AdminReviewUpload({
@@ -65,8 +73,64 @@ export default function AdminReviewUpload({
     extractingFiles,
     setDownloadingFiles,
     setExtractingFiles,
-    setError
+    setError,
+    sourceMediaId,
+    initialAlias = ''
 }: AdminReviewUploadProps) {
+    const [aliases, setAliases] = useState<string[]>([]);
+    const [aliasesLoading, setAliasesLoading] = useState(false);
+    const [pendingAlias, setPendingAlias] = useState<string>(initialAlias);
+    const [savingAlias, setSavingAlias] = useState(false);
+    const [savedAlias, setSavedAlias] = useState<string>(initialAlias);
+
+    useEffect(() => {
+        if (!pendingAlias) {
+            setSavedAlias(initialAlias);
+            setPendingAlias(initialAlias);
+        }
+    }, [initialAlias]);
+
+    // Load aliases on mount
+    useEffect(() => {
+        const loadAliases = async () => {
+            setAliasesLoading(true);
+            try {
+                const aliasData = await listAliases();
+                if (aliasData) {
+                    const aliasIds = aliasData.map((alias: any) => alias.id).filter(Boolean);
+                    setAliases(aliasIds);
+                }
+            } catch (err) {
+                console.error('Failed to load aliases:', err);
+                setError('Failed to load aliases');
+            } finally {
+                setAliasesLoading(false);
+            }
+        };
+        loadAliases();
+    }, [setError]);
+
+    // Check if alias has changed from saved value
+    const hasAliasChanged = pendingAlias !== savedAlias;
+    const isAliasSaved = savedAlias.trim() !== '';
+    const isNewAlias = savedAlias.trim() !== '' && !aliases.includes(savedAlias);
+
+    const handleSaveAlias = async () => {
+        if (!sourceMediaId || !hasAliasChanged) return;
+
+        setSavingAlias(true);
+        try {
+            await updateSourceMedia(sourceMediaId, { pendingAlias });
+            setSavedAlias(pendingAlias); // Update saved alias after successful save
+            setError(null);
+            // TODO: Show success message or refresh data
+        } catch (err) {
+            console.error('Failed to save alias:', err);
+            setError('Failed to save alias');
+        } finally {
+            setSavingAlias(false);
+        }
+    };
 
     const handleDownloadFile = async (fileKey: string, fileId: string) => {
         try {
@@ -150,99 +214,158 @@ export default function AdminReviewUpload({
             )}
 
             {!loading && files.length > 0 && (
-                <Card>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                            Files ({files.length})
-                        </Typography>
-                        <List>
-                            {files.map((file, index) => {
-                                const fileName = file.key.split('/').pop() || file.key;
-                                const isDownloading = downloadingFiles.has(file.id);
-                                const isExtracting = extractingFiles.has(file.id);
+                <>
+                    <Card sx={{ mb: 3 }}>
+                        <CardContent>
+                            <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                                Alias
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Autocomplete
+                                    freeSolo
+                                    fullWidth
+                                    options={aliases}
+                                    value={pendingAlias}
+                                    onChange={(event, newValue) => {
+                                        setPendingAlias(typeof newValue === 'string' ? newValue : newValue || '');
+                                    }}
+                                    onInputChange={(event, newValue) => {
+                                        setPendingAlias(newValue);
+                                    }}
+                                    loading={aliasesLoading}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Select or enter alias"
+                                            variant="outlined"
+                                            size="small"
+                                            placeholder="Enter alias name..."
+                                        />
+                                    )}
+                                    sx={{ flex: 1 }}
+                                />
+                                <Button
+                                    variant="contained"
+                                    startIcon={
+                                        savingAlias ? (
+                                            <CircularProgress size={16} />
+                                        ) : (
+                                            <SaveIcon />
+                                        )
+                                    }
+                                    onClick={handleSaveAlias}
+                                    disabled={!hasAliasChanged || savingAlias}
+                                    sx={{ minWidth: 100 }}
+                                >
+                                    Save
+                                </Button>
+                            </Box>
+                            {!isAliasSaved && (
+                                <Alert severity="info" sx={{ mt: 2 }}>
+                                    Please save an alias to enable file extraction.
+                                </Alert>
+                            )}
+                            {isNewAlias && (
+                                <Alert severity="warning" sx={{ mt: 2 }}>
+                                    This alias does not exist. If you proceed, this alias will be created and linked after approval.
+                                </Alert>
+                            )}
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                                Files ({files.length})
+                            </Typography>
+                            <List>
+                                {files.map((file, index) => {
+                                    const fileName = file.key.split('/').pop() || file.key;
+                                    const isDownloading = downloadingFiles.has(file.id);
+                                    const isExtracting = extractingFiles.has(file.id);
 
-                                return (
-                                    <Box key={file.id}>
-                                        <ListItem
-                                            sx={{
-                                                px: 0,
-                                                py: 1.5,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 2
-                                            }}
-                                        >
-                                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                                                <ListItemText
-                                                    primary={
-                                                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                                            {fileName}
-                                                        </Typography>
-                                                    }
-                                                    secondary={
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                                            <Chip
-                                                                label={file.status}
-                                                                color={getStatusColor(file.status)}
-                                                                size="small"
-                                                                variant="outlined"
-                                                                sx={{ height: 20, fontSize: '0.75rem' }}
-                                                            />
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                Updated: {formatDate(file.updatedAt)}
+                                    return (
+                                        <Box key={file.id}>
+                                            <ListItem
+                                                sx={{
+                                                    px: 0,
+                                                    py: 1.5,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 2
+                                                }}
+                                            >
+                                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                    <ListItemText
+                                                        primary={
+                                                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                                                {fileName}
                                                             </Typography>
-                                                        </Box>
-                                                    }
-                                                />
-                                            </Box>
-
-                                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                                <Tooltip title="Download File">
-                                                    <Button
-                                                        variant="outlined"
-                                                        size="small"
-                                                        startIcon={
-                                                            isDownloading ? (
-                                                                <CircularProgress size={16} />
-                                                            ) : (
-                                                                <DownloadIcon />
-                                                            )
                                                         }
-                                                        onClick={() => handleDownloadFile(file.key, file.id)}
-                                                        disabled={isDownloading}
-                                                        sx={{ minWidth: 100 }}
-                                                    >
-                                                        Download
-                                                    </Button>
-                                                </Tooltip>
-
-                                                <Tooltip title="Extract to Staging">
-                                                    <Button
-                                                        variant="contained"
-                                                        size="small"
-                                                        startIcon={
-                                                            isExtracting ? (
-                                                                <CircularProgress size={16} />
-                                                            ) : (
-                                                                <ExtractIcon />
-                                                            )
+                                                        secondary={
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                                                <Chip
+                                                                    label={file.status}
+                                                                    color={getStatusColor(file.status)}
+                                                                    size="small"
+                                                                    variant="outlined"
+                                                                    sx={{ height: 20, fontSize: '0.75rem' }}
+                                                                />
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    Updated: {formatDate(file.updatedAt)}
+                                                                </Typography>
+                                                            </Box>
                                                         }
-                                                        onClick={() => handleExtractToStaging(file.key, file.id)}
-                                                        disabled={isExtracting}
-                                                        sx={{ minWidth: 130 }}
-                                                    >
-                                                        Extract to Staging
-                                                    </Button>
-                                                </Tooltip>
-                                            </Box>
-                                        </ListItem>
-                                        {index < files.length - 1 && <Divider />}
-                                    </Box>
-                                );
-                            })}
-                        </List>
-                    </CardContent>
-                </Card>
+                                                    />
+                                                </Box>
+
+                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                    <Tooltip title="Download File">
+                                                        <Button
+                                                            variant="outlined"
+                                                            size="small"
+                                                            startIcon={
+                                                                isDownloading ? (
+                                                                    <CircularProgress size={16} />
+                                                                ) : (
+                                                                    <DownloadIcon />
+                                                                )
+                                                            }
+                                                            onClick={() => handleDownloadFile(file.key, file.id)}
+                                                            disabled={isDownloading}
+                                                            sx={{ minWidth: 100 }}
+                                                        >
+                                                            Download
+                                                        </Button>
+                                                    </Tooltip>
+
+                                                    <Tooltip title="Extract to Staging">
+                                                        <Button
+                                                            variant="contained"
+                                                            size="small"
+                                                            startIcon={
+                                                                isExtracting ? (
+                                                                    <CircularProgress size={16} />
+                                                                ) : (
+                                                                    <ExtractIcon />
+                                                                )
+                                                            }
+                                                            onClick={() => handleExtractToStaging(file.key, file.id)}
+                                                            disabled={isExtracting || !isAliasSaved}
+                                                            sx={{ minWidth: 130 }}
+                                                        >
+                                                            Extract to Staging
+                                                        </Button>
+                                                    </Tooltip>
+                                                </Box>
+                                            </ListItem>
+                                            {index < files.length - 1 && <Divider />}
+                                        </Box>
+                                    );
+                                })}
+                            </List>
+                        </CardContent>
+                    </Card>
+                </>
             )}
             <Box sx={{ my: 2 }}>
                 {/* This is temporarily pointing to an existing show for testing until the extraction function is complete. */}

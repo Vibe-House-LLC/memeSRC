@@ -53,6 +53,7 @@ const getSourceMediaDetailsQuery = /* GraphQL */ `
       updatedAt
       userDetailsSourceMediaId
       sourceMediaSeriesId
+      pendingAlias
       __typename
     }
   }

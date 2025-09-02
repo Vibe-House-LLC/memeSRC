@@ -50,6 +50,7 @@ export default function AdminFileReview() {
             .then(([filesData, sourceMediaData]) => {
                 setFiles(filesData);
                 setSourceMedia(sourceMediaData);
+                console.log(sourceMediaData);
             })
             .catch((err) => {
                 console.error('Error fetching data:', err);
@@ -114,6 +115,8 @@ export default function AdminFileReview() {
                 setDownloadingFiles={setDownloadingFiles}
                 setExtractingFiles={setExtractingFiles}
                 setError={setError}
+                sourceMediaId={sourceMediaId}
+                initialAlias={sourceMedia?.pendingAlias}
             />
         </Container>
     );

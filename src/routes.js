@@ -35,8 +35,8 @@ const AddToSeriesPage = lazy(() => import('./pages/AddToSeriesPage'));
 const HomePage = lazy(() => import('./pages/HomePage'))
 const V2SearchPage = lazy(() => import('./pages/V2SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
-const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
-const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
+// const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
+// const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const ContributorRequest = lazy(() => import('./pages/ContributorRequest'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));

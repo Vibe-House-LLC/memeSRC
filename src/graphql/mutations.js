@@ -117,6 +117,7 @@ export const createSourceMedia = /* GraphQL */ `
         userDetailsStripeCustomerInfoId
         __typename
       }
+      pendingAlias
       createdAt
       updatedAt
       userDetailsSourceMediaId
@@ -169,6 +170,7 @@ export const updateSourceMedia = /* GraphQL */ `
         userDetailsStripeCustomerInfoId
         __typename
       }
+      pendingAlias
       createdAt
       updatedAt
       userDetailsSourceMediaId
@@ -221,6 +223,7 @@ export const deleteSourceMedia = /* GraphQL */ `
         userDetailsStripeCustomerInfoId
         __typename
       }
+      pendingAlias
       createdAt
       updatedAt
       userDetailsSourceMediaId
@@ -239,6 +242,7 @@ export const createFile = /* GraphQL */ `
       sourceMedia {
         id
         status
+        pendingAlias
         createdAt
         updatedAt
         userDetailsSourceMediaId
@@ -246,6 +250,7 @@ export const createFile = /* GraphQL */ `
         __typename
       }
       key
+      unzippedPath
       status
       createdAt
       updatedAt
@@ -264,6 +269,7 @@ export const updateFile = /* GraphQL */ `
       sourceMedia {
         id
         status
+        pendingAlias
         createdAt
         updatedAt
         userDetailsSourceMediaId
@@ -271,6 +277,7 @@ export const updateFile = /* GraphQL */ `
         __typename
       }
       key
+      unzippedPath
       status
       createdAt
       updatedAt
@@ -289,6 +296,7 @@ export const deleteFile = /* GraphQL */ `
       sourceMedia {
         id
         status
+        pendingAlias
         createdAt
         updatedAt
         userDetailsSourceMediaId
@@ -296,6 +304,7 @@ export const deleteFile = /* GraphQL */ `
         __typename
       }
       key
+      unzippedPath
       status
       createdAt
       updatedAt
