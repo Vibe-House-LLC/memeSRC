@@ -24,7 +24,14 @@ import {
     Collapse,
     IconButton,
     TextField,
-    InputAdornment
+    InputAdornment,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
+    CardActions
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
@@ -35,7 +42,10 @@ import {
     DataObject as JsonIcon,
     TableChart as CsvIcon,
     Search as SearchIcon,
-    Clear as ClearIcon
+    Clear as ClearIcon,
+    Edit as EditIcon,
+    Save as SaveIcon,
+    Cancel as CancelIcon
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 
@@ -71,6 +81,7 @@ interface FileBrowserProps {
     pathPrefix: string;
     id: string;
     files?: FileItem[]; // Optional: if provided, use these instead of listing
+    base64Columns?: string[]; // Optional: column names to decode from base64 in CSV files
 }
 
 // Custom TreeNode component
@@ -333,20 +344,59 @@ const VideoViewer: React.FC<{ url: string; filename: string }> = ({ url, filenam
     </Card>
 );
 
-const JsonFileViewer: React.FC<{ content: string; filename: string }> = ({ content, filename }) => {
+const JsonFileViewer: React.FC<{ 
+    content: string; 
+    filename: string; 
+    onSave: (content: string) => void;
+}> = ({ content, filename, onSave }) => {
     const [formattedJson, setFormattedJson] = useState<string>('');
+    const [editedJson, setEditedJson] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState<boolean>(false);
+    const [editError, setEditError] = useState<string | null>(null);
     
     useEffect(() => {
         try {
             const parsed = JSON.parse(content);
-            setFormattedJson(JSON.stringify(parsed, null, 2));
+            const formatted = JSON.stringify(parsed, null, 2);
+            setFormattedJson(formatted);
+            setEditedJson(formatted);
             setError(null);
         } catch (err) {
             setError('Invalid JSON format');
             setFormattedJson(content);
+            setEditedJson(content);
         }
     }, [content]);
+
+    const handleEdit = () => {
+        setIsEditing(true);
+        setEditError(null);
+    };
+
+    const handleCancel = () => {
+        setIsEditing(false);
+        setEditedJson(formattedJson);
+        setEditError(null);
+    };
+
+    const handleSave = () => {
+        try {
+            // Validate JSON before saving
+            JSON.parse(editedJson);
+            setEditError(null);
+            onSave(editedJson);
+            setFormattedJson(editedJson);
+            setIsEditing(false);
+        } catch (err) {
+            setEditError('Invalid JSON format. Please fix the syntax before saving.');
+        }
+    };
+
+    const handleJsonChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setEditedJson(event.target.value);
+        setEditError(null);
+    };
     
     return (
         <Card>
@@ -359,17 +409,85 @@ const JsonFileViewer: React.FC<{ content: string; filename: string }> = ({ conte
                         {error}
                     </Alert>
                 )}
-                <JsonViewerContainer>{formattedJson}</JsonViewerContainer>
+                {editError && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                        {editError}
+                    </Alert>
+                )}
+                {isEditing ? (
+                    <TextField
+                        multiline
+                        fullWidth
+                        value={editedJson}
+                        onChange={handleJsonChange}
+                        variant="outlined"
+                        sx={{
+                            '& .MuiInputBase-root': {
+                                fontFamily: 'monospace',
+                                fontSize: '0.875rem',
+                                lineHeight: '1.4',
+                            }
+                        }}
+                        rows={20}
+                    />
+                ) : (
+                    <JsonViewerContainer>{formattedJson}</JsonViewerContainer>
+                )}
             </CardContent>
+            <CardActions>
+                {isEditing ? (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<SaveIcon />}
+                            onClick={handleSave}
+                            size="small"
+                        >
+                            Save
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            startIcon={<CancelIcon />}
+                            onClick={handleCancel}
+                            size="small"
+                        >
+                            Cancel
+                        </Button>
+                    </Box>
+                ) : (
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<EditIcon />}
+                        onClick={handleEdit}
+                        size="small"
+                    >
+                        Edit
+                    </Button>
+                )}
+            </CardActions>
         </Card>
     );
 };
 
-const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, filename }) => {
+const CsvViewer: React.FC<{ 
+    content: string; 
+    filename: string; 
+    onSave: (content: string) => void;
+    base64Columns?: string[];
+}> = ({ content, filename, onSave, base64Columns = [] }) => {
     const [tableData, setTableData] = useState<string[][]>([]);
+    const [editedData, setEditedData] = useState<string[][]>([]);
     const [filteredData, setFilteredData] = useState<string[][]>([]);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState<boolean>(false);
+
+    // Debug: Log base64Columns when they change
+    useEffect(() => {
+        console.log('CsvViewer: base64Columns changed:', base64Columns);
+    }, [base64Columns]);
     
     useEffect(() => {
         try {
@@ -379,6 +497,7 @@ const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, f
                 return line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
             });
             setTableData(data);
+            setEditedData(JSON.parse(JSON.stringify(data))); // Deep copy
             setFilteredData(data);
             setError(null);
         } catch (err) {
@@ -387,26 +506,32 @@ const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, f
     }, [content]);
 
     useEffect(() => {
+        const dataToFilter = isEditing ? editedData : tableData;
         if (!searchTerm.trim()) {
-            setFilteredData(tableData);
+            // Create a new array reference to force re-render when base64Columns changes
+            setFilteredData([...dataToFilter]);
             return;
         }
 
-        const filtered = tableData.filter((row, index) => {
+        const filtered = dataToFilter.filter((row, index) => {
             // Skip header row from filtering, always include it
             if (index === 0) return true;
             
-            return row.some(cell => {
-                // Search in both original and decoded values
+            return row.some((cell, cellIndex) => {
+                const headers = dataToFilter[0] || [];
+                const columnName = headers[cellIndex];
+                const shouldDecode = base64Columns.includes(columnName);
+                
+                // Search in both original and decoded values (only if column should be decoded)
                 const originalMatch = cell.toLowerCase().includes(searchTerm.toLowerCase());
-                const decodedValue = isBase64(cell) ? decodeBase64Safe(cell) : cell;
+                const decodedValue = (shouldDecode && isBase64(cell)) ? decodeBase64Safe(cell) : cell;
                 const decodedMatch = decodedValue.toLowerCase().includes(searchTerm.toLowerCase());
                 return originalMatch || decodedMatch;
             });
         });
         
         setFilteredData(filtered);
-    }, [searchTerm, tableData]);
+    }, [searchTerm, tableData, editedData, isEditing, base64Columns]);
 
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(event.target.value);
@@ -414,6 +539,32 @@ const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, f
 
     const handleClearSearch = () => {
         setSearchTerm('');
+    };
+
+    const handleEdit = () => {
+        setIsEditing(true);
+    };
+
+    const handleCancel = () => {
+        setIsEditing(false);
+        setEditedData(JSON.parse(JSON.stringify(tableData))); // Reset to original
+    };
+
+    const handleSave = () => {
+        // Convert edited data back to CSV format
+        const csvContent = editedData.map(row => 
+            row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')
+        ).join('\n');
+        
+        onSave(csvContent);
+        setTableData(JSON.parse(JSON.stringify(editedData)));
+        setIsEditing(false);
+    };
+
+    const handleCellChange = (rowIndex: number, cellIndex: number, value: string) => {
+        const newData = [...editedData];
+        newData[rowIndex][cellIndex] = value;
+        setEditedData(newData);
     };
     
     if (error) {
@@ -431,7 +582,7 @@ const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, f
     
     const headers = filteredData[0] || [];
     const rows = filteredData.slice(1);
-    const totalRows = tableData.length - 1; // Subtract header row
+    const totalRows = (isEditing ? editedData.length : tableData.length) - 1; // Subtract header row
     const filteredRows = rows.length;
     
     return (
@@ -440,6 +591,11 @@ const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, f
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Typography variant="h6">
                         CSV: {filename} ({filteredRows}{filteredRows !== totalRows ? ` of ${totalRows}` : ''} rows)
+                        {base64Columns.length > 0 && (
+                            <Typography variant="caption" display="block" color="text.secondary">
+                                Decoding columns: {base64Columns.join(', ')}
+                            </Typography>
+                        )}
                     </Typography>
                     <TextField
                         size="small"
@@ -447,6 +603,7 @@ const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, f
                         value={searchTerm}
                         onChange={handleSearchChange}
                         sx={{ minWidth: 200 }}
+                        disabled={isEditing}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
@@ -469,7 +626,7 @@ const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, f
                 </Box>
                 
                 <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
-                    <Table stickyHeader size="small">
+                    <Table stickyHeader size="small" key={`csv-table-${base64Columns.join('-')}`}>
                         <TableHead>
                             <TableRow>
                                 {headers.map((header, index) => (
@@ -480,35 +637,63 @@ const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, f
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {rows.map((row, rowIndex) => (
-                                <TableRow key={rowIndex} hover>
-                                    {row.map((cell, cellIndex) => {
-                                        const isBase64Encoded = isBase64(cell);
-                                        const displayValue = isBase64Encoded ? decodeBase64Safe(cell) : cell;
-                                        
-                                        return (
-                                            <TableCell key={cellIndex}>
-                                                {isBase64Encoded ? (
-                                                    <Box>
-                                                        <Typography variant="body2" component="div">
-                                                            {displayValue}
-                                                        </Typography>
-                                                        <Typography 
-                                                            variant="caption" 
-                                                            color="text.secondary"
-                                                            sx={{ fontStyle: 'italic' }}
-                                                        >
-                                                            (decoded from base64)
-                                                        </Typography>
-                                                    </Box>
-                                                ) : (
-                                                    displayValue
-                                                )}
-                                            </TableCell>
-                                        );
-                                    })}
-                                </TableRow>
-                            ))}
+                            {rows.map((row, rowIndex) => {
+                                const actualRowIndex = rowIndex + 1; // Account for header row
+                                return (
+                                    <TableRow key={rowIndex} hover>
+                                        {row.map((cell, cellIndex) => {
+                                            const columnName = headers[cellIndex];
+                                            const shouldDecode = base64Columns.includes(columnName);
+                                            const isBase64Encoded = shouldDecode && isBase64(cell);
+                                            const displayValue = isBase64Encoded ? decodeBase64Safe(cell) : cell;
+                                            
+                                            // Debug logging for the first few cells
+                                            if (rowIndex < 2 && cellIndex < 3) {
+                                                console.log(`Cell [${rowIndex}][${cellIndex}] "${columnName}":`, {
+                                                    base64Columns,
+                                                    shouldDecode,
+                                                    isBase64Encoded,
+                                                    cellValue: cell.substring(0, 50) + (cell.length > 50 ? '...' : '')
+                                                });
+                                            }
+                                            
+                                            return (
+                                                <TableCell key={cellIndex}>
+                                                    {isEditing ? (
+                                                        <TextField
+                                                            size="small"
+                                                            fullWidth
+                                                            value={cell}
+                                                            onChange={(e) => handleCellChange(actualRowIndex, cellIndex, e.target.value)}
+                                                            variant="outlined"
+                                                            sx={{ minWidth: 100 }}
+                                                        />
+                                                    ) : (
+                                                        <>
+                                                            {isBase64Encoded ? (
+                                                                <Box>
+                                                                    <Typography variant="body2" component="div">
+                                                                        {displayValue}
+                                                                    </Typography>
+                                                                    <Typography 
+                                                                        variant="caption" 
+                                                                        color="text.secondary"
+                                                                        sx={{ fontStyle: 'italic' }}
+                                                                    >
+                                                                        (decoded from base64)
+                                                                    </Typography>
+                                                                </Box>
+                                                            ) : (
+                                                                displayValue
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </TableCell>
+                                            );
+                                        })}
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </TableContainer>
@@ -521,11 +706,44 @@ const CsvViewer: React.FC<{ content: string; filename: string }> = ({ content, f
                     </Box>
                 )}
             </CardContent>
+            <CardActions>
+                {isEditing ? (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<SaveIcon />}
+                            onClick={handleSave}
+                            size="small"
+                        >
+                            Save
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            startIcon={<CancelIcon />}
+                            onClick={handleCancel}
+                            size="small"
+                        >
+                            Cancel
+                        </Button>
+                    </Box>
+                ) : (
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<EditIcon />}
+                        onClick={handleEdit}
+                        size="small"
+                    >
+                        Edit
+                    </Button>
+                )}
+            </CardActions>
         </Card>
     );
 };
 
-const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: providedFiles }) => {
+const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: providedFiles, base64Columns = [] }) => {
     const [files, setFiles] = useState<FileItem[]>([]);
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
     const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
@@ -535,6 +753,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     const [loadingContent, setLoadingContent] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [expanded, setExpanded] = useState<string[]>([]);
+    const [saveDialogOpen, setSaveDialogOpen] = useState<boolean>(false);
+    const [pendingSaveContent, setPendingSaveContent] = useState<string>('');
 
     const fullPath = `${pathPrefix}/${id}`;
 
@@ -660,6 +880,42 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
         setExpanded(nodeIds);
     };
 
+    const handleFileSave = (content: string) => {
+        setPendingSaveContent(content);
+        setSaveDialogOpen(true);
+    };
+
+    const handleSaveConfirm = async () => {
+        if (!selectedFile || !pendingSaveContent) return;
+        
+        try {
+            setLoadingContent(true);
+            
+            // Upload the new content to S3
+            await Storage.put(selectedFile.key, pendingSaveContent, {
+                level: 'public',
+                contentType: selectedFile.extension === 'json' ? 'application/json' : 'text/csv'
+            });
+            
+            // Update the local file content
+            setFileContent(pendingSaveContent);
+            
+            setSaveDialogOpen(false);
+            setPendingSaveContent('');
+            setError(null);
+        } catch (err) {
+            console.error('Error saving file:', err);
+            setError(`Failed to save file: ${selectedFile.name}`);
+        } finally {
+            setLoadingContent(false);
+        }
+    };
+
+    const handleSaveCancel = () => {
+        setSaveDialogOpen(false);
+        setPendingSaveContent('');
+    };
+
     const renderTreeItems = (nodes: FileNode[], depth: number = 0): React.ReactElement[] => {
         return nodes.map((node) => (
             <TreeNode
@@ -711,9 +967,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             case 'mov':
                 return <VideoViewer url={fileUrl} filename={selectedFile.name} />;
             case 'json':
-                return <JsonFileViewer content={fileContent} filename={selectedFile.name} />;
+                return <JsonFileViewer content={fileContent} filename={selectedFile.name} onSave={handleFileSave} />;
             case 'csv':
-                return <CsvViewer content={fileContent} filename={selectedFile.name} />;
+                return <CsvViewer content={fileContent} filename={selectedFile.name} onSave={handleFileSave} base64Columns={base64Columns} />;
             default:
                 return (
                     <Card>
@@ -760,6 +1016,32 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             <Typography variant="h6" gutterBottom>
                 File Browser: {fullPath}
             </Typography>
+
+            {/* Save Confirmation Dialog */}
+            <Dialog
+                open={saveDialogOpen}
+                onClose={handleSaveCancel}
+                aria-labelledby="save-dialog-title"
+                aria-describedby="save-dialog-description"
+            >
+                <DialogTitle id="save-dialog-title">
+                    Confirm Save
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="save-dialog-description">
+                        Are you sure you want to save changes to "{selectedFile?.name}"? 
+                        This will overwrite the existing file in S3 storage.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleSaveCancel} color="primary">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSaveConfirm} color="primary" variant="contained" autoFocus>
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
             
             <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
                 {/* File Tree */}

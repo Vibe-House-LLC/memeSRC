@@ -361,7 +361,7 @@ export default function AdminReviewUpload({
                 {/* Currently the file browser does not allow for editing, but will once it's setup properly with extractions. */}
                 {/* Generally, this component will be very reusable and I plan to give it an "edit" flag so it can be used as a safe file browser or a browser/editor. */}
                 {filePathPrefix ? (
-                    <FileBrowser pathPrefix={filePathPrefix} id={savedAlias} />
+                    <FileBrowser pathPrefix={filePathPrefix} id={savedAlias} base64Columns={['subtitle_text']} />
                 ) : (
                     <FileBrowserPlaceholder />
                 )}
