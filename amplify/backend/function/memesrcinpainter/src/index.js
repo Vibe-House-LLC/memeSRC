@@ -61,9 +61,9 @@ exports.handler = async (event) => {
     const userDetailsString = new TextDecoder().decode(userDetailsResult.Payload);
     const userDetails = JSON.parse(userDetailsString);
     const userDetailsBody = JSON.parse(userDetails.body);
-    const credits = userDetailsBody?.data?.getUserDetails?.credits;
+    const preSpendCredits = userDetailsBody?.data?.getUserDetails?.credits;
 
-    if (!credits) {
+    if (!preSpendCredits) {
         return {
             statusCode: 403,
             body: JSON.stringify({
@@ -128,11 +128,13 @@ exports.handler = async (event) => {
         })
     }));
 
-    // Return the new MagicResult id
+    // Return the new MagicResult id and the user's updated credit balance
     return {
         statusCode: 200,
         body: JSON.stringify({
-            magicResultId: dynamoRecord.id.S
+            magicResultId: dynamoRecord.id.S,
+            // Include an updated credit balance so the frontend can update immediately
+            credits: typeof preSpendCredits === 'number' ? Math.max(0, preSpendCredits - 1) : undefined
         }),
         headers: {
             "Content-Type": "application/json",

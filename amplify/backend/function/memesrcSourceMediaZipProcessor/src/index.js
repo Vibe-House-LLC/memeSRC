@@ -1,4 +1,12 @@
 /* Amplify Params - DO NOT EDIT
+	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+	API_MEMESRC_GRAPHQLAPIIDOUTPUT
+	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+	ENV
+	FUNCTION_MEMESRCZIPEXTRACTOR_NAME
+	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+Amplify Params - DO NOT EDIT *//* Amplify Params - DO NOT EDIT
     API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
     API_MEMESRC_GRAPHQLAPIIDOUTPUT
     API_MEMESRC_GRAPHQLAPIKEYOUTPUT
@@ -7,8 +15,8 @@
     STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT */
 
-const { makeGraphQLRequest } = require('/opt/memesrcGraphQlLayer/opt/graphql-handler');
-const AWS = require('/opt/memesrcS3Layer/lib/nodejs/node_modules/aws-sdk');
+const { makeGraphQLRequest } = require('/opt/graphql-handler');
+const AWS = require('aws-sdk');
 
 // Initialize Lambda client for invoking other functions
 const lambda = new AWS.Lambda();
@@ -103,6 +111,7 @@ exports.handler = async (event) => {
             fileId,
             sourceMediaId,
             key,
+            extractionLocation,
             extractionLocationKey,
             aliasAlreadyExists,
             pendingAlias,
@@ -112,7 +121,7 @@ exports.handler = async (event) => {
         console.log(`Invoking ZipExtractor with payload: ${JSON.stringify(extractorPayload)}`);
         
         // Invoke the ZipExtractor function asynchronously
-        const zipExtractorFunctionName = `memesrcZipExtractor-${process.env.ENV}`;
+        const zipExtractorFunctionName = process.env.FUNCTION_MEMESRCZIPEXTRACTOR_NAME;
         
         try {
             const invokeParams = {

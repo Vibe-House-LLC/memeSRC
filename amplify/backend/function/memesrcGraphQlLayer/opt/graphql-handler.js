@@ -1,5 +1,5 @@
 const { SignatureV4 } = require('@aws-sdk/signature-v4');
-const { defaultProvider } = require('@aws-sdk/credential-providers');
+const { defaultProvider } = require('@aws-sdk/credential-provider-node');
 const { HttpRequest } = require('@aws-sdk/protocol-http');
 const { Sha256 } = require('@aws-crypto/sha256-js');
 

@@ -130,7 +130,11 @@
             "Ref": "functionmemesrcSesLayerArn"
           }
         ],
-        "Timeout": 25
+        "Timeout": 900,
+        "MemorySize": 3008,
+        "EphemeralStorage": {
+          "Size": 10240
+        }
       }
     },
     "LambdaExecutionRole": {

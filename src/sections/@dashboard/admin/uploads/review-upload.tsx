@@ -218,18 +218,15 @@ export default function AdminReviewUpload({
     };
 
     const handleExtractToStaging = async (fileKey: string, fileId: string) => {
-        // TODO: Implement extract to staging functionality
-        setExtractingFiles(prev => new Set([...prev, fileId]));
+       setSeverity('info');
+       setMessage('Extracting to staging...');
+       setOpen(true);
+    };
 
-        // Simulate processing time
-        setTimeout(() => {
-            setExtractingFiles(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(fileId);
-                return newSet;
-            });
-            console.log('Extract to staging:', fileKey);
-        }, 2000);
+    const handleError = (error: any) => {
+        setSeverity('error');
+        setMessage('Error starting extraction function.');
+        setOpen(true);
     };
 
     const handleFileSelect = (fileId: string, unzippedPath: string | null) => {
@@ -348,6 +345,7 @@ export default function AdminReviewUpload({
                                             isSelected={isSelected}
                                             onDownload={handleDownloadFile}
                                             onExtract={handleExtractToStaging}
+                                            onError={handleError}
                                             onSelect={handleFileSelect}
                                             showDivider={index < files.length - 1}
                                         />

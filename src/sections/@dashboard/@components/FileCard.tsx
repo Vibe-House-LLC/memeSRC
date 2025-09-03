@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Box,
     ListItem,
@@ -8,7 +8,13 @@ import {
     Tooltip,
     CircularProgress,
     Typography,
-    Divider
+    Divider,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    FormControlLabel,
+    Checkbox
 } from '@mui/material';
 import {
     Download as DownloadIcon,
@@ -17,7 +23,19 @@ import {
     RadioButtonUnchecked as UnselectIcon
 } from '@mui/icons-material';
 import { SourceMediaFile } from '../admin/uploads/types';
-import { API } from 'aws-amplify';
+import { API, Auth } from 'aws-amplify';
+
+const onUpdateFile = /* GraphQL */ `
+  subscription OnUpdateFile($filter: ModelSubscriptionFileFilterInput) {
+    onUpdateFile(filter: $filter) {
+      id
+      key
+      unzippedPath
+      status
+      __typename
+    }
+  }
+`;
 
 // Extended interface to include unzippedPath for file cards
 export interface FileCardData extends SourceMediaFile {
@@ -25,12 +43,12 @@ export interface FileCardData extends SourceMediaFile {
 }
 
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
-    switch (status.toLowerCase()) {
-        case 'completed':
+    switch (status?.toLowerCase()) {
+        case 'extracted':
             return 'success';
-        case 'processing':
+        case 'extracting':
             return 'info';
-        case 'failed':
+        case 'extractionFailed':
             return 'error';
         case 'uploaded':
             return 'warning';
@@ -57,6 +75,7 @@ export interface FileCardProps {
     onDownload: (fileKey: string, fileId: string) => void;
     onExtract: (fileKey: string, fileId: string) => void;
     onSelect?: (fileId: string, unzippedPath: string | null) => void;
+    onError?: (error: any) => void;
     showDivider?: boolean;
 }
 
@@ -67,15 +86,61 @@ export default function FileCard({
     isAliasSaved,
     isSelected = false,
     onDownload,
+    onError,
     onExtract,
     onSelect,
     showDivider = false
 }: FileCardProps) {
     const fileName = file.key.split('/').pop() || file.key;
     const hasUnzippedPath = Boolean(file.unzippedPath);
+    const [startingExtraction, setStartingExtraction] = useState(false);
     const [openExtractModal, setOpenExtractModal] = useState(false);
     const [useEmail, setUseEmail] = useState(false);
     const [emailAddresses, setEmailAddresses] = useState<string[]>([]);
+    const [fileStatus, setFileStatus] = useState(file.status);
+    const [fileUpdatedAt, setFileUpdatedAt] = useState(file.updatedAt);
+    const [unzippedPath, setUnzippedPath] = useState(file.unzippedPath);
+
+    const useEmailAddress = () => {
+        setUseEmail(!useEmail);
+    }
+
+    useEffect(() => {
+        // TODO: Subscribe to file status changes
+        let subscription: any;
+        if (file?.id) {
+            // Only subscribe if file has an id
+            subscription = (API.graphql({
+                query: onUpdateFile,
+                variables: { filter: { id: { eq: file.id } } },
+            }) as any).subscribe({
+                next: ({ value }) => {
+                    console.log('FILE STATUS UPDATED', value);
+                    setFileStatus(value.data.onUpdateFile.status);
+                    if (value.data.onUpdateFile.status === 'extractionFailed' || value.data.onUpdateFile.status === 'extracted') {
+                        setStartingExtraction(false);
+                    }
+                    setFileUpdatedAt(new Date().toISOString());
+                    if (value?.data?.onUpdateFile?.unzippedPath) {
+                        setUnzippedPath(value.data.onUpdateFile.unzippedPath);
+                        console.log('UNZIPPED PATH UPDATED', value.data.onUpdateFile.unzippedPath);
+                    }
+                },
+                error: (error) => console.warn(error)
+            });
+        }
+        return () => {
+            if (subscription && typeof subscription.unsubscribe === 'function') {
+                subscription.unsubscribe();
+            }
+        };
+    }, [file]);
+
+    useEffect(() => {
+        Auth.currentUserInfo().then(user => {
+            setEmailAddresses([user.attributes.email]);
+        });
+    }, [useEmail])
 
     const handleSelectClick = () => {
         if (onSelect && hasUnzippedPath) {
@@ -88,14 +153,33 @@ export default function FileCard({
     };
 
     const handleExtract = async () => {
+        setStartingExtraction(true);
+        setOpenExtractModal(false);
+        
         if (!hasUnzippedPath) {
-            await API.post('memesrcContentApi', '/sourceMedia/extract', {
+            await API.post('publicapi', '/sourceMedia/extract', {
                 body: {
                     fileId: file.id,
-                    emailAddresses: ['test@test.com']
+                    emailAddresses: useEmail ? emailAddresses : []
                 }
-            });
+            }).then(() => {
+                onExtract(file.key, file.id);
+            }).catch((error) => {
+                console.error('ERROR EXTRACTING FILE', error);
+                setStartingExtraction(false);
+                onError(error);
+            })
+            // console.log('FILE AND EMAIL ADDRESSES', file.id, useEmail ? emailAddresses : []);
+            
+            // setTimeout(() => {
+            //     setStartingExtraction(false);
+            // }, 2000);
         }
+    };
+
+    const handleCancelExtract = () => {
+        setOpenExtractModal(false);
+        setUseEmail(false);
     };
 
 
@@ -124,14 +208,14 @@ export default function FileCard({
                         secondary={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                                 <Chip
-                                    label={file.status}
-                                    color={getStatusColor(file.status)}
+                                    label={fileStatus}
+                                    color={getStatusColor(fileStatus)}
                                     size="small"
                                     variant="outlined"
                                     sx={{ height: 20, fontSize: '0.75rem' }}
                                 />
                                 <Typography variant="caption" color="text.secondary">
-                                    Updated: {formatDate(file.updatedAt)}
+                                    Updated: {formatDate(fileUpdatedAt)}
                                 </Typography>
                             </Box>
                         }
@@ -180,27 +264,77 @@ export default function FileCard({
                         </Button>
                     </Tooltip>
 
-                    <Tooltip title="Extract to Staging">
+                    <Tooltip title={hasUnzippedPath ? "File already extracted" : "Extract to Staging"}>
                         <Button
                             variant="contained"
                             size="small"
                             startIcon={
-                                isExtracting ? (
+                                isExtracting || startingExtraction || fileStatus === 'extracting' ? (
                                     <CircularProgress size={16} />
                                 ) : (
                                     <ExtractIcon />
                                 )
                             }
                             onClick={() => handleExtractClick()}
-                            disabled={isExtracting || !isAliasSaved || hasUnzippedPath}
+                            disabled={isExtracting || !isAliasSaved || hasUnzippedPath || startingExtraction || fileStatus === 'extracting'}
                             sx={{ minWidth: 130 }}
                         >
-                            Extract to Staging
+                            {hasUnzippedPath ? 'Extracted' : (startingExtraction ? 'Starting...' : 'Extract to Staging')}
                         </Button>
                     </Tooltip>
                 </Box>
             </ListItem>
             {showDivider && <Divider />}
+            
+            {/* Extraction Confirmation Modal */}
+            <Dialog open={openExtractModal} onClose={handleCancelExtract} maxWidth="sm" fullWidth>
+                <DialogTitle>
+                    Confirm File Extraction
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" sx={{ mb: 3 }}>
+                        Are you sure you want to extract <strong>{fileName}</strong>?
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        This process may take several minutes depending on the file size.
+                    </Typography>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={useEmail}
+                                onChange={useEmailAddress}
+                                color="primary"
+                            />
+                        }
+                        label="Send me email notifications during extraction."
+                    />
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button
+                        onClick={handleCancelExtract}
+                        color="inherit"
+                        variant="outlined"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleExtract}
+                        variant="contained"
+                        color="primary"
+                        disabled={startingExtraction}
+                        startIcon={
+                            startingExtraction ? (
+                                <CircularProgress size={16} />
+                            ) : (
+                                <ExtractIcon />
+                            )
+                        }
+                        sx={{ minWidth: 140 }}
+                    >
+                        {startingExtraction ? 'Starting...' : 'Start Extraction'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

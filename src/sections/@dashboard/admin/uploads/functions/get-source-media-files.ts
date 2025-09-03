@@ -13,6 +13,7 @@ const getSourceMediaFilesQuery = /* GraphQL */ `
           createdAt
           updatedAt
           sourceMediaFilesId
+          unzippedPath
           __typename
         }
         nextToken

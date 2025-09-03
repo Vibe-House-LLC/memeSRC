@@ -31,6 +31,18 @@
     "storagememesrcGeneratedImagesBucketName": {
       "Type": "String",
       "Default": "storagememesrcGeneratedImagesBucketName"
+    },
+    "functionmemesrcZipExtractorName": {
+      "Type": "String",
+      "Default": "functionmemesrcZipExtractorName"
+    },
+    "functionmemesrcGraphQlLayerArn": {
+      "Type": "String",
+      "Default": "functionmemesrcGraphQlLayerArn"
+    },
+    "functionmemesrcS3LayerArn": {
+      "Type": "String",
+      "Default": "functionmemesrcS3LayerArn"
     }
   },
   "Conditions": {
@@ -97,6 +109,9 @@
             },
             "STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME": {
               "Ref": "storagememesrcGeneratedImagesBucketName"
+            },
+            "FUNCTION_MEMESRCZIPEXTRACTOR_NAME": {
+              "Ref": "functionmemesrcZipExtractorName"
             }
           }
         },
@@ -107,7 +122,14 @@
           ]
         },
         "Runtime": "nodejs22.x",
-        "Layers": [],
+        "Layers": [
+          {
+            "Ref": "functionmemesrcGraphQlLayerArn"
+          },
+          {
+            "Ref": "functionmemesrcS3LayerArn"
+          }
+        ],
         "Timeout": 25
       }
     },
@@ -271,6 +293,39 @@
                         "Ref": "apimemesrcGraphQLAPIIdOutput"
                       },
                       "/types/Subscription/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lambda:Create*",
+                "lambda:Put*",
+                "lambda:Add*",
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:lambda:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":function:",
+                      {
+                        "Ref": "functionmemesrcZipExtractorName"
+                      }
                     ]
                   ]
                 }

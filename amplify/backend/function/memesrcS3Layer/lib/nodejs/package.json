@@ -4,6 +4,6 @@
   "main": "index.js",
   "dependencies": {
     "aws-sdk": "^2.1692.0",
-    "unzipper": "^0.12.3"
+    "yauzl": "^2.10.0"
   }
 }

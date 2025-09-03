@@ -91,28 +91,6 @@
           ],
           "category": "function",
           "resourceName": "memesrcThumbnailZipExtractor"
-        },
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
-          "resourceName": "memesrcSourceMediaZipProcessor"
-        },
-        {
-          "attributes": [
-            "UserPoolId"
-          ],
-          "category": "auth",
-          "resourceName": "memesrcc3c71449"
-        },
-        {
-          "attributes": [
-            "adminsGroupRole"
-          ],
-          "category": "auth",
-          "resourceName": "userPoolGroups"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -283,6 +261,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcAggregateVotes"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcSourceMediaZipProcessor"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -642,12 +628,33 @@
       "dependsOn": [
         {
           "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        },
+        {
+          "attributes": [
             "GraphQLAPIIdOutput",
             "GraphQLAPIEndpointOutput",
             "GraphQLAPIKeyOutput"
           ],
           "category": "api",
           "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcZipExtractor"
         },
         {
           "attributes": [

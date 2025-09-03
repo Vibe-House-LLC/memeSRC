@@ -316,6 +316,20 @@
         },
         "setting": "private"
       }
+    },
+    "/sourceMedia/extract": {
+      "name": "/sourceMedia/extract",
+      "lambdaFunction": "memesrcSourceMediaZipProcessor",
+      "permissions": {
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update"
+          ]
+        },
+        "setting": "private"
+      }
     }
   }
 }

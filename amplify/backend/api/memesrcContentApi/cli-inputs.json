@@ -28,21 +28,6 @@
       "permissions": {
         "setting": "open"
       }
-    },
-    "/sourceMedia/extract": {
-      "name": "/sourceMedia/extract",
-      "lambdaFunction": "memesrcSourceMediaZipProcessor",
-      "permissions": {
-        "groups": {
-          "admins": [
-            "create",
-            "read",
-            "update",
-            "delete"
-          ]
-        },
-        "setting": "private"
-      }
     }
   }
 }
