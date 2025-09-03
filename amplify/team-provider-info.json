@@ -167,7 +167,7 @@
         },
         "memesrcZipExtractor": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcZipExtractor-6e3057386c58796f6e31-build.zip"
+          "s3Key": "amplify-builds/memesrcZipExtractor-6f426b77442b67325956-build.zip"
         },
         "memesrcGraphQlLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",

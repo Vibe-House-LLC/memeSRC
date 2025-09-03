@@ -92,7 +92,6 @@ export default function FileCard({
     showDivider = false
 }: FileCardProps) {
     const fileName = file.key.split('/').pop() || file.key;
-    const hasUnzippedPath = Boolean(file.unzippedPath);
     const [startingExtraction, setStartingExtraction] = useState(false);
     const [openExtractModal, setOpenExtractModal] = useState(false);
     const [useEmail, setUseEmail] = useState(false);
@@ -143,8 +142,8 @@ export default function FileCard({
     }, [useEmail])
 
     const handleSelectClick = () => {
-        if (onSelect && hasUnzippedPath) {
-            onSelect(file.id, isSelected ? null : file.unzippedPath || null);
+        if (onSelect && unzippedPath) {
+            onSelect(file.id, isSelected ? null : unzippedPath || null);
         }
     };
 
@@ -156,7 +155,7 @@ export default function FileCard({
         setStartingExtraction(true);
         setOpenExtractModal(false);
         
-        if (!hasUnzippedPath) {
+        if (!unzippedPath) {
             await API.post('publicapi', '/sourceMedia/extract', {
                 body: {
                     fileId: file.id,
@@ -224,7 +223,7 @@ export default function FileCard({
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
                     {onSelect && (
-                        <Tooltip title={hasUnzippedPath ? (isSelected ? "Deselect File" : "Select File") : "No extracted files available"}>
+                        <Tooltip title={unzippedPath ? (isSelected ? "Deselect File" : "Select File") : "No extracted files available"}>
                             <Button
                                 variant={isSelected ? "contained" : "outlined"}
                                 size="small"
@@ -236,7 +235,7 @@ export default function FileCard({
                                     )
                                 }
                                 onClick={handleSelectClick}
-                                disabled={!hasUnzippedPath}
+                                disabled={!unzippedPath}
                                 color={isSelected ? "primary" : "inherit"}
                                 sx={{ minWidth: 80 }}
                             >
@@ -264,7 +263,7 @@ export default function FileCard({
                         </Button>
                     </Tooltip>
 
-                    <Tooltip title={hasUnzippedPath ? "File already extracted" : "Extract to Staging"}>
+                    <Tooltip title={unzippedPath ? "File already extracted" : "Extract to Staging"}>
                         <Button
                             variant="contained"
                             size="small"
@@ -276,10 +275,10 @@ export default function FileCard({
                                 )
                             }
                             onClick={() => handleExtractClick()}
-                            disabled={isExtracting || !isAliasSaved || hasUnzippedPath || startingExtraction || fileStatus === 'extracting'}
+                            disabled={isExtracting || !isAliasSaved || Boolean(unzippedPath) || startingExtraction || fileStatus === 'extracting'}
                             sx={{ minWidth: 130 }}
                         >
-                            {hasUnzippedPath ? 'Extracted' : (startingExtraction ? 'Starting...' : 'Extract to Staging')}
+                            {unzippedPath ? 'Extracted' : (startingExtraction ? 'Starting...' : 'Extract to Staging')}
                         </Button>
                     </Tooltip>
                 </Box>
