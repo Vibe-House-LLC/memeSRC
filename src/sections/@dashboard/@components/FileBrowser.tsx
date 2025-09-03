@@ -208,9 +208,29 @@ const isBase64 = (str: string): boolean => {
     
     // Try to decode to see if it's valid
     try {
-        const decoded = atob(str);
-        // Check if decoded content is printable (basic heuristic)
-        return decoded.length > 0 && /^[\x20-\x7E\s]*$/.test(decoded);
+        // First decode the base64 to binary string
+        const binaryString = atob(str);
+        
+        // Convert binary string to Uint8Array
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Decode as UTF-8
+        const decoded = new TextDecoder('utf-8').decode(bytes);
+        
+        // Check if decoded content is printable (basic heuristic for UTF-8 text)
+        // Check for control characters except common whitespace
+        const hasControlChars = [...decoded].some(char => {
+            const code = char.charCodeAt(0);
+            return (code >= 0 && code <= 8) || 
+                   code === 11 || 
+                   code === 12 || 
+                   (code >= 14 && code <= 31) || 
+                   code === 127;
+        });
+        return decoded.length > 0 && !hasControlChars;
     } catch (e) {
         return false;
     }
@@ -218,7 +238,17 @@ const isBase64 = (str: string): boolean => {
 
 const decodeBase64Safe = (str: string): string => {
     try {
-        return atob(str);
+        // First decode the base64 to binary string
+        const binaryString = atob(str);
+        
+        // Convert binary string to Uint8Array
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Decode as UTF-8
+        return new TextDecoder('utf-8').decode(bytes);
     } catch (e) {
         return str; // Return original if decode fails
     }
