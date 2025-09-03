@@ -31,7 +31,8 @@ import {
     DialogContent,
     DialogContentText,
     DialogActions,
-    CardActions
+    CardActions,
+    Popover
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
@@ -45,9 +46,11 @@ import {
     Clear as ClearIcon,
     Edit as EditIcon,
     Save as SaveIcon,
-    Cancel as CancelIcon
+    Cancel as CancelIcon,
+    Palette as PaletteIcon
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
+import { TwitterPicker } from 'react-color';
 
 // Configure Storage to use custom prefix (empty string for bucket root access)
 Storage.configure({
@@ -368,12 +371,206 @@ const JsonFileViewer: React.FC<{
     content: string; 
     filename: string; 
     onSave: (content: string) => void;
-}> = ({ content, filename, onSave }) => {
+    srcEditor?: boolean;
+    selectedFile?: FileItem | null;
+}> = ({ content, filename, onSave, srcEditor = false, selectedFile = null }) => {
     const [formattedJson, setFormattedJson] = useState<string>('');
     const [editedJson, setEditedJson] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [editError, setEditError] = useState<string | null>(null);
+    const [isUpdatingFrameCount, setIsUpdatingFrameCount] = useState<boolean>(false);
+    const [colorPickerAnchorEl, setColorPickerAnchorEl] = useState<HTMLElement | null>(null);
+    const [currentColorProperty, setCurrentColorProperty] = useState<string>('');
+
+    // Check if JSON contains frameCount key
+    const hasFrameCount = useMemo(() => {
+        try {
+            const parsed = JSON.parse(editedJson || formattedJson);
+            return 'frameCount' in parsed;
+        } catch {
+            return false;
+        }
+    }, [editedJson, formattedJson]);
+
+    // Check if JSON contains color properties
+    const colorProperties = useMemo(() => {
+        try {
+            const parsed = JSON.parse(editedJson || formattedJson);
+            const colors: { [key: string]: string } = {};
+            if ('colorMain' in parsed) colors.colorMain = parsed.colorMain;
+            if ('colorSecondary' in parsed) colors.colorSecondary = parsed.colorSecondary;
+            return colors;
+        } catch {
+            return {};
+        }
+    }, [editedJson, formattedJson]);
+
+    const hasColorProperties = Object.keys(colorProperties).length > 0;
+
+    // Function to load and parse CSV from same directory
+    const loadCsvFromSameDirectory = useCallback(async (): Promise<string | null> => {
+        if (!selectedFile?.key) return null;
+        
+        try {
+            // Get the directory path from the JSON file key
+            const keyParts = selectedFile.key.split('/');
+            keyParts.pop(); // Remove filename
+            const directoryPath = keyParts.join('/');
+            const csvKey = `${directoryPath}/_docs.csv`;
+            
+            console.log('🔍 Looking for CSV at:', csvKey);
+            
+            const result = await Storage.get(csvKey, {
+                level: 'public',
+                download: true
+            });
+            
+            if (result && typeof result === 'object' && 'Body' in (result as any)) {
+                const text = await (result as any).Body.text();
+                return text;
+            } else if (typeof result === 'string') {
+                return result;
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('❌ Failed to load CSV:', error);
+            return null;
+        }
+    }, [selectedFile]);
+
+    // Function to calculate frame count from CSV content
+    const calculateFrameCountFromCsv = useCallback((csvContent: string): number => {
+        console.log('🎬 Starting frame count calculation from CSV...');
+        
+        const lines = csvContent.split('\n').filter(line => line.trim().length > 0);
+        if (lines.length < 2) {
+            console.log('❌ CSV has insufficient data');
+            return 0;
+        }
+        
+        // Parse header to find column indices
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const seasonIndex = headers.findIndex(h => h.toLowerCase().includes('season'));
+        const episodeIndex = headers.findIndex(h => h.toLowerCase().includes('episode'));
+        const endFrameIndex = headers.findIndex(h => h.toLowerCase().includes('end_frame'));
+        
+        if (seasonIndex === -1 || episodeIndex === -1 || endFrameIndex === -1) {
+            console.log('❌ Required columns not found. Available headers:', headers);
+            return 0;
+        }
+        
+        // Track max end_frame per season/episode combination
+        const maxFramesByEpisode = new Map<string, number>();
+        let processedRows = 0;
+        
+        // Process data rows
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            const row = line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+            
+            if (row.length <= Math.max(seasonIndex, episodeIndex, endFrameIndex)) continue;
+            
+            const season = row[seasonIndex]?.trim();
+            const episode = row[episodeIndex]?.trim();
+            const endFrameStr = row[endFrameIndex]?.trim();
+            
+            if (!season || !episode || !endFrameStr) continue;
+            
+            const endFrame = parseInt(endFrameStr, 10);
+            if (isNaN(endFrame)) continue;
+            
+            const episodeKey = `S${season}E${episode}`;
+            const currentMax = maxFramesByEpisode.get(episodeKey) || 0;
+            
+            if (endFrame > currentMax) {
+                maxFramesByEpisode.set(episodeKey, endFrame);
+            }
+            
+            processedRows++;
+        }
+        
+        // Calculate total frames
+        let totalFrames = 0;
+        maxFramesByEpisode.forEach((frames) => {
+            totalFrames += frames;
+        });
+        
+        console.log(`✅ Processed ${processedRows} rows, found ${maxFramesByEpisode.size} episodes`);
+        console.log(`🎞️ Total frame count: ${totalFrames.toLocaleString()}`);
+        
+        return totalFrames;
+    }, []);
+
+    // Function to update frame count in JSON
+    const updateFrameCount = useCallback(async () => {
+        if (!hasFrameCount || !selectedFile) return;
+        
+        setIsUpdatingFrameCount(true);
+        try {
+            // Load CSV from same directory
+            const csvContent = await loadCsvFromSameDirectory();
+            if (!csvContent) {
+                setEditError('Could not find _docs.csv in the same directory');
+                return;
+            }
+            
+            // Calculate frame count
+            const frameCount = calculateFrameCountFromCsv(csvContent);
+            if (frameCount === 0) {
+                setEditError('Could not calculate frame count from CSV');
+                return;
+            }
+            
+            // Update JSON with new frame count
+            try {
+                const parsed = JSON.parse(editedJson);
+                parsed.frameCount = frameCount;
+                const updatedJson = JSON.stringify(parsed, null, 2);
+                setEditedJson(updatedJson);
+                setEditError(null);
+                
+                console.log(`🎯 Updated frameCount to ${frameCount.toLocaleString()}`);
+            } catch (parseError) {
+                setEditError('Invalid JSON format');
+            }
+        } catch (error) {
+            console.error('Error updating frame count:', error);
+            setEditError('Failed to update frame count');
+        } finally {
+            setIsUpdatingFrameCount(false);
+        }
+    }, [hasFrameCount, selectedFile, editedJson, loadCsvFromSameDirectory, calculateFrameCountFromCsv]);
+
+    // Color picker handlers
+    const handleColorPickerOpen = useCallback((colorProperty: string, event: React.MouseEvent<HTMLElement>) => {
+        setCurrentColorProperty(colorProperty);
+        setColorPickerAnchorEl(event.currentTarget);
+    }, []);
+
+    const handleColorPickerClose = useCallback(() => {
+        setColorPickerAnchorEl(null);
+        setCurrentColorProperty('');
+    }, []);
+
+    const handleColorChange = useCallback((color: any) => {
+        if (!currentColorProperty) return;
+        
+        try {
+            const parsed = JSON.parse(editedJson);
+            parsed[currentColorProperty] = color.hex;
+            const updatedJson = JSON.stringify(parsed, null, 2);
+            setEditedJson(updatedJson);
+            setEditError(null);
+            
+            console.log(`🎨 Updated ${currentColorProperty} to ${color.hex}`);
+        } catch (parseError) {
+            setEditError('Invalid JSON format');
+        }
+        
+        handleColorPickerClose();
+    }, [currentColorProperty, editedJson, handleColorPickerClose]);
     
     useEffect(() => {
         try {
@@ -448,12 +645,61 @@ const JsonFileViewer: React.FC<{
                                 lineHeight: '1.4',
                             }
                         }}
-                        rows={20}
+                        rows={10}
                     />
                 ) : (
                     <JsonViewerContainer>{formattedJson}</JsonViewerContainer>
                 )}
             </CardContent>
+            
+            {/* Tools Section - only show when editing, srcEditor is true, and has tools available */}
+            {isEditing && srcEditor && (hasFrameCount || hasColorProperties) && (
+                <Box sx={{ 
+                    mx: 2, 
+                    mb: 2, 
+                    p: 2, 
+                    border: 1, 
+                    borderColor: 'divider', 
+                    borderRadius: 1,
+                    backgroundColor: 'background.default'
+                }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                        Tools
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        {hasFrameCount && (
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                onClick={updateFrameCount}
+                                size="small"
+                                disabled={isUpdatingFrameCount}
+                                sx={{ whiteSpace: 'nowrap' }}
+                            >
+                                {isUpdatingFrameCount ? 'Updating...' : 'Update Frame Count'}
+                            </Button>
+                        )}
+                        {Object.entries(colorProperties).map(([property, currentColor]) => (
+                            <Button
+                                key={property}
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<PaletteIcon />}
+                                onClick={(e) => handleColorPickerOpen(property, e)}
+                                size="small"
+                                sx={{ 
+                                    whiteSpace: 'nowrap',
+                                    '& .MuiButton-startIcon': {
+                                        color: currentColor || '#000000'
+                                    }
+                                }}
+                            >
+                                {property === 'colorMain' ? 'Main Color' : 'Secondary Color'}
+                            </Button>
+                        ))}
+                    </Box>
+                </Box>
+            )}
             <CardActions>
                 {isEditing ? (
                     <Box sx={{ display: 'flex', gap: 1 }}>
@@ -487,6 +733,29 @@ const JsonFileViewer: React.FC<{
                     </Button>
                 )}
             </CardActions>
+            
+            {/* Color Picker Popover */}
+            <Popover
+                open={Boolean(colorPickerAnchorEl)}
+                anchorEl={colorPickerAnchorEl}
+                onClose={handleColorPickerClose}
+                anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'left',
+                }}
+                transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'left',
+                }}
+            >
+                <Box sx={{ p: 2 }}>
+                    <TwitterPicker
+                        color={colorProperties[currentColorProperty] || '#000000'}
+                        onChange={handleColorChange}
+                        triangle="hide"
+                    />
+                </Box>
+            </Popover>
         </Card>
     );
 };
@@ -521,7 +790,7 @@ const CsvCellDisplay: React.FC<{
     return <>{cell}</>;
 });
 
-const CsvViewer: React.FC<{ 
+    const CsvViewer: React.FC<{ 
     content: string; 
     filename: string; 
     onSave: (content: string) => void;
@@ -778,31 +1047,33 @@ const CsvViewer: React.FC<{
                             </Typography>
                         )}
                     </Box>
-                    <TextField
-                        size="small"
-                        placeholder="Search CSV..."
-                        value={searchTerm}
-                        onChange={handleSearchChange}
-                        sx={{ minWidth: 200 }}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon fontSize="small" />
-                                </InputAdornment>
-                            ),
-                            endAdornment: searchTerm && (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        size="small"
-                                        onClick={handleClearSearch}
-                                        edge="end"
-                                    >
-                                        <ClearIcon fontSize="small" />
-                                    </IconButton>
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <TextField
+                            size="small"
+                            placeholder="Search CSV..."
+                            value={searchTerm}
+                            onChange={handleSearchChange}
+                            sx={{ minWidth: 200 }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon fontSize="small" />
+                                    </InputAdornment>
+                                ),
+                                endAdornment: searchTerm && (
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            size="small"
+                                            onClick={handleClearSearch}
+                                            edge="end"
+                                        >
+                                            <ClearIcon fontSize="small" />
+                                        </IconButton>
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    </Box>
                 </Box>
                 
                 <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
@@ -965,7 +1236,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             
             const fileItems: FileItem[] = resultArray.map((item: any) => {
                 const key = item.key || '';
-                console.log('Processing file key:', key);
+                // console.log('Processing file key:', key);
                 
                 // Extract just the relative path part for the file name and tree building
                 // The key from Storage.list() should be like "src-extracted/airplane/file.mp4"
@@ -975,7 +1246,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     : key.replace(fullPath, '').replace(/^\//, '');
                 const name = relativePath.split('/').pop() || relativePath;
                 
-                console.log('Relative path:', relativePath, 'Name:', name);
+                // console.log('Relative path:', relativePath, 'Name:', name);
                 
                 return {
                     key, // Keep the full key for Storage.get() calls
@@ -1154,7 +1425,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             case 'mov':
                 return <VideoViewer url={fileUrl} filename={selectedFile.name} />;
             case 'json':
-                return <JsonFileViewer content={fileContent} filename={selectedFile.name} onSave={handleFileSave} />;
+                return <JsonFileViewer content={fileContent} filename={selectedFile.name} onSave={handleFileSave} srcEditor={srcEditor} selectedFile={selectedFile} />;
             case 'csv':
                 return <CsvViewer content={fileContent} filename={selectedFile.name} onSave={handleFileSave} base64Columns={base64Columns} />;
             default:
