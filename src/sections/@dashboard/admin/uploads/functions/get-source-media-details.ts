@@ -26,6 +26,7 @@ const getSourceMediaDetailsQuery = /* GraphQL */ `
         createdAt
         updatedAt
         sourceMediaFilesId
+        unzippedPath
         }
         nextToken
         __typename
