@@ -26,7 +26,8 @@ import {
     RadioButtonUnchecked as UnselectIcon
 } from '@mui/icons-material';
 import { SourceMediaFile } from '../admin/uploads/types';
-import { API, Auth } from 'aws-amplify';
+import { API, Auth, graphqlOperation } from 'aws-amplify';
+import { getFile } from 'src/graphql/queries';
 
 const onUpdateFile = /* GraphQL */ `
   subscription OnUpdateFile($filter: ModelSubscriptionFileFilterInput) {
@@ -79,6 +80,7 @@ export interface FileCardProps {
     onExtract: (fileKey: string, fileId: string) => void;
     onSelect?: (fileId: string, unzippedPath: string | null) => void;
     onError?: (error: any) => void;
+    onStatusUpdate?: (fileId: string, newStatus: string) => void;
     showDivider?: boolean;
 }
 
@@ -92,6 +94,7 @@ export default function FileCard({
     onError,
     onExtract,
     onSelect,
+    onStatusUpdate,
     showDivider = false
 }: FileCardProps) {
     const theme = useTheme();
@@ -110,35 +113,65 @@ export default function FileCard({
     }
 
     useEffect(() => {
-        // TODO: Subscribe to file status changes
+        // Subscribe to file status changes
         let subscription: any;
-        if (file?.id) {
-            // Only subscribe if file has an id
+        
+        // Only subscribe if file has an id and status is not already "extracted"
+        if (file?.id && fileStatus !== 'extracted') {
             subscription = (API.graphql({
                 query: onUpdateFile,
                 variables: { filter: { id: { eq: file.id } } },
             }) as any).subscribe({
                 next: ({ value }) => {
                     console.log('FILE STATUS UPDATED', value);
-                    setFileStatus(value.data.onUpdateFile.status);
-                    if (value.data.onUpdateFile.status === 'extractionFailed' || value.data.onUpdateFile.status === 'extracted') {
+                    const newStatus = value.data.onUpdateFile.status;
+                    setFileStatus(newStatus);
+                    
+                    // Notify parent component of status change
+                    if (onStatusUpdate) {
+                        onStatusUpdate(file.id, newStatus);
+                    }
+                    
+                    if (newStatus === 'extractionFailed' || newStatus === 'extracted') {
                         setStartingExtraction(false);
                     }
+
+                    if (newStatus === 'extracted') {
+                        API.graphql<any>(
+                            graphqlOperation(
+                                getFile,
+                                { id: file.id }
+                            )
+                        ).then((response) => {
+                            setUnzippedPath(response.data.getFile.unzippedPath);
+                        }).catch((error) => {
+                            console.error('ERROR UPDATING FILE', error);
+                        });
+                    }
+
                     setFileUpdatedAt(new Date().toISOString());
                     if (value?.data?.onUpdateFile?.unzippedPath) {
                         setUnzippedPath(value.data.onUpdateFile.unzippedPath);
                         console.log('UNZIPPED PATH UPDATED', value.data.onUpdateFile.unzippedPath);
                     }
+                    
+                    // End subscription if status becomes "extracted"
+                    if (newStatus === 'extracted' && subscription && typeof subscription.unsubscribe === 'function') {
+                        console.log('Ending subscription for extracted file:', file.id);
+                        subscription.unsubscribe();
+                        subscription = null;
+                    }
                 },
                 error: (error) => console.warn(error)
             });
         }
+        
         return () => {
             if (subscription && typeof subscription.unsubscribe === 'function') {
                 subscription.unsubscribe();
             }
         };
-    }, [file]);
+    }, [file, onStatusUpdate, fileStatus]);
 
     useEffect(() => {
         Auth.currentUserInfo().then(user => {
@@ -273,7 +306,7 @@ export default function FileCard({
                                         )
                                     }
                                     onClick={handleSelectClick}
-                                    disabled={!unzippedPath}
+                                    disabled={!unzippedPath || fileStatus !== 'extracted'}
                                     color={isSelected ? "primary" : "inherit"}
                                     fullWidth
                                     sx={{ minHeight: 44 }}
@@ -292,7 +325,7 @@ export default function FileCard({
                                         )
                                     }
                                     onClick={handleSelectClick}
-                                    disabled={!unzippedPath}
+                                    disabled={!unzippedPath || fileStatus !== 'extracted'}
                                     color={isSelected ? "primary" : "inherit"}
                                     sx={{ minWidth: 80 }}
                                 >
@@ -341,7 +374,7 @@ export default function FileCard({
                         )}
                     </Tooltip>
 
-                    <Tooltip title={unzippedPath ? "File already extracted" : "Extract to Staging"}>
+                    <Tooltip title={fileStatus === 'extracted' ? "File already extracted" : "Extract to Staging"}>
                         {isMobile ? (
                             <Button
                                 variant="contained"
@@ -354,11 +387,11 @@ export default function FileCard({
                                     )
                                 }
                                 onClick={() => handleExtractClick()}
-                                disabled={isExtracting || !isAliasSaved || Boolean(unzippedPath) || startingExtraction || fileStatus === 'extracting'}
+                                disabled={isExtracting || !isAliasSaved || fileStatus === 'extracted' || startingExtraction || fileStatus === 'extracting'}
                                 fullWidth
                                 sx={{ minHeight: 44 }}
                             >
-                                {unzippedPath ? 'Extracted' : (startingExtraction ? 'Starting...' : 'Extract')}
+                                {fileStatus === 'extracted' ? 'Extracted' : (startingExtraction ? fileStatus === 'extracting' ? 'Extracting...' : 'Starting...' : 'Extract')}
                             </Button>
                         ) : (
                             <Button
@@ -372,10 +405,10 @@ export default function FileCard({
                                     )
                                 }
                                 onClick={() => handleExtractClick()}
-                                disabled={isExtracting || !isAliasSaved || Boolean(unzippedPath) || startingExtraction || fileStatus === 'extracting'}
+                                disabled={isExtracting || !isAliasSaved || fileStatus === 'extracted' || startingExtraction || fileStatus === 'extracting'}
                                 sx={{ minWidth: 130 }}
                             >
-                                {unzippedPath ? 'Extracted' : (startingExtraction ? 'Starting...' : 'Extract to Staging')}
+                                {fileStatus === 'extracted' ? 'Extracted' : (startingExtraction ? fileStatus === 'extracting' ? 'Extracting...' : 'Starting...' : 'Extract to Staging')}
                             </Button>
                         )}
                     </Tooltip>

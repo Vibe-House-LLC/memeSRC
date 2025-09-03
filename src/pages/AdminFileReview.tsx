@@ -62,7 +62,7 @@ export default function AdminFileReview() {
     }, [sourceMediaId]);
 
     const handleBack = () => {
-        navigate('/dashboard/view-uploads');
+        navigate('/dashboard/sourcemedia');
     };
 
     if (!sourceMediaId) {

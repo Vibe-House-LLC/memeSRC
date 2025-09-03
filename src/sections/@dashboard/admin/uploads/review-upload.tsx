@@ -112,6 +112,7 @@ export default function AdminReviewUpload({
     const [savedAlias, setSavedAlias] = useState<string>(initialAlias);
     const [filePathPrefix, setFilePathPrefix] = useState<string>('');
     const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+    const [fileStatuses, setFileStatuses] = useState<Record<string, string>>({});
     
     // Snackbar context for success messages
     const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -122,6 +123,15 @@ export default function AdminReviewUpload({
             setPendingAlias(initialAlias);
         }
     }, [initialAlias]);
+
+    // Initialize file statuses when files change
+    useEffect(() => {
+        const initialStatuses: Record<string, string> = {};
+        files.forEach(file => {
+            initialStatuses[file.id] = file.status;
+        });
+        setFileStatuses(initialStatuses);
+    }, [files]);
 
     // Load aliases on mount
     useEffect(() => {
@@ -147,6 +157,12 @@ export default function AdminReviewUpload({
     const hasAliasChanged = pendingAlias !== savedAlias;
     const isAliasSaved = savedAlias.trim() !== '';
     const isNewAlias = savedAlias.trim() !== '' && !aliases.includes(savedAlias);
+    
+    // Check if any file has extracting or extracted status (should disable alias field)
+    const hasExtractingOrExtractedFiles = Object.values(fileStatuses).some(status => 
+        status === 'extracting' || status === 'extracted'
+    );
+    const isAliasDisabled = hasExtractingOrExtractedFiles;
 
     const handleSaveAlias = async () => {
         if (!sourceMediaId || !hasAliasChanged) return;
@@ -241,6 +257,13 @@ export default function AdminReviewUpload({
         }
     };
 
+    const handleFileStatusUpdate = (fileId: string, newStatus: string) => {
+        setFileStatuses(prev => ({
+            ...prev,
+            [fileId]: newStatus
+        }));
+    };
+
     return (
         <>
 
@@ -272,6 +295,7 @@ export default function AdminReviewUpload({
                                     fullWidth
                                     options={aliases}
                                     value={pendingAlias}
+                                    disabled={isAliasDisabled}
                                     onChange={(event, newValue) => {
                                         setPendingAlias(typeof newValue === 'string' ? newValue : newValue || '');
                                     }}
@@ -300,7 +324,7 @@ export default function AdminReviewUpload({
                                         )
                                     }
                                     onClick={handleSaveAlias}
-                                    disabled={!hasAliasChanged || savingAlias}
+                                    disabled={!hasAliasChanged || savingAlias || isAliasDisabled}
                                     sx={{ minWidth: 100 }}
                                 >
                                     Save
@@ -311,7 +335,12 @@ export default function AdminReviewUpload({
                                     Please save an alias to enable file extraction.
                                 </Alert>
                             )}
-                            {isNewAlias && (
+                            {isAliasDisabled && (
+                                <Alert severity="info" sx={{ mt: 2 }}>
+                                    Alias field is disabled because some files are currently being extracted or have been extracted.
+                                </Alert>
+                            )}
+                            {!isAliasDisabled && isNewAlias && (
                                 <Alert severity="warning" sx={{ mt: 2 }}>
                                     This alias does not exist. If you proceed, this alias will be created and linked after approval.
                                 </Alert>
@@ -347,6 +376,7 @@ export default function AdminReviewUpload({
                                             onExtract={handleExtractToStaging}
                                             onError={handleError}
                                             onSelect={handleFileSelect}
+                                            onStatusUpdate={handleFileStatusUpdate}
                                             showDivider={index < files.length - 1}
                                         />
                                     );

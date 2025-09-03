@@ -33,11 +33,11 @@ interface SourceMediaDetailsDialogProps {
 
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status.toLowerCase()) {
-        case 'completed':
+        case 'extracted':
             return 'success';
-        case 'processing':
+        case 'extracting':
             return 'info';
-        case 'failed':
+        case 'extractionFailed':
             return 'error';
         case 'uploaded':
             return 'warning';
