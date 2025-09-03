@@ -29,7 +29,7 @@ import { SnackbarContext } from "../../../../SnackbarContext";
 const FileBrowserPlaceholder = () => (
     <Box sx={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
         <Typography variant="h6" gutterBottom>
-            File Browser: Waiting for extraction...
+            File Browser: No uploaded files selected.
         </Typography>
         
         <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
@@ -48,9 +48,9 @@ const FileBrowserPlaceholder = () => (
                     </Box>
                     <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Box sx={{ textAlign: 'center', p: 3 }}>
-                            <CircularProgress size={40} sx={{ mb: 2 }} />
+                            {/* <CircularProgress size={40} sx={{ mb: 2 }} /> */}
                             <Typography variant="body2" color="text.secondary">
-                                Waiting for extraction...
+                                No uploaded files selected.
                             </Typography>
                         </Box>
                     </Box>
@@ -321,7 +321,7 @@ export default function AdminReviewUpload({
                     <Card>
                         <CardContent>
                             <Typography variant="h6" gutterBottom>
-                                Files ({files.length})
+                                Uploaded Files ({files.length})
                             </Typography>
                             <List>
                                 {files.map((file, index) => {

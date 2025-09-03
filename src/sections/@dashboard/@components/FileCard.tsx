@@ -186,7 +186,7 @@ export default function FileCard({
         <Box key={file.id}>
             <ListItem
                 sx={{
-                    px: 0,
+                    px: 1.5,
                     py: 1.5,
                     display: 'flex',
                     alignItems: 'center',
