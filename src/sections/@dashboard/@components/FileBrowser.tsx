@@ -50,7 +50,7 @@ import {
     Palette as PaletteIcon
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
-import { TwitterPicker } from 'react-color';
+import { ChromePicker } from 'react-color';
 
 // Configure Storage to use custom prefix (empty string for bucket root access)
 Storage.configure({
@@ -569,8 +569,8 @@ const JsonFileViewer: React.FC<{
             setEditError('Invalid JSON format');
         }
         
-        handleColorPickerClose();
-    }, [currentColorProperty, editedJson, handleColorPickerClose]);
+        // Don't close the picker - let user continue adjusting colors
+    }, [currentColorProperty, editedJson]);
     
     useEffect(() => {
         try {
@@ -748,11 +748,11 @@ const JsonFileViewer: React.FC<{
                     horizontal: 'left',
                 }}
             >
-                <Box sx={{ p: 2 }}>
-                    <TwitterPicker
+                <Box sx={{ p: 1 }}>
+                    <ChromePicker
                         color={colorProperties[currentColorProperty] || '#000000'}
                         onChange={handleColorChange}
-                        triangle="hide"
+                        disableAlpha={false}
                     />
                 </Box>
             </Popover>
