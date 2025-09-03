@@ -82,6 +82,7 @@ interface FileBrowserProps {
     id: string;
     files?: FileItem[]; // Optional: if provided, use these instead of listing
     base64Columns?: string[]; // Optional: column names to decode from base64 in CSV files
+    srcEditor?: boolean; // Optional: if true, show the src editor options
 }
 
 // Custom TreeNode component
@@ -929,7 +930,7 @@ const CsvViewer: React.FC<{
     );
 };
 
-const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: providedFiles, base64Columns = [] }) => {
+const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: providedFiles, base64Columns = [], srcEditor = false }) => {
     const [files, setFiles] = useState<FileItem[]>([]);
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
     const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
