@@ -14,7 +14,10 @@ import {
     DialogContent,
     DialogActions,
     FormControlLabel,
-    Checkbox
+    Checkbox,
+    useTheme,
+    useMediaQuery,
+    Stack
 } from '@mui/material';
 import {
     Download as DownloadIcon,
@@ -91,6 +94,8 @@ export default function FileCard({
     onSelect,
     showDivider = false
 }: FileCardProps) {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const fileName = file.key.split('/').pop() || file.key;
     const [startingExtraction, setStartingExtraction] = useState(false);
     const [openExtractModal, setOpenExtractModal] = useState(false);
@@ -186,34 +191,58 @@ export default function FileCard({
         <Box key={file.id}>
             <ListItem
                 sx={{
-                    px: 1.5,
-                    py: 1.5,
+                    px: isMobile ? 1 : 1.5,
+                    py: isMobile ? 1.5 : 1.5,
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    gap: isMobile ? 1.5 : 2,
                     backgroundColor: isSelected ? 'action.selected' : 'transparent',
                     borderRadius: 1,
                     border: isSelected ? 1 : 0,
                     borderColor: isSelected ? 'primary.main' : 'transparent'
                 }}
             >
-                <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Box sx={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : 'auto' }}>
                     <ListItemText
                         primary={
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            <Typography 
+                                variant={isMobile ? "body2" : "body1"} 
+                                sx={{ 
+                                    fontWeight: 500,
+                                    wordBreak: 'break-word',
+                                    lineHeight: 1.3
+                                }}
+                            >
                                 {fileName}
                             </Typography>
                         }
                         secondary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                            <Box sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 1, 
+                                mt: 0.5,
+                                flexWrap: isMobile ? 'wrap' : 'nowrap'
+                            }}>
                                 <Chip
                                     label={fileStatus}
                                     color={getStatusColor(fileStatus)}
                                     size="small"
                                     variant="outlined"
-                                    sx={{ height: 20, fontSize: '0.75rem' }}
+                                    sx={{ 
+                                        height: isMobile ? 18 : 20, 
+                                        fontSize: isMobile ? '0.7rem' : '0.75rem'
+                                    }}
                                 />
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography 
+                                    variant="caption" 
+                                    color="text.secondary"
+                                    sx={{ 
+                                        fontSize: isMobile ? '0.7rem' : '0.75rem',
+                                        whiteSpace: isMobile ? 'normal' : 'nowrap'
+                                    }}
+                                >
                                     Updated: {formatDate(fileUpdatedAt)}
                                 </Typography>
                             </Box>
@@ -221,67 +250,136 @@ export default function FileCard({
                     />
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                {/* Mobile: Stack buttons vertically, Desktop: Keep horizontal */}
+                <Stack 
+                    direction={isMobile ? "column" : "row"} 
+                    spacing={isMobile ? 1 : 1}
+                    sx={{ 
+                        width: isMobile ? '100%' : 'auto',
+                        minWidth: isMobile ? 0 : 'auto'
+                    }}
+                >
                     {onSelect && (
                         <Tooltip title={unzippedPath ? (isSelected ? "Deselect File" : "Select File") : "No extracted files available"}>
-                            <Button
-                                variant={isSelected ? "contained" : "outlined"}
-                                size="small"
-                                startIcon={
-                                    isSelected ? (
-                                        <SelectIcon />
-                                    ) : (
-                                        <UnselectIcon />
-                                    )
-                                }
-                                onClick={handleSelectClick}
-                                disabled={!unzippedPath}
-                                color={isSelected ? "primary" : "inherit"}
-                                sx={{ minWidth: 80 }}
-                            >
-                                {isSelected ? "Selected" : "Select"}
-                            </Button>
+                            {isMobile ? (
+                                <Button
+                                    variant={isSelected ? "contained" : "outlined"}
+                                    size="medium"
+                                    startIcon={
+                                        isSelected ? (
+                                            <SelectIcon />
+                                        ) : (
+                                            <UnselectIcon />
+                                        )
+                                    }
+                                    onClick={handleSelectClick}
+                                    disabled={!unzippedPath}
+                                    color={isSelected ? "primary" : "inherit"}
+                                    fullWidth
+                                    sx={{ minHeight: 44 }}
+                                >
+                                    {isSelected ? "Selected" : "Select"}
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant={isSelected ? "contained" : "outlined"}
+                                    size="small"
+                                    startIcon={
+                                        isSelected ? (
+                                            <SelectIcon />
+                                        ) : (
+                                            <UnselectIcon />
+                                        )
+                                    }
+                                    onClick={handleSelectClick}
+                                    disabled={!unzippedPath}
+                                    color={isSelected ? "primary" : "inherit"}
+                                    sx={{ minWidth: 80 }}
+                                >
+                                    {isSelected ? "Selected" : "Select"}
+                                </Button>
+                            )}
                         </Tooltip>
                     )}
                     
                     <Tooltip title="Download File">
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={
-                                isDownloading ? (
-                                    <CircularProgress size={16} />
-                                ) : (
-                                    <DownloadIcon />
-                                )
-                            }
-                            onClick={() => onDownload(file.key, file.id)}
-                            disabled={isDownloading}
-                            sx={{ minWidth: 100 }}
-                        >
-                            Download
-                        </Button>
+                        {isMobile ? (
+                            <Button
+                                variant="outlined"
+                                size="medium"
+                                startIcon={
+                                    isDownloading ? (
+                                        <CircularProgress size={20} />
+                                    ) : (
+                                        <DownloadIcon />
+                                    )
+                                }
+                                onClick={() => onDownload(file.key, file.id)}
+                                disabled={isDownloading}
+                                fullWidth
+                                sx={{ minHeight: 44 }}
+                            >
+                                Download
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={
+                                    isDownloading ? (
+                                        <CircularProgress size={16} />
+                                    ) : (
+                                        <DownloadIcon />
+                                    )
+                                }
+                                onClick={() => onDownload(file.key, file.id)}
+                                disabled={isDownloading}
+                                sx={{ minWidth: 100 }}
+                            >
+                                Download
+                            </Button>
+                        )}
                     </Tooltip>
 
                     <Tooltip title={unzippedPath ? "File already extracted" : "Extract to Staging"}>
-                        <Button
-                            variant="contained"
-                            size="small"
-                            startIcon={
-                                isExtracting || startingExtraction || fileStatus === 'extracting' ? (
-                                    <CircularProgress size={16} />
-                                ) : (
-                                    <ExtractIcon />
-                                )
-                            }
-                            onClick={() => handleExtractClick()}
-                            disabled={isExtracting || !isAliasSaved || Boolean(unzippedPath) || startingExtraction || fileStatus === 'extracting'}
-                            sx={{ minWidth: 130 }}
-                        >
-                            {unzippedPath ? 'Extracted' : (startingExtraction ? 'Starting...' : 'Extract to Staging')}
-                        </Button>
+                        {isMobile ? (
+                            <Button
+                                variant="contained"
+                                size="medium"
+                                startIcon={
+                                    isExtracting || startingExtraction || fileStatus === 'extracting' ? (
+                                        <CircularProgress size={20} />
+                                    ) : (
+                                        <ExtractIcon />
+                                    )
+                                }
+                                onClick={() => handleExtractClick()}
+                                disabled={isExtracting || !isAliasSaved || Boolean(unzippedPath) || startingExtraction || fileStatus === 'extracting'}
+                                fullWidth
+                                sx={{ minHeight: 44 }}
+                            >
+                                {unzippedPath ? 'Extracted' : (startingExtraction ? 'Starting...' : 'Extract')}
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={
+                                    isExtracting || startingExtraction || fileStatus === 'extracting' ? (
+                                        <CircularProgress size={16} />
+                                    ) : (
+                                        <ExtractIcon />
+                                    )
+                                }
+                                onClick={() => handleExtractClick()}
+                                disabled={isExtracting || !isAliasSaved || Boolean(unzippedPath) || startingExtraction || fileStatus === 'extracting'}
+                                sx={{ minWidth: 130 }}
+                            >
+                                {unzippedPath ? 'Extracted' : (startingExtraction ? 'Starting...' : 'Extract to Staging')}
+                            </Button>
+                        )}
                     </Tooltip>
-                </Box>
+                </Stack>
             </ListItem>
             {showDivider && <Divider />}
             

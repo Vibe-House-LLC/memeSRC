@@ -31,7 +31,6 @@ import {
     DialogContent,
     DialogContentText,
     DialogActions,
-    CardActions,
     Popover
 } from '@mui/material';
 import {
@@ -373,7 +372,8 @@ const JsonFileViewer: React.FC<{
     onSave: (content: string) => void;
     srcEditor?: boolean;
     selectedFile?: FileItem | null;
-}> = ({ content, filename, onSave, srcEditor = false, selectedFile = null }) => {
+    onUnsavedChanges?: (hasChanges: boolean) => void;
+}> = ({ content, filename, onSave, srcEditor = false, selectedFile = null, onUnsavedChanges }) => {
     const [formattedJson, setFormattedJson] = useState<string>('');
     const [editedJson, setEditedJson] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
@@ -595,6 +595,7 @@ const JsonFileViewer: React.FC<{
         setIsEditing(false);
         setEditedJson(formattedJson);
         setEditError(null);
+        onUnsavedChanges?.(false);
     };
 
     const handleSave = () => {
@@ -605,6 +606,7 @@ const JsonFileViewer: React.FC<{
             onSave(editedJson);
             setFormattedJson(editedJson);
             setIsEditing(false);
+            onUnsavedChanges?.(false);
         } catch (err) {
             setEditError('Invalid JSON format. Please fix the syntax before saving.');
         }
@@ -613,11 +615,15 @@ const JsonFileViewer: React.FC<{
     const handleJsonChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setEditedJson(event.target.value);
         setEditError(null);
+        
+        // Check if content has changed from original
+        const hasChanges = event.target.value !== formattedJson;
+        onUnsavedChanges?.(hasChanges);
     };
     
     return (
-        <Card>
-            <CardContent>
+        <Card sx={{ display: 'flex', flexDirection: 'column', height: 'fit-content' }}>
+            <CardContent sx={{ flex: 1 }}>
                 <Typography variant="h6" gutterBottom>
                     JSON: {filename}
                 </Typography>
@@ -645,94 +651,118 @@ const JsonFileViewer: React.FC<{
                                 lineHeight: '1.4',
                             }
                         }}
-                        rows={10}
+                        minRows={10}
+                        maxRows={30}
                     />
                 ) : (
                     <JsonViewerContainer>{formattedJson}</JsonViewerContainer>
                 )}
-            </CardContent>
-            
-            {/* Tools Section - only show when editing, srcEditor is true, and has tools available */}
-            {isEditing && srcEditor && (hasFrameCount || hasColorProperties) && (
-                <Box sx={{ 
-                    mx: 2, 
-                    mb: 2, 
-                    p: 2, 
-                    border: 1, 
-                    borderColor: 'divider', 
-                    borderRadius: 1,
-                    backgroundColor: 'background.default'
-                }}>
-                    <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
-                        Tools
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        {hasFrameCount && (
-                            <Button
-                                variant="outlined"
-                                color="primary"
-                                onClick={updateFrameCount}
-                                size="small"
-                                disabled={isUpdatingFrameCount}
-                                sx={{ whiteSpace: 'nowrap' }}
-                            >
-                                {isUpdatingFrameCount ? 'Updating...' : 'Update Frame Count'}
-                            </Button>
-                        )}
-                        {Object.entries(colorProperties).map(([property, currentColor]) => (
-                            <Button
-                                key={property}
-                                variant="outlined"
-                                color="primary"
-                                startIcon={<PaletteIcon />}
-                                onClick={(e) => handleColorPickerOpen(property, e)}
-                                size="small"
-                                sx={{ 
-                                    whiteSpace: 'nowrap',
-                                    '& .MuiButton-startIcon': {
-                                        color: currentColor || '#000000'
-                                    }
-                                }}
-                            >
-                                {property === 'colorMain' ? 'Main Color' : 'Secondary Color'}
-                            </Button>
-                        ))}
+
+                {/* Tools Section - only show when editing, srcEditor is true, and has tools available */}
+                {isEditing && srcEditor && (hasFrameCount || hasColorProperties) && (
+                    <Box sx={{ 
+                        mt: 2,
+                        p: 2, 
+                        border: 1, 
+                        borderColor: 'divider', 
+                        borderRadius: 1,
+                        backgroundColor: 'background.default'
+                    }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                            Tools
+                        </Typography>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            gap: 1, 
+                            flexWrap: 'wrap',
+                            flexDirection: { xs: 'column', sm: 'row' }
+                        }}>
+                            {hasFrameCount && (
+                                <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    onClick={updateFrameCount}
+                                    size="small"
+                                    disabled={isUpdatingFrameCount}
+                                    sx={{ 
+                                        whiteSpace: 'nowrap',
+                                        width: { xs: '100%', sm: 'auto' }
+                                    }}
+                                >
+                                    {isUpdatingFrameCount ? 'Updating...' : 'Update Frame Count'}
+                                </Button>
+                            )}
+                            {Object.entries(colorProperties).map(([property, currentColor]) => (
+                                <Button
+                                    key={property}
+                                    variant="outlined"
+                                    color="primary"
+                                    startIcon={<PaletteIcon />}
+                                    onClick={(e) => handleColorPickerOpen(property, e)}
+                                    size="small"
+                                    sx={{ 
+                                        whiteSpace: 'nowrap',
+                                        width: { xs: '100%', sm: 'auto' },
+                                        '& .MuiButton-startIcon': {
+                                            color: currentColor || '#000000'
+                                        }
+                                    }}
+                                >
+                                    {property === 'colorMain' ? 'Main Color' : 'Secondary Color'}
+                                </Button>
+                            ))}
+                        </Box>
                     </Box>
-                </Box>
-            )}
-            <CardActions>
-                {isEditing ? (
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                )}
+
+                {/* Action buttons - moved inside CardContent so they're always scrollable */}
+                <Box sx={{ 
+                    mt: 2,
+                    pt: 2,
+                    borderTop: 1, 
+                    borderColor: 'divider'
+                }}>
+                    {isEditing ? (
+                        <Box sx={{ 
+                            display: 'flex', 
+                            gap: 1,
+                            flexDirection: { xs: 'column', sm: 'row' },
+                            width: '100%'
+                        }}>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<SaveIcon />}
+                                onClick={handleSave}
+                                size="small"
+                                sx={{ width: { xs: '100%', sm: 'auto' } }}
+                            >
+                                Save
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                startIcon={<CancelIcon />}
+                                onClick={handleCancel}
+                                size="small"
+                                sx={{ width: { xs: '100%', sm: 'auto' } }}
+                            >
+                                Cancel
+                            </Button>
+                        </Box>
+                    ) : (
                         <Button
                             variant="contained"
                             color="primary"
-                            startIcon={<SaveIcon />}
-                            onClick={handleSave}
+                            startIcon={<EditIcon />}
+                            onClick={handleEdit}
                             size="small"
+                            sx={{ width: { xs: '100%', sm: 'auto' } }}
                         >
-                            Save
+                            Edit
                         </Button>
-                        <Button
-                            variant="outlined"
-                            startIcon={<CancelIcon />}
-                            onClick={handleCancel}
-                            size="small"
-                        >
-                            Cancel
-                        </Button>
-                    </Box>
-                ) : (
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<EditIcon />}
-                        onClick={handleEdit}
-                        size="small"
-                    >
-                        Edit
-                    </Button>
-                )}
-            </CardActions>
+                    )}
+                </Box>
+            </CardContent>
             
             {/* Color Picker Popover */}
             <Popover
@@ -795,7 +825,8 @@ const CsvCellDisplay: React.FC<{
     filename: string; 
     onSave: (content: string) => void;
     base64Columns?: string[];
-}> = ({ content, filename, onSave, base64Columns = [] }) => {
+    onUnsavedChanges?: (hasChanges: boolean) => void;
+}> = ({ content, filename, onSave, base64Columns = [], onUnsavedChanges }) => {
     const [csvLines, setCsvLines] = useState<string[]>([]);
     const [headers, setHeaders] = useState<string[]>([]);
     const [visibleRowIndices, setVisibleRowIndices] = useState<number[]>([]);
@@ -948,11 +979,13 @@ const CsvCellDisplay: React.FC<{
         
         setEditingRowIndex(actualLineIndex); // Store the actual CSV line index
         setEditingDecodedData(decodedRowData);
+        onUnsavedChanges?.(true); // Mark as having unsaved changes when editing starts
     };
 
     const handleCancelRowEdit = () => {
         setEditingRowIndex(null);
         setEditingDecodedData([]);
+        onUnsavedChanges?.(false); // Clear unsaved changes when canceling
     };
 
     const handleSaveRow = () => {
@@ -988,6 +1021,7 @@ const CsvCellDisplay: React.FC<{
         
         setEditingRowIndex(null);
         setEditingDecodedData([]);
+        onUnsavedChanges?.(false); // Clear unsaved changes when saving
     };
 
     const handleCellChange = useCallback((cellIndex: number, value: string) => {
@@ -1031,8 +1065,9 @@ const CsvCellDisplay: React.FC<{
     return (
         <Card>
             <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Box>
+                <Box sx={{ mb: 2 }}>
+                    {/* Title Section */}
+                    <Box sx={{ mb: { xs: 2, md: 0 } }}>
                         <Typography variant="h6">
                             CSV: {filename} ({filteredRows} of {totalRows} rows shown)
                         </Typography>
@@ -1047,13 +1082,23 @@ const CsvCellDisplay: React.FC<{
                             </Typography>
                         )}
                     </Box>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    
+                    {/* Search Section - responsive layout */}
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: { xs: 'stretch', md: 'flex-end' },
+                        alignItems: 'center',
+                        mt: { xs: 0, md: -6 } // Negative margin on desktop to align with title
+                    }}>
                         <TextField
                             size="small"
                             placeholder="Search CSV..."
                             value={searchTerm}
                             onChange={handleSearchChange}
-                            sx={{ minWidth: 200 }}
+                            sx={{ 
+                                minWidth: { xs: 'auto', md: 200 },
+                                width: { xs: '100%', md: 'auto' }
+                            }}
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">
@@ -1076,7 +1121,13 @@ const CsvCellDisplay: React.FC<{
                     </Box>
                 </Box>
                 
-                <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+                <TableContainer component={Paper} sx={{ 
+                    maxHeight: 400,
+                    overflowX: 'auto',
+                    '& .MuiTable-root': {
+                        minWidth: { xs: 'max-content', md: 'auto' }
+                    }
+                }}>
                     <Table stickyHeader size="small" key={`csv-table-${base64Columns.join('-')}`}>
                         <TableHead>
                             <TableRow>
@@ -1213,6 +1264,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     const [expanded, setExpanded] = useState<string[]>([]);
     const [saveDialogOpen, setSaveDialogOpen] = useState<boolean>(false);
     const [pendingSaveContent, setPendingSaveContent] = useState<string>('');
+    const [discardChangesDialogOpen, setDiscardChangesDialogOpen] = useState<boolean>(false);
+    const [pendingFileSelection, setPendingFileSelection] = useState<FileItem | null>(null);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
 
     const fullPath = `${pathPrefix}/${id}`;
 
@@ -1328,10 +1382,19 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     }, [selectedFile, loadFileContent]);
 
     const handleFileSelect = (file: FileItem) => {
-        if (!file.isDirectory) {
-            setSelectedFile(file);
-            setError(null);
+        if (file.isDirectory) return;
+        
+        // If there are unsaved changes, show confirmation dialog
+        if (hasUnsavedChanges) {
+            setPendingFileSelection(file);
+            setDiscardChangesDialogOpen(true);
+            return;
         }
+        
+        // No unsaved changes, proceed with file selection
+        setSelectedFile(file);
+        setError(null);
+        setHasUnsavedChanges(false);
     };
 
     const handleNodeToggle = (event: React.SyntheticEvent, nodeIds: string[]) => {
@@ -1372,6 +1435,21 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     const handleSaveCancel = () => {
         setSaveDialogOpen(false);
         setPendingSaveContent('');
+    };
+
+    const handleDiscardChanges = () => {
+        if (pendingFileSelection) {
+            setSelectedFile(pendingFileSelection);
+            setError(null);
+        }
+        setHasUnsavedChanges(false);
+        setDiscardChangesDialogOpen(false);
+        setPendingFileSelection(null);
+    };
+
+    const handleKeepEditing = () => {
+        setDiscardChangesDialogOpen(false);
+        setPendingFileSelection(null);
     };
 
     const renderTreeItems = (nodes: FileNode[], depth: number = 0): React.ReactElement[] => {
@@ -1425,9 +1503,22 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             case 'mov':
                 return <VideoViewer url={fileUrl} filename={selectedFile.name} />;
             case 'json':
-                return <JsonFileViewer content={fileContent} filename={selectedFile.name} onSave={handleFileSave} srcEditor={srcEditor} selectedFile={selectedFile} />;
+                return <JsonFileViewer 
+                    content={fileContent} 
+                    filename={selectedFile.name} 
+                    onSave={handleFileSave} 
+                    srcEditor={srcEditor} 
+                    selectedFile={selectedFile} 
+                    onUnsavedChanges={setHasUnsavedChanges}
+                />;
             case 'csv':
-                return <CsvViewer content={fileContent} filename={selectedFile.name} onSave={handleFileSave} base64Columns={base64Columns} />;
+                return <CsvViewer 
+                    content={fileContent} 
+                    filename={selectedFile.name} 
+                    onSave={handleFileSave} 
+                    base64Columns={base64Columns}
+                    onUnsavedChanges={setHasUnsavedChanges}
+                />;
             default:
                 return (
                     <Card>
@@ -1464,7 +1555,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     }
 
     return (
-        <Box sx={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ minHeight: '600px', display: 'flex', flexDirection: 'column', mb: 2 }}>
             {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                     {error}
@@ -1500,15 +1591,42 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Discard Changes Confirmation Dialog */}
+            <Dialog
+                open={discardChangesDialogOpen}
+                onClose={handleKeepEditing}
+                aria-labelledby="discard-dialog-title"
+                aria-describedby="discard-dialog-description"
+            >
+                <DialogTitle id="discard-dialog-title">
+                    Unsaved Changes
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="discard-dialog-description">
+                        You have unsaved changes in "{selectedFile?.name}". 
+                        Are you sure you want to discard these changes and switch to "{pendingFileSelection?.name}"?
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleKeepEditing} color="primary">
+                        Keep Editing
+                    </Button>
+                    <Button onClick={handleDiscardChanges} color="error" variant="contained" autoFocus>
+                        Discard Changes
+                    </Button>
+                </DialogActions>
+            </Dialog>
             
-            <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
+            <Grid container spacing={2} sx={{ minHeight: 0, pb: 2 }}>
                 {/* File Tree */}
-                <Grid item xs={12} md={4} sx={{ height: '100%' }}>
+                <Grid item xs={12} lg={4}>
                     <Paper sx={{ 
-                        height: '100%', 
+                        maxHeight: { xs: '300px', md: '400px' }, 
                         display: 'flex', 
                         flexDirection: 'column',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        mb: { xs: 2, lg: 0 }
                     }}>
                         <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
                             <Typography variant="subtitle2">
@@ -1530,13 +1648,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                 </Grid>
                 
                 {/* File Viewer */}
-                <Grid item xs={12} md={8} sx={{ height: '100%' }}>
+                <Grid item xs={12} lg={8}>
                     <Box sx={{ 
-                        height: '100%', 
-                        overflow: 'auto',
                         '& .MuiCard-root': {
                             height: 'fit-content',
-                            maxHeight: '100%'
                         },
                         '& .MuiCardContent-root': {
                             '&:last-child': {
