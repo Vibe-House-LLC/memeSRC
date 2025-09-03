@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Box,
     Grid,
@@ -265,6 +265,25 @@ const decodeBase64Safe = (str: string): string => {
     }
 };
 
+const encodeBase64Safe = (str: string): string => {
+    try {
+        // Encode as UTF-8 first
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(str);
+        
+        // Convert Uint8Array to binary string
+        let binaryString = '';
+        for (let i = 0; i < bytes.length; i++) {
+            binaryString += String.fromCharCode(bytes[i]);
+        }
+        
+        // Encode to base64
+        return btoa(binaryString);
+    } catch (e) {
+        return str; // Return original if encode fails
+    }
+};
+
 const getFileIcon = (filename: string, isDirectory: boolean) => {
     if (isDirectory) return <FolderIcon color="primary" />;
     
@@ -471,102 +490,261 @@ const JsonFileViewer: React.FC<{
     );
 };
 
+// Optimized cell display component to avoid expensive operations in main render loop
+const CsvCellDisplay: React.FC<{
+    cell: string;
+    columnName: string;
+    base64Columns: string[];
+}> = React.memo(({ cell, columnName, base64Columns }) => {
+    const shouldDecode = base64Columns.includes(columnName);
+    const isBase64Encoded = shouldDecode && isBase64(cell);
+    
+    if (isBase64Encoded) {
+        const displayValue = decodeBase64Safe(cell);
+        return (
+            <Box>
+                <Typography variant="body2" component="div">
+                    {displayValue}
+                </Typography>
+                <Typography 
+                    variant="caption" 
+                    color="text.secondary"
+                    sx={{ fontStyle: 'italic' }}
+                >
+                    (decoded from base64)
+                </Typography>
+            </Box>
+        );
+    }
+    
+    return <>{cell}</>;
+});
+
 const CsvViewer: React.FC<{ 
     content: string; 
     filename: string; 
     onSave: (content: string) => void;
     base64Columns?: string[];
 }> = ({ content, filename, onSave, base64Columns = [] }) => {
-    const [tableData, setTableData] = useState<string[][]>([]);
-    const [editedData, setEditedData] = useState<string[][]>([]);
-    const [filteredData, setFilteredData] = useState<string[][]>([]);
+    const [csvLines, setCsvLines] = useState<string[]>([]);
+    const [headers, setHeaders] = useState<string[]>([]);
+    const [visibleRowIndices, setVisibleRowIndices] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
-    const [isEditing, setIsEditing] = useState<boolean>(false);
+    const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+    const [editingDecodedData, setEditingDecodedData] = useState<string[]>([]);
+    const [totalRows, setTotalRows] = useState<number>(0);
+    const [currentPage, setCurrentPage] = useState<number>(0);
+    const ROWS_PER_PAGE = 20; // Reduce to 20 rows for better performance
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Debug: Log base64Columns when they change
-    useEffect(() => {
-        console.log('CsvViewer: base64Columns changed:', base64Columns);
-    }, [base64Columns]);
+    // Helper function to parse a single CSV line on-demand
+    const parseCsvLine = useCallback((line: string): string[] => {
+        return line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+    }, []);
+
+    // Memoized helper function to get parsed row data for specific line indices
+    const getParsedRows = useMemo(() => {
+        return (lineIndices: number[]): string[][] => {
+            return lineIndices.map(index => {
+                if (index === 0) return headers; // Header row
+                return parseCsvLine(csvLines[index] || '');
+            });
+        };
+    }, [csvLines, headers, parseCsvLine]);
+
     
     useEffect(() => {
         try {
-            const lines = content.split('\n').filter(line => line.trim().length > 0);
-            const data = lines.map(line => {
-                // Simple CSV parsing - could be enhanced for complex CSVs
-                return line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
-            });
-            setTableData(data);
-            setEditedData(JSON.parse(JSON.stringify(data))); // Deep copy
-            setFilteredData(data);
+            const allLines = content.split('\n');
+            const nonEmptyLines = allLines.filter(line => line.trim().length > 0);
+            
+            setCsvLines(allLines);
+            setTotalRows(nonEmptyLines.length - 1); // Subtract header row
+            
+            // Parse only the header row initially
+            if (nonEmptyLines.length > 0) {
+                const headerRow = parseCsvLine(nonEmptyLines[0]);
+                setHeaders(headerRow);
+            }
+            
+            // Show first page of data
+            setCurrentPage(0);
+            const startIdx = 1; // Skip header
+            const endIdx = Math.min(startIdx + ROWS_PER_PAGE, nonEmptyLines.length);
+            const initialIndices = [0]; // Always include header
+            for (let i = startIdx; i < endIdx; i++) {
+                initialIndices.push(i);
+            }
+            setVisibleRowIndices(initialIndices);
+            
             setError(null);
         } catch (err) {
             setError('Error parsing CSV');
         }
-    }, [content]);
+    }, [content, parseCsvLine, ROWS_PER_PAGE]);
 
+    // Search effect - only searches visible rows for performance
     useEffect(() => {
-        const dataToFilter = isEditing ? editedData : tableData;
-        if (!searchTerm.trim()) {
-            // Create a new array reference to force re-render when base64Columns changes
-            setFilteredData([...dataToFilter]);
+        if (!debouncedSearchTerm.trim()) {
+            // Show current page without search
+            const startIdx = 1 + (currentPage * ROWS_PER_PAGE); // Skip header
+            const endIdx = Math.min(startIdx + ROWS_PER_PAGE, totalRows + 1);
+            const pageIndices = [0]; // Always include header
+            for (let i = startIdx; i < endIdx; i++) {
+                pageIndices.push(i);
+            }
+            setVisibleRowIndices(pageIndices);
             return;
         }
 
-        const filtered = dataToFilter.filter((row, index) => {
-            // Skip header row from filtering, always include it
-            if (index === 0) return true;
+        // For search, we'll need to check more rows, but still limit for performance
+        const maxSearchRows = 500; // Limit search to first 500 rows for performance
+        const searchIndices = [0]; // Always include header
+        let foundCount = 0;
+        
+        for (let i = 1; i < Math.min(csvLines.length, maxSearchRows) && foundCount < ROWS_PER_PAGE; i++) {
+            const line = csvLines[i];
+            if (!line || line.trim().length === 0) continue;
             
-            return row.some((cell, cellIndex) => {
-                const headers = dataToFilter[0] || [];
+            const row = parseCsvLine(line);
+            const matchFound = row.some((cell, cellIndex) => {
                 const columnName = headers[cellIndex];
                 const shouldDecode = base64Columns.includes(columnName);
                 
-                // Search in both original and decoded values (only if column should be decoded)
-                const originalMatch = cell.toLowerCase().includes(searchTerm.toLowerCase());
-                const decodedValue = (shouldDecode && isBase64(cell)) ? decodeBase64Safe(cell) : cell;
-                const decodedMatch = decodedValue.toLowerCase().includes(searchTerm.toLowerCase());
-                return originalMatch || decodedMatch;
+                // Search in both original and decoded values
+                const originalMatch = cell.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+                if (originalMatch) return true;
+                
+                if (shouldDecode && isBase64(cell)) {
+                    const decodedValue = decodeBase64Safe(cell);
+                    return decodedValue.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+                }
+                return false;
             });
-        });
+            
+            if (matchFound) {
+                searchIndices.push(i);
+                foundCount++;
+            }
+        }
         
-        setFilteredData(filtered);
-    }, [searchTerm, tableData, editedData, isEditing, base64Columns]);
+        setVisibleRowIndices(searchIndices);
+    }, [debouncedSearchTerm, currentPage, totalRows, csvLines, headers, base64Columns, parseCsvLine, ROWS_PER_PAGE]);
 
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchTerm(event.target.value);
-    };
-
-    const handleClearSearch = () => {
-        setSearchTerm('');
-    };
-
-    const handleEdit = () => {
-        setIsEditing(true);
-    };
-
-    const handleCancel = () => {
-        setIsEditing(false);
-        setEditedData(JSON.parse(JSON.stringify(tableData))); // Reset to original
-    };
-
-    const handleSave = () => {
-        // Convert edited data back to CSV format
-        const csvContent = editedData.map(row => 
-            row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')
-        ).join('\n');
+        const value = event.target.value;
+        setSearchTerm(value);
         
-        onSave(csvContent);
-        setTableData(JSON.parse(JSON.stringify(editedData)));
-        setIsEditing(false);
+        // Debounce the actual search
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+        
+        searchTimeoutRef.current = setTimeout(() => {
+            setDebouncedSearchTerm(value);
+        }, 300); // 300ms debounce
     };
 
-    const handleCellChange = (rowIndex: number, cellIndex: number, value: string) => {
-        const newData = [...editedData];
-        newData[rowIndex][cellIndex] = value;
-        setEditedData(newData);
+    const handleClearSearch = useCallback(() => {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+        setSearchTerm('');
+        setDebouncedSearchTerm('');
+    }, []);
+
+    // Helper function to find the original CSV line index for a visible row
+    const findOriginalLineIndex = (visibleRowIndex: number): number => {
+        // The visible row index corresponds to the actual CSV line index
+        return visibleRowIndices[visibleRowIndex] || 0;
     };
+
+    const handleEditRow = (visibleRowIndex: number) => {
+        const actualLineIndex = findOriginalLineIndex(visibleRowIndex);
+        const originalRowData = parseCsvLine(csvLines[actualLineIndex] || '');
+        
+        // Create decoded version for editing
+        const decodedRowData = originalRowData.map((cell, cellIndex) => {
+            const columnName = headers[cellIndex];
+            const shouldDecode = base64Columns.includes(columnName);
+            
+            if (shouldDecode && isBase64(cell)) {
+                return decodeBase64Safe(cell);
+            }
+            return cell;
+        });
+        
+        setEditingRowIndex(actualLineIndex); // Store the actual CSV line index
+        setEditingDecodedData(decodedRowData);
+    };
+
+    const handleCancelRowEdit = () => {
+        setEditingRowIndex(null);
+        setEditingDecodedData([]);
+    };
+
+    const handleSaveRow = () => {
+        if (editingRowIndex === null) return;
+        
+        // Re-encode any base64 columns from the decoded editing data
+        const finalRowData = editingDecodedData.map((decodedCell, cellIndex) => {
+            const columnName = headers[cellIndex];
+            const shouldEncode = base64Columns.includes(columnName);
+            
+            if (shouldEncode) {
+                // Always encode the decoded value back to base64
+                return encodeBase64Safe(decodedCell);
+            }
+            return decodedCell;
+        });
+        
+        // Create the new CSV line
+        const newCsvLine = finalRowData.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',');
+        
+        // Replace only the specific line in the CSV
+        const newLines = [...csvLines];
+        newLines[editingRowIndex] = newCsvLine;
+        
+        // Join back to CSV content
+        const newCsvContent = newLines.join('\n');
+        
+        // Save the updated content
+        onSave(newCsvContent);
+        
+        // Update the local CSV lines for future edits
+        setCsvLines(newLines);
+        
+        setEditingRowIndex(null);
+        setEditingDecodedData([]);
+    };
+
+    const handleCellChange = useCallback((cellIndex: number, value: string) => {
+        // Update the decoded data (what the user is actually editing)
+        // Use functional update to minimize re-renders
+        setEditingDecodedData(prev => {
+            // Only update if the value actually changed
+            if (prev[cellIndex] === value) return prev;
+            
+            const newDecodedData = [...prev];
+            newDecodedData[cellIndex] = value;
+            return newDecodedData;
+        });
+    }, []);
     
+    // Memoize the visible rows calculation to prevent unnecessary re-parsing
+    const visibleRowsData = useMemo(() => {
+        const rows = getParsedRows(visibleRowIndices);
+        return {
+            displayHeaders: rows[0] || [],
+            displayRows: rows.slice(1),
+            filteredRows: rows.length - 1
+        };
+    }, [visibleRowIndices, getParsedRows]);
+    
+    const { displayHeaders, displayRows, filteredRows } = visibleRowsData;
+
     if (error) {
         return (
             <Card>
@@ -580,30 +758,31 @@ const CsvViewer: React.FC<{
         );
     }
     
-    const headers = filteredData[0] || [];
-    const rows = filteredData.slice(1);
-    const totalRows = (isEditing ? editedData.length : tableData.length) - 1; // Subtract header row
-    const filteredRows = rows.length;
-    
     return (
         <Card>
             <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h6">
-                        CSV: {filename} ({filteredRows}{filteredRows !== totalRows ? ` of ${totalRows}` : ''} rows)
+                    <Box>
+                        <Typography variant="h6">
+                            CSV: {filename} ({filteredRows} of {totalRows} rows shown)
+                        </Typography>
                         {base64Columns.length > 0 && (
                             <Typography variant="caption" display="block" color="text.secondary">
                                 Decoding columns: {base64Columns.join(', ')}
                             </Typography>
                         )}
-                    </Typography>
+                        {!debouncedSearchTerm && totalRows > ROWS_PER_PAGE && (
+                            <Typography variant="caption" display="block" color="text.secondary">
+                                Page {currentPage + 1} of {Math.ceil(totalRows / ROWS_PER_PAGE)}
+                            </Typography>
+                        )}
+                    </Box>
                     <TextField
                         size="small"
                         placeholder="Search CSV..."
                         value={searchTerm}
                         onChange={handleSearchChange}
                         sx={{ minWidth: 200 }}
-                        disabled={isEditing}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
@@ -629,68 +808,83 @@ const CsvViewer: React.FC<{
                     <Table stickyHeader size="small" key={`csv-table-${base64Columns.join('-')}`}>
                         <TableHead>
                             <TableRow>
-                                {headers.map((header, index) => (
+                                {displayHeaders.map((header, index) => (
                                     <TableCell key={index} sx={{ fontWeight: 'bold' }}>
                                         {header}
                                     </TableCell>
                                 ))}
+                                <TableCell sx={{ fontWeight: 'bold', width: 120 }}>
+                                    Actions
+                                </TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {rows.map((row, rowIndex) => {
-                                const actualRowIndex = rowIndex + 1; // Account for header row
+                            {displayRows.map((row, rowIndex) => {
+                                const actualLineIndex = visibleRowIndices[rowIndex + 1]; // +1 to skip header
+                                const isCurrentlyEditing = editingRowIndex === actualLineIndex;
+                                const displayRow = isCurrentlyEditing ? editingDecodedData : row;
+                                
                                 return (
-                                    <TableRow key={rowIndex} hover>
-                                        {row.map((cell, cellIndex) => {
-                                            const columnName = headers[cellIndex];
-                                            const shouldDecode = base64Columns.includes(columnName);
-                                            const isBase64Encoded = shouldDecode && isBase64(cell);
-                                            const displayValue = isBase64Encoded ? decodeBase64Safe(cell) : cell;
-                                            
-                                            // Debug logging for the first few cells
-                                            if (rowIndex < 2 && cellIndex < 3) {
-                                                console.log(`Cell [${rowIndex}][${cellIndex}] "${columnName}":`, {
-                                                    base64Columns,
-                                                    shouldDecode,
-                                                    isBase64Encoded,
-                                                    cellValue: cell.substring(0, 50) + (cell.length > 50 ? '...' : '')
-                                                });
-                                            }
-                                            
+                                    <TableRow key={actualLineIndex} hover>
+                                        {displayRow.map((cell, cellIndex) => {
                                             return (
                                                 <TableCell key={cellIndex}>
-                                                    {isEditing ? (
+                                                    {isCurrentlyEditing ? (
                                                         <TextField
                                                             size="small"
                                                             fullWidth
+                                                            multiline={base64Columns.includes(displayHeaders[cellIndex])}
+                                                            rows={base64Columns.includes(displayHeaders[cellIndex]) ? 4 : 1}
                                                             value={cell}
-                                                            onChange={(e) => handleCellChange(actualRowIndex, cellIndex, e.target.value)}
+                                                            onChange={(e) => handleCellChange(cellIndex, e.target.value)}
                                                             variant="outlined"
-                                                            sx={{ minWidth: 100 }}
+                                                            sx={{ 
+                                                                minWidth: base64Columns.includes(displayHeaders[cellIndex]) ? 300 : 100,
+                                                                '& .MuiInputBase-root': {
+                                                                    fontSize: base64Columns.includes(displayHeaders[cellIndex]) ? '0.875rem' : 'inherit'
+                                                                }
+                                                            }}
                                                         />
                                                     ) : (
-                                                        <>
-                                                            {isBase64Encoded ? (
-                                                                <Box>
-                                                                    <Typography variant="body2" component="div">
-                                                                        {displayValue}
-                                                                    </Typography>
-                                                                    <Typography 
-                                                                        variant="caption" 
-                                                                        color="text.secondary"
-                                                                        sx={{ fontStyle: 'italic' }}
-                                                                    >
-                                                                        (decoded from base64)
-                                                                    </Typography>
-                                                                </Box>
-                                                            ) : (
-                                                                displayValue
-                                                            )}
-                                                        </>
+                                                        <CsvCellDisplay 
+                                                            cell={cell}
+                                                            columnName={displayHeaders[cellIndex]}
+                                                            base64Columns={base64Columns}
+                                                        />
                                                     )}
                                                 </TableCell>
                                             );
                                         })}
+                                        <TableCell>
+                                            {isCurrentlyEditing ? (
+                                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="primary"
+                                                        onClick={handleSaveRow}
+                                                        title="Save changes"
+                                                    >
+                                                        <SaveIcon fontSize="small" />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={handleCancelRowEdit}
+                                                        title="Cancel editing"
+                                                    >
+                                                        <CancelIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
+                                            ) : (
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleEditRow(rowIndex + 1)} // +1 to skip header in visibleRowIndices
+                                                    title="Edit row"
+                                                    disabled={editingRowIndex !== null}
+                                                >
+                                                    <EditIcon fontSize="small" />
+                                                </IconButton>
+                                            )}
+                                        </TableCell>
                                     </TableRow>
                                 );
                             })}
@@ -698,47 +892,39 @@ const CsvViewer: React.FC<{
                     </Table>
                 </TableContainer>
                 
-                {rows.length === 0 && searchTerm && (
+                {displayRows.length === 0 && debouncedSearchTerm && (
                     <Box sx={{ textAlign: 'center', py: 3 }}>
                         <Typography variant="body2" color="text.secondary">
-                            No rows match "{searchTerm}"
+                            No rows match "{debouncedSearchTerm}"
                         </Typography>
                     </Box>
                 )}
-            </CardContent>
-            <CardActions>
-                {isEditing ? (
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                
+                {/* Pagination Controls */}
+                {!debouncedSearchTerm && totalRows > ROWS_PER_PAGE && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
                         <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<SaveIcon />}
-                            onClick={handleSave}
                             size="small"
-                        >
-                            Save
-                        </Button>
-                        <Button
+                            onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                            disabled={currentPage === 0}
                             variant="outlined"
-                            startIcon={<CancelIcon />}
-                            onClick={handleCancel}
-                            size="small"
                         >
-                            Cancel
+                            Previous
+                        </Button>
+                        <Typography variant="body2">
+                            Page {currentPage + 1} of {Math.ceil(totalRows / ROWS_PER_PAGE)}
+                        </Typography>
+                        <Button
+                            size="small"
+                            onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalRows / ROWS_PER_PAGE) - 1, prev + 1))}
+                            disabled={currentPage >= Math.ceil(totalRows / ROWS_PER_PAGE) - 1}
+                            variant="outlined"
+                        >
+                            Next
                         </Button>
                     </Box>
-                ) : (
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<EditIcon />}
-                        onClick={handleEdit}
-                        size="small"
-                    >
-                        Edit
-                    </Button>
                 )}
-            </CardActions>
+            </CardContent>
         </Card>
     );
 };
