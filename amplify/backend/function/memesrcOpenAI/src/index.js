@@ -67,16 +67,33 @@ exports.handler = async (event) => {
     const s3Client = new S3Client({ region: "us-east-1" });
     const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
 
-    const { magicResultId, imageKey, maskKey, prompt } = event;
+    console.log('[Magic] Handler start', {
+        hasEvent: Boolean(event),
+        eventType: typeof event,
+        eventKeys: event ? Object.keys(event) : [],
+        env: process.env.ENV,
+        region: 'us-east-1',
+        bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+    });
+
+    const { magicResultId, imageKey, maskKey, prompt } = event || {};
+    console.log('[Magic] Params', {
+        magicResultId,
+        hasImageKey: Boolean(imageKey),
+        hasMaskKey: Boolean(maskKey),
+        promptLength: (prompt || '').length,
+    });
 
     // Branch: if maskKey is provided, run existing OpenAI edit flow; otherwise run Gemini image+prompt flow
     if (!maskKey) {
+        console.log('[Magic] Branch selected: Gemini (no maskKey)');
         // Gemini path: single image + prompt → new image
         const paramName = process.env.gemini_api_key;
         if (!paramName) {
             throw new Error('Missing env var gemini_api_key');
         }
 
+        console.log('[Gemini] Fetching API key from SSM', { paramName });
         const keyResp = await ssmClient.send(new GetParameterCommand({ Name: paramName, WithDecryption: true }));
         if (!keyResp?.Parameter?.Value) {
             throw new Error('Failed to load Gemini API key from SSM');
@@ -91,6 +108,14 @@ exports.handler = async (event) => {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' });
 
         // Read input image from S3
+        if (!imageKey) {
+            console.error('[Gemini] Missing required imageKey');
+            throw new Error('Missing required parameter: imageKey');
+        }
+        console.log('[Gemini] S3 GetObject (input image) start', {
+            bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            key: imageKey,
+        });
         const imgObj = await s3Client.send(new GetObjectCommand({
             Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
             Key: imageKey,
@@ -199,6 +224,7 @@ exports.handler = async (event) => {
         }
 
         const fileName = `${uuid.v4()}.jpeg`;
+        console.log('[Gemini] Writing output image to S3');
         await s3Client.send(new PutObjectCommand({
             Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
             Key: `public/${fileName}`,
@@ -206,7 +232,9 @@ exports.handler = async (event) => {
             ContentType: outMime || 'image/jpeg',
         }));
         const cdnUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+        console.log('[Gemini] Wrote image + computed CDN URL', { fileName, cdnUrl });
 
+        console.log('[Gemini] Updating DynamoDB with results');
         await dynamoClient.send(new UpdateItemCommand({
             TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
             Key: {
@@ -218,18 +246,35 @@ exports.handler = async (event) => {
                 ":updatedAt": { S: new Date().toISOString() }
             }
         }));
-
+        console.log('[Gemini] UpdateItem complete', { magicResultId });
         return; // done with Gemini branch
     }
 
     const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
+    console.log('[OpenAI] Fetching API key from SSM', { paramName: process.env.openai_apikey });
     const data = await ssmClient.send(command);
 
     // Fetch the images from S3
+    if (!imageKey) {
+        console.error('[OpenAI] Missing required imageKey');
+        throw new Error('Missing required parameter: imageKey');
+    }
+    if (!maskKey) {
+        console.error('[OpenAI] Missing required maskKey');
+        throw new Error('Missing required parameter: maskKey');
+    }
+    console.log('[OpenAI] S3 GetObject (image) start', {
+        bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+        key: imageKey,
+    });
     const imageObject = await s3Client.send(new GetObjectCommand({
         Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
         Key: imageKey
     }));
+    console.log('[OpenAI] S3 GetObject (mask) start', {
+        bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+        key: maskKey,
+    });
     const maskObject = await s3Client.send(new GetObjectCommand({
         Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
         Key: maskKey
@@ -256,7 +301,9 @@ exports.handler = async (event) => {
         ...formData.getHeaders()
     };
 
+    console.log('[OpenAI] Submitting edit request to OpenAI');
     const response = await makeRequest(formData, headers);
+    console.log('[OpenAI] Received response', { items: Array.isArray(response?.data?.data) ? response.data.data.length : 0 });
 
     const promises = response.data.data.map(async (imageItem) => {
         const image_url = imageItem.url;
@@ -276,13 +323,16 @@ exports.handler = async (event) => {
             ContentType: 'image/jpeg',
         };
 
+        console.log('[OpenAI] Writing generated image to S3', { key: s3Params.Key });
         await s3Client.send(new PutObjectCommand(s3Params));
 
         return `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
     });
 
     const cdnImageUrls = await Promise.all(promises);
+    console.log('[OpenAI] Uploaded images to S3', { count: cdnImageUrls.length });
 
+    console.log('[OpenAI] Updating DynamoDB with results');
     await dynamoClient.send(new UpdateItemCommand({
         TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
         Key: {
@@ -294,4 +344,8 @@ exports.handler = async (event) => {
             ":updatedAt": { S: new Date().toISOString() }
         }
     }));
+    console.log('[OpenAI] UpdateItem complete', { magicResultId });
 };
+
+// Top-level error listener (defensive): wrap handler in try/catch if desired
+// Keeping as-is to preserve Lambda contract; important logs are emitted inline above.

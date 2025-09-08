@@ -125,6 +125,9 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "memesrcGraphQlLayer": {
+      "Arn": "string"
+    },
     "memesrcIndexToOpenSearch": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -167,7 +170,20 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "memesrcS3Layer": {
+      "Arn": "string"
+    },
     "memesrcSearchV2": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "memesrcSesLayer": {
+      "Arn": "string"
+    },
+    "memesrcSourceMediaZipProcessor": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
@@ -217,6 +233,13 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string"
     },
     "memesrcVoteSearchSeries": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "memesrcZipExtractor": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",

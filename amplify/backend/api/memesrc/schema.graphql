@@ -30,6 +30,7 @@ type SourceMedia @model @auth(
   files: [File] @hasMany,
   status: String,
   user: UserDetails @belongsTo
+  pendingAlias: String
 }
 
 type File @model @auth(
@@ -40,6 +41,7 @@ type File @model @auth(
   id: ID!,
   sourceMedia: SourceMedia @belongsTo,
   key: String,
+  unzippedPath: String,
   status: String,
 }
 
@@ -321,4 +323,3 @@ type LocationLeads @model @auth(
   id: ID!,
   countryCode: String
 }
-

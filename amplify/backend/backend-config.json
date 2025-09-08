@@ -261,6 +261,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcAggregateVotes"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcSourceMediaZipProcessor"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -504,6 +512,11 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcGraphQlLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
+    },
     "memesrcIndexToOpenSearch": {
       "build": true,
       "dependsOn": [
@@ -586,9 +599,63 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcS3Layer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
+    },
     "memesrcSearchV2": {
       "build": true,
       "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcSesLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
+    },
+    "memesrcSourceMediaZipProcessor": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        },
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcZipExtractor"
+        },
         {
           "attributes": [
             "BucketName"
@@ -664,6 +731,50 @@
     },
     "memesrcVoteSearchSeries": {
       "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcZipExtractor": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcSesLayer"
+        },
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -944,6 +1055,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcGraphQlLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcGraphQlLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcIndexToOpenSearch_deploymentBucketName": {
       "usedBy": [
         {
@@ -1072,6 +1199,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcS3Layer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcS3Layer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcSearchV2_deploymentBucketName": {
       "usedBy": [
         {
@@ -1093,6 +1236,38 @@
         {
           "category": "function",
           "resourceName": "memesrcSearchV2"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcSesLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcSesLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcSesLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcSesLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcSourceMediaZipProcessor_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcSourceMediaZipProcessor"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcSourceMediaZipProcessor_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcSourceMediaZipProcessor"
         }
       ]
     },
@@ -1245,6 +1420,22 @@
         {
           "category": "function",
           "resourceName": "memesrcVote"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcZipExtractor_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcZipExtractor"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcZipExtractor_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcZipExtractor"
         }
       ]
     },

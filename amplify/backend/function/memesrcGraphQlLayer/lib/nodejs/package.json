@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "description": "GraphQL handler layer dependencies for AWS Amplify",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/credential-provider-node": "^3.879.0",
+    "@aws-sdk/credential-providers": "^3.879.0",
+    "@aws-sdk/protocol-http": "^3.370.0",
+    "@aws-sdk/signature-v4": "^3.370.0",
+    "@aws-sdk/util-utf8-node": "^3.259.0"
+  }
+}

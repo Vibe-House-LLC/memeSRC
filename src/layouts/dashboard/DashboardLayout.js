@@ -8,7 +8,7 @@ import Nav from './nav';
 const StyledRoot = styled('div')(() => ({
   display: 'flex',
   minHeight: '100%',
-  overflow: 'hidden',
+  // overflow: 'hidden',
 }));
 
 const Main = styled('div')(({ theme, isRootPath }) => ({

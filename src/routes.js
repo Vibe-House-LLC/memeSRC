@@ -35,8 +35,8 @@ const AddToSeriesPage = lazy(() => import('./pages/AddToSeriesPage'));
 const HomePage = lazy(() => import('./pages/HomePage'))
 const V2SearchPage = lazy(() => import('./pages/V2SearchPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
-const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
-const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
+// const SourceMediaList = lazy(() => import('./pages/SourceMediaList'));
+// const SourceMediaFileList = lazy(() => import('./pages/SourceMediaFileList'));
 const MetadataPage = lazy(() => import('./pages/MetadataPage'));
 const ContributorRequest = lazy(() => import('./pages/ContributorRequest'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
@@ -62,6 +62,8 @@ const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
 const CollageAnimatedIconDemoPage = lazy(() => import('./pages/CollageAnimatedIconDemoPage'));
 const ServerPage = lazy(() => import('./pages/ServerPage'));
 const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
+const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
+const AdminFileReview = lazy(() => import('./pages/AdminFileReview'));
 const MagicPage = lazy(() => import('./pages/MagicPage'));
 
 const DonationRedirect = () => {
@@ -134,13 +136,15 @@ export default function Router() {
         { path: 'series', element: <DashboardSeriesPage /> },
         { path: 'cidmanagement', element: <DashboardCidPage /> },
         { path: 'aliasmanagement', element: <DashboardAliasPageRevised /> },
-        { path: 'sourcemedia', element: <SourceMediaList /> },
-        { path: 'sourcemedia/files/:sourceMediaId', element: <SourceMediaFileList /> },
+        // { path: 'sourcemedia', element: <SourceMediaList /> },
+        // { path: 'sourcemedia/files/:sourceMediaId', element: <SourceMediaFileList /> },
         { path: 'addseries', element: <AddSeriesPage /> },
         { path: 'inpainting', element: <InpaintingPage /> },
         { path: 'websiteSettings', element: <WebsiteSettings /> },
         { path: 'addtoseries/:seriesId', element: <AddToSeriesPage /> },
         { path: 'subtitles', element: <SubtitleViewerPage /> },
+        { path: 'sourcemedia', element: <AdminSourceMedia /> },
+        { path: 'review-upload', element: <AdminFileReview /> },
       ],
     },
     {
