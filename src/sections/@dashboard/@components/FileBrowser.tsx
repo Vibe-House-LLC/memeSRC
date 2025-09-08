@@ -408,100 +408,183 @@ const JsonFileViewer: React.FC<{
 
     const hasColorProperties = Object.keys(colorProperties).length > 0;
 
-    // Function to load and parse CSV from same directory
-    const loadCsvFromSameDirectory = useCallback(async (): Promise<string | null> => {
-        if (!selectedFile?.key) return null;
+
+    // Helper function to get video duration
+    const getVideoDuration = useCallback((videoUrl: string): Promise<number> => {
+        return new Promise((resolve, reject) => {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            
+            video.onloadedmetadata = () => {
+                resolve(video.duration);
+            };
+            
+            video.onerror = () => {
+                reject(new Error('Failed to load video metadata'));
+            };
+            
+            // Set a timeout to avoid hanging
+            setTimeout(() => {
+                reject(new Error('Video metadata loading timeout'));
+            }, 10000);
+            
+            video.src = videoUrl;
+        });
+    }, []);
+
+    // Function to calculate frame count efficiently (25s per clip except last one per folder)
+    const calculateFrameCountFromSubfolders = useCallback(async (): Promise<number> => {
+        console.log('🎬 Starting optimized frame count calculation...');
+        
+        if (!selectedFile?.key) {
+            console.log('❌ No selected file to determine directory');
+            return 0;
+        }
         
         try {
             // Get the directory path from the JSON file key
             const keyParts = selectedFile.key.split('/');
             keyParts.pop(); // Remove filename
             const directoryPath = keyParts.join('/');
-            const csvKey = `${directoryPath}/_docs.csv`;
             
-            console.log('🔍 Looking for CSV at:', csvKey);
+            console.log('🔍 Searching for MP4 files in directory:', directoryPath);
             
-            const result = await Storage.get(csvKey, {
+            // List all files in the directory and subdirectories
+            const result = await Storage.list(directoryPath, {
                 level: 'public',
-                download: true
+                pageSize: 1000
             });
             
-            if (result && typeof result === 'object' && 'Body' in (result as any)) {
-                const text = await (result as any).Body.text();
-                return text;
-            } else if (typeof result === 'string') {
-                return result;
+            const resultArray = (result?.results || result || []) as any[];
+            console.log(`📂 Found ${resultArray.length} total files/folders`);
+            
+            // Group MP4 files by folder
+            const folderGroups: { [folder: string]: string[] } = {};
+            
+            resultArray.forEach((item: any) => {
+                const key = item.key || '';
+                const filename = key.split('/').pop() || '';
+                const extension = getFileExtension(filename);
+                
+                if (extension === 'mp4') {
+                    // Get the folder path (everything except the filename)
+                    const folderPath = key.substring(0, key.lastIndexOf('/'));
+                    
+                    if (!folderGroups[folderPath]) {
+                        folderGroups[folderPath] = [];
+                    }
+                    folderGroups[folderPath].push(key);
+                    console.log('🎥 Found MP4:', key);
+                }
+            });
+            
+            if (Object.keys(folderGroups).length === 0) {
+                console.log('❌ No MP4 files found');
+                return 0;
             }
             
-            return null;
+            console.log(`📁 Found MP4 files in ${Object.keys(folderGroups).length} folders`);
+            
+            let totalDuration = 0;
+            let totalClips = 0;
+            let lastClipsProcessed = 0;
+            
+            // Process each folder
+            for (const [folderPath, mp4Files] of Object.entries(folderGroups)) {
+                // Sort files numerically (assuming they're numbered)
+                const sortedFiles = mp4Files.sort((a, b) => {
+                    const aNum = parseInt(a.split('/').pop()?.replace(/\D/g, '') || '0');
+                    const bNum = parseInt(b.split('/').pop()?.replace(/\D/g, '') || '0');
+                    return aNum - bNum;
+                });
+                
+                const clipCount = sortedFiles.length;
+                totalClips += clipCount;
+                
+                if (clipCount === 0) continue;
+                
+                console.log(`📁 ${folderPath}: ${clipCount} clips`);
+                
+                if (clipCount === 1) {
+                    // Only one clip - get its duration
+                    const singleClipKey = sortedFiles[0];
+                    try {
+                        const videoUrl = await Storage.get(singleClipKey, {
+                            level: 'public',
+                            expires: 3600
+                        });
+                        
+                        const clipDuration = await getVideoDuration(videoUrl);
+                        totalDuration += clipDuration;
+                        lastClipsProcessed++;
+                        
+                        console.log(`⏱️ Single clip ${singleClipKey}: ${clipDuration.toFixed(2)}s`);
+                    } catch (error) {
+                        console.warn(`⚠️ Could not get duration for single clip ${singleClipKey}, assuming 25s:`, error);
+                        totalDuration += 25; // Fallback to 25 seconds
+                    }
+                } else {
+                    // Multiple clips - check first and last, assume 25s for middle ones
+                    const firstClipKey = sortedFiles[0];
+                    const lastClipKey = sortedFiles[sortedFiles.length - 1];
+                    const middleClipsCount = clipCount - 2; // Exclude first and last
+                    
+                    // Middle clips are 25 seconds each
+                    const middleClipsDuration = middleClipsCount * 25;
+                    totalDuration += middleClipsDuration;
+                    
+                    console.log(`⏱️ ${middleClipsCount} middle clips × 25s = ${middleClipsDuration}s`);
+                    
+                    // Get duration of the first clip (0.mp4)
+                    try {
+                        const firstVideoUrl = await Storage.get(firstClipKey, {
+                            level: 'public',
+                            expires: 3600
+                        });
+                        
+                        const firstClipDuration = await getVideoDuration(firstVideoUrl);
+                        totalDuration += firstClipDuration;
+                        lastClipsProcessed++;
+                        
+                        console.log(`⏱️ First clip ${firstClipKey}: ${firstClipDuration.toFixed(2)}s`);
+                    } catch (error) {
+                        console.warn(`⚠️ Could not get duration for first clip ${firstClipKey}, assuming 25s:`, error);
+                        totalDuration += 25; // Fallback to 25 seconds
+                    }
+                    
+                    // Get duration of the last clip
+                    try {
+                        const lastVideoUrl = await Storage.get(lastClipKey, {
+                            level: 'public',
+                            expires: 3600
+                        });
+                        
+                        const lastClipDuration = await getVideoDuration(lastVideoUrl);
+                        totalDuration += lastClipDuration;
+                        lastClipsProcessed++;
+                        
+                        console.log(`⏱️ Last clip ${lastClipKey}: ${lastClipDuration.toFixed(2)}s`);
+                    } catch (error) {
+                        console.warn(`⚠️ Could not get duration for last clip ${lastClipKey}, assuming 25s:`, error);
+                        totalDuration += 25; // Fallback to 25 seconds
+                    }
+                }
+            }
+            
+            // Calculate total frames (duration × 10 fps)
+            const totalFrames = Math.round(totalDuration * 10);
+            
+            console.log(`✅ Processed ${totalClips} clips across ${Object.keys(folderGroups).length} folders`);
+            console.log(`📊 ${totalClips - lastClipsProcessed} clips assumed 25s, ${lastClipsProcessed} edge clips measured`);
+            console.log(`⏱️ Total duration: ${totalDuration.toFixed(2)} seconds`);
+            console.log(`🎞️ Total frame count: ${totalFrames.toLocaleString()} (${totalDuration.toFixed(2)}s × 10 fps)`);
+            
+            return totalFrames;
         } catch (error) {
-            console.error('❌ Failed to load CSV:', error);
-            return null;
-        }
-    }, [selectedFile]);
-
-    // Function to calculate frame count from CSV content
-    const calculateFrameCountFromCsv = useCallback((csvContent: string): number => {
-        console.log('🎬 Starting frame count calculation from CSV...');
-        
-        const lines = csvContent.split('\n').filter(line => line.trim().length > 0);
-        if (lines.length < 2) {
-            console.log('❌ CSV has insufficient data');
+            console.error('❌ Error calculating frame count:', error);
             return 0;
         }
-        
-        // Parse header to find column indices
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        const seasonIndex = headers.findIndex(h => h.toLowerCase().includes('season'));
-        const episodeIndex = headers.findIndex(h => h.toLowerCase().includes('episode'));
-        const endFrameIndex = headers.findIndex(h => h.toLowerCase().includes('end_frame'));
-        
-        if (seasonIndex === -1 || episodeIndex === -1 || endFrameIndex === -1) {
-            console.log('❌ Required columns not found. Available headers:', headers);
-            return 0;
-        }
-        
-        // Track max end_frame per season/episode combination
-        const maxFramesByEpisode = new Map<string, number>();
-        let processedRows = 0;
-        
-        // Process data rows
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i];
-            const row = line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
-            
-            if (row.length <= Math.max(seasonIndex, episodeIndex, endFrameIndex)) continue;
-            
-            const season = row[seasonIndex]?.trim();
-            const episode = row[episodeIndex]?.trim();
-            const endFrameStr = row[endFrameIndex]?.trim();
-            
-            if (!season || !episode || !endFrameStr) continue;
-            
-            const endFrame = parseInt(endFrameStr, 10);
-            if (isNaN(endFrame)) continue;
-            
-            const episodeKey = `S${season}E${episode}`;
-            const currentMax = maxFramesByEpisode.get(episodeKey) || 0;
-            
-            if (endFrame > currentMax) {
-                maxFramesByEpisode.set(episodeKey, endFrame);
-            }
-            
-            processedRows++;
-        }
-        
-        // Calculate total frames
-        let totalFrames = 0;
-        maxFramesByEpisode.forEach((frames) => {
-            totalFrames += frames;
-        });
-        
-        console.log(`✅ Processed ${processedRows} rows, found ${maxFramesByEpisode.size} episodes`);
-        console.log(`🎞️ Total frame count: ${totalFrames.toLocaleString()}`);
-        
-        return totalFrames;
-    }, []);
+    }, [selectedFile, getVideoDuration]);
 
     // Function to update frame count in JSON
     const updateFrameCount = useCallback(async () => {
@@ -509,17 +592,10 @@ const JsonFileViewer: React.FC<{
         
         setIsUpdatingFrameCount(true);
         try {
-            // Load CSV from same directory
-            const csvContent = await loadCsvFromSameDirectory();
-            if (!csvContent) {
-                setEditError('Could not find _docs.csv in the same directory');
-                return;
-            }
-            
-            // Calculate frame count
-            const frameCount = calculateFrameCountFromCsv(csvContent);
+            // Calculate frame count by analyzing MP4 durations
+            const frameCount = await calculateFrameCountFromSubfolders();
             if (frameCount === 0) {
-                setEditError('Could not calculate frame count from CSV');
+                setEditError('Could not calculate frame count - no MP4 files found or unable to get video durations');
                 return;
             }
             
@@ -541,7 +617,7 @@ const JsonFileViewer: React.FC<{
         } finally {
             setIsUpdatingFrameCount(false);
         }
-    }, [hasFrameCount, selectedFile, editedJson, loadCsvFromSameDirectory, calculateFrameCountFromCsv]);
+    }, [hasFrameCount, selectedFile, editedJson, calculateFrameCountFromSubfolders]);
 
     // Color picker handlers
     const handleColorPickerOpen = useCallback((colorProperty: string, event: React.MouseEvent<HTMLElement>) => {
