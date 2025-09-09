@@ -50,7 +50,7 @@ export default function LibraryPage() {
             try {
               const images = await Promise.all((selectedItems || []).map(async (it) => {
                 try {
-                  const blob = await getFromLibrary(it.key, { level: storageLevel || 'protected' });
+                  const blob = await getFromLibrary(it.key, { level: storageLevel || 'private' });
                   const dataUrl = await toDataUrl(blob);
                   return {
                     originalUrl: dataUrl,

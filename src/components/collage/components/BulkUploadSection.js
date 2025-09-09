@@ -155,7 +155,7 @@ const BulkUploadSection = ({
   const {
     items: adminLibraryItems,
     uploadMany: uploadManyToLibrary,
-  } = useLibraryData({ pageSize: 1, storageLevel: 'protected', refreshToken: libraryRefreshTrigger });
+  } = useLibraryData({ pageSize: 1, storageLevel: 'private', refreshToken: libraryRefreshTrigger });
 
   // State for context menu
   const [contextMenu, setContextMenu] = useState(null);
