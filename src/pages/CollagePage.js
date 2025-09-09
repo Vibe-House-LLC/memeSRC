@@ -784,6 +784,10 @@ export default function CollagePage() {
       setShowResultDialog(false);
       clearImages();
       setCustomLayout(null);
+      // Also reset layout to default 2 panels to avoid leftover empty panels
+      if (typeof setPanelCount === 'function') {
+        setPanelCount(2);
+      }
       // For non-admins there is no project picker; clearing images returns to the start screen
     } catch (e) {
       console.error('Failed to reset collage state:', e);
