@@ -33,6 +33,7 @@ import {
   TextField,
   Snackbar,
   Alert,
+  Collapse,
   FormControl,
   FormLabel,
   MenuItem,
@@ -41,7 +42,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, Check } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, Check, Add } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -984,6 +985,9 @@ useEffect(() => {
             <Card>
               {renderFineTuningFrames(imgSrc)}
             </Card>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
             {hasLibraryAccess && (
               <>
                 <Button
@@ -993,7 +997,7 @@ useEffect(() => {
                   onClick={handleSaveToLibrary}
                   disabled={!confirmedCid || !displayImage || savingToLibrary || savedToLibrary}
                   sx={{ 
-                    mt: 2,
+                    mb: 1.5,
                     borderColor: savedToLibrary ? 'transparent' : '#FF9800', 
                     color: savedToLibrary ? '#111' : '#FF9800',
                     backgroundColor: savedToLibrary ? '#FF9800' : 'transparent',
@@ -1011,13 +1015,52 @@ useEffect(() => {
                   }}
                   startIcon={savingToLibrary ? <CircularProgress size={16} sx={{ color: savedToLibrary ? '#111' : '#FF9800' }} /> : (savedToLibrary ? <Check /> : <Collections />)}
                 >
-                  {savingToLibrary ? 'Saving…' : (savedToLibrary ? 'Saved to Library' : 'Save to Library')}
+                  {savingToLibrary ? 'Saving…' : (savedToLibrary ? 'Saved to Library' : 'Add to Library')}
                 </Button>
+                <Collapse in={savedToLibrary} timeout={250} unmountOnExit>
+                  <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+                    <Button
+                      size="medium"
+                      variant="contained"
+                      component={RouterLink}
+                      to="/collage"
+                      startIcon={<Add />}
+                      sx={{
+                        flex: 1,
+                        color: '#e5e7eb',
+                        background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
+                        '&:hover': {
+                          background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+                          borderColor: 'rgba(255, 255, 255, 0.24)',
+                        },
+                      }}
+                    >
+                      New Collage
+                    </Button>
+                    <Button
+                      size="medium"
+                      variant="contained"
+                      component={RouterLink}
+                      to="/library"
+                      startIcon={<Collections />}
+                      sx={{
+                        flex: 1,
+                        color: '#e5e7eb',
+                        background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
+                        '&:hover': {
+                          background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+                          borderColor: 'rgba(255, 255, 255, 0.24)',
+                        },
+                      }}
+                    >
+                      My Library
+                    </Button>
+                  </Stack>
+                </Collapse>
               </>
             )}
-          </Grid>
-
-          <Grid item xs={12} md={6}>
             <Box sx={{ width: '100%' }}>
                   {/* Formatting Toolbar */}
                   {showText &&
@@ -1424,7 +1467,7 @@ useEffect(() => {
                 Advanced Editor
               </Button>
 
-              {/* Save to Library button moved to left column under image */}
+              {/* Library actions are now above text controls in right column */}
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} my={1}>
