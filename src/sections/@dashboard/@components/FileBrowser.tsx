@@ -46,7 +46,8 @@ import {
     Edit as EditIcon,
     Save as SaveIcon,
     Cancel as CancelIcon,
-    Palette as PaletteIcon
+    Palette as PaletteIcon,
+    Analytics as AnalyticsIcon
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { ChromePicker } from 'react-color';
@@ -77,6 +78,27 @@ interface FileNode {
     isDirectory: boolean;
     children?: FileNode[];
     fullPath: string;
+}
+
+interface DataSummary {
+    seriesName: string;
+    totalSubtitles: number;
+    seasons: {
+        [seasonNumber: string]: {
+            folderExists: boolean;
+            docsExists: boolean;
+            subtitleCount: number;
+            episodes: {
+                [episodeNumber: string]: {
+                    folderExists: boolean;
+                    docsExists: boolean;
+                    subtitleCount: number;
+                    videoFileCount: number;
+                };
+            };
+        };
+    };
+    issues: string[];
 }
 
 interface FileBrowserProps {
@@ -1343,6 +1365,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     const [discardChangesDialogOpen, setDiscardChangesDialogOpen] = useState<boolean>(false);
     const [pendingFileSelection, setPendingFileSelection] = useState<FileItem | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+    const [dataSummaryDialogOpen, setDataSummaryDialogOpen] = useState<boolean>(false);
+    const [dataSummary, setDataSummary] = useState<DataSummary | null>(null);
+    const [loadingDataSummary, setLoadingDataSummary] = useState<boolean>(false);
 
     const fullPath = `${pathPrefix}/${id}`;
 
@@ -1528,6 +1553,212 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
         setPendingFileSelection(null);
     };
 
+    // Helper function to parse CSV content and count subtitles
+    const parseCSVSubtitleCount = (csvContent: string): number => {
+        try {
+            const lines = csvContent.split('\n').filter(line => line.trim().length > 0);
+            return Math.max(0, lines.length - 1); // Subtract header row
+        } catch (error) {
+            console.warn('Error parsing CSV content:', error);
+            return 0;
+        }
+    };
+
+    // Function to analyze data structure and generate summary
+    const analyzeDataStructure = useCallback(async (): Promise<DataSummary> => {
+        const summary: DataSummary = {
+            seriesName: id,
+            totalSubtitles: 0,
+            seasons: {},
+            issues: []
+        };
+
+        try {
+            // Group files by structure (season/episode)
+            const seasonFolders = new Set<string>();
+            const episodeFolders: { [season: string]: Set<string> } = {};
+            const csvFiles: { [path: string]: FileItem } = {};
+            const videoFiles: { [path: string]: FileItem[] } = {};
+
+            files.forEach(file => {
+                const pathParts = (file.relativePath || '').split('/').filter(p => p.length > 0);
+                
+                if (pathParts.length >= 1) {
+                    // Check if first part is a season number
+                    const seasonMatch = pathParts[0].match(/^(\d+)$/);
+                    if (seasonMatch) {
+                        const seasonNumber = seasonMatch[1];
+                        seasonFolders.add(seasonNumber);
+                        
+                        if (!episodeFolders[seasonNumber]) {
+                            episodeFolders[seasonNumber] = new Set();
+                        }
+                        
+                        if (pathParts.length >= 2) {
+                            // Check if second part is an episode number
+                            const episodeMatch = pathParts[1].match(/^(\d+)$/);
+                            if (episodeMatch) {
+                                const episodeNumber = episodeMatch[1];
+                                episodeFolders[seasonNumber].add(episodeNumber);
+                                
+                                // Track video files in episodes
+                                if (file.extension === 'mp4') {
+                                    const episodePath = `${seasonNumber}/${episodeNumber}`;
+                                    if (!videoFiles[episodePath]) {
+                                        videoFiles[episodePath] = [];
+                                    }
+                                    videoFiles[episodePath].push(file);
+                                }
+                            }
+                        }
+                        
+                        // Track CSV files
+                        if (file.name === '_docs.csv') {
+                            const csvPath = pathParts.join('/');
+                            csvFiles[csvPath] = file;
+                        }
+                    }
+                }
+            });
+
+            // Analyze each season
+            for (const seasonNumber of Array.from(seasonFolders).sort((a, b) => parseInt(a) - parseInt(b))) {
+                const seasonData = {
+                    folderExists: true, // We found files in this season, so folder exists
+                    docsExists: false,
+                    subtitleCount: 0,
+                    episodes: {} as { [episodeNumber: string]: any }
+                };
+
+                // Check for season-level _docs.csv
+                const seasonDocsPath = `${seasonNumber}/_docs.csv`;
+                if (csvFiles[seasonDocsPath]) {
+                    seasonData.docsExists = true;
+                    
+                    // Load and parse the CSV to count subtitles
+                    try {
+                        const csvFile = csvFiles[seasonDocsPath];
+                        const result = await Storage.get(csvFile.key, {
+                            level: 'public',
+                            download: true
+                        });
+                        
+                        if (result && typeof result === 'object' && result !== null && 'Body' in (result as any)) {
+                            const csvContent = await (result as any).Body.text();
+                            seasonData.subtitleCount = parseCSVSubtitleCount(csvContent);
+                            summary.totalSubtitles += seasonData.subtitleCount;
+                        }
+                    } catch (error) {
+                        console.warn(`Error loading season ${seasonNumber} _docs.csv:`, error);
+                        summary.issues.push(`Could not load season ${seasonNumber} _docs.csv`);
+                    }
+                } else {
+                    summary.issues.push(`Missing _docs.csv in season ${seasonNumber}`);
+                }
+
+                // Analyze episodes in this season
+                const episodes = episodeFolders[seasonNumber] || new Set();
+                for (const episodeNumber of Array.from(episodes).sort((a, b) => parseInt(a) - parseInt(b))) {
+                    const episodeData = {
+                        folderExists: true, // We found files in this episode, so folder exists
+                        docsExists: false,
+                        subtitleCount: 0,
+                        videoFileCount: 0
+                    };
+
+                    // Check for episode-level _docs.csv
+                    const episodeDocsPath = `${seasonNumber}/${episodeNumber}/_docs.csv`;
+                    if (csvFiles[episodeDocsPath]) {
+                        episodeData.docsExists = true;
+                        
+                        // Load and parse the CSV to count subtitles
+                        try {
+                            const csvFile = csvFiles[episodeDocsPath];
+                            const result = await Storage.get(csvFile.key, {
+                                level: 'public',
+                                download: true
+                            });
+                            
+                            if (result && typeof result === 'object' && result !== null && 'Body' in (result as any)) {
+                                const csvContent = await (result as any).Body.text();
+                                episodeData.subtitleCount = parseCSVSubtitleCount(csvContent);
+                            }
+                        } catch (error) {
+                            console.warn(`Error loading episode ${seasonNumber}/${episodeNumber} _docs.csv:`, error);
+                            summary.issues.push(`Could not load episode ${seasonNumber}/${episodeNumber} _docs.csv`);
+                        }
+                    } else {
+                        summary.issues.push(`Missing _docs.csv in season ${seasonNumber}, episode ${episodeNumber}`);
+                    }
+
+                    // Count video files in this episode
+                    const episodePath = `${seasonNumber}/${episodeNumber}`;
+                    episodeData.videoFileCount = videoFiles[episodePath]?.length || 0;
+                    
+                    if (episodeData.videoFileCount === 0) {
+                        summary.issues.push(`No video files found in season ${seasonNumber}, episode ${episodeNumber}`);
+                    }
+
+                    seasonData.episodes[episodeNumber] = episodeData;
+                }
+
+                // Check if season has episodes
+                if (Object.keys(seasonData.episodes).length === 0) {
+                    summary.issues.push(`Season ${seasonNumber} has no episodes`);
+                }
+
+                summary.seasons[seasonNumber] = seasonData;
+            }
+
+            // Check for series-level _docs.csv
+            const seriesDocsFile = files.find(f => f.name === '_docs.csv' && !f.relativePath?.includes('/'));
+            if (!seriesDocsFile) {
+                summary.issues.push('Missing series-level _docs.csv');
+            } else {
+                try {
+                    const result = await Storage.get(seriesDocsFile.key, {
+                        level: 'public',
+                        download: true
+                    });
+                    
+                    if (result && typeof result === 'object' && result !== null && 'Body' in (result as any)) {
+                        const csvContent = await (result as any).Body.text();
+                        const seriesSubtitleCount = parseCSVSubtitleCount(csvContent);
+                        
+                        // Verify that series total matches sum of season totals
+                        const calculatedTotal = Object.values(summary.seasons).reduce((sum, season) => sum + season.subtitleCount, 0);
+                        if (seriesSubtitleCount !== calculatedTotal) {
+                            summary.issues.push(`Series _docs.csv count (${seriesSubtitleCount}) doesn't match sum of season counts (${calculatedTotal})`);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Error loading series _docs.csv:', error);
+                    summary.issues.push('Could not load series _docs.csv');
+                }
+            }
+
+            return summary;
+        } catch (error) {
+            console.error('Error analyzing data structure:', error);
+            summary.issues.push(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            return summary;
+        }
+    }, [files, id]);
+
+    const handleViewDataSummary = async () => {
+        setLoadingDataSummary(true);
+        try {
+            const summary = await analyzeDataStructure();
+            setDataSummary(summary);
+            setDataSummaryDialogOpen(true);
+        } catch (error) {
+            console.error('Error generating data summary:', error);
+            setError('Failed to generate data summary');
+        } finally {
+            setLoadingDataSummary(false);
+        }
+    };
+
     const renderTreeItems = (nodes: FileNode[], depth: number = 0): React.ReactElement[] => {
         return nodes.map((node) => (
             <TreeNode
@@ -1693,10 +1924,238 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Data Summary Dialog */}
+            <Dialog
+                open={dataSummaryDialogOpen}
+                onClose={() => setDataSummaryDialogOpen(false)}
+                maxWidth="lg"
+                fullWidth
+                aria-labelledby="data-summary-dialog-title"
+            >
+                <DialogTitle id="data-summary-dialog-title">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <AnalyticsIcon />
+                        Data Summary: {dataSummary?.seriesName}
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {dataSummary && (
+                        <Box sx={{ mt: 1 }}>
+                            {/* Summary Statistics */}
+                            <Card sx={{ mb: 3 }}>
+                                <CardContent>
+                                    <Typography variant="h6" gutterBottom>
+                                        Overview
+                                    </Typography>
+                                    <Grid container spacing={3}>
+                                        <Grid item xs={12} sm={6} md={3}>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                                <Typography variant="h4" color="primary">
+                                                    {dataSummary.totalSubtitles.toLocaleString()}
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    Total Subtitles
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid item xs={12} sm={6} md={3}>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                                <Typography variant="h4" color="primary">
+                                                    {Object.keys(dataSummary.seasons).length}
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    Seasons
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid item xs={12} sm={6} md={3}>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                                <Typography variant="h4" color="primary">
+                                                    {Object.values(dataSummary.seasons).reduce((sum, season) => 
+                                                        sum + Object.keys(season.episodes).length, 0
+                                                    )}
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    Episodes
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid item xs={12} sm={6} md={3}>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                                <Typography variant="h4" color={dataSummary.issues.length > 0 ? "error" : "success"}>
+                                                    {dataSummary.issues.length}
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    Issues Found
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
+
+                            {/* Issues Section */}
+                            {dataSummary.issues.length > 0 && (
+                                <Card sx={{ mb: 3 }}>
+                                    <CardContent>
+                                        <Typography variant="h6" gutterBottom color="error">
+                                            Issues Found ({dataSummary.issues.length})
+                                        </Typography>
+                                        <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
+                                            {dataSummary.issues.map((issue, index) => (
+                                                <Alert key={index} severity="warning" sx={{ mb: 1 }}>
+                                                    {issue}
+                                                </Alert>
+                                            ))}
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Detailed Breakdown */}
+                            <Card>
+                                <CardContent>
+                                    <Typography variant="h6" gutterBottom>
+                                        Detailed Breakdown
+                                    </Typography>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell><strong>Season</strong></TableCell>
+                                                    <TableCell><strong>Folder</strong></TableCell>
+                                                    <TableCell><strong>_docs.csv</strong></TableCell>
+                                                    <TableCell><strong>Subtitles</strong></TableCell>
+                                                    <TableCell><strong>Episode</strong></TableCell>
+                                                    <TableCell><strong>Folder</strong></TableCell>
+                                                    <TableCell><strong>_docs.csv</strong></TableCell>
+                                                    <TableCell><strong>Subtitles</strong></TableCell>
+                                                    <TableCell><strong>Videos</strong></TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {Object.entries(dataSummary.seasons)
+                                                    .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                                                    .map(([seasonNumber, seasonData]) => {
+                                                        const episodeEntries = Object.entries(seasonData.episodes)
+                                                            .sort(([a], [b]) => parseInt(a) - parseInt(b));
+                                                        
+                                                        return episodeEntries.length > 0 ? (
+                                                            episodeEntries.map(([episodeNumber, episodeData], episodeIndex) => (
+                                                                <TableRow key={`${seasonNumber}-${episodeNumber}`}>
+                                                                    {episodeIndex === 0 ? (
+                                                                        <>
+                                                                            <TableCell rowSpan={episodeEntries.length}>
+                                                                                Season {seasonNumber}
+                                                                            </TableCell>
+                                                                            <TableCell rowSpan={episodeEntries.length}>
+                                                                                <Chip 
+                                                                                    label={seasonData.folderExists ? "✓" : "✗"} 
+                                                                                    color={seasonData.folderExists ? "success" : "error"}
+                                                                                    size="small"
+                                                                                />
+                                                                            </TableCell>
+                                                                            <TableCell rowSpan={episodeEntries.length}>
+                                                                                <Chip 
+                                                                                    label={seasonData.docsExists ? "✓" : "✗"} 
+                                                                                    color={seasonData.docsExists ? "success" : "error"}
+                                                                                    size="small"
+                                                                                />
+                                                                            </TableCell>
+                                                                            <TableCell rowSpan={episodeEntries.length}>
+                                                                                {seasonData.subtitleCount.toLocaleString()}
+                                                                            </TableCell>
+                                                                        </>
+                                                                    ) : null}
+                                                                    <TableCell>Episode {episodeNumber}</TableCell>
+                                                                    <TableCell>
+                                                                        <Chip 
+                                                                            label={episodeData.folderExists ? "✓" : "✗"} 
+                                                                            color={episodeData.folderExists ? "success" : "error"}
+                                                                            size="small"
+                                                                        />
+                                                                    </TableCell>
+                                                                    <TableCell>
+                                                                        <Chip 
+                                                                            label={episodeData.docsExists ? "✓" : "✗"} 
+                                                                            color={episodeData.docsExists ? "success" : "error"}
+                                                                            size="small"
+                                                                        />
+                                                                    </TableCell>
+                                                                    <TableCell>
+                                                                        {episodeData.subtitleCount.toLocaleString()}
+                                                                    </TableCell>
+                                                                    <TableCell>
+                                                                        <Chip 
+                                                                            label={episodeData.videoFileCount.toString()}
+                                                                            color={episodeData.videoFileCount > 0 ? "success" : "error"}
+                                                                            size="small"
+                                                                        />
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))
+                                                        ) : (
+                                                            <TableRow key={seasonNumber}>
+                                                                <TableCell>Season {seasonNumber}</TableCell>
+                                                                <TableCell>
+                                                                    <Chip 
+                                                                        label={seasonData.folderExists ? "✓" : "✗"} 
+                                                                        color={seasonData.folderExists ? "success" : "error"}
+                                                                        size="small"
+                                                                    />
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Chip 
+                                                                        label={seasonData.docsExists ? "✓" : "✗"} 
+                                                                        color={seasonData.docsExists ? "success" : "error"}
+                                                                        size="small"
+                                                                    />
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {seasonData.subtitleCount.toLocaleString()}
+                                                                </TableCell>
+                                                                <TableCell colSpan={5} sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                                                                    No episodes found
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </CardContent>
+                            </Card>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDataSummaryDialogOpen(false)} color="primary" variant="contained">
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
             
             <Grid container spacing={2} sx={{ minHeight: 0, pb: 2 }}>
                 {/* File Tree */}
                 <Grid item xs={12} lg={4}>
+                    {/* Data Summary Button - only show when srcEditor is true */}
+                    {srcEditor && (
+                        <Box sx={{ mb: 2 }}>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<AnalyticsIcon />}
+                                onClick={handleViewDataSummary}
+                                disabled={loadingDataSummary}
+                                fullWidth
+                                sx={{ textTransform: 'none' }}
+                            >
+                                {loadingDataSummary ? 'Analyzing Data...' : 'View Data Summary'}
+                            </Button>
+                        </Box>
+                    )}
+                    
                     <Paper sx={{ 
                         maxHeight: { xs: '300px', md: '400px' }, 
                         display: 'flex', 
