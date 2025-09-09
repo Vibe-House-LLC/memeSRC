@@ -41,7 +41,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, Check } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -162,7 +162,7 @@ export default function FramePage() {
         },
       });
       
-      setLibrarySnackbarOpen(true);
+      setSavedToLibrary(true);
     } catch (error) {
       console.error('Error saving frame to library:', error);
     } finally {
@@ -218,8 +218,8 @@ export default function FramePage() {
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
-  // Removed collage snackbar state
-  const [librarySnackbarOpen, setLibrarySnackbarOpen] = useState(false);
+  // Inline confirmation for library (no snackbar)
+  const [savedToLibrary, setSavedToLibrary] = useState(false);
   const [savingToLibrary, setSavingToLibrary] = useState(false);
 
 
@@ -233,11 +233,10 @@ export default function FramePage() {
     setSnackBarOpen(false);
   }
 
-  // Removed collage snackbar handler
-
-  const handleLibrarySnackbarClose = () => {
-    setLibrarySnackbarOpen(false);
-  }
+  // Reset saved state when frame/display changes
+  useEffect(() => {
+    setSavedToLibrary(false);
+  }, [displayImage, confirmedCid, season, episode, frame]);
 
   /* ---------------------------- Subtitle Function --------------------------- */
 
@@ -1399,25 +1398,29 @@ useEffect(() => {
                   <Button
                     size="medium"
                     fullWidth
-                    variant="outlined"
+                    variant={savedToLibrary ? 'contained' : 'outlined'}
                     onClick={handleSaveToLibrary}
-                    disabled={!confirmedCid || !displayImage || savingToLibrary}
+                    disabled={!confirmedCid || !displayImage || savingToLibrary || savedToLibrary}
                     sx={{ 
                       mb: 2, 
-                      borderColor: '#FF9800', 
-                      color: '#FF9800',
-                      '&:hover': { 
+                      borderColor: savedToLibrary ? 'transparent' : '#FF9800', 
+                      color: savedToLibrary ? '#111' : '#FF9800',
+                      backgroundColor: savedToLibrary ? '#FF9800' : 'transparent',
+                      '&:hover': savedToLibrary ? {
+                        backgroundColor: '#F57C00'
+                      } : { 
                         borderColor: '#F57C00', 
                         backgroundColor: 'rgba(255, 152, 0, 0.04)' 
                       },
                       '&.Mui-disabled': {
-                        borderColor: '#ccc',
-                        color: '#ccc'
+                        borderColor: savedToLibrary ? '#FF9800' : '#ccc',
+                        color: savedToLibrary ? '#111' : '#ccc',
+                        backgroundColor: savedToLibrary ? '#FF9800' : 'transparent'
                       }
                     }}
-                    startIcon={<Collections />}
+                    startIcon={savingToLibrary ? <CircularProgress size={16} sx={{ color: savedToLibrary ? '#111' : '#FF9800' }} /> : (savedToLibrary ? <Check /> : <Collections />)}
                   >
-                    {savingToLibrary ? 'Saving...' : 'Save to Library'}
+                    {savingToLibrary ? 'Saving…' : (savedToLibrary ? 'Saved to Library' : 'Save to Library')}
                   </Button>
                 </>
               )}
@@ -1547,18 +1550,7 @@ useEffect(() => {
             </Alert>
           </Snackbar>
 
-          {/* Removed collage snackbar */}
-
-          <Snackbar
-            open={librarySnackbarOpen}
-            autoHideDuration={3000}
-            onClose={handleLibrarySnackbarClose}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <Alert onClose={handleLibrarySnackbarClose} severity="success" sx={{ width: '100%' }}>
-              Frame saved to library!
-            </Alert>
-          </Snackbar>
+          {/* Inline confirmation replaces library snackbar */}
 
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
