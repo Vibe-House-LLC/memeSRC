@@ -14,26 +14,18 @@ const navConfig = [
     adminOnly: false,
     items: [
       {
+        title: 'search',
+        path: '/search',
+        externalLink: false,
+        icon: <Search />,
+      },
+      {
         title: 'collage',
         path: '/collage',
         externalLink: false,
         icon: <PhotoLibrary />,
         chipText: 'UPDATED',
         chipColor: 'info',
-      },
-      {
-        title: 'Favorites',
-        path: '/favorites',
-        externalLink: false,
-        // chipText: 'Pro',
-        chipColor: 'info',
-        icon: <Star />
-      },
-      {
-        title: 'search',
-        path: '/search',
-        externalLink: false,
-        icon: <Search />,
       },
       {
         title: 'edit',
@@ -47,6 +39,24 @@ const navConfig = [
         externalLink: false,
         icon: <Settings />
       }] : [])
+    ]
+  },
+  {
+    sectionTitle: 'Personal',
+    adminOnly: false,
+    items: [
+      {
+        title: 'Library',
+        path: '/library',
+        externalLink: false,
+        icon: <Collections />,
+      },
+      {
+        title: 'Favorites',
+        path: '/favorites',
+        externalLink: false,
+        icon: <Star />
+      },
     ]
   },
   {
@@ -110,12 +120,6 @@ const navConfig = [
     sectionTitle: 'Admin',
     adminOnly: true,
     items: [
-      {
-        title: 'Library',
-        path: '/library',
-        externalLink: false,
-        icon: <Collections />,
-      },
       {
         title: 'dashboard',
         path: '/dashboard/app',
