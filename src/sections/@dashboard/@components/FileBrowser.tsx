@@ -342,6 +342,18 @@ const encodeBase64Safe = (str: string): string => {
     }
 };
 
+// Normalize text for tolerant searching: lowercased, no diacritics, punctuation removed, collapsed whitespace
+const normalizeForSearch = (input: string): string => {
+    if (!input) return '';
+    const withoutDiacritics = input
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    // Keep only alphanumeric characters for matching (removes punctuation and spaces)
+    return withoutDiacritics.replace(/[^a-z0-9]/gi, '');
+};
+
 const getFileIcon = (filename: string, isDirectory: boolean) => {
     if (isDirectory) return <FolderIcon color="primary" />;
     
@@ -1284,6 +1296,9 @@ const CsvViewer: React.FC<{
         const searchIndices = [0]; // Always include header
         let foundCount = 0;
         
+        // Use normalized query for tolerant matching in the CSV viewer too
+        const normalizedCsvQuery = normalizeForSearch(debouncedSearchTerm);
+
         for (let i = 1; i < Math.min(csvLines.length, maxSearchRows) && foundCount < ROWS_PER_PAGE; i++) {
             const line = csvLines[i];
             if (!line || line.trim().length === 0) continue;
@@ -1293,13 +1308,13 @@ const CsvViewer: React.FC<{
                 const columnName = headers[cellIndex];
                 const shouldDecode = base64Columns.includes(columnName);
                 
-                // Search in both original and decoded values
-                const originalMatch = cell.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+                // Search in both original and decoded values using tolerant matching
+                const originalMatch = normalizeForSearch(cell).includes(normalizedCsvQuery);
                 if (originalMatch) return true;
                 
                 if (shouldDecode && isBase64(cell)) {
                     const decodedValue = decodeBase64Safe(cell);
-                    return decodedValue.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+                    return normalizeForSearch(decodedValue).includes(normalizedCsvQuery);
                 }
                 return false;
             });
@@ -2449,6 +2464,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
 
         try {
             console.log(`🔍 Manual search for: "${searchQuery}" (limiting to 5 results)`);
+            const normalizedQuery = normalizeForSearch(searchQuery);
+            if (!normalizedQuery) {
+                return searchResults;
+            }
             
             // Find all episode CSV files
             const episodeCsvFiles: { [episodeKey: string]: FileItem } = {};
@@ -2505,8 +2524,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                                         subtitleText = decodeBase64Safe(subtitleText);
                                     }
                                     
-                                    // Check if subtitle text contains the search query (case-insensitive)
-                                    if (subtitleText.toLowerCase().includes(searchQuery.toLowerCase())) {
+                                    // Check if normalized subtitle text contains the normalized search query
+                                    if (normalizeForSearch(subtitleText).includes(normalizedQuery)) {
                                         matchingSubtitles.push({
                                             season: fields[0],
                                             episode: fields[1],
