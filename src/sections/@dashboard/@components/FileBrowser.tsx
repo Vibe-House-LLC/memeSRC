@@ -47,7 +47,8 @@ import {
     Save as SaveIcon,
     Cancel as CancelIcon,
     Palette as PaletteIcon,
-    Analytics as AnalyticsIcon
+    Analytics as AnalyticsIcon,
+    Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { ChromePicker } from 'react-color';
@@ -99,6 +100,30 @@ interface DataSummary {
         };
     };
     issues: string[];
+}
+
+interface SubtitleEntry {
+    season: string;
+    episode: string;
+    subtitleIndex: string;
+    subtitleText: string;
+    subtitleStart: string;
+    subtitleEnd: string;
+}
+
+interface SpotCheckItem {
+    subtitle: SubtitleEntry;
+    videoFile: string;
+    videoTimestamp: number;
+    episodePath: string;
+    contextSubtitles?: {
+        before: SubtitleEntry[];
+        after: SubtitleEntry[];
+    };
+}
+
+interface SpotCheckData {
+    [episodeKey: string]: SpotCheckItem[];
 }
 
 interface FileBrowserProps {
@@ -924,7 +949,256 @@ const CsvCellDisplay: React.FC<{
     return <>{cell}</>;
 });
 
-    const CsvViewer: React.FC<{ 
+    // Spot Check Video Player Component
+const SpotCheckVideoPlayer: React.FC<{
+    item: SpotCheckItem;
+    fullPath: string;
+    index: number;
+    files: FileItem[];
+}> = ({ item, fullPath, index, files }) => {
+    const [videoUrl, setVideoUrl] = useState<string>('');
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    // Helper function to parse subtitle timing (local copy)
+    const parseSubtitleTime = (timeStr: string): number => {
+        try {
+            // Handle different time formats
+            if (timeStr.includes(':')) {
+                // Format: HH:MM:SS.mmm or MM:SS.mmm
+                const parts = timeStr.split(':');
+                let seconds = 0;
+                
+                if (parts.length === 3) {
+                    // HH:MM:SS.mmm
+                    seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
+                } else if (parts.length === 2) {
+                    // MM:SS.mmm
+                    seconds = parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+                }
+                
+                return seconds;
+            } else {
+                // Assume it's already in seconds
+                return parseFloat(timeStr);
+            }
+        } catch (error) {
+            console.warn('Error parsing subtitle time:', timeStr, error);
+            return 0;
+        }
+    };
+
+    // Calculate subtitle duration and loop boundaries
+    // Note: item.videoTimestamp is already episode-relative from the spot check generation
+    const subtitleStartTime = parseSubtitleTime(item.subtitle.subtitleStart);
+    const subtitleEndTime = parseSubtitleTime(item.subtitle.subtitleEnd);
+    const subtitleDuration = subtitleEndTime - subtitleStartTime;
+    
+    // Add some padding before and after the subtitle for context
+    const PADDING_SECONDS = 1.0;
+    const loopStart = Math.max(0, item.videoTimestamp - PADDING_SECONDS);
+    const loopEnd = Math.min(25, item.videoTimestamp + subtitleDuration + PADDING_SECONDS); // 25s is max video length
+
+    // Load video URL when component mounts
+    useEffect(() => {
+        const loadVideo = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                
+                // Find the actual video file in the files array - EXACTLY like the file browser does
+                const targetRelativePath = `${item.episodePath}/${item.videoFile}`;
+                console.log(`🔍 Searching for video file with relativePath: "${targetRelativePath}"`);
+                console.log(`📁 Episode path: "${item.episodePath}", Video file: "${item.videoFile}"`);
+                
+                const videoFileItem = files.find(f => 
+                    f.relativePath === targetRelativePath && 
+                    f.extension === 'mp4'
+                );
+                
+                if (!videoFileItem) {
+                    console.error('❌ Video file not found in files array');
+                    console.error('Looking for relativePath:', `"${targetRelativePath}"`);
+                    console.error('Available files in episode:', files.filter(f => 
+                        f.relativePath?.startsWith(item.episodePath + '/')
+                    ).map(f => ({ name: f.name, relativePath: f.relativePath, key: f.key, extension: f.extension })));
+                    console.error('All video files:', files.filter(f => f.extension === 'mp4').map(f => ({ name: f.name, relativePath: f.relativePath, key: f.key })));
+                    throw new Error(`Video file ${item.videoFile} not found in ${item.episodePath}`);
+                }
+                
+                console.log(`\n🎥 VIDEO LOADING FOR SAMPLE #${index + 1}:`);
+                console.log(`   Subtitle: "${item.subtitle.subtitleText.substring(0, 50)}..."`);
+                console.log(`   Season: ${item.subtitle.season}, Episode: ${item.subtitle.episode}`);
+                console.log(`   Episode path: ${item.episodePath}`);
+                console.log(`   Video file: ${item.videoFile}`);
+                console.log(`   Target relativePath: ${targetRelativePath}`);
+                console.log(`   Found video file:`, videoFileItem);
+                console.log(`   File key: ${videoFileItem.key}`);
+                console.log(`   Video timestamp: ${item.videoTimestamp.toFixed(2)}s`);
+                console.log(`   Loop range: ${loopStart.toFixed(2)}s - ${loopEnd.toFixed(2)}s (subtitle duration: ${subtitleDuration.toFixed(2)}s)`);
+                
+                // Use EXACTLY the same method as the existing file browser loadFileContent function
+                const url = await Storage.get(videoFileItem.key, {
+                    level: 'public',
+                    expires: 3600
+                });
+                
+                console.log(`✅ Video URL generated:`, url);
+                setVideoUrl(url);
+            } catch (err) {
+                console.error('❌ Error loading video:', err);
+                console.error('Video path attempted:', `${item.episodePath}/${item.videoFile}`);
+                setError(`Failed to load video: ${item.videoFile} (${err instanceof Error ? err.message : 'Unknown error'})`);
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        loadVideo();
+    }, [item, fullPath, files, loopStart, loopEnd, subtitleDuration]);
+
+    // Set video to correct timestamp and start looping when loaded
+    const handleVideoLoaded = () => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = loopStart;
+            videoRef.current.play().catch(err => {
+                console.warn('Autoplay failed:', err);
+            });
+            console.log(`⏰ Set video ${item.videoFile} to loop start: ${loopStart.toFixed(2)}s`);
+        }
+    };
+
+    // Handle time updates to create looping effect
+    const handleTimeUpdate = () => {
+        if (videoRef.current && videoRef.current.currentTime >= loopEnd) {
+            videoRef.current.currentTime = loopStart;
+            console.log(`🔄 Looping video back to ${loopStart.toFixed(2)}s`);
+        }
+    };
+
+    if (loading) {
+        return (
+            <Card sx={{ mb: 2 }}>
+                <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <CircularProgress size={20} />
+                        <Typography>Loading video {item.videoFile}...</Typography>
+                    </Box>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (error) {
+        return (
+            <Card sx={{ mb: 2 }}>
+                <CardContent>
+                    <Alert severity="error">
+                        <Typography variant="subtitle2" gutterBottom>
+                            Sample #{index + 1} - Video Loading Failed
+                        </Typography>
+                        <Typography variant="body2">
+                            {error}
+                        </Typography>
+                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                            Expected path: {fullPath}/{item.episodePath}/{item.videoFile}
+                        </Typography>
+                        <Paper sx={{ p: 1, mt: 1, backgroundColor: 'background.default' }}>
+                            <Typography variant="caption" sx={{ fontStyle: 'italic' }}>
+                                Subtitle: "{item.subtitle.subtitleText}"
+                            </Typography>
+                        </Paper>
+                    </Alert>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    return (
+        <Card sx={{ mb: 2 }}>
+            <CardContent>
+                <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                        <Box>
+                            <Typography variant="subtitle1" gutterBottom>
+                                Sample #{index + 1} - Video: {item.videoFile}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                Timestamp: {item.videoTimestamp.toFixed(2)}s | 
+                                Start: {item.subtitle.subtitleStart} | 
+                                End: {item.subtitle.subtitleEnd}
+                            </Typography>
+                            
+                            {/* Context Subtitles */}
+                            <Box sx={{ mb: 2 }}>
+                                {/* Before subtitles */}
+                                {item.contextSubtitles?.before.map((beforeSub, idx) => (
+                                    <Paper key={`before-${idx}`} sx={{ p: 1, mb: 0.5, backgroundColor: 'action.hover', opacity: 0.7 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {beforeSub.subtitleStart} - {beforeSub.subtitleEnd}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                                            "{beforeSub.subtitleText}"
+                                        </Typography>
+                                    </Paper>
+                                ))}
+                                
+                                {/* Current subtitle - highlighted */}
+                                <Paper sx={{ p: 2, backgroundColor: 'primary.light', border: 2, borderColor: 'primary.main' }}>
+                                    <Typography variant="caption" color="primary.contrastText" sx={{ fontWeight: 'bold' }}>
+                                        TARGET: {item.subtitle.subtitleStart} - {item.subtitle.subtitleEnd}
+                                    </Typography>
+                                    <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'primary.contrastText', fontWeight: 'bold' }}>
+                                        "{item.subtitle.subtitleText}"
+                                    </Typography>
+                                </Paper>
+                                
+                                {/* After subtitles */}
+                                {item.contextSubtitles?.after.map((afterSub, idx) => (
+                                    <Paper key={`after-${idx}`} sx={{ p: 1, mt: 0.5, backgroundColor: 'action.hover', opacity: 0.7 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {afterSub.subtitleStart} - {afterSub.subtitleEnd}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                                            "{afterSub.subtitleText}"
+                                        </Typography>
+                                    </Paper>
+                                ))}
+                            </Box>
+                        </Box>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <Box>
+                            <Typography variant="subtitle2" gutterBottom>
+                                Video Preview
+                            </Typography>
+                                            <VideoPlayer
+                                                ref={videoRef}
+                                                key={`${item.episodePath}-${item.videoFile}-${index}`}
+                                                controls
+                                                autoPlay
+                                                muted
+                                                onLoadedData={handleVideoLoaded}
+                                                onTimeUpdate={handleTimeUpdate}
+                                                style={{ width: '100%', maxHeight: '200px' }}
+                                            >
+                                                <source src={videoUrl} type="video/mp4" />
+                                                Your browser does not support the video tag.
+                                            </VideoPlayer>
+                                            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                                                Looping: {loopStart.toFixed(2)}s - {loopEnd.toFixed(2)}s 
+                                                (Subtitle at {item.videoTimestamp.toFixed(2)}s)
+                                            </Typography>
+                        </Box>
+                    </Grid>
+                </Grid>
+            </CardContent>
+        </Card>
+    );
+};
+
+const CsvViewer: React.FC<{ 
     content: string; 
     filename: string; 
     onSave: (content: string) => void;
@@ -1374,6 +1648,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     const [dataSummaryDialogOpen, setDataSummaryDialogOpen] = useState<boolean>(false);
     const [dataSummary, setDataSummary] = useState<DataSummary | null>(null);
     const [loadingDataSummary, setLoadingDataSummary] = useState<boolean>(false);
+    const [spotCheckDialogOpen, setSpotCheckDialogOpen] = useState<boolean>(false);
+    const [spotCheckData, setSpotCheckData] = useState<SpotCheckData | null>(null);
+    const [loadingSpotCheck, setLoadingSpotCheck] = useState<boolean>(false);
 
     const fullPath = `${pathPrefix}/${id}`;
 
@@ -1914,6 +2191,249 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
         }
     };
 
+    // Helper function to parse subtitle timing (assumes format like "00:01:23.456" or seconds)
+    const parseSubtitleTime = (timeStr: string): number => {
+        try {
+            // Handle different time formats
+            if (timeStr.includes(':')) {
+                // Format: HH:MM:SS.mmm or MM:SS.mmm
+                const parts = timeStr.split(':');
+                let seconds = 0;
+                
+                if (parts.length === 3) {
+                    // HH:MM:SS.mmm
+                    seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
+                } else if (parts.length === 2) {
+                    // MM:SS.mmm
+                    seconds = parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+                }
+                
+                return seconds;
+            } else {
+                // Assume it's already in seconds
+                return parseFloat(timeStr);
+            }
+        } catch (error) {
+            console.warn('Error parsing subtitle time:', timeStr, error);
+            return 0;
+        }
+    };
+
+    // Function to calculate which video file and timestamp for a given subtitle time
+    const calculateVideoLocation = (subtitleStartTime: number): { videoIndex: number; videoTimestamp: number } => {
+        const FPS = 10;
+        const FRAMES_PER_VIDEO = 250; // 25 seconds × 10 fps
+        
+        // Convert time to frame number
+        const frameNumber = Math.floor(subtitleStartTime * FPS);
+        
+        // Calculate which video contains this frame
+        const videoIndex = Math.floor(frameNumber / FRAMES_PER_VIDEO);
+        
+        // Calculate timestamp within that video
+        const frameWithinVideo = frameNumber % FRAMES_PER_VIDEO;
+        const videoTimestamp = frameWithinVideo / FPS;
+        
+        return { videoIndex, videoTimestamp };
+    };
+
+    // Function to generate spot check data
+    const generateSpotCheckData = useCallback(async (): Promise<SpotCheckData> => {
+        const spotCheckData: SpotCheckData = {};
+        
+        try {
+            console.log('🎯 Generating spot check data...');
+            
+            // Find all episode CSV files
+            const episodeCsvFiles: { [episodeKey: string]: FileItem } = {};
+            
+            files.forEach(file => {
+                const pathParts = (file.relativePath || '').split('/').filter(p => p.length > 0);
+                
+                if (pathParts.length === 3 && file.name === '_docs.csv') {
+                    // This is an episode CSV (season/episode/_docs.csv)
+                    const seasonMatch = pathParts[0].match(/^(\d+)$/);
+                    const episodeMatch = pathParts[1].match(/^(\d+)$/);
+                    
+                    if (seasonMatch && episodeMatch) {
+                        const episodeKey = `S${seasonMatch[1]}E${episodeMatch[1]}`;
+                        episodeCsvFiles[episodeKey] = file;
+                    }
+                }
+            });
+
+            console.log(`📂 Found ${Object.keys(episodeCsvFiles).length} episode CSV files`);
+
+            // Process each episode
+            for (const [episodeKey, csvFile] of Object.entries(episodeCsvFiles)) {
+                try {
+                    console.log(`\n🔍 PROCESSING ${episodeKey}:`);
+                    console.log(`   CSV file: ${csvFile.key}`);
+                    console.log(`   CSV relativePath: ${csvFile.relativePath}`);
+                    
+                    // Load the CSV content
+                    const result = await Storage.get(csvFile.key, {
+                        level: 'public',
+                        download: true
+                    });
+                    
+                    if (result && typeof result === 'object' && result !== null && 'Body' in (result as any)) {
+                        const csvContent = await (result as any).Body.text();
+                        const lines = csvContent.split('\n').filter(line => line.trim().length > 0);
+                        
+                        // Parse subtitle entries (skip header)
+                        const subtitles: SubtitleEntry[] = [];
+                        for (let i = 1; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (line) {
+                                const fields = line.split(',').map(field => field.trim().replace(/^"|"$/g, ''));
+                                
+                                if (fields.length >= 6) {
+                                    // Decode subtitle text if it's base64 encoded
+                                    let subtitleText = fields[3];
+                                    if (isBase64(subtitleText)) {
+                                        subtitleText = decodeBase64Safe(subtitleText);
+                                    }
+                                    
+                                    subtitles.push({
+                                        season: fields[0],
+                                        episode: fields[1],
+                                        subtitleIndex: fields[2],
+                                        subtitleText: subtitleText,
+                                        subtitleStart: fields[4],
+                                        subtitleEnd: fields[5]
+                                    });
+                                }
+                            }
+                        }
+                        
+                        console.log(`📝 Found ${subtitles.length} subtitles in ${episodeKey}`);
+                        
+                        // Select 5 random subtitles
+                        const selectedSubtitles: SubtitleEntry[] = [];
+                        if (subtitles.length > 0) {
+                            const shuffled = [...subtitles].sort(() => 0.5 - Math.random());
+                            selectedSubtitles.push(...shuffled.slice(0, Math.min(5, subtitles.length)));
+                        }
+                        
+                        // Create spot check items for selected subtitles
+                        const spotCheckItems: SpotCheckItem[] = [];
+                        const pathParts = csvFile.relativePath?.split('/') || [];
+                        const seasonNumber = pathParts[0];
+                        const episodeNumber = pathParts[1];
+                        const episodePath = `${seasonNumber}/${episodeNumber}`;
+                        
+                        console.log(`📁 Episode path construction:`);
+                        console.log(`   CSV relativePath: "${csvFile.relativePath}"`);
+                        console.log(`   Path parts: [${pathParts.map(p => `"${p}"`).join(', ')}]`);
+                        console.log(`   Season: "${seasonNumber}", Episode: "${episodeNumber}"`);
+                        console.log(`   Constructed episode path: "${episodePath}"`);
+                        
+                        // Check what video files exist in this episode
+                        const episodeVideoFiles = files.filter(f => 
+                            f.relativePath?.startsWith(episodePath + '/') && 
+                            f.extension === 'mp4'
+                        ).map(f => f.name);
+                        console.log(`🎬 Available video files in ${episodePath}:`, episodeVideoFiles);
+                        
+                        // Calculate episode-relative timing by finding the earliest subtitle time in this episode
+                        const episodeStartTime = Math.min(...subtitles.map(s => parseSubtitleTime(s.subtitleStart)));
+                        console.log(`📅 Episode ${episodeKey} starts at ${episodeStartTime.toFixed(2)}s (earliest subtitle)`);
+
+                        // Sort subtitles by start time for context extraction
+                        const sortedSubtitles = [...subtitles].sort((a, b) => 
+                            parseSubtitleTime(a.subtitleStart) - parseSubtitleTime(b.subtitleStart)
+                        );
+
+                        for (const subtitle of selectedSubtitles) {
+                            const absoluteStartTime = parseSubtitleTime(subtitle.subtitleStart);
+                            // Convert to episode-relative time by subtracting the episode start time
+                            const episodeRelativeTime = absoluteStartTime - episodeStartTime;
+                            
+                            // SIMPLE: Use subtitleStart directly as the frame number
+                            const startFrame = parseInt(subtitle.subtitleStart);
+                            
+                            // SIMPLE: Which video file (0-based since files are 0.mp4, 1.mp4, etc.)
+                            const videoFileNumber = Math.floor(startFrame / 250);
+                            const videoFile = `${videoFileNumber}.mp4`;
+                            
+                            // SIMPLE: Calculate timestamp within that video
+                            const frameWithinVideo = startFrame % 250;
+                            const videoTimestamp = frameWithinVideo / 10;
+                            
+                            console.log(`\n📊 SUBTITLE ANALYSIS:`);
+                            console.log(`   Text: "${subtitle.subtitleText.substring(0, 50)}..."`);
+                            console.log(`   Season: ${subtitle.season}, Episode: ${subtitle.episode}`);
+                            console.log(`   Subtitle Index: "${subtitle.subtitleIndex}" (type: ${typeof subtitle.subtitleIndex})`);
+                            console.log(`   Absolute time: ${subtitle.subtitleStart} (${absoluteStartTime.toFixed(2)}s)`);
+                            console.log(`   Episode start: ${episodeStartTime.toFixed(2)}s`);
+                            console.log(`   Episode relative: ${episodeRelativeTime.toFixed(2)}s`);
+                            console.log(`   Start frame: ${startFrame} (from subtitleStart: "${subtitle.subtitleStart}")`);
+                            console.log(`   Video file: ⌊${startFrame} / 250⌋ = ${videoFileNumber} → ${videoFile}`);
+                            console.log(`   Frame within video: ${startFrame} % 250 = ${frameWithinVideo}`);
+                            console.log(`   Timestamp: ${frameWithinVideo} / 10 = ${videoTimestamp.toFixed(1)}s`);
+                            console.log(`   Final result: ${videoFile} @ ${videoTimestamp.toFixed(1)}s`);
+                            console.log(`   Episode path: ${episodePath}`);
+                            
+                            // Only add if the video file exists and episode relative time is valid
+                            if (episodeRelativeTime >= 0 && episodeVideoFiles.includes(videoFile)) {
+                                // Find context subtitles (2 before and 2 after)
+                                const currentIndex = sortedSubtitles.findIndex(s => 
+                                    s.subtitleIndex === subtitle.subtitleIndex && 
+                                    s.subtitleStart === subtitle.subtitleStart
+                                );
+                                
+                                const contextSubtitles = {
+                                    before: currentIndex >= 0 ? sortedSubtitles.slice(Math.max(0, currentIndex - 2), currentIndex) : [],
+                                    after: currentIndex >= 0 ? sortedSubtitles.slice(currentIndex + 1, currentIndex + 3) : []
+                                };
+
+                                spotCheckItems.push({
+                                    subtitle,
+                                    videoFile,
+                                    videoTimestamp,
+                                    episodePath,
+                                    contextSubtitles
+                                });
+                                console.log(`✅ Video ${videoFile} exists, added to spot check with ${contextSubtitles.before.length} before + ${contextSubtitles.after.length} after`);
+                            } else if (episodeRelativeTime < 0) {
+                                console.warn(`⚠️ Episode relative time is negative (${episodeRelativeTime.toFixed(2)}s), skipping subtitle`);
+                            } else {
+                                console.warn(`⚠️ Video ${videoFile} not found, skipping subtitle`);
+                            }
+                        }
+                        
+                        spotCheckData[episodeKey] = spotCheckItems;
+                        console.log(`✅ Generated ${spotCheckItems.length} spot check items for ${episodeKey}`);
+                    }
+                } catch (error) {
+                    console.warn(`Error processing ${episodeKey}:`, error);
+                }
+            }
+            
+            console.log(`🎉 Spot check data generation complete! ${Object.keys(spotCheckData).length} episodes processed`);
+            return spotCheckData;
+            
+        } catch (error) {
+            console.error('Error generating spot check data:', error);
+            return {};
+        }
+    }, [files]);
+
+    const handleSpotCheck = async () => {
+        setLoadingSpotCheck(true);
+        try {
+            const data = await generateSpotCheckData();
+            setSpotCheckData(data);
+            setSpotCheckDialogOpen(true);
+        } catch (error) {
+            console.error('Error performing spot check:', error);
+            setError('Failed to generate spot check data');
+        } finally {
+            setLoadingSpotCheck(false);
+        }
+    };
+
     const renderTreeItems = (nodes: FileNode[], depth: number = 0): React.ReactElement[] => {
         return nodes.map((node) => (
             <TreeNode
@@ -2309,23 +2829,83 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Spot Check Dialog */}
+            <Dialog
+                open={spotCheckDialogOpen}
+                onClose={() => setSpotCheckDialogOpen(false)}
+                maxWidth="xl"
+                fullWidth
+                aria-labelledby="spot-check-dialog-title"
+            >
+                <DialogTitle id="spot-check-dialog-title">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <VisibilityIcon />
+                        Spot Check: Random Subtitle Samples
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {spotCheckData && (
+                        <Box sx={{ mt: 1 }}>
+                            {Object.entries(spotCheckData).map(([episodeKey, items]) => (
+                                <Card key={episodeKey} sx={{ mb: 3 }}>
+                                    <CardContent>
+                                        <Typography variant="h6" gutterBottom>
+                                            {episodeKey} - {items.length} Random Samples
+                                        </Typography>
+                                        
+                                        <Grid container spacing={2}>
+                                            {items.map((item, index) => (
+                                                <Grid item xs={12} key={index}>
+                                                    <SpotCheckVideoPlayer
+                                                        item={item}
+                                                        fullPath={fullPath}
+                                                        index={index}
+                                                        files={files}
+                                                    />
+                                                </Grid>
+                                            ))}
+                                        </Grid>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setSpotCheckDialogOpen(false)} color="primary" variant="contained">
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
             
             <Grid container spacing={2} sx={{ minHeight: 0, pb: 2 }}>
                 {/* File Tree */}
                 <Grid item xs={12} lg={4}>
-                    {/* Data Summary Button - only show when srcEditor is true */}
+                    {/* Data Summary and Spot Check Buttons - only show when srcEditor is true */}
                     {srcEditor && (
-                        <Box sx={{ mb: 2 }}>
+                        <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
                             <Button
                                 variant="contained"
                                 color="primary"
                                 startIcon={<AnalyticsIcon />}
                                 onClick={handleViewDataSummary}
-                                disabled={loadingDataSummary}
+                                disabled={loadingDataSummary || loadingSpotCheck}
                                 fullWidth
                                 sx={{ textTransform: 'none' }}
                             >
                                 {loadingDataSummary ? 'Analyzing Data...' : 'View Data Summary'}
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="secondary"
+                                startIcon={<VisibilityIcon />}
+                                onClick={handleSpotCheck}
+                                disabled={loadingSpotCheck || loadingDataSummary}
+                                fullWidth
+                                sx={{ textTransform: 'none' }}
+                            >
+                                {loadingSpotCheck ? 'Generating Samples...' : 'Spot Check'}
                             </Button>
                         </Box>
                     )}
