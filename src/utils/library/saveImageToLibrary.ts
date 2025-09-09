@@ -29,7 +29,7 @@ function generateKey(filename: string | null, blob: Blob): string {
 export async function saveImageToLibrary(
   input: Blob | string,
   filename: string | null = null,
-  { level = 'protected', metadata }: { level?: string; metadata?: Record<string, any> } = {}
+  { level = 'private', metadata }: { level?: string; metadata?: Record<string, any> } = {}
 ): Promise<string> {
   let blob: Blob;
   if (typeof input === 'string') {

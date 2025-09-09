@@ -1,7 +1,7 @@
 import { Storage } from 'aws-amplify';
 
 // Default storage level for library
-const DEFAULT_LEVEL = 'protected';
+const DEFAULT_LEVEL = 'private';
 
 type ListItem = { key: string; lastModified: string; size: number };
 

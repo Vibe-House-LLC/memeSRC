@@ -30,7 +30,7 @@ export default function LibraryPage() {
       <Box sx={{ mt: 2 }}>
         <LibraryBrowser
           multiple
-          storageLevel="protected"
+          storageLevel="private"
           uploadEnabled
           deleteEnabled
           onSelect={() => {}}

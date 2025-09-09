@@ -107,7 +107,7 @@ export default function MagicPage() {
       const originalUrl = await toDataUrl(uploadBlob);
       const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
       const displayUrl = await toDataUrl(editorBlob);
-      const libraryKey = await saveImageToLibrary(src, 'magic-edit.jpg', { level: 'protected', metadata: { source: 'magic-editor' } });
+      const libraryKey = await saveImageToLibrary(src, 'magic-edit.jpg', { level: 'private', metadata: { source: 'magic-editor' } });
       navigate(returnTo, {
         replace: false,
         state: {
@@ -127,7 +127,7 @@ export default function MagicPage() {
     const libKey: string | undefined = (first as any)?.metadata?.libraryKey;
     if (libKey) {
       try {
-        const blob: Blob = await getFromLibrary(libKey, { level: 'protected' });
+        const blob: Blob = await getFromLibrary(libKey, { level: 'private' });
         const dataUrl = await blobToDataUrl(blob);
         setChosen(dataUrl);
         setCurrentSrc(dataUrl);

@@ -29,7 +29,7 @@ export default function LibraryBrowser({
   onError,
   uploadEnabled = true,
   deleteEnabled = true,
-  storageLevel = 'protected',
+  storageLevel = 'private',
   refreshTrigger,
   sx,
   instantSelectOnClick = false,

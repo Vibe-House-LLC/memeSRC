@@ -225,7 +225,7 @@ const CollagePreview = ({
       const getOriginalSrc = async () => {
         let src = imageObj.originalUrl || imageObj.displayUrl;
         if (libKey) {
-          try { const blob = await getFromLibrary(libKey, { level: 'protected' }); src = await blobToDataUrl(blob); } catch (_) {}
+          try { const blob = await getFromLibrary(libKey, { level: 'private' }); src = await blobToDataUrl(blob); } catch (_) {}
         }
         return src;
       };
@@ -240,7 +240,7 @@ const CollagePreview = ({
       const ensureImageElement = async () => {
         try {
           let blob = null;
-          if (libKey) { try { blob = await getFromLibrary(libKey, { level: 'protected' }); } catch (_) {} }
+          if (libKey) { try { blob = await getFromLibrary(libKey, { level: 'private' }); } catch (_) {} }
           const src = blob ? URL.createObjectURL(blob) : (imageObj.originalUrl || imageObj.displayUrl);
           return await new Promise((resolve, reject) => {
             const img = new Image(); img.crossOrigin = 'anonymous';

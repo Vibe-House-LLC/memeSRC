@@ -4,7 +4,7 @@ import { Box, Dialog, IconButton, Typography, useMediaQuery, Button, Popover, Te
 import { Delete, Close, KeyboardArrowLeft, KeyboardArrowRight, CheckCircle, CheckCircleOutline, Info, MoreHoriz } from '@mui/icons-material';
 import { getMetadataForKey, putMetadataForKey } from '../../utils/library/metadata';
 
-export default function PreviewDialog({ open, onClose, imageUrl, imageKey, storageLevel = 'protected', onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected, footerMode = 'default', title = 'Image Preview', ctaLabel, onCta, showInfo = true }) {
+export default function PreviewDialog({ open, onClose, imageUrl, imageKey, storageLevel = 'private', onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected, footerMode = 'default', title = 'Image Preview', ctaLabel, onCta, showInfo = true }) {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const [infoAnchor, setInfoAnchor] = useState(null);
   const [meta, setMeta] = useState({ tags: [], description: '', defaultCaption: '' });

@@ -3,7 +3,7 @@ import { getUrl, list, put, remove } from '../../utils/library/storage';
 import { resizeImage } from '../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
 
-export default function useLibraryData({ pageSize = 10, storageLevel = 'protected', refreshToken = null } = {}) {
+export default function useLibraryData({ pageSize = 10, storageLevel = 'private', refreshToken = null } = {}) {
   const [items, setItems] = useState([]); // { key, url }
   const [allKeys, setAllKeys] = useState([]); // full list for paging: { key, lastModified, size }
   const [loading, setLoading] = useState(false);
@@ -172,7 +172,21 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'protecte
   }, [createPlaceholder, performUpload]);
 
   const removeItem = useCallback(async (key) => {
-    await remove(key, { level: storageLevel });
+    try {
+      await remove(key, { level: storageLevel });
+    } catch (err) {
+      try {
+        const message = String(err?.message || '');
+        if (message.includes('403')) {
+          const altLevel = storageLevel === 'private' ? 'protected' : 'private';
+          await remove(key, { level: altLevel });
+        } else {
+          throw err;
+        }
+      } catch (err2) {
+        throw err2;
+      }
+    }
     setItems((prev) => prev.filter((i) => i.key !== key));
     setAllKeys((prev) => prev.filter((i) => i.key !== key));
   }, [storageLevel]);

@@ -54,7 +54,7 @@ export default function ProjectsPage() {
           for (let idx = wi; idx < missing.length; idx += pool) {
             const k = missing[idx];
             try {
-              const meta = await getMetadataForKey(k, { level: 'protected' });
+              const meta = await getMetadataForKey(k, { level: 'private' });
               if (!cancelled) setMetaByKey((prev) => (prev[k] ? prev : { ...prev, [k]: meta }));
             } catch (_) {
               if (!cancelled) setMetaByKey((prev) => (prev[k] ? prev : { ...prev, [k]: { ...DEFAULT_LIBRARY_METADATA } }));

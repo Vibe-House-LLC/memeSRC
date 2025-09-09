@@ -146,6 +146,7 @@ export default function FramePage() {
       
       // Convert canvas to Blob (prefer toBlob and pass Blob to library saver)
       const blob = await new Promise((resolve) => offScreenCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+      if (!blob) throw new Error('Failed to create image blob');
       
       // Generate filename
       const showTitleSafe = (showTitle || frameData?.showTitle || 'frame').replace(/[^a-zA-Z0-9]/g, '-');
@@ -155,7 +156,7 @@ export default function FramePage() {
       const showName = (showTitle || frameData?.showTitle || '').toString();
       const defaultCaption = (loadedSubtitle || '').toString();
       await saveImageToLibrary(blob, filename, {
-        level: 'protected',
+        level: 'private',
         metadata: {
           tags: showName ? [showName] : [],
           description: '',
