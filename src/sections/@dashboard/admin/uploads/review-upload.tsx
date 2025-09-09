@@ -155,8 +155,8 @@ export default function AdminReviewUpload({
 
     // Check if alias has changed from saved value
     const hasAliasChanged = pendingAlias !== savedAlias;
-    const isAliasSaved = savedAlias.trim() !== '';
-    const isNewAlias = savedAlias.trim() !== '' && !aliases.includes(savedAlias);
+    const isAliasSaved = savedAlias?.trim() !== '';
+    const isNewAlias = pendingAlias?.trim() !== '' && !aliases?.includes(pendingAlias);
     
     // Check if any file has extracting or extracted status (should disable alias field)
     const hasExtractingOrExtractedFiles = Object.values(fileStatuses).some(status => 
@@ -340,7 +340,7 @@ export default function AdminReviewUpload({
                                     Alias field is disabled because some files are currently being extracted or have been extracted.
                                 </Alert>
                             )}
-                            {!isAliasDisabled && isNewAlias && (
+                            {pendingAlias && !isAliasDisabled && isNewAlias && (
                                 <Alert severity="warning" sx={{ mt: 2 }}>
                                     This alias does not exist. If you proceed, this alias will be created and linked after approval.
                                 </Alert>
