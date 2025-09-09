@@ -103,9 +103,9 @@ export default function FramePage() {
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
-  
-  // Check if user is an admin (same logic as FloatingActionButtons)
-  const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const isPro = user?.userDetails?.magicSubscription === 'true';
+  const hasLibraryAccess = isAdmin || isPro;
 
   // Function to save current frame to library
   const handleSaveToLibrary = async () => {
@@ -1394,7 +1394,7 @@ useEffect(() => {
                 Advanced Editor
               </Button>
 
-              {hasCollageAccess && (
+              {hasLibraryAccess && (
                 <>
                   <Button
                     size="medium"
