@@ -1182,25 +1182,27 @@ export default function CollagePage() {
                       <>
                         {currentView === 'library' && (
                           <>
-                        <Button
-                          variant="contained"
-                          onClick={handleLibraryCancel}
-                          disabled={isCreatingCollage}
-                          sx={{
-                            flex: 1,
-                            minHeight: 48,
-                            fontWeight: 700,
-                                textTransform: 'none',
-                                background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                border: '1px solid #3a3a3a',
-                                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                color: '#e0e0e0',
-                                '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                              }}
-                              startIcon={<Close sx={{ color: '#e0e0e0' }} />}
-                            >
-                              Cancel
-                            </Button>
+                            {hasProjectsAccess && (
+                              <Button
+                                variant="contained"
+                                onClick={handleLibraryCancel}
+                                disabled={isCreatingCollage}
+                                sx={{
+                                  flex: 1,
+                                  minHeight: 48,
+                                  fontWeight: 700,
+                                  textTransform: 'none',
+                                  background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                  border: '1px solid #3a3a3a',
+                                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                  color: '#e0e0e0',
+                                  '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                                }}
+                                startIcon={<Close sx={{ color: '#e0e0e0' }} />}
+                              >
+                                Cancel
+                              </Button>
+                            )}
 
                             <Button
                               variant="contained"
