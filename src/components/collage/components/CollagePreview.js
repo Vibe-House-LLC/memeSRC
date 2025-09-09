@@ -115,7 +115,7 @@ const CollagePreview = ({
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
 
-  // Handle panel click - admins use Library, non-admins use system file picker
+  // Handle panel click - users with library access use Library; others use system file picker
   const handlePanelClick = (index, panelId) => {
     debugLog(`Panel clicked: index=${index}, panelId=${panelId}`);
     setActivePanelIndex(index);
@@ -620,8 +620,8 @@ const CollagePreview = ({
         onChange={handleFileChange}
       />
 
-      {/* Library selection dialog - admins only */}
-      {isAdmin && (
+      {/* Library selection dialog - admins and pro users */}
+      {hasLibraryAccess && (
         <Dialog
           open={isLibraryOpen}
           onClose={handleLibraryClose}
