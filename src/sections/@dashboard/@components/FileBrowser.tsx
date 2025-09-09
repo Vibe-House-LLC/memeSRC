@@ -146,6 +146,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         const file = files.find(f => f.relativePath === node.fullPath);
         if (file && !file.isDirectory) {
             onFileSelect(file);
+        } else if (hasChildren) {
+            // Toggle folder when clicking on it
+            const newExpanded = isExpanded 
+                ? expanded.filter(id => id !== node.id)
+                : [...expanded, node.id];
+            onToggle({} as React.SyntheticEvent, newExpanded);
         }
     };
 
@@ -379,7 +385,7 @@ const VideoViewer: React.FC<{ url: string; filename: string }> = ({ url, filenam
             <Typography variant="h6" gutterBottom>
                 Video: {filename}
             </Typography>
-            <VideoPlayer controls>
+            <VideoPlayer key={url} controls autoPlay>
                 <source src={url} type="video/mp4" />
                 <source src={url} type="video/quicktime" />
                 Your browser does not support the video tag.
