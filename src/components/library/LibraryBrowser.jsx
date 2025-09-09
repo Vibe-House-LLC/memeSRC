@@ -47,7 +47,7 @@ export default function LibraryBrowser({
   exposeActions,
 }) {
   const { items, loading, hasMore, loadMore, reload, uploadMany, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
-  const { selectedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
+  const { selectedKeys, orderedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
   const [selectMode, setSelectMode] = useState(Boolean(initialSelectMode));
 
   const [previewKey, setPreviewKey] = useState(null);
@@ -138,7 +138,17 @@ export default function LibraryBrowser({
   }, [displayItems, metaByKey, normalizedQuery]);
 
   const getItemId = useCallback((it) => (it?.id ?? it?.key), []);
-  const selectedItems = useMemo(() => items.filter((i) => selectedKeys.has(getItemId(i))), [items, selectedKeys, getItemId]);
+  const orderIndexByKey = useMemo(() => {
+    const m = new Map();
+    orderedKeys.forEach((k, i) => m.set(k, i + 1));
+    return m;
+  }, [orderedKeys]);
+  // Preserve user selection order by mapping ordered keys to items
+  const selectedItems = useMemo(() => {
+    if (!orderedKeys || orderedKeys.length === 0) return [];
+    const byId = new Map(items.map((i) => [getItemId(i), i]));
+    return orderedKeys.map((k) => byId.get(k)).filter(Boolean);
+  }, [items, orderedKeys, getItemId]);
 
   const handleUseSelected = useCallback(async () => {
     try {
@@ -521,6 +531,7 @@ export default function LibraryBrowser({
             disabled={effectiveSelectionEnabled ? (Boolean(maxSelected) && atMax && !isSelected(getItemId(item))) : false}
             showPreviewIcon={effectiveSelectionEnabled}
             selectionMode={effectiveSelectionEnabled}
+            selectionIndex={effectiveSelectionEnabled ? (orderIndexByKey.get(getItemId(item)) || null) : null}
             onClick={() => {
               if (effectivePreviewOnClick) {
                 onTileClick(item.key);
