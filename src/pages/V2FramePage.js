@@ -1061,6 +1061,7 @@ useEffect(() => {
                 </Collapse>
               </>
             )}
+            <Collapse in={!savedToLibrary} timeout={250}>
             <Box sx={{ width: '100%' }}>
                   {/* Formatting Toolbar */}
                   {showText &&
@@ -1404,6 +1405,7 @@ useEffect(() => {
                 {/* </CardContent>
               </Card> */}
             </Box>
+            </Collapse>
             {/* {alertOpenTapToEdit && (
               <Alert
                 severity='success'
@@ -1438,34 +1440,36 @@ useEffect(() => {
               {showText ? "Disable" : "Enable"} Caption
             </Button> */}
 
-            {!showText &&
-              <Button
-              size="medium"
-              fullWidth
-              variant="contained"
-              component={RouterLink}
-              sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
-              // startIcon={<Edit />}
-              onClick={() => {
-                setShowText(true);
-                setSubtitleUserInteracted(true);
-              }}
-            >
-              Make A Meme
-            </Button>
-            }
-
-              <Button
+            <Collapse in={!savedToLibrary} timeout={250}>
+              {!showText &&
+                <Button
                 size="medium"
                 fullWidth
                 variant="contained"
-                to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
                 component={RouterLink}
-                sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                startIcon={<Edit />}
+                sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
+                // startIcon={<Edit />}
+                onClick={() => {
+                  setShowText(true);
+                  setSubtitleUserInteracted(true);
+                }}
               >
-                Advanced Editor
+                Make A Meme
               </Button>
+              }
+
+                <Button
+                  size="medium"
+                  fullWidth
+                  variant="contained"
+                  to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                  component={RouterLink}
+                  sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                  startIcon={<Edit />}
+                >
+                  Advanced Editor
+                </Button>
+            </Collapse>
 
               {/* Library actions are now above text controls in right column */}
           </Grid>
