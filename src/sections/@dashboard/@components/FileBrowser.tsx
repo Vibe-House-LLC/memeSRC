@@ -3188,7 +3188,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                             </Button>
                             <Button
                                 variant="outlined"
-                                color="secondary"
+                                color="primary"
                                 startIcon={<VisibilityIcon />}
                                 onClick={handleSpotCheck}
                                 disabled={loadingSpotCheck || loadingDataSummary}
