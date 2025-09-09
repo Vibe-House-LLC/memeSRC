@@ -146,11 +146,12 @@ const BulkUploadSection = ({
   const theme = useTheme();
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const hasLibraryAccess = isAdmin || (user?.userDetails?.magicSubscription === 'true');
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
 
-  // Admin: peek at library to decide what to show at start
+  // Peek at library to decide what to show at start when library is enabled
   const {
     items: adminLibraryItems,
     uploadMany: uploadManyToLibrary,
@@ -170,8 +171,8 @@ const BulkUploadSection = ({
   // Check if there are any selected images
   const hasImages = selectedImages && selectedImages.length > 0;
 
-  // Determine if admin has any uploaded (non-placeholder) library items
-  const adminHasLibraryItems = isAdmin && Boolean(adminLibraryItems?.some((it) => it?.key));
+  // Determine if user with library access has any uploaded (non-placeholder) library items
+  const adminHasLibraryItems = hasLibraryAccess && Boolean(adminLibraryItems?.some((it) => it?.key));
   const helperSourceLabel = adminHasLibraryItems ? 'library' : 'device';
 
   // Check if there are any empty frames
@@ -934,7 +935,7 @@ const BulkUploadSection = ({
           >
             Add up to 5 images from your {helperSourceLabel}
           </Typography>
-          {!isAdmin ? (
+          {!hasLibraryAccess ? (
             // Non-admins: only the collage bulk upload dropzone
             <>
               <Box sx={{ 
@@ -996,12 +997,12 @@ const BulkUploadSection = ({
               )}
             </>
           ) : (
-            // Admins: either show Library only, or an "Add photos to your library" dropzone when empty
+            // Library users (admins or pro): either show Library only, or an "Add photos to your library" dropzone when empty
             <>
               {adminHasLibraryItems ? (
                 <>
                   <LibraryBrowser
-                  isAdmin
+                  isAdmin={isAdmin}
                   multiple
                   minSelected={2}
                   maxSelected={5}

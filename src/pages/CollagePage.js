@@ -114,9 +114,11 @@ export default function CollagePage() {
   const { openSubscriptionDialog } = useSubscribeDialog();
   const { clearAll } = useCollage();
   const isAdmin = user?.['cognito:groups']?.includes('admins');
-  const authorized = (user?.userDetails?.magicSubscription === "true" || isAdmin);
-  // Library access flag (admins only for now)
-  const hasLibraryAccess = isAdmin;
+  const isPro = user?.userDetails?.magicSubscription === "true";
+  const authorized = (isPro || isAdmin);
+  // Access flags
+  const hasLibraryAccess = isAdmin || isPro; // enable library for paid pro users
+  const hasProjectsAccess = isAdmin; // keep projects admin-only
 
   // Autosave UI state
   const lastSavedSigRef = useRef(null);
@@ -298,19 +300,19 @@ export default function CollagePage() {
     }
   }, [user, navigate, location.search, authorized]);
 
-  // If user has access and lands on /collage, redirect to /projects as the starting point
+  // If user has projects access and lands on /collage, redirect to /projects as the starting point
   useEffect(() => {
-    if (!hasLibraryAccess) return;
+    if (!hasProjectsAccess) return;
     if (location.pathname === '/collage') {
       navigate('/projects', { replace: true });
     }
-  }, [hasLibraryAccess, location.pathname, navigate]);
+  }, [hasProjectsAccess, location.pathname, navigate]);
 
   // (Removed redundant no-op useEffect for project route; actual loader lives below.)
 
   // Handle new project route (/projects/new): start with clean state
   useEffect(() => {
-    if (!hasLibraryAccess) return;
+    if (!hasProjectsAccess) return;
     if (location.pathname === '/projects/new') {
       setActiveProjectId(null);
       try {
@@ -318,7 +320,7 @@ export default function CollagePage() {
       } catch (_) { /* ignore */ }
       setCustomLayout(null);
     }
-  }, [hasLibraryAccess, location.pathname]);
+  }, [hasProjectsAccess, location.pathname]);
 
   // Build current snapshot/signature once per state change
   const [renderBump, setRenderBump] = useState(0);
@@ -681,19 +683,19 @@ export default function CollagePage() {
   // After the first save of a newly created project on /projects/new, navigate to /projects/<id>
   const didNavigateToProjectRef = useRef(false);
   useEffect(() => {
-    if (!hasLibraryAccess) return;
+    if (!hasProjectsAccess) return;
     if (didNavigateToProjectRef.current) return;
     if (location.pathname !== '/projects/new') return;
     if (!activeProjectId) return;
     if (saveStatus.state !== 'saved') return;
     didNavigateToProjectRef.current = true;
     navigate(`/projects/${activeProjectId}`, { replace: true });
-  }, [hasLibraryAccess, location.pathname, activeProjectId, saveStatus.state, navigate]);
+  }, [hasProjectsAccess, location.pathname, activeProjectId, saveStatus.state, navigate]);
 
   // Handle navigation-driven project editing (/projects/:projectId) — placed after loadProjectById is defined
   // Use a ref-backed loader to avoid re-running due to changing callback identity
   useEffect(() => {
-    if (hasLibraryAccess && projectId) {
+    if (hasProjectsAccess && projectId) {
       (async () => {
         try {
           await loadProjectByIdRef.current(projectId);
@@ -703,12 +705,12 @@ export default function CollagePage() {
       })();
     }
     return () => {};
-  }, [hasLibraryAccess, projectId]);
+  }, [hasProjectsAccess, projectId]);
 
   // 4) Create a project only after images are present AND preview has rendered
   //    This avoids leaving blank projects when a user abandons during selection.
   useEffect(() => {
-    if (!hasLibraryAccess) return;
+    if (!hasProjectsAccess) return;
     // Do not auto-create while actively loading an existing project
     if (loadingProjectRef.current) return;
     if (activeProjectId) return;
@@ -720,7 +722,7 @@ export default function CollagePage() {
     setActiveProjectId(p.id);
     // Reset initial-save gate so we capture the first render under this new project
     didInitialSaveRef.current = false;
-  }, [hasLibraryAccess, activeProjectId, selectedImages?.length, currentSig]);
+  }, [hasProjectsAccess, activeProjectId, selectedImages?.length, currentSig]);
 
   // When the user changes layout controls, drop any existing custom grid override
   useEffect(() => {
@@ -740,8 +742,8 @@ export default function CollagePage() {
     try {
       await saveProjectNow();
     } catch (_) { /* best-effort save */ }
-    if (hasLibraryAccess) navigate('/projects');
-  }, [saveProjectNow, hasLibraryAccess, navigate]);
+    if (hasProjectsAccess) navigate('/projects');
+  }, [saveProjectNow, hasProjectsAccess, navigate]);
 
   // Cancel from library selection: go back to /projects when on /projects/* routes
   const handleLibraryCancel = useCallback(() => {
@@ -1133,8 +1135,8 @@ export default function CollagePage() {
               onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
               onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
               // Mobile controls bar actions
-              onBack={hasLibraryAccess ? handleBackToProjects : undefined}
-              onReset={!hasLibraryAccess ? openResetDialog : undefined}
+              onBack={hasProjectsAccess ? handleBackToProjects : undefined}
+              onReset={!hasProjectsAccess ? openResetDialog : undefined}
               onGenerate={handleFloatingButtonClick}
               canGenerate={allPanelsHaveImages}
               isGenerating={isCreatingCollage}
@@ -1224,29 +1226,57 @@ export default function CollagePage() {
 
                         {currentView === 'editor' && (
                           <>
-                            <Collapse in={!nudgeVisualActive} orientation="horizontal">
-                              <Button
-                                variant="contained"
-                                onClick={handleBackToProjects}
-                                disabled={isCreatingCollage}
-                                startIcon={!isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : undefined}
-                                aria-label="Back to memes"
-                                sx={{
-                                  minHeight: 48,
-                                  minWidth: isMobile ? 48 : undefined,
-                                  px: isMobile ? 1.25 : 2,
-                                  fontWeight: 700,
-                                  textTransform: 'none',
-                                  background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                  border: '1px solid #3a3a3a',
-                                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                  color: '#e0e0e0',
-                                  '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                }}
-                              >
-                                {isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : 'Back to Memes'}
-                              </Button>
-                            </Collapse>
+                            {hasProjectsAccess && (
+                              <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                                <Button
+                                  variant="contained"
+                                  onClick={handleBackToProjects}
+                                  disabled={isCreatingCollage}
+                                  startIcon={!isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : undefined}
+                                  aria-label="Back to memes"
+                                  sx={{
+                                    minHeight: 48,
+                                    minWidth: isMobile ? 48 : undefined,
+                                    px: isMobile ? 1.25 : 2,
+                                    fontWeight: 700,
+                                    textTransform: 'none',
+                                    background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                    border: '1px solid #3a3a3a',
+                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                    color: '#e0e0e0',
+                                    '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                                  }}
+                                >
+                                  {isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : 'Back to Memes'}
+                                </Button>
+                              </Collapse>
+                            )}
+
+                            {!hasProjectsAccess && (
+                              <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                                <Button
+                                  variant="contained"
+                                  onClick={openResetDialog}
+                                  disabled={isCreatingCollage}
+                                  startIcon={!isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : undefined}
+                                  aria-label="Start over"
+                                  sx={{
+                                    minHeight: 48,
+                                    minWidth: isMobile ? 48 : undefined,
+                                    px: isMobile ? 1.25 : 2,
+                                    fontWeight: 700,
+                                    textTransform: 'none',
+                                    background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                    border: '1px solid #3a3a3a',
+                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                    color: '#e0e0e0',
+                                    '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                                  }}
+                                >
+                                  {isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : 'Start Over'}
+                                </Button>
+                              </Collapse>
+                            )}
 
                             <Button
                               variant="contained"

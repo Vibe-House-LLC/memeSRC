@@ -80,6 +80,7 @@ const CollagePreview = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const hasLibraryAccess = isAdmin || (user?.userDetails?.magicSubscription === 'true');
   
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
@@ -133,7 +134,7 @@ const CollagePreview = ({
       // Empty frame
       setIsReplaceMode(false);
       setActiveExistingImageIndex(null);
-      if (isAdmin) {
+      if (hasLibraryAccess) {
         setIsLibraryOpen(true);
       } else {
         // Non-admins: open system file picker (legacy behavior)
@@ -143,7 +144,7 @@ const CollagePreview = ({
       // Frame has image
       setIsReplaceMode(true);
       setActiveExistingImageIndex(imageIndex);
-      if (isAdmin) {
+      if (hasLibraryAccess) {
         setIsLibraryOpen(true);
       } else {
         // Non-admins: open system file picker to replace image
@@ -187,7 +188,7 @@ const CollagePreview = ({
       const existingIdx = panelImageMapping?.[panelId];
       setActiveExistingImageIndex(typeof existingIdx === 'number' ? existingIdx : null);
       setIsReplaceMode(true);
-      if (isAdmin) {
+      if (hasLibraryAccess) {
         setIsLibraryOpen(true);
       } else {
         // Non-admins: open system file picker
