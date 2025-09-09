@@ -1564,6 +1564,43 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
         }
     };
 
+    // Helper function to parse CSV content and extract subtitle entries for comparison
+    const parseCSVSubtitleEntries = (csvContent: string): Set<string> => {
+        try {
+            const lines = csvContent.split('\n').filter(line => line.trim().length > 0);
+            const entries = new Set<string>();
+            
+            // Skip header row (index 0)
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line) {
+                    // Parse CSV line to get individual fields
+                    const fields = line.split(',').map(field => field.trim().replace(/^"|"$/g, ''));
+                    
+                    // Create a unique identifier for this subtitle entry
+                    // Expected format: season, episode, subtitle_index, subtitle_text, subtitle_start, subtitle_end
+                    if (fields.length >= 6) {
+                        const season = fields[0];
+                        const episode = fields[1];
+                        const subtitleIndex = fields[2];
+                        const subtitleText = fields[3];
+                        const subtitleStart = fields[4];
+                        const subtitleEnd = fields[5];
+                        
+                        // Create a unique key for this subtitle entry
+                        const entryKey = `${season}|${episode}|${subtitleIndex}|${subtitleText}|${subtitleStart}|${subtitleEnd}`;
+                        entries.add(entryKey);
+                    }
+                }
+            }
+            
+            return entries;
+        } catch (error) {
+            console.warn('Error parsing CSV entries:', error);
+            return new Set();
+        }
+    };
+
     // Function to analyze data structure and generate summary
     const analyzeDataStructure = useCallback(async (): Promise<DataSummary> => {
         const summary: DataSummary = {
@@ -1579,6 +1616,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             const episodeFolders: { [season: string]: Set<string> } = {};
             const csvFiles: { [path: string]: FileItem } = {};
             const videoFiles: { [path: string]: FileItem[] } = {};
+            
+            // Store CSV content for subset validation
+            const csvContents: { [path: string]: string } = {};
+            let seriesCSVContent: string | null = null;
 
             files.forEach(file => {
                 const pathParts = (file.relativePath || '').split('/').filter(p => p.length > 0);
@@ -1647,6 +1688,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                             const csvContent = await (result as any).Body.text();
                             seasonData.subtitleCount = parseCSVSubtitleCount(csvContent);
                             summary.totalSubtitles += seasonData.subtitleCount;
+                            
+                            // Store CSV content for subset validation
+                            csvContents[seasonDocsPath] = csvContent;
                         }
                     } catch (error) {
                         console.warn(`Error loading season ${seasonNumber} _docs.csv:`, error);
@@ -1682,6 +1726,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                             if (result && typeof result === 'object' && result !== null && 'Body' in (result as any)) {
                                 const csvContent = await (result as any).Body.text();
                                 episodeData.subtitleCount = parseCSVSubtitleCount(csvContent);
+                                
+                                // Store CSV content for subset validation
+                                csvContents[episodeDocsPath] = csvContent;
                             }
                         } catch (error) {
                             console.warn(`Error loading episode ${seasonNumber}/${episodeNumber} _docs.csv:`, error);
@@ -1723,6 +1770,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     
                     if (result && typeof result === 'object' && result !== null && 'Body' in (result as any)) {
                         const csvContent = await (result as any).Body.text();
+                        seriesCSVContent = csvContent;
                         const seriesSubtitleCount = parseCSVSubtitleCount(csvContent);
                         
                         // Verify that series total matches sum of season totals
@@ -1735,6 +1783,107 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     console.warn('Error loading series _docs.csv:', error);
                     summary.issues.push('Could not load series _docs.csv');
                 }
+            }
+
+            // Perform subset validation if we have the series CSV content
+            if (seriesCSVContent) {
+                console.log('🔍 Performing subset validation...');
+                const seriesEntries = parseCSVSubtitleEntries(seriesCSVContent);
+                console.log(`📊 Series CSV contains ${seriesEntries.size} unique subtitle entries`);
+
+                // Track validation results
+                let totalCSVsValidated = 0;
+                let validCSVs = 0;
+                const initialIssueCount = summary.issues.length;
+
+                // Validate season CSVs are subsets of series CSV
+                for (const [seasonPath, seasonContent] of Object.entries(csvContents)) {
+                    const pathParts = seasonPath.split('/');
+                    if (pathParts.length === 2) { // Season-level CSV (e.g., "1/_docs.csv")
+                        const seasonNumber = pathParts[0];
+                        const seasonEntries = parseCSVSubtitleEntries(seasonContent);
+                        console.log(`📊 Season ${seasonNumber} CSV contains ${seasonEntries.size} unique subtitle entries`);
+
+                        // Check if all season entries exist in series
+                        const invalidEntries: string[] = [];
+                        for (const entry of seasonEntries) {
+                            if (!seriesEntries.has(entry)) {
+                                invalidEntries.push(entry);
+                            }
+                        }
+
+                        totalCSVsValidated++;
+                        if (invalidEntries.length > 0) {
+                            summary.issues.push(`Season ${seasonNumber} CSV contains ${invalidEntries.length} entries not found in series CSV`);
+                            console.warn(`❌ Season ${seasonNumber} has ${invalidEntries.length} invalid entries:`, invalidEntries.slice(0, 3));
+                        } else {
+                            validCSVs++;
+                            console.log(`✅ Season ${seasonNumber} CSV is a valid subset of series CSV`);
+                        }
+                    }
+                }
+
+                // Validate episode CSVs are subsets of series CSV
+                for (const [episodePath, episodeContent] of Object.entries(csvContents)) {
+                    const pathParts = episodePath.split('/');
+                    if (pathParts.length === 3) { // Episode-level CSV (e.g., "1/2/_docs.csv")
+                        const seasonNumber = pathParts[0];
+                        const episodeNumber = pathParts[1];
+                        const episodeEntries = parseCSVSubtitleEntries(episodeContent);
+                        console.log(`📊 Season ${seasonNumber}, Episode ${episodeNumber} CSV contains ${episodeEntries.size} unique subtitle entries`);
+
+                        // Check if all episode entries exist in series
+                        const invalidEntries: string[] = [];
+                        for (const entry of episodeEntries) {
+                            if (!seriesEntries.has(entry)) {
+                                invalidEntries.push(entry);
+                            }
+                        }
+
+                        totalCSVsValidated++;
+                        if (invalidEntries.length > 0) {
+                            summary.issues.push(`Season ${seasonNumber}, Episode ${episodeNumber} CSV contains ${invalidEntries.length} entries not found in series CSV`);
+                            console.warn(`❌ Season ${seasonNumber}, Episode ${episodeNumber} has ${invalidEntries.length} invalid entries:`, invalidEntries.slice(0, 3));
+                        } else {
+                            validCSVs++;
+                            console.log(`✅ Season ${seasonNumber}, Episode ${episodeNumber} CSV is a valid subset of series CSV`);
+                        }
+
+                        // Also validate episode CSV is subset of its season CSV (if season CSV exists)
+                        const seasonPath = `${seasonNumber}/_docs.csv`;
+                        if (csvContents[seasonPath]) {
+                            const seasonEntries = parseCSVSubtitleEntries(csvContents[seasonPath]);
+                            const invalidSeasonEntries: string[] = [];
+                            
+                            for (const entry of episodeEntries) {
+                                if (!seasonEntries.has(entry)) {
+                                    invalidSeasonEntries.push(entry);
+                                }
+                            }
+
+                            if (invalidSeasonEntries.length > 0) {
+                                summary.issues.push(`Season ${seasonNumber}, Episode ${episodeNumber} CSV contains ${invalidSeasonEntries.length} entries not found in season ${seasonNumber} CSV`);
+                                console.warn(`❌ Episode ${seasonNumber}/${episodeNumber} has ${invalidSeasonEntries.length} entries not in season CSV:`, invalidSeasonEntries.slice(0, 3));
+                            } else {
+                                console.log(`✅ Season ${seasonNumber}, Episode ${episodeNumber} CSV is a valid subset of season ${seasonNumber} CSV`);
+                            }
+                        }
+                    }
+                }
+
+                // Add success message if all CSVs passed validation
+                const subsetIssuesFound = summary.issues.length - initialIssueCount;
+                if (totalCSVsValidated > 0 && subsetIssuesFound === 0) {
+                    // Insert success message at the beginning of issues array (so it appears first)
+                    summary.issues.splice(initialIssueCount, 0, `✅ All ${totalCSVsValidated} CSV files are valid subsets of the series CSV`);
+                    console.log(`🎉 SUCCESS: All ${totalCSVsValidated} CSV files passed subset validation!`);
+                } else if (totalCSVsValidated > 0) {
+                    console.log(`📊 Validation Summary: ${validCSVs}/${totalCSVsValidated} CSV files passed subset validation`);
+                }
+
+                console.log(`🏁 Subset validation complete. Found ${subsetIssuesFound} subset validation issues.`);
+            } else {
+                summary.issues.push('Cannot perform subset validation - series _docs.csv not available');
             }
 
             return summary;
@@ -1983,11 +2132,23 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                                         </Grid>
                                         <Grid item xs={12} sm={6} md={3}>
                                             <Box sx={{ textAlign: 'center' }}>
-                                                <Typography variant="h4" color={dataSummary.issues.length > 0 ? "error" : "success"}>
-                                                    {dataSummary.issues.length}
+                                                <Typography variant="h4" color={(() => {
+                                                    const successCount = dataSummary.issues.filter(issue => issue.startsWith('✅')).length;
+                                                    const errorCount = dataSummary.issues.length - successCount;
+                                                    return errorCount === 0 && successCount > 0 ? "success" : errorCount > 0 ? "error" : "text.primary";
+                                                })()}>
+                                                    {(() => {
+                                                        const successCount = dataSummary.issues.filter(issue => issue.startsWith('✅')).length;
+                                                        const errorCount = dataSummary.issues.length - successCount;
+                                                        return errorCount === 0 && successCount > 0 ? '✅' : errorCount;
+                                                    })()}
                                                 </Typography>
                                                 <Typography variant="body2" color="text.secondary">
-                                                    Issues Found
+                                                    {(() => {
+                                                        const successCount = dataSummary.issues.filter(issue => issue.startsWith('✅')).length;
+                                                        const errorCount = dataSummary.issues.length - successCount;
+                                                        return errorCount === 0 && successCount > 0 ? 'All Valid' : 'Issues Found';
+                                                    })()}
                                                 </Typography>
                                             </Box>
                                         </Grid>
@@ -1999,15 +2160,22 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                             {dataSummary.issues.length > 0 && (
                                 <Card sx={{ mb: 3 }}>
                                     <CardContent>
-                                        <Typography variant="h6" gutterBottom color="error">
-                                            Issues Found ({dataSummary.issues.length})
+                                        <Typography variant="h6" gutterBottom>
+                                            Validation Results ({dataSummary.issues.length})
                                         </Typography>
                                         <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
-                                            {dataSummary.issues.map((issue, index) => (
-                                                <Alert key={index} severity="warning" sx={{ mb: 1 }}>
-                                                    {issue}
-                                                </Alert>
-                                            ))}
+                                            {dataSummary.issues.map((issue, index) => {
+                                                const isSuccess = issue.startsWith('✅');
+                                                return (
+                                                    <Alert 
+                                                        key={index} 
+                                                        severity={isSuccess ? "success" : "warning"} 
+                                                        sx={{ mb: 1 }}
+                                                    >
+                                                        {issue}
+                                                    </Alert>
+                                                );
+                                            })}
                                         </Box>
                                     </CardContent>
                                 </Card>
