@@ -1097,7 +1097,7 @@ const BulkUploadSection = ({
         </Box>
       )}
 
-      {/* Library section is now rendered above for admins when no images; non-admins never see it */}
+      {/* Library section is rendered above for users with library access (admins or pro) when no images */}
 
       {/* Toast Notification */}
       <Snackbar
