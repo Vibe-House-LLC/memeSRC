@@ -31,7 +31,9 @@ import {
     DialogContent,
     DialogContentText,
     DialogActions,
-    Popover
+    Popover,
+    Tabs,
+    Tab
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
@@ -1062,9 +1064,9 @@ const SpotCheckVideoPlayer: React.FC<{
     const handleVideoLoaded = () => {
         if (videoRef.current) {
             videoRef.current.currentTime = loopStart;
-            videoRef.current.play().catch(err => {
-                console.warn('Autoplay failed:', err);
-            });
+            // videoRef.current.play().catch(err => {
+            //     console.warn('Autoplay failed:', err);
+            // });
             console.log(`⏰ Set video ${item.videoFile} to loop start: ${loopStart.toFixed(2)}s`);
         }
     };
@@ -1177,7 +1179,6 @@ const SpotCheckVideoPlayer: React.FC<{
                                                 ref={videoRef}
                                                 key={`${item.episodePath}-${item.videoFile}-${index}`}
                                                 controls
-                                                autoPlay
                                                 muted
                                                 onLoadedData={handleVideoLoaded}
                                                 onTimeUpdate={handleTimeUpdate}
@@ -1651,6 +1652,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     const [spotCheckDialogOpen, setSpotCheckDialogOpen] = useState<boolean>(false);
     const [spotCheckData, setSpotCheckData] = useState<SpotCheckData | null>(null);
     const [loadingSpotCheck, setLoadingSpotCheck] = useState<boolean>(false);
+    const [spotCheckTab, setSpotCheckTab] = useState<number>(0); // 0 = Random Samples, 1 = Manual Search
+    const [manualSearchQuery, setManualSearchQuery] = useState<string>('');
+    const [manualSearchResults, setManualSearchResults] = useState<SpotCheckData | null>(null);
+    const [loadingManualSearch, setLoadingManualSearch] = useState<boolean>(false);
 
     const fullPath = `${pathPrefix}/${id}`;
 
@@ -2309,11 +2314,11 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                         
                         console.log(`📝 Found ${subtitles.length} subtitles in ${episodeKey}`);
                         
-                        // Select 5 random subtitles
+                        // Select 2 random subtitles
                         const selectedSubtitles: SubtitleEntry[] = [];
                         if (subtitles.length > 0) {
                             const shuffled = [...subtitles].sort(() => 0.5 - Math.random());
-                            selectedSubtitles.push(...shuffled.slice(0, Math.min(5, subtitles.length)));
+                            selectedSubtitles.push(...shuffled.slice(0, Math.min(2, subtitles.length)));
                         }
                         
                         // Create spot check items for selected subtitles
@@ -2431,6 +2436,212 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             setError('Failed to generate spot check data');
         } finally {
             setLoadingSpotCheck(false);
+        }
+    };
+
+    // Function to perform manual search for subtitles
+    const performManualSearch = useCallback(async (searchQuery: string): Promise<SpotCheckData> => {
+        const searchResults: SpotCheckData = {};
+        
+        if (!searchQuery.trim()) {
+            return searchResults;
+        }
+
+        try {
+            console.log(`🔍 Manual search for: "${searchQuery}" (limiting to 5 results)`);
+            
+            // Find all episode CSV files
+            const episodeCsvFiles: { [episodeKey: string]: FileItem } = {};
+            
+            files.forEach(file => {
+                const pathParts = (file.relativePath || '').split('/').filter(p => p.length > 0);
+                
+                if (pathParts.length === 3 && file.name === '_docs.csv') {
+                    // This is an episode CSV (season/episode/_docs.csv)
+                    const seasonMatch = pathParts[0].match(/^(\d+)$/);
+                    const episodeMatch = pathParts[1].match(/^(\d+)$/);
+                    
+                    if (seasonMatch && episodeMatch) {
+                        const episodeKey = `S${seasonMatch[1]}E${episodeMatch[1]}`;
+                        episodeCsvFiles[episodeKey] = file;
+                    }
+                }
+            });
+
+            let totalResultsFound = 0;
+            const maxResults = 5;
+
+            // Process each episode to find matching subtitles
+            for (const [episodeKey, csvFile] of Object.entries(episodeCsvFiles)) {
+                if (totalResultsFound >= maxResults) {
+                    console.log(`🛑 Reached maximum of ${maxResults} results, stopping search`);
+                    break;
+                }
+
+                try {
+                    console.log(`🔍 Searching in ${episodeKey}...`);
+                    
+                    // Load the CSV content
+                    const result = await Storage.get(csvFile.key, {
+                        level: 'public',
+                        download: true
+                    });
+                    
+                    if (result && typeof result === 'object' && result !== null && 'Body' in (result as any)) {
+                        const csvContent = await (result as any).Body.text();
+                        const lines = csvContent.split('\n').filter(line => line.trim().length > 0);
+                        
+                        // Parse subtitle entries and find matches
+                        const matchingSubtitles: SubtitleEntry[] = [];
+                        for (let i = 1; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (line) {
+                                const fields = line.split(',').map(field => field.trim().replace(/^"|"$/g, ''));
+                                
+                                if (fields.length >= 6) {
+                                    // Decode subtitle text if it's base64 encoded
+                                    let subtitleText = fields[3];
+                                    if (isBase64(subtitleText)) {
+                                        subtitleText = decodeBase64Safe(subtitleText);
+                                    }
+                                    
+                                    // Check if subtitle text contains the search query (case-insensitive)
+                                    if (subtitleText.toLowerCase().includes(searchQuery.toLowerCase())) {
+                                        matchingSubtitles.push({
+                                            season: fields[0],
+                                            episode: fields[1],
+                                            subtitleIndex: fields[2],
+                                            subtitleText: subtitleText,
+                                            subtitleStart: fields[4],
+                                            subtitleEnd: fields[5]
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        
+                        console.log(`📝 Found ${matchingSubtitles.length} matching subtitles in ${episodeKey}`);
+                        
+                        // Convert matching subtitles to spot check items
+                        if (matchingSubtitles.length > 0) {
+                            const spotCheckItems: SpotCheckItem[] = [];
+                            const pathParts = csvFile.relativePath?.split('/') || [];
+                            const seasonNumber = pathParts[0];
+                            const episodeNumber = pathParts[1];
+                            const episodePath = `${seasonNumber}/${episodeNumber}`;
+                            
+                            // Check what video files exist in this episode
+                            const episodeVideoFiles = files.filter(f => 
+                                f.relativePath?.startsWith(episodePath + '/') && 
+                                f.extension === 'mp4'
+                            ).map(f => f.name);
+                            
+                            // Sort all subtitles for context extraction
+                            const allSubtitles: SubtitleEntry[] = [];
+                            for (let i = 1; i < lines.length; i++) {
+                                const line = lines[i].trim();
+                                if (line) {
+                                    const fields = line.split(',').map(field => field.trim().replace(/^"|"$/g, ''));
+                                    if (fields.length >= 6) {
+                                        let subtitleText = fields[3];
+                                        if (isBase64(subtitleText)) {
+                                            subtitleText = decodeBase64Safe(subtitleText);
+                                        }
+                                        allSubtitles.push({
+                                            season: fields[0],
+                                            episode: fields[1],
+                                            subtitleIndex: fields[2],
+                                            subtitleText: subtitleText,
+                                            subtitleStart: fields[4],
+                                            subtitleEnd: fields[5]
+                                        });
+                                    }
+                                }
+                            }
+                            const sortedSubtitles = allSubtitles.sort((a, b) => 
+                                parseInt(a.subtitleStart) - parseInt(b.subtitleStart)
+                            );
+
+                            for (const subtitle of matchingSubtitles) {
+                                if (totalResultsFound >= maxResults) {
+                                    break;
+                                }
+
+                                // Use subtitleStart directly as the frame number
+                                const startFrame = parseInt(subtitle.subtitleStart);
+                                
+                                // Simple frame-to-video calculation
+                                const videoFileNumber = Math.floor(startFrame / 250);
+                                const videoFile = `${videoFileNumber}.mp4`;
+                                
+                                // Calculate timestamp within that video
+                                const frameWithinVideo = startFrame % 250;
+                                const videoTimestamp = frameWithinVideo / 10;
+                                
+                                // Only add if the video file exists
+                                if (episodeVideoFiles.includes(videoFile)) {
+                                    // Find context subtitles (2 before and 2 after)
+                                    const currentIndex = sortedSubtitles.findIndex(s => 
+                                        s.subtitleStart === subtitle.subtitleStart && 
+                                        s.subtitleText === subtitle.subtitleText
+                                    );
+                                    
+                                    const contextSubtitles = {
+                                        before: currentIndex >= 0 ? sortedSubtitles.slice(Math.max(0, currentIndex - 2), currentIndex) : [],
+                                        after: currentIndex >= 0 ? sortedSubtitles.slice(currentIndex + 1, currentIndex + 3) : []
+                                    };
+
+                                    spotCheckItems.push({
+                                        subtitle,
+                                        videoFile,
+                                        videoTimestamp,
+                                        episodePath,
+                                        contextSubtitles
+                                    });
+                                    
+                                    totalResultsFound++;
+                                }
+                            }
+                            
+                            if (spotCheckItems.length > 0) {
+                                searchResults[episodeKey] = spotCheckItems;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`Error searching in ${episodeKey}:`, error);
+                }
+            }
+            
+            const totalMatches = Object.values(searchResults).reduce((sum, items) => sum + items.length, 0);
+            console.log(`🎉 Manual search complete! Found ${totalMatches} matches (limited to ${maxResults}) across ${Object.keys(searchResults).length} episodes`);
+            
+            return searchResults;
+            
+        } catch (error) {
+            console.error('Error performing manual search:', error);
+            return {};
+        }
+    }, [files]);
+
+    const handleManualSearch = async () => {
+        if (!manualSearchQuery.trim()) return;
+        
+        setLoadingManualSearch(true);
+        try {
+            const results = await performManualSearch(manualSearchQuery);
+            setManualSearchResults(results);
+        } catch (error) {
+            console.error('Error performing manual search:', error);
+            setError('Failed to perform manual search');
+        } finally {
+            setLoadingManualSearch(false);
+        }
+    };
+
+    const handleSearchKeyPress = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter') {
+            handleManualSearch();
         }
     };
 
@@ -2841,12 +3052,20 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                 <DialogTitle id="spot-check-dialog-title">
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <VisibilityIcon />
-                        Spot Check: Random Subtitle Samples
+                        Spot Check: Subtitle Validation
                     </Box>
                 </DialogTitle>
                 <DialogContent>
-                    {spotCheckData && (
-                        <Box sx={{ mt: 1 }}>
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                        <Tabs value={spotCheckTab} onChange={(e, newValue) => setSpotCheckTab(newValue)} aria-label="spot check tabs">
+                            <Tab label="Random Samples" />
+                            <Tab label="Manual Search" />
+                        </Tabs>
+                    </Box>
+
+                    {/* Random Samples Tab */}
+                    {spotCheckTab === 0 && spotCheckData && (
+                        <Box>
                             {Object.entries(spotCheckData).map(([episodeKey, items]) => (
                                 <Card key={episodeKey} sx={{ mb: 3 }}>
                                     <CardContent>
@@ -2869,6 +3088,77 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                                     </CardContent>
                                 </Card>
                             ))}
+                        </Box>
+                    )}
+
+                    {/* Manual Search Tab */}
+                    {spotCheckTab === 1 && (
+                        <Box>
+                            <Box sx={{ mb: 3 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Search for subtitles"
+                                    placeholder="Type a subtitle or partial text to search for..."
+                                    value={manualSearchQuery}
+                                    onChange={(e) => setManualSearchQuery(e.target.value)}
+                                    onKeyPress={handleSearchKeyPress}
+                                    disabled={loadingManualSearch}
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <Button 
+                                                    onClick={handleManualSearch}
+                                                    disabled={loadingManualSearch || !manualSearchQuery.trim()}
+                                                    size="small"
+                                                >
+                                                    {loadingManualSearch ? 'Searching...' : 'Search'}
+                                                </Button>
+                                            </InputAdornment>
+                                        )
+                                    }}
+                                />
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                    Press Enter or click Search to find matching subtitles across all episodes
+                                </Typography>
+                            </Box>
+
+                            {manualSearchResults && Object.keys(manualSearchResults).length > 0 && (
+                                <Box>
+                                    {Object.entries(manualSearchResults).map(([episodeKey, items]) => (
+                                        <Card key={episodeKey} sx={{ mb: 3 }}>
+                                            <CardContent>
+                                                <Typography variant="h6" gutterBottom>
+                                                    {episodeKey} - Match{items.length !== 1 ? 'es' : ''} for "{manualSearchQuery}" (limited to 5 results)
+                                                </Typography>
+                                                
+                                                <Grid container spacing={2}>
+                                                    {items.map((item, index) => (
+                                                        <Grid item xs={12} key={index}>
+                                                            <SpotCheckVideoPlayer
+                                                                item={item}
+                                                                fullPath={fullPath}
+                                                                index={index}
+                                                                files={files}
+                                                            />
+                                                        </Grid>
+                                                    ))}
+                                                </Grid>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </Box>
+                            )}
+
+                            {manualSearchResults && Object.keys(manualSearchResults).length === 0 && manualSearchQuery && !loadingManualSearch && (
+                                <Box sx={{ textAlign: 'center', py: 4 }}>
+                                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                                        No matches found
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        No subtitles containing "{manualSearchQuery}" were found across all episodes.
+                                    </Typography>
+                                </Box>
+                            )}
                         </Box>
                     )}
                 </DialogContent>
