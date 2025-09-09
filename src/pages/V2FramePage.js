@@ -984,6 +984,37 @@ useEffect(() => {
             <Card>
               {renderFineTuningFrames(imgSrc)}
             </Card>
+            {hasLibraryAccess && (
+              <>
+                <Button
+                  size="medium"
+                  fullWidth
+                  variant={savedToLibrary ? 'contained' : 'outlined'}
+                  onClick={handleSaveToLibrary}
+                  disabled={!confirmedCid || !displayImage || savingToLibrary || savedToLibrary}
+                  sx={{ 
+                    mt: 2,
+                    borderColor: savedToLibrary ? 'transparent' : '#FF9800', 
+                    color: savedToLibrary ? '#111' : '#FF9800',
+                    backgroundColor: savedToLibrary ? '#FF9800' : 'transparent',
+                    '&:hover': savedToLibrary ? {
+                      backgroundColor: '#F57C00'
+                    } : { 
+                      borderColor: '#F57C00', 
+                      backgroundColor: 'rgba(255, 152, 0, 0.04)' 
+                    },
+                    '&.Mui-disabled': {
+                      borderColor: savedToLibrary ? '#FF9800' : '#ccc',
+                      color: savedToLibrary ? '#111' : '#ccc',
+                      backgroundColor: savedToLibrary ? '#FF9800' : 'transparent'
+                    }
+                  }}
+                  startIcon={savingToLibrary ? <CircularProgress size={16} sx={{ color: savedToLibrary ? '#111' : '#FF9800' }} /> : (savedToLibrary ? <Check /> : <Collections />)}
+                >
+                  {savingToLibrary ? 'Saving…' : (savedToLibrary ? 'Saved to Library' : 'Save to Library')}
+                </Button>
+              </>
+            )}
           </Grid>
 
           <Grid item xs={12} md={6}>
@@ -1393,37 +1424,7 @@ useEffect(() => {
                 Advanced Editor
               </Button>
 
-              {hasLibraryAccess && (
-                <>
-                  <Button
-                    size="medium"
-                    fullWidth
-                    variant={savedToLibrary ? 'contained' : 'outlined'}
-                    onClick={handleSaveToLibrary}
-                    disabled={!confirmedCid || !displayImage || savingToLibrary || savedToLibrary}
-                    sx={{ 
-                      mb: 2, 
-                      borderColor: savedToLibrary ? 'transparent' : '#FF9800', 
-                      color: savedToLibrary ? '#111' : '#FF9800',
-                      backgroundColor: savedToLibrary ? '#FF9800' : 'transparent',
-                      '&:hover': savedToLibrary ? {
-                        backgroundColor: '#F57C00'
-                      } : { 
-                        borderColor: '#F57C00', 
-                        backgroundColor: 'rgba(255, 152, 0, 0.04)' 
-                      },
-                      '&.Mui-disabled': {
-                        borderColor: savedToLibrary ? '#FF9800' : '#ccc',
-                        color: savedToLibrary ? '#111' : '#ccc',
-                        backgroundColor: savedToLibrary ? '#FF9800' : 'transparent'
-                      }
-                    }}
-                    startIcon={savingToLibrary ? <CircularProgress size={16} sx={{ color: savedToLibrary ? '#111' : '#FF9800' }} /> : (savedToLibrary ? <Check /> : <Collections />)}
-                  >
-                    {savingToLibrary ? 'Saving…' : (savedToLibrary ? 'Saved to Library' : 'Save to Library')}
-                  </Button>
-                </>
-              )}
+              {/* Save to Library button moved to left column under image */}
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} my={1}>
