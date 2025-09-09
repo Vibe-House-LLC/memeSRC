@@ -140,10 +140,10 @@ const UserList = () => {
     // Function to filter users based on search term
     const filteredUsers = users.filter((user) => {
         const { username, email } = user;
-        const searchTermLower = searchTerm.toLowerCase();
+        const searchTermLower = searchTerm?.toLowerCase();
         return (
-            username.toLowerCase().includes(searchTermLower) ||
-            email.toLowerCase().includes(searchTermLower)
+            username?.toLowerCase().includes(searchTermLower) ||
+            email?.toLowerCase().includes(searchTermLower)
         );
     });
 
