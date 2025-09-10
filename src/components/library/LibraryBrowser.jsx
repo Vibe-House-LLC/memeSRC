@@ -5,7 +5,7 @@ import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, 
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
-import UploadTile from './UploadTile';
+import UploadSection from './UploadSection';
 import LibraryGrid from './LibraryGrid';
 import LibraryTile from './LibraryTile';
 import PreviewDialog from './PreviewDialog';
@@ -301,9 +301,32 @@ export default function LibraryBrowser({
   const effectiveSelectionEnabled = typeof selectionEnabled === 'boolean' ? selectionEnabled : selectMode;
   const effectivePreviewOnClick = typeof previewOnClick === 'boolean' ? previewOnClick : !effectiveSelectionEnabled;
 
+  const handleToggleSelectMode = React.useCallback(() => {
+    const next = !effectiveSelectionEnabled;
+    setSelectMode(next);
+    if (!next) {
+      try { clear(); } catch (_) { /* ignore */ }
+    }
+    if (typeof onSelectModeChange === 'function') onSelectModeChange(next);
+  }, [effectiveSelectionEnabled, clear, onSelectModeChange]);
+
   return (
     <Box sx={{ mt: 3, ...(sx || {}) }}>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'column' }, gap: 1.25, mb: 1 }}>
+        {/* Upload section (moved from grid tile) */}
+        {uploadEnabled && (
+          <UploadSection
+            disabled={loading}
+            onFiles={async (files) => {
+              const results = await uploadMany(files);
+              const successes = results.filter(Boolean);
+              const last = successes[successes.length - 1];
+              if (!multiple && instantSelectOnClick && last && last.key) {
+                await handleInstantSelect({ key: last.key, url: last.url });
+              }
+            }}
+          />
+        )}
         {/* Full-width Search */}
         <TextField
           size="medium"
@@ -355,33 +378,39 @@ export default function LibraryBrowser({
 
         {/* Full-width Multi-select toggle */}
         {showSelectToggle && (
-          <Box sx={{ width: '100%' }}>
+          <Box sx={{ width: '100%', alignSelf: 'stretch' }}>
             <Box
+              component="button"
+              type="button"
+              onClick={handleToggleSelectMode}
+              role="switch"
+              aria-checked={effectiveSelectionEnabled}
+              aria-label={effectiveSelectionEnabled ? 'Disable multi-select' : 'Enable multi-select'}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                width: '100%',
                 px: 1.5,
                 py: 1,
                 borderRadius: 1.5,
                 border: effectiveSelectionEnabled ? '1px solid #4b5563' : '1px solid rgba(255,255,255,0.18)',
                 bgcolor: effectiveSelectionEnabled ? 'rgba(79,70,229,0.15)' : 'rgba(255,255,255,0.04)',
                 transition: 'all 0.2s ease',
+                cursor: 'pointer',
+                textAlign: 'left',
+                color: '#e5e7eb',
+                '&:focus-visible': { outline: '2px solid #8b5cc7', outlineOffset: 2 },
+                borderWidth: 1,
               }}
             >
-              <Box sx={{ fontWeight: 800, color: '#e5e7eb' }}>
+              <Box sx={{ fontWeight: 800 }}>
                 {effectiveSelectionEnabled ? 'Multi-select enabled' : 'Enable multi-select'}
               </Box>
               <Switch
                 checked={effectiveSelectionEnabled}
-                onChange={() => {
-                  const next = !effectiveSelectionEnabled;
-                  setSelectMode(next);
-                  if (!next) {
-                    try { clear(); } catch (_) { /* ignore */ }
-                  }
-                  if (typeof onSelectModeChange === 'function') onSelectModeChange(next);
-                }}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => { e.stopPropagation(); handleToggleSelectMode(); }}
                 inputProps={{ 'aria-label': 'Enable multi-select' }}
               />
             </Box>
@@ -460,16 +489,8 @@ export default function LibraryBrowser({
 
       <LibraryGrid
         items={filteredItems}
-        showUploadTile={uploadEnabled}
-        uploadTile={<UploadTile disabled={loading} onFiles={async (files) => {
-          const results = await uploadMany(files);
-          const successes = results.filter(Boolean);
-          const last = successes[successes.length - 1];
-          // If single-select instant mode, auto-select the last uploaded image
-          if (!multiple && instantSelectOnClick && last && last.key) {
-            await handleInstantSelect({ key: last.key, url: last.url });
-          }
-        }} />}
+        showUploadTile={false}
+        uploadTile={null}
         renderTile={(item) => (
           <LibraryTile
             item={item}
