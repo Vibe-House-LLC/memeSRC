@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader, TextField, InputAdornment } from '@mui/material';
-import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, CloudUpload, Search } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader, TextField, InputAdornment, Switch } from '@mui/material';
+import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, Search } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
@@ -60,7 +60,6 @@ export default function LibraryBrowser({
   const [metaByKey, setMetaByKey] = useState({}); // { [key]: { tags, description, defaultCaption } }
 
   const sentinelRef = useRef(null);
-  const headerFileInputRef = useRef(null);
 
   // Infinite scroll
   useEffect(() => {
@@ -304,212 +303,159 @@ export default function LibraryBrowser({
 
   return (
     <Box sx={{ mt: 3, ...(sx || {}) }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 2, flexWrap: 'wrap' }}>
-        {/* Left: Upload + Search */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flex: 1, minWidth: 260 }}>
-          {uploadEnabled && (
-            <Button
-              size="small"
-              startIcon={<CloudUpload fontSize="small" />}
-              onClick={() => {
-                try { headerFileInputRef.current?.click(); } catch (_) { /* ignore */ }
-              }}
-              sx={{
-                minHeight: 34,
-                px: 1.5,
-                py: 0.5,
-                borderRadius: 1.5,
-                fontWeight: 700,
-                textTransform: 'none',
-                letterSpacing: 0.2,
-                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                border: '1px solid #8b5cc7',
-                color: '#ffffff',
-                boxShadow: '0 6px 16px rgba(107,66,161,0.35)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                  borderColor: '#9f7ae0',
-                  boxShadow: '0 8px 18px rgba(127,86,190,0.45)'
-                },
-                '& .MuiButton-startIcon': { mr: 1 },
-                '& .MuiButton-startIcon > *:nth-of-type(1)': { color: '#ffffff' },
-                '&.Mui-disabled': {
-                  opacity: 0.5,
-                  color: '#ffffff',
-                  borderColor: 'rgba(255,255,255,0.3)'
-                }
-              }}
-            >
-              Upload
-            </Button>
-          )}
-          {/* Hidden file input for header Upload button to ensure browser allows chooser */}
-          <input
-            type="file"
-            ref={headerFileInputRef}
-            style={{ display: 'none' }}
-            accept="image/*"
-            multiple={multiple}
-            onChange={async (e) => {
-              try {
-                const files = Array.from(e.target.files || []);
-                if (!files.length) return;
-                const results = await uploadMany(files);
-                const successes = results.filter(Boolean);
-                const last = successes[successes.length - 1];
-                if (!multiple && instantSelectOnClick && last && last.key) {
-                  await handleInstantSelect({ key: last.key, url: last.url });
-                }
-              } catch (err) {
-                setSnack({ open: true, message: 'Upload failed to start', severity: 'error' });
-              } finally {
-                if (e?.target) e.target.value = null;
-              }
-            }}
-          />
-          <TextField
-            size="small"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search library..."
-            aria-label="Search library items"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search fontSize="small" />
-                </InputAdornment>
-              ),
-              endAdornment: searchQuery ? (
-                <InputAdornment position="end">
-                  <IconButton size="small" aria-label="Clear search" onClick={() => setSearchQuery('')}>
-                    <Clear fontSize="small" />
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'column' }, gap: 1.25, mb: 1 }}>
+        {/* Full-width Search */}
+        <TextField
+          size="medium"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search your library..."
+          aria-label="Search library items"
+          fullWidth
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {searchQuery ? (
+                    <IconButton size="small" aria-label="Clear search" onClick={() => setSearchQuery('')}>
+                      <Clear fontSize="small" />
+                    </IconButton>
+                  ) : null}
+                  <IconButton
+                    size="small"
+                    aria-label="Library options"
+                    onClick={openOptions}
+                    sx={{
+                      color: '#8b5cc7',
+                      border: '1px solid rgba(139,92,199,0.45)',
+                      bgcolor: 'rgba(139,92,199,0.08)',
+                      '&:hover': { bgcolor: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
+                    }}
+                  >
+                    <MoreVert fontSize="small" />
                   </IconButton>
-                </InputAdornment>
-              ) : null,
-            }}
-            sx={{
-              flex: 1,
-              minWidth: 220,
-              '& .MuiInputBase-root': {
-                borderRadius: 1.5,
-              },
-            }}
-          />
-        </Box>
+                </Box>
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            width: '100%',
+            '& .MuiInputBase-root': {
+              borderRadius: 2,
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08)',
+            },
+          }}
+        />
 
-        {/* Right: Select toggle button and options */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {showSelectToggle && (
-            <Button
-              size="small"
-              onClick={() => {
-                const next = !effectiveSelectionEnabled;
-                setSelectMode(next);
-                if (!next) {
-                  try { clear(); } catch (_) { /* ignore */ }
-                }
-                if (typeof onSelectModeChange === 'function') onSelectModeChange(next);
-              }}
+        {/* Full-width Multi-select toggle */}
+        {showSelectToggle && (
+          <Box sx={{ width: '100%' }}>
+            <Box
               sx={{
-                minHeight: 34,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 px: 1.5,
-                py: 0.5,
+                py: 1,
                 borderRadius: 1.5,
-                fontWeight: 800,
-                textTransform: 'none',
-                letterSpacing: 0.2,
-                border: effectiveSelectionEnabled ? '1px solid #4b5563' : '1px solid rgba(255,255,255,0.28)',
-                color: '#e5e7eb',
-                background: effectiveSelectionEnabled ? 'linear-gradient(45deg, #1f2937 30%, #374151 90%)' : 'transparent',
-                '&:hover': {
-                  background: effectiveSelectionEnabled ? 'linear-gradient(45deg, #253042 30%, #3f4856 90%)' : 'rgba(255,255,255,0.06)',
-                },
+                border: effectiveSelectionEnabled ? '1px solid #4b5563' : '1px solid rgba(255,255,255,0.18)',
+                bgcolor: effectiveSelectionEnabled ? 'rgba(79,70,229,0.15)' : 'rgba(255,255,255,0.04)',
+                transition: 'all 0.2s ease',
               }}
             >
-              {effectiveSelectionEnabled ? 'Select: On' : 'Select: Off'}
-            </Button>
-          )}
-          <IconButton
-            aria-label="Library options"
-            onClick={openOptions}
-            size="small"
-            sx={{
-              color: '#8b5cc7',
-              border: '1px solid rgba(139,92,199,0.45)',
-              bgcolor: 'rgba(139,92,199,0.08)',
-              '&:hover': { bgcolor: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
-            }}
+              <Box sx={{ fontWeight: 800, color: '#e5e7eb' }}>
+                {effectiveSelectionEnabled ? 'Multi-select enabled' : 'Enable multi-select'}
+              </Box>
+              <Switch
+                checked={effectiveSelectionEnabled}
+                onChange={() => {
+                  const next = !effectiveSelectionEnabled;
+                  setSelectMode(next);
+                  if (!next) {
+                    try { clear(); } catch (_) { /* ignore */ }
+                  }
+                  if (typeof onSelectModeChange === 'function') onSelectModeChange(next);
+                }}
+                inputProps={{ 'aria-label': 'Enable multi-select' }}
+              />
+            </Box>
+          </Box>
+        )}
+
+        {/* Options popover */}
+        <Popover
+          open={Boolean(optionsAnchor)}
+          anchorEl={optionsAnchor}
+          onClose={closeOptions}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          PaperProps={{ sx: { width: 300, borderRadius: 2, mt: 1, maxHeight: '70vh', overflowY: 'auto' } }}
+        >
+          <List
+            dense
+            disablePadding
+            subheader={
+              <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700 }}>
+                Library options
+              </ListSubheader>
+            }
           >
-            <MoreVert fontSize="small" />
-          </IconButton>
-          <Popover
-            open={Boolean(optionsAnchor)}
-            anchorEl={optionsAnchor}
-            onClose={closeOptions}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            PaperProps={{ sx: { width: 300, borderRadius: 2, mt: 1, maxHeight: '70vh', overflowY: 'auto' } }}
-          >
-            <List
-              dense
-              disablePadding
-              subheader={
-                <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700 }}>
-                  Library options
+            <ListItemButton onClick={() => { reload(); closeOptions(); }}>
+              <ListItemIcon><Refresh fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Refresh" />
+            </ListItemButton>
+            <Divider sx={{ my: 0.5 }} />
+
+            {count > 0 && (
+              <>
+                <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700, lineHeight: 2 }}>
+                  Selection
                 </ListSubheader>
-              }
-            >
-              <ListItemButton onClick={() => { reload(); closeOptions(); }}>
-                <ListItemIcon><Refresh fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Refresh" />
-              </ListItemButton>
-              <Divider sx={{ my: 0.5 }} />
-
-              {count > 0 && (
-                <>
-                  <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700, lineHeight: 2 }}>
-                    Selection
-                  </ListSubheader>
-                  <ListItemButton onClick={handleClearSelected}>
-                    <ListItemIcon><Clear fontSize="small" /></ListItemIcon>
-                    <ListItemText primary="Clear selected" />
-                  </ListItemButton>
-                  {deleteEnabled && (
-                    <ListItemButton onClick={handleDeleteSelected} sx={{ color: 'error.main' }}>
-                      <ListItemIcon><DeleteForever fontSize="small" color="error" /></ListItemIcon>
-                      <ListItemText primary="Delete selected" />
-                    </ListItemButton>
-                  )}
-                  <Divider sx={{ my: 0.5 }} />
-                </>
-              )}
-
-              {items.length > 1 && (
-                <ListItemButton onClick={() => setSortDisclosureOpen((v) => !v)}>
-                <ListItemIcon><Sort fontSize="small" /></ListItemIcon>
-                  <ListItemText primary="Sorting" secondary={
-                    sortOption === 'newest' ? 'Newest first' : 'Oldest first'
-                  } />
-                {sortDisclosureOpen ? <ExpandLess /> : <ExpandMore />}
+                <ListItemButton onClick={handleClearSelected}>
+                  <ListItemIcon><Clear fontSize="small" /></ListItemIcon>
+                  <ListItemText primary="Clear selected" />
                 </ListItemButton>
-              )}
-              {items.length > 1 && (
-                <Collapse in={sortDisclosureOpen} timeout="auto" unmountOnExit>
-                  <Box sx={{ pl: 6, pb: 1 }}>
-                    <RadioGroup
-                      aria-label="Sort order"
-                      value={sortOption}
-                      onChange={(e) => handleSetSort(e.target.value)}
-                    >
-                      <FormControlLabel value="newest" control={<Radio size="small" />} label="Newest first" />
-                      <FormControlLabel value="oldest" control={<Radio size="small" />} label="Oldest first" />
-                    </RadioGroup>
-                  </Box>
-                </Collapse>
-              )}
-            </List>
-          </Popover>
-        </Box>
+                {deleteEnabled && (
+                  <ListItemButton onClick={handleDeleteSelected} sx={{ color: 'error.main' }}>
+                    <ListItemIcon><DeleteForever fontSize="small" color="error" /></ListItemIcon>
+                    <ListItemText primary="Delete selected" />
+                  </ListItemButton>
+                )}
+                <Divider sx={{ my: 0.5 }} />
+              </>
+            )}
+
+            {items.length > 1 && (
+              <ListItemButton onClick={() => setSortDisclosureOpen((v) => !v)}>
+                <ListItemIcon><Sort fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Sorting" secondary={
+                  sortOption === 'newest' ? 'Newest first' : 'Oldest first'
+                } />
+                {sortDisclosureOpen ? <ExpandLess /> : <ExpandMore />}
+              </ListItemButton>
+            )}
+            {items.length > 1 && (
+              <Collapse in={sortDisclosureOpen} timeout="auto" unmountOnExit>
+                <Box sx={{ pl: 6, pb: 1 }}>
+                  <RadioGroup
+                    aria-label="Sort order"
+                    value={sortOption}
+                    onChange={(e) => handleSetSort(e.target.value)}
+                  >
+                    <FormControlLabel value="newest" control={<Radio size="small" />} label="Newest first" />
+                    <FormControlLabel value="oldest" control={<Radio size="small" />} label="Oldest first" />
+                  </RadioGroup>
+                </Box>
+              </Collapse>
+            )}
+          </List>
+        </Popover>
       </Box>
 
       <LibraryGrid
