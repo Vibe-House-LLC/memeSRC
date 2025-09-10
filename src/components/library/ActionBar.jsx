@@ -1,8 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Slide } from '@mui/material';
+import { Box, Button, IconButton, Slide, Tooltip } from '@mui/material';
 
-export default function ActionBar({ open, primaryLabel, onPrimary, disabled, count }) {
+export default function ActionBar({ open, primaryLabel, onPrimary, disabled, count, onSecondary, secondaryAriaLabel = 'More options', secondaryIcon }) {
   return (
     <Slide direction="up" in={open} mountOnEnter unmountOnExit>
       <Box sx={{
@@ -15,8 +15,8 @@ export default function ActionBar({ open, primaryLabel, onPrimary, disabled, cou
             variant="contained"
             onClick={onPrimary}
             disabled={disabled}
-            fullWidth
             sx={{
+              flex: 1,
               minHeight: 48,
               fontWeight: 700,
               textTransform: 'none',
@@ -29,6 +29,27 @@ export default function ActionBar({ open, primaryLabel, onPrimary, disabled, cou
           >
             {primaryLabel}{typeof count === 'number' ? ` (${count})` : ''}
           </Button>
+          {typeof onSecondary === 'function' && (
+            <Tooltip title={secondaryAriaLabel} arrow>
+              <span>
+                <IconButton
+                  aria-label={secondaryAriaLabel}
+                  onClick={onSecondary}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 1.5,
+                    color: '#8b5cc7',
+                    border: '1px solid rgba(139,92,199,0.45)',
+                    bgcolor: 'rgba(139,92,199,0.08)',
+                    '&:hover': { bgcolor: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
+                  }}
+                >
+                  {secondaryIcon}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
         </Box>
       </Box>
     </Slide>
@@ -41,4 +62,7 @@ ActionBar.propTypes = {
   onPrimary: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
   count: PropTypes.number,
+  onSecondary: PropTypes.func,
+  secondaryAriaLabel: PropTypes.string,
+  secondaryIcon: PropTypes.node,
 };

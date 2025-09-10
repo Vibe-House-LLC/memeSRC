@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader, TextField, InputAdornment, Switch } from '@mui/material';
-import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, Search } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader, TextField, InputAdornment } from '@mui/material';
+import { MoreVert, MoreHoriz, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, Search, DoneAll } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
@@ -54,6 +54,7 @@ export default function LibraryBrowser({
   const [confirm, setConfirm] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'info' });
   const [optionsAnchor, setOptionsAnchor] = useState(null);
+  const [optionsPlacement, setOptionsPlacement] = useState('below'); // 'below' | 'above'
   const [sortDisclosureOpen, setSortDisclosureOpen] = useState(false);
   const [sortOption, setSortOption] = useState('newest'); // 'newest' | 'oldest' | 'az'
   const [searchQuery, setSearchQuery] = useState('');
@@ -244,7 +245,14 @@ export default function LibraryBrowser({
 
   const previewItem = useMemo(() => filteredItems.find((i) => i.key === previewKey), [filteredItems, previewKey]);
 
-  const openOptions = (e) => setOptionsAnchor(e.currentTarget);
+  const openOptions = (e, opts = {}) => {
+    setOptionsAnchor(e.currentTarget);
+    if (opts && opts.preferAbove) {
+      setOptionsPlacement('above');
+    } else {
+      setOptionsPlacement('below');
+    }
+  };
   const closeOptions = () => setOptionsAnchor(null);
 
   const handleClearSelected = () => {
@@ -327,7 +335,7 @@ export default function LibraryBrowser({
             }}
           />
         )}
-        {/* Full-width Search */}
+        {/* Search with inline controls */}
         <TextField
           size="medium"
           value={searchQuery}
@@ -349,6 +357,24 @@ export default function LibraryBrowser({
                       <Clear fontSize="small" />
                     </IconButton>
                   ) : null}
+                  {showSelectToggle && (
+                    <IconButton
+                      size="small"
+                      aria-label={effectiveSelectionEnabled ? 'Disable multi-select' : 'Enable multi-select'}
+                      onClick={handleToggleSelectMode}
+                      sx={{
+                        color: effectiveSelectionEnabled ? '#ffffff' : '#8b5cc7',
+                        border: effectiveSelectionEnabled ? '1px solid rgba(139,92,199,0.85)' : '1px solid rgba(139,92,199,0.45)',
+                        bgcolor: effectiveSelectionEnabled ? 'rgba(139,92,199,0.35)' : 'rgba(139,92,199,0.08)',
+                        '&:hover': {
+                          bgcolor: effectiveSelectionEnabled ? 'rgba(139,92,199,0.45)' : 'rgba(139,92,199,0.18)',
+                          borderColor: 'rgba(139,92,199,0.75)'
+                        }
+                      }}
+                    >
+                      <DoneAll fontSize="small" />
+                    </IconButton>
+                  )}
                   <IconButton
                     size="small"
                     aria-label="Library options"
@@ -376,54 +402,13 @@ export default function LibraryBrowser({
           }}
         />
 
-        {/* Full-width Multi-select toggle */}
-        {showSelectToggle && (
-          <Box sx={{ width: '100%', alignSelf: 'stretch' }}>
-            <Box
-              component="button"
-              type="button"
-              onClick={handleToggleSelectMode}
-              role="switch"
-              aria-checked={effectiveSelectionEnabled}
-              aria-label={effectiveSelectionEnabled ? 'Disable multi-select' : 'Enable multi-select'}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-                px: 1.5,
-                py: 1,
-                borderRadius: 1.5,
-                border: effectiveSelectionEnabled ? '1px solid #4b5563' : '1px solid rgba(255,255,255,0.18)',
-                bgcolor: effectiveSelectionEnabled ? 'rgba(79,70,229,0.15)' : 'rgba(255,255,255,0.04)',
-                transition: 'all 0.2s ease',
-                cursor: 'pointer',
-                textAlign: 'left',
-                color: '#e5e7eb',
-                '&:focus-visible': { outline: '2px solid #8b5cc7', outlineOffset: 2 },
-                borderWidth: 1,
-              }}
-            >
-              <Box sx={{ fontWeight: 800 }}>
-                {effectiveSelectionEnabled ? 'Multi-select enabled' : 'Enable multi-select'}
-              </Box>
-              <Switch
-                checked={effectiveSelectionEnabled}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => { e.stopPropagation(); handleToggleSelectMode(); }}
-                inputProps={{ 'aria-label': 'Enable multi-select' }}
-              />
-            </Box>
-          </Box>
-        )}
-
         {/* Options popover */}
         <Popover
           open={Boolean(optionsAnchor)}
           anchorEl={optionsAnchor}
           onClose={closeOptions}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          anchorOrigin={optionsPlacement === 'above' ? { vertical: 'top', horizontal: 'right' } : { vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={optionsPlacement === 'above' ? { vertical: 'bottom', horizontal: 'right' } : { vertical: 'top', horizontal: 'right' }}
           PaperProps={{ sx: { width: 300, borderRadius: 2, mt: 1, maxHeight: '70vh', overflowY: 'auto' } }}
         >
           <List
@@ -568,6 +553,9 @@ export default function LibraryBrowser({
           count={count}
           onPrimary={handlePrimary}
           disabled={typeof minSelected === 'number' ? count < minSelected : false}
+          onSecondary={(e) => openOptions(e, { preferAbove: true })}
+          secondaryAriaLabel="More options"
+          secondaryIcon={<MoreHoriz />}
         />
       )}
 
