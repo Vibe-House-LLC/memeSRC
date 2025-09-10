@@ -348,6 +348,7 @@ export const createSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -391,6 +392,7 @@ export const updateSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -434,6 +436,7 @@ export const deleteSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -477,12 +480,15 @@ export const createEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -514,12 +520,15 @@ export const updateEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -551,12 +560,15 @@ export const deleteEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -600,6 +612,7 @@ export const createSubtitle = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -611,6 +624,8 @@ export const createSubtitle = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -661,6 +676,7 @@ export const updateSubtitle = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -672,6 +688,8 @@ export const updateSubtitle = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -722,6 +740,7 @@ export const deleteSubtitle = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -733,6 +752,8 @@ export const deleteSubtitle = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -2458,6 +2479,7 @@ export const createSeasonContributors = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -2503,6 +2525,7 @@ export const updateSeasonContributors = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -2548,6 +2571,7 @@ export const deleteSeasonContributors = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -2593,6 +2617,8 @@ export const createEpisodeContributors = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -2638,6 +2664,8 @@ export const updateEpisodeContributors = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -2683,6 +2711,8 @@ export const deleteEpisodeContributors = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId

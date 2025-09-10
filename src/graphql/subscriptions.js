@@ -324,6 +324,7 @@ export const onCreateSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -364,6 +365,7 @@ export const onUpdateSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -404,6 +406,7 @@ export const onDeleteSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -444,12 +447,15 @@ export const onCreateEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -478,12 +484,15 @@ export const onUpdateEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -512,12 +521,15 @@ export const onDeleteEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -558,6 +570,7 @@ export const onCreateSubtitle = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -569,6 +582,8 @@ export const onCreateSubtitle = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -616,6 +631,7 @@ export const onUpdateSubtitle = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -627,6 +643,8 @@ export const onUpdateSubtitle = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -674,6 +692,7 @@ export const onDeleteSubtitle = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -685,6 +704,8 @@ export const onDeleteSubtitle = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -2352,6 +2373,7 @@ export const onCreateSeasonContributors = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -2396,6 +2418,7 @@ export const onUpdateSeasonContributors = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -2440,6 +2463,7 @@ export const onDeleteSeasonContributors = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -2484,6 +2508,8 @@ export const onCreateEpisodeContributors = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -2528,6 +2554,8 @@ export const onUpdateEpisodeContributors = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -2572,6 +2600,8 @@ export const onDeleteEpisodeContributors = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId

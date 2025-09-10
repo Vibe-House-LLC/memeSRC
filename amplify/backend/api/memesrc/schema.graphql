@@ -59,6 +59,7 @@ type Season @model @auth(
   year: Int,
   image: String,
   description: String,
+  seasonNumber: Int,
   series: Series @belongsTo,
   episodes: [Episode] @hasMany
   contributors: [UserDetails] @manyToMany(relationName: "SeasonContributors")
@@ -77,6 +78,8 @@ type Episode @model @auth(
   year: Int,
   image: String,
   description: String,
+  episodeNumber: Int,
+  name: String,
   season: Season @belongsTo
   subtitles: [Subtitle] @hasMany
   contributors: [UserDetails] @manyToMany(relationName: "EpisodeContributors")

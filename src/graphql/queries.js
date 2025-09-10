@@ -214,6 +214,7 @@ export const getSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -259,6 +260,7 @@ export const listSeasons = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -277,12 +279,15 @@ export const getEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -316,6 +321,8 @@ export const listEpisodes = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -346,6 +353,7 @@ export const getSubtitle = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -357,6 +365,8 @@ export const getSubtitle = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -1606,6 +1616,7 @@ export const getSeasonContributors = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -1728,6 +1739,8 @@ export const getEpisodeContributors = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId

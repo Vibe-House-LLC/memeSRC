@@ -470,6 +470,11 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcDynamoDBLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
+    },
     "memesrcFrameFunction": {
       "build": true,
       "dependsOn": [
@@ -694,6 +699,101 @@
     },
     "memesrcUUID": {
       "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcUpdateMedia": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcDynamoDBLayer"
+        },
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcUpdateSubtitles": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcSesLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcDynamoDBLayer"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -996,6 +1096,22 @@
         {
           "category": "function",
           "resourceName": "memesrcAnalyticsReporting"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcDynamoDBLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcDynamoDBLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcDynamoDBLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcDynamoDBLayer"
         }
       ]
     },
@@ -1348,6 +1464,46 @@
         {
           "category": "function",
           "resourceName": "memesrcUUID"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateMedia_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateMedia"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateMedia_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateMedia"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateMedia_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateMedia"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateSubtitles_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateSubtitles"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateSubtitles_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateSubtitles"
         }
       ]
     },

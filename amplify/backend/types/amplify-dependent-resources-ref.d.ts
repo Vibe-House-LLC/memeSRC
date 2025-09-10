@@ -104,6 +104,9 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "memesrcDynamoDBLayer": {
+      "Arn": "string"
+    },
     "memesrcFrameFunction": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -212,6 +215,20 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string"
     },
     "memesrcUUID": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "memesrcUpdateMedia": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "memesrcUpdateSubtitles": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
