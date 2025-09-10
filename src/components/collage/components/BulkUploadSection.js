@@ -10,7 +10,8 @@ import {
   MenuItem,
   Snackbar,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Button,
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
 import {
@@ -19,7 +20,8 @@ import {
   RemoveCircle,
   Upload,
   Refresh,
-  Clear
+  Clear,
+  PhotoLibrary,
 } from '@mui/icons-material';
 import { LibraryBrowser } from '../../library';
 import { UserContext } from '../../../UserContext';
@@ -147,6 +149,8 @@ const BulkUploadSection = ({
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
   const hasLibraryAccess = isAdmin || (user?.userDetails?.magicSubscription === 'true');
+  // For non-admins (no projects access), start with a simple start screen
+  const [showLibrary, setShowLibrary] = useState(isAdmin);
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
@@ -997,98 +1001,133 @@ const BulkUploadSection = ({
               )}
             </>
           ) : (
-            // Library users (admins or pro): either show Library only, or an "Add photos to your library" dropzone when empty
+            // Library users (admins or pro): for non-admins, show a simple start screen first
             <>
-              {adminHasLibraryItems ? (
-                <>
-                  <LibraryBrowser
-                  isAdmin={isAdmin}
-                  multiple
-                  minSelected={2}
-                  maxSelected={5}
-                  refreshTrigger={libraryRefreshTrigger}
-                  onSelect={(items) => handleLibrarySelect(items)}
-                  showActionBar={false}
-                  actionBarLabel="Make Collage"
-                  showSelectToggle
-                  initialSelectMode
-                  onSelectionChange={(info) => { if (onLibrarySelectionChange) onLibrarySelectionChange(info); }}
-                  exposeActions={(actions) => { if (onLibraryActionsReady) onLibraryActionsReady(actions); }}
-                />
-                </>
+              {!isAdmin && !showLibrary ? (
+                <Box sx={{ 
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  py: 6,
+                  px: 2,
+                  borderRadius: 2,
+                  bgcolor: (theme) => theme.palette.background.paper,
+                  border: 1,
+                  borderColor: 'divider',
+                }}>
+                  <PhotoLibrary sx={{ fontSize: 56, mb: 1, color: 'text.disabled' }} />
+                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                    New Collage
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                    You’re making a new collage. Select photos to get started.
+                  </Typography>
+                  <Button 
+                    variant="contained"
+                    size="large"
+                    startIcon={<PhotoLibrary />}
+                    onClick={() => setShowLibrary(true)}
+                    sx={{ fontWeight: 700, textTransform: 'none', minWidth: 220 }}
+                  >
+                    Select photos
+                  </Button>
+                </Box>
               ) : (
                 <>
-                  <Box sx={{ 
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: '200px',
-                    border: `2px dashed ${theme.palette.divider}`,
-                    borderRadius: 2,
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      borderColor: theme.palette.primary.main,
-                      backgroundColor: theme.palette.action.hover,
-                    }
-                  }}>
-                    <Box 
-                      onClick={() => adminLibraryFileInputRef.current?.click()}
-                      sx={{ textAlign: 'center', p: 3 }}
-                    >
-                      <Add sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-                      <Typography variant="h6" gutterBottom>
-                        Add photos to your library
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Upload images to build your library, then make collages from them
-                      </Typography>
-                    </Box>
-                    <input
-                      type="file"
-                      ref={adminLibraryFileInputRef}
-                      style={{ display: 'none' }}
-                      accept="image/*"
-                      multiple
-                      onChange={handleAdminLibraryUpload}
-                    />
-                  </Box>
+                  {adminHasLibraryItems ? (
+                    <>
+                      <LibraryBrowser
+                        isAdmin={isAdmin}
+                        multiple
+                        minSelected={2}
+                        maxSelected={5}
+                        refreshTrigger={libraryRefreshTrigger}
+                        onSelect={(items) => handleLibrarySelect(items)}
+                        showActionBar={false}
+                        actionBarLabel="Make Collage"
+                        showSelectToggle
+                        initialSelectMode
+                        onSelectionChange={(info) => { if (onLibrarySelectionChange) onLibrarySelectionChange(info); }}
+                        exposeActions={(actions) => { if (onLibraryActionsReady) onLibraryActionsReady(actions); }}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Box sx={{ 
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '200px',
+                        border: `2px dashed ${theme.palette.divider}`,
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: theme.palette.primary.main,
+                          backgroundColor: theme.palette.action.hover,
+                        }
+                      }}>
+                        <Box 
+                          onClick={() => adminLibraryFileInputRef.current?.click()}
+                          sx={{ textAlign: 'center', p: 3 }}
+                        >
+                          <Add sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+                          <Typography variant="h6" gutterBottom>
+                            Add photos to your library
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Upload images to build your library, then make collages from them
+                          </Typography>
+                        </Box>
+                        <input
+                          type="file"
+                          ref={adminLibraryFileInputRef}
+                          style={{ display: 'none' }}
+                          accept="image/*"
+                          multiple
+                          onChange={handleAdminLibraryUpload}
+                        />
+                      </Box>
 
-                  {/* Show placeholders and recently added items while uploads are in progress */}
-                  {Array.isArray(adminLibraryItems) && adminLibraryItems.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <HorizontalScroller>
-                        {adminLibraryItems.map((it, idx) => (
-                          <PanelThumbnail key={it.key || it.id || idx} hasImage>
-                            <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
-                              <CardMedia
-                                component="img"
-                                width="100%"
-                                height="100%"
-                                image={it.url}
-                                alt="Uploading"
-                                sx={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                              />
-                              {it.loading && (
-                                <Box
-                                  sx={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    bgcolor: (theme) => theme.palette.action.disabledBackground,
-                                  }}
-                                >
-                                  <CircularProgress size={20} />
+                      {/* Show placeholders and recently added items while uploads are in progress */}
+                      {Array.isArray(adminLibraryItems) && adminLibraryItems.length > 0 && (
+                        <Box sx={{ mt: 2 }}>
+                          <HorizontalScroller>
+                            {adminLibraryItems.map((it, idx) => (
+                              <PanelThumbnail key={it.key || it.id || idx} hasImage>
+                                <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+                                  <CardMedia
+                                    component="img"
+                                    width="100%"
+                                    height="100%"
+                                    image={it.url}
+                                    alt="Uploading"
+                                    sx={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                                  />
+                                  {it.loading && (
+                                    <Box
+                                      sx={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        bgcolor: (theme) => theme.palette.action.disabledBackground,
+                                      }}
+                                    >
+                                      <CircularProgress size={20} />
+                                    </Box>
+                                  )}
                                 </Box>
-                              )}
-                            </Box>
-                          </PanelThumbnail>
-                        ))}
-                      </HorizontalScroller>
-                    </Box>
+                              </PanelThumbnail>
+                            ))}
+                          </HorizontalScroller>
+                        </Box>
+                      )}
+                    </>
                   )}
                 </>
               )}
