@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "devDependencies": {},
+  "dependencies": {
+    "@opensearch-project/opensearch": "^2.6.0",
+    "axios": "^1.6.8",
+    "csv-parser": "^3.0.0",
+    "aws-sdk": "^2.1692.0"
+  }
+}

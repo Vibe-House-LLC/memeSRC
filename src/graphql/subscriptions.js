@@ -915,9 +915,23 @@ export const onCreateV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       v2ContentMetadataAliasId
+      v2ContentMetadataSeriesId
       __typename
     }
   }
@@ -948,9 +962,23 @@ export const onUpdateV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       v2ContentMetadataAliasId
+      v2ContentMetadataSeriesId
       __typename
     }
   }
@@ -981,9 +1009,23 @@ export const onDeleteV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       v2ContentMetadataAliasId
+      v2ContentMetadataSeriesId
       __typename
     }
   }
@@ -1006,6 +1048,7 @@ export const onCreateAlias = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       createdAt
@@ -1033,6 +1076,7 @@ export const onUpdateAlias = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       createdAt
@@ -1060,6 +1104,7 @@ export const onDeleteAlias = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       createdAt
@@ -2795,6 +2840,7 @@ export const onCreateUserV2Metadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       userDetails {
@@ -2844,6 +2890,7 @@ export const onUpdateUserV2Metadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       userDetails {
@@ -2893,6 +2940,7 @@ export const onDeleteUserV2Metadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       userDetails {

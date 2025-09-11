@@ -269,6 +269,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcSourceMediaZipProcessor"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUpdateMedia"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -560,6 +568,13 @@
         },
         {
           "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcOpenSearchLayer"
+        },
+        {
+          "attributes": [
             "GraphQLAPIIdOutput",
             "GraphQLAPIEndpointOutput",
             "GraphQLAPIKeyOutput"
@@ -617,6 +632,11 @@
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "memesrcOpenSearchLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
     },
     "memesrcPublicStripeFunction": {
       "build": true,
@@ -1162,6 +1182,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcAxiosLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAxiosLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAxiosLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAxiosLayer"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcDynamoDBLayer_deploymentBucketName": {
       "usedBy": [
         {
@@ -1250,6 +1286,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcIndexAndPublish_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcIndexAndPublish"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcIndexAndPublish_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcIndexAndPublish"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcIndexToOpenSearch_deploymentBucketName": {
       "usedBy": [
         {
@@ -1287,6 +1339,22 @@
         {
           "category": "function",
           "resourceName": "memesrcOpenAI"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenSearchLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenSearchLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenSearchLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenSearchLayer"
         }
       ]
     },

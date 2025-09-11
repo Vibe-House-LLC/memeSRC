@@ -720,9 +720,23 @@ export const getV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       v2ContentMetadataAliasId
+      v2ContentMetadataSeriesId
       __typename
     }
   }
@@ -752,6 +766,7 @@ export const listV2ContentMetadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       nextToken
@@ -788,6 +803,7 @@ export const v2ContentMetadataByStatus = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       nextToken
@@ -813,6 +829,7 @@ export const getAlias = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       createdAt
@@ -1992,6 +2009,7 @@ export const getUserV2Metadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       userDetails {

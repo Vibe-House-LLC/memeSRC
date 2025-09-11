@@ -104,6 +104,9 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "memesrcAxiosLayer": {
+      "Arn": "string"
+    },
     "memesrcDynamoDBLayer": {
       "Arn": "string"
     },
@@ -131,6 +134,13 @@ export type AmplifyDependentResourcesAttributes = {
     "memesrcGraphQlLayer": {
       "Arn": "string"
     },
+    "memesrcIndexAndPublish": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "memesrcIndexToOpenSearch": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -151,6 +161,9 @@ export type AmplifyDependentResourcesAttributes = {
       "LambdaExecutionRoleArn": "string",
       "Name": "string",
       "Region": "string"
+    },
+    "memesrcOpenSearchLayer": {
+      "Arn": "string"
     },
     "memesrcPublicStripeFunction": {
       "Arn": "string",

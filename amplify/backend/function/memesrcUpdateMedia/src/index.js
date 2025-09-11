@@ -527,33 +527,34 @@ const createSeriesContributors = async (data) => {
     }
 }
 
-const moveSeasonFilesFromPendingToSrc = async (alias, seasons) => {
+const moveEpisodeFilesFromPendingToSrc = async (alias, episodes) => {
     try {
-        console.log(`Moving season files for alias: ${alias}, seasons: ${JSON.stringify(seasons)}`);
+        console.log(`Moving episode files for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
         
         const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
         
-        // Process each season
-        for (const season of seasons) {
-            console.log(`Processing season ${season} for alias ${alias}`);
+        // Process each episode
+        for (const episode of episodes) {
+            const { season, episode: episodeNumber } = episode;
+            console.log(`Processing season ${season}, episode ${episodeNumber} for alias ${alias}`);
             
-            // List all files in the pending season folder
+            // List all files in the pending episode folder
             const listParams = {
                 Bucket: bucketName,
-                Prefix: `protected/srcPending/${alias}/${season}/`
+                Prefix: `protected/srcPending/${alias}/${season}/${episodeNumber}/`
             };
             
             const listedObjects = await s3.listObjectsV2(listParams).promise();
             
             if (!listedObjects.Contents || listedObjects.Contents.length === 0) {
-                console.log(`No files found for season ${season} in pending folder`);
+                console.log(`No files found for season ${season}, episode ${episodeNumber} in pending folder`);
                 continue;
             }
             
             // Copy each file to the src folder
             for (const object of listedObjects.Contents) {
                 const sourceKey = object.Key;
-                const destinationKey = sourceKey.replace(`protected/srcPending/${alias}/${season}/`, `protected/src/${alias}/${season}/`);
+                const destinationKey = sourceKey.replace(`protected/srcPending/${alias}/${season}/${episodeNumber}/`, `protected/src/${alias}/${season}/${episodeNumber}/`);
                 
                 console.log(`Copying ${sourceKey} to ${destinationKey}`);
                 
@@ -577,16 +578,16 @@ const moveSeasonFilesFromPendingToSrc = async (alias, seasons) => {
             }
         }
         
-        console.log(`Successfully moved all files for seasons: ${JSON.stringify(seasons)}`);
+        console.log(`Successfully moved all files for episodes: ${JSON.stringify(episodes)}`);
     } catch (error) {
-        console.error('Error moving season files:', error);
+        console.error('Error moving episode files:', error);
         throw error;
     }
 }
 
-const updateSeriesDocsWithNewSeasons = async (alias, seasons) => {
+const updateSeriesDocsWithNewEpisodes = async (alias, episodes) => {
     try {
-        console.log(`Updating series docs for alias: ${alias}, seasons: ${JSON.stringify(seasons)}`);
+        console.log(`Updating series docs for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
         
         const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
         
@@ -598,19 +599,24 @@ const updateSeriesDocsWithNewSeasons = async (alias, seasons) => {
             console.log('No existing docs found, starting with empty array');
         }
         
-        // Remove rows for seasons we're updating
-        const filteredDocs = existingDocs.filter(doc => !seasons.includes(parseInt(doc.season)));
-        console.log(`Filtered out ${existingDocs.length - filteredDocs.length} existing rows for seasons being updated`);
+        // Remove rows for episodes we're updating
+        const filteredDocs = existingDocs.filter(doc => {
+            return !episodes.some(ep => 
+                parseInt(doc.season) === ep.season && parseInt(doc.episode) === ep.episode
+            );
+        });
+        console.log(`Filtered out ${existingDocs.length - filteredDocs.length} existing rows for episodes being updated`);
         
-        // Get new docs from pending folder for each season
+        // Get new docs from pending folder for each episode
         let newDocs = [];
-        for (const season of seasons) {
+        for (const episode of episodes) {
+            const { season, episode: episodeNumber } = episode;
             try {
-                // Get docs from the pending season folder
-                const seasonDocsPath = `protected/srcPending/${alias}/${season}/_docs.csv`;
+                // Get docs from the pending episode folder
+                const episodeDocsPath = `protected/srcPending/${alias}/${season}/${episodeNumber}/_docs.csv`;
                 const params = {
                     Bucket: bucketName,
-                    Key: seasonDocsPath
+                    Key: episodeDocsPath
                 };
                 
                 const response = await s3.getObject(params).promise();
@@ -633,7 +639,7 @@ const updateSeriesDocsWithNewSeasons = async (alias, seasons) => {
                     }
                 }
             } catch (error) {
-                console.warn(`No docs found for season ${season}:`, error.message);
+                console.warn(`No docs found for season ${season}, episode ${episodeNumber}:`, error.message);
             }
         }
         
@@ -791,13 +797,13 @@ const processNewSeries = async (data) => {
 }
 
 const processExistingSeries = async (data) => {
-    const { sourceMediaId, seasons } = data;
+    const { sourceMediaId, episodes } = data;
     try {
         const sourceMedia = await getSourceMedia(sourceMediaId);
         const seriesData = sourceMedia?.series;
         const userData = sourceMedia?.user;
         const alias = sourceMedia?.pendingAlias;
-        // const docs = await getSeriesCsv(alias, true); // Not needed since we handle docs in updateSeriesDocsWithNewSeasons
+        // const docs = await getSeriesCsv(alias, true); // Not needed since we handle docs in updateSeriesDocsWithNewEpisodes
         const metadata = await getSeriesMetadata(alias, true);
         // Check to see if the v2 content metadata exists
         const v2ContentMetadata = await getV2ContentMetadata(alias);
@@ -835,11 +841,11 @@ const processExistingSeries = async (data) => {
             console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
         }
 
-        // Move season files from pending to src folder for approved seasons
-        await moveSeasonFilesFromPendingToSrc(alias, seasons);
+        // Move episode files from pending to src folder for approved episodes
+        await moveEpisodeFilesFromPendingToSrc(alias, episodes);
         
-        // Update the series docs CSV by removing existing season rows and adding new ones
-        await updateSeriesDocsWithNewSeasons(alias, seasons);
+        // Update the series docs CSV by removing existing episode rows and adding new ones
+        await updateSeriesDocsWithNewEpisodes(alias, episodes);
 
         // Invoke the indexAndPublish function for existing series
         await invokeIndexAndPublish(sourceMediaId, false);
@@ -872,7 +878,7 @@ exports.handler = async (event) => {
     const tvdbApiKey = Parameters.find(param => param.Name === process.env.tvdbApiKey).Value;
     const tvdbPin = Parameters.find(param => param.Name === process.env.tvdbPin).Value;
 
-    const { fileId, sourceMediaId, seasons = [], series = null, processAll = false, alias } = event?.body;
+    const { fileId, sourceMediaId, episodes = [], series = null, processAll = false, alias } = event?.body;
     let statusCode = 500;
     let body;
 
@@ -891,7 +897,7 @@ exports.handler = async (event) => {
             statusCode = 200;
             await processExistingSeries({
                 sourceMediaId,
-                seasons,
+                episodes,
             });
             body = 'Indexing has been triggered';
         }

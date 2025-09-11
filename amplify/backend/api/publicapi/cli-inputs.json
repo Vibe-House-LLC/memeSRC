@@ -330,6 +330,20 @@
         },
         "setting": "private"
       }
+    },
+    "/sourceMedia/approve": {
+      "name": "/sourceMedia/approve",
+      "lambdaFunction": "memesrcUpdateMedia",
+      "permissions": {
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update"
+          ]
+        },
+        "setting": "private"
+      }
     }
   }
 }
