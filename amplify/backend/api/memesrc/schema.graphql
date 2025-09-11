@@ -164,6 +164,7 @@ type V2ContentMetadata @model @auth(
   users: [UserDetails] @manyToMany(relationName: "UserV2Metadata")
   alias: Alias @hasOne
   fontFamily: String
+  series: Series @hasOne
 }
 
 type Alias @model @auth(

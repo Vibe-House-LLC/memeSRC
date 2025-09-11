@@ -32,9 +32,33 @@ const AWS = require('aws-sdk');
 // Initialize S3 client
 const s3 = new AWS.S3();
 
+const getSeriesQuery = `
+    query GetSeries($id: ID!) {
+        getSeries(id: $id) {
+            id
+        }
+    }
+`;
+
+const getSeasonQuery = `
+    query GetSeason($id: ID!) {
+        getSeason(id: $id) {
+            id
+        }
+    }
+`;
+
 const createSeasonMutation = `
     mutation CreateSeason($input: CreateSeasonInput!) {
         createSeason(input: $input) {
+            id
+        }
+    }
+`;
+
+const getEpisodeQuery = `
+    query GetEpisode($id: ID!) {
+        getEpisode(id: $id) {
             id
         }
     }
@@ -120,36 +144,149 @@ const createAliasMutation = `
     }
 `;
 
-const getSeasonFromTvdb = async (tvdbid, season) => {
-    // TODO: Hit the https://api4.thetvdb.com/v4/series/[tvdbid]/artworks?lang=eng&type=7
-    // Grab the array data.artworks
-    // const seasonIds = series.data.artworks.map(artwork => artwork.seasonId)
-    // We'll need to hit the https://api4.thetvdb.com/v4/seasons/[seasonId] to get the description, image, year, and tvdbid
-    // const seasonData = seasons.map(season => {
-    //     return { 
-    //         image: season.data.image,
-    //         year: season.data.year,
-    //         tvdbid: season.data.id,
-    //         seasonNumber: season.data.seasonNumber
-    //     }
-    // }).sort((a, b) => a.seasonNumber - b.seasonNumber)
-    // return seasonData
+const createSeriesMutation = `
+    mutation CreateSeries($input: CreateSeriesInput!) {
+        createSeries(input: $input) {
+            id
+        }
+    }
+`;
+
+const getSourceMediaQuery = `
+    query GetSourceMedia($id: ID!) {
+        getSourceMedia(id: $id) {
+            id
+            pendingAlias
+            series {
+                id
+                tvdbid
+                slug
+                name
+                year
+            }
+            files {
+                id
+                key
+                unzippedPath
+                status
+            }
+            status
+            user {
+                id
+                username
+                email
+            }
+        }
+    }
+`;
+
+const createSeriesContributorsMutation = `
+    mutation CreateSeriesContributors($input: CreateSeriesContributorsInput!) {
+        createSeriesContributors(input: $input) {
+            id
+        }
+    }
+`;
+
+const getSeasonFromTvdb = async (tvdbid, season, token) => {
+    try {
+        // First, get the series artworks to find season IDs
+        const artworksResponse = await fetch(`https://api4.thetvdb.com/v4/series/${tvdbid}/artworks?lang=eng&type=7`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        });
+
+        if (!artworksResponse.ok) {
+            throw new Error(`TVDB artworks request failed: ${artworksResponse.status} ${artworksResponse.statusText}`);
+        }
+
+        const artworksData = await artworksResponse.json();
+        const artworks = artworksData.data?.artworks || [];
+
+        // Find season IDs from artworks
+        const seasonIds = artworks
+            .filter(artwork => artwork.seasonId)
+            .map(artwork => artwork.seasonId);
+
+        if (seasonIds.length === 0) {
+            return null;
+        }
+
+        // Get season data for each season ID
+        const seasonPromises = seasonIds.map(async (seasonId) => {
+            const seasonResponse = await fetch(`https://api4.thetvdb.com/v4/seasons/${seasonId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!seasonResponse.ok) {
+                console.warn(`Failed to fetch season ${seasonId}: ${seasonResponse.status}`);
+                return null;
+            }
+
+            const seasonData = await seasonResponse.json();
+            const data = seasonData?.data;
+
+            return {
+                image: data?.image,
+                year: data?.year,
+                tvdbid: data?.id,
+                seasonNumber: data?.seasonNumber
+            };
+        });
+
+        const seasons = await Promise.all(seasonPromises);
+        const validSeasons = seasons.filter(s => s !== null);
+
+        // Find the specific season we're looking for
+        const targetSeason = validSeasons.find(s => s.seasonNumber === season);
+        return targetSeason || null;
+    } catch (error) {
+        console.error('Error getting season from TVDB:', error);
+        throw error;
+    }
 }
 
-const getEpisodeFromTvdb = async (tvdbid, season, episode) => {
-    // TODO: Hit the https://api4.thetvdb.com/v4/series/[tvdbid]/episodes/default?page=0&season=[season]&episodeNumber=[episode]
-    // Grab the array data.episodes
-    // if (episodes && episodes.length > 0) {
-    //     const episodeData = episodes[0]
-    //     return {
-    //         name: episodeData.data.name,
-    //         image: episodeData.data.image,
-    //         year: episodeData.data.year,
-    //         description: episodeData.data.overview,
-    //         tvdbid: episodeData.data.id,
-    //         episodeNumber: episodeData.data.number
-    //     }
-    // }
+const getEpisodeFromTvdb = async (tvdbid, season, episode, token) => {
+    try {
+        const response = await fetch(`https://api4.thetvdb.com/v4/series/${tvdbid}/episodes/default?page=0&season=${season}&episodeNumber=${episode}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`TVDB episodes request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const episodes = data.data?.episodes || [];
+
+        if (episodes && episodes.length > 0) {
+            const episodeData = episodes[0];
+            return {
+                name: episodeData.name,
+                image: episodeData.image,
+                year: episodeData.year,
+                description: episodeData.overview,
+                tvdbid: episodeData.id,
+                episodeNumber: episodeData.number
+            };
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error getting episode from TVDB:', error);
+        throw error;
+    }
 }
 
 const getSeasonsFromDocs = async (docs, tvdbid) => {
@@ -165,7 +302,55 @@ const getSeasonsFromDocs = async (docs, tvdbid) => {
         const seasonData = await getSeasonFromTvdb(tvdbid, season);
         return seasonData;
     });
-    return Array.from(seasons);
+    return Array.from(seasonsData);
+}
+
+const getEpisodesFromDocs = async (docs, tvdbid, token) => {
+    try {
+        // Create a map to group episodes by season
+        const seasonEpisodesMap = new Map();
+
+        // Go through docs and group episodes by season
+        for (const doc of docs) {
+            if (doc.season && doc.episode) {
+                const seasonNum = doc.season;
+                const episodeNum = doc.episode;
+
+                if (!seasonEpisodesMap.has(seasonNum)) {
+                    seasonEpisodesMap.set(seasonNum, new Set());
+                }
+
+                seasonEpisodesMap.get(seasonNum).add(episodeNum);
+            }
+        }
+
+        // Convert to the desired format: { season: [episodes] }
+        const result = {};
+
+        for (const [season, episodeSet] of seasonEpisodesMap.entries()) {
+            const episodeNumbers = Array.from(episodeSet).sort((a, b) => a - b);
+
+            // Fetch episode data from TVDB for each episode
+            const episodeDataPromises = episodeNumbers.map(async (episodeNumber) => {
+                try {
+                    const episodeData = await getEpisodeFromTvdb(tvdbid, season, episodeNumber, token);
+                    return episodeData;
+                } catch (error) {
+                    console.warn(`Failed to fetch episode data for S${season}E${episodeNumber}:`, error);
+                    return null;
+                }
+            });
+
+            const episodeData = await Promise.all(episodeDataPromises);
+            // Filter out any null results from failed API calls
+            result[season] = episodeData.filter(episode => episode !== null);
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error getting episodes from docs:', error);
+        throw error;
+    }
 }
 
 const addSeason = async (data) => {
@@ -188,47 +373,164 @@ const updateSeries = async (data) => {
 
 }
 
-const getSeriesCsv = async (alias, newSeries = false) => {
-    const csvPath = newSeries ? `protected/src/${alias}/_docs.csv` : `protected/srcPending/${alias}/_docs.csv`;
-    // TODO: Get the CSV from S3 turn it into an array of objects
+const getSourceMedia = async (id) => {
+    const sourceMediaDetails = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id } });
+    return sourceMediaDetails?.body?.data?.getSourceMedia || null;
 }
 
-const getSeriesMetadata = async (alias, newSeries = false) => {
-    const metadataPath = newSeries ? `protected/src/${alias}/00_metadata.json` : `protected/srcPending/${alias}/00_metadata.json`;
-    // TODO: Get the metadata from S3 turn it into an object
+const getSeriesCsv = async (newSeries = false, alias) => {
+    try {
+        const csvPath = newSeries ? `protected/src/${alias}/_docs.csv` : `protected/srcPending/${alias}/_docs.csv`;
+        
+        const params = {
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: csvPath
+        };
+        
+        const response = await s3.getObject(params).promise();
+        const csvContent = response.Body.toString('utf-8');
+        
+        // Parse CSV content into array of objects
+        const lines = csvContent.trim().split('\n');
+        if (lines.length === 0) {
+            return [];
+        }
+        
+        // Get headers from first line
+        const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+        
+        // Parse data rows
+        const data = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(value => value.trim().replace(/"/g, ''));
+            const row = {};
+            
+            headers.forEach((header, index) => {
+                row[header] = values[index] || '';
+            });
+            
+            data.push(row);
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Error getting CSV from S3:', error);
+        throw error;
+    }
+}
+
+const getSeriesMetadata = async (newSeries = false, alias) => {
+    try {
+        const metadataPath = newSeries ? `protected/src/${alias}/00_metadata.json` : `protected/srcPending/${alias}/00_metadata.json`;
+        
+        const params = {
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: metadataPath
+        };
+        
+        const response = await s3.getObject(params).promise();
+        const jsonContent = response.Body.toString('utf-8');
+        
+        // Parse JSON content into object
+        const metadata = JSON.parse(jsonContent);
+        
+        return metadata;
+    } catch (error) {
+        console.error('Error getting metadata from S3:', error);
+        throw error;
+    }
 }
 
 const getV2ContentMetadata = async (alias) => {
-    const v2ContentMetadataDetails = await makeGraphQLRequest({ query: getV2ContentMetadataQuery, variables: { id: alias } });
-    return v2ContentMetadataDetails?.body?.data?.getV2ContentMetadata || null;
+    try {
+        const v2ContentMetadataDetails = await makeGraphQLRequest({ query: getV2ContentMetadataQuery, variables: { id: alias } });
+        return v2ContentMetadataDetails?.body?.data?.getV2ContentMetadata || null;
+    } catch (error) {
+        console.error('Error getting v2 content metadata:', error);
+        throw error;
+    }
 }
 
 const createV2ContentMetadata = async (data) => {
-    const v2ContentMetadataDetails = await makeGraphQLRequest({ query: createV2ContentMetadataMutation, variables: { input: data } });
-    return v2ContentMetadataDetails?.body?.data?.createV2ContentMetadata || null;
+    try {
+        const v2ContentMetadataDetails = await makeGraphQLRequest({ query: createV2ContentMetadataMutation, variables: { input: data } });
+        return v2ContentMetadataDetails?.body?.data?.createV2ContentMetadata || null;
+    } catch (error) {
+        console.error('Error creating v2 content metadata:', error);
+        throw error;
+    }
 }
 
 const updateV2ContentMetadata = async (data) => {
+    try {
     const v2ContentMetadataDetails = await makeGraphQLRequest({ query: updateV2ContentMetadataMutation, variables: { input: data } });
-    return v2ContentMetadataDetails?.body?.data?.updateV2ContentMetadata || null;
+        return v2ContentMetadataDetails?.body?.data?.updateV2ContentMetadata || null;
+    } catch (error) {
+        console.error('Error updating v2 content metadata:', error);
+        throw error;
+    }
 }
 
 const getTvdbToken = async (tvdbApiKey, tvdbPin) => {
-    // TODO: Hit the https://api4.thetvdb.com/v4/login with the tvdbApiKey and tvdbPin
-    // Grab the token from the response
-    // Return the token
+    try {
+        const response = await fetch('https://api4.thetvdb.com/v4/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                apikey: tvdbApiKey,
+                pin: tvdbPin
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`TVDB login failed: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.data.token;
+    } catch (error) {
+        console.error('Error getting TVDB token:', error);
+        throw error;
+    }
 }
 
-const processNewSeries = async (data) => {
-    const { fileId, sourceMediaId, seasons, series, processAll, alias, tvdbApiKey, tvdbPin } = data;
+const createAlias = async (alias) => {
     try {
-        const docs = await getSeriesCsv(alias, true);
+        const aliasDetails = await makeGraphQLRequest({ query: createAliasMutation, variables: { input: { id: alias, aliasV2ContentMetadataId: alias } } });
+        return aliasDetails?.body?.data?.createAlias || null;
+    } catch (error) {
+        console.error('Error creating alias:', error);
+        throw error;
+    }
+}
+
+const createSeriesContributors = async (data) => {
+    try {
+        const seriesContributorsDetails = await makeGraphQLRequest({ query: createSeriesContributorsMutation, variables: { input: data } });
+        return seriesContributorsDetails?.body?.data?.updateSeriesContributors || null;
+    } catch (error) {
+        console.error('Error updating series contributors:', error);
+        throw error;
+    }
+}
+
+
+const processNewSeries = async (data) => {
+    const { sourceMediaId } = data;
+    try {
+        const sourceMedia = await getSourceMedia(sourceMediaId);
+        const seriesData = sourceMedia?.series;
+        const userData = sourceMedia?.user;
+        const alias = sourceMedia?.pendingAlias;
+        // const docs = await getSeriesCsv(alias, true);
         const metadata = await getSeriesMetadata(alias, true);
         // Check to see if the v2 content metadata exists
         const v2ContentMetadata = await getV2ContentMetadata(alias);
         if (v2ContentMetadata?.id) {
             // Update the v2 content metadata
-            await updateV2ContentMetadata({
+            const v2ContentMetadataData = await updateV2ContentMetadata({
                 id: alias,
                 title: metadata?.title,
                 description: metadata?.description,
@@ -238,11 +540,13 @@ const processNewSeries = async (data) => {
                 emoji: metadata?.emoji,
                 status: metadata?.status || 0,
                 version: metadata?.version || 2,
-                fontFamily: metadata?.fontFamily
+                fontFamily: metadata?.fontFamily,
+                seriesId: seriesData?.id
             });
+            console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
         } else {
             // Create the v2 content metadata
-            await createV2ContentMetadata({
+            const v2ContentMetadataData = await createV2ContentMetadata({
                 id: alias,
                 title: metadata?.title,
                 description: metadata?.description,
@@ -252,11 +556,31 @@ const processNewSeries = async (data) => {
                 emoji: metadata?.emoji,
                 status: metadata?.status || 0,
                 version: metadata?.version || 2,
-                fontFamily: metadata?.fontFamily
+                fontFamily: metadata?.fontFamily,
+                seriesId: seriesData?.id
             });
+            console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
         }
 
-        // Create the seasons
+        const aliasData = await createAlias({
+            id: alias,
+            name: metadata?.title
+        });
+        console.log('ALIAS DATA: ', JSON.stringify(aliasData));
+
+        const seriesResponse = await updateSeries({
+            id: seriesData?.id,
+            slug: alias,
+        });
+        console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
+
+        const seriesContributorsResponse = await createSeriesContributors({
+            id: seriesData?.id,
+            contributors: [userData?.id]
+        });
+        console.log('SERIES CONTRIBUTORS DATA: ', JSON.stringify(seriesContributorsResponse));
+
+        // THIS WOULD BE THE CALL TO REINDEX ON OPENSEARCH
 
     } catch (error) {
         console.error('Error:', error);
@@ -265,7 +589,75 @@ const processNewSeries = async (data) => {
 }
 
 const processExistingSeries = async (data) => {
-    const { fileId, sourceMediaId, seasons, series, processAll, alias } = data;
+    const { sourceMediaId, seasons } = data;
+    try {
+        const sourceMedia = await getSourceMedia(sourceMediaId);
+        const seriesData = sourceMedia?.series;
+        const userData = sourceMedia?.user;
+        const alias = sourceMedia?.pendingAlias;
+        const docs = await getSeriesCsv(alias, true);
+        const metadata = await getSeriesMetadata(alias, true);
+        // Check to see if the v2 content metadata exists
+        const v2ContentMetadata = await getV2ContentMetadata(alias);
+        if (v2ContentMetadata?.id) {
+            // Update the v2 content metadata
+            const v2ContentMetadataData = await updateV2ContentMetadata({
+                id: alias,
+                title: metadata?.title,
+                description: metadata?.description,
+                frameCount: metadata?.frameCount,
+                colorMain: metadata?.colorMain,
+                colorSecondary: metadata?.colorSecondary,
+                emoji: metadata?.emoji,
+                status: metadata?.status || 0,
+                version: metadata?.version || 2,
+                fontFamily: metadata?.fontFamily,
+                seriesId: seriesData?.id
+            });
+            console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
+        } else {
+            // Create the v2 content metadata
+            const v2ContentMetadataData = await createV2ContentMetadata({
+                id: alias,
+                title: metadata?.title,
+                description: metadata?.description,
+                frameCount: metadata?.frameCount,
+                colorMain: metadata?.colorMain,
+                colorSecondary: metadata?.colorSecondary,
+                emoji: metadata?.emoji,
+                status: metadata?.status || 0,
+                version: metadata?.version || 2,
+                fontFamily: metadata?.fontFamily,
+                seriesId: seriesData?.id
+            });
+            console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
+        }
+
+        // TODO: Move files in s3 from protected/srcPending/[pendingAlias] to protected/src/[pendingAlias]
+        // Lets make a function to do this.
+        // Be sure we only move the season folders that are in the seasons array
+        // The folder structure will be protected/srcPending/[pendingAlias]/[seasonNumber]/[files]
+        // We need to move the files to the protected/src/[pendingAlias]/[seasonNumber]/[files] folder only for the seasons that are in the seasons array
+
+        // Afterwards we need to update the docs for the series.
+        // The docs will be in the protected/src/[pendingAlias]/_docs.csv file
+        // We need to remove the rows where the season numbers are in the seasons array
+        // Then we need to grab the docs from the protected/srcPending/[pendingAlias]/[seasonNumber]/_docs.csv file
+        // And add them to the protected/src/[pendingAlias]/_docs.csv file ideally in the same order (season then episode)
+        // Effectively we're doing an upsert on the docs for the series.
+
+        const seriesContributorsResponse = await createSeriesContributors({
+            id: seriesData?.id,
+            contributors: [userData?.id]
+        });
+        console.log('SERIES CONTRIBUTORS DATA: ', JSON.stringify(seriesContributorsResponse));
+
+        // THIS WOULD BE THE CALL TO REINDEX ON OPENSEARCH
+
+    } catch (error) {
+        console.error('Error:', error);
+        throw error;
+    }
 }
 
 exports.handler = async (event) => {
