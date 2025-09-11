@@ -516,6 +516,178 @@ const createSeriesContributors = async (data) => {
     }
 }
 
+const moveSeasonFilesFromPendingToSrc = async (alias, seasons) => {
+    try {
+        console.log(`Moving season files for alias: ${alias}, seasons: ${JSON.stringify(seasons)}`);
+        
+        const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+        
+        // Process each season
+        for (const season of seasons) {
+            console.log(`Processing season ${season} for alias ${alias}`);
+            
+            // List all files in the pending season folder
+            const listParams = {
+                Bucket: bucketName,
+                Prefix: `protected/srcPending/${alias}/${season}/`
+            };
+            
+            const listedObjects = await s3.listObjectsV2(listParams).promise();
+            
+            if (!listedObjects.Contents || listedObjects.Contents.length === 0) {
+                console.log(`No files found for season ${season} in pending folder`);
+                continue;
+            }
+            
+            // Copy each file to the src folder
+            for (const object of listedObjects.Contents) {
+                const sourceKey = object.Key;
+                const destinationKey = sourceKey.replace(`protected/srcPending/${alias}/${season}/`, `protected/src/${alias}/${season}/`);
+                
+                console.log(`Copying ${sourceKey} to ${destinationKey}`);
+                
+                // Copy the file
+                const copyParams = {
+                    Bucket: bucketName,
+                    CopySource: `${bucketName}/${sourceKey}`,
+                    Key: destinationKey
+                };
+                
+                await s3.copyObject(copyParams).promise();
+                
+                // Delete the original file from pending
+                const deleteParams = {
+                    Bucket: bucketName,
+                    Key: sourceKey
+                };
+                
+                await s3.deleteObject(deleteParams).promise();
+                console.log(`Moved ${sourceKey} to ${destinationKey}`);
+            }
+        }
+        
+        console.log(`Successfully moved all files for seasons: ${JSON.stringify(seasons)}`);
+    } catch (error) {
+        console.error('Error moving season files:', error);
+        throw error;
+    }
+}
+
+const updateSeriesDocsWithNewSeasons = async (alias, seasons) => {
+    try {
+        console.log(`Updating series docs for alias: ${alias}, seasons: ${JSON.stringify(seasons)}`);
+        
+        const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+        
+        // Get existing docs from src folder
+        let existingDocs = [];
+        try {
+            existingDocs = await getSeriesCsv(true, alias); // true = newSeries (src folder)
+        } catch (error) {
+            console.log('No existing docs found, starting with empty array');
+        }
+        
+        // Remove rows for seasons we're updating
+        const filteredDocs = existingDocs.filter(doc => !seasons.includes(parseInt(doc.season)));
+        console.log(`Filtered out ${existingDocs.length - filteredDocs.length} existing rows for seasons being updated`);
+        
+        // Get new docs from pending folder for each season
+        let newDocs = [];
+        for (const season of seasons) {
+            try {
+                // Get docs from the pending season folder
+                const seasonDocsPath = `protected/srcPending/${alias}/${season}/_docs.csv`;
+                const params = {
+                    Bucket: bucketName,
+                    Key: seasonDocsPath
+                };
+                
+                const response = await s3.getObject(params).promise();
+                const csvContent = response.Body.toString('utf-8');
+                
+                // Parse CSV content
+                const lines = csvContent.trim().split('\n');
+                if (lines.length > 1) { // Skip if only header
+                    const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+                    
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = lines[i].split(',').map(value => value.trim().replace(/"/g, ''));
+                        const row = {};
+                        
+                        headers.forEach((header, index) => {
+                            row[header] = values[index] || '';
+                        });
+                        
+                        newDocs.push(row);
+                    }
+                }
+            } catch (error) {
+                console.warn(`No docs found for season ${season}:`, error.message);
+            }
+        }
+        
+        // Combine filtered existing docs with new docs
+        const combinedDocs = [...filteredDocs, ...newDocs];
+        
+        // Sort by season then episode then subtitle_index
+        combinedDocs.sort((a, b) => {
+            const seasonA = parseInt(a.season) || 0;
+            const seasonB = parseInt(b.season) || 0;
+            if (seasonA !== seasonB) {
+                return seasonA - seasonB;
+            }
+            const episodeA = parseInt(a.episode) || 0;
+            const episodeB = parseInt(b.episode) || 0;
+            if (episodeA !== episodeB) {
+                return episodeA - episodeB;
+            }
+            const subtitleIndexA = parseInt(a.subtitle_index) || 0;
+            const subtitleIndexB = parseInt(b.subtitle_index) || 0;
+            return subtitleIndexA - subtitleIndexB;
+        });
+        
+        // Convert back to CSV format
+        if (combinedDocs.length > 0) {
+            const headers = Object.keys(combinedDocs[0]);
+            const csvLines = [headers.join(',')];
+            
+            combinedDocs.forEach(doc => {
+                const row = headers.map(header => `"${doc[header] || ''}"`).join(',');
+                csvLines.push(row);
+            });
+            
+            const csvContent = csvLines.join('\n');
+            
+            // Write updated docs back to src folder
+            const docsPath = `protected/src/${alias}/_docs.csv`;
+            const putParams = {
+                Bucket: bucketName,
+                Key: docsPath,
+                Body: csvContent,
+                ContentType: 'text/csv'
+            };
+            
+            await s3.putObject(putParams).promise();
+            console.log(`Updated docs with ${combinedDocs.length} total rows`);
+        }
+        
+    } catch (error) {
+        console.error('Error updating series docs:', error);
+        throw error;
+    }
+}
+
+const updateSourceMedia = async (data) => {
+    try {
+        const sourceMediaDetails = await makeGraphQLRequest({ query: updateSourceMediaMutation, variables: { input: data } });
+        return sourceMediaDetails?.body?.data?.updateSourceMedia || null;
+    } catch (error) {
+        console.error('Error updating source media:', error);
+        throw error;
+    }
+}
+
+
 
 const processNewSeries = async (data) => {
     const { sourceMediaId } = data;
@@ -562,21 +734,27 @@ const processNewSeries = async (data) => {
             console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
         }
 
-        const aliasData = await createAlias({
-            id: alias,
-            name: metadata?.title
+        const updateSourceMediaResponse = await updateSourceMedia({
+            id: sourceMediaId,
+            status: 'indexing'
         });
-        console.log('ALIAS DATA: ', JSON.stringify(aliasData));
+        console.log('SOURCE MEDIA DATA: ', JSON.stringify(updateSourceMediaResponse));
 
-        const seriesResponse = await updateSeries({
-            id: seriesData?.id,
-            slug: alias,
-        });
-        console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
+        // const aliasData = await createAlias({
+        //     id: alias,
+        //     name: metadata?.title
+        // });
+        // console.log('ALIAS DATA: ', JSON.stringify(aliasData));
+
+        // const seriesResponse = await updateSeries({
+        //     id: seriesData?.id,
+        //     slug: alias,
+        // });
+        // console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
 
         const seriesContributorsResponse = await createSeriesContributors({
-            id: seriesData?.id,
-            contributors: [userData?.id]
+            seriesId: seriesData?.id,
+            userDetailsId: userData?.id
         });
         console.log('SERIES CONTRIBUTORS DATA: ', JSON.stringify(seriesContributorsResponse));
 
@@ -595,7 +773,7 @@ const processExistingSeries = async (data) => {
         const seriesData = sourceMedia?.series;
         const userData = sourceMedia?.user;
         const alias = sourceMedia?.pendingAlias;
-        const docs = await getSeriesCsv(alias, true);
+        // const docs = await getSeriesCsv(alias, true); // Not needed since we handle docs in updateSeriesDocsWithNewSeasons
         const metadata = await getSeriesMetadata(alias, true);
         // Check to see if the v2 content metadata exists
         const v2ContentMetadata = await getV2ContentMetadata(alias);
@@ -633,22 +811,15 @@ const processExistingSeries = async (data) => {
             console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
         }
 
-        // TODO: Move files in s3 from protected/srcPending/[pendingAlias] to protected/src/[pendingAlias]
-        // Lets make a function to do this.
-        // Be sure we only move the season folders that are in the seasons array
-        // The folder structure will be protected/srcPending/[pendingAlias]/[seasonNumber]/[files]
-        // We need to move the files to the protected/src/[pendingAlias]/[seasonNumber]/[files] folder only for the seasons that are in the seasons array
-
-        // Afterwards we need to update the docs for the series.
-        // The docs will be in the protected/src/[pendingAlias]/_docs.csv file
-        // We need to remove the rows where the season numbers are in the seasons array
-        // Then we need to grab the docs from the protected/srcPending/[pendingAlias]/[seasonNumber]/_docs.csv file
-        // And add them to the protected/src/[pendingAlias]/_docs.csv file ideally in the same order (season then episode)
-        // Effectively we're doing an upsert on the docs for the series.
+        // Move season files from pending to src folder for approved seasons
+        await moveSeasonFilesFromPendingToSrc(alias, seasons);
+        
+        // Update the series docs CSV by removing existing season rows and adding new ones
+        await updateSeriesDocsWithNewSeasons(alias, seasons);
 
         const seriesContributorsResponse = await createSeriesContributors({
-            id: seriesData?.id,
-            contributors: [userData?.id]
+            seriesId: seriesData?.id,
+            userDetailsId: userData?.id
         });
         console.log('SERIES CONTRIBUTORS DATA: ', JSON.stringify(seriesContributorsResponse));
 
@@ -685,26 +856,13 @@ exports.handler = async (event) => {
         if (aliasData?.id) {
             statusCode = 200;
             await processNewSeries({
-                fileId,
-                sourceMediaId,
-                seasons,
-                series,
-                processAll,
-                alias,
-                tvdbApiKey,
-                tvdbPin
+                sourceMediaId
             });
         } else {
             statusCode = 200;
             await processExistingSeries({
-                fileId,
                 sourceMediaId,
                 seasons,
-                series,
-                processAll,
-                alias,
-                tvdbApiKey,
-                tvdbPin
             });
         }
     } catch (error) {
