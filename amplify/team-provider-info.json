@@ -193,7 +193,8 @@
         "memesrcDynamoDBLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcDynamoDBLayer-LambdaLayerVersionb4c937ac-build.zip"
-        }
+        },
+        "memesrcIndexAndPublish": {}
       },
       "storage": {
         "memesrcGeneratedImages": {}

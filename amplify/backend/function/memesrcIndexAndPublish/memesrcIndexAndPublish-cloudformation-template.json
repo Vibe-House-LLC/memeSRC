@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"14.0.0\",\"stackType\":\"function-Lambda\",\"metadata\":{\"whyContinueWithGen1\":\"\"}}",
+  "Description": "Lambda Function resource stack creation using Amplify CLI",
   "Parameters": {
     "CloudWatchRule": {
       "Type": "String",
@@ -15,14 +15,6 @@
     },
     "s3Key": {
       "Type": "String"
-    },
-    "functionmemesrcGraphQlLayerArn": {
-      "Type": "String",
-      "Default": "functionmemesrcGraphQlLayerArn"
-    },
-    "functionmemesrcS3LayerArn": {
-      "Type": "String",
-      "Default": "functionmemesrcS3LayerArn"
     },
     "apimemesrcGraphQLAPIIdOutput": {
       "Type": "String",
@@ -40,16 +32,21 @@
       "Type": "String",
       "Default": "storagememesrcGeneratedImagesBucketName"
     },
-    "functionmemesrcDynamoDBLayerArn": {
+    "functionmemesrcGraphQlLayerArn": {
       "Type": "String",
-      "Default": "functionmemesrcDynamoDBLayerArn"
+      "Default": "functionmemesrcGraphQlLayerArn"
     },
-    "secretsPathAmplifyAppId": {
-      "Type": "String"
-    },
-    "functionmemesrcIndexAndPublishName": {
+    "functionmemesrcS3LayerArn": {
       "Type": "String",
-      "Default": "functionmemesrcIndexAndPublishName"
+      "Default": "functionmemesrcS3LayerArn"
+    },
+    "functionmemesrcSesLayerArn": {
+      "Type": "String",
+      "Default": "functionmemesrcSesLayerArn"
+    },
+    "functionmemesrcAxiosLayerArn": {
+      "Type": "String",
+      "Default": "functionmemesrcAxiosLayerArn"
     }
   },
   "Conditions": {
@@ -82,12 +79,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcUpdateMedia",
+            "memesrcIndexAndPublish",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcUpdateMedia",
+                  "memesrcIndexAndPublish",
                   "-",
                   {
                     "Ref": "env"
@@ -116,53 +113,6 @@
             },
             "STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME": {
               "Ref": "storagememesrcGeneratedImagesBucketName"
-            },
-            "tvdbApiKey": {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "Fn::Sub": [
-                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
-                      {
-                        "appId": {
-                          "Ref": "secretsPathAmplifyAppId"
-                        },
-                        "env": {
-                          "Ref": "env"
-                        },
-                        "functionName": "memesrcUpdateMedia"
-                      }
-                    ]
-                  },
-                  "tvdbApiKey"
-                ]
-              ]
-            },
-            "tvdbPin": {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "Fn::Sub": [
-                      "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
-                      {
-                        "appId": {
-                          "Ref": "secretsPathAmplifyAppId"
-                        },
-                        "env": {
-                          "Ref": "env"
-                        },
-                        "functionName": "memesrcUpdateMedia"
-                      }
-                    ]
-                  },
-                  "tvdbPin"
-                ]
-              ]
-            },
-            "FUNCTION_MEMESRCINDEXANDPUBLISH_NAME": {
-              "Ref": "functionmemesrcIndexAndPublishName"
             }
           }
         },
@@ -181,7 +131,10 @@
             "Ref": "functionmemesrcS3LayerArn"
           },
           {
-            "Ref": "functionmemesrcDynamoDBLayerArn"
+            "Ref": "functionmemesrcSesLayerArn"
+          },
+          {
+            "Ref": "functionmemesrcAxiosLayerArn"
           }
         ],
         "Timeout": 25
@@ -193,12 +146,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcLambdaRole86bdd832",
+            "memesrcLambdaRole659313fc",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcLambdaRole86bdd832",
+                  "memesrcLambdaRole659313fc",
                   "-",
                   {
                     "Ref": "env"
@@ -354,41 +307,6 @@
             },
             {
               "Effect": "Allow",
-              "Action": [
-                "lambda:Create*",
-                "lambda:Put*",
-                "lambda:Add*",
-                "lambda:Get*",
-                "lambda:List*",
-                "lambda:Invoke*",
-                "lambda:Update*",
-                "lambda:Delete*",
-                "lambda:Remove*"
-              ],
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:lambda:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":function:",
-                      {
-                        "Ref": "functionmemesrcIndexAndPublishName"
-                      }
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Effect": "Allow",
               "Action": "s3:ListBucket",
               "Resource": [
                 {
@@ -408,7 +326,8 @@
               "Effect": "Allow",
               "Action": [
                 "s3:PutObject",
-                "s3:GetObject"
+                "s3:GetObject",
+                "s3:DeleteObject"
               ],
               "Resource": [
                 {
@@ -428,63 +347,6 @@
           ]
         }
       }
-    },
-    "AmplifyFunctionSecretsPolicy": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyName": "amplify-function-secrets-policy",
-        "Roles": [
-          {
-            "Ref": "LambdaExecutionRole"
-          }
-        ],
-        "PolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "ssm:GetParameter",
-                "ssm:GetParameters"
-              ],
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:aws:ssm:",
-                    {
-                      "Ref": "AWS::Region"
-                    },
-                    ":",
-                    {
-                      "Ref": "AWS::AccountId"
-                    },
-                    ":parameter",
-                    {
-                      "Fn::Sub": [
-                        "/amplify/${appId}/${env}/AMPLIFY_${functionName}_",
-                        {
-                          "appId": {
-                            "Ref": "secretsPathAmplifyAppId"
-                          },
-                          "env": {
-                            "Ref": "env"
-                          },
-                          "functionName": "memesrcUpdateMedia"
-                        }
-                      ]
-                    },
-                    "*"
-                  ]
-                ]
-              }
-            }
-          ]
-        }
-      },
-      "DependsOn": [
-        "LambdaExecutionRole"
-      ]
     }
   },
   "Outputs": {
@@ -509,14 +371,6 @@
     "LambdaExecutionRole": {
       "Value": {
         "Ref": "LambdaExecutionRole"
-      }
-    },
-    "LambdaExecutionRoleArn": {
-      "Value": {
-        "Fn::GetAtt": [
-          "LambdaExecutionRole",
-          "Arn"
-        ]
       }
     }
   }

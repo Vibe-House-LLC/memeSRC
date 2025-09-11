@@ -1,4 +1,12 @@
-/*
+/* Amplify Params - DO NOT EDIT
+	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+	API_MEMESRC_GRAPHQLAPIIDOUTPUT
+	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+	ENV
+	FUNCTION_MEMESRCINDEXANDPUBLISH_NAME
+	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+Amplify Params - DO NOT EDIT *//*
 Use the following code to retrieve configured secrets from SSM:
 
 const aws = require('aws-sdk');
@@ -31,6 +39,9 @@ const AWS = require('aws-sdk');
 
 // Initialize S3 client
 const s3 = new AWS.S3();
+
+// Initialize Lambda client
+const lambda = new AWS.Lambda();
 
 const getSeriesQuery = `
     query GetSeries($id: ID!) {
@@ -687,6 +698,29 @@ const updateSourceMedia = async (data) => {
     }
 }
 
+const invokeIndexAndPublish = async (sourceMediaId, newAlias) => {
+    try {
+        const payload = JSON.stringify({
+            sourceMediaId,
+            newAlias
+        });
+
+        const params = {
+            FunctionName: process.env.FUNCTION_MEMESRCINDEXANDPUBLISH_NAME,
+            InvocationType: 'Event', // Async invocation
+            Payload: payload
+        };
+
+        console.log(`Invoking indexAndPublish function with payload: ${payload}`);
+        const result = await lambda.invoke(params).promise();
+        console.log('IndexAndPublish function invoked successfully:', result);
+        return result;
+    } catch (error) {
+        console.error('Error invoking indexAndPublish function:', error);
+        throw error;
+    }
+}
+
 
 
 const processNewSeries = async (data) => {
@@ -740,25 +774,15 @@ const processNewSeries = async (data) => {
         });
         console.log('SOURCE MEDIA DATA: ', JSON.stringify(updateSourceMediaResponse));
 
-        // const aliasData = await createAlias({
-        //     id: alias,
-        //     name: metadata?.title
-        // });
-        // console.log('ALIAS DATA: ', JSON.stringify(aliasData));
-
-        // const seriesResponse = await updateSeries({
-        //     id: seriesData?.id,
-        //     slug: alias,
-        // });
-        // console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
+        // Invoke the indexAndPublish function for new series
+        await invokeIndexAndPublish(sourceMediaId, true);
 
         const seriesContributorsResponse = await createSeriesContributors({
             seriesId: seriesData?.id,
             userDetailsId: userData?.id
         });
         console.log('SERIES CONTRIBUTORS DATA: ', JSON.stringify(seriesContributorsResponse));
-
-        // THIS WOULD BE THE CALL TO REINDEX ON OPENSEARCH
+        return 'Indexing has been triggered';
 
     } catch (error) {
         console.error('Error:', error);
@@ -817,11 +841,15 @@ const processExistingSeries = async (data) => {
         // Update the series docs CSV by removing existing season rows and adding new ones
         await updateSeriesDocsWithNewSeasons(alias, seasons);
 
+        // Invoke the indexAndPublish function for existing series
+        await invokeIndexAndPublish(sourceMediaId, false);
+
         const seriesContributorsResponse = await createSeriesContributors({
             seriesId: seriesData?.id,
             userDetailsId: userData?.id
         });
         console.log('SERIES CONTRIBUTORS DATA: ', JSON.stringify(seriesContributorsResponse));
+        return 'Indexing has been triggered';
 
         // THIS WOULD BE THE CALL TO REINDEX ON OPENSEARCH
 
@@ -858,12 +886,14 @@ exports.handler = async (event) => {
             await processNewSeries({
                 sourceMediaId
             });
+            body = 'Indexing has been triggered';
         } else {
             statusCode = 200;
             await processExistingSeries({
                 sourceMediaId,
                 seasons,
             });
+            body = 'Indexing has been triggered';
         }
     } catch (error) {
         console.error('Error:', error);

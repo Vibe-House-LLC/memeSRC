@@ -1,4 +1,21 @@
 {
+  "permissions": {
+    "api": {
+      "memesrc": [
+        "Query",
+        "Mutation",
+        "Subscription"
+      ]
+    },
+    "storage": {
+      "memesrcGeneratedImages": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  },
   "lambdaLayers": [
     {
       "type": "ProjectLayer",
@@ -16,38 +33,17 @@
     },
     {
       "type": "ProjectLayer",
-      "resourceName": "memesrcDynamoDBLayer",
+      "resourceName": "memesrcSesLayer",
+      "env": "dev",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
+    },
+    {
+      "type": "ProjectLayer",
+      "resourceName": "memesrcAxiosLayer",
       "env": "dev",
       "version": "Always choose latest version",
       "isLatestVersionSelected": true
     }
-  ],
-  "permissions": {
-    "api": {
-      "memesrc": [
-        "Query",
-        "Mutation",
-        "Subscription"
-      ]
-    },
-    "function": {
-      "memesrcIndexAndPublish": [
-        "create",
-        "read",
-        "update",
-        "delete"
-      ]
-    },
-    "storage": {
-      "memesrcGeneratedImages": [
-        "create",
-        "read",
-        "update"
-      ]
-    }
-  },
-  "secretNames": [
-    "tvdbApiKey",
-    "tvdbPin"
   ]
 }
