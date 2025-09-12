@@ -191,5 +191,17 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
     setAllKeys((prev) => prev.filter((i) => i.key !== key));
   }, [storageLevel]);
 
-  return { items, loading, hasMore, loadMore, reload, upload, uploadMany, remove: removeItem };
+  // Remove a set of keys from local state without refetching
+  const removeFromState = useCallback((keys) => {
+    if (!Array.isArray(keys) || keys.length === 0) return;
+    const removeSet = new Set(keys);
+    setItems((prev) => {
+      const filtered = prev.filter((i) => !removeSet.has(i.key));
+      setLoadedCount(filtered.length);
+      return filtered;
+    });
+    setAllKeys((prev) => prev.filter((i) => !removeSet.has(i.key)));
+  }, []);
+
+  return { items, loading, hasMore, loadMore, reload, upload, uploadMany, remove: removeItem, removeFromState };
 }

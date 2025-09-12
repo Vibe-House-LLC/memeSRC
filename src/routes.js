@@ -65,6 +65,7 @@ const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
 const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
 const AdminFileReview = lazy(() => import('./pages/AdminFileReview'));
 const MagicPage = lazy(() => import('./pages/MagicPage'));
+const HelloWorldPage = lazy(() => import('./pages/HelloWorldPage'));
 
 const DonationRedirect = () => {
   window.location.href = 'https://buy.stripe.com/6oEeYJ2EJ4vH3Ha7ss';
@@ -178,6 +179,10 @@ export default function Router() {
     {
       path: '/termsofservice',
       element: <TermsOfService />
+    },
+    {
+      path: '/hello',
+      element: <HelloWorldPage />
     },
     {
       path: '/error',

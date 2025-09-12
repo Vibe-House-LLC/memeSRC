@@ -277,6 +277,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcApproveMedia"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcDeleteFromLibrary"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -503,6 +511,27 @@
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "LambdaLayer"
+    },
+    "memesrcDeleteFromLibrary": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
     },
     "memesrcDynamoDBLayer": {
       "build": true,
@@ -1232,6 +1261,22 @@
         {
           "category": "function",
           "resourceName": "memesrcAxiosLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcDeleteFromLibrary_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcDeleteFromLibrary"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcDeleteFromLibrary_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcDeleteFromLibrary"
         }
       ]
     },

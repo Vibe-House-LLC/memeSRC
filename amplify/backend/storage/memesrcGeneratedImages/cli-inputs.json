@@ -9,8 +9,7 @@
   ],
   "authAccess": [
     "CREATE_AND_UPDATE",
-    "READ",
-    "DELETE"
+    "READ"
   ],
   "triggerFunction": "S3Trigger016e2873",
   "groupAccess": {

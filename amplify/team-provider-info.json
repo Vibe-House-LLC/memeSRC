@@ -209,6 +209,10 @@
         "memesrcApproveMedia": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcApproveMedia-484c4e6432746f532b58-build.zip"
+        },
+        "memesrcDeleteFromLibrary": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcDeleteFromLibrary-4675487851795359786f-build.zip"
         }
       },
       "storage": {

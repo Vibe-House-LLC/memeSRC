@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { API } from 'aws-amplify';
 import PropTypes from 'prop-types';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader, TextField, InputAdornment } from '@mui/material';
+import { LoadingButton } from '@mui/lab';
 import { MoreVert, MoreHoriz, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, Search, DoneAll } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
@@ -46,7 +48,7 @@ export default function LibraryBrowser({
   onSelectionChange,
   exposeActions,
 }) {
-  const { items, loading, hasMore, loadMore, reload, uploadMany, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
+  const { items, loading, hasMore, loadMore, reload, uploadMany, removeFromState } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
   const { selectedKeys, orderedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
   const [selectMode, setSelectMode] = useState(Boolean(initialSelectMode));
 
@@ -59,6 +61,7 @@ export default function LibraryBrowser({
   const [sortOption, setSortOption] = useState('newest'); // 'newest' | 'oldest' | 'az'
   const [searchQuery, setSearchQuery] = useState('');
   const [metaByKey, setMetaByKey] = useState({}); // { [key]: { tags, description, defaultCaption } }
+  const [deleting, setDeleting] = useState(false);
 
   const sentinelRef = useRef(null);
 
@@ -218,18 +221,24 @@ export default function LibraryBrowser({
 
   const handleDelete = useCallback(async (keys) => {
     try {
-      await Promise.all(keys.map((k) => remove(k)));
+      setDeleting(true);
+      await API.post('publicapi', '/library/delete', {
+        body: { keys },
+      });
+      // Surgically remove deleted items from local state to avoid full reload
+      try { removeFromState(keys); } catch (_) { /* ignore */ }
       setSnack({ open: true, message: `Deleted ${keys.length} item(s)`, severity: 'success' });
     } catch (e) {
       setSnack({ open: true, message: 'Delete failed', severity: 'error' });
     } finally {
+      setDeleting(false);
       setConfirm(null);
       clear();
       if (previewKey && keys.includes(previewKey)) {
         setPreviewKey(null);
       }
     }
-  }, [clear, remove, previewKey]);
+  }, [clear, previewKey, removeFromState]);
 
   const onTileClick = (key) => setPreviewKey(key);
 
@@ -542,7 +551,7 @@ export default function LibraryBrowser({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirm(null)}>Cancel</Button>
-          <Button color="error" onClick={() => handleDelete(confirm.keys)}>Delete</Button>
+          <LoadingButton color="error" loading={deleting} onClick={() => handleDelete(confirm.keys)}>Delete</LoadingButton>
         </DialogActions>
       </Dialog>
 
