@@ -19,12 +19,14 @@ const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | '
       return 'success';      // Green - successfully completed and published
     case 'failed':
       return 'error';        // Red - processing failed
+    case 'awaitingindexing':
+      return 'warning';      // Orange - awaiting indexing
     default:
       return 'default';      // Gray - unknown status
   }
 };
 
-const formatDate = (dateString: string): string => 
+const formatDate = (dateString: string): string =>
   new Date(dateString).toLocaleString('en-US', {
     month: '2-digit',
     day: '2-digit',

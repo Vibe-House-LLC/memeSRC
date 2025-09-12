@@ -193,6 +193,12 @@ exports.handler = async (event) => {
             alias = sourceMedia?.pendingAlias;
             seriesData = sourceMedia?.series;
             console.log('SOURCE MEDIA DATA: ', JSON.stringify(sourceMedia));
+
+            const updateSourceMediaResponse = await updateSourceMedia({
+                id: sourceMediaId,
+                status: 'indexing'
+            });
+            console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
         }
 
         // TODO: Add secrets

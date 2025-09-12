@@ -10,6 +10,8 @@ import getSourceMediaDetails from "src/sections/@dashboard/admin/uploads/functio
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status.toLowerCase()) {
         case 'uploaded':
+            return 'warning'; 
+        case 'awaitingindexing':
             return 'warning';       // Orange - waiting for processing
         case 'pending':
             return 'info';          // Blue - in queue
