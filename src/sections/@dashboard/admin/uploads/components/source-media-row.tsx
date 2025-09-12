@@ -9,16 +9,18 @@ interface SourceMediaRowProps {
 
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
   switch (status.toLowerCase()) {
-    case 'completed':
-      return 'success';
-    case 'processing':
-      return 'info';
-    case 'failed':
-      return 'error';
     case 'uploaded':
-      return 'warning';
+      return 'warning';      // Orange - newly uploaded, needs review
+    case 'pending':
+      return 'info';         // Blue - awaiting processing
+    case 'indexing':
+      return 'primary';      // Purple/Blue - actively being processed
+    case 'published':
+      return 'success';      // Green - successfully completed and published
+    case 'failed':
+      return 'error';        // Red - processing failed
     default:
-      return 'default';
+      return 'default';      // Gray - unknown status
   }
 };
 

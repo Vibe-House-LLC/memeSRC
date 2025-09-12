@@ -269,6 +269,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcSourceMediaZipProcessor"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcApproveMedia"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -470,6 +478,37 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcApproveMedia": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUpdateMedia"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcAxiosLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
+    },
+    "memesrcDynamoDBLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
+    },
     "memesrcFrameFunction": {
       "build": true,
       "dependsOn": [
@@ -517,6 +556,64 @@
       "providerPlugin": "awscloudformation",
       "service": "LambdaLayer"
     },
+    "memesrcIndexAndPublish": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcSesLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcAxiosLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcOpenSearchLayer"
+        },
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcIndexToOpenSearch": {
       "build": true,
       "dependsOn": [
@@ -556,6 +653,11 @@
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "memesrcOpenSearchLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
     },
     "memesrcPublicStripeFunction": {
       "build": true,
@@ -694,6 +796,108 @@
     },
     "memesrcUUID": {
       "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcUpdateMedia": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcIndexAndPublish"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcDynamoDBLayer"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcUpdateSubtitles": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcSesLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcDynamoDBLayer"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -999,6 +1203,54 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcApproveMedia_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcApproveMedia"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcApproveMedia_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcApproveMedia"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAxiosLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAxiosLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcAxiosLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcAxiosLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcDynamoDBLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcDynamoDBLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcDynamoDBLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcDynamoDBLayer"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcFrameFunction_deploymentBucketName": {
       "usedBy": [
         {
@@ -1071,6 +1323,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcIndexAndPublish_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcIndexAndPublish"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcIndexAndPublish_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcIndexAndPublish"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcIndexToOpenSearch_deploymentBucketName": {
       "usedBy": [
         {
@@ -1108,6 +1376,22 @@
         {
           "category": "function",
           "resourceName": "memesrcOpenAI"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenSearchLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenSearchLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcOpenSearchLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcOpenSearchLayer"
         }
       ]
     },
@@ -1348,6 +1632,46 @@
         {
           "category": "function",
           "resourceName": "memesrcUUID"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateMedia_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateMedia"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateMedia_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateMedia"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateMedia_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateMedia"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateSubtitles_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateSubtitles"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcUpdateSubtitles_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcUpdateSubtitles"
         }
       ]
     },

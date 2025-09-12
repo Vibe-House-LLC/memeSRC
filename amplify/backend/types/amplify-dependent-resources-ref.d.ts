@@ -104,6 +104,19 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
+    "memesrcApproveMedia": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "memesrcAxiosLayer": {
+      "Arn": "string"
+    },
+    "memesrcDynamoDBLayer": {
+      "Arn": "string"
+    },
     "memesrcFrameFunction": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -128,6 +141,13 @@ export type AmplifyDependentResourcesAttributes = {
     "memesrcGraphQlLayer": {
       "Arn": "string"
     },
+    "memesrcIndexAndPublish": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "memesrcIndexToOpenSearch": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -148,6 +168,9 @@ export type AmplifyDependentResourcesAttributes = {
       "LambdaExecutionRoleArn": "string",
       "Name": "string",
       "Region": "string"
+    },
+    "memesrcOpenSearchLayer": {
+      "Arn": "string"
     },
     "memesrcPublicStripeFunction": {
       "Arn": "string",
@@ -212,6 +235,20 @@ export type AmplifyDependentResourcesAttributes = {
       "Region": "string"
     },
     "memesrcUUID": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "memesrcUpdateMedia": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "memesrcUpdateSubtitles": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",
