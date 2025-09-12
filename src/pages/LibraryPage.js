@@ -12,8 +12,10 @@ export default function LibraryPage() {
   const isPro = user?.userDetails?.magicSubscription === 'true';
   const navigate = useNavigate();
 
-  // Allow admins and Pro users; block others
-  if (!isAdmin && !isPro) return <Navigate to="/404" replace />;
+  // Allow admins and Pro users; if logged in but non-Pro, forward to /pro
+  if (!isAdmin && !isPro) {
+    return user ? <Navigate to="/pro" replace /> : <Navigate to="/404" replace />;
+  }
 
   return (
     <>

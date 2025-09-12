@@ -22,7 +22,11 @@ export default function NavSection({ data = [], ...other }) {
       {!user?.['cognito:groups']?.includes('admins') && (
         <Box {...other}>
           <List disablePadding sx={{ p: 1 }}>
-            {data.filter(item => item.adminOnly === false).map((section, index) => (
+            {data
+              .filter((section) => section.adminOnly === false)
+              // Hide the Personal section entirely when logged out
+              .filter((section) => (user ? true : section.sectionTitle !== 'Personal'))
+              .map((section, index) => (
               <Fragment key={section.sectionTitle}>
                 <Typography variant='subtitle2' color='gray' fontWeight={700} pl={2} mb={2} mt={index > 0 ? 4 : 0}>
                   {section.sectionTitle}
