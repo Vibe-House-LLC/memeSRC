@@ -926,7 +926,7 @@ const processNewSeries = async (data) => {
                 status: metadata?.status || 0,
                 version: metadata?.version || 2,
                 fontFamily: metadata?.fontFamily,
-                seriesId: seriesData?.id
+                v2ContentMetadataSeriesId: seriesData?.id
             });
             console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
         } else {
@@ -942,7 +942,7 @@ const processNewSeries = async (data) => {
                 status: metadata?.status || 0,
                 version: metadata?.version || 2,
                 fontFamily: metadata?.fontFamily,
-                seriesId: seriesData?.id
+                v2ContentMetadataSeriesId: seriesData?.id
             });
             console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
         }
