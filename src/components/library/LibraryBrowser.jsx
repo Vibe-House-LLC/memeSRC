@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { API } from 'aws-amplify';
 import PropTypes from 'prop-types';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader, TextField, InputAdornment } from '@mui/material';
-import { LoadingButton } from '@mui/lab';
 import { MoreVert, MoreHoriz, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, Search, DoneAll } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
@@ -61,7 +60,7 @@ export default function LibraryBrowser({
   const [sortOption, setSortOption] = useState('newest'); // 'newest' | 'oldest' | 'az'
   const [searchQuery, setSearchQuery] = useState('');
   const [metaByKey, setMetaByKey] = useState({}); // { [key]: { tags, description, defaultCaption } }
-  const [deleting, setDeleting] = useState(false);
+  const [deletingKeys, setDeletingKeys] = useState(() => new Set());
 
   const sentinelRef = useRef(null);
 
@@ -221,7 +220,6 @@ export default function LibraryBrowser({
 
   const handleDelete = useCallback(async (keys) => {
     try {
-      setDeleting(true);
       await API.post('publicapi', '/library/delete', {
         body: { keys },
       });
@@ -231,8 +229,12 @@ export default function LibraryBrowser({
     } catch (e) {
       setSnack({ open: true, message: 'Delete failed', severity: 'error' });
     } finally {
-      setDeleting(false);
-      setConfirm(null);
+      // Remove from deleting set
+      setDeletingKeys((prev) => {
+        const next = new Set(prev);
+        keys.forEach((k) => next.delete(k));
+        return next;
+      });
       clear();
       if (previewKey && keys.includes(previewKey)) {
         setPreviewKey(null);
@@ -270,7 +272,8 @@ export default function LibraryBrowser({
   };
 
   const handleDeleteSelected = () => {
-    const keys = Array.from(selectedKeys);
+    // Use actual storage keys for deletion, not selection IDs
+    const keys = Array.from(new Set(selectedItems.map((i) => i?.key).filter(Boolean)));
     if (keys.length > 0) setConfirm({ keys });
     closeOptions();
   };
@@ -487,13 +490,16 @@ export default function LibraryBrowser({
         uploadTile={null}
         renderTile={(item) => (
           <LibraryTile
-            item={item}
+            item={deletingKeys.has(item.key) ? { ...item, loading: true } : item}
             selected={effectiveSelectionEnabled ? isSelected(getItemId(item)) : false}
-            disabled={effectiveSelectionEnabled ? (Boolean(maxSelected) && atMax && !isSelected(getItemId(item))) : false}
+            disabled={(deletingKeys.has(item.key)) || (effectiveSelectionEnabled ? (Boolean(maxSelected) && atMax && !isSelected(getItemId(item))) : false)}
             showPreviewIcon={effectiveSelectionEnabled}
             selectionMode={effectiveSelectionEnabled}
             selectionIndex={effectiveSelectionEnabled ? (orderIndexByKey.get(getItemId(item)) || null) : null}
             onClick={() => {
+              if (deletingKeys.has(item.key)) {
+                return;
+              }
               if (effectivePreviewOnClick) {
                 onTileClick(item.key);
               } else if (!multiple && instantSelectOnClick) {
@@ -502,7 +508,7 @@ export default function LibraryBrowser({
                 toggle(getItemId(item));
               }
             }}
-            onPreview={() => item.key && onTileClick(item.key)}
+            onPreview={() => !deletingKeys.has(item.key) && item.key && onTileClick(item.key)}
           />
         )}
       />
@@ -551,7 +557,18 @@ export default function LibraryBrowser({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirm(null)}>Cancel</Button>
-          <LoadingButton color="error" loading={deleting} onClick={() => handleDelete(confirm.keys)}>Delete</LoadingButton>
+          <Button color="error" onClick={() => {
+            const keys = (confirm?.keys || []).slice();
+            setConfirm(null); // close immediately
+            if (keys.length === 0) return;
+            setDeletingKeys((prev) => {
+              const next = new Set(prev);
+              keys.forEach((k) => next.add(k));
+              return next;
+            });
+            // fire and forget; UI shows spinners while we await removal
+            void handleDelete(keys);
+          }}>Delete</Button>
         </DialogActions>
       </Dialog>
 
