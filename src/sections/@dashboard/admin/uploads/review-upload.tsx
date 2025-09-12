@@ -15,7 +15,8 @@ import {
 } from "@mui/material";
 import {
     Save as SaveIcon,
-    CheckCircle as ApproveIcon
+    CheckCircle as ApproveIcon,
+    PublishedWithChanges as ReindexIcon
 } from "@mui/icons-material";
 import { Storage, API } from "aws-amplify";
 import { SourceMediaFile } from "./types";
@@ -508,7 +509,9 @@ export default function AdminReviewUpload({
                                 startIcon={
                                     indexing ? (
                                         <CircularProgress size={20} color="inherit" />
-                                    ) : undefined
+                                    ) : (
+                                        <ReindexIcon />
+                                    )
                                 }
                                 onClick={handleIndexAndPublish}
                                 disabled={indexing}
