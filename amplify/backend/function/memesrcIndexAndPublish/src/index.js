@@ -180,7 +180,7 @@ const checkForExistingAlias = async (alias) => {
 exports.handler = async (event) => {
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
-        const { sourceMediaId, existingAlias } = JSON.parse(event?.body);
+        const { sourceMediaId = null, existingAlias = null } = JSON.parse(event?.body);
         let sourceMediaDetails;
         let sourceMedia;
         let seriesData;
