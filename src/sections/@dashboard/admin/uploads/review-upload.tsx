@@ -39,58 +39,73 @@ const onUpdateSourceMedia = /* GraphQL */ `
 `;
 
 // Placeholder component that mimics FileBrowser appearance
-const FileBrowserPlaceholder = () => (
-    <Box sx={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-        <Typography variant="h6" gutterBottom>
-            File Browser: No uploaded files selected.
-        </Typography>
-        
-        <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
-            {/* File Tree Placeholder */}
-            <Grid item xs={12} md={4} sx={{ height: '100%' }}>
-                <Paper sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    overflow: 'hidden'
-                }}>
-                    <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
-                        <Typography variant="subtitle2">
-                            Files (0)
-                        </Typography>
-                    </Box>
-                    <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Box sx={{ textAlign: 'center', p: 3 }}>
-                            {/* <CircularProgress size={40} sx={{ mb: 2 }} /> */}
-                            <Typography variant="body2" color="text.secondary">
-                                No uploaded files selected.
+const FileBrowserPlaceholder = ({ sourceMediaStatus, filePathPrefix }: { sourceMediaStatus?: string, filePathPrefix?: string }) => {
+    // Determine the message based on the state
+    let title = "File Browser";
+    let message = "No uploaded files selected.";
+    let subtitle = "Files will appear here once an alias is saved";
+    
+    if (sourceMediaStatus && sourceMediaStatus.toLowerCase() !== 'uploaded') {
+        title = "File Browser: Disabled";
+        message = `File browser is disabled when source media status is "${sourceMediaStatus}".`;
+        subtitle = "File browser will be available once the source media status is 'uploaded'.";
+    } else if (!filePathPrefix) {
+        message = "No uploaded files selected.";
+        subtitle = "Files will appear here once an alias is saved";
+    }
+
+    return (
+        <Box sx={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="h6" gutterBottom>
+                {title}
+            </Typography>
+            
+            <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
+                {/* File Tree Placeholder */}
+                <Grid item xs={12} md={4} sx={{ height: '100%' }}>
+                    <Paper sx={{ 
+                        height: '100%', 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        overflow: 'hidden'
+                    }}>
+                        <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
+                            <Typography variant="subtitle2">
+                                Files (0)
                             </Typography>
                         </Box>
-                    </Box>
-                </Paper>
+                        <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Box sx={{ textAlign: 'center', p: 3 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    {message}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </Paper>
+                </Grid>
+                
+                {/* File Viewer Placeholder */}
+                <Grid item xs={12} md={8} sx={{ height: '100%' }}>
+                    <Paper sx={{ 
+                        height: '100%', 
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <Box sx={{ textAlign: 'center', p: 4 }}>
+                            <Typography variant="h6" color="text.secondary" gutterBottom>
+                                No files to display
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {subtitle}
+                            </Typography>
+                        </Box>
+                    </Paper>
+                </Grid>
             </Grid>
-            
-            {/* File Viewer Placeholder */}
-            <Grid item xs={12} md={8} sx={{ height: '100%' }}>
-                <Paper sx={{ 
-                    height: '100%', 
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }}>
-                    <Box sx={{ textAlign: 'center', p: 4 }}>
-                        <Typography variant="h6" color="text.secondary" gutterBottom>
-                            No files to display
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Files will appear here once an alias is saved
-                        </Typography>
-                    </Box>
-                </Paper>
-            </Grid>
-        </Grid>
-    </Box>
-);
+        </Box>
+    );
+};
 
 interface AdminReviewUploadProps {
     files: SourceMediaFile[];
@@ -564,7 +579,7 @@ export default function AdminReviewUpload({
                 {/* FileBrowser automatically uses alias-based path: existing alias -> srcPending/, new alias -> src/ */}
                 {/* Currently the file browser does not allow for editing, but will once it's setup properly with extractions. */}
                 {/* Generally, this component will be very reusable and I plan to give it an "edit" flag so it can be used as a safe file browser or a browser/editor. */}
-                {filePathPrefix ? (
+                {filePathPrefix && isSourceMediaUploaded ? (
                     <FileBrowser 
                         pathPrefix={filePathPrefix} 
                         id={savedAlias} 
@@ -573,7 +588,10 @@ export default function AdminReviewUpload({
                         onEpisodeSelectionChange={handleEpisodeSelectionChange}
                     />
                 ) : (
-                    <FileBrowserPlaceholder />
+                    <FileBrowserPlaceholder 
+                        sourceMediaStatus={sourceMediaStatus} 
+                        filePathPrefix={filePathPrefix} 
+                    />
                 )}
             </Box>
 
