@@ -447,13 +447,16 @@ const JsonFileViewer: React.FC<{
     selectedFile?: FileItem | null;
     onUnsavedChanges?: (hasChanges: boolean) => void;
     selectedEpisodes?: { season: number; episode: number }[];
-}> = ({ content, filename, onSave, srcEditor = false, selectedFile = null, onUnsavedChanges, selectedEpisodes = [] }) => {
+    pathPrefix?: string;
+    seriesId?: string;
+}> = ({ content, filename, onSave, srcEditor = false, selectedFile = null, onUnsavedChanges, selectedEpisodes = [], pathPrefix = '', seriesId = '' }) => {
     const [formattedJson, setFormattedJson] = useState<string>('');
     const [editedJson, setEditedJson] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [editError, setEditError] = useState<string | null>(null);
     const [isUpdatingFrameCount, setIsUpdatingFrameCount] = useState<boolean>(false);
+    const [isCopyingExistingData, setIsCopyingExistingData] = useState<boolean>(false);
     const [colorPickerAnchorEl, setColorPickerAnchorEl] = useState<HTMLElement | null>(null);
     const [currentColorProperty, setCurrentColorProperty] = useState<string>('');
 
@@ -482,6 +485,10 @@ const JsonFileViewer: React.FC<{
 
     const hasColorProperties = Object.keys(colorProperties).length > 0;
 
+    // Check if this is an existing alias (srcPending path)
+    const isExistingAlias = useMemo(() => {
+        return pathPrefix.includes('protected/srcPending') && seriesId.trim() !== '';
+    }, [pathPrefix, seriesId]);
 
     
 
@@ -517,6 +524,57 @@ const JsonFileViewer: React.FC<{
             setIsUpdatingFrameCount(false);
         }
     }, [hasFrameCount, selectedFile, editedJson, selectedEpisodes]);
+
+    // Function to copy existing data from protected/src
+    const copyExistingData = useCallback(async () => {
+        if (!isExistingAlias || !selectedFile || !seriesId) return;
+        
+        setIsCopyingExistingData(true);
+        try {
+            // Construct the path to the existing metadata in protected/src
+            const existingSrcPath = `protected/src/${seriesId}/${filename}`;
+            
+            console.log('🔄 Copying existing data from:', existingSrcPath);
+            
+            // Try to get the existing JSON file from protected/src
+            const result = await Storage.get(existingSrcPath, {
+                level: 'public',
+                download: true
+            });
+            
+            if (result && typeof result === 'object' && result !== null && 'Body' in (result as any)) {
+                const existingContent = await (result as any).Body.text();
+                
+                try {
+                    // Validate that it's valid JSON
+                    const parsed = JSON.parse(existingContent);
+                    const formattedContent = JSON.stringify(parsed, null, 2);
+                    
+                    setEditedJson(formattedContent);
+                    setEditError(null);
+                    
+                    // Mark as having changes
+                    onUnsavedChanges?.(true);
+                    
+                    console.log('✅ Successfully copied existing metadata');
+                } catch (parseError) {
+                    setEditError('Existing data is not valid JSON format');
+                    console.error('Parse error:', parseError);
+                }
+            } else {
+                setEditError('Could not read existing data');
+            }
+        } catch (error) {
+            console.error('Error copying existing data:', error);
+            if (error instanceof Error && error.message.includes('NoSuchKey')) {
+                setEditError(`No existing metadata found at protected/src/${seriesId}/${filename}`);
+            } else {
+                setEditError('Failed to copy existing data');
+            }
+        } finally {
+            setIsCopyingExistingData(false);
+        }
+    }, [isExistingAlias, selectedFile, seriesId, filename, onUnsavedChanges]);
 
     // Color picker handlers
     const handleColorPickerOpen = useCallback((colorProperty: string, event: React.MouseEvent<HTMLElement>) => {
@@ -665,6 +723,21 @@ const JsonFileViewer: React.FC<{
                                     }}
                                 >
                                     {isUpdatingFrameCount ? 'Updating...' : 'Update Frame Count'}
+                                </Button>
+                            )}
+                            {isExistingAlias && (
+                                <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    onClick={copyExistingData}
+                                    size="small"
+                                    disabled={isCopyingExistingData}
+                                    sx={{ 
+                                        whiteSpace: 'nowrap',
+                                        width: { xs: '100%', sm: 'auto' }
+                                    }}
+                                >
+                                    {isCopyingExistingData ? 'Copying...' : 'Copy Existing Data'}
                                 </Button>
                             )}
                             {Object.entries(colorProperties).map(([property, currentColor]) => (
@@ -2177,22 +2250,22 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     };
 
     // Function to calculate which video file and timestamp for a given subtitle time
-    const calculateVideoLocation = (subtitleStartTime: number): { videoIndex: number; videoTimestamp: number } => {
-        const FPS = 10;
-        const FRAMES_PER_VIDEO = 250; // 25 seconds × 10 fps
+    // const calculateVideoLocation = (subtitleStartTime: number): { videoIndex: number; videoTimestamp: number } => {
+    //     const FPS = 10;
+    //     const FRAMES_PER_VIDEO = 250; // 25 seconds × 10 fps
         
-        // Convert time to frame number
-        const frameNumber = Math.floor(subtitleStartTime * FPS);
+    //     // Convert time to frame number
+    //     const frameNumber = Math.floor(subtitleStartTime * FPS);
         
-        // Calculate which video contains this frame
-        const videoIndex = Math.floor(frameNumber / FRAMES_PER_VIDEO);
+    //     // Calculate which video contains this frame
+    //     const videoIndex = Math.floor(frameNumber / FRAMES_PER_VIDEO);
         
-        // Calculate timestamp within that video
-        const frameWithinVideo = frameNumber % FRAMES_PER_VIDEO;
-        const videoTimestamp = frameWithinVideo / FPS;
+    //     // Calculate timestamp within that video
+    //     const frameWithinVideo = frameNumber % FRAMES_PER_VIDEO;
+    //     const videoTimestamp = frameWithinVideo / FPS;
         
-        return { videoIndex, videoTimestamp };
-    };
+    //     return { videoIndex, videoTimestamp };
+    // };
 
     // Function to generate spot check data
     const generateSpotCheckData = useCallback(async (): Promise<SpotCheckData> => {
@@ -2660,6 +2733,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     selectedFile={selectedFile} 
                     onUnsavedChanges={setHasUnsavedChanges}
                     selectedEpisodes={selectedEpisodes}
+                    pathPrefix={pathPrefix}
+                    seriesId={id}
                 />;
             case 'csv':
                 return <CsvViewer 

@@ -16,41 +16,13 @@
     "s3Key": {
       "Type": "String"
     },
-    "apimemesrcGraphQLAPIIdOutput": {
+    "functionmemesrcUpdateMediaName": {
       "Type": "String",
-      "Default": "apimemesrcGraphQLAPIIdOutput"
-    },
-    "apimemesrcGraphQLAPIEndpointOutput": {
-      "Type": "String",
-      "Default": "apimemesrcGraphQLAPIEndpointOutput"
-    },
-    "apimemesrcGraphQLAPIKeyOutput": {
-      "Type": "String",
-      "Default": "apimemesrcGraphQLAPIKeyOutput"
-    },
-    "storagememesrcGeneratedImagesBucketName": {
-      "Type": "String",
-      "Default": "storagememesrcGeneratedImagesBucketName"
-    },
-    "functionmemesrcGraphQlLayerArn": {
-      "Type": "String",
-      "Default": "functionmemesrcGraphQlLayerArn"
+      "Default": "functionmemesrcUpdateMediaName"
     },
     "functionmemesrcS3LayerArn": {
       "Type": "String",
       "Default": "functionmemesrcS3LayerArn"
-    },
-    "functionmemesrcSesLayerArn": {
-      "Type": "String",
-      "Default": "functionmemesrcSesLayerArn"
-    },
-    "functionmemesrcAxiosLayerArn": {
-      "Type": "String",
-      "Default": "functionmemesrcAxiosLayerArn"
-    },
-    "functionmemesrcOpenSearchLayerArn": {
-      "Type": "String",
-      "Default": "functionmemesrcOpenSearchLayerArn"
     }
   },
   "Conditions": {
@@ -83,12 +55,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcIndexAndPublish",
+            "memesrcApproveMedia",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcIndexAndPublish",
+                  "memesrcApproveMedia",
                   "-",
                   {
                     "Ref": "env"
@@ -106,17 +78,8 @@
             "REGION": {
               "Ref": "AWS::Region"
             },
-            "API_MEMESRC_GRAPHQLAPIIDOUTPUT": {
-              "Ref": "apimemesrcGraphQLAPIIdOutput"
-            },
-            "API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT": {
-              "Ref": "apimemesrcGraphQLAPIEndpointOutput"
-            },
-            "API_MEMESRC_GRAPHQLAPIKEYOUTPUT": {
-              "Ref": "apimemesrcGraphQLAPIKeyOutput"
-            },
-            "STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME": {
-              "Ref": "storagememesrcGeneratedImagesBucketName"
+            "FUNCTION_MEMESRCUPDATEMEDIA_NAME": {
+              "Ref": "functionmemesrcUpdateMediaName"
             }
           }
         },
@@ -129,23 +92,10 @@
         "Runtime": "nodejs22.x",
         "Layers": [
           {
-            "Ref": "functionmemesrcGraphQlLayerArn"
-          },
-          {
             "Ref": "functionmemesrcS3LayerArn"
-          },
-          {
-            "Ref": "functionmemesrcSesLayerArn"
-          },
-          {
-            "Ref": "functionmemesrcAxiosLayerArn"
-          },
-          {
-            "Ref": "functionmemesrcOpenSearchLayerArn"
           }
         ],
-        "Timeout": 900,
-        "MemorySize": 3008
+        "Timeout": 25
       }
     },
     "LambdaExecutionRole": {
@@ -154,12 +104,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "memesrcLambdaRole659313fc",
+            "memesrcLambdaRole03bc9159",
             {
               "Fn::Join": [
                 "",
                 [
-                  "memesrcLambdaRole659313fc",
+                  "memesrcLambdaRole03bc9159",
                   "-",
                   {
                     "Ref": "env"
@@ -248,14 +198,22 @@
             {
               "Effect": "Allow",
               "Action": [
-                "appsync:GraphQL"
+                "lambda:Create*",
+                "lambda:Put*",
+                "lambda:Add*",
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*",
+                "lambda:Delete*",
+                "lambda:Remove*"
               ],
               "Resource": [
                 {
                   "Fn::Join": [
                     "",
                     [
-                      "arn:aws:appsync:",
+                      "arn:aws:lambda:",
                       {
                         "Ref": "AWS::Region"
                       },
@@ -263,90 +221,10 @@
                       {
                         "Ref": "AWS::AccountId"
                       },
-                      ":apis/",
+                      ":function:",
                       {
-                        "Ref": "apimemesrcGraphQLAPIIdOutput"
-                      },
-                      "/types/Query/*"
-                    ]
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:appsync:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":apis/",
-                      {
-                        "Ref": "apimemesrcGraphQLAPIIdOutput"
-                      },
-                      "/types/Mutation/*"
-                    ]
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:appsync:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":apis/",
-                      {
-                        "Ref": "apimemesrcGraphQLAPIIdOutput"
-                      },
-                      "/types/Subscription/*"
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Effect": "Allow",
-              "Action": "s3:ListBucket",
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:s3:::",
-                      {
-                        "Ref": "storagememesrcGeneratedImagesBucketName"
+                        "Ref": "functionmemesrcUpdateMediaName"
                       }
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:PutObject",
-                "s3:GetObject",
-                "s3:DeleteObject"
-              ],
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:s3:::",
-                      {
-                        "Ref": "storagememesrcGeneratedImagesBucketName"
-                      },
-                      "/*"
                     ]
                   ]
                 }

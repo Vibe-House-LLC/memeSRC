@@ -398,7 +398,7 @@ export default function AdminReviewUpload({
             
             // If the alias already exists and we have selected episodes, include them
             if (isExistingAlias && selectedEpisodes.length > 0) {
-                requestBody.selectedEpisodes = selectedEpisodes;
+                requestBody.episodes = selectedEpisodes;
                 console.log('Sending selected episodes to backend:', selectedEpisodes);
             }
             

@@ -79,6 +79,7 @@ const updateSourceMediaMutation = `
     mutation UpdateSourceMedia($input: UpdateSourceMediaInput!) {
         updateSourceMedia(input: $input) {
             id
+            status
         }
     }
 `;

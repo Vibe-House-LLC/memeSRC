@@ -333,7 +333,7 @@
     },
     "/sourceMedia/approve": {
       "name": "/sourceMedia/approve",
-      "lambdaFunction": "memesrcUpdateMedia",
+      "lambdaFunction": "memesrcApproveMedia",
       "permissions": {
         "groups": {
           "admins": [

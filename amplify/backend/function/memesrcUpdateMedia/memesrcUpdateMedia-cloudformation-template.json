@@ -184,7 +184,8 @@
             "Ref": "functionmemesrcDynamoDBLayerArn"
           }
         ],
-        "Timeout": 25
+        "Timeout": 900,
+        "MemorySize": 3008
       }
     },
     "LambdaExecutionRole": {

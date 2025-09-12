@@ -87,6 +87,7 @@ const updateSourceMediaMutation = `
     mutation UpdateSourceMedia($input: UpdateSourceMediaInput!) {
         updateSourceMedia(input: $input) {
             id
+            status
         }
     }
 `;
@@ -525,7 +526,8 @@ const createAlias = async (alias) => {
 const createSeriesContributors = async (data) => {
     try {
         const seriesContributorsDetails = await makeGraphQLRequest({ query: createSeriesContributorsMutation, variables: { input: data } });
-        return seriesContributorsDetails?.body?.data?.updateSeriesContributors || null;
+        console.log('SERIES CONTRIBUTORS DETAILS: ', JSON.stringify(seriesContributorsDetails));
+        return seriesContributorsDetails?.body?.data?.createSeriesContributors || null;
     } catch (error) {
         console.error('Error updating series contributors:', error);
         throw error;
@@ -573,13 +575,13 @@ const moveEpisodeFilesFromPendingToSrc = async (alias, episodes) => {
                 await s3.copyObject(copyParams).promise();
 
                 // Delete the original file from pending
-                const deleteParams = {
-                    Bucket: bucketName,
-                    Key: sourceKey
-                };
+                // const deleteParams = {
+                //     Bucket: bucketName,
+                //     Key: sourceKey
+                // };
 
-                await s3.deleteObject(deleteParams).promise();
-                console.log(`Moved ${sourceKey} to ${destinationKey}`);
+                // await s3.deleteObject(deleteParams).promise();
+                // console.log(`Moved ${sourceKey} to ${destinationKey}`);
             }
         }
 
@@ -897,7 +899,11 @@ const invokeIndexAndPublish = async (sourceMediaId, newAlias) => {
 const processNewSeries = async (data) => {
     const { sourceMediaId } = data;
     try {
-
+        const updateSourceMediaToPending = await updateSourceMedia({
+            id: sourceMediaId,
+            status: 'pending'
+        });
+        console.log('UPDATE SOURCE MEDIA TO PENDING: ', JSON.stringify(updateSourceMediaToPending));
         const sourceMedia = await getSourceMedia(sourceMediaId);
         const seriesData = sourceMedia?.series;
         const userData = sourceMedia?.user;
@@ -906,11 +912,6 @@ const processNewSeries = async (data) => {
         const metadata = await getSeriesMetadata(true, alias);
         // Check to see if the v2 content metadata exists
         const v2ContentMetadata = await getV2ContentMetadata(alias);
-        const updateSourceMediaToPending = await updateSourceMedia({
-            id: sourceMediaId,
-            status: 'pending'
-        });
-        console.log('UPDATE SOURCE MEDIA TO PENDING: ', JSON.stringify(updateSourceMediaToPending));
 
         if (v2ContentMetadata?.id) {
             // Update the v2 content metadata
@@ -964,6 +965,12 @@ const processNewSeries = async (data) => {
 
     } catch (error) {
         console.error('Error:', error);
+
+        const updateSourceMediaToFailed = await updateSourceMedia({
+            id: sourceMediaId,
+            status: 'failed'
+        });
+        console.log('UPDATE SOURCE MEDIA TO Failed: ', JSON.stringify(updateSourceMediaToFailed));
         throw error;
     }
 }
@@ -971,6 +978,11 @@ const processNewSeries = async (data) => {
 const processExistingSeries = async (data) => {
     const { sourceMediaId, episodes } = data;
     try {
+        const updateSourceMediaToPending = await updateSourceMedia({
+            id: sourceMediaId,
+            status: 'pending'
+        });
+        console.log('UPDATE SOURCE MEDIA TO PENDING: ', JSON.stringify(updateSourceMediaToPending));
         const sourceMedia = await getSourceMedia(sourceMediaId);
         const seriesData = sourceMedia?.series;
         const userData = sourceMedia?.user;
@@ -983,6 +995,7 @@ const processExistingSeries = async (data) => {
             // Update the v2 content metadata
             const v2ContentMetadataData = await updateV2ContentMetadata({
                 id: alias,
+                v2ContentMetadataAliasId: alias,
                 title: metadata?.title,
                 description: metadata?.description,
                 frameCount: metadata?.frameCount,
@@ -992,13 +1005,14 @@ const processExistingSeries = async (data) => {
                 status: metadata?.status || 0,
                 version: metadata?.version || 2,
                 fontFamily: metadata?.fontFamily,
-                seriesId: seriesData?.id
+                v2ContentMetadataSeriesId: seriesData?.id
             });
             console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
         } else {
             // Create the v2 content metadata
             const v2ContentMetadataData = await createV2ContentMetadata({
                 id: alias,
+                v2ContentMetadataAliasId: alias,
                 title: metadata?.title,
                 description: metadata?.description,
                 frameCount: metadata?.frameCount,
@@ -1008,7 +1022,7 @@ const processExistingSeries = async (data) => {
                 status: metadata?.status || 0,
                 version: metadata?.version || 2,
                 fontFamily: metadata?.fontFamily,
-                seriesId: seriesData?.id
+                v2ContentMetadataSeriesId: seriesData?.id
             });
             console.log('V2 CONTENT METADATA DATA: ', JSON.stringify(v2ContentMetadataData));
         }
@@ -1033,6 +1047,12 @@ const processExistingSeries = async (data) => {
 
     } catch (error) {
         console.error('Error:', error);
+
+        const updateSourceMediaToFailed = await updateSourceMedia({
+            id: sourceMediaId,
+            status: 'failed'
+        });
+        console.log('UPDATE SOURCE MEDIA TO FAILED: ', JSON.stringify(updateSourceMediaToFailed));
         throw error;
     }
 }
