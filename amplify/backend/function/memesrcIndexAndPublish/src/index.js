@@ -164,15 +164,36 @@ const indexToOpenSearch = async (data) => {
     }
 }
 
+const getAliasQuery = `
+    query GetAlias($id: ID!) {
+        getAlias(id: $id) {
+            id
+        }
+    }
+`;
+
+const checkForExistingAlias = async (alias) => {
+    const aliasDetails = await makeGraphQLRequest({ query: getAliasQuery, variables: { id: alias } });
+    return aliasDetails?.body?.data?.getAlias?.id ? true : false;
+}
+
 exports.handler = async (event) => {
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
-        const { sourceMediaId, newAlias = false } = event;
-        const sourceMediaDetails = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id: sourceMediaId } });
-        const sourceMedia = sourceMediaDetails?.body?.data?.getSourceMedia;
-        const alias = sourceMedia?.pendingAlias;
-        const seriesData = sourceMedia?.series;
-        console.log('SOURCE MEDIA DATA: ', JSON.stringify(sourceMedia));
+        const { sourceMediaId, existingAlias } = JSON.parse(event?.body);
+        let sourceMediaDetails;
+        let sourceMedia;
+        let seriesData;
+        // Get the source media details
+        let alias = existingAlias || null;
+
+        if (sourceMediaId) {
+            sourceMediaDetails = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id: sourceMediaId } });
+            sourceMedia = sourceMediaDetails?.body?.data?.getSourceMedia;
+            alias = sourceMedia?.pendingAlias;
+            seriesData = sourceMedia?.series;
+            console.log('SOURCE MEDIA DATA: ', JSON.stringify(sourceMedia));
+        }
 
         // TODO: Add secrets
         // Placeholders:
@@ -188,18 +209,21 @@ exports.handler = async (event) => {
         console.log('INDEX TO OPENSEARCH RESPONSE: ', JSON.stringify('indexToOpenSearchResponse: ', indexToOpenSearchResponse));
 
         // Once indexing is complete, we can add the alias (if it doesn't exist) and update the series
-        if (newAlias) {
-            const aliasData = await createAlias({
-                id: alias,
-                aliasV2ContentMetadataId: alias
-            });
-            console.log('ALIAS DATA: ', JSON.stringify(aliasData));
+        if (sourceMediaId) {
+            const doesAliasExist = await checkForExistingAlias(alias);
+            if (!doesAliasExist) {
+                const aliasData = await createAlias({
+                    id: alias,
+                    aliasV2ContentMetadataId: alias
+                });
+                console.log('ALIAS DATA: ', JSON.stringify(aliasData));
 
-            const seriesResponse = await updateSeries({
-                id: seriesData?.id,
-                slug: alias,
-            });
-            console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
+                const seriesResponse = await updateSeries({
+                    id: seriesData?.id,
+                    slug: alias,
+                });
+                console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
+            }
         }
 
         const updateSourceMediaResponse = await updateSourceMedia({

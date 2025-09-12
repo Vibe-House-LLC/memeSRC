@@ -213,7 +213,8 @@
         "memesrcDeleteFromLibrary": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcDeleteFromLibrary-4675487851795359786f-build.zip"
-        }
+        },
+        "memesrcStartIndexingAndPublishing": {}
       },
       "storage": {
         "memesrcGeneratedImages": {}

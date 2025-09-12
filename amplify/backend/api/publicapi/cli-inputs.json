@@ -356,6 +356,20 @@
           "update"
         ]
       }
+    },
+    "/media/index": {
+      "name": "/media/index",
+      "lambdaFunction": "memesrcStartIndexingAndPublishing",
+      "permissions": {
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update"
+          ]
+        },
+        "setting": "private"
+      }
     }
   }
 }
