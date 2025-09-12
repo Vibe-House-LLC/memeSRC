@@ -16,6 +16,14 @@ export const getSeries = /* GraphQL */ `
         __typename
       }
       statusText
+      contributors {
+        nextToken
+        __typename
+      }
+      subtitles {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -206,6 +214,7 @@ export const getSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -220,6 +229,14 @@ export const getSeason = /* GraphQL */ `
         __typename
       }
       episodes {
+        nextToken
+        __typename
+      }
+      contributors {
+        nextToken
+        __typename
+      }
+      subtitles {
         nextToken
         __typename
       }
@@ -243,6 +260,7 @@ export const listSeasons = /* GraphQL */ `
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
@@ -261,18 +279,25 @@ export const getEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
         __typename
       }
       subtitles {
+        nextToken
+        __typename
+      }
+      contributors {
         nextToken
         __typename
       }
@@ -296,6 +321,8 @@ export const listEpisodes = /* GraphQL */ `
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
@@ -314,21 +341,54 @@ export const getSubtitle = /* GraphQL */ `
       year
       image
       description
+      subtitleIndex
       start
       end
+      seasonId
+      episodeId
+      seriesId
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        seasonNumber
+        createdAt
+        updatedAt
+        seriesSeasonsId
+        __typename
+      }
       episode {
         id
         tvdbid
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
         __typename
       }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
+      seriesSubtitlesId
+      seasonSubtitlesId
       episodeSubtitlesId
       __typename
     }
@@ -347,10 +407,139 @@ export const listSubtitles = /* GraphQL */ `
         year
         image
         description
+        subtitleIndex
         start
         end
+        seasonId
+        episodeId
+        seriesId
         createdAt
         updatedAt
+        seriesSubtitlesId
+        seasonSubtitlesId
+        episodeSubtitlesId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const subtitleBySeasonAndSubtitleIndex = /* GraphQL */ `
+  query SubtitleBySeasonAndSubtitleIndex(
+    $seasonId: ID!
+    $subtitleIndex: ModelIntKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelSubtitleFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    subtitleBySeasonAndSubtitleIndex(
+      seasonId: $seasonId
+      subtitleIndex: $subtitleIndex
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        tvdbid
+        year
+        image
+        description
+        subtitleIndex
+        start
+        end
+        seasonId
+        episodeId
+        seriesId
+        createdAt
+        updatedAt
+        seriesSubtitlesId
+        seasonSubtitlesId
+        episodeSubtitlesId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const subtitleByEpisodeAndSubtitleIndex = /* GraphQL */ `
+  query SubtitleByEpisodeAndSubtitleIndex(
+    $episodeId: ID!
+    $subtitleIndex: ModelIntKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelSubtitleFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    subtitleByEpisodeAndSubtitleIndex(
+      episodeId: $episodeId
+      subtitleIndex: $subtitleIndex
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        tvdbid
+        year
+        image
+        description
+        subtitleIndex
+        start
+        end
+        seasonId
+        episodeId
+        seriesId
+        createdAt
+        updatedAt
+        seriesSubtitlesId
+        seasonSubtitlesId
+        episodeSubtitlesId
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const subtitleBySeriesAndSubtitleIndex = /* GraphQL */ `
+  query SubtitleBySeriesAndSubtitleIndex(
+    $seriesId: ID!
+    $subtitleIndex: ModelIntKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelSubtitleFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    subtitleBySeriesAndSubtitleIndex(
+      seriesId: $seriesId
+      subtitleIndex: $subtitleIndex
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        tvdbid
+        year
+        image
+        description
+        subtitleIndex
+        start
+        end
+        seasonId
+        episodeId
+        seriesId
+        createdAt
+        updatedAt
+        seriesSubtitlesId
+        seasonSubtitlesId
         episodeSubtitlesId
         __typename
       }
@@ -531,9 +720,23 @@ export const getV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       v2ContentMetadataAliasId
+      v2ContentMetadataSeriesId
       __typename
     }
   }
@@ -563,6 +766,7 @@ export const listV2ContentMetadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       nextToken
@@ -599,6 +803,7 @@ export const v2ContentMetadataByStatus = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       nextToken
@@ -624,6 +829,7 @@ export const getAlias = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       createdAt
@@ -751,6 +957,18 @@ export const getUserDetails = /* GraphQL */ `
         __typename
       }
       favorites
+      seriesContributions {
+        nextToken
+        __typename
+      }
+      seasonContributions {
+        nextToken
+        __typename
+      }
+      episodeContributions {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1279,6 +1497,377 @@ export const listLocationLeads = /* GraphQL */ `
     }
   }
 `;
+export const getSeriesContributors = /* GraphQL */ `
+  query GetSeriesContributors($id: ID!) {
+    getSeriesContributors(id: $id) {
+      id
+      seriesId
+      userDetailsId
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listSeriesContributors = /* GraphQL */ `
+  query ListSeriesContributors(
+    $filter: ModelSeriesContributorsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSeriesContributors(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        seriesId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const seriesContributorsBySeriesId = /* GraphQL */ `
+  query SeriesContributorsBySeriesId(
+    $seriesId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelSeriesContributorsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    seriesContributorsBySeriesId(
+      seriesId: $seriesId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        seriesId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const seriesContributorsByUserDetailsId = /* GraphQL */ `
+  query SeriesContributorsByUserDetailsId(
+    $userDetailsId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelSeriesContributorsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    seriesContributorsByUserDetailsId(
+      userDetailsId: $userDetailsId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        seriesId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getSeasonContributors = /* GraphQL */ `
+  query GetSeasonContributors($id: ID!) {
+    getSeasonContributors(id: $id) {
+      id
+      seasonId
+      userDetailsId
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        seasonNumber
+        createdAt
+        updatedAt
+        seriesSeasonsId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listSeasonContributors = /* GraphQL */ `
+  query ListSeasonContributors(
+    $filter: ModelSeasonContributorsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSeasonContributors(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        seasonId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const seasonContributorsBySeasonId = /* GraphQL */ `
+  query SeasonContributorsBySeasonId(
+    $seasonId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelSeasonContributorsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    seasonContributorsBySeasonId(
+      seasonId: $seasonId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        seasonId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const seasonContributorsByUserDetailsId = /* GraphQL */ `
+  query SeasonContributorsByUserDetailsId(
+    $userDetailsId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelSeasonContributorsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    seasonContributorsByUserDetailsId(
+      userDetailsId: $userDetailsId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        seasonId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getEpisodeContributors = /* GraphQL */ `
+  query GetEpisodeContributors($id: ID!) {
+    getEpisodeContributors(id: $id) {
+      id
+      episodeId
+      userDetailsId
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        episodeNumber
+        name
+        createdAt
+        updatedAt
+        seasonEpisodesId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listEpisodeContributors = /* GraphQL */ `
+  query ListEpisodeContributors(
+    $filter: ModelEpisodeContributorsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listEpisodeContributors(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        episodeId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const episodeContributorsByEpisodeId = /* GraphQL */ `
+  query EpisodeContributorsByEpisodeId(
+    $episodeId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelEpisodeContributorsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    episodeContributorsByEpisodeId(
+      episodeId: $episodeId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        episodeId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const episodeContributorsByUserDetailsId = /* GraphQL */ `
+  query EpisodeContributorsByUserDetailsId(
+    $userDetailsId: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelEpisodeContributorsFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    episodeContributorsByUserDetailsId(
+      userDetailsId: $userDetailsId
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        episodeId
+        userDetailsId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getUserMetadata = /* GraphQL */ `
   query GetUserMetadata($id: ID!) {
     getUserMetadata(id: $id) {
@@ -1420,6 +2009,7 @@ export const getUserV2Metadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       userDetails {

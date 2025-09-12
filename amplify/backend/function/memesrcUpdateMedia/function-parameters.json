@@ -1,0 +1,53 @@
+{
+  "lambdaLayers": [
+    {
+      "type": "ProjectLayer",
+      "resourceName": "memesrcGraphQlLayer",
+      "env": "dev",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
+    },
+    {
+      "type": "ProjectLayer",
+      "resourceName": "memesrcS3Layer",
+      "env": "dev",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
+    },
+    {
+      "type": "ProjectLayer",
+      "resourceName": "memesrcDynamoDBLayer",
+      "env": "dev",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
+    }
+  ],
+  "permissions": {
+    "api": {
+      "memesrc": [
+        "Query",
+        "Mutation",
+        "Subscription"
+      ]
+    },
+    "function": {
+      "memesrcIndexAndPublish": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    },
+    "storage": {
+      "memesrcGeneratedImages": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "secretNames": [
+    "tvdbApiKey",
+    "tvdbPin"
+  ]
+}

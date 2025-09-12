@@ -20,7 +20,7 @@
     }
   },
   "Resources": {
-    "LambdaLayerVersion4b4279f6": {
+    "LambdaLayerVersionbed51e54": {
       "Type": "AWS::Lambda::LayerVersion",
       "Properties": {
         "CompatibleRuntimes": {
@@ -51,50 +51,13 @@
       "DeletionPolicy": "Delete",
       "UpdateReplacePolicy": "Retain"
     },
-    "LambdaLayerPermissionPrivate4b4279f6": {
+    "LambdaLayerPermissionPrivatebed51e54": {
       "Type": "AWS::Lambda::LayerVersionPermission",
       "Properties": {
         "Action": "lambda:GetLayerVersion",
         "LayerVersionArn": {
-          "Ref": "LambdaLayerVersion4b4279f6"
+          "Ref": "LambdaLayerVersionbed51e54"
         },
-        "Principal": {
-          "Ref": "AWS::AccountId"
-        }
-      }
-    },
-    "LambdaLayerVersion1395ea17": {
-      "Type": "AWS::Lambda::LayerVersion",
-      "Properties": {
-        "CompatibleRuntimes": [
-          "nodejs22.x"
-        ],
-        "Content": {
-          "S3Bucket": {
-            "Ref": "deploymentBucketName"
-          },
-          "S3Key": "amplify-builds/memesrcGraphQlLayer-LambdaLayerVersion1395ea17-build.zip"
-        },
-        "Description": "Updated layer version 2025-09-02T19:00:46.994Z",
-        "LayerName": {
-          "Fn::Sub": [
-            "memesrcGraphQlLayer-${env}",
-            {
-              "env": {
-                "Ref": "env"
-              }
-            }
-          ]
-        }
-      },
-      "DeletionPolicy": "Delete",
-      "UpdateReplacePolicy": "Retain"
-    },
-    "LambdaLayerPermissionPrivate1395ea17": {
-      "Type": "AWS::Lambda::LayerVersionPermission",
-      "Properties": {
-        "Action": "lambda:GetLayerVersion",
-        "LayerVersionArn": "arn:aws:lambda:us-east-1:458585755494:layer:memesrcGraphQlLayer-dev:1",
         "Principal": {
           "Ref": "AWS::AccountId"
         }
@@ -104,7 +67,7 @@
   "Outputs": {
     "Arn": {
       "Value": {
-        "Ref": "LambdaLayerVersion4b4279f6"
+        "Ref": "LambdaLayerVersionbed51e54"
       }
     }
   }

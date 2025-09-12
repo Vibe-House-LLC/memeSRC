@@ -21,9 +21,7 @@ import {
 } from '@mui/material';
 import {
     Download as DownloadIcon,
-    CloudUpload as ExtractIcon,
-    CheckCircle as SelectIcon,
-    RadioButtonUnchecked as UnselectIcon
+    CloudUpload as ExtractIcon
 } from '@mui/icons-material';
 import { SourceMediaFile } from '../admin/uploads/types';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
@@ -75,10 +73,8 @@ export interface FileCardProps {
     isDownloading: boolean;
     isExtracting: boolean;
     isAliasSaved: boolean;
-    isSelected?: boolean;
     onDownload: (fileKey: string, fileId: string) => void;
     onExtract: (fileKey: string, fileId: string) => void;
-    onSelect?: (fileId: string, unzippedPath: string | null) => void;
     onError?: (error: any) => void;
     onStatusUpdate?: (fileId: string, newStatus: string) => void;
     showDivider?: boolean;
@@ -89,11 +85,9 @@ export default function FileCard({
     isDownloading,
     isExtracting,
     isAliasSaved,
-    isSelected = false,
     onDownload,
     onError,
     onExtract,
-    onSelect,
     onStatusUpdate,
     showDivider = false
 }: FileCardProps) {
@@ -179,11 +173,6 @@ export default function FileCard({
         });
     }, [useEmail])
 
-    const handleSelectClick = () => {
-        if (onSelect && unzippedPath) {
-            onSelect(file.id, isSelected ? null : unzippedPath || null);
-        }
-    };
 
     const handleExtractClick = async () => {
         setOpenExtractModal(true);
@@ -230,10 +219,8 @@ export default function FileCard({
                     flexDirection: isMobile ? 'column' : 'row',
                     alignItems: isMobile ? 'stretch' : 'center',
                     gap: isMobile ? 1.5 : 2,
-                    backgroundColor: isSelected ? 'action.selected' : 'transparent',
-                    borderRadius: 1,
-                    border: isSelected ? 1 : 0,
-                    borderColor: isSelected ? 'primary.main' : 'transparent'
+                    backgroundColor: 'transparent',
+                    borderRadius: 1
                 }}
             >
                 <Box sx={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : 'auto' }}>
@@ -292,48 +279,6 @@ export default function FileCard({
                         minWidth: isMobile ? 0 : 'auto'
                     }}
                 >
-                    {onSelect && (
-                        <Tooltip title={unzippedPath ? (isSelected ? "Deselect File" : "Select File") : "No extracted files available"}>
-                            {isMobile ? (
-                                <Button
-                                    variant={isSelected ? "contained" : "outlined"}
-                                    size="medium"
-                                    startIcon={
-                                        isSelected ? (
-                                            <SelectIcon />
-                                        ) : (
-                                            <UnselectIcon />
-                                        )
-                                    }
-                                    onClick={handleSelectClick}
-                                    disabled={!unzippedPath || fileStatus !== 'extracted'}
-                                    color={isSelected ? "primary" : "inherit"}
-                                    fullWidth
-                                    sx={{ minHeight: 44 }}
-                                >
-                                    {isSelected ? "Selected" : "Select"}
-                                </Button>
-                            ) : (
-                                <Button
-                                    variant={isSelected ? "contained" : "outlined"}
-                                    size="small"
-                                    startIcon={
-                                        isSelected ? (
-                                            <SelectIcon />
-                                        ) : (
-                                            <UnselectIcon />
-                                        )
-                                    }
-                                    onClick={handleSelectClick}
-                                    disabled={!unzippedPath || fileStatus !== 'extracted'}
-                                    color={isSelected ? "primary" : "inherit"}
-                                    sx={{ minWidth: 80 }}
-                                >
-                                    {isSelected ? "Selected" : "Select"}
-                                </Button>
-                            )}
-                        </Tooltip>
-                    )}
                     
                     <Tooltip title="Download File">
                         {isMobile ? (

@@ -16,6 +16,14 @@ export const onCreateSeries = /* GraphQL */ `
         __typename
       }
       statusText
+      contributors {
+        nextToken
+        __typename
+      }
+      subtitles {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -37,6 +45,14 @@ export const onUpdateSeries = /* GraphQL */ `
         __typename
       }
       statusText
+      contributors {
+        nextToken
+        __typename
+      }
+      subtitles {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -58,6 +74,14 @@ export const onDeleteSeries = /* GraphQL */ `
         __typename
       }
       statusText
+      contributors {
+        nextToken
+        __typename
+      }
+      subtitles {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -300,6 +324,7 @@ export const onCreateSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -314,6 +339,14 @@ export const onCreateSeason = /* GraphQL */ `
         __typename
       }
       episodes {
+        nextToken
+        __typename
+      }
+      contributors {
+        nextToken
+        __typename
+      }
+      subtitles {
         nextToken
         __typename
       }
@@ -332,6 +365,7 @@ export const onUpdateSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -346,6 +380,14 @@ export const onUpdateSeason = /* GraphQL */ `
         __typename
       }
       episodes {
+        nextToken
+        __typename
+      }
+      contributors {
+        nextToken
+        __typename
+      }
+      subtitles {
         nextToken
         __typename
       }
@@ -364,6 +406,7 @@ export const onDeleteSeason = /* GraphQL */ `
       year
       image
       description
+      seasonNumber
       series {
         id
         tvdbid
@@ -378,6 +421,14 @@ export const onDeleteSeason = /* GraphQL */ `
         __typename
       }
       episodes {
+        nextToken
+        __typename
+      }
+      contributors {
+        nextToken
+        __typename
+      }
+      subtitles {
         nextToken
         __typename
       }
@@ -396,18 +447,25 @@ export const onCreateEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
         __typename
       }
       subtitles {
+        nextToken
+        __typename
+      }
+      contributors {
         nextToken
         __typename
       }
@@ -426,18 +484,25 @@ export const onUpdateEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
         __typename
       }
       subtitles {
+        nextToken
+        __typename
+      }
+      contributors {
         nextToken
         __typename
       }
@@ -456,18 +521,25 @@ export const onDeleteEpisode = /* GraphQL */ `
       year
       image
       description
+      episodeNumber
+      name
       season {
         id
         tvdbid
         year
         image
         description
+        seasonNumber
         createdAt
         updatedAt
         seriesSeasonsId
         __typename
       }
       subtitles {
+        nextToken
+        __typename
+      }
+      contributors {
         nextToken
         __typename
       }
@@ -486,21 +558,54 @@ export const onCreateSubtitle = /* GraphQL */ `
       year
       image
       description
+      subtitleIndex
       start
       end
+      seasonId
+      episodeId
+      seriesId
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        seasonNumber
+        createdAt
+        updatedAt
+        seriesSeasonsId
+        __typename
+      }
       episode {
         id
         tvdbid
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
         __typename
       }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
+      seriesSubtitlesId
+      seasonSubtitlesId
       episodeSubtitlesId
       __typename
     }
@@ -514,21 +619,54 @@ export const onUpdateSubtitle = /* GraphQL */ `
       year
       image
       description
+      subtitleIndex
       start
       end
+      seasonId
+      episodeId
+      seriesId
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        seasonNumber
+        createdAt
+        updatedAt
+        seriesSeasonsId
+        __typename
+      }
       episode {
         id
         tvdbid
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
         __typename
       }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
+      seriesSubtitlesId
+      seasonSubtitlesId
       episodeSubtitlesId
       __typename
     }
@@ -542,21 +680,54 @@ export const onDeleteSubtitle = /* GraphQL */ `
       year
       image
       description
+      subtitleIndex
       start
       end
+      seasonId
+      episodeId
+      seriesId
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        seasonNumber
+        createdAt
+        updatedAt
+        seriesSeasonsId
+        __typename
+      }
       episode {
         id
         tvdbid
         year
         image
         description
+        episodeNumber
+        name
         createdAt
         updatedAt
         seasonEpisodesId
         __typename
       }
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
+      seriesSubtitlesId
+      seasonSubtitlesId
       episodeSubtitlesId
       __typename
     }
@@ -744,9 +915,23 @@ export const onCreateV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       v2ContentMetadataAliasId
+      v2ContentMetadataSeriesId
       __typename
     }
   }
@@ -777,9 +962,23 @@ export const onUpdateV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       v2ContentMetadataAliasId
+      v2ContentMetadataSeriesId
       __typename
     }
   }
@@ -810,9 +1009,23 @@ export const onDeleteV2ContentMetadata = /* GraphQL */ `
         __typename
       }
       fontFamily
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       v2ContentMetadataAliasId
+      v2ContentMetadataSeriesId
       __typename
     }
   }
@@ -835,6 +1048,7 @@ export const onCreateAlias = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       createdAt
@@ -862,6 +1076,7 @@ export const onUpdateAlias = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       createdAt
@@ -889,6 +1104,7 @@ export const onDeleteAlias = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       createdAt
@@ -1011,6 +1227,18 @@ export const onCreateUserDetails = /* GraphQL */ `
         __typename
       }
       favorites
+      seriesContributions {
+        nextToken
+        __typename
+      }
+      seasonContributions {
+        nextToken
+        __typename
+      }
+      episodeContributions {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1071,6 +1299,18 @@ export const onUpdateUserDetails = /* GraphQL */ `
         __typename
       }
       favorites
+      seriesContributions {
+        nextToken
+        __typename
+      }
+      seasonContributions {
+        nextToken
+        __typename
+      }
+      episodeContributions {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -1131,6 +1371,18 @@ export const onDeleteUserDetails = /* GraphQL */ `
         __typename
       }
       favorites
+      seriesContributions {
+        nextToken
+        __typename
+      }
+      seasonContributions {
+        nextToken
+        __typename
+      }
+      episodeContributions {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       userDetailsStripeCustomerInfoId
@@ -2014,6 +2266,417 @@ export const onDeleteLocationLeads = /* GraphQL */ `
     }
   }
 `;
+export const onCreateSeriesContributors = /* GraphQL */ `
+  subscription OnCreateSeriesContributors(
+    $filter: ModelSubscriptionSeriesContributorsFilterInput
+  ) {
+    onCreateSeriesContributors(filter: $filter) {
+      id
+      seriesId
+      userDetailsId
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateSeriesContributors = /* GraphQL */ `
+  subscription OnUpdateSeriesContributors(
+    $filter: ModelSubscriptionSeriesContributorsFilterInput
+  ) {
+    onUpdateSeriesContributors(filter: $filter) {
+      id
+      seriesId
+      userDetailsId
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteSeriesContributors = /* GraphQL */ `
+  subscription OnDeleteSeriesContributors(
+    $filter: ModelSubscriptionSeriesContributorsFilterInput
+  ) {
+    onDeleteSeriesContributors(filter: $filter) {
+      id
+      seriesId
+      userDetailsId
+      series {
+        id
+        tvdbid
+        slug
+        name
+        year
+        image
+        description
+        statusText
+        createdAt
+        updatedAt
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateSeasonContributors = /* GraphQL */ `
+  subscription OnCreateSeasonContributors(
+    $filter: ModelSubscriptionSeasonContributorsFilterInput
+  ) {
+    onCreateSeasonContributors(filter: $filter) {
+      id
+      seasonId
+      userDetailsId
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        seasonNumber
+        createdAt
+        updatedAt
+        seriesSeasonsId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateSeasonContributors = /* GraphQL */ `
+  subscription OnUpdateSeasonContributors(
+    $filter: ModelSubscriptionSeasonContributorsFilterInput
+  ) {
+    onUpdateSeasonContributors(filter: $filter) {
+      id
+      seasonId
+      userDetailsId
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        seasonNumber
+        createdAt
+        updatedAt
+        seriesSeasonsId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteSeasonContributors = /* GraphQL */ `
+  subscription OnDeleteSeasonContributors(
+    $filter: ModelSubscriptionSeasonContributorsFilterInput
+  ) {
+    onDeleteSeasonContributors(filter: $filter) {
+      id
+      seasonId
+      userDetailsId
+      season {
+        id
+        tvdbid
+        year
+        image
+        description
+        seasonNumber
+        createdAt
+        updatedAt
+        seriesSeasonsId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateEpisodeContributors = /* GraphQL */ `
+  subscription OnCreateEpisodeContributors(
+    $filter: ModelSubscriptionEpisodeContributorsFilterInput
+  ) {
+    onCreateEpisodeContributors(filter: $filter) {
+      id
+      episodeId
+      userDetailsId
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        episodeNumber
+        name
+        createdAt
+        updatedAt
+        seasonEpisodesId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateEpisodeContributors = /* GraphQL */ `
+  subscription OnUpdateEpisodeContributors(
+    $filter: ModelSubscriptionEpisodeContributorsFilterInput
+  ) {
+    onUpdateEpisodeContributors(filter: $filter) {
+      id
+      episodeId
+      userDetailsId
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        episodeNumber
+        name
+        createdAt
+        updatedAt
+        seasonEpisodesId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteEpisodeContributors = /* GraphQL */ `
+  subscription OnDeleteEpisodeContributors(
+    $filter: ModelSubscriptionEpisodeContributorsFilterInput
+  ) {
+    onDeleteEpisodeContributors(filter: $filter) {
+      id
+      episodeId
+      userDetailsId
+      episode {
+        id
+        tvdbid
+        year
+        image
+        description
+        episodeNumber
+        name
+        createdAt
+        updatedAt
+        seasonEpisodesId
+        __typename
+      }
+      userDetails {
+        id
+        username
+        email
+        earlyAccessStatus
+        contributorAccessStatus
+        stripeId
+        status
+        credits
+        subscriptionPeriodStart
+        subscriptionPeriodEnd
+        subscriptionStatus
+        magicSubscription
+        favorites
+        createdAt
+        updatedAt
+        userDetailsStripeCustomerInfoId
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const onCreateUserMetadata = /* GraphQL */ `
   subscription OnCreateUserMetadata(
     $filter: ModelSubscriptionUserMetadataFilterInput
@@ -2177,6 +2840,7 @@ export const onCreateUserV2Metadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       userDetails {
@@ -2226,6 +2890,7 @@ export const onUpdateUserV2Metadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       userDetails {
@@ -2275,6 +2940,7 @@ export const onDeleteUserV2Metadata = /* GraphQL */ `
         createdAt
         updatedAt
         v2ContentMetadataAliasId
+        v2ContentMetadataSeriesId
         __typename
       }
       userDetails {

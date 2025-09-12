@@ -18,6 +18,8 @@ type Series @model @auth(
   description: String,
   seasons: [Season] @hasMany,
   statusText: String,
+  contributors: [UserDetails] @manyToMany(relationName: "SeriesContributors")
+  subtitles: [Subtitle] @hasMany
 }
 
 type SourceMedia @model @auth(
@@ -57,8 +59,11 @@ type Season @model @auth(
   year: Int,
   image: String,
   description: String,
+  seasonNumber: Int,
   series: Series @belongsTo,
   episodes: [Episode] @hasMany
+  contributors: [UserDetails] @manyToMany(relationName: "SeasonContributors")
+  subtitles: [Subtitle] @hasMany
 }
 
 type Episode @model @auth(
@@ -73,8 +78,11 @@ type Episode @model @auth(
   year: Int,
   image: String,
   description: String,
+  episodeNumber: Int,
+  name: String,
   season: Season @belongsTo
   subtitles: [Subtitle] @hasMany
+  contributors: [UserDetails] @manyToMany(relationName: "EpisodeContributors")
 }
 
 type Subtitle @model @auth(
@@ -89,9 +97,15 @@ type Subtitle @model @auth(
   year: Int,
   image: String,
   description: String,
+  subtitleIndex: Int,
   start: Int,
   end: Int,
-  episode: Episode @belongsTo
+  seasonId: ID @index(name: "bySeasonAndSubtitleIndex", sortKeyFields: ["subtitleIndex"], queryField: "subtitleBySeasonAndSubtitleIndex"),
+  episodeId: ID @index(name: "byEpisodeAndSubtitleIndex", sortKeyFields: ["subtitleIndex"], queryField: "subtitleByEpisodeAndSubtitleIndex"),
+  seriesId: ID @index(name: "bySeriesAndSubtitleIndex", sortKeyFields: ["subtitleIndex"], queryField: "subtitleBySeriesAndSubtitleIndex"),
+  season: Season @belongsTo(fields: ["seasonId"]),
+  episode: Episode @belongsTo(fields: ["episodeId"]),
+  series: Series @belongsTo(fields: ["seriesId"]),
 }
 
 type AnalyticsMetrics @model @auth(
@@ -150,6 +164,7 @@ type V2ContentMetadata @model @auth(
   users: [UserDetails] @manyToMany(relationName: "UserV2Metadata")
   alias: Alias @hasOne
   fontFamily: String
+  series: Series @hasOne
 }
 
 type Alias @model @auth(
@@ -207,6 +222,9 @@ type UserDetails @model @auth(
   v2ContentMetadatas: [V2ContentMetadata] @manyToMany(relationName: "UserV2Metadata")
   proSupportMessages: [ProSupportMessage] @hasMany
   favorites: AWSJSON
+  seriesContributions: [Series] @manyToMany(relationName: "SeriesContributors")
+  seasonContributions: [Season] @manyToMany(relationName: "SeasonContributors")
+  episodeContributions: [Episode] @manyToMany(relationName: "EpisodeContributors")
 }
 
 type StripeCustomer @model @auth(
