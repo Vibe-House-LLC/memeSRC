@@ -953,8 +953,15 @@ const processNewSeries = async (data) => {
         });
         console.log('SOURCE MEDIA DATA: ', JSON.stringify(updateSourceMediaResponse));
 
+
+        const updateSourceMediaToAwaitingIndexing = await updateSourceMedia({
+            id: sourceMediaId,
+            status: 'awaitingIndexing'
+        });
+        console.log('UPDATE SOURCE MEDIA TO AWAITING INDEXING: ', JSON.stringify(updateSourceMediaToAwaitingIndexing));
+
         // Invoke the indexAndPublish function for new series
-        await invokeIndexAndPublish(sourceMediaId, true);
+        // await invokeIndexAndPublish(sourceMediaId, true);
 
         const seriesContributorsResponse = await createSeriesContributors({
             seriesId: seriesData?.id,
@@ -1033,8 +1040,14 @@ const processExistingSeries = async (data) => {
         // Update the series docs CSV by removing existing episode rows and adding new ones
         await updateSeriesDocsWithNewEpisodes(alias, episodes);
 
+        const updateSourceMediaToAwaitingIndexing = await updateSourceMedia({
+            id: sourceMediaId,
+            status: 'awaitingIndexing'
+        });
+        console.log('UPDATE SOURCE MEDIA TO AWAITING INDEXING: ', JSON.stringify(updateSourceMediaToAwaitingIndexing));
+
         // Invoke the indexAndPublish function for existing series
-        await invokeIndexAndPublish(sourceMediaId, false);
+        // await invokeIndexAndPublish(sourceMediaId, false);
 
         const seriesContributorsResponse = await createSeriesContributors({
             seriesId: seriesData?.id,

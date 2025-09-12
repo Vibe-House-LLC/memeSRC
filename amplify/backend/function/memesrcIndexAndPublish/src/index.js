@@ -97,75 +97,72 @@ const updateSourceMedia = async (data) => {
 // Initialize S3 client
 const s3 = new AWS.S3();
 
-// const indexToOpenSearch = async (data) => {
-//     // ------------------------------------------------------------
-//     // TODO: Eihter 
-//     // ------------------------------------------------------------
-//     const { openSearchUser, openSearchPass } = data;
-//     const OPENSEARCH_USER = openSearchUser;
-//     const OPENSEARCH_PASS = openSearchPass;
+const indexToOpenSearch = async (data) => {
+    const { openSearchUser, openSearchPass } = data;
+    const OPENSEARCH_USER = openSearchUser;
+    const OPENSEARCH_PASS = openSearchPass;
 
-//     const OPENSEARCH_ENDPOINT = "https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com";
-//     const alias = data.alias;
-//     const env = process.env.ENV === "dev" ? "dev" : "v2";
-//     const csvUrl = `https://img.memesrc.com/v2/${alias}/_docs.csv`;
-//     const indexName = `${env}-${alias}`;
-//     const batchSize = 100;
+    const OPENSEARCH_ENDPOINT = "https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com";
+    const alias = data.alias;
+    const env = process.env.ENV === "dev" ? "dev" : "v2";
+    const csvUrl = `https://img.memesrc.com/v2/${alias}/_docs.csv`;
+    const indexName = `${env}-${alias}`;
+    const batchSize = 100;
 
-//     try {
-//         const client = new Client({
-//             node: OPENSEARCH_ENDPOINT,
-//             auth: {
-//                 username: OPENSEARCH_USER,
-//                 password: OPENSEARCH_PASS,
-//             },
-//         });
+    try {
+        const client = new Client({
+            node: OPENSEARCH_ENDPOINT,
+            auth: {
+                username: OPENSEARCH_USER,
+                password: OPENSEARCH_PASS,
+            },
+        });
 
-//         const response = await axios.get(csvUrl, { responseType: 'stream' });
+        const response = await axios.get(csvUrl, { responseType: 'stream' });
 
-//         const rows = [];
+        const rows = [];
 
-//         await new Promise((resolve, reject) => {
-//             response.data.pipe(csv())
-//                 .on('data', (row) => {
-//                     if (row.subtitle_text) {
-//                         const decodedSubtitle = Buffer.from(row.subtitle_text, 'base64').toString('utf-8');
-//                         row.subtitle_text = decodedSubtitle;
-//                     }
-//                     rows.push(row);
-//                 })
-//                 .on('end', resolve)
-//                 .on('error', reject);
-//         });
+        await new Promise((resolve, reject) => {
+            response.data.pipe(csv())
+                .on('data', (row) => {
+                    if (row.subtitle_text) {
+                        const decodedSubtitle = Buffer.from(row.subtitle_text, 'base64').toString('utf-8');
+                        row.subtitle_text = decodedSubtitle;
+                    }
+                    rows.push(row);
+                })
+                .on('end', resolve)
+                .on('error', reject);
+        });
 
-//         const batches = [];
-//         for (let i = 0; i < rows.length; i += batchSize) {
-//             const batch = rows.slice(i, i + batchSize);
-//             const bulkBody = batch.flatMap((doc) => [
-//                 { index: { _index: indexName } },
-//                 doc,
-//             ]);
-//             batches.push(bulkBody);
-//         }
+        const batches = [];
+        for (let i = 0; i < rows.length; i += batchSize) {
+            const batch = rows.slice(i, i + batchSize);
+            const bulkBody = batch.flatMap((doc) => [
+                { index: { _index: indexName } },
+                doc,
+            ]);
+            batches.push(bulkBody);
+        }
 
-//         let processedCount = 0;
+        let processedCount = 0;
 
-//         for (const bulkBody of batches) {
-//             const bulkResponse = await client.bulk({
-//                 body: bulkBody,
-//             });
-//             console.log("Bulk indexing response:", bulkResponse.body);
-//             processedCount += bulkBody.length / 2;
-//             console.log(`Processed ${processedCount} out of ${rows.length} rows`);
-//         }
+        for (const bulkBody of batches) {
+            const bulkResponse = await client.bulk({
+                body: bulkBody,
+            });
+            console.log("Bulk indexing response:", bulkResponse.body);
+            processedCount += bulkBody.length / 2;
+            console.log(`Processed ${processedCount} out of ${rows.length} rows`);
+        }
 
-//         console.log('CSV indexing completed.');
-//         return true;
-//     } catch (error) {
-//         console.error('Error indexing CSV:', error);
-//         return false;
-//     }
-// }
+        console.log('CSV indexing completed.');
+        return true;
+    } catch (error) {
+        console.error('Error indexing CSV:', error);
+        return false;
+    }
+}
 
 exports.handler = async (event) => {
     try {
@@ -183,12 +180,12 @@ exports.handler = async (event) => {
         const openSearchPass = 'opensearch_pass';
 
         // Index to OpenSearch
-        // const indexToOpenSearchResponse = await indexToOpenSearch({
-        //     alias,
-        //     openSearchUser,
-        //     openSearchPass
-        // });
-        // console.log('INDEX TO OPENSEARCH RESPONSE: ', JSON.stringify('indexToOpenSearchResponse: ', indexToOpenSearchResponse));
+        const indexToOpenSearchResponse = await indexToOpenSearch({
+            alias,
+            openSearchUser,
+            openSearchPass
+        });
+        console.log('INDEX TO OPENSEARCH RESPONSE: ', JSON.stringify('indexToOpenSearchResponse: ', indexToOpenSearchResponse));
 
         // Once indexing is complete, we can add the alias (if it doesn't exist) and update the series
         if (newAlias) {
