@@ -114,6 +114,13 @@ export type AmplifyDependentResourcesAttributes = {
     "memesrcAxiosLayer": {
       "Arn": "string"
     },
+    "memesrcDeleteFromLibrary": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "memesrcDynamoDBLayer": {
       "Arn": "string"
     },

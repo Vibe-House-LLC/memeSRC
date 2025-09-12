@@ -33,6 +33,7 @@ import {
   TextField,
   Snackbar,
   Alert,
+  Collapse,
   FormControl,
   FormLabel,
   MenuItem,
@@ -41,7 +42,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, Check, Add } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -103,9 +104,9 @@ export default function FramePage() {
   const throttleTimeoutRef = useRef(null);
 
   const { user } = useContext(UserContext);
-  
-  // Check if user is an admin (same logic as FloatingActionButtons)
-  const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
+  const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const isPro = user?.userDetails?.magicSubscription === 'true';
+  const hasLibraryAccess = isAdmin || isPro;
 
   // Function to save current frame to library
   const handleSaveToLibrary = async () => {
@@ -145,6 +146,7 @@ export default function FramePage() {
       
       // Convert canvas to Blob (prefer toBlob and pass Blob to library saver)
       const blob = await new Promise((resolve) => offScreenCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+      if (!blob) throw new Error('Failed to create image blob');
       
       // Generate filename
       const showTitleSafe = (showTitle || frameData?.showTitle || 'frame').replace(/[^a-zA-Z0-9]/g, '-');
@@ -154,7 +156,7 @@ export default function FramePage() {
       const showName = (showTitle || frameData?.showTitle || '').toString();
       const defaultCaption = (loadedSubtitle || '').toString();
       await saveImageToLibrary(blob, filename, {
-        level: 'protected',
+        level: 'private',
         metadata: {
           tags: showName ? [showName] : [],
           description: '',
@@ -162,7 +164,7 @@ export default function FramePage() {
         },
       });
       
-      setLibrarySnackbarOpen(true);
+      setSavedToLibrary(true);
     } catch (error) {
       console.error('Error saving frame to library:', error);
     } finally {
@@ -218,8 +220,8 @@ export default function FramePage() {
   }, [cid]);
 
   const [snackbarOpen, setSnackBarOpen] = useState(false);
-  // Removed collage snackbar state
-  const [librarySnackbarOpen, setLibrarySnackbarOpen] = useState(false);
+  // Inline confirmation for library (no snackbar)
+  const [savedToLibrary, setSavedToLibrary] = useState(false);
   const [savingToLibrary, setSavingToLibrary] = useState(false);
 
 
@@ -233,11 +235,10 @@ export default function FramePage() {
     setSnackBarOpen(false);
   }
 
-  // Removed collage snackbar handler
-
-  const handleLibrarySnackbarClose = () => {
-    setLibrarySnackbarOpen(false);
-  }
+  // Reset saved state when frame/display changes
+  useEffect(() => {
+    setSavedToLibrary(false);
+  }, [displayImage, confirmedCid, season, episode, frame]);
 
   /* ---------------------------- Subtitle Function --------------------------- */
 
@@ -988,6 +989,80 @@ useEffect(() => {
           </Grid>
 
           <Grid item xs={12} md={6}>
+            {hasLibraryAccess && (
+              <>
+                <Button
+                  size="medium"
+                  fullWidth
+                  variant={savedToLibrary ? 'contained' : 'outlined'}
+                  onClick={handleSaveToLibrary}
+                  disabled={!confirmedCid || !displayImage || savingToLibrary || savedToLibrary}
+                  sx={{ 
+                    mb: 1.5,
+                    borderColor: savedToLibrary ? 'transparent' : '#FF9800', 
+                    color: savedToLibrary ? '#111' : '#FF9800',
+                    backgroundColor: savedToLibrary ? '#FF9800' : 'transparent',
+                    '&:hover': savedToLibrary ? {
+                      backgroundColor: '#F57C00'
+                    } : { 
+                      borderColor: '#F57C00', 
+                      backgroundColor: 'rgba(255, 152, 0, 0.04)' 
+                    },
+                    '&.Mui-disabled': {
+                      borderColor: savedToLibrary ? '#FF9800' : '#ccc',
+                      color: savedToLibrary ? '#111' : '#ccc',
+                      backgroundColor: savedToLibrary ? '#FF9800' : 'transparent'
+                    }
+                  }}
+                  startIcon={savingToLibrary ? <CircularProgress size={16} sx={{ color: savedToLibrary ? '#111' : '#FF9800' }} /> : (savedToLibrary ? <Check /> : <Collections />)}
+                >
+                  {savingToLibrary ? 'Saving…' : (savedToLibrary ? 'Saved to Library' : 'Add to Library')}
+                </Button>
+                <Collapse in={savedToLibrary} timeout={250} unmountOnExit>
+                  <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+                    <Button
+                      size="medium"
+                      variant="contained"
+                      component={RouterLink}
+                      to="/collage"
+                      startIcon={<Add />}
+                      sx={{
+                        flex: 1,
+                        color: '#e5e7eb',
+                        background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
+                        '&:hover': {
+                          background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+                          borderColor: 'rgba(255, 255, 255, 0.24)',
+                        },
+                      }}
+                    >
+                      New Collage
+                    </Button>
+                    <Button
+                      size="medium"
+                      variant="contained"
+                      component={RouterLink}
+                      to="/library"
+                      startIcon={<Collections />}
+                      sx={{
+                        flex: 1,
+                        color: '#e5e7eb',
+                        background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
+                        '&:hover': {
+                          background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+                          borderColor: 'rgba(255, 255, 255, 0.24)',
+                        },
+                      }}
+                    >
+                      My Library
+                    </Button>
+                  </Stack>
+                </Collapse>
+              </>
+            )}
+            <Collapse in={!savedToLibrary} timeout={250}>
             <Box sx={{ width: '100%' }}>
                   {/* Formatting Toolbar */}
                   {showText &&
@@ -1331,6 +1406,7 @@ useEffect(() => {
                 {/* </CardContent>
               </Card> */}
             </Box>
+            </Collapse>
             {/* {alertOpenTapToEdit && (
               <Alert
                 severity='success'
@@ -1365,62 +1441,38 @@ useEffect(() => {
               {showText ? "Disable" : "Enable"} Caption
             </Button> */}
 
-            {!showText &&
-              <Button
-              size="medium"
-              fullWidth
-              variant="contained"
-              component={RouterLink}
-              sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
-              // startIcon={<Edit />}
-              onClick={() => {
-                setShowText(true);
-                setSubtitleUserInteracted(true);
-              }}
-            >
-              Make A Meme
-            </Button>
-            }
-
-              <Button
+            <Collapse in={!savedToLibrary} timeout={250}>
+              {!showText &&
+                <Button
                 size="medium"
                 fullWidth
                 variant="contained"
-                to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
                 component={RouterLink}
-                sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                startIcon={<Edit />}
+                sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
+                // startIcon={<Edit />}
+                onClick={() => {
+                  setShowText(true);
+                  setSubtitleUserInteracted(true);
+                }}
               >
-                Advanced Editor
+                Make A Meme
               </Button>
+              }
 
-              {hasCollageAccess && (
-                <>
-                  <Button
-                    size="medium"
-                    fullWidth
-                    variant="outlined"
-                    onClick={handleSaveToLibrary}
-                    disabled={!confirmedCid || !displayImage || savingToLibrary}
-                    sx={{ 
-                      mb: 2, 
-                      borderColor: '#FF9800', 
-                      color: '#FF9800',
-                      '&:hover': { 
-                        borderColor: '#F57C00', 
-                        backgroundColor: 'rgba(255, 152, 0, 0.04)' 
-                      },
-                      '&.Mui-disabled': {
-                        borderColor: '#ccc',
-                        color: '#ccc'
-                      }
-                    }}
-                    startIcon={<Collections />}
-                  >
-                    {savingToLibrary ? 'Saving...' : 'Save to Library'}
-                  </Button>
-                </>
-              )}
+                <Button
+                  size="medium"
+                  fullWidth
+                  variant="contained"
+                  to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                  component={RouterLink}
+                  sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                  startIcon={<Edit />}
+                >
+                  Advanced Editor
+                </Button>
+            </Collapse>
+
+              {/* Library actions are now above text controls in right column */}
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} my={1}>
@@ -1547,18 +1599,7 @@ useEffect(() => {
             </Alert>
           </Snackbar>
 
-          {/* Removed collage snackbar */}
-
-          <Snackbar
-            open={librarySnackbarOpen}
-            autoHideDuration={3000}
-            onClose={handleLibrarySnackbarClose}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <Alert onClose={handleLibrarySnackbarClose} severity="success" sx={{ width: '100%' }}>
-              Frame saved to library!
-            </Alert>
-          </Snackbar>
+          {/* Inline confirmation replaces library snackbar */}
 
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>

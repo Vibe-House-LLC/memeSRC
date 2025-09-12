@@ -80,6 +80,7 @@ const CollagePreview = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const hasLibraryAccess = isAdmin || (user?.userDetails?.magicSubscription === 'true');
   
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
@@ -114,7 +115,7 @@ const CollagePreview = ({
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
 
-  // Handle panel click - admins use Library, non-admins use system file picker
+  // Handle panel click - users with library access use Library; others use system file picker
   const handlePanelClick = (index, panelId) => {
     debugLog(`Panel clicked: index=${index}, panelId=${panelId}`);
     setActivePanelIndex(index);
@@ -133,7 +134,7 @@ const CollagePreview = ({
       // Empty frame
       setIsReplaceMode(false);
       setActiveExistingImageIndex(null);
-      if (isAdmin) {
+      if (hasLibraryAccess) {
         setIsLibraryOpen(true);
       } else {
         // Non-admins: open system file picker (legacy behavior)
@@ -143,7 +144,7 @@ const CollagePreview = ({
       // Frame has image
       setIsReplaceMode(true);
       setActiveExistingImageIndex(imageIndex);
-      if (isAdmin) {
+      if (hasLibraryAccess) {
         setIsLibraryOpen(true);
       } else {
         // Non-admins: open system file picker to replace image
@@ -187,7 +188,7 @@ const CollagePreview = ({
       const existingIdx = panelImageMapping?.[panelId];
       setActiveExistingImageIndex(typeof existingIdx === 'number' ? existingIdx : null);
       setIsReplaceMode(true);
-      if (isAdmin) {
+      if (hasLibraryAccess) {
         setIsLibraryOpen(true);
       } else {
         // Non-admins: open system file picker
@@ -224,7 +225,7 @@ const CollagePreview = ({
       const getOriginalSrc = async () => {
         let src = imageObj.originalUrl || imageObj.displayUrl;
         if (libKey) {
-          try { const blob = await getFromLibrary(libKey, { level: 'protected' }); src = await blobToDataUrl(blob); } catch (_) {}
+          try { const blob = await getFromLibrary(libKey, { level: 'private' }); src = await blobToDataUrl(blob); } catch (_) {}
         }
         return src;
       };
@@ -239,7 +240,7 @@ const CollagePreview = ({
       const ensureImageElement = async () => {
         try {
           let blob = null;
-          if (libKey) { try { blob = await getFromLibrary(libKey, { level: 'protected' }); } catch (_) {} }
+          if (libKey) { try { blob = await getFromLibrary(libKey, { level: 'private' }); } catch (_) {} }
           const src = blob ? URL.createObjectURL(blob) : (imageObj.originalUrl || imageObj.displayUrl);
           return await new Promise((resolve, reject) => {
             const img = new Image(); img.crossOrigin = 'anonymous';
@@ -619,8 +620,8 @@ const CollagePreview = ({
         onChange={handleFileChange}
       />
 
-      {/* Library selection dialog - admins only */}
-      {isAdmin && (
+      {/* Library selection dialog - admins and pro users */}
+      {hasLibraryAccess && (
         <Dialog
           open={isLibraryOpen}
           onClose={handleLibraryClose}

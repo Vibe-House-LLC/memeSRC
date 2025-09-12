@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Box, Container, Typography } from '@mui/material';
+import { Helmet } from 'react-helmet-async';
 import { get as getFromLibrary } from '../utils/library/storage';
 import LibraryBrowser from '../components/library/LibraryBrowser';
 import { UserContext } from '../UserContext';
@@ -8,25 +9,30 @@ import { UserContext } from '../UserContext';
 export default function LibraryPage() {
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const isPro = user?.userDetails?.magicSubscription === 'true';
   const navigate = useNavigate();
 
-  if (!isAdmin) {
-    return <Navigate to="/404" replace />;
+  // Allow admins and Pro users; if logged in but non-Pro, forward to /pro
+  if (!isAdmin && !isPro) {
+    return user ? <Navigate to="/pro" replace /> : <Navigate to="/404" replace />;
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <>
+      <Helmet>
+        <title> Library • memeSRC </title>
+      </Helmet>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h3" sx={{ fontWeight: 800, mb: 2 }}>
-        Photo Library
+        Library
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-        Upload, preview, and manage photos in your protected library.
+        Upload, browse, and manage your saved photos.
       </Typography>
       <Box sx={{ mt: 2 }}>
         <LibraryBrowser
-          isAdmin
           multiple
-          storageLevel="protected"
+          storageLevel="private"
           uploadEnabled
           deleteEnabled
           onSelect={() => {}}
@@ -46,7 +52,7 @@ export default function LibraryPage() {
             try {
               const images = await Promise.all((selectedItems || []).map(async (it) => {
                 try {
-                  const blob = await getFromLibrary(it.key, { level: storageLevel || 'protected' });
+                  const blob = await getFromLibrary(it.key, { level: storageLevel || 'private' });
                   const dataUrl = await toDataUrl(blob);
                   return {
                     originalUrl: dataUrl,
@@ -71,6 +77,7 @@ export default function LibraryPage() {
           initialSelectMode={false}
         />
       </Box>
-    </Container>
+      </Container>
+    </>
   );
 }

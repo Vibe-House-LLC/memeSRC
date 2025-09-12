@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { API } from 'aws-amplify';
 import PropTypes from 'prop-types';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, Popover, List, ListItemButton, ListItemIcon, ListItemText, Divider, Collapse, RadioGroup, FormControlLabel, Radio, ListSubheader, TextField, InputAdornment } from '@mui/material';
-import { MoreVert, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, CloudUpload, Search } from '@mui/icons-material';
+import { MoreVert, MoreHoriz, Refresh, Clear, DeleteForever, Sort, ExpandMore, ExpandLess, Search, DoneAll } from '@mui/icons-material';
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
-import UploadTile from './UploadTile';
+import UploadSection from './UploadSection';
 import LibraryGrid from './LibraryGrid';
 import LibraryTile from './LibraryTile';
 import PreviewDialog from './PreviewDialog';
@@ -29,7 +30,7 @@ export default function LibraryBrowser({
   onError,
   uploadEnabled = true,
   deleteEnabled = true,
-  storageLevel = 'protected',
+  storageLevel = 'private',
   refreshTrigger,
   sx,
   instantSelectOnClick = false,
@@ -46,21 +47,22 @@ export default function LibraryBrowser({
   onSelectionChange,
   exposeActions,
 }) {
-  const { items, loading, hasMore, loadMore, reload, uploadMany, remove } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
-  const { selectedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
+  const { items, loading, hasMore, loadMore, reload, uploadMany, removeFromState } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
+  const { selectedKeys, orderedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
   const [selectMode, setSelectMode] = useState(Boolean(initialSelectMode));
 
   const [previewKey, setPreviewKey] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'info' });
   const [optionsAnchor, setOptionsAnchor] = useState(null);
+  const [optionsPlacement, setOptionsPlacement] = useState('below'); // 'below' | 'above'
   const [sortDisclosureOpen, setSortDisclosureOpen] = useState(false);
   const [sortOption, setSortOption] = useState('newest'); // 'newest' | 'oldest' | 'az'
   const [searchQuery, setSearchQuery] = useState('');
   const [metaByKey, setMetaByKey] = useState({}); // { [key]: { tags, description, defaultCaption } }
+  const [deletingKeys, setDeletingKeys] = useState(() => new Set());
 
   const sentinelRef = useRef(null);
-  const headerFileInputRef = useRef(null);
 
   // Infinite scroll
   useEffect(() => {
@@ -138,7 +140,17 @@ export default function LibraryBrowser({
   }, [displayItems, metaByKey, normalizedQuery]);
 
   const getItemId = useCallback((it) => (it?.id ?? it?.key), []);
-  const selectedItems = useMemo(() => items.filter((i) => selectedKeys.has(getItemId(i))), [items, selectedKeys, getItemId]);
+  const orderIndexByKey = useMemo(() => {
+    const m = new Map();
+    orderedKeys.forEach((k, i) => m.set(k, i + 1));
+    return m;
+  }, [orderedKeys]);
+  // Preserve user selection order by mapping ordered keys to items
+  const selectedItems = useMemo(() => {
+    if (!orderedKeys || orderedKeys.length === 0) return [];
+    const byId = new Map(items.map((i) => [getItemId(i), i]));
+    return orderedKeys.map((k) => byId.get(k)).filter(Boolean);
+  }, [items, orderedKeys, getItemId]);
 
   const handleUseSelected = useCallback(async () => {
     try {
@@ -208,18 +220,27 @@ export default function LibraryBrowser({
 
   const handleDelete = useCallback(async (keys) => {
     try {
-      await Promise.all(keys.map((k) => remove(k)));
+      await API.post('publicapi', '/library/delete', {
+        body: { keys },
+      });
+      // Surgically remove deleted items from local state to avoid full reload
+      try { removeFromState(keys); } catch (_) { /* ignore */ }
       setSnack({ open: true, message: `Deleted ${keys.length} item(s)`, severity: 'success' });
     } catch (e) {
       setSnack({ open: true, message: 'Delete failed', severity: 'error' });
     } finally {
-      setConfirm(null);
+      // Remove from deleting set
+      setDeletingKeys((prev) => {
+        const next = new Set(prev);
+        keys.forEach((k) => next.delete(k));
+        return next;
+      });
       clear();
       if (previewKey && keys.includes(previewKey)) {
         setPreviewKey(null);
       }
     }
-  }, [clear, remove, previewKey]);
+  }, [clear, previewKey, removeFromState]);
 
   const onTileClick = (key) => setPreviewKey(key);
 
@@ -235,7 +256,14 @@ export default function LibraryBrowser({
 
   const previewItem = useMemo(() => filteredItems.find((i) => i.key === previewKey), [filteredItems, previewKey]);
 
-  const openOptions = (e) => setOptionsAnchor(e.currentTarget);
+  const openOptions = (e, opts = {}) => {
+    setOptionsAnchor(e.currentTarget);
+    if (opts && opts.preferAbove) {
+      setOptionsPlacement('above');
+    } else {
+      setOptionsPlacement('below');
+    }
+  };
   const closeOptions = () => setOptionsAnchor(null);
 
   const handleClearSelected = () => {
@@ -244,7 +272,8 @@ export default function LibraryBrowser({
   };
 
   const handleDeleteSelected = () => {
-    const keys = Array.from(selectedKeys);
+    // Use actual storage keys for deletion, not selection IDs
+    const keys = Array.from(new Set(selectedItems.map((i) => i?.key).filter(Boolean)));
     if (keys.length > 0) setConfirm({ keys });
     closeOptions();
   };
@@ -292,236 +321,185 @@ export default function LibraryBrowser({
   const effectiveSelectionEnabled = typeof selectionEnabled === 'boolean' ? selectionEnabled : selectMode;
   const effectivePreviewOnClick = typeof previewOnClick === 'boolean' ? previewOnClick : !effectiveSelectionEnabled;
 
+  const handleToggleSelectMode = React.useCallback(() => {
+    const next = !effectiveSelectionEnabled;
+    setSelectMode(next);
+    if (!next) {
+      try { clear(); } catch (_) { /* ignore */ }
+    }
+    if (typeof onSelectModeChange === 'function') onSelectModeChange(next);
+  }, [effectiveSelectionEnabled, clear, onSelectModeChange]);
+
   return (
     <Box sx={{ mt: 3, ...(sx || {}) }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 2, flexWrap: 'wrap' }}>
-        {/* Left: Upload + Search */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flex: 1, minWidth: 260 }}>
-          {uploadEnabled && (
-            <Button
-              size="small"
-              startIcon={<CloudUpload fontSize="small" />}
-              onClick={() => {
-                try { headerFileInputRef.current?.click(); } catch (_) { /* ignore */ }
-              }}
-              sx={{
-                minHeight: 34,
-                px: 1.5,
-                py: 0.5,
-                borderRadius: 1.5,
-                fontWeight: 700,
-                textTransform: 'none',
-                letterSpacing: 0.2,
-                background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                border: '1px solid #8b5cc7',
-                color: '#ffffff',
-                boxShadow: '0 6px 16px rgba(107,66,161,0.35)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                  borderColor: '#9f7ae0',
-                  boxShadow: '0 8px 18px rgba(127,86,190,0.45)'
-                },
-                '& .MuiButton-startIcon': { mr: 1 },
-                '& .MuiButton-startIcon > *:nth-of-type(1)': { color: '#ffffff' },
-                '&.Mui-disabled': {
-                  opacity: 0.5,
-                  color: '#ffffff',
-                  borderColor: 'rgba(255,255,255,0.3)'
-                }
-              }}
-            >
-              Upload
-            </Button>
-          )}
-          {/* Hidden file input for header Upload button to ensure browser allows chooser */}
-          <input
-            type="file"
-            ref={headerFileInputRef}
-            style={{ display: 'none' }}
-            accept="image/*"
-            multiple={multiple}
-            onChange={async (e) => {
-              try {
-                const files = Array.from(e.target.files || []);
-                if (!files.length) return;
-                const results = await uploadMany(files);
-                const successes = results.filter(Boolean);
-                const last = successes[successes.length - 1];
-                if (!multiple && instantSelectOnClick && last && last.key) {
-                  await handleInstantSelect({ key: last.key, url: last.url });
-                }
-              } catch (err) {
-                setSnack({ open: true, message: 'Upload failed to start', severity: 'error' });
-              } finally {
-                if (e?.target) e.target.value = null;
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'column' }, gap: 1.25, mb: 1 }}>
+        {/* Upload section (moved from grid tile) */}
+        {uploadEnabled && (
+          <UploadSection
+            disabled={loading}
+            onFiles={async (files) => {
+              const results = await uploadMany(files);
+              const successes = results.filter(Boolean);
+              const last = successes[successes.length - 1];
+              if (!multiple && instantSelectOnClick && last && last.key) {
+                await handleInstantSelect({ key: last.key, url: last.url });
               }
             }}
           />
-          <TextField
-            size="small"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search library..."
-            aria-label="Search library items"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search fontSize="small" />
-                </InputAdornment>
-              ),
-              endAdornment: searchQuery ? (
-                <InputAdornment position="end">
-                  <IconButton size="small" aria-label="Clear search" onClick={() => setSearchQuery('')}>
-                    <Clear fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ) : null,
-            }}
-            sx={{
-              flex: 1,
-              minWidth: 220,
-              '& .MuiInputBase-root': {
-                borderRadius: 1.5,
-              },
-            }}
-          />
-        </Box>
-
-        {/* Right: Select toggle button and options */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {showSelectToggle && (
-            <Button
-              size="small"
-              onClick={() => {
-                const next = !effectiveSelectionEnabled;
-                setSelectMode(next);
-                if (!next) {
-                  try { clear(); } catch (_) { /* ignore */ }
-                }
-                if (typeof onSelectModeChange === 'function') onSelectModeChange(next);
-              }}
-              sx={{
-                minHeight: 34,
-                px: 1.5,
-                py: 0.5,
-                borderRadius: 1.5,
-                fontWeight: 800,
-                textTransform: 'none',
-                letterSpacing: 0.2,
-                border: effectiveSelectionEnabled ? '1px solid #4b5563' : '1px solid rgba(255,255,255,0.28)',
-                color: '#e5e7eb',
-                background: effectiveSelectionEnabled ? 'linear-gradient(45deg, #1f2937 30%, #374151 90%)' : 'transparent',
-                '&:hover': {
-                  background: effectiveSelectionEnabled ? 'linear-gradient(45deg, #253042 30%, #3f4856 90%)' : 'rgba(255,255,255,0.06)',
-                },
-              }}
-            >
-              {effectiveSelectionEnabled ? 'Select: On' : 'Select: Off'}
-            </Button>
-          )}
-          <IconButton
-            aria-label="Library options"
-            onClick={openOptions}
-            size="small"
-            sx={{
-              color: '#8b5cc7',
-              border: '1px solid rgba(139,92,199,0.45)',
-              bgcolor: 'rgba(139,92,199,0.08)',
-              '&:hover': { bgcolor: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
-            }}
-          >
-            <MoreVert fontSize="small" />
-          </IconButton>
-          <Popover
-            open={Boolean(optionsAnchor)}
-            anchorEl={optionsAnchor}
-            onClose={closeOptions}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            PaperProps={{ sx: { width: 300, borderRadius: 2, mt: 1, maxHeight: '70vh', overflowY: 'auto' } }}
-          >
-            <List
-              dense
-              disablePadding
-              subheader={
-                <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700 }}>
-                  Library options
-                </ListSubheader>
-              }
-            >
-              <ListItemButton onClick={() => { reload(); closeOptions(); }}>
-                <ListItemIcon><Refresh fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Refresh" />
-              </ListItemButton>
-              <Divider sx={{ my: 0.5 }} />
-
-              {count > 0 && (
-                <>
-                  <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700, lineHeight: 2 }}>
-                    Selection
-                  </ListSubheader>
-                  <ListItemButton onClick={handleClearSelected}>
-                    <ListItemIcon><Clear fontSize="small" /></ListItemIcon>
-                    <ListItemText primary="Clear selected" />
-                  </ListItemButton>
-                  {deleteEnabled && (
-                    <ListItemButton onClick={handleDeleteSelected} sx={{ color: 'error.main' }}>
-                      <ListItemIcon><DeleteForever fontSize="small" color="error" /></ListItemIcon>
-                      <ListItemText primary="Delete selected" />
-                    </ListItemButton>
-                  )}
-                  <Divider sx={{ my: 0.5 }} />
-                </>
-              )}
-
-              {items.length > 1 && (
-                <ListItemButton onClick={() => setSortDisclosureOpen((v) => !v)}>
-                <ListItemIcon><Sort fontSize="small" /></ListItemIcon>
-                  <ListItemText primary="Sorting" secondary={
-                    sortOption === 'newest' ? 'Newest first' : 'Oldest first'
-                  } />
-                {sortDisclosureOpen ? <ExpandLess /> : <ExpandMore />}
-                </ListItemButton>
-              )}
-              {items.length > 1 && (
-                <Collapse in={sortDisclosureOpen} timeout="auto" unmountOnExit>
-                  <Box sx={{ pl: 6, pb: 1 }}>
-                    <RadioGroup
-                      aria-label="Sort order"
-                      value={sortOption}
-                      onChange={(e) => handleSetSort(e.target.value)}
+        )}
+        {/* Search with inline controls */}
+        <TextField
+          size="medium"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search your library..."
+          aria-label="Search library items"
+          fullWidth
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {searchQuery ? (
+                    <IconButton size="small" aria-label="Clear search" onClick={() => setSearchQuery('')}>
+                      <Clear fontSize="small" />
+                    </IconButton>
+                  ) : null}
+                  {showSelectToggle && (
+                    <IconButton
+                      size="small"
+                      aria-label={effectiveSelectionEnabled ? 'Disable multi-select' : 'Enable multi-select'}
+                      onClick={handleToggleSelectMode}
+                      sx={{
+                        color: effectiveSelectionEnabled ? '#ffffff' : '#8b5cc7',
+                        border: effectiveSelectionEnabled ? '1px solid rgba(139,92,199,0.85)' : '1px solid rgba(139,92,199,0.45)',
+                        bgcolor: effectiveSelectionEnabled ? 'rgba(139,92,199,0.35)' : 'rgba(139,92,199,0.08)',
+                        '&:hover': {
+                          bgcolor: effectiveSelectionEnabled ? 'rgba(139,92,199,0.45)' : 'rgba(139,92,199,0.18)',
+                          borderColor: 'rgba(139,92,199,0.75)'
+                        }
+                      }}
                     >
-                      <FormControlLabel value="newest" control={<Radio size="small" />} label="Newest first" />
-                      <FormControlLabel value="oldest" control={<Radio size="small" />} label="Oldest first" />
-                    </RadioGroup>
-                  </Box>
-                </Collapse>
-              )}
-            </List>
-          </Popover>
-        </Box>
+                      <DoneAll fontSize="small" />
+                    </IconButton>
+                  )}
+                  <IconButton
+                    size="small"
+                    aria-label="Library options"
+                    onClick={openOptions}
+                    sx={{
+                      color: '#8b5cc7',
+                      border: '1px solid rgba(139,92,199,0.45)',
+                      bgcolor: 'rgba(139,92,199,0.08)',
+                      '&:hover': { bgcolor: 'rgba(139,92,199,0.18)', borderColor: 'rgba(139,92,199,0.75)' }
+                    }}
+                  >
+                    <MoreVert fontSize="small" />
+                  </IconButton>
+                </Box>
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            width: '100%',
+            '& .MuiInputBase-root': {
+              borderRadius: 2,
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08)',
+            },
+          }}
+        />
+
+        {/* Options popover */}
+        <Popover
+          open={Boolean(optionsAnchor)}
+          anchorEl={optionsAnchor}
+          onClose={closeOptions}
+          anchorOrigin={optionsPlacement === 'above' ? { vertical: 'top', horizontal: 'right' } : { vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={optionsPlacement === 'above' ? { vertical: 'bottom', horizontal: 'right' } : { vertical: 'top', horizontal: 'right' }}
+          PaperProps={{ sx: { width: 300, borderRadius: 2, mt: 1, maxHeight: '70vh', overflowY: 'auto' } }}
+        >
+          <List
+            dense
+            disablePadding
+            subheader={
+              <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700 }}>
+                Library options
+              </ListSubheader>
+            }
+          >
+            <ListItemButton onClick={() => { reload(); closeOptions(); }}>
+              <ListItemIcon><Refresh fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Refresh" />
+            </ListItemButton>
+            <Divider sx={{ my: 0.5 }} />
+
+            {count > 0 && (
+              <>
+                <ListSubheader component="div" sx={{ bgcolor: 'transparent', fontWeight: 700, lineHeight: 2 }}>
+                  Selection
+                </ListSubheader>
+                <ListItemButton onClick={handleClearSelected}>
+                  <ListItemIcon><Clear fontSize="small" /></ListItemIcon>
+                  <ListItemText primary="Clear selected" />
+                </ListItemButton>
+                {deleteEnabled && (
+                  <ListItemButton onClick={handleDeleteSelected} sx={{ color: 'error.main' }}>
+                    <ListItemIcon><DeleteForever fontSize="small" color="error" /></ListItemIcon>
+                    <ListItemText primary="Delete selected" />
+                  </ListItemButton>
+                )}
+                <Divider sx={{ my: 0.5 }} />
+              </>
+            )}
+
+            {items.length > 1 && (
+              <ListItemButton onClick={() => setSortDisclosureOpen((v) => !v)}>
+                <ListItemIcon><Sort fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Sorting" secondary={
+                  sortOption === 'newest' ? 'Newest first' : 'Oldest first'
+                } />
+                {sortDisclosureOpen ? <ExpandLess /> : <ExpandMore />}
+              </ListItemButton>
+            )}
+            {items.length > 1 && (
+              <Collapse in={sortDisclosureOpen} timeout="auto" unmountOnExit>
+                <Box sx={{ pl: 6, pb: 1 }}>
+                  <RadioGroup
+                    aria-label="Sort order"
+                    value={sortOption}
+                    onChange={(e) => handleSetSort(e.target.value)}
+                  >
+                    <FormControlLabel value="newest" control={<Radio size="small" />} label="Newest first" />
+                    <FormControlLabel value="oldest" control={<Radio size="small" />} label="Oldest first" />
+                  </RadioGroup>
+                </Box>
+              </Collapse>
+            )}
+          </List>
+        </Popover>
       </Box>
 
       <LibraryGrid
         items={filteredItems}
-        showUploadTile={uploadEnabled}
-        uploadTile={<UploadTile disabled={loading} onFiles={async (files) => {
-          const results = await uploadMany(files);
-          const successes = results.filter(Boolean);
-          const last = successes[successes.length - 1];
-          // If single-select instant mode, auto-select the last uploaded image
-          if (!multiple && instantSelectOnClick && last && last.key) {
-            await handleInstantSelect({ key: last.key, url: last.url });
-          }
-        }} />}
+        showUploadTile={false}
+        uploadTile={null}
         renderTile={(item) => (
           <LibraryTile
-            item={item}
+            item={deletingKeys.has(item.key) ? { ...item, loading: true } : item}
             selected={effectiveSelectionEnabled ? isSelected(getItemId(item)) : false}
-            disabled={effectiveSelectionEnabled ? (Boolean(maxSelected) && atMax && !isSelected(getItemId(item))) : false}
+            disabled={(deletingKeys.has(item.key)) || (effectiveSelectionEnabled ? (Boolean(maxSelected) && atMax && !isSelected(getItemId(item))) : false)}
             showPreviewIcon={effectiveSelectionEnabled}
             selectionMode={effectiveSelectionEnabled}
+            selectionIndex={effectiveSelectionEnabled ? (orderIndexByKey.get(getItemId(item)) || null) : null}
             onClick={() => {
+              if (deletingKeys.has(item.key)) {
+                return;
+              }
               if (effectivePreviewOnClick) {
                 onTileClick(item.key);
               } else if (!multiple && instantSelectOnClick) {
@@ -530,7 +508,7 @@ export default function LibraryBrowser({
                 toggle(getItemId(item));
               }
             }}
-            onPreview={() => item.key && onTileClick(item.key)}
+            onPreview={() => !deletingKeys.has(item.key) && item.key && onTileClick(item.key)}
           />
         )}
       />
@@ -579,7 +557,18 @@ export default function LibraryBrowser({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirm(null)}>Cancel</Button>
-          <Button color="error" onClick={() => handleDelete(confirm.keys)}>Delete</Button>
+          <Button color="error" onClick={() => {
+            const keys = (confirm?.keys || []).slice();
+            setConfirm(null); // close immediately
+            if (keys.length === 0) return;
+            setDeletingKeys((prev) => {
+              const next = new Set(prev);
+              keys.forEach((k) => next.add(k));
+              return next;
+            });
+            // fire and forget; UI shows spinners while we await removal
+            void handleDelete(keys);
+          }}>Delete</Button>
         </DialogActions>
       </Dialog>
 
@@ -590,6 +579,9 @@ export default function LibraryBrowser({
           count={count}
           onPrimary={handlePrimary}
           disabled={typeof minSelected === 'number' ? count < minSelected : false}
+          onSecondary={(e) => openOptions(e, { preferAbove: true })}
+          secondaryAriaLabel="More options"
+          secondaryIcon={<MoreHoriz />}
         />
       )}
 

@@ -33,7 +33,7 @@ export const DEFAULT_LIBRARY_METADATA: LibraryMetadata = {
 
 export async function getMetadataForKey(
   imageKey: string,
-  { level = 'protected' }: { level?: string } = {}
+  { level = 'private' }: { level?: string } = {}
 ): Promise<LibraryMetadata> {
   if (!imageKey) return { ...DEFAULT_LIBRARY_METADATA };
   try {
@@ -50,7 +50,7 @@ export async function getMetadataForKey(
 export async function putMetadataForKey(
   imageKey: string,
   metadata: Partial<LibraryMetadata>,
-  { level = 'protected' }: { level?: string } = {}
+  { level = 'private' }: { level?: string } = {}
 ): Promise<LibraryMetadata> {
   if (!imageKey) return { ...DEFAULT_LIBRARY_METADATA };
   const metaKey = getMetadataObjectKeyForImageKey(imageKey);

@@ -344,6 +344,18 @@
         },
         "setting": "private"
       }
+    },
+    "/library/delete": {
+      "name": "/library/delete",
+      "lambdaFunction": "memesrcDeleteFromLibrary",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update"
+        ]
+      }
     }
   }
 }

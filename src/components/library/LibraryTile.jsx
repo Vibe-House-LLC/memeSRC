@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Box, Skeleton, CircularProgress } from '@mui/material';
 import { Check } from '@mui/icons-material';
 
-export default function LibraryTile({ item, selected, onClick, onPreview, disabled, selectionMode }) {
+export default function LibraryTile({ item, selected, onClick, onPreview, disabled, selectionMode, selectionIndex }) {
   const loaded = Boolean(item?.url) && !item?.loading;
   return (
       <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: disabled ? 'not-allowed' : 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
@@ -54,8 +54,28 @@ export default function LibraryTile({ item, selected, onClick, onPreview, disabl
       {selected && (
         <>
           <Box sx={{ position: 'absolute', inset: 0, border: '2px solid', borderColor: '#22c55e', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.6)', pointerEvents: 'none', borderRadius: 1.2 }} />
-          <Box sx={{ position: 'absolute', bottom: 6, right: 6, px: 1, height: 22, borderRadius: 1.2, bgcolor: '#22c55e', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 700 }}>
-            <Check sx={{ fontSize: 16 }} />
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 6,
+              right: 6,
+              px: 1,
+              minWidth: 22,
+              height: 22,
+              borderRadius: 1.2,
+              bgcolor: '#22c55e',
+              color: '#000',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid rgba(255,255,255,0.7)',
+              fontSize: 12,
+              fontWeight: 800,
+              lineHeight: 1,
+            }}
+            aria-label={typeof selectionIndex === 'number' ? `Selected ${selectionIndex}` : 'Selected'}
+          >
+            {typeof selectionIndex === 'number' ? selectionIndex : <Check sx={{ fontSize: 16 }} />}
           </Box>
         </>
       )}
@@ -76,4 +96,5 @@ LibraryTile.propTypes = {
   onPreview: PropTypes.func,
   disabled: PropTypes.bool,
   selectionMode: PropTypes.bool,
+  selectionIndex: PropTypes.number,
 };
