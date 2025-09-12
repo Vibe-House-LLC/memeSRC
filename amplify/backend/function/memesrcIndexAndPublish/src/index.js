@@ -22,6 +22,7 @@ const getSourceMediaQuery = `
         getSourceMedia(id: $id) {
             id
             status
+            pendingAlias
             series {
                 id
                 tvdbid
@@ -53,6 +54,7 @@ const updateSeriesMutation = `
 
 const createAlias = async (data) => {
     try {
+        console.log('CREATING ALIAS: ', JSON.stringify(data));
         const aliasDetails = await makeGraphQLRequest({ query: createAliasMutation, variables: { input: data } });
         return aliasDetails?.body?.data?.createAlias || null;
     } catch (error) {
@@ -63,10 +65,30 @@ const createAlias = async (data) => {
 
 const updateSeries = async (data) => {
     try {
+        console.log('UPDATING SERIES: ', JSON.stringify(data));
         const seriesDetails = await makeGraphQLRequest({ query: updateSeriesMutation, variables: { input: data } });
         return seriesDetails?.body?.data?.updateSeries || null;
     } catch (error) {
         console.error('Error updating series:', error);
+        throw error;
+    }
+}
+
+const updateSourceMediaMutation = `
+
+    mutation UpdateSourceMedia($input: UpdateSourceMediaInput!) {
+        updateSourceMedia(input: $input) {
+            id
+        }
+    }
+`;
+
+const updateSourceMedia = async (data) => {
+    try {
+        const sourceMediaDetails = await makeGraphQLRequest({ query: updateSourceMediaMutation, variables: { input: data } });
+        return sourceMediaDetails?.body?.data?.updateSourceMedia || null;
+    } catch (error) {
+        console.error('Error updating source media:', error);
         throw error;
     }
 }
@@ -147,7 +169,7 @@ const s3 = new AWS.S3();
 exports.handler = async (event) => {
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
-        const { sourceMediaId, newAlias = false } = JSON.parse(event);
+        const { sourceMediaId, newAlias = false } = event;
         const sourceMediaDetails = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id: sourceMediaId } });
         const sourceMedia = sourceMediaDetails?.body?.data?.getSourceMedia;
         const alias = sourceMedia?.pendingAlias;
@@ -181,6 +203,12 @@ exports.handler = async (event) => {
             });
             console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
         }
+
+        const updateSourceMediaResponse = await updateSourceMedia({
+            id: sourceMediaId,
+            status: 'published'
+        });
+        console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
     } catch (error) {
         console.error('Error:', error);
         throw error;

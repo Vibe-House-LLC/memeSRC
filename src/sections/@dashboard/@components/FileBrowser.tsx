@@ -33,7 +33,10 @@ import {
     DialogActions,
     Popover,
     Tabs,
-    Tab
+    Tab,
+    Checkbox,
+    FormControlLabel,
+    FormGroup
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
@@ -50,7 +53,8 @@ import {
     Cancel as CancelIcon,
     Palette as PaletteIcon,
     Analytics as AnalyticsIcon,
-    Visibility as VisibilityIcon
+    Visibility as VisibilityIcon,
+    PlaylistAddCheck as EpisodeSelectIcon
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { ChromePicker } from 'react-color';
@@ -134,6 +138,7 @@ interface FileBrowserProps {
     files?: FileItem[]; // Optional: if provided, use these instead of listing
     base64Columns?: string[]; // Optional: column names to decode from base64 in CSV files
     srcEditor?: boolean; // Optional: if true, show the src editor options
+    onEpisodeSelectionChange?: (selectedEpisodes: { season: number; episode: number }[]) => void; // Optional: callback for episode selection
 }
 
 // Custom TreeNode component
@@ -1646,7 +1651,7 @@ const CsvViewer: React.FC<{
     );
 };
 
-const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: providedFiles, base64Columns = [], srcEditor = false }) => {
+const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: providedFiles, base64Columns = [], srcEditor = false, onEpisodeSelectionChange }) => {
     const [files, setFiles] = useState<FileItem[]>([]);
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
     const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
@@ -1671,6 +1676,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     const [manualSearchQuery, setManualSearchQuery] = useState<string>('');
     const [manualSearchResults, setManualSearchResults] = useState<SpotCheckData | null>(null);
     const [loadingManualSearch, setLoadingManualSearch] = useState<boolean>(false);
+    const [episodeSelectionDialogOpen, setEpisodeSelectionDialogOpen] = useState<boolean>(false);
+    const [selectedEpisodes, setSelectedEpisodes] = useState<{ season: number; episode: number }[]>([]);
+    const [availableSeasons, setAvailableSeasons] = useState<{ [season: number]: number[] }>({});
 
     const fullPath = `${pathPrefix}/${id}`;
 
@@ -1729,6 +1737,45 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
         }
     }, [fullPath]);
 
+    // Function to parse folder structure and extract seasons/episodes
+    const parseSeasonEpisodeStructure = useCallback(() => {
+        const seasons: { [season: number]: number[] } = {};
+        
+        files.forEach(file => {
+            if (file.isDirectory) return; // Skip directories, we'll infer structure from file paths
+            
+            const pathParts = (file.relativePath || '').split('/').filter(part => part.length > 0);
+            
+            if (pathParts.length >= 2) {
+                // Check if first part is a season number
+                const seasonMatch = pathParts[0].match(/^(\d+)$/);
+                // Check if second part is an episode number
+                const episodeMatch = pathParts[1].match(/^(\d+)$/);
+                
+                if (seasonMatch && episodeMatch) {
+                    const seasonNum = parseInt(seasonMatch[1], 10);
+                    const episodeNum = parseInt(episodeMatch[1], 10);
+                    
+                    if (!seasons[seasonNum]) {
+                        seasons[seasonNum] = [];
+                    }
+                    
+                    if (!seasons[seasonNum].includes(episodeNum)) {
+                        seasons[seasonNum].push(episodeNum);
+                    }
+                }
+            }
+        });
+        
+        // Sort episodes within each season
+        Object.keys(seasons).forEach(seasonKey => {
+            const seasonNum = parseInt(seasonKey, 10);
+            seasons[seasonNum].sort((a, b) => a - b);
+        });
+        
+        setAvailableSeasons(seasons);
+    }, [files]);
+
     const loadFileContent = useCallback(async (file: FileItem) => {
         if (file.isDirectory) return;
         
@@ -1784,6 +1831,13 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             loadFileContent(selectedFile);
         }
     }, [selectedFile, loadFileContent]);
+
+    // Parse season/episode structure when files change
+    useEffect(() => {
+        if (files.length > 0) {
+            parseSeasonEpisodeStructure();
+        }
+    }, [files, parseSeasonEpisodeStructure]);
 
     const handleFileSelect = (file: FileItem) => {
         if (file.isDirectory) return;
@@ -1854,6 +1908,62 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     const handleKeepEditing = () => {
         setDiscardChangesDialogOpen(false);
         setPendingFileSelection(null);
+    };
+
+    // Episode selection handlers
+    const handleOpenEpisodeSelection = () => {
+        setEpisodeSelectionDialogOpen(true);
+    };
+
+    const handleCloseEpisodeSelection = () => {
+        setEpisodeSelectionDialogOpen(false);
+    };
+
+    const handleEpisodeToggle = (season: number, episode: number) => {
+        const episodeKey = { season, episode };
+        const isSelected = selectedEpisodes.some(ep => ep.season === season && ep.episode === episode);
+        
+        if (isSelected) {
+            // Remove episode
+            const newSelection = selectedEpisodes.filter(ep => !(ep.season === season && ep.episode === episode));
+            setSelectedEpisodes(newSelection);
+            if (onEpisodeSelectionChange) {
+                onEpisodeSelectionChange(newSelection);
+            }
+        } else {
+            // Add episode
+            const newSelection = [...selectedEpisodes, episodeKey];
+            setSelectedEpisodes(newSelection);
+            if (onEpisodeSelectionChange) {
+                onEpisodeSelectionChange(newSelection);
+            }
+        }
+    };
+
+    const handleSeasonToggle = (season: number) => {
+        const episodes = availableSeasons[season] || [];
+        const seasonEpisodes = episodes.map(ep => ({ season, episode: ep }));
+        
+        // Check if all episodes in this season are selected
+        const allSelected = seasonEpisodes.every(ep => 
+            selectedEpisodes.some(selected => selected.season === ep.season && selected.episode === ep.episode)
+        );
+        
+        let newSelection: { season: number; episode: number }[];
+        
+        if (allSelected) {
+            // Unselect all episodes in this season
+            newSelection = selectedEpisodes.filter(ep => ep.season !== season);
+        } else {
+            // Select all episodes in this season
+            const otherSeasonEpisodes = selectedEpisodes.filter(ep => ep.season !== season);
+            newSelection = [...otherSeasonEpisodes, ...seasonEpisodes];
+        }
+        
+        setSelectedEpisodes(newSelection);
+        if (onEpisodeSelectionChange) {
+            onEpisodeSelectionChange(newSelection);
+        }
     };
 
     // Helper function to parse CSV content and count subtitles
@@ -3187,6 +3297,117 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Episode Selection Dialog */}
+            <Dialog
+                open={episodeSelectionDialogOpen}
+                onClose={handleCloseEpisodeSelection}
+                maxWidth="md"
+                fullWidth
+                aria-labelledby="episode-selection-dialog-title"
+            >
+                <DialogTitle id="episode-selection-dialog-title">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <EpisodeSelectIcon />
+                        Select Episodes to Process
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        Choose which episodes you want to include in the approval process. Season-level checkboxes will select/deselect all episodes in that season.
+                    </Typography>
+                    
+                    {Object.keys(availableSeasons).length === 0 ? (
+                        <Box sx={{ textAlign: 'center', py: 4 }}>
+                            <Typography variant="h6" color="text.secondary" gutterBottom>
+                                No Episodes Found
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                No season/episode folder structure detected. Make sure your files are organized in numbered season and episode folders.
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <Box>
+                            {Object.entries(availableSeasons)
+                                .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                                .map(([seasonStr, episodes]) => {
+                                    const seasonNum = parseInt(seasonStr, 10);
+                                    const seasonEpisodes = episodes.map(ep => ({ season: seasonNum, episode: ep }));
+                                    const allSelected = seasonEpisodes.every(ep => 
+                                        selectedEpisodes.some(selected => selected.season === ep.season && selected.episode === ep.episode)
+                                    );
+                                    const someSelected = seasonEpisodes.some(ep => 
+                                        selectedEpisodes.some(selected => selected.season === ep.season && selected.episode === ep.episode)
+                                    );
+
+                                    return (
+                                        <Card key={seasonStr} sx={{ mb: 2 }}>
+                                            <CardContent>
+                                                <FormControlLabel
+                                                    control={
+                                                        <Checkbox
+                                                            checked={allSelected}
+                                                            indeterminate={someSelected && !allSelected}
+                                                            onChange={() => handleSeasonToggle(seasonNum)}
+                                                        />
+                                                    }
+                                                    label={
+                                                        <Typography variant="h6">
+                                                            Season {seasonNum} ({episodes.length} episode{episodes.length !== 1 ? 's' : ''})
+                                                        </Typography>
+                                                    }
+                                                />
+                                                
+                                                <Box sx={{ ml: 4, mt: 1 }}>
+                                                    <FormGroup>
+                                                        <Grid container spacing={1}>
+                                                            {episodes
+                                                                .sort((a, b) => a - b)
+                                                                .map(episodeNum => {
+                                                                    const isSelected = selectedEpisodes.some(ep => 
+                                                                        ep.season === seasonNum && ep.episode === episodeNum
+                                                                    );
+                                                                    
+                                                                    return (
+                                                                        <Grid item xs={6} sm={4} md={3} key={episodeNum}>
+                                                                            <FormControlLabel
+                                                                                control={
+                                                                                    <Checkbox
+                                                                                        checked={isSelected}
+                                                                                        onChange={() => handleEpisodeToggle(seasonNum, episodeNum)}
+                                                                                        size="small"
+                                                                                    />
+                                                                                }
+                                                                                label={`Episode ${episodeNum}`}
+                                                                            />
+                                                                        </Grid>
+                                                                    );
+                                                                })
+                                                            }
+                                                        </Grid>
+                                                    </FormGroup>
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseEpisodeSelection} color="primary">
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={handleCloseEpisodeSelection} 
+                        color="primary" 
+                        variant="contained"
+                        disabled={selectedEpisodes.length === 0}
+                    >
+                        Apply Selection ({selectedEpisodes.length} episode{selectedEpisodes.length !== 1 ? 's' : ''})
+                    </Button>
+                </DialogActions>
+            </Dialog>
             
             <Grid container spacing={2} sx={{ minHeight: 0, pb: 2 }}>
                 {/* File Tree */}
@@ -3215,6 +3436,17 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                                 sx={{ textTransform: 'none' }}
                             >
                                 {loadingSpotCheck ? 'Generating Samples...' : 'Spot Check'}
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<EpisodeSelectIcon />}
+                                onClick={handleOpenEpisodeSelection}
+                                disabled={Object.keys(availableSeasons).length === 0}
+                                fullWidth
+                                sx={{ textTransform: 'none' }}
+                            >
+                                Select Episodes ({selectedEpisodes.length})
                             </Button>
                         </Box>
                     )}

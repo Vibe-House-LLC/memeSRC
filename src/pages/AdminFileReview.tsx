@@ -9,16 +9,22 @@ import getSourceMediaDetails from "src/sections/@dashboard/admin/uploads/functio
 
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
     switch (status.toLowerCase()) {
-        case 'completed':
-            return 'success';
-        case 'processing':
-            return 'info';
-        case 'failed':
-            return 'error';
         case 'uploaded':
-            return 'warning';
+            return 'warning';       // Orange - waiting for processing
+        case 'pending':
+            return 'info';          // Blue - in queue
+        case 'indexing':
+            return 'primary';       // Purple/Blue - actively processing
+        case 'published':
+            return 'success';       // Green - completed successfully
+        case 'failed':
+            return 'error';         // Red - failed
+        case 'completed':
+            return 'success';       // Green - legacy completed status
+        case 'processing':
+            return 'primary';       // Purple/Blue - legacy processing status
         default:
-            return 'default';
+            return 'default';       // Gray - unknown status
     }
 };
 
@@ -29,6 +35,7 @@ export default function AdminFileReview() {
     
     const [files, setFiles] = useState<SourceMediaFile[]>([]);
     const [sourceMedia, setSourceMedia] = useState<DetailedSourceMedia | null>(null);
+    const [currentStatus, setCurrentStatus] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
@@ -50,6 +57,7 @@ export default function AdminFileReview() {
             .then(([filesData, sourceMediaData]) => {
                 setFiles(filesData);
                 setSourceMedia(sourceMediaData);
+                setCurrentStatus(sourceMediaData?.status || '');
                 console.log(sourceMediaData);
             })
             .catch((err) => {
@@ -63,6 +71,11 @@ export default function AdminFileReview() {
 
     const handleBack = () => {
         navigate('/dashboard/sourcemedia');
+    };
+
+    const handleStatusUpdate = (newStatus: string) => {
+        console.log('Parent received status update:', newStatus);
+        setCurrentStatus(newStatus);
     };
 
     if (!sourceMediaId) {
@@ -97,8 +110,8 @@ export default function AdminFileReview() {
                             {sourceMedia.series.year && ` (${sourceMedia.series.year})`}
                         </Typography>
                         <Chip
-                            label={sourceMedia.status}
-                            color={getStatusColor(sourceMedia.status)}
+                            label={currentStatus || sourceMedia.status}
+                            color={getStatusColor(currentStatus || sourceMedia.status)}
                             size="small"
                             variant="outlined"
                         />
@@ -117,6 +130,8 @@ export default function AdminFileReview() {
                 setError={setError}
                 sourceMediaId={sourceMediaId}
                 initialAlias={sourceMedia?.pendingAlias}
+                initialStatus={sourceMedia?.status}
+                onStatusUpdate={handleStatusUpdate}
             />
         </Container>
     );

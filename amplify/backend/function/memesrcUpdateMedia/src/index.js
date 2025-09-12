@@ -1,11 +1,11 @@
 /* Amplify Params - DO NOT EDIT
-	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
-	API_MEMESRC_GRAPHQLAPIIDOUTPUT
-	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
-	ENV
-	FUNCTION_MEMESRCINDEXANDPUBLISH_NAME
-	REGION
-	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+    API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+    API_MEMESRC_GRAPHQLAPIIDOUTPUT
+    API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+    ENV
+    FUNCTION_MEMESRCINDEXANDPUBLISH_NAME
+    REGION
+    STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT *//*
 Use the following code to retrieve configured secrets from SSM:
 
@@ -176,10 +176,12 @@ const getSourceMediaQuery = `
                 year
             }
             files {
-                id
-                key
-                unzippedPath
-                status
+                items {
+                    id
+                    key
+                    unzippedPath
+                    status
+                }
             }
             status
             user {
@@ -392,37 +394,37 @@ const getSourceMedia = async (id) => {
 const getSeriesCsv = async (newSeries = false, alias) => {
     try {
         const csvPath = newSeries ? `protected/src/${alias}/_docs.csv` : `protected/srcPending/${alias}/_docs.csv`;
-        
+
         const params = {
             Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
             Key: csvPath
         };
-        
+
         const response = await s3.getObject(params).promise();
         const csvContent = response.Body.toString('utf-8');
-        
+
         // Parse CSV content into array of objects
         const lines = csvContent.trim().split('\n');
         if (lines.length === 0) {
             return [];
         }
-        
+
         // Get headers from first line
         const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
-        
+
         // Parse data rows
         const data = [];
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',').map(value => value.trim().replace(/"/g, ''));
             const row = {};
-            
+
             headers.forEach((header, index) => {
                 row[header] = values[index] || '';
             });
-            
+
             data.push(row);
         }
-        
+
         return data;
     } catch (error) {
         console.error('Error getting CSV from S3:', error);
@@ -433,18 +435,19 @@ const getSeriesCsv = async (newSeries = false, alias) => {
 const getSeriesMetadata = async (newSeries = false, alias) => {
     try {
         const metadataPath = newSeries ? `protected/src/${alias}/00_metadata.json` : `protected/srcPending/${alias}/00_metadata.json`;
-        
+
         const params = {
             Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
             Key: metadataPath
         };
-        
+
         const response = await s3.getObject(params).promise();
         const jsonContent = response.Body.toString('utf-8');
-        
+
         // Parse JSON content into object
         const metadata = JSON.parse(jsonContent);
-        
+        console.log('METADATA: ', JSON.stringify(metadata));
+
         return metadata;
     } catch (error) {
         console.error('Error getting metadata from S3:', error);
@@ -465,6 +468,7 @@ const getV2ContentMetadata = async (alias) => {
 const createV2ContentMetadata = async (data) => {
     try {
         const v2ContentMetadataDetails = await makeGraphQLRequest({ query: createV2ContentMetadataMutation, variables: { input: data } });
+        console.log('V2 CONTENT METADATA DETAILS: ', JSON.stringify(v2ContentMetadataDetails));
         return v2ContentMetadataDetails?.body?.data?.createV2ContentMetadata || null;
     } catch (error) {
         console.error('Error creating v2 content metadata:', error);
@@ -474,7 +478,8 @@ const createV2ContentMetadata = async (data) => {
 
 const updateV2ContentMetadata = async (data) => {
     try {
-    const v2ContentMetadataDetails = await makeGraphQLRequest({ query: updateV2ContentMetadataMutation, variables: { input: data } });
+        const v2ContentMetadataDetails = await makeGraphQLRequest({ query: updateV2ContentMetadataMutation, variables: { input: data } });
+        console.log('V2 CONTENT METADATA DETAILS: ', JSON.stringify(v2ContentMetadataDetails));
         return v2ContentMetadataDetails?.body?.data?.updateV2ContentMetadata || null;
     } catch (error) {
         console.error('Error updating v2 content metadata:', error);
@@ -530,54 +535,54 @@ const createSeriesContributors = async (data) => {
 const moveEpisodeFilesFromPendingToSrc = async (alias, episodes) => {
     try {
         console.log(`Moving episode files for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
-        
+
         const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
-        
+
         // Process each episode
         for (const episode of episodes) {
             const { season, episode: episodeNumber } = episode;
             console.log(`Processing season ${season}, episode ${episodeNumber} for alias ${alias}`);
-            
+
             // List all files in the pending episode folder
             const listParams = {
                 Bucket: bucketName,
                 Prefix: `protected/srcPending/${alias}/${season}/${episodeNumber}/`
             };
-            
+
             const listedObjects = await s3.listObjectsV2(listParams).promise();
-            
+
             if (!listedObjects.Contents || listedObjects.Contents.length === 0) {
                 console.log(`No files found for season ${season}, episode ${episodeNumber} in pending folder`);
                 continue;
             }
-            
+
             // Copy each file to the src folder
             for (const object of listedObjects.Contents) {
                 const sourceKey = object.Key;
                 const destinationKey = sourceKey.replace(`protected/srcPending/${alias}/${season}/${episodeNumber}/`, `protected/src/${alias}/${season}/${episodeNumber}/`);
-                
+
                 console.log(`Copying ${sourceKey} to ${destinationKey}`);
-                
+
                 // Copy the file
                 const copyParams = {
                     Bucket: bucketName,
                     CopySource: `${bucketName}/${sourceKey}`,
                     Key: destinationKey
                 };
-                
+
                 await s3.copyObject(copyParams).promise();
-                
+
                 // Delete the original file from pending
                 const deleteParams = {
                     Bucket: bucketName,
                     Key: sourceKey
                 };
-                
+
                 await s3.deleteObject(deleteParams).promise();
                 console.log(`Moved ${sourceKey} to ${destinationKey}`);
             }
         }
-        
+
         console.log(`Successfully moved all files for episodes: ${JSON.stringify(episodes)}`);
     } catch (error) {
         console.error('Error moving episode files:', error);
@@ -585,69 +590,203 @@ const moveEpisodeFilesFromPendingToSrc = async (alias, episodes) => {
     }
 }
 
-const updateSeriesDocsWithNewEpisodes = async (alias, episodes) => {
+const updateEpisodeDocsFromPending = async (alias, season, episodeNumber) => {
     try {
-        console.log(`Updating series docs for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
-        
+        console.log(`Updating episode docs for alias: ${alias}, season: ${season}, episode: ${episodeNumber}`);
+
         const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
-        
-        // Get existing docs from src folder
-        let existingDocs = [];
+
+        // Get docs from the pending episode folder
+        const pendingEpisodeDocsPath = `protected/srcPending/${alias}/${season}/${episodeNumber}/_docs.csv`;
+        const srcEpisodeDocsPath = `protected/src/${alias}/${season}/${episodeNumber}/_docs.csv`;
+
         try {
-            existingDocs = await getSeriesCsv(true, alias); // true = newSeries (src folder)
+            const params = {
+                Bucket: bucketName,
+                Key: pendingEpisodeDocsPath
+            };
+
+            const response = await s3.getObject(params).promise();
+            const csvContent = response.Body.toString('utf-8');
+
+            // Write the episode docs directly to src folder
+            const putParams = {
+                Bucket: bucketName,
+                Key: srcEpisodeDocsPath,
+                Body: csvContent,
+                ContentType: 'text/csv'
+            };
+
+            await s3.putObject(putParams).promise();
+            console.log(`Updated episode docs for season ${season}, episode ${episodeNumber}`);
+
+            return csvContent;
         } catch (error) {
-            console.log('No existing docs found, starting with empty array');
+            console.warn(`No docs found for season ${season}, episode ${episodeNumber}:`, error.message);
+            return null;
         }
-        
-        // Remove rows for episodes we're updating
-        const filteredDocs = existingDocs.filter(doc => {
-            return !episodes.some(ep => 
-                parseInt(doc.season) === ep.season && parseInt(doc.episode) === ep.episode
-            );
-        });
-        console.log(`Filtered out ${existingDocs.length - filteredDocs.length} existing rows for episodes being updated`);
-        
-        // Get new docs from pending folder for each episode
-        let newDocs = [];
-        for (const episode of episodes) {
-            const { season, episode: episodeNumber } = episode;
+
+    } catch (error) {
+        console.error(`Error updating episode docs for season ${season}, episode ${episodeNumber}:`, error);
+        throw error;
+    }
+}
+
+const updateSeasonDocsFromEpisodes = async (alias, season) => {
+    try {
+        console.log(`Regenerating season ${season} docs for alias: ${alias} from episode docs`);
+
+        const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+
+        // List all episode folders in this season
+        const listParams = {
+            Bucket: bucketName,
+            Prefix: `protected/src/${alias}/${season}/`,
+            Delimiter: '/'
+        };
+
+        const listedObjects = await s3.listObjectsV2(listParams).promise();
+        const episodeFolders = (listedObjects.CommonPrefixes || [])
+            .map(prefix => prefix.Prefix.split('/').slice(-2, -1)[0])
+            .filter(folder => /^\d+$/.test(folder)) // Only numeric episode folders
+            .sort((a, b) => parseInt(a) - parseInt(b));
+
+        console.log(`Found episode folders in season ${season}: ${episodeFolders.join(', ')}`);
+
+        // Collect docs from all episodes in this season
+        let allSeasonDocs = [];
+        for (const episode of episodeFolders) {
             try {
-                // Get docs from the pending episode folder
-                const episodeDocsPath = `protected/srcPending/${alias}/${season}/${episodeNumber}/_docs.csv`;
+                const episodeDocsPath = `protected/src/${alias}/${season}/${episode}/_docs.csv`;
                 const params = {
                     Bucket: bucketName,
                     Key: episodeDocsPath
                 };
-                
+
                 const response = await s3.getObject(params).promise();
                 const csvContent = response.Body.toString('utf-8');
-                
+
                 // Parse CSV content
                 const lines = csvContent.trim().split('\n');
                 if (lines.length > 1) { // Skip if only header
                     const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
-                    
+
                     for (let i = 1; i < lines.length; i++) {
                         const values = lines[i].split(',').map(value => value.trim().replace(/"/g, ''));
                         const row = {};
-                        
+
                         headers.forEach((header, index) => {
                             row[header] = values[index] || '';
                         });
-                        
-                        newDocs.push(row);
+
+                        allSeasonDocs.push(row);
                     }
                 }
             } catch (error) {
-                console.warn(`No docs found for season ${season}, episode ${episodeNumber}:`, error.message);
+                console.warn(`No docs found for season ${season}, episode ${episode}:`, error.message);
             }
         }
-        
-        // Combine filtered existing docs with new docs
-        const combinedDocs = [...filteredDocs, ...newDocs];
-        
+
+        // Sort by episode then subtitle_index
+        allSeasonDocs.sort((a, b) => {
+            const episodeA = parseInt(a.episode) || 0;
+            const episodeB = parseInt(b.episode) || 0;
+            if (episodeA !== episodeB) {
+                return episodeA - episodeB;
+            }
+            const subtitleIndexA = parseInt(a.subtitle_index) || 0;
+            const subtitleIndexB = parseInt(b.subtitle_index) || 0;
+            return subtitleIndexA - subtitleIndexB;
+        });
+
+        // Convert back to CSV format and write season docs
+        if (allSeasonDocs.length > 0) {
+            const headers = Object.keys(allSeasonDocs[0]);
+            const csvLines = [headers.join(',')];
+
+            allSeasonDocs.forEach(doc => {
+                const row = headers.map(header => `"${doc[header] || ''}"`).join(',');
+                csvLines.push(row);
+            });
+
+            const csvContent = csvLines.join('\n');
+
+            // Write season docs
+            const seasonDocsPath = `protected/src/${alias}/${season}/_docs.csv`;
+            const putParams = {
+                Bucket: bucketName,
+                Key: seasonDocsPath,
+                Body: csvContent,
+                ContentType: 'text/csv'
+            };
+
+            await s3.putObject(putParams).promise();
+            console.log(`Regenerated season ${season} docs with ${allSeasonDocs.length} total rows from ${episodeFolders.length} episodes`);
+        }
+
+    } catch (error) {
+        console.error(`Error regenerating season ${season} docs from episodes:`, error);
+        throw error;
+    }
+}
+
+const regenerateRootDocsFromSeasons = async (alias) => {
+    try {
+        console.log(`Regenerating root docs for alias: ${alias} from all season docs`);
+
+        const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+
+        // List all season folders in src
+        const listParams = {
+            Bucket: bucketName,
+            Prefix: `protected/src/${alias}/`,
+            Delimiter: '/'
+        };
+
+        const listedObjects = await s3.listObjectsV2(listParams).promise();
+        const seasonFolders = (listedObjects.CommonPrefixes || [])
+            .map(prefix => prefix.Prefix.split('/').slice(-2, -1)[0])
+            .filter(folder => /^\d+$/.test(folder)) // Only numeric season folders
+            .sort((a, b) => parseInt(a) - parseInt(b));
+
+        console.log(`Found season folders: ${seasonFolders.join(', ')}`);
+
+        // Collect docs from all seasons
+        let allDocs = [];
+        for (const season of seasonFolders) {
+            try {
+                const seasonDocsPath = `protected/src/${alias}/${season}/_docs.csv`;
+                const params = {
+                    Bucket: bucketName,
+                    Key: seasonDocsPath
+                };
+
+                const response = await s3.getObject(params).promise();
+                const csvContent = response.Body.toString('utf-8');
+
+                // Parse CSV content
+                const lines = csvContent.trim().split('\n');
+                if (lines.length > 1) { // Skip if only header
+                    const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = lines[i].split(',').map(value => value.trim().replace(/"/g, ''));
+                        const row = {};
+
+                        headers.forEach((header, index) => {
+                            row[header] = values[index] || '';
+                        });
+
+                        allDocs.push(row);
+                    }
+                }
+            } catch (error) {
+                console.warn(`No docs found for season ${season}:`, error.message);
+            }
+        }
+
         // Sort by season then episode then subtitle_index
-        combinedDocs.sort((a, b) => {
+        allDocs.sort((a, b) => {
             const seasonA = parseInt(a.season) || 0;
             const seasonB = parseInt(b.season) || 0;
             if (seasonA !== seasonB) {
@@ -662,32 +801,58 @@ const updateSeriesDocsWithNewEpisodes = async (alias, episodes) => {
             const subtitleIndexB = parseInt(b.subtitle_index) || 0;
             return subtitleIndexA - subtitleIndexB;
         });
-        
-        // Convert back to CSV format
-        if (combinedDocs.length > 0) {
-            const headers = Object.keys(combinedDocs[0]);
+
+        // Convert back to CSV format and write root docs
+        if (allDocs.length > 0) {
+            const headers = Object.keys(allDocs[0]);
             const csvLines = [headers.join(',')];
-            
-            combinedDocs.forEach(doc => {
+
+            allDocs.forEach(doc => {
                 const row = headers.map(header => `"${doc[header] || ''}"`).join(',');
                 csvLines.push(row);
             });
-            
+
             const csvContent = csvLines.join('\n');
-            
-            // Write updated docs back to src folder
-            const docsPath = `protected/src/${alias}/_docs.csv`;
+
+            // Write root docs
+            const rootDocsPath = `protected/src/${alias}/_docs.csv`;
             const putParams = {
                 Bucket: bucketName,
-                Key: docsPath,
+                Key: rootDocsPath,
                 Body: csvContent,
                 ContentType: 'text/csv'
             };
-            
+
             await s3.putObject(putParams).promise();
-            console.log(`Updated docs with ${combinedDocs.length} total rows`);
+            console.log(`Regenerated root docs with ${allDocs.length} total rows from ${seasonFolders.length} seasons`);
         }
-        
+
+    } catch (error) {
+        console.error('Error regenerating root docs from seasons:', error);
+        throw error;
+    }
+}
+
+const updateSeriesDocsWithNewEpisodes = async (alias, episodes) => {
+    try {
+        console.log(`Updating series docs for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
+
+        // Step 1: Update episode-level _docs.csv files (episode → src)
+        for (const { season, episode } of episodes) {
+            await updateEpisodeDocsFromPending(alias, season, episode);
+        }
+
+        // Step 2: Group episodes by season and regenerate season docs from episodes
+        const affectedSeasons = new Set(episodes.map(ep => ep.season));
+        for (const season of affectedSeasons) {
+            await updateSeasonDocsFromEpisodes(alias, season);
+        }
+
+        // Step 3: Regenerate the root _docs.csv from all season docs
+        await regenerateRootDocsFromSeasons(alias);
+
+        console.log(`Successfully updated ${episodes.length} episodes, ${affectedSeasons.size} seasons, and regenerated root docs`);
+
     } catch (error) {
         console.error('Error updating series docs:', error);
         throw error;
@@ -732,14 +897,21 @@ const invokeIndexAndPublish = async (sourceMediaId, newAlias) => {
 const processNewSeries = async (data) => {
     const { sourceMediaId } = data;
     try {
+
         const sourceMedia = await getSourceMedia(sourceMediaId);
         const seriesData = sourceMedia?.series;
         const userData = sourceMedia?.user;
         const alias = sourceMedia?.pendingAlias;
         // const docs = await getSeriesCsv(alias, true);
-        const metadata = await getSeriesMetadata(alias, true);
+        const metadata = await getSeriesMetadata(true, alias);
         // Check to see if the v2 content metadata exists
         const v2ContentMetadata = await getV2ContentMetadata(alias);
+        const updateSourceMediaToPending = await updateSourceMedia({
+            id: sourceMediaId,
+            status: 'pending'
+        });
+        console.log('UPDATE SOURCE MEDIA TO PENDING: ', JSON.stringify(updateSourceMediaToPending));
+
         if (v2ContentMetadata?.id) {
             // Update the v2 content metadata
             const v2ContentMetadataData = await updateV2ContentMetadata({
@@ -804,7 +976,7 @@ const processExistingSeries = async (data) => {
         const userData = sourceMedia?.user;
         const alias = sourceMedia?.pendingAlias;
         // const docs = await getSeriesCsv(alias, true); // Not needed since we handle docs in updateSeriesDocsWithNewEpisodes
-        const metadata = await getSeriesMetadata(alias, true);
+        const metadata = await getSeriesMetadata(false, alias);
         // Check to see if the v2 content metadata exists
         const v2ContentMetadata = await getV2ContentMetadata(alias);
         if (v2ContentMetadata?.id) {
@@ -843,7 +1015,7 @@ const processExistingSeries = async (data) => {
 
         // Move episode files from pending to src folder for approved episodes
         await moveEpisodeFilesFromPendingToSrc(alias, episodes);
-        
+
         // Update the series docs CSV by removing existing episode rows and adding new ones
         await updateSeriesDocsWithNewEpisodes(alias, episodes);
 
@@ -878,26 +1050,37 @@ exports.handler = async (event) => {
     const tvdbApiKey = Parameters.find(param => param.Name === process.env.tvdbApiKey).Value;
     const tvdbPin = Parameters.find(param => param.Name === process.env.tvdbPin).Value;
 
-    const { fileId, sourceMediaId, episodes = [], series = null, processAll = false, alias } = event?.body;
+    const { sourceMediaId, episodes = [] } = JSON.parse(event?.body);
+    console.log('SOURCE MEDIA ID: ', sourceMediaId);
+    console.log('EPISODES: ', episodes);
     let statusCode = 500;
     let body;
 
     try {
+        const sourceMediaResponse = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id: sourceMediaId } });
+        console.log('SOURCE MEDIA RESPONSE: ', JSON.stringify(sourceMediaResponse));
+        const sourceMediaData = sourceMediaResponse?.body?.data?.getSourceMedia;
+        const alias = sourceMediaData?.pendingAlias;
+        console.log('SOURCE MEDIA DATA: ', JSON.stringify(sourceMediaData));
+        console.log('ALIAS: ', JSON.stringify(alias));
+
         const aliasResponse = await makeGraphQLRequest({ query: getAliasQuery, variables: { id: alias } });
         const aliasData = aliasResponse?.body?.data?.getAlias;
         console.log('ALIAS DATA: ', JSON.stringify(aliasData));
 
         if (aliasData?.id) {
-            statusCode = 200;
-            await processNewSeries({
-                sourceMediaId
-            });
-            body = 'Indexing has been triggered';
-        } else {
+            console.log('PROCESSING EXISTING SERIES');
             statusCode = 200;
             await processExistingSeries({
                 sourceMediaId,
                 episodes,
+            });
+            body = 'Indexing has been triggered';
+        } else {
+            console.log('PROCESSING NEW SERIES');
+            statusCode = 200;
+            await processNewSeries({
+                sourceMediaId
             });
             body = 'Indexing has been triggered';
         }
