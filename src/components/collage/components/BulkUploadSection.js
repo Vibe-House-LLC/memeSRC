@@ -170,7 +170,8 @@ const BulkUploadSection = ({
           border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
           background: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.1 : 0.06),
           px: 2,
-          py: 1.75,
+          pt: { xs: 1.5, sm: 1.75 },
+          pb: { xs: 1.65, sm: 1.75 },
         }}
       >
         <Typography

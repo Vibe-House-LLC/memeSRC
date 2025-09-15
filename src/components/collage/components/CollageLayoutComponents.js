@@ -216,18 +216,20 @@ export const CollageLayout = ({
     if (!shouldShowEditTip) return null;
     return (
       <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          gap: 1,
-          px: 2,
-          py: 1.25,
-          borderRadius: 2,
-          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
-          backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.1 : 0.06),
-          ...sxOverrides,
-        }}
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            gap: 1,
+            px: 2,
+            pt: 1.25,
+            pb: { xs: 2.75, sm: 1.25 },
+            mb: { xs: 2.25, sm: 0 },
+            borderRadius: 2,
+            border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
+            backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.1 : 0.06),
+            ...sxOverrides,
+          }}
       >
         <Box sx={{ flex: 1 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
@@ -280,7 +282,11 @@ export const CollageLayout = ({
       <Box sx={{ width: '100%' }}>
         {!hasImages ? (
           // No images: Show bulk uploader with proper padding (clean starting point like legacy)
-          <Box sx={{ p: isMobile ? 2 : 0, px: isMobile ? 1 : 0 }}>
+          <Box sx={{
+            pt: isMobile ? 0.25 : 0,
+            pb: isMobile ? 2 : 0,
+            px: isMobile ? 1 : 0
+          }}>
             <BulkUploadSection
               selectedImages={imagesStepProps.selectedImages}
               addMultipleImages={imagesStepProps.addMultipleImages}
@@ -301,7 +307,7 @@ export const CollageLayout = ({
           </Box>
         ) : isMobile ? (
           // Mobile: Stack vertically with tighter spacing, NO BulkUploadSection after images are added
-          <Stack spacing={1.5} sx={{ p: 1.5, px: 1 }}>
+          <Stack spacing={2} sx={{ p: 1.5, px: 1 }}>
             {renderEditTipCard()}
             {/* Compact Controls Bar for Mobile */}
             <MobileControlsBar

@@ -1080,13 +1080,13 @@ export default function CollagePage() {
             {/* Editor UI */}
             <>
             {/* Page Header */}
-            <Box sx={{ mb: isMobile ? 1 : 1.5 }}>
+            <Box sx={{ mb: isMobile ? 0.5 : 1.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                <Typography variant="h3" gutterBottom sx={{ 
+                <Typography variant="h3" sx={{ 
                   display: 'flex', 
                   alignItems: 'center',
                   fontWeight: '700', 
-                  mb: isMobile ? 0.5 : 0.75,
+                  mb: isMobile ? 0.25 : 0.75,
                   pl: isMobile ? 0.5 : 0,
                   ml: isMobile ? 0 : -0.5,
                   color: '#fff',

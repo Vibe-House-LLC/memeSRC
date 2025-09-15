@@ -342,7 +342,7 @@ export default function LibraryBrowser({
   }, [renderHeader, count, minSelected, maxSelected, effectiveSelectionEnabled]);
 
   return (
-    <Box sx={{ mt: 3, ...(sx || {}) }}>
+    <Box sx={{ mt: { xs: 0.25, sm: 3 }, ...(sx || {}) }}>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'column' }, gap: 1.25, mb: 1 }}>
         {headerNode ? (
           <Box>
