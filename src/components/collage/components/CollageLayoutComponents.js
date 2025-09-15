@@ -309,7 +309,7 @@ export const CollageLayout = ({
           ...sxOverrides,
           '&:hover .collapsed-tip-container': {
             backgroundColor: hoverBg,
-            borderColor: `1px solid ${hoverBorder}`,
+            borderColor: hoverBorder,
           },
         }}
       >
