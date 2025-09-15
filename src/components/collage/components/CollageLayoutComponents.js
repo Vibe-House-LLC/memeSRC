@@ -8,7 +8,7 @@ import {
   useMediaQuery,
   Typography,
 } from "@mui/material";
-import { Settings, PhotoLibrary, ArrowBack, DeleteForever, Save as SaveIcon } from "@mui/icons-material";
+import { Settings, PhotoLibrary, ArrowBack, DeleteForever, Save as SaveIcon, Close } from "@mui/icons-material";
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -216,32 +216,55 @@ export const CollageLayout = ({
     if (!shouldShowEditTip) return null;
     return (
       <Box
-          sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            gap: 1,
-            px: 2,
-            pt: 1.25,
-            pb: { xs: 2.75, sm: 1.25 },
-            mb: { xs: 2.25, sm: 0 },
-            borderRadius: 2,
-            border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
-            backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.1 : 0.06),
-            ...sxOverrides,
-          }}
+        sx={{
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          px: 2,
+          pt: 1.25,
+          pb: { xs: 2.75, sm: 1.25 },
+          mb: { xs: 2.25, sm: 0 },
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
+          backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.1 : 0.06),
+          ...sxOverrides,
+        }}
       >
-        <Box sx={{ flex: 1 }}>
+        <IconButton
+          size="small"
+          aria-label="Hide tips"
+          onClick={handleHideEditTip}
+          sx={{ position: 'absolute', top: 8, right: 8, color: 'primary.main' }}
+        >
+          <Close fontSize="small" />
+        </IconButton>
+        <Box sx={{ pr: 4 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
-            Editing Tips
+            Tips
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {`${editVerb} images & text to edit.`}
-          </Typography>
+          <Box
+            component="ol"
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.75,
+              pl: 2.5,
+              mt: 0.75,
+              mb: 0,
+              color: 'text.secondary',
+            }}
+          >
+            <Typography component="li" variant="body2">
+              {`${editVerb} images & text to edit.`}
+            </Typography>
+            <Typography component="li" variant="body2">
+              {`${editVerb} `}
+              <Box component="span" sx={{ fontWeight: 700 }}>Generate Meme</Box>
+              {' to finish.'}
+            </Typography>
+          </Box>
         </Box>
-        <Button size="small" onClick={handleHideEditTip} sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }}>
-          Hide
-        </Button>
       </Box>
     );
   }, [shouldShowEditTip, theme, editVerb, handleHideEditTip]);
