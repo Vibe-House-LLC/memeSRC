@@ -1,11 +1,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import {
   Box,
   Container,
   Stack,
   useMediaQuery,
+  Typography,
 } from "@mui/material";
 import { Settings, PhotoLibrary, ArrowBack, DeleteForever, Save as SaveIcon } from "@mui/icons-material";
 import Button from '@mui/material/Button';
@@ -22,6 +23,8 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== '
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
 })();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
+
+const EDIT_TIP_STORAGE_KEY = 'memeSRC-collage-edit-tip-hidden';
 
 /**
  * Main container for the collage page content
@@ -189,6 +192,57 @@ export const CollageLayout = ({
 }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const [editTipHidden, setEditTipHidden] = React.useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem(EDIT_TIP_STORAGE_KEY) === '1';
+    } catch (_) {
+      return false;
+    }
+  });
+  const handleHideEditTip = React.useCallback(() => {
+    setEditTipHidden(true);
+    try { localStorage.setItem(EDIT_TIP_STORAGE_KEY, '1'); } catch (_) { /* ignore */ }
+  }, []);
+  const selectedImageCount = Array.isArray(imagesStepProps?.selectedImages) ? imagesStepProps.selectedImages.length : 0;
+  const shouldShowEditTip = !editTipHidden && selectedImageCount > 0;
+  const isTouchDevice = React.useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return ('ontouchstart' in window) ||
+      (typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0));
+  }, []);
+  const editVerb = isTouchDevice ? 'Tap' : 'Click';
+  const renderEditTipCard = React.useCallback((sxOverrides = {}) => {
+    if (!shouldShowEditTip) return null;
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          gap: 1,
+          px: 2,
+          py: 1.25,
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
+          backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.1 : 0.06),
+          ...sxOverrides,
+        }}
+      >
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
+            Editing Tips
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {`${editVerb} images & text to edit.`}
+          </Typography>
+        </Box>
+        <Button size="small" onClick={handleHideEditTip} sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }}>
+          Hide
+        </Button>
+      </Box>
+    );
+  }, [shouldShowEditTip, theme, editVerb, handleHideEditTip]);
   const handleOpenExportDialog = () => {
     // CollageImagesStep handles the export dialog
   };
@@ -248,6 +302,7 @@ export const CollageLayout = ({
         ) : isMobile ? (
           // Mobile: Stack vertically with tighter spacing, NO BulkUploadSection after images are added
           <Stack spacing={1.5} sx={{ p: 1.5, px: 1 }}>
+            {renderEditTipCard()}
             {/* Compact Controls Bar for Mobile */}
             <MobileControlsBar
               onBack={onBack}
@@ -319,6 +374,7 @@ export const CollageLayout = ({
               borderColor: 'divider'
             }}>
               <SectionHeading icon={PhotoLibrary} title="Your Collage" />
+              {renderEditTipCard({ mt: 1, mb: 2 })}
               <Box sx={{ 
                 width: '100%',
                 overflow: 'visible', // Allow caption editor to overflow
