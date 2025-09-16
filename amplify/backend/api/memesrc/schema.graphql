@@ -332,6 +332,33 @@ type ProSupportMessage @model @auth(
   createdAt: AWSDateTime!
 }
 
+type UsageEvent
+  @model
+  @auth(
+    rules: [
+      {
+        allow: owner
+        ownerField: "identityId"
+        identityClaim: "cognito-identity.amazonaws.com:sub"
+        operations: [create, read]
+      },
+      {
+        allow: owner
+        ownerField: "username"
+        identityClaim: "cognito:username"
+        operations: [create, read]
+      },
+      { allow: groups, groups: ["admins", "mods"], operations: [read] }
+    ]
+  ) {
+  id: ID!
+  identityId: String
+    @index(name: "byIdentityId", queryField: "usageEventsByIdentity")
+  username: String @index(name: "byUsername", queryField: "usageEventsByUsername")
+  eventType: String!
+  eventData: AWSJSON
+}
+
 type LocationLeads @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] },
