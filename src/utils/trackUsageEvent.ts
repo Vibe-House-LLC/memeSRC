@@ -29,11 +29,30 @@ type CreateUsageEventMutation = {
   } | null;
 };
 
-const inflightEvents = new Set<Promise<GraphQLResult<CreateUsageEventMutation>>>();
+const inflightEvents = new Set<Promise<void>>();
 
-const trackPromise = (
-  promise: Promise<GraphQLResult<CreateUsageEventMutation>>
-): Promise<GraphQLResult<CreateUsageEventMutation>> => {
+const logUsageEventError = (error: unknown) => {
+  if (process.env.NODE_ENV !== 'production') {
+    let message: string;
+
+    if (error instanceof Error) {
+      message = error.message;
+    } else if (typeof error === 'string') {
+      message = error;
+    } else {
+      try {
+        message = JSON.stringify(error, null, 2);
+      } catch (stringifyError) {
+        message = `Unknown error: ${String(stringifyError)}`;
+      }
+    }
+
+    // eslint-disable-next-line no-console
+    console.warn('Usage event tracking failed:', message);
+  }
+};
+
+const trackPromise = (promise: Promise<void>): Promise<void> => {
   inflightEvents.add(promise);
 
   promise.finally(() => {
@@ -47,6 +66,7 @@ const serializeEventData = (eventData?: UsageEventPayload): string | null => {
   if (eventData === undefined) {
     return null;
   }
+
   try {
     const serializedValue = JSON.stringify(eventData);
 
@@ -70,16 +90,17 @@ const serializeEventData = (eventData?: UsageEventPayload): string | null => {
 };
 
 const sendUsageEvent = (input: CreateUsageEventInput): void => {
-  const request = API.graphql(
-    graphqlOperation(createUsageEventMutation, { input })
-  ) as Promise<GraphQLResult<CreateUsageEventMutation>>;
-
-  trackPromise(request).catch((error) => {
-    if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.warn('Usage event tracking failed', error);
+  const request = (async () => {
+    try {
+      await (API.graphql(
+        graphqlOperation(createUsageEventMutation, { input })
+      ) as Promise<GraphQLResult<CreateUsageEventMutation>>);
+    } catch (error) {
+      logUsageEventError(error);
     }
-  });
+  })();
+
+  void trackPromise(request);
 };
 
 export const flushUsageEvents = async (): Promise<void> => {
@@ -115,7 +136,7 @@ export const trackUsageEvent = (
 
   Promise.resolve().then(() => {
     sendUsageEvent(input);
-  });
+  }, logUsageEventError);
 };
 
 export const event = trackUsageEvent;
