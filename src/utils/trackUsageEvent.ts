@@ -31,7 +31,22 @@ type CreateUsageEventMutation = {
 
 const inflightEvents = new Set<Promise<void>>();
 
-const logUsageEventError = (error: unknown) => {
+const parseEventData = (eventData?: string | null): unknown => {
+  if (!eventData) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(eventData);
+  } catch (parseError) {
+    return eventData;
+  }
+};
+
+const logUsageEventError = (
+  error: unknown,
+  context?: CreateUsageEventInput
+) => {
   if (process.env.NODE_ENV !== 'production') {
     let message: string;
 
@@ -47,8 +62,16 @@ const logUsageEventError = (error: unknown) => {
       }
     }
 
-    // eslint-disable-next-line no-console
-    console.warn('Usage event tracking failed:', message);
+    const eventTypeLabel = `eventType: ${context?.eventType ?? 'unknown'}`;
+    const parsedEventData = parseEventData(context?.eventData ?? null);
+
+    if (parsedEventData !== undefined) {
+      // eslint-disable-next-line no-console
+      console.warn('Usage event tracking failed:', message, eventTypeLabel, 'eventData:', parsedEventData);
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn('Usage event tracking failed:', message, eventTypeLabel);
+    }
   }
 };
 
@@ -96,7 +119,7 @@ const sendUsageEvent = (input: CreateUsageEventInput): void => {
         graphqlOperation(createUsageEventMutation, { input })
       ) as Promise<GraphQLResult<CreateUsageEventMutation>>);
     } catch (error) {
-      logUsageEventError(error);
+      logUsageEventError(error, input);
     }
   })();
 
@@ -134,9 +157,13 @@ export const trackUsageEvent = (
     input.eventData = serializedEventData;
   }
 
-  Promise.resolve().then(() => {
-    sendUsageEvent(input);
-  }, logUsageEventError);
+  Promise.resolve()
+    .then(() => {
+      sendUsageEvent(input);
+    })
+    .catch((error) => {
+      logUsageEventError(error, input);
+    });
 };
 
 export const event = trackUsageEvent;
