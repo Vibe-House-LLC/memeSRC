@@ -3,7 +3,7 @@
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useEffect, useRef, useState, useContext, memo } from 'react';
+import { useEffect, useRef, useState, useContext, memo, useCallback } from 'react';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
 import {
@@ -170,6 +170,22 @@ export default function FramePage() {
           defaultCaption,
         },
       });
+
+      const eventPayload = {
+        cid: confirmedCid,
+        season,
+        episode,
+        frame,
+        fineTuningIndex,
+        source: 'V2FramePage',
+      };
+
+      const resolvedSearchTerm = resolveSearchTerm();
+      if (resolvedSearchTerm !== undefined) {
+        eventPayload.searchTerm = resolvedSearchTerm;
+      }
+
+      trackUsageEvent('add_to_library', eventPayload);
       
       setSavedToLibrary(true);
     } catch (error) {
@@ -231,6 +247,17 @@ export default function FramePage() {
   const [savedToLibrary, setSavedToLibrary] = useState(false);
   const [savingToLibrary, setSavingToLibrary] = useState(false);
 
+  const resolveSearchTerm = useCallback(() => {
+    if (typeof urlSearchTerm === 'string' && urlSearchTerm.length > 0) {
+      return urlSearchTerm;
+    }
+
+    if (typeof contextSearchQuery === 'string' && contextSearchQuery.length > 0) {
+      return contextSearchQuery;
+    }
+
+    return undefined;
+  }, [contextSearchQuery, urlSearchTerm]);
 
   const theme = useTheme();
 
@@ -268,14 +295,7 @@ export default function FramePage() {
       source: 'V2FramePage',
     };
 
-    const resolvedSearchTerm =
-      (typeof urlSearchTerm === 'string' && urlSearchTerm.length > 0
-        ? urlSearchTerm
-        : undefined) ??
-      (typeof contextSearchQuery === 'string' && contextSearchQuery.length > 0
-        ? contextSearchQuery
-        : undefined);
-
+    const resolvedSearchTerm = resolveSearchTerm();
     if (resolvedSearchTerm !== undefined) {
       eventPayload.searchTerm = resolvedSearchTerm;
     }
@@ -288,8 +308,7 @@ export default function FramePage() {
     frame,
     fineTuningIndex,
     displayImage,
-    urlSearchTerm,
-    contextSearchQuery,
+    resolveSearchTerm,
   ]);
 
   /* ---------------------------- Subtitle Function --------------------------- */
