@@ -13,8 +13,8 @@ import {
   Card,
   Chip,
   CircularProgress,
-  Collapse,
   Container,
+  Divider,
   Fade,
   Grid,
   Paper,
@@ -22,7 +22,6 @@ import {
   Typography,
   useMediaQuery,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 import { LoadingButton } from '@mui/lab';
 import { API, graphqlOperation } from 'aws-amplify';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -42,20 +41,20 @@ type TitleSubtitlePair = {
 
 const titleSubtitlePairs: TitleSubtitlePair[] = [
   {
-    title: 'Get memeSRC Pro!',
-    subtitle: "Or don't. I don't care.",
+    title: 'Create at the speed of culture.',
+    subtitle: 'Unlock the full memeSRC studio built for 2025 creators.',
   },
   {
-    title: 'Get Pro. Be a Hero.',
-    subtitle: "Or stay basic I guess. Your choice.",
+    title: 'Upgrade once. Ship faster forever.',
+    subtitle: 'Stay in flow with a workspace tuned for rapid drops.',
   },
   {
-    title: 'Unlock memeSRC Pro!',
-    subtitle: "Or forget you ever saw this.",
+    title: 'Design, remix, and go live instantly.',
+    subtitle: 'Pro gives you the launchpad for every trend cycle.',
   },
   {
-    title: 'Pro is for pros.',
-    subtitle: "But don't let that stop you.",
+    title: 'Make every meme feel premium.',
+    subtitle: 'The best templates, tools, and support without friction.',
   },
 ];
 
@@ -66,6 +65,59 @@ const planPrices: Record<PlanKey, number> = {
 };
 
 const supportedCountries = ['US', 'AU', 'CA'];
+
+type PlanDetail = {
+  label: string;
+  headline: string;
+  description: string;
+};
+
+const planDetails: Record<PlanKey, PlanDetail> = {
+  pro5: {
+    label: 'Creator',
+    headline: 'Start building momentum',
+    description: '5 Magic Credits every month for personal workflows and experimentation.',
+  },
+  pro25: {
+    label: 'Studio',
+    headline: 'Scale new drops effortlessly',
+    description: '25 Magic Credits every month to keep your team shipping consistently.',
+  },
+  pro69: {
+    label: 'Agency',
+    headline: 'Stay ahead of every trend',
+    description: '69 Magic Credits every month for power users managing multiple launches.',
+  },
+};
+
+type FeatureHighlight = {
+  icon: typeof BoltIcon;
+  title: string;
+  description: string;
+};
+
+const featureHighlights: FeatureHighlight[] = [
+  {
+    icon: BoltIcon,
+    title: 'Lightning workflow',
+    description: 'Remove the ads and unlock faster renders so you never miss a trending moment.',
+  },
+  {
+    icon: AutoFixHighRoundedIcon,
+    title: 'Magic tools first',
+    description: 'Jump into experimental generative updates the day they launch.',
+  },
+  {
+    icon: SupportAgentIcon,
+    title: 'Priority creator support',
+    description: 'Get direct access to the memeSRC team for feedback, requests, and fixes.',
+  },
+  {
+    icon: CheckIcon,
+    title: 'Flexible membership',
+    description: 'Cancel anytime and keep your benefits through the end of your cycle.',
+  },
+];
 
 const getInitialPlan = (): PlanKey => {
   const storedPlan = localStorage.getItem('defaultProPlan') as PlanKey | null;
@@ -101,19 +153,6 @@ const getCreditCount = (plan: PlanKey): number => {
   }
 };
 
-const getPlanColor = (plan: PlanKey): string => {
-  switch (plan) {
-    case 'pro5':
-      return 'primary.main';
-    case 'pro25':
-      return 'rgb(84, 214, 44)';
-    case 'pro69':
-      return '#ff6900';
-    default:
-      return 'primary.main';
-  }
-};
-
 const getPlanTextColor = (plan: PlanKey): string => {
   switch (plan) {
     case 'pro5':
@@ -123,6 +162,19 @@ const getPlanTextColor = (plan: PlanKey): string => {
       return 'common.black';
     default:
       return 'common.white';
+  }
+};
+
+const getPlanGradient = (plan: PlanKey): string => {
+  switch (plan) {
+    case 'pro5':
+      return 'linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(14, 165, 233, 0.9) 100%)';
+    case 'pro25':
+      return 'linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(163, 230, 53, 0.9) 100%)';
+    case 'pro69':
+      return 'linear-gradient(135deg, rgba(249, 115, 22, 0.95) 0%, rgba(251, 191, 36, 0.9) 100%)';
+    default:
+      return 'linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(14, 165, 233, 0.9) 100%)';
   }
 };
 
@@ -156,16 +208,13 @@ const buildReturnUrl = (dest: string): string => {
 };
 
 const ProUpgradePage = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const isXs = useMediaQuery(theme.breakpoints.down('sm'));
   const isCompact = useMediaQuery('(max-width:850px)');
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>(() => getInitialPlan());
   const [loading, setLoading] = useState<boolean>(false);
   const [checkoutLink, setCheckoutLink] = useState<string | undefined>();
   const [selectedTitleSubtitle, setSelectedTitleSubtitle] = useState<TitleSubtitlePair | null>(null);
-  const [creditOptionsExpanded, setCreditOptionsExpanded] = useState<boolean>(!isCompact);
   const subscribeButtonRef = useRef<HTMLButtonElement | null>(null);
   const { user } = useContext(UserContext as unknown as Context<{ user: any }>);
   const { countryCode } = useUserLocation();
@@ -178,10 +227,6 @@ const ProUpgradePage = () => {
     const randomIndex = Math.floor(Math.random() * titleSubtitlePairs.length);
     setSelectedTitleSubtitle(titleSubtitlePairs[randomIndex]);
   }, []);
-
-  useEffect(() => {
-    setCreditOptionsExpanded(!isCompact);
-  }, [isCompact]);
 
   useEffect(() => {
     if (user?.userDetails?.subscriptionStatus === 'active') {
@@ -207,11 +252,8 @@ const ProUpgradePage = () => {
 
   const setSelectedPlanAndScroll = useCallback((plan: PlanKey) => {
     setSelectedPlan(plan);
-    if (isCompact) {
-      setCreditOptionsExpanded(false);
-    }
-    subscribeButtonRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [isCompact]);
+    subscribeButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
 
   const getPriceForPlan = useCallback((plan: PlanKey): number => {
     const basePrice = planPrices[plan];
@@ -220,12 +262,6 @@ const ProUpgradePage = () => {
     }
     return basePrice;
   }, []);
-
-  const toggleCreditOptions = useCallback(() => {
-    if (isCompact) {
-      setCreditOptionsExpanded((prev) => !prev);
-    }
-  }, [isCompact]);
 
   const handleClose = useCallback(() => {
     navigate(dest, { replace: true });
@@ -257,12 +293,15 @@ const ProUpgradePage = () => {
   }, [dest, selectedPlan]);
 
   const showUnsupportedCountry = checkoutLink === 'unsupported_country' || (!supportedCountries.includes(countryCode) && (loading || checkoutLink));
+  const currentPlanPrice = useMemo(() => getPriceForPlan(selectedPlan), [getPriceForPlan, selectedPlan]);
+  const heroTitle = selectedTitleSubtitle?.title ?? titleSubtitlePairs[0].title;
+  const heroSubtitle = selectedTitleSubtitle?.subtitle ?? titleSubtitlePairs[0].subtitle;
 
   return (
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'radial-gradient(140% 120% at 50% 0%, rgba(102, 126, 234, 0.18) 0%, rgba(0, 0, 0, 0.92) 55%, #000 100%)',
+        background: 'radial-gradient(160% 120% at 50% 0%, rgba(32, 56, 140, 0.28) 0%, rgba(3, 7, 18, 0.94) 55%, #010104 100%)',
         color: 'common.white',
         display: 'flex',
         alignItems: 'flex-start',
@@ -270,647 +309,456 @@ const ProUpgradePage = () => {
       }}
     >
       <Container
-        maxWidth="md"
+        maxWidth="lg"
         sx={{
-          py: { xs: 4, md: 8 },
+          py: { xs: 5, md: 8 },
           flexGrow: 1,
           display: 'flex',
           flexDirection: 'column',
+          gap: { xs: 4, md: 6 },
         }}
       >
-        <Stack spacing={{ xs: 3, md: 5 }} sx={{ flexGrow: 1 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" rowGap={2}>
-            <Box display="flex" alignItems="center" gap={1.5}>
-              <img
-                src="/assets/memeSRC-white.svg"
-                alt="memeSRC logo"
-                loading="lazy"
-                style={{ height: isCompact ? 28 : 36 }}
-              />
-              <Typography fontSize={isCompact ? 26 : 32} fontWeight={700}>
-                memeSRC Pro
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              color="inherit"
-              onClick={handleClose}
-              startIcon={<ArrowBackIcon />}
-              sx={{
-                borderColor: 'rgba(255, 255, 255, 0.24)',
-                color: 'common.white',
-                '&:hover': {
-                  borderColor: 'rgba(255, 255, 255, 0.45)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                },
-              }}
-            >
-              Back to {destLabel}
-            </Button>
-          </Box>
-
-          <Box sx={{ maxWidth: 560 }}>
-            <Typography variant="h4" fontWeight={700} sx={{ lineHeight: 1.1 }}>
-              Unlock the full memeSRC toolbox.
+        <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" rowGap={2}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <img
+              src="/assets/memeSRC-white.svg"
+              alt="memeSRC logo"
+              loading="lazy"
+              style={{ height: isCompact ? 28 : 36 }}
+            />
+            <Typography fontSize={isCompact ? 26 : 32} fontWeight={700}>
+              memeSRC Pro
             </Typography>
-            <Typography
-              variant="body1"
+            <Chip
+              label="2025 Edition"
+              size="small"
               sx={{
-                mt: 1.5,
-                color: 'rgba(255, 255, 255, 0.72)',
+                fontWeight: 600,
+                letterSpacing: 0.6,
+                color: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
               }}
-            >
-              Upgrade in seconds, keep your flow, and jump straight back to what you were doing.
-            </Typography>
-          </Box>
-
-          <Paper
-            elevation={0}
+            />
+          </Stack>
+          <Button
+            variant="outlined"
+            color="inherit"
+            onClick={handleClose}
+            startIcon={<ArrowBackIcon />}
             sx={{
-              flexGrow: 1,
-              borderRadius: { xs: 3, md: 4 },
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              background: 'rgba(9, 12, 16, 0.92)',
-              backdropFilter: 'blur(14px)',
-              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.42)',
-              overflow: 'hidden',
-              p: { xs: 3, md: 5 },
+              borderColor: 'rgba(255, 255, 255, 0.24)',
+              color: 'common.white',
+              backdropFilter: 'blur(8px)',
+              borderRadius: '999px',
+              px: 2.5,
+              '&:hover': {
+                borderColor: 'rgba(255, 255, 255, 0.45)',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              },
             }}
           >
-            {!loading && !checkoutLink && (
-              <Fade in timeout={300}>
-                <Box>
-                  {(CURRENT_SALE.isActive && (isXs || isCompact)) && <CountdownTimer />}
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={CURRENT_SALE.isActive ? (isCompact ? 12 : 6) : 12}>
-                      <Box
-                        p={isCompact ? 2 : 2.5}
-                        sx={{
-                          backgroundColor: CURRENT_SALE.isActive ? 'rgba(0, 0, 0, 0.2)' : getPlanColor(selectedPlan),
-                          borderRadius: 4,
-                          mb: 2,
-                          cursor: 'pointer',
-                          position: 'relative',
-                          border: CURRENT_SALE.isActive ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
-                        }}
-                        onClick={() => {
-                          subscribeButtonRef.current?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography
-                            fontSize={isCompact ? 18 : 22}
-                            fontWeight={700}
-                            color={CURRENT_SALE.isActive ? 'common.white' : getPlanTextColor(selectedPlan)}
-                          >
-                            {selectedTitleSubtitle?.title}
-                          </Typography>
-                          {CURRENT_SALE.isActive && (
-                            <Chip
-                              label={`${CURRENT_SALE.discountPercent.toFixed(0)}% OFF`}
-                              color="error"
-                              size="small"
+            Back to {destLabel}
+          </Button>
+        </Box>
+        <Paper
+          elevation={0}
+          sx={{
+            flexGrow: 1,
+            borderRadius: { xs: 3, md: 4 },
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(8, 12, 24, 0.78)',
+            backdropFilter: 'blur(24px)',
+            boxShadow: '0 45px 120px rgba(0, 0, 0, 0.55)',
+            overflow: 'hidden',
+            p: { xs: 3.5, md: 5 },
+          }}
+        >
+          {!loading && !checkoutLink && (
+            <Fade in timeout={320}>
+              <Box>
+                <Grid container spacing={{ xs: 4, md: 6 }}>
+                  <Grid item xs={12} md={6}>
+                    <Stack spacing={{ xs: 3, md: 4 }}>
+                      <Stack spacing={1.5}>
+                        {CURRENT_SALE.isActive && (
+                          <Chip
+                            label={`${CURRENT_SALE.discountPercent.toFixed(0)}% limited pricing`}
+                            color="primary"
+                            sx={{
+                              alignSelf: 'flex-start',
+                              fontWeight: 700,
+                              letterSpacing: 0.4,
+                              backgroundColor: 'rgba(79, 70, 229, 0.18)',
+                              color: 'rgba(199, 210, 254, 0.95)',
+                            }}
+                          />
+                        )}
+                        <Typography variant="h4" fontWeight={800} sx={{ lineHeight: 1.1 }}>
+                          {heroTitle}
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.74)' }}>
+                          {heroSubtitle}
+                        </Typography>
+                      </Stack>
+                      <Stack spacing={2.5}>
+                        {(Object.keys(planDetails) as PlanKey[]).map((plan) => {
+                          const details = planDetails[plan];
+                          const credits = getCreditCount(plan);
+                          const isSelected = selectedPlan === plan;
+                          const planPrice = getPriceForPlan(plan);
+                          return (
+                            <Card
+                              key={plan}
+                              component="button"
+                              type="button"
+                              onClick={() => setSelectedPlanAndScroll(plan)}
                               sx={{
-                                fontWeight: 700,
-                                fontSize: '0.85rem',
-                                backgroundColor: '#ff1744',
-                              }}
-                            />
-                          )}
-                        </Box>
-                        <Typography
-                          variant={isCompact ? 'h2' : 'h3'}
-                          mb={0.75}
-                          sx={{ color: CURRENT_SALE.isActive ? getPlanColor(selectedPlan) : getPlanTextColor(selectedPlan) }}
-                        >
-                          {CURRENT_SALE.isActive && (
-                            <span
-                              style={{
-                                textDecoration: 'line-through',
-                                fontSize: '0.7em',
-                                opacity: 0.7,
-                                marginRight: '8px',
-                                color: 'white',
-                              }}
-                            >
-                              ${planPrices[selectedPlan].toFixed(2)}
-                            </span>
-                          )}
-                          ${getPriceForPlan(selectedPlan).toFixed(2)} / mo.
-                        </Typography>
-                        <Typography
-                          fontSize={isCompact ? 15 : 13}
-                          fontWeight={600}
-                          color={CURRENT_SALE.isActive ? 'common.white' : getPlanTextColor(selectedPlan)}
-                        >
-                          {selectedTitleSubtitle?.subtitle}
-                        </Typography>
-                      </Box>
-                    </Grid>
-
-                    {CURRENT_SALE.isActive && !isXs && !isCompact && (
-                      <Grid item sm={6}>
-                        <CountdownTimer />
-                      </Grid>
-                    )}
-                  </Grid>
-
-                  <Grid container spacing={isCompact ? 2 : 4} alignItems="center">
-                    <Grid item xs={12} sm={isCompact ? 12 : 5}>
-                      <Box display="flex" alignItems="center" mb={isCompact ? 1.5 : 2} ml={2}>
-                        <Box
-                          sx={{
-                            backgroundColor: getPlanColor(selectedPlan),
-                            borderRadius: '50%',
-                            width: isCompact ? 28 : 32,
-                            height: isCompact ? 28 : 32,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mr: 2,
-                          }}
-                        >
-                          <CheckIcon sx={{ color: getPlanTextColor(selectedPlan), fontSize: isCompact ? 20 : 24 }} />
-                        </Box>
-                        <Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>
-                          Zero Ads
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" mb={isCompact ? 1.5 : 2} ml={2}>
-                        <Box
-                          sx={{
-                            backgroundColor: getPlanColor(selectedPlan),
-                            borderRadius: '50%',
-                            width: isCompact ? 28 : 32,
-                            height: isCompact ? 28 : 32,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mr: 2,
-                          }}
-                        >
-                          <SupportAgentIcon sx={{ color: getPlanTextColor(selectedPlan), fontSize: isCompact ? 20 : 24 }} />
-                        </Box>
-                        <Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>
-                          Pro Support
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" mb={isCompact ? 1.5 : 2} ml={2}>
-                        <Box
-                          sx={{
-                            backgroundColor: getPlanColor(selectedPlan),
-                            borderRadius: '50%',
-                            width: isCompact ? 28 : 32,
-                            height: isCompact ? 28 : 32,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mr: 2,
-                          }}
-                        >
-                          <BoltIcon sx={{ color: getPlanTextColor(selectedPlan), fontSize: isCompact ? 20 : 24 }} />
-                        </Box>
-                        <Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>
-                          Exclusive Features
-                        </Typography>
-                      </Box>
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        ml={2}
-                        onClick={isCompact ? toggleCreditOptions : undefined}
-                        sx={{ cursor: isCompact ? 'pointer' : 'default' }}
-                      >
-                        <Box
-                          sx={{
-                            backgroundColor: getPlanColor(selectedPlan),
-                            borderRadius: '50%',
-                            width: isCompact ? 28 : 32,
-                            height: isCompact ? 28 : 32,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mr: 2,
-                          }}
-                        >
-                          <AutoFixHighRoundedIcon sx={{ color: getPlanTextColor(selectedPlan), fontSize: isCompact ? 20 : 24 }} />
-                        </Box>
-                        <Typography fontSize={isCompact ? 16 : 18} fontWeight={500} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          {getCreditCount(selectedPlan)} Magic Credits
-                          {isCompact && !creditOptionsExpanded && (
-                            <Box
-                              component="span"
-                              sx={{
-                                color: 'rgba(255, 255, 255, 0.5)',
+                                textAlign: 'left',
+                                borderRadius: 3,
+                                px: { xs: 3, md: 3.5 },
+                                py: { xs: 3, md: 3.5 },
                                 cursor: 'pointer',
-                                ml: 1,
-                                fontSize: '0.75em',
-                                fontWeight: 600,
-                                userSelect: 'none',
-                                transition: 'all 0.2s',
-                                textDecoration: 'underline',
+                                border: '1px solid',
+                                borderColor: isSelected ? 'transparent' : 'rgba(255, 255, 255, 0.08)',
+                                background: isSelected ? getPlanGradient(plan) : 'rgba(255, 255, 255, 0.04)',
+                                color: isSelected ? getPlanTextColor(plan) : 'rgba(255, 255, 255, 0.92)',
+                                boxShadow: isSelected ? '0 30px 80px rgba(0, 0, 0, 0.45)' : 'none',
+                                transition: 'transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease',
+                                position: 'relative',
+                                overflow: 'hidden',
                                 '&:hover': {
-                                  color: 'rgba(255, 255, 255, 0.8)',
+                                  transform: 'translateY(-4px)',
+                                  boxShadow: '0 28px 80px rgba(0, 0, 0, 0.45)',
+                                },
+                                '&:focus-visible': {
+                                  outline: '2px solid rgba(255, 255, 255, 0.6)',
+                                  outlineOffset: '2px',
                                 },
                               }}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                toggleCreditOptions();
+                            >
+                              <Stack spacing={2}>
+                                <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={2}>
+                                  <Box>
+                                    <Typography
+                                      variant="overline"
+                                      sx={{
+                                        letterSpacing: 1.1,
+                                        opacity: isSelected ? 0.95 : 0.65,
+                                      }}
+                                    >
+                                      {details.label}
+                                    </Typography>
+                                    <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.2 }}>
+                                      {details.headline}
+                                    </Typography>
+                                  </Box>
+                                  <Box textAlign="right">
+                                    {CURRENT_SALE.isActive && (
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          textDecoration: 'line-through',
+                                          opacity: 0.7,
+                                        }}
+                                      >
+                                        ${planPrices[plan].toFixed(2)}
+                                      </Typography>
+                                    )}
+                                    <Typography variant="h4" fontWeight={800}>
+                                      ${planPrice.toFixed(2)}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ opacity: 0.75 }}>
+                                      per month
+                                    </Typography>
+                                  </Box>
+                                </Stack>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    color: isSelected ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.7)',
+                                  }}
+                                >
+                                  {details.description}
+                                </Typography>
+                                <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.14)' }} />
+                                <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                                  <Stack direction="row" alignItems="center" spacing={1.25}>
+                                    <AutoFixHighRoundedIcon sx={{ fontSize: 22 }} />
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                      {credits} Magic Credits / mo
+                                    </Typography>
+                                  </Stack>
+                                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                                    {isSelected
+                                      ? 'Current selection'
+                                      : `Switch & ${formatPriceDelta(planPrice - currentPlanPrice)} / mo`}
+                                  </Typography>
+                                </Stack>
+                              </Stack>
+                            </Card>
+                          );
+                        })}
+                      </Stack>
+                      <Stack spacing={2.5}>
+                        {user?.userDetails ? (
+                          <Button
+                            ref={subscribeButtonRef}
+                            variant="contained"
+                            size="large"
+                            onClick={() => {
+                              if (supportedCountries.includes(countryCode)) {
+                                buySubscription();
+                              } else {
+                                setCheckoutLink('unsupported_country');
+                              }
+                            }}
+                            sx={{
+                              alignSelf: 'stretch',
+                              borderRadius: '999px',
+                              px: 4,
+                              py: { xs: 1.4, md: 1.6 },
+                              fontSize: { xs: 18, md: 20 },
+                              backgroundImage: getPlanGradient(selectedPlan),
+                              color: getPlanTextColor(selectedPlan),
+                              boxShadow: '0 35px 90px rgba(0, 0, 0, 0.55)',
+                              '&:hover': {
+                                backgroundImage: getPlanGradient(selectedPlan),
+                                filter: 'brightness(1.05)',
+                                boxShadow: '0 45px 110px rgba(0, 0, 0, 0.6)',
+                              },
+                            }}
+                          >
+                            Upgrade Now
+                          </Button>
+                        ) : (
+                          <Button
+                            ref={subscribeButtonRef}
+                            variant="contained"
+                            size="large"
+                            onClick={handleLogin}
+                            sx={{
+                              alignSelf: 'stretch',
+                              borderRadius: '999px',
+                              px: 4,
+                              py: { xs: 1.4, md: 1.6 },
+                              fontSize: { xs: 18, md: 20 },
+                              backgroundImage: getPlanGradient(selectedPlan),
+                              color: getPlanTextColor(selectedPlan),
+                              boxShadow: '0 35px 90px rgba(0, 0, 0, 0.55)',
+                              '&:hover': {
+                                backgroundImage: getPlanGradient(selectedPlan),
+                                filter: 'brightness(1.05)',
+                                boxShadow: '0 45px 110px rgba(0, 0, 0, 0.6)',
+                              },
+                            }}
+                          >
+                            Sign in to upgrade
+                          </Button>
+                        )}
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ textAlign: 'center', display: 'block', mx: 'auto', maxWidth: 320 }}
+                        >
+                          Payments go to{' '}
+                          <a
+                            href="https://vibehouse.net"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: 'inherit', fontWeight: 700, textDecoration: 'none' }}
+                          >
+                            Vibe House
+                          </a>{' '}
+                          and are secured by{' '}
+                          <a
+                            href="https://stripe.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: 'inherit', fontWeight: 700, textDecoration: 'none' }}
+                          >
+                            Stripe
+                          </a>
+                          .
+                        </Typography>
+                        <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="center">
+                          <CheckIcon sx={{ fontSize: 20, color: 'rgba(129, 212, 250, 0.9)' }} />
+                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.76)' }}>
+                            Keep access through the end of your billing cycle - cancel anytime.
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                    </Stack>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Stack spacing={{ xs: 3, md: 4 }}>
+                      <Box>
+                        <Typography
+                          variant="overline"
+                          sx={{ letterSpacing: 1.6, color: 'rgba(255, 255, 255, 0.65)' }}
+                        >
+                          Why creators choose Pro
+                        </Typography>
+                        <Typography variant="h4" fontWeight={700} sx={{ lineHeight: 1.15 }}>
+                          A streamlined studio for the next wave of meme culture.
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ mt: 1.5, color: 'rgba(255, 255, 255, 0.74)', maxWidth: 420 }}
+                        >
+                          Build and ship ideas without friction. memeSRC Pro gives you premium tooling, early feature access, and human support to stay ahead in 2025.
+                        </Typography>
+                      </Box>
+                      <Stack spacing={2.5}>
+                        {featureHighlights.map(({ icon: Icon, title, description }) => (
+                          <Card
+                            key={title}
+                            elevation={0}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 2,
+                              p: { xs: 2.5, md: 3 },
+                              borderRadius: 3,
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              backdropFilter: 'blur(12px)',
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 46,
+                                height: 46,
+                                borderRadius: '50%',
+                                background: 'rgba(255, 255, 255, 0.12)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
                               }}
                             >
-                              change
+                              <Icon sx={{ fontSize: 24, color: 'rgba(199, 210, 254, 0.95)' }} />
                             </Box>
-                          )}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={isCompact ? 12 : 7}>
-                      <Collapse in={creditOptionsExpanded} timeout={300}>
-                        {!isCompact ? (
-                          <Box sx={{ px: 2 }}>
-                            {[
-                              { plan: 'pro5', credits: 5, color: 'grey.500', hoverColor: 'grey.500', activeColor: 'grey.500' },
-                              { plan: 'pro25', credits: 25, color: 'rgb(84, 214, 44)', hoverColor: 'rgb(84, 214, 44)', activeColor: 'rgb(71, 181, 37)' },
-                              { plan: 'pro69', credits: 69, color: '#ff6900', hoverColor: '#ff6900', activeColor: '#e65c00' },
-                            ].map(({ plan, credits, color, hoverColor, activeColor }) => (
-                              <Card
-                                key={plan}
-                                variant="outlined"
-                                sx={{
-                                  mb: 2,
-                                  cursor: 'pointer',
-                                  borderColor: selectedPlan === plan ? color : 'divider',
-                                  '&:hover': { borderColor: hoverColor },
-                                  position: 'relative',
-                                  overflow: 'hidden',
-                                }}
-                                onClick={() => setSelectedPlanAndScroll(plan as PlanKey)}
-                              >
-                                <Box
-                                  sx={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: 8,
-                                    height: '100%',
-                                    backgroundColor: color,
-                                  }}
-                                />
-                                <Box
-                                  sx={{
-                                    p: 2,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                  }}
-                                >
-                                  <Typography fontSize={20} fontWeight={700}>
-                                    {credits} Magic Credits
-                                  </Typography>
-                                  <Typography fontSize={20} fontWeight={700}>
-                                    ${getPriceForPlan(plan as PlanKey).toFixed(2)}
-                                  </Typography>
-                                </Box>
-                                <Box
-                                  sx={{
-                                    p: 2,
-                                    backgroundColor: selectedPlan === plan ? `rgba(255, 255, 255, 0.05)` : 'transparent',
-                                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                                  }}
-                                >
-                                  <Typography fontSize={14} color="text.secondary">
-                                    {selectedPlan === plan
-                                      ? 'This is your default plan'
-                                      : `Switching saves ${formatPriceDelta(getPriceForPlan(plan as PlanKey) - getPriceForPlan(selectedPlan))}`}
-                                  </Typography>
-                                </Box>
-                              </Card>
-                            ))}
-                          </Box>
-                        ) : (
-                          <Stack direction="row" gap={1} justifyContent="center">
-                            {[
-                              { plan: 'pro5', credits: 5, color: '#616161', textColor: 'common.white' },
-                              { plan: 'pro25', credits: 25, color: 'rgb(84, 214, 44)', textColor: 'common.black' },
-                              { plan: 'pro69', credits: 69, color: '#ff6900', textColor: 'common.black' },
-                            ].map(({ plan, credits, color, textColor }) => (
-                              <Box key={plan} sx={{ textAlign: 'center' }}>
-                                <Card
-                                  onClick={() => setSelectedPlan(plan as PlanKey)}
-                                  sx={{
-                                    backgroundColor: selectedPlan === plan ? color : 'rgba(255, 255, 255, 0.04)',
-                                    color: selectedPlan === plan ? textColor : 'common.white',
-                                    width: 90,
-                                    height: 80,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    border: selectedPlan === plan ? `2px solid ${color}` : '1px solid rgba(255, 255, 255, 0.08)',
-                                    position: 'relative',
-                                    overflow: 'visible',
-                                  }}
-                                >
-                                  <Box
-                                    sx={{
-                                      position: 'absolute',
-                                      top: 0,
-                                      left: 0,
-                                      width: '100%',
-                                      height: '4px',
-                                      backgroundColor: color,
-                                      display: selectedPlan === plan ? 'none' : 'block',
-                                    }}
-                                  />
-                                  <Box
-                                    sx={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      color: selectedPlan === plan ? textColor : 'common.white',
-                                      fontSize: isCompact ? '1.2rem' : '1.5rem',
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    <AutoFixHighRoundedIcon sx={{ fontSize: isCompact ? 23 : 28, mx: 0.5 }} />
-                                    {credits}
-                                  </Box>
-                                </Card>
-                                <Typography
-                                  variant="caption"
-                                  sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    mt: 1,
-                                    color: selectedPlan === plan ? 'common.white' : 'grey.500',
-                                    fontWeight: selectedPlan === plan ? 800 : 550,
-                                    gap: 0.5,
-                                    fontSize: isCompact ? '0.7rem' : '0.75rem',
-                                  }}
-                                >
-                                  {selectedPlan === plan
-                                    ? 'included'
-                                    : formatPriceDelta(getPriceForPlan(plan as PlanKey) - getPriceForPlan(selectedPlan))}
-                                </Typography>
-                              </Box>
-                            ))}
-                          </Stack>
-                        )}
-                      </Collapse>
-                    </Grid>
+                            <Box>
+                              <Typography variant="subtitle1" fontWeight={700}>
+                                {title}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.74)' }}>
+                                {description}
+                              </Typography>
+                            </Box>
+                          </Card>
+                        ))}
+                      </Stack>
+                      <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.08)' }} />
+                      <Stack spacing={1.5}>
+                        <Stack direction="row" alignItems="center" spacing={1.25}>
+                          <CheckIcon sx={{ fontSize: 20, color: 'rgba(129, 212, 250, 0.9)' }} />
+                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.74)' }}>
+                            Early drops roll out to Pro first - including brand new magic tools.
+                          </Typography>
+                        </Stack>
+                        <Stack direction="row" alignItems="center" spacing={1.25}>
+                          <CheckIcon sx={{ fontSize: 20, color: 'rgba(129, 212, 250, 0.9)' }} />
+                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.74)' }}>
+                            Save templates, projects, and series so your team can remix instantly.
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                      {CURRENT_SALE.isActive && <CountdownTimer />}
+                    </Stack>
                   </Grid>
-                  <Box mt={creditOptionsExpanded || isCompact ? 2 : 4} textAlign="center">
-                    {user?.userDetails ? (
-                      <Button
-                        ref={subscribeButtonRef}
-                        variant="contained"
-                        size="large"
-                        onClick={() => {
-                          if (supportedCountries.includes(countryCode)) {
-                            buySubscription();
-                          } else {
-                            setCheckoutLink('unsupported_country');
-                          }
-                        }}
-                        fullWidth
-                        sx={{
-                          borderRadius: 50,
-                          px: 4,
-                          py: isCompact ? 1.25 : 1.5,
-                          fontSize: isCompact ? 18 : 20,
-                          backgroundColor: getPlanColor(selectedPlan),
-                          color: getPlanTextColor(selectedPlan),
-                        }}
-                      >
-                        Upgrade Account
-                      </Button>
-                    ) : (
-                      <Button
-                        ref={subscribeButtonRef}
-                        variant="contained"
-                        size="large"
-                        onClick={handleLogin}
-                        fullWidth
-                        sx={{
-                          borderRadius: 50,
-                          px: 4,
-                          py: isCompact ? 1.25 : 1.5,
-                          fontSize: isCompact ? 18 : 20,
-                          backgroundColor: getPlanColor(selectedPlan),
-                          color: getPlanTextColor(selectedPlan),
-                        }}
-                      >
-                        Upgrade Account
-                      </Button>
-                    )}
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      mx={3}
-                      mt={1}
-                      sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}
-                    >
-                      <span>Payments to&nbsp;</span>
-                      <a
-                        href="https://vibehouse.net"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#9e9e9e', textDecoration: 'none' }}
-                      >
-                        <b>Vibe House</b>
-                      </a>
-                      <span>&nbsp;secured by&nbsp;</span>
-                      <a
-                        href="https://stripe.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#9e9e9e', textDecoration: 'none' }}
-                      >
-                        <b>Stripe</b>
-                      </a>
-                    </Typography>
-                  </Box>
-                </Box>
-              </Fade>
-            )}
-            {(loading || checkoutLink) && !showUnsupportedCountry && (
-              <Box sx={{ minHeight: 500, display: 'flex', flexDirection: 'column', mb: 5, p: { xs: 2.5, md: 4 } }}>
-                <Button
-                  onClick={() => {
-                    setCheckoutLink(undefined);
-                    setLoading(false);
-                  }}
+                </Grid>
+              </Box>
+            </Fade>
+          )}
+          {(loading || checkoutLink) && !showUnsupportedCountry && (
+            <Box sx={{ minHeight: 520, display: 'flex', flexDirection: 'column' }}>
+              <Button
+                onClick={() => {
+                  setCheckoutLink(undefined);
+                  setLoading(false);
+                }}
+                sx={{
+                  color: 'common.white',
+                  opacity: 0.7,
+                  alignSelf: 'flex-start',
+                  mb: 3,
+                  borderRadius: '999px',
+                  '&:hover': {
+                    opacity: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  },
+                }}
+                startIcon={<ArrowBackIcon />}
+              >
+                Choose another plan
+              </Button>
+              <Stack spacing={4} alignItems="center" justifyContent="center" sx={{ flexGrow: 1 }}>
+                <Stack spacing={1.5} alignItems="center" textAlign="center">
+                  <Typography variant="h5" fontWeight={700}>
+                    Preparing your secure checkout
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.72)', maxWidth: 360 }}>
+                    We're connecting to Stripe to confirm your membership. This only takes a moment.
+                  </Typography>
+                </Stack>
+                <Box
                   sx={{
-                    color: 'white',
-                    opacity: 0.7,
-                    alignSelf: 'flex-start',
-                    mb: 2,
-                    '&:hover': {
-                      opacity: 1,
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    },
+                    width: '100%',
+                    maxWidth: 420,
+                    borderRadius: 3,
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: 'rgba(10, 14, 28, 0.8)',
+                    p: 3,
+                    textAlign: 'center',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
-                  startIcon={<ArrowBackIcon />}
                 >
-                  Go Back
-                </Button>
-                <Box sx={{ m: 'auto' }}>
-                  <Typography fontSize={20} textAlign="center" fontWeight={700}>
-                    Powered by
-                  </Typography>
-                  <Typography fontSize={45} textAlign="center" fontWeight={700} pt={0.5}>
-                    Vibe House
-                  </Typography>
                   <Box
                     sx={{
-                      mt: 3,
-                      mb: 3,
-                      mx: 'auto',
-                      p: 2.5,
-                      maxWidth: 360,
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      borderRadius: 2.5,
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      backdropFilter: 'blur(10px)',
-                      boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      mb: 1,
+                      fontFamily: "'Roboto Mono', monospace",
                     }}
                   >
-                    <Typography
-                      fontSize={13}
-                      color="text.secondary"
-                      sx={{
-                        mb: 1.5,
-                        fontWeight: 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        position: 'relative',
-                      }}
-                    >
-                      <Typography
-                        component="span"
-                        sx={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 24,
-                          transform: 'translateY(-50%)',
-                          backgroundColor: 'background.paper',
-                          px: 1,
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: 'text.secondary',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                        }}
-                      >
-                        <Box
-                          component="span"
-                          sx={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            backgroundColor: 'success.main',
-                            animation: 'pulse 2s infinite',
-                            '@keyframes pulse': {
-                              '0%': { opacity: 0.4 },
-                              '50%': { opacity: 1 },
-                              '100%': { opacity: 0.4 },
-                            },
-                          }}
-                        />
-                        <b>Reminder</b>
-                      </Typography>
-                      Your subscription to memeSRC Pro will be billed monthly and appear on your statement as:
+                    <Typography variant="subtitle2" sx={{ letterSpacing: 0.8 }}>
+                      memeSRC Pro
                     </Typography>
-                    <Box
-                      sx={{
-                        p: 1.5,
-                        backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                        borderRadius: 1.5,
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          position: 'relative',
-                          zIndex: 1,
-                        }}
-                      >
-                        <Typography
-                          fontFamily="'Roboto Mono', monospace"
-                          fontSize={{ xs: 13, sm: 16 }}
-                          fontWeight={700}
-                          sx={{ letterSpacing: '0.5px', mx: 1 }}
-                        >
-                          ${getPriceForPlan(selectedPlan).toFixed(2)}
-                        </Typography>
-                        <Typography
-                          fontFamily="'Roboto Mono', monospace"
-                          fontSize={{ xs: 13, sm: 16 }}
-                          fontWeight={700}
-                          sx={{
-                            letterSpacing: '0.5px',
-                            opacity: 0.85,
-                            color: 'white',
-                            mx: 1,
-                          }}
-                        >
-                          VIBE HOUSE LLC
-                        </Typography>
-                      </Box>
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          left: 0,
-                          top: '50%',
-                          width: '100%',
-                          height: 1,
-                          borderBottom: '2px dotted rgba(255, 255, 255, 0.1)',
-                          transform: 'translateY(-50%)',
-                        }}
-                      />
-                    </Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: 'block',
-                        mt: 1.5,
-                        textAlign: 'center',
-                        opacity: 0.7,
-                      }}
-                    >
-                      Processed securely through Stripe
+                    <Typography variant="subtitle2" sx={{ letterSpacing: 0.8 }}>
+                      ${currentPlanPrice.toFixed(2)} / mo
                     </Typography>
                   </Box>
+                  <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.08)', my: 1.5 }} />
+                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.68)' }}>
+                    Billing label: VIBE HOUSE LLC - Secured by Stripe
+                  </Typography>
                 </Box>
-                <Box sx={{ mx: 'auto', mt: 'auto', textAlign: 'center', width: '100%', maxWidth: 420 }}>
+                <Box sx={{ width: '100%', maxWidth: 420 }}>
                   <LoadingButton
                     loading={loading || !checkoutLink}
                     loadingIndicator={
-                      <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                        <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} />
-                        <span>Preparing&nbsp;Checkout...</span>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <CircularProgress color="inherit" size={18} sx={{ mr: 1 }} />
+                        <span>Creating checkout...</span>
                       </Box>
                     }
                     variant="contained"
                     size="large"
                     fullWidth
                     sx={{
-                      borderRadius: 50,
-                      px: 0,
+                      borderRadius: '999px',
                       py: 1.5,
-                      fontSize: 20,
-                      backgroundColor: getPlanColor(selectedPlan),
+                      fontSize: 18,
+                      backgroundImage: getPlanGradient(selectedPlan),
                       color: getPlanTextColor(selectedPlan),
+                      boxShadow: '0 30px 80px rgba(0, 0, 0, 0.55)',
+                      '&:hover': {
+                        backgroundImage: getPlanGradient(selectedPlan),
+                        filter: 'brightness(1.05)',
+                      },
                     }}
                     onClick={() => {
                       if (checkoutLink) {
@@ -918,120 +766,124 @@ const ProUpgradePage = () => {
                       }
                     }}
                   >
-                    {!loading && checkoutLink ? 'Agree & Continue' : ''}
+                    {!loading && checkoutLink ? 'Agree & continue' : ''}
                   </LoadingButton>
-                  <Typography variant="caption" sx={{ mt: 2, lineHeight: 1.2 }}>
-                    By continuing, you are confirming: (1) you are a U.S. resident, (2) you understand memeSRC&nbsp;Pro is billed as Vibe&nbsp;House&nbsp;LLC, and you agree to the{' '}
-                    <a href="/termsofservice" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
-                      Terms&nbsp;of&nbsp;Service
+                  <Typography
+                    variant="caption"
+                    sx={{ mt: 2, lineHeight: 1.4, display: 'block', color: 'rgba(255, 255, 255, 0.65)' }}
+                  >
+                    By continuing you confirm you are a U.S. resident, understand memeSRC Pro is billed as Vibe House LLC, and agree to the{' '}
+                    <a href="/termsofservice" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>
+                      Terms of Service
                     </a>{' '}
                     and{' '}
-                    <a href="/privacypolicy" target="_blank" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
-                      Privacy&nbsp;Policy
+                    <a href="/privacypolicy" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>
+                      Privacy Policy
                     </a>
                     .
                   </Typography>
                 </Box>
+              </Stack>
+            </Box>
+          )}
+          {showUnsupportedCountry && (
+            <Box sx={{ py: 4, px: { xs: 2.5, md: 4 } }}>
+              <Box
+                p={3}
+                sx={{
+                  background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.9) 0%, rgba(229, 57, 53, 0.85) 100%)',
+                  borderRadius: 4,
+                  mb: 4,
+                  boxShadow: '0 30px 80px rgba(244, 67, 54, 0.4)',
+                }}
+              >
+                <Typography fontSize={23} fontWeight={700} color="common.white" gutterBottom>
+                  Pro is currently not available in your country.
+                </Typography>
+                <Typography fontSize={14} color="common.white">
+                  We appreciate your interest and support. memeSRC Pro is not available to purchase in your region yet, but we have noted it and will reach out when that changes.
+                </Typography>
               </Box>
-            )}
-            {showUnsupportedCountry && (
-              <Box sx={{ py: 4, px: { xs: 2.5, md: 4 } }}>
-                <Box
-                  p={3}
-                  sx={{
-                    backgroundColor: 'error.main',
-                    borderRadius: 4,
-                    mb: 4,
-                  }}
-                >
-                  <Typography fontSize={23} fontWeight={700} color="common.white" gutterBottom>
-                    Pro is currently not available in your country.
-                  </Typography>
-                  <Typography fontSize={14} color="common.white">
-                    We appreciate your interest and support, but memeSRC&nbsp;Pro is currently unavailable to purchase in your country.
-                  </Typography>
-                </Box>
-                <Box sx={{ mt: 4, mx: 2 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Other ways to support memeSRC:
-                  </Typography>
-                  <Box sx={{ pl: 4, mt: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Box
-                        sx={{
-                          backgroundColor: 'primary.main',
-                          borderRadius: '50%',
-                          width: 32,
-                          height: 32,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mr: 2,
-                        }}
-                      >
-                        <ShareIcon sx={{ color: 'common.white' }} />
-                      </Box>
-                      <Typography variant="body1">Help spread the word</Typography>
+              <Box sx={{ mt: 4, mx: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Other ways to stay involved:
+                </Typography>
+                <Box sx={{ pl: 3, mt: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box
+                      sx={{
+                        backgroundColor: 'primary.main',
+                        borderRadius: '50%',
+                        width: 32,
+                        height: 32,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                      }}
+                    >
+                      <ShareIcon sx={{ color: 'common.white' }} />
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Box
-                        sx={{
-                          backgroundColor: 'primary.main',
-                          borderRadius: '50%',
-                          width: 32,
-                          height: 32,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mr: 2,
-                        }}
-                      >
-                        <ThumbUpIcon sx={{ color: 'common.white' }} />
-                      </Box>
-                      <Typography variant="body1">Make and share more memes</Typography>
+                    <Typography variant="body1">Share memeSRC with your community</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box
+                      sx={{
+                        backgroundColor: 'primary.main',
+                        borderRadius: '50%',
+                        width: 32,
+                        height: 32,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                      }}
+                    >
+                      <ThumbUpIcon sx={{ color: 'common.white' }} />
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Box
-                        sx={{
-                          backgroundColor: 'primary.main',
-                          borderRadius: '50%',
-                          width: 32,
-                          height: 32,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mr: 2,
-                        }}
-                      >
-                        <FeedbackIcon sx={{ color: 'common.white' }} />
-                      </Box>
-                      <Typography variant="body1">Give feedback and contribute</Typography>
+                    <Typography variant="body1">Keep creating and showcasing your memes</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box
+                      sx={{
+                        backgroundColor: 'primary.main',
+                        borderRadius: '50%',
+                        width: 32,
+                        height: 32,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                      }}
+                    >
+                      <FeedbackIcon sx={{ color: 'common.white' }} />
                     </Box>
+                    <Typography variant="body1">Send us feedback so we can expand faster</Typography>
                   </Box>
                 </Box>
-                <Box sx={{ mt: 4, mx: 1 }}>
-                  <Typography variant="body1">
-                    We love our community around the world and want to keep making these tools more accessible to everyone. We're always trying to support more regions and have noted your interest. Thanks for understanding!
-                  </Typography>
-                </Box>
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleClose}
-                  fullWidth
-                  sx={{
-                    borderRadius: 50,
-                    px: 4,
-                    fontSize: 17,
-                    mt: 5,
-                  }}
-                >
-                  Dismiss
-                </Button>
               </Box>
-            )}
-          </Paper>
-        </Stack>
+              <Box sx={{ mt: 4, mx: 1 }}>
+                <Typography variant="body1">
+                  We're actively working on bringing Pro to more regions. Thanks for being part of the community - more access is coming.
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleClose}
+                fullWidth
+                sx={{
+                  borderRadius: 50,
+                  px: 4,
+                  fontSize: 17,
+                  mt: 5,
+                }}
+              >
+                Dismiss
+              </Button>
+            </Box>
+          )}
+        </Paper>
       </Container>
     </Box>
   );
