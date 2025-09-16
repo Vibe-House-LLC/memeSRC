@@ -1718,14 +1718,6 @@
         }
       ]
     },
-    "AMPLIFY_function_memesrcUpdateMedia_secretsPathAmplifyAppId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcUpdateMedia"
-        }
-      ]
-    },
     "AMPLIFY_function_memesrcUpdateSubtitles_deploymentBucketName": {
       "usedBy": [
         {
