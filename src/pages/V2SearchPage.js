@@ -11,7 +11,6 @@ import { useTheme } from '@emotion/react';
 import sanitizeHtml from 'sanitize-html';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { UserContext } from '../UserContext';
-import { trackUsageEvent } from '../utils/trackUsageEvent';
 
 import { getWebsiteSetting } from '../graphql/queries';
 
@@ -315,13 +314,6 @@ export default function SearchPage() {
         } else {
           seriesToSearch = cid || params?.cid
         }
-
-        trackUsageEvent('search', {
-          index: cid || params?.cid || '_universal',
-          resolvedIndex: seriesToSearch,
-          searchTerm: searchQuery?.trim(),
-          source: 'V2SearchPage',
-        });
 
         const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${seriesToSearch}/${searchTerm}`);
         

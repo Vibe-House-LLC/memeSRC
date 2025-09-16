@@ -55,6 +55,7 @@ import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 // Removed collage collector usage
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
+import { trackUsageEvent } from '../utils/trackUsageEvent';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -102,6 +103,7 @@ export default function FramePage() {
   const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   const throttleTimeoutRef = useRef(null);
+  const lastTrackedFrameRef = useRef('');
 
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
@@ -239,6 +241,29 @@ export default function FramePage() {
   useEffect(() => {
     setSavedToLibrary(false);
   }, [displayImage, confirmedCid, season, episode, frame]);
+
+  useEffect(() => {
+    if (!confirmedCid || !frame || !displayImage) {
+      return;
+    }
+
+    const frameKey = `${confirmedCid}:${season}:${episode}:${frame}`;
+    if (lastTrackedFrameRef.current === frameKey) {
+      return;
+    }
+
+    lastTrackedFrameRef.current = frameKey;
+
+    trackUsageEvent('view_image', {
+      cid: confirmedCid,
+      season,
+      episode,
+      frame,
+      searchTerm: searchQuery || undefined,
+      fineTuningIndex,
+      source: 'V2FramePage',
+    });
+  }, [confirmedCid, season, episode, frame, searchQuery, fineTuningIndex, displayImage]);
 
   /* ---------------------------- Subtitle Function --------------------------- */
 

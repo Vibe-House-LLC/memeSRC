@@ -11,6 +11,7 @@ import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from "../../components/floating-action-buttons/FloatingActionButtons";
+import { trackUsageEvent } from '../../utils/trackUsageEvent';
 
 // Define constants for colors and fonts
 const FONT_FAMILY = 'Roboto, sans-serif';
@@ -106,7 +107,22 @@ export default function IpfsSearchBar(props) {
   const searchFunction = (searchEvent) => {
     searchEvent?.preventDefault();
     // console.log(search)
-    navigate(`/search/${cid || params?.cid || (shows.some(show => show.isFavorite) ? defaultShow : '_universal')}/?searchTerm=${encodeURIComponent(search)}`)
+    const selectedCid = cid || params?.cid || (shows.some(show => show.isFavorite) ? defaultShow : '_universal');
+    const trimmedSearch = search?.trim?.() ?? search;
+
+    let resolvedIndex = selectedCid;
+    if (selectedCid === '_favorites') {
+      resolvedIndex = shows.filter((show) => show.isFavorite).map((show) => show.id).join(',') || '_favorites';
+    }
+
+    trackUsageEvent('search', {
+      index: selectedCid,
+      searchTerm: trimmedSearch || search,
+      resolvedIndex,
+      source: 'IpfsSearchBar',
+    });
+
+    navigate(`/search/${selectedCid}/?searchTerm=${encodeURIComponent(search)}`)
     return false
   }
 
