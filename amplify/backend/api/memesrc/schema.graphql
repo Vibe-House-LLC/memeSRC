@@ -344,8 +344,9 @@ type UsageEvent
       },
       {
         allow: owner
-        ownerField: "username"
-        identityClaim: "username"
+        ownerField: "identityId"
+        identityClaim: "cognito-identity.amazonaws.com:sub"
+        provider: iam
         operations: [create, read]
       },
       { allow: groups, groups: ["admins", "mods"], operations: [read] }
@@ -354,7 +355,6 @@ type UsageEvent
   id: ID!
   identityId: String
     @index(name: "byIdentityId", queryField: "usageEventsByIdentity")
-  username: String @index(name: "byUsername", queryField: "usageEventsByUsername")
   eventType: String!
     @index(
       name: "byEventType"

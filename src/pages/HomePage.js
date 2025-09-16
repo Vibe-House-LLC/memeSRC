@@ -56,9 +56,10 @@ export default function SearchPage({ metadata }) {
       e.preventDefault();
     }
 
-    const trimmedSearchTerm = searchTerm.trim();
-    const searchTermForLogging = trimmedSearchTerm || searchTerm;
-    setV2SearchQuery(searchTerm)
+    const rawSearchTerm = typeof searchTerm === 'string' ? searchTerm : '';
+    const trimmedSearchTerm = rawSearchTerm.trim();
+    const searchTermForLogging = trimmedSearchTerm;
+    setV2SearchQuery(rawSearchTerm)
 
     trackUsageEvent('search', {
       index: seriesTitle,
@@ -66,7 +67,7 @@ export default function SearchPage({ metadata }) {
       source: 'HomePage',
     });
 
-    const encodedSearchTerms = encodeURI(searchTerm)
+    const encodedSearchTerms = encodeURI(rawSearchTerm)
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
   }, [seriesTitle, searchTerm, navigate, savedCids]);
 

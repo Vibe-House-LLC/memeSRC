@@ -108,7 +108,7 @@ export default function IpfsSearchBar(props) {
     searchEvent?.preventDefault();
     // console.log(search)
     const selectedCid = cid || params?.cid || (shows.some(show => show.isFavorite) ? defaultShow : '_universal');
-    const trimmedSearch = search?.trim?.() ?? search;
+    const normalizedSearch = typeof search === 'string' ? search.trim() : '';
 
     let resolvedIndex = selectedCid;
     if (selectedCid === '_favorites') {
@@ -117,12 +117,12 @@ export default function IpfsSearchBar(props) {
 
     trackUsageEvent('search', {
       index: selectedCid,
-      searchTerm: trimmedSearch || search,
+      searchTerm: normalizedSearch,
       resolvedIndex,
       source: 'IpfsSearchBar',
     });
 
-    navigate(`/search/${selectedCid}/?searchTerm=${encodeURIComponent(search)}`)
+    navigate(`/search/${selectedCid}/?searchTerm=${encodeURIComponent(search || '')}`)
     return false
   }
 
