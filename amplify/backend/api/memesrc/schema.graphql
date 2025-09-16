@@ -356,7 +356,13 @@ type UsageEvent
     @index(name: "byIdentityId", queryField: "usageEventsByIdentity")
   username: String @index(name: "byUsername", queryField: "usageEventsByUsername")
   eventType: String!
+    @index(
+      name: "byEventType"
+      queryField: "usageEventsByType"
+      sortKeyFields: ["createdAt"]
+    )
   eventData: AWSJSON
+  createdAt: AWSDateTime!
 }
 
 type LocationLeads @model @auth(
