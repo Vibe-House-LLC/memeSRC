@@ -6,6 +6,7 @@ import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { UserContext } from '../UserContext';
+import { trackUsageEvent } from '../utils/trackUsageEvent';
 
 const prepSessionID = async () => {
   if (!("sessionID" in sessionStorage)) {
@@ -55,7 +56,16 @@ export default function SearchPage({ metadata }) {
       e.preventDefault();
     }
 
+    const trimmedSearchTerm = searchTerm.trim();
+    const searchTermForLogging = trimmedSearchTerm || searchTerm;
     setV2SearchQuery(searchTerm)
+
+    trackUsageEvent('search', {
+      index: seriesTitle,
+      searchTerm: searchTermForLogging,
+      source: 'HomePage',
+    });
+
     const encodedSearchTerms = encodeURI(searchTerm)
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
   }, [seriesTitle, searchTerm, navigate, savedCids]);

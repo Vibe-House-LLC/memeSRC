@@ -339,13 +339,13 @@ type UsageEvent
       {
         allow: owner
         ownerField: "identityId"
-        identityClaim: "cognito-identity.amazonaws.com:sub"
+        identityClaim: "sub"
         operations: [create, read]
       },
       {
         allow: owner
         ownerField: "username"
-        identityClaim: "cognito:username"
+        identityClaim: "username"
         operations: [create, read]
       },
       { allow: groups, groups: ["admins", "mods"], operations: [read] }
