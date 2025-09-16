@@ -6,21 +6,7 @@
     FUNCTION_MEMESRCINDEXANDPUBLISH_NAME
     REGION
     STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
-Amplify Params - DO NOT EDIT *//*
-Use the following code to retrieve configured secrets from SSM:
-
-const aws = require('aws-sdk');
-
-const { Parameters } = await (new aws.SSM())
-  .getParameters({
-    Names: ["tvdbApiKey","tvdbPin"].map(secretName => process.env[secretName]),
-    WithDecryption: true,
-  })
-  .promise();
-
-Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }[]
-*/
-/* Amplify Params - DO NOT EDIT
+Amplify Params - DO NOT EDIT *//* Amplify Params - DO NOT EDIT
     API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
     API_MEMESRC_GRAPHQLAPIIDOUTPUT
     API_MEMESRC_GRAPHQLAPIKEYOUTPUT
@@ -1072,16 +1058,6 @@ const processExistingSeries = async (data) => {
 
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
-
-    const { Parameters } = await (new AWS.SSM())
-        .getParameters({
-            Names: ["tvdbApiKey", "tvdbPin"].map(secretName => process.env[secretName]),
-            WithDecryption: true,
-        })
-        .promise();
-
-    const tvdbApiKey = Parameters.find(param => param.Name === process.env.tvdbApiKey).Value;
-    const tvdbPin = Parameters.find(param => param.Name === process.env.tvdbPin).Value;
 
     const { sourceMediaId, episodes = [] } = JSON.parse(event?.body);
     console.log('SOURCE MEDIA ID: ', sourceMediaId);

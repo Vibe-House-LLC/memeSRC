@@ -285,6 +285,14 @@
           ],
           "category": "function",
           "resourceName": "memesrcDeleteFromLibrary"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcStartIndexingAndPublishing"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -793,6 +801,20 @@
           ],
           "category": "storage",
           "resourceName": "memesrcGeneratedImages"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcStartIndexingAndPublishing": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcIndexAndPublish"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -1689,14 +1711,6 @@
       ]
     },
     "AMPLIFY_function_memesrcUpdateMedia_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "memesrcUpdateMedia"
-        }
-      ]
-    },
-    "AMPLIFY_function_memesrcUpdateMedia_secretsPathAmplifyAppId": {
       "usedBy": [
         {
           "category": "function",

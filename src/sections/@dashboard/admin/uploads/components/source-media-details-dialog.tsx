@@ -41,6 +41,20 @@ const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | '
             return 'error';
         case 'uploaded':
             return 'warning';
+        case 'awaitingindexing':
+            return 'warning';
+        case 'indexing':
+            return 'primary';
+        case 'published':
+            return 'success';
+        case 'failed':
+            return 'error';
+        case 'completed':
+            return 'success';
+        case 'processing':
+            return 'primary';
+        case 'pending':
+            return 'info';
         default:
             return 'default';
     }

@@ -15,7 +15,8 @@ import {
 } from "@mui/material";
 import {
     Save as SaveIcon,
-    CheckCircle as ApproveIcon
+    CheckCircle as ApproveIcon,
+    PublishedWithChanges as ReindexIcon
 } from "@mui/icons-material";
 import { Storage, API } from "aws-amplify";
 import { SourceMediaFile } from "./types";
@@ -146,6 +147,7 @@ export default function AdminReviewUpload({
     const [fileStatuses, setFileStatuses] = useState<Record<string, string>>({});
     const [sourceMediaStatus, setSourceMediaStatus] = useState<string>(initialStatus);
     const [approvingUpload, setApprovingUpload] = useState(false);
+    const [indexing, setIndexing] = useState(false);
     const [selectedEpisodes, setSelectedEpisodes] = useState<{ season: number; episode: number }[]>([]);
     
     // Snackbar context for success messages
@@ -304,6 +306,9 @@ export default function AdminReviewUpload({
         canApprove
     });
 
+    const showIndexButton = ['awaitingindexing', 'published'].includes(sourceMediaStatus?.toLowerCase?.() || '');
+    const indexButtonLabel = (sourceMediaStatus?.toLowerCase?.() || '') === 'published' ? 'Re-Index' : 'Index and Publish';
+
     const handleSaveAlias = async () => {
         if (!sourceMediaId || !hasAliasChanged) return;
 
@@ -436,6 +441,28 @@ export default function AdminReviewUpload({
         }
     };
 
+    const handleIndexAndPublish = async () => {
+        if (!sourceMediaId) return;
+
+        setIndexing(true);
+        try {
+            await API.post('publicapi', '/media/index', {
+                body: { sourceMediaId }
+            });
+
+            setSeverity('success');
+            setMessage('Indexing started. This may take a few minutes.');
+            setOpen(true);
+        } catch (err) {
+            console.error('Failed to start indexing:', err);
+            setSeverity('error');
+            setMessage('Failed to start indexing. Please try again.');
+            setOpen(true);
+        } finally {
+            setIndexing(false);
+        }
+    };
+
     return (
         <>
 
@@ -474,6 +501,25 @@ export default function AdminReviewUpload({
                         >
                             {approvingUpload ? 'Approving...' : 'Approve Upload'}
                         </Button>
+                        {showIndexButton && (
+                            <Button
+                                variant="contained"
+                                size="medium"
+                                sx={{ ml: 2 }}
+                                startIcon={
+                                    indexing ? (
+                                        <CircularProgress size={20} color="inherit" />
+                                    ) : (
+                                        <ReindexIcon />
+                                    )
+                                }
+                                onClick={handleIndexAndPublish}
+                                disabled={indexing}
+                                color="primary"
+                            >
+                                {indexing ? 'Starting…' : indexButtonLabel}
+                            </Button>
+                        )}
                     </Box>
 
                     <Card sx={{ mb: 3 }}>

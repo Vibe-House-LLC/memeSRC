@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "function": {
+      "memesrcIndexAndPublish": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}
