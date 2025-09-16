@@ -1,13 +1,15 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import {
   Box,
+  ButtonBase,
   Container,
   Stack,
   useMediaQuery,
+  Typography,
 } from "@mui/material";
-import { Settings, PhotoLibrary, ArrowBack, DeleteForever, Save as SaveIcon } from "@mui/icons-material";
+import { Settings, PhotoLibrary, ArrowBack, DeleteForever, Save as SaveIcon, Close, InfoOutlined } from "@mui/icons-material";
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -22,6 +24,8 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== '
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
 })();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
+
+const EDIT_TIP_STORAGE_KEY = 'memeSRC-collage-edit-tip-hidden';
 
 /**
  * Main container for the collage page content
@@ -189,6 +193,173 @@ export const CollageLayout = ({
 }) => {
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const [editTipCollapsed, setEditTipCollapsed] = React.useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem(EDIT_TIP_STORAGE_KEY) === '1';
+    } catch (_) {
+      return false;
+    }
+  });
+  const handleCollapseEditTip = React.useCallback(() => {
+    setEditTipCollapsed(true);
+    try { localStorage.setItem(EDIT_TIP_STORAGE_KEY, '1'); } catch (_) { /* ignore */ }
+  }, []);
+  const handleExpandEditTip = React.useCallback(() => {
+    setEditTipCollapsed(false);
+    try { localStorage.removeItem(EDIT_TIP_STORAGE_KEY); } catch (_) { /* ignore */ }
+  }, []);
+  const selectedImageCount = Array.isArray(imagesStepProps?.selectedImages) ? imagesStepProps.selectedImages.length : 0;
+  const shouldShowEditTip = !editTipCollapsed && selectedImageCount > 0;
+  const shouldShowCollapsedTip = editTipCollapsed && selectedImageCount > 0;
+  const isTouchDevice = React.useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return ('ontouchstart' in window) ||
+      (typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0));
+  }, []);
+  const editVerb = isTouchDevice ? 'Tap' : 'Click';
+  const renderEditTipCard = React.useCallback((sxOverrides = {}) => {
+    if (!shouldShowEditTip) return null;
+    return (
+      <Box
+        sx={{
+          position: 'relative',
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
+          backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.1 : 0.06),
+          px: 2,
+          py: { xs: 1.5, sm: 1.75 },
+          pr: { xs: 3.5, sm: 2.5 },
+          ...sxOverrides,
+        }}
+      >
+        <IconButton
+          size="small"
+          aria-label="Collapse tips"
+          onClick={handleCollapseEditTip}
+          sx={{ position: 'absolute', top: 8, right: 8, color: 'primary.main' }}
+        >
+          <Close fontSize="small" />
+        </IconButton>
+        <Stack direction="row" spacing={1.5} alignItems="flex-start">
+          <InfoOutlined sx={{ fontSize: 24, color: 'primary.main', mt: 0.25, flexShrink: 0 }} />
+          <Box sx={{ pr: 2 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+              }}
+            >
+              Editing Tips
+            </Typography>
+            <Box
+              component="ol"
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.75,
+                pl: 2.5,
+                mt: 0.75,
+                mb: 0,
+                color: 'text.secondary',
+              }}
+            >
+              <Typography component="li" variant="body2">
+                {`${editVerb} images & text to edit.`}
+              </Typography>
+              <Typography component="li" variant="body2">
+                {`${editVerb} `}
+                <Box component="span" sx={{ fontWeight: 700 }}>Generate Meme</Box>
+                {' to finish.'}
+              </Typography>
+            </Box>
+          </Box>
+        </Stack>
+      </Box>
+    );
+  }, [shouldShowEditTip, theme, editVerb, handleCollapseEditTip]);
+  const renderCollapsedEditTip = React.useCallback((sxOverrides = {}) => {
+    if (!shouldShowCollapsedTip) return null;
+    const collapsedBg = theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.05)
+      : alpha(theme.palette.grey[400], 0.05);
+    const collapsedBorder = `1px solid ${theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.1)
+      : alpha(theme.palette.grey[400], 0.12)}`;
+    const collapsedTextColor = theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.5)
+      : alpha(theme.palette.text.secondary, 0.7);
+    const hoverBg = theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.08)
+      : alpha(theme.palette.grey[400], 0.08);
+    const hoverBorder = theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.16)
+      : alpha(theme.palette.grey[400], 0.18);
+    return (
+      <ButtonBase
+        onClick={handleExpandEditTip}
+        aria-label="Show editing tips"
+        sx={{
+          width: '100%',
+          textAlign: 'left',
+          borderRadius: 2,
+          ...sxOverrides,
+          '&:hover .collapsed-tip-container': {
+            backgroundColor: hoverBg,
+            borderColor: hoverBorder,
+          },
+        }}
+      >
+        <Box
+          className="collapsed-tip-container"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 0.85,
+            borderRadius: 2,
+            border: collapsedBorder,
+            backgroundColor: collapsedBg,
+            px: 1.2,
+            py: 0.6,
+            width: '100%',
+          }}
+        >
+          <Stack direction="row" spacing={0.7} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+            <InfoOutlined sx={{ fontSize: 19, color: collapsedTextColor, flexShrink: 0 }} />
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 600, color: collapsedTextColor, letterSpacing: 0.05, textTransform: 'none', whiteSpace: 'nowrap' }}
+            >
+              Editing Tips
+            </Typography>
+          </Stack>
+          <Button
+            size="small"
+            variant="text"
+            color="inherit"
+            onClick={handleExpandEditTip}
+            aria-label="Show editing tips"
+            sx={{
+              textTransform: 'none',
+              fontWeight: 500,
+              color: collapsedTextColor,
+              textDecoration: 'underline',
+              px: 0.25,
+              minWidth: 'auto',
+              fontSize: '0.8rem',
+              pointerEvents: 'none',
+            }}
+          >
+            Show
+          </Button>
+        </Box>
+      </ButtonBase>
+    );
+  }, [handleExpandEditTip, shouldShowCollapsedTip, theme]);
   const handleOpenExportDialog = () => {
     // CollageImagesStep handles the export dialog
   };
@@ -226,7 +397,11 @@ export const CollageLayout = ({
       <Box sx={{ width: '100%' }}>
         {!hasImages ? (
           // No images: Show bulk uploader with proper padding (clean starting point like legacy)
-          <Box sx={{ p: isMobile ? 2 : 0, px: isMobile ? 1 : 0 }}>
+          <Box sx={{
+            pt: isMobile ? 0.25 : 0,
+            pb: isMobile ? 2 : 0,
+            px: isMobile ? 1 : 0
+          }}>
             <BulkUploadSection
               selectedImages={imagesStepProps.selectedImages}
               addMultipleImages={imagesStepProps.addMultipleImages}
@@ -247,7 +422,9 @@ export const CollageLayout = ({
           </Box>
         ) : isMobile ? (
           // Mobile: Stack vertically with tighter spacing, NO BulkUploadSection after images are added
-          <Stack spacing={1.5} sx={{ p: 1.5, px: 1 }}>
+          <Stack spacing={2} sx={{ p: 1.5, px: 1 }}>
+            {renderEditTipCard()}
+            {renderCollapsedEditTip()}
             {/* Compact Controls Bar for Mobile */}
             <MobileControlsBar
               onBack={onBack}
@@ -319,6 +496,8 @@ export const CollageLayout = ({
               borderColor: 'divider'
             }}>
               <SectionHeading icon={PhotoLibrary} title="Your Collage" />
+              {renderEditTipCard({ mt: 1, mb: 2 })}
+              {renderCollapsedEditTip({ mt: 1, mb: 2 })}
               <Box sx={{ 
                 width: '100%',
                 overflow: 'visible', // Allow caption editor to overflow

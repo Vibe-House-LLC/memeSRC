@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Typography, useMediaQuery } from '@mui/material';
+import { Box, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 
 // Import our new dynamic CollagePreview component
@@ -63,10 +63,6 @@ const CollageImagesStep = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const fileInputRef = useRef(null);
-  const isTouchDevice = typeof window !== 'undefined' && (
-    ('ontouchstart' in window) ||
-    (typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0))
-  );
   
   // Debug the props we're receiving
   debugLog("CollageImagesStep props:", {
@@ -207,18 +203,6 @@ const CollageImagesStep = ({
           customLayoutKey={customLayoutKey}
         />
         </Box>
-        
-        <Typography
-          variant="body2"
-          sx={{
-            color: 'text.secondary',
-            fontSize: '0.85rem',
-            textAlign: 'center'
-          }}
-        >
-          {`☝️ ${isTouchDevice ? 'tap' : 'click'} to edit images & captions`}
-        </Typography>
-        
         {/* Hidden file input for Add Image button */}
         <input
           type="file"

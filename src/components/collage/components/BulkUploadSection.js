@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useContext } from 'react';
+import React, { useRef, useState, useEffect, useContext, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { 
   Box, 
@@ -12,6 +12,7 @@ import {
   Alert,
   CircularProgress,
   Button,
+  Stack,
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
 import {
@@ -155,6 +156,58 @@ const BulkUploadSection = ({
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
 
+  const renderLibraryHeader = useCallback(({ count, minSelected: minSel, maxSelected: maxSel }) => {
+    const minimum = Math.max(1, typeof minSel === 'number' ? minSel : 0);
+    const maximum = typeof maxSel === 'number' && maxSel > 0 ? maxSel : null;
+    const remaining = Math.max(0, minimum - count);
+    const ready = remaining === 0;
+    const rangeCopy = maximum ? `${minimum}-${maximum}` : `at least ${minimum}`;
+
+    return (
+      <Box
+        sx={{
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
+          background: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.1 : 0.06),
+          px: 2,
+          pt: { xs: 1.5, sm: 1.75 },
+          pb: { xs: 1.65, sm: 1.75 },
+        }}
+      >
+        <Typography
+          variant="subtitle1"
+          sx={{
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}
+        >
+          <PhotoLibrary sx={{ fontSize: 24, color: 'primary.main' }} />
+          Pick your collage photos
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          Choose {rangeCopy} photos to start your collage.
+        </Typography>
+        <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mt: 1.5, flexWrap: 'wrap' }}>
+          <Chip
+            size="small"
+            label={`${count} selected`}
+            color={ready ? 'primary' : 'default'}
+            sx={{
+              fontWeight: 600,
+            }}
+          />
+          <Typography variant="caption" color="text.secondary">
+            {ready
+              ? 'ready to continue'
+              : `need ${remaining} more ${remaining === 1 ? 'photo' : 'photos'}`}
+          </Typography>
+        </Stack>
+      </Box>
+    );
+  }, [theme]);
+
   // Peek at library to decide what to show at start when library is enabled
   const {
     items: adminLibraryItems,
@@ -178,6 +231,7 @@ const BulkUploadSection = ({
   // Determine if user with library access has any uploaded (non-placeholder) library items
   const adminHasLibraryItems = hasLibraryAccess && Boolean(adminLibraryItems?.some((it) => it?.key));
   const helperSourceLabel = adminHasLibraryItems ? 'library' : 'device';
+  const showHelperSummary = !adminHasLibraryItems || !showLibrary;
 
   // Check if there are any empty frames
   const hasEmptyFrames = () => {
@@ -930,15 +984,17 @@ const BulkUploadSection = ({
       ) : (
         // Starting point: distinct for admins vs non-admins
         <Box>
-          <Typography
-            variant="subtitle1"
-            sx={{
-              color: 'text.secondary',
-              mb: 1.5,
-            }}
-          >
-            Add up to 5 images from your {helperSourceLabel}
-          </Typography>
+          {showHelperSummary && (
+            <Typography
+              variant="subtitle1"
+              sx={{
+                color: 'text.secondary',
+                mb: 1.5,
+              }}
+            >
+              Add up to 5 images from your {helperSourceLabel}
+            </Typography>
+          )}
           {!hasLibraryAccess ? (
             // Non-admins: only the collage bulk upload dropzone
             <>
@@ -1022,7 +1078,7 @@ const BulkUploadSection = ({
                     New Collage
                   </Typography>
                   <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                    You’re making a new collage. Select photos to get started.
+                    You're making a new collage. Select photos to get started.
                   </Typography>
                   <Button 
                     variant="contained"
@@ -1051,6 +1107,7 @@ const BulkUploadSection = ({
                         initialSelectMode
                         onSelectionChange={(info) => { if (onLibrarySelectionChange) onLibrarySelectionChange(info); }}
                         exposeActions={(actions) => { if (onLibraryActionsReady) onLibraryActionsReady(actions); }}
+                        renderHeader={renderLibraryHeader}
                       />
                     </>
                   ) : (

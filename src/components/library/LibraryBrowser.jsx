@@ -46,6 +46,7 @@ export default function LibraryBrowser({
   onSelectModeChange,
   onSelectionChange,
   exposeActions,
+  renderHeader,
 }) {
   const { items, loading, hasMore, loadMore, reload, uploadMany, removeFromState } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
   const { selectedKeys, orderedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
@@ -330,9 +331,24 @@ export default function LibraryBrowser({
     if (typeof onSelectModeChange === 'function') onSelectModeChange(next);
   }, [effectiveSelectionEnabled, clear, onSelectModeChange]);
 
+  const headerNode = useMemo(() => {
+    if (typeof renderHeader !== 'function') return null;
+    return renderHeader({
+      count,
+      minSelected: typeof minSelected === 'number' ? minSelected : 0,
+      maxSelected: typeof maxSelected === 'number' ? maxSelected : null,
+      selectionEnabled: effectiveSelectionEnabled,
+    });
+  }, [renderHeader, count, minSelected, maxSelected, effectiveSelectionEnabled]);
+
   return (
-    <Box sx={{ mt: 3, ...(sx || {}) }}>
+    <Box sx={{ mt: { xs: 0.25, sm: 3 }, ...(sx || {}) }}>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'column' }, gap: 1.25, mb: 1 }}>
+        {headerNode ? (
+          <Box>
+            {headerNode}
+          </Box>
+        ) : null}
         {/* Upload section (moved from grid tile) */}
         {uploadEnabled && (
           <UploadSection
@@ -600,7 +616,7 @@ LibraryBrowser.propTypes = {
   storageLevel: PropTypes.oneOf(['private', 'protected']),
   refreshTrigger: PropTypes.any,
   sx: PropTypes.any,
-    instantSelectOnClick: PropTypes.bool,
+  instantSelectOnClick: PropTypes.bool,
   minSelected: PropTypes.number,
   maxSelected: PropTypes.number,
   showActionBar: PropTypes.bool,
@@ -613,4 +629,5 @@ LibraryBrowser.propTypes = {
   onSelectModeChange: PropTypes.func,
   onSelectionChange: PropTypes.func,
   exposeActions: PropTypes.func,
+  renderHeader: PropTypes.func,
 };
