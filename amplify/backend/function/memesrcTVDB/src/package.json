@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.294.0",
-    "axios": "^1.6.0"
+    "axios": "^1.12.0"
   }
 }
