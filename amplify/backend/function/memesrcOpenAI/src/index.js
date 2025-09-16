@@ -5,7 +5,7 @@ const aws = require('aws-sdk');
 
 const { Parameters } = await (new aws.SSM())
   .getParameters({
-    Names: ["openai_apikey","gemini_api_key"].map(secretName => process.env[secretName]),
+    Names: ["openai_apikey"].map(secretName => process.env[secretName]),
     WithDecryption: true,
   })
   .promise();
