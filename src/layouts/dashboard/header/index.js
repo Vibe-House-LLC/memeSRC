@@ -57,6 +57,7 @@ export default function Header({ onOpenNav }) {
   const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
   const location = useLocation();
   const [showLogo, setShowLogo] = useState(false);
+  const shouldHideLogo = location.pathname === '/' || location.pathname === '/pro';
   const containerRef = useRef(null);
   const [magicAlertOpen, setMagicAlertOpen] = useState(false);
   const { openSubscriptionDialog } = useContext(SubscribeDialogContext);
@@ -86,10 +87,14 @@ export default function Header({ onOpenNav }) {
           },
         }}
       >
-        <Logo />
-        <Typography component='h6' variant='h6' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '4px', display: 'inline' }}>
-          memeSRC
-        </Typography>
+        {!shouldHideLogo && (
+          <>
+            <Logo />
+            <Typography component='h6' variant='h6' sx={{ color: '#FFFFFF', textShadow: '1px 1px 3px rgba(0, 0, 0, 0.30);', marginLeft: '4px', display: 'inline' }}>
+              memeSRC
+            </Typography>
+          </>
+        )}
       </Link>
     </Grid>
   );
@@ -171,7 +176,7 @@ export default function Header({ onOpenNav }) {
 
           {/* <Searchbar /> */}
           <Box sx={{ flexGrow: 1 }} />
-          {location.pathname === '/' ? (
+          {shouldHideLogo ? (
             <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
               {renderLogo()}
             </Slide>

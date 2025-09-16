@@ -65,6 +65,7 @@ const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
 const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
 const AdminFileReview = lazy(() => import('./pages/AdminFileReview'));
 const MagicPage = lazy(() => import('./pages/MagicPage'));
+const ProUpgradePage = lazy(() => import('./pages/ProUpgradePage'));
 // Removed insecure HelloWorldPage route
 
 const DonationRedirect = () => {
@@ -83,7 +84,7 @@ export default function Router() {
       element: <GuestAuth><DialogProvider><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></DialogProvider></GuestAuth>,
       children: [
         { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
-        { path: 'pro', element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
+        { path: 'pro', element: <SiteWideMaintenance><ProUpgradePage /></SiteWideMaintenance> },
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
         { path: 'collage', element: <SiteWideMaintenance><CollagePage /></SiteWideMaintenance> },
