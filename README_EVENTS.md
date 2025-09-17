@@ -186,6 +186,25 @@ Logged when the Save button is clicked inside the advanced editor dialog flow.
 }
 ```
 
+## advanced_editor_add_text_layer
+Fire when the advanced editor’s “Add text layer” control is used.
+
+```json
+{
+  "source": "V2EditorPage",
+  "cid": "southpark",
+  "season": "3",
+  "episode": "5",
+  "frame": "12345",
+  "fineTuningIndex": "2",
+  "selectedFrameIndex": 7,
+  "canvasObjectCount": 2,
+  "nextCanvasObjectCount": 3,
+  "searchTerm": "cheesy poofs"
+}
+```
+Optional fields: `editorProjectId` (when editing a saved project).
+
 ---
 
 These examples mirror the structures currently emitted in code so backend/analytics consumers can plan their schemas and indexes confidently.

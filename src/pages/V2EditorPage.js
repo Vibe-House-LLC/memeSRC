@@ -1278,6 +1278,7 @@ const EditorPage = ({ shows }) => {
 
   const { cid, season, episode, frame } = useParams();
   const [confirmedCid, setConfirmedCid] = useState();
+  const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
 
   const handleViewEpisodeClick = useCallback(() => {
     const eventPayload = {
@@ -1317,6 +1318,65 @@ const EditorPage = ({ shows }) => {
     trackUsageEvent('view_episode', eventPayload);
   }, [confirmedCid, cid, season, episode, frame, fineTuningIndex, editorProjectId, searchQuery]);
 
+  const handleAddTextLayer = useCallback(() => {
+    const eventPayload = {
+      source: 'V2EditorPage',
+    };
+
+    const resolvedCid = confirmedCid || cid;
+    if (resolvedCid) {
+      eventPayload.cid = resolvedCid;
+    }
+
+    if (season) {
+      eventPayload.season = season;
+    }
+
+    if (episode) {
+      eventPayload.episode = episode;
+    }
+
+    if (frame) {
+      eventPayload.frame = frame;
+    }
+
+    if (typeof fineTuningIndex !== 'undefined') {
+      eventPayload.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (typeof selectedFrameIndex !== 'undefined') {
+      eventPayload.selectedFrameIndex = selectedFrameIndex;
+    }
+
+    if (editorProjectId) {
+      eventPayload.editorProjectId = editorProjectId;
+    }
+
+    const currentLayerCount = Array.isArray(canvasObjects) ? canvasObjects.length : 0;
+    eventPayload.canvasObjectCount = currentLayerCount;
+    eventPayload.nextCanvasObjectCount = currentLayerCount + 1;
+
+    const trimmedSearchTerm = typeof searchQuery === 'string' ? searchQuery.trim() : '';
+    if (trimmedSearchTerm) {
+      eventPayload.searchTerm = trimmedSearchTerm;
+    }
+
+    trackUsageEvent('advanced_editor_add_text_layer', eventPayload);
+    addText('text', true);
+  }, [
+    addText,
+    canvasObjects,
+    confirmedCid,
+    cid,
+    season,
+    episode,
+    frame,
+    fineTuningIndex,
+    selectedFrameIndex,
+    editorProjectId,
+    searchQuery,
+  ]);
+
   const episodeLink = (() => {
     const frameNumber = Number(frame);
     const anchorFrame = Number.isFinite(frameNumber) ? Math.round(frameNumber / 10) * 10 : frame;
@@ -1327,7 +1387,6 @@ const EditorPage = ({ shows }) => {
   // ------------------------------------------------------------------------
 
   /* -------------------------------- New Stuff ------------------------------- */
-  const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
   const [frames, setFrames] = useState();
   const params = useParams();
@@ -2036,7 +2095,7 @@ const EditorPage = ({ shows }) => {
                       <Grid item xs={12} order={canvasObjects?.length} key="add-text-layer-button">
                         <Button
                           variant="contained"
-                          onClick={() => addText('text', true)}
+                          onClick={handleAddTextLayer}
                           fullWidth
                           sx={{
                             zIndex: '50',
