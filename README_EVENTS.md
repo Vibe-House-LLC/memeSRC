@@ -30,6 +30,22 @@ Logged when a frame renders on the V2 frame page, including navigation between f
 }
 ```
 
+## view_episode
+Runs when the "View Episode" button is clicked from the frame page or advanced editor.
+
+```json
+{
+  "source": "V2FramePage",
+  "cid": "southpark",
+  "season": "3",
+  "episode": "5",
+  "frame": "12345",
+  "fineTuningIndex": "2",
+  "searchTerm": "cheesy poofs"
+}
+```
+Optional fields: `editorProjectId` (when coming from the advanced editor).
+
 ## add_to_library
 Sent after a frame successfully saves to a user's library.
 

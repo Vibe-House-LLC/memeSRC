@@ -260,6 +260,24 @@ export default function FramePage() {
     return undefined;
   }, [contextSearchQuery, urlSearchTerm]);
 
+  const handleViewEpisodeClick = useCallback(() => {
+    const eventPayload = {
+      source: 'V2FramePage',
+      cid: confirmedCid || cid,
+      season,
+      episode,
+      frame,
+      fineTuningIndex,
+    };
+
+    const resolvedSearchTerm = resolveSearchTerm();
+    if (resolvedSearchTerm !== undefined) {
+      eventPayload.searchTerm = resolvedSearchTerm;
+    }
+
+    trackUsageEvent('view_episode', eventPayload);
+  }, [cid, confirmedCid, season, episode, frame, fineTuningIndex, resolveSearchTerm]);
+
   const theme = useTheme();
 
   const handleSnackbarOpen = () => {
@@ -1722,6 +1740,7 @@ useEffect(() => {
                 variant="contained"
                 fullWidth
                 href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`}
+                onClick={handleViewEpisodeClick}
                 sx={{
                   color: '#e5e7eb',
                   background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',

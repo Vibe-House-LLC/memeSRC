@@ -26,7 +26,7 @@ export default function SearchPage({ metadata }) {
   const { defaultShow, shows } = useContext(UserContext)
   const [searchTerm, setSearchTerm] = useState('');
   const [seriesTitle, setSeriesTitle] = useState(shows.some(show => show.isFavorite) ? defaultShow : '_universal');
-  const { savedCids, setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
+  const { setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
 
   const navigate = useNavigate();
 
@@ -61,15 +61,24 @@ export default function SearchPage({ metadata }) {
     const searchTermForLogging = trimmedSearchTerm;
     setV2SearchQuery(rawSearchTerm)
 
+    const favoritesList = Array.isArray(shows)
+      ? shows.filter((show) => show?.isFavorite).map((show) => show?.id).filter(Boolean)
+      : [];
+    let resolvedIndex = seriesTitle;
+    if (seriesTitle === '_favorites') {
+      resolvedIndex = favoritesList.join(',') || '_favorites';
+    }
+
     trackUsageEvent('search', {
       index: seriesTitle,
       searchTerm: searchTermForLogging,
+      resolvedIndex,
       source: 'HomePage',
     });
 
     const encodedSearchTerms = encodeURI(rawSearchTerm)
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
-  }, [seriesTitle, searchTerm, navigate, savedCids]);
+  }, [seriesTitle, searchTerm, shows, navigate]);
 
   const memoizedFullScreenSearch = useMemo(() => (
     <FullScreenSearch
