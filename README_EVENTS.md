@@ -45,6 +45,48 @@ Sent after a frame successfully saves to a user's library.
 }
 ```
 
+## library_upload
+Represents successful uploads into the user's library, whether from the library browser or admin collage tooling.
+
+```json
+{
+  "source": "LibraryBrowser",
+  "storageLevel": "private",
+  "uploadedCount": 2,
+  "batchSize": 3,
+  "files": [
+    {
+      "key": "library/1700000000000-kfj2-photo.png",
+      "fileName": "photo.png",
+      "fileSize": 512341,
+      "fileType": "image/png"
+    },
+    {
+      "key": "library/1700000000001-2jd9-landscape.jpg",
+      "fileName": "landscape.jpg",
+      "fileSize": 413276,
+      "fileType": "image/jpeg"
+    }
+  ]
+}
+```
+
+## library_delete
+Emitted after a delete request succeeds in removing items from the library.
+
+```json
+{
+  "source": "LibraryBrowser",
+  "storageLevel": "private",
+  "deletedCount": 3,
+  "keys": [
+    "library/1700000000003-8as8-old-photo.png",
+    "library/1700000000004-f9s0-background.png",
+    "library/1700000000005-d9x4-meme.jpg"
+  ]
+}
+```
+
 ## favorite_add / favorite_remove
 Fired when a user toggles the favorite star for a show or movie.
 

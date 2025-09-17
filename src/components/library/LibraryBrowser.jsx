@@ -6,6 +6,7 @@ import { MoreVert, MoreHoriz, Refresh, Clear, DeleteForever, Sort, ExpandMore, E
 import useLibraryData from '../../hooks/library/useLibraryData';
 import useSelection from '../../hooks/library/useSelection';
 import { get } from '../../utils/library/storage';
+import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import UploadSection from './UploadSection';
 import LibraryGrid from './LibraryGrid';
 import LibraryTile from './LibraryTile';
@@ -224,6 +225,12 @@ export default function LibraryBrowser({
       await API.post('publicapi', '/library/delete', {
         body: { keys },
       });
+      trackUsageEvent('library_delete', {
+        source: 'LibraryBrowser',
+        storageLevel,
+        deletedCount: keys.length,
+        keys,
+      });
       // Surgically remove deleted items from local state to avoid full reload
       try { removeFromState(keys); } catch (_) { /* ignore */ }
       setSnack({ open: true, message: `Deleted ${keys.length} item(s)`, severity: 'success' });
@@ -241,7 +248,7 @@ export default function LibraryBrowser({
         setPreviewKey(null);
       }
     }
-  }, [clear, previewKey, removeFromState]);
+  }, [clear, previewKey, removeFromState, storageLevel]);
 
   const onTileClick = (key) => setPreviewKey(key);
 
@@ -355,10 +362,32 @@ export default function LibraryBrowser({
             disabled={loading}
             onFiles={async (files) => {
               const results = await uploadMany(files);
-              const successes = results.filter(Boolean);
-              const last = successes[successes.length - 1];
-              if (!multiple && instantSelectOnClick && last && last.key) {
-                await handleInstantSelect({ key: last.key, url: last.url });
+              const indexedSuccesses = results
+                .map((result, index) => ({ result, index }))
+                .filter(({ result }) => Boolean(result?.key));
+
+              if (indexedSuccesses.length > 0) {
+                const filesForEvent = indexedSuccesses.map(({ result, index }) => {
+                  const file = files[index];
+                  const meta = { key: result.key };
+                  if (file?.name) meta.fileName = file.name;
+                  if (typeof file?.size === 'number') meta.fileSize = file.size;
+                  if (file?.type) meta.fileType = file.type;
+                  return meta;
+                });
+
+                trackUsageEvent('library_upload', {
+                  source: 'LibraryBrowser',
+                  storageLevel,
+                  uploadedCount: indexedSuccesses.length,
+                  batchSize: files.length,
+                  files: filesForEvent,
+                });
+              }
+
+              const lastSuccess = indexedSuccesses[indexedSuccesses.length - 1]?.result;
+              if (!multiple && instantSelectOnClick && lastSuccess && lastSuccess.key) {
+                await handleInstantSelect({ key: lastSuccess.key, url: lastSuccess.url });
               }
             }}
           />

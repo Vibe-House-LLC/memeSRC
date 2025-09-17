@@ -28,6 +28,7 @@ import { LibraryBrowser } from '../../library';
 import { UserContext } from '../../../UserContext';
 import useLibraryData from '../../../hooks/library/useLibraryData';
 import { resizeImage } from '../../../utils/library/resizeImage';
+import { trackUsageEvent } from '../../../utils/trackUsageEvent';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
@@ -444,7 +445,30 @@ const BulkUploadSection = ({
     try {
       // Use concurrent uploads with immediate placeholders
       const results = await uploadManyToLibrary(files, { concurrency: 4 });
-      const successCount = (results || []).filter(Boolean).length;
+      const indexedSuccesses = (results || [])
+        .map((result, index) => ({ result, index }))
+        .filter(({ result }) => Boolean(result?.key));
+      const successCount = indexedSuccesses.length;
+
+      if (successCount > 0) {
+        const filesForEvent = indexedSuccesses.map(({ result, index }) => {
+          const file = files[index];
+          const meta = { key: result.key };
+          if (file?.name) meta.fileName = file.name;
+          if (typeof file?.size === 'number') meta.fileSize = file.size;
+          if (file?.type) meta.fileType = file.type;
+          return meta;
+        });
+
+        trackUsageEvent('library_upload', {
+          source: 'BulkUploadSection',
+          storageLevel: 'private',
+          uploadedCount: successCount,
+          batchSize: files.length,
+          files: filesForEvent,
+        });
+      }
+
       if (successCount === 0) {
         setToast({ open: true, message: 'Failed to upload images', severity: 'error' });
       }
