@@ -64,6 +64,7 @@ const ServerPage = lazy(() => import('./pages/ServerPage'));
 const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
 const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
 const AdminFileReview = lazy(() => import('./pages/AdminFileReview'));
+const AdminActivityLogsPage = lazy(() => import('./pages/AdminActivityLogsPage'));
 const MagicPage = lazy(() => import('./pages/MagicPage'));
 // Removed insecure HelloWorldPage route
 
@@ -144,6 +145,7 @@ export default function Router() {
         { path: 'websiteSettings', element: <WebsiteSettings /> },
         { path: 'addtoseries/:seriesId', element: <AddToSeriesPage /> },
         { path: 'subtitles', element: <SubtitleViewerPage /> },
+        { path: 'activity-logs', element: <AdminActivityLogsPage /> },
         { path: 'sourcemedia', element: <AdminSourceMedia /> },
         { path: 'review-upload', element: <AdminFileReview /> },
       ],

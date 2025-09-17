@@ -8,8 +8,8 @@ Triggered when a search form is submitted on the home page and the in-app search
 Example event data:
 ```json
 {
-  "index": "southpark",
-  "searchTerm": "cheesy poofs",
+  "index": "stooges",
+  "searchTerm": "cream pies",
   "source": "HomePage"
 }
 ```
@@ -20,13 +20,13 @@ Logged when a frame renders on the V2 frame page, including navigation between f
 
 ```json
 {
-  "cid": "southpark",
+  "cid": "stooges",
   "season": "3",
   "episode": "5",
   "frame": "12345",
   "fineTuningIndex": "2",
   "source": "V2FramePage",
-  "searchTerm": "cheesy poofs"
+  "searchTerm": "cream pies"
 }
 ```
 
@@ -36,12 +36,12 @@ Runs when the "View Episode" button is clicked from the frame page or advanced e
 ```json
 {
   "source": "V2FramePage",
-  "cid": "southpark",
+  "cid": "stooges",
   "season": "3",
   "episode": "5",
   "frame": "12345",
   "fineTuningIndex": "2",
-  "searchTerm": "cheesy poofs"
+  "searchTerm": "cream pies"
 }
 ```
 Optional fields: `editorProjectId` (when coming from the advanced editor).
@@ -51,13 +51,13 @@ Sent after a frame successfully saves to a user's library.
 
 ```json
 {
-  "cid": "southpark",
+  "cid": "stooges",
   "season": "3",
   "episode": "5",
   "frame": "12345",
   "fineTuningIndex": "2",
   "source": "V2FramePage",
-  "searchTerm": "cheesy poofs"
+  "searchTerm": "cream pies"
 }
 ```
 
@@ -108,7 +108,7 @@ Fired when a user toggles the favorite star for a show or movie.
 
 ```json
 {
-  "indexId": "southpark",
+  "indexId": "stooges",
   "source": "FavoriteToggle",
   "nextIsFavorite": true,
   "favoritesCount": 6
@@ -165,18 +165,18 @@ Captured when the V2 advanced editor loads a background image, whether from the 
 ```json
 {
   "source": "V2EditorPage",
-  "cid": "southpark",
+  "cid": "stooges",
   "season": "3",
   "episode": "5",
   "frame": "12345",
   "fineTuningIndex": "2",
   "selectedFrameIndex": 7,
-  "fid": "sp-3-5-12345",
+  "fid": "stooges-3-5-12345",
   "editorProjectId": "abc123",
   "fromCollage": false,
   "hasUploadedImage": false,
   "imageLoaded": true,
-  "searchTerm": "cheesy poofs"
+  "searchTerm": "cream pies"
 }
 ```
 When the editor is opened from a collage or upload, only the relevant fields (`fromCollage`, `hasUploadedImage`, etc.) populate.
@@ -187,7 +187,7 @@ Logged when the Save button is clicked inside the advanced editor dialog flow.
 ```json
 {
   "source": "V2EditorPage",
-  "cid": "southpark",
+  "cid": "stooges",
   "season": "3",
   "episode": "5",
   "frame": "12345",
@@ -195,7 +195,7 @@ Logged when the Save button is clicked inside the advanced editor dialog flow.
   "editorProjectId": "abc123",
   "fromCollage": false,
   "hasUploadedImage": false,
-  "searchTerm": "cheesy poofs"
+  "searchTerm": "cream pies"
 }
 ```
 
@@ -205,7 +205,7 @@ Fire when the advanced editor’s “Add text layer” control is used.
 ```json
 {
   "source": "V2EditorPage",
-  "cid": "southpark",
+  "cid": "stooges",
   "season": "3",
   "episode": "5",
   "frame": "12345",
@@ -213,7 +213,7 @@ Fire when the advanced editor’s “Add text layer” control is used.
   "selectedFrameIndex": 7,
   "canvasObjectCount": 2,
   "nextCanvasObjectCount": 3,
-  "searchTerm": "cheesy poofs"
+  "searchTerm": "cream pies"
 }
 ```
 Optional fields: `editorProjectId` (when editing a saved project).
