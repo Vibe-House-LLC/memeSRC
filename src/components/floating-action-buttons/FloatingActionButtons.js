@@ -6,6 +6,7 @@ import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { UserContext } from '../../UserContext';
+import { trackUsageEvent } from '../../utils/trackUsageEvent';
 
 // Define constants for colors and fonts
 const PRIMARY_COLOR = '#4285F4';
@@ -64,6 +65,17 @@ function FloatingActionButtons({ shows, showAd }) {
     // Check if user is an admin
     const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
 
+    const handleRandomClick = () => {
+        const payload = {
+            source: 'FloatingActionButtons',
+            showCount: Array.isArray(shows) ? shows.length : 0,
+            hasAd: showAd,
+        };
+
+        trackUsageEvent('random_frame', payload);
+        loadRandomFrame(shows);
+    };
+
     return (
         <>
             <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
@@ -93,7 +105,7 @@ function FloatingActionButtons({ shows, showAd }) {
                 )}
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn" hasAd={showAd}>
-                <StyledButton onClick={() => { loadRandomFrame(shows) }} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+                <StyledButton onClick={handleRandomClick} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
             </StyledRightFooter>
             
         </>

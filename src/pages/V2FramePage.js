@@ -246,6 +246,7 @@ export default function FramePage() {
   // Inline confirmation for library (no snackbar)
   const [savedToLibrary, setSavedToLibrary] = useState(false);
   const [savingToLibrary, setSavingToLibrary] = useState(false);
+  const [loadedSubtitle, setLoadedSubtitle] = useState('');
 
   const resolveSearchTerm = useCallback(() => {
     if (typeof urlSearchTerm === 'string' && urlSearchTerm.length > 0) {
@@ -693,7 +694,6 @@ useEffect(() => {
   };
 
   const [frames, setFrames] = useState();
-  const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
   const [, setOriginalSubtitle] = useState('');
   const [, setSubtitleUserInteracted] = useState(false);
   const [, setLoadedSeason] = useState('');
