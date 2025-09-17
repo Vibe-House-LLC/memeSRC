@@ -146,6 +146,19 @@ Tracks montage generation requests from the collage builder.
 ```
 Optional fields: `projectId` (when editing an existing project).
 
+## collage_select_photos
+Logged when the collage start screen opens the library picker.
+
+```json
+{
+  "source": "BulkUploadSection",
+  "via": "library_cta",
+  "hasImages": false,
+  "isAdmin": false,
+  "hasLibraryAccess": true
+}
+```
+
 ## view_image_advanced
 Captured when the V2 advanced editor loads a background image, whether from the catalog, a project, or a collage hand-off.
 
