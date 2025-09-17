@@ -1277,6 +1277,7 @@ const EditorPage = ({ shows }) => {
   };
 
   const { cid, season, episode, frame } = useParams();
+  const [confirmedCid, setConfirmedCid] = useState();
 
   const handleViewEpisodeClick = useCallback(() => {
     const eventPayload = {
@@ -1316,12 +1317,16 @@ const EditorPage = ({ shows }) => {
     trackUsageEvent('view_episode', eventPayload);
   }, [confirmedCid, cid, season, episode, frame, fineTuningIndex, editorProjectId, searchQuery]);
 
+  const episodeLink = (() => {
+    const frameNumber = Number(frame);
+    const anchorFrame = Number.isFinite(frameNumber) ? Math.round(frameNumber / 10) * 10 : frame;
+    const searchSuffix = searchQuery ? `?searchTerm=${searchQuery}` : '';
+    return `/episode/${cid}/${season}/${episode}/${anchorFrame}${searchSuffix}`;
+  })();
+
   // ------------------------------------------------------------------------
 
   /* -------------------------------- New Stuff ------------------------------- */
-
-
-  const [confirmedCid, setConfirmedCid] = useState();
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [loadingCsv, setLoadingCsv] = useState();
   const [frames, setFrames] = useState();
@@ -2418,7 +2423,8 @@ const EditorPage = ({ shows }) => {
                   <Button
                     variant="contained"
                     fullWidth
-                    href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                    component={Link}
+                    to={episodeLink}
                     onClick={handleViewEpisodeClick}
                     sx={{
                       color: '#e5e7eb',

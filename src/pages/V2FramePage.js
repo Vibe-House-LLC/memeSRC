@@ -278,6 +278,13 @@ export default function FramePage() {
     trackUsageEvent('view_episode', eventPayload);
   }, [cid, confirmedCid, season, episode, frame, fineTuningIndex, resolveSearchTerm]);
 
+  const episodeLink = (() => {
+    const frameNumber = Number(frame);
+    const anchorFrame = Number.isFinite(frameNumber) ? Math.round(frameNumber / 10) * 10 : frame;
+    const searchSuffix = urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : '';
+    return `/episode/${cid}/${season}/${episode}/${anchorFrame}${searchSuffix}`;
+  })();
+
   const theme = useTheme();
 
   const handleSnackbarOpen = () => {
@@ -1739,7 +1746,8 @@ useEffect(() => {
               <Button
                 variant="contained"
                 fullWidth
-                href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`}
+                component={RouterLink}
+                to={episodeLink}
                 onClick={handleViewEpisodeClick}
                 sx={{
                   color: '#e5e7eb',
