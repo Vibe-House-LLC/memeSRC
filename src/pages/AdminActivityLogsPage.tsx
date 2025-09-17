@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   Container,
   Stack,
   Table,
@@ -32,22 +31,34 @@ interface UsageEvent {
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  search: 'Search',
-  view_image: 'View Image',
-  view_episode: 'View Episode',
-  add_to_library: 'Add To Library',
-  library_upload: 'Library Upload',
-  library_delete: 'Library Delete',
-  favorite_add: 'Favorite Added',
-  favorite_remove: 'Favorite Removed',
-  random_frame: 'Random Frame',
-  collage_generate: 'Collage Generate',
-  collage_select_photos: 'Collage Select Photos',
-  view_image_advanced: 'View Image (Advanced Editor)',
-  advanced_editor_save: 'Advanced Editor Save',
-  advanced_editor_add_text_layer: 'Advanced Editor Add Text Layer',
+interface EventTypeMeta {
+  label: string;
+}
+
+const EVENT_TYPE_META: Record<string, EventTypeMeta> = {
+  search: { label: 'Search' },
+  view_image: { label: 'View Image' },
+  view_episode: { label: 'View Episode' },
+  add_to_library: { label: 'Add To Library' },
+  library_upload: { label: 'Library Upload' },
+  library_delete: { label: 'Library Delete' },
+  favorite_add: { label: 'Favorite Added' },
+  favorite_remove: { label: 'Favorite Removed' },
+  random_frame: { label: 'Random Frame' },
+  collage_generate: { label: 'Collage Generate' },
+  collage_select_photos: { label: 'Collage Select Photos' },
+  view_image_advanced: { label: 'View Image (Advanced Editor)' },
+  advanced_editor_save: { label: 'Advanced Editor Save' },
+  advanced_editor_add_text_layer: { label: 'Advanced Editor Add Text Layer' },
 };
+
+const deriveFallbackLabel = (eventType: string): string =>
+  eventType
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const getEventTypeMeta = (eventType: string): EventTypeMeta =>
+  EVENT_TYPE_META[eventType] ?? { label: deriveFallbackLabel(eventType) };
 
 const identities = ['us-east-1:mock-admin', 'us-east-1:mock-power-user'];
 
@@ -65,74 +76,6 @@ const formatRelativeTime = (iso: string, reference: number): string => {
   return remainingSeconds
     ? `${diffMinutes}m ${remainingSeconds}s ago`
     : `${diffMinutes}m ago`;
-};
-
-const buildSummary = (event: UsageEvent): string => {
-  const data = event.eventData;
-  const segments: string[] = [];
-
-  const source = data['source'];
-  if (typeof source === 'string') {
-    segments.push(`Source: ${source}`);
-  }
-
-  const searchTerm = data['searchTerm'];
-  if (typeof searchTerm === 'string') {
-    segments.push(`Search: "${searchTerm}"`);
-  }
-
-  const index = data['index'] || data['indexId'];
-  if (typeof index === 'string') {
-    segments.push(`Index: ${index}`);
-  }
-
-  const cid = data['cid'];
-  if (typeof cid === 'string') {
-    segments.push(`CID: ${cid}`);
-  }
-
-  const uploadedCount = data['uploadedCount'];
-  if (typeof uploadedCount === 'number') {
-    segments.push(`Uploaded: ${uploadedCount}`);
-  }
-
-  const deletedCount = data['deletedCount'];
-  if (typeof deletedCount === 'number') {
-    segments.push(`Deleted: ${deletedCount}`);
-  }
-
-  const favoritesCount = data['favoritesCount'];
-  if (typeof favoritesCount === 'number') {
-    segments.push(`Favorites: ${favoritesCount}`);
-  }
-
-  const hasCustomLayout = data['hasCustomLayout'];
-  if (typeof hasCustomLayout === 'boolean') {
-    segments.push(hasCustomLayout ? 'Custom layout' : 'Template layout');
-  }
-
-  const files = data['files'];
-  if (Array.isArray(files)) {
-    segments.push(`Files: ${files.length}`);
-  }
-
-  const keys = data['keys'];
-  if (Array.isArray(keys)) {
-    segments.push(`Keys removed: ${keys.length}`);
-  }
-
-  const panelCount = data['panelCount'];
-  if (typeof panelCount === 'number') {
-    segments.push(`Panels: ${panelCount}`);
-  }
-
-  const canvasObjectCount = data['canvasObjectCount'];
-  const nextCanvasObjectCount = data['nextCanvasObjectCount'];
-  if (typeof canvasObjectCount === 'number' && typeof nextCanvasObjectCount === 'number') {
-    segments.push(`Text layers: ${canvasObjectCount} -> ${nextCanvasObjectCount}`);
-  }
-
-  return segments.length > 0 ? segments.join(' | ') : '-';
 };
 
 const generateMockUsageEvents = (referenceTime: number): UsageEvent[] => {
@@ -471,6 +414,25 @@ const AdminActivityLogsPage: React.FC = () => {
     </Button>
   );
 
+  const renderEventTypeInfo = (eventType: string) => {
+    const { label } = getEventTypeMeta(eventType);
+
+    return (
+      <Stack spacing={0.25}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          {label}
+        </Typography>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontFamily: 'Source Code Pro, monospace' }}
+        >
+          {eventType}
+        </Typography>
+      </Stack>
+    );
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 3, sm: 4 } }}>
       <Helmet>
@@ -518,50 +480,49 @@ const AdminActivityLogsPage: React.FC = () => {
                 </CardContent>
               </Card>
             ) : (
-              sortedEvents.map((event) => {
-                const eventLabel = EVENT_TYPE_LABELS[event.eventType] || event.eventType;
-                return (
-                  <Card key={event.id} variant="outlined">
-                    <CardContent>
-                      <Stack spacing={1.25}>
-                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                          <Chip label={eventLabel} size="small" color="primary" variant="outlined" />
+              sortedEvents.map((event) => (
+                <Card key={event.id} variant="outlined">
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
+                        {renderEventTypeInfo(event.eventType)}
+                        <Stack spacing={0.25} alignItems="flex-end">
                           <Typography variant="body2" fontWeight={600}>
                             {formatRelativeTime(event.createdAt, lastRefresh)}
                           </Typography>
-                        </Stack>
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(event.createdAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                          })}
-                        </Typography>
-                        {event.identityId && (
                           <Typography variant="caption" color="text.secondary">
-                            Identity: {event.identityId}
+                            {new Date(event.createdAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })}
                           </Typography>
-                        )}
-                        <Box
-                          component="pre"
-                          sx={{
-                            m: 0,
-                            fontSize: 11,
-                            fontFamily: 'Source Code Pro, monospace',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            bgcolor: 'action.hover',
-                            borderRadius: 1,
-                            p: 1,
-                          }}
-                        >
-                          {JSON.stringify(event.eventData, null, 2)}
-                        </Box>
+                        </Stack>
                       </Stack>
-                    </CardContent>
-                  </Card>
-                );
-              })
+                      {event.identityId && (
+                        <Typography variant="caption" color="text.secondary">
+                          Identity: {event.identityId}
+                        </Typography>
+                      )}
+                      <Box
+                        component="pre"
+                        sx={{
+                          m: 0,
+                          fontSize: 11,
+                          fontFamily: 'Source Code Pro, monospace',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          bgcolor: 'action.hover',
+                          borderRadius: 1,
+                          p: 1,
+                        }}
+                      >
+                        {JSON.stringify(event.eventData, null, 2)}
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </Stack>
         ) : (
@@ -571,73 +532,64 @@ const AdminActivityLogsPage: React.FC = () => {
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell width="18%">Event Type</TableCell>
-                      <TableCell width="18%">When</TableCell>
-                      <TableCell width="26%">Summary</TableCell>
+                      <TableCell width="22%">Event Type</TableCell>
+                      <TableCell width="20%">When</TableCell>
                       <TableCell>Details</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {sortedEvents.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4}>
+                        <TableCell colSpan={3}>
                           <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
                             No events recorded within the last 10 minutes.
                           </Typography>
                         </TableCell>
                       </TableRow>
                     )}
-                    {sortedEvents.map((event) => {
-                      const eventLabel = EVENT_TYPE_LABELS[event.eventType] || event.eventType;
-                      return (
-                        <TableRow key={event.id} hover>
-                          <TableCell>
-                            <Stack spacing={1}>
-                              <Chip label={eventLabel} size="small" color="primary" variant="outlined" />
-                              {event.identityId && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {event.identityId}
-                                </Typography>
-                              )}
-                            </Stack>
-                          </TableCell>
-                          <TableCell>
-                            <Stack spacing={0.5}>
-                              <Typography variant="body2">{formatRelativeTime(event.createdAt, lastRefresh)}</Typography>
+                    {sortedEvents.map((event) => (
+                      <TableRow key={event.id} hover>
+                        <TableCell>
+                          <Stack spacing={0.75}>
+                            {renderEventTypeInfo(event.eventType)}
+                            {event.identityId && (
                               <Typography variant="caption" color="text.secondary">
-                                {new Date(event.createdAt).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  second: '2-digit',
-                                })}
+                                {event.identityId}
                               </Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" color="text.primary">
-                              {buildSummary(event)}
+                            )}
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Stack spacing={0.5}>
+                            <Typography variant="body2">{formatRelativeTime(event.createdAt, lastRefresh)}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(event.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                              })}
                             </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Box
-                              component="pre"
-                              sx={{
-                                m: 0,
-                                fontSize: 12,
-                                fontFamily: 'Source Code Pro, monospace',
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-word',
-                                bgcolor: 'action.hover',
-                                borderRadius: 1,
-                                p: 1,
-                              }}
-                            >
-                              {JSON.stringify(event.eventData, null, 2)}
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Box
+                            component="pre"
+                            sx={{
+                              m: 0,
+                              fontSize: 12,
+                              fontFamily: 'Source Code Pro, monospace',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                              bgcolor: 'action.hover',
+                              borderRadius: 1,
+                              p: 1,
+                            }}
+                          >
+                            {JSON.stringify(event.eventData, null, 2)}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </TableContainer>
