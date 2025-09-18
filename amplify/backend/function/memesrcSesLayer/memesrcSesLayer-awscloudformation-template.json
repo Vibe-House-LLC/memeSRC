@@ -20,7 +20,7 @@
     }
   },
   "Resources": {
-    "LambdaLayerVersion46219167": {
+    "LambdaLayerVersion916678fc": {
       "Type": "AWS::Lambda::LayerVersion",
       "Properties": {
         "CompatibleRuntimes": [
@@ -30,9 +30,9 @@
           "S3Bucket": {
             "Ref": "deploymentBucketName"
           },
-          "S3Key": "amplify-builds/memesrcSesLayer-LambdaLayerVersion46219167-build.zip"
+          "S3Key": "amplify-builds/memesrcSesLayer-LambdaLayerVersion916678fc-build.zip"
         },
-        "Description": "Updated layer version 2025-09-12T16:15:27.050Z",
+        "Description": "Updated layer version 2025-09-16T20:00:40.261Z",
         "LayerName": {
           "Fn::Sub": [
             "memesrcSesLayer-${env}",
@@ -47,11 +47,11 @@
       "DeletionPolicy": "Delete",
       "UpdateReplacePolicy": "Retain"
     },
-    "LambdaLayerPermissionPrivate46219167": {
+    "LambdaLayerPermissionPrivate916678fc": {
       "Type": "AWS::Lambda::LayerVersionPermission",
       "Properties": {
         "Action": "lambda:GetLayerVersion",
-        "LayerVersionArn": "arn:aws:lambda:us-east-1:458585755494:layer:memesrcSesLayer-dev:3",
+        "LayerVersionArn": "arn:aws:lambda:us-east-1:458585755494:layer:memesrcSesLayer-dev:9",
         "Principal": {
           "Ref": "AWS::AccountId"
         }
@@ -61,7 +61,7 @@
   "Outputs": {
     "Arn": {
       "Value": {
-        "Ref": "LambdaLayerVersion46219167"
+        "Ref": "LambdaLayerVersion916678fc"
       }
     }
   }

@@ -598,6 +598,22 @@
       "dependsOn": [
         {
           "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
             "Arn"
           ],
           "category": "function",
@@ -630,22 +646,6 @@
           ],
           "category": "function",
           "resourceName": "memesrcOpenSearchLayer"
-        },
-        {
-          "attributes": [
-            "GraphQLAPIIdOutput",
-            "GraphQLAPIEndpointOutput",
-            "GraphQLAPIKeyOutput"
-          ],
-          "category": "api",
-          "resourceName": "memesrc"
-        },
-        {
-          "attributes": [
-            "BucketName"
-          ],
-          "category": "storage",
-          "resourceName": "memesrcGeneratedImages"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -1619,6 +1619,22 @@
         {
           "category": "function",
           "resourceName": "memesrcSourceMediaZipProcessor"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcStartIndexingAndPublishing_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcStartIndexingAndPublishing"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcStartIndexingAndPublishing_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcStartIndexingAndPublishing"
         }
       ]
     },

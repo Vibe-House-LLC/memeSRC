@@ -16,22 +16,6 @@
     "s3Key": {
       "Type": "String"
     },
-    "apimemesrcGraphQLAPIIdOutput": {
-      "Type": "String",
-      "Default": "apimemesrcGraphQLAPIIdOutput"
-    },
-    "apimemesrcGraphQLAPIEndpointOutput": {
-      "Type": "String",
-      "Default": "apimemesrcGraphQLAPIEndpointOutput"
-    },
-    "apimemesrcGraphQLAPIKeyOutput": {
-      "Type": "String",
-      "Default": "apimemesrcGraphQLAPIKeyOutput"
-    },
-    "storagememesrcGeneratedImagesBucketName": {
-      "Type": "String",
-      "Default": "storagememesrcGeneratedImagesBucketName"
-    },
     "functionmemesrcGraphQlLayerArn": {
       "Type": "String",
       "Default": "functionmemesrcGraphQlLayerArn"
@@ -51,6 +35,22 @@
     "functionmemesrcOpenSearchLayerArn": {
       "Type": "String",
       "Default": "functionmemesrcOpenSearchLayerArn"
+    },
+    "apimemesrcGraphQLAPIIdOutput": {
+      "Type": "String",
+      "Default": "apimemesrcGraphQLAPIIdOutput"
+    },
+    "apimemesrcGraphQLAPIEndpointOutput": {
+      "Type": "String",
+      "Default": "apimemesrcGraphQLAPIEndpointOutput"
+    },
+    "apimemesrcGraphQLAPIKeyOutput": {
+      "Type": "String",
+      "Default": "apimemesrcGraphQLAPIKeyOutput"
+    },
+    "storagememesrcGeneratedImagesBucketName": {
+      "Type": "String",
+      "Default": "storagememesrcGeneratedImagesBucketName"
     }
   },
   "Conditions": {
@@ -334,8 +334,7 @@
               "Effect": "Allow",
               "Action": [
                 "s3:PutObject",
-                "s3:GetObject",
-                "s3:DeleteObject"
+                "s3:GetObject"
               ],
               "Resource": [
                 {
