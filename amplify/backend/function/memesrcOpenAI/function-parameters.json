@@ -15,7 +15,6 @@
   },
   "lambdaLayers": [],
   "secretNames": [
-    "openai_apikey",
-    "gemini_api_key"
+    "openai_apikey"
   ]
 }
