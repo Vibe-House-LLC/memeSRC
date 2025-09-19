@@ -345,18 +345,6 @@
         "setting": "private"
       }
     },
-    "/library/delete": {
-      "name": "/library/delete",
-      "lambdaFunction": "memesrcDeleteFromLibrary",
-      "permissions": {
-        "setting": "private",
-        "auth": [
-          "create",
-          "read",
-          "update"
-        ]
-      }
-    },
     "/media/index": {
       "name": "/media/index",
       "lambdaFunction": "memesrcStartIndexingAndPublishing",
@@ -369,6 +357,39 @@
           ]
         },
         "setting": "private"
+      }
+    },
+    "/library/delete": {
+      "name": "/library/delete",
+      "lambdaFunction": "memesrcDeleteFromLibrary",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update",
+          "delete"
+        ],
+        "groups": {
+          "admins": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "mods": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ],
+          "contributors": [
+            "create",
+            "read",
+            "update",
+            "delete"
+          ]
+        }
       }
     }
   }
