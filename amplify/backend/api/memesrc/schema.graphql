@@ -339,14 +339,6 @@ type UsageEvent
       {
         allow: owner
         ownerField: "identityId"
-        identityClaim: "sub"
-        operations: [create, read]
-      },
-      {
-        allow: owner
-        ownerField: "identityId"
-        identityClaim: "cognito-identity.amazonaws.com:sub"
-        provider: iam
         operations: [create, read]
       },
       { allow: groups, groups: ["admins", "mods"], operations: [read] }
@@ -354,7 +346,11 @@ type UsageEvent
   ) {
   id: ID!
   identityId: String
-    @index(name: "byIdentityId", queryField: "usageEventsByIdentity")
+    @index(
+      name: "byIdentityId", 
+      queryField: "usageEventsByIdentity"
+      sortKeyFields: ["createdAt"]
+    )
   eventType: String!
     @index(
       name: "byEventType"
@@ -362,6 +358,7 @@ type UsageEvent
       sortKeyFields: ["createdAt"]
     )
   eventData: AWSJSON
+  sessionId: String!
   createdAt: AWSDateTime!
 }
 
