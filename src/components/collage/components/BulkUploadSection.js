@@ -1109,13 +1109,6 @@ const BulkUploadSection = ({
                     size="large"
                     startIcon={<PhotoLibrary />}
                     onClick={() => {
-                      trackUsageEvent('collage_select_photos', {
-                        source: 'BulkUploadSection',
-                        via: 'library_cta',
-                        hasImages: Array.isArray(selectedImages) && selectedImages.length > 0,
-                        isAdmin,
-                        hasLibraryAccess,
-                      });
                       setShowLibrary(true);
                     }}
                     sx={{ fontWeight: 700, textTransform: 'none', minWidth: 220 }}

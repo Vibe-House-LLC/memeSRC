@@ -65,7 +65,7 @@ const EVENT_TYPE_META: Record<string, EventTypeMeta> = {
   favorite_remove: { label: 'Favorite Removed' },
   random_frame: { label: 'Random Frame' },
   collage_generate: { label: 'Collage Generate' },
-  collage_select_photos: { label: 'Collage Select Photos' },
+  
   view_image_advanced: { label: 'View Image (Advanced Editor)' },
   advanced_editor_save: { label: 'Advanced Editor Save' },
   advanced_editor_add_text_layer: { label: 'Advanced Editor Add Text Layer' },
@@ -318,20 +318,7 @@ const generateMockUsageEventData = (
       templateId: 'story-3x2',
       projectId: 'proj-99',
     });
-  registerEvent('collage_select_photos', 270, {
-      source: 'BulkUploadSection',
-      via: 'library_cta',
-      hasImages: false,
-      isAdmin: true,
-      hasLibraryAccess: true,
-    });
-  registerEvent('collage_select_photos', 585, {
-      source: 'BulkUploadSection',
-      via: 'camera_roll',
-      hasImages: true,
-      isAdmin: false,
-      hasLibraryAccess: true,
-    });
+  
   registerEvent('view_image_advanced', 285, {
       source: 'V2EditorPage',
       cid: 'office',
