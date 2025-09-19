@@ -358,7 +358,7 @@ type UsageEvent
       sortKeyFields: ["createdAt"]
     )
   eventData: AWSJSON
-  sessionId: String!
+  sessionId: String
   createdAt: AWSDateTime!
 }
 
