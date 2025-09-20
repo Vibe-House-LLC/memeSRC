@@ -1,8 +1,21 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { API, graphqlOperation, Hub } from 'aws-amplify';
 import { CONNECTION_STATE_CHANGE } from '@aws-amplify/pubsub';
-import { Alert, Box, Button, Chip, CircularProgress, Container, Paper, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  ButtonBase,
+  Chip,
+  CircularProgress,
+  Collapse,
+  Container,
+  Paper,
+  Stack,
+  Typography,
+} from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
 import { getUsageEvent } from '../graphql/queries';
@@ -15,31 +28,140 @@ const USAGE_EVENT_SUBSCRIPTION = /* GraphQL */ `
   }
 `;
 
+const GET_USAGE_EVENT_SUMMARY = /* GraphQL */ `
+  query GetUsageEventSummary($id: ID!) {
+    getUsageEvent(id: $id) {
+      id
+      eventType
+      identityId
+      sessionId
+      createdAt
+    }
+  }
+`;
+
+type UsageEventSummary = {
+  id: string;
+  eventType?: string | null;
+  identityId?: string | null;
+  sessionId?: string | null;
+  createdAt?: string | null;
+};
+
+type UsageEventDetail = {
+  id: string;
+  identityId?: string | null;
+  eventType?: string | null;
+  eventData?: string | null;
+  sessionId?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
 type UsageEventLogEntry = {
   id: string;
   receivedAt: string;
-  eventPayload: unknown;
-  eventSummary?: string;
-  formattedEvent: string;
-  formattedRaw: string;
-  formattedErrors?: string;
-  status: 'pending' | 'loaded' | 'error';
-  fetchError?: string;
+  summaryStatus: 'loading' | 'loaded' | 'error';
+  detailStatus: 'idle' | 'loading' | 'loaded' | 'error';
+  summary?: UsageEventSummary | null;
+  detail?: UsageEventDetail | null;
+  formattedEventData?: string;
+  formattedDetail?: string;
+  rawPayload: string;
+  rawErrors?: string;
+  summaryError?: string;
+  detailError?: string;
 };
 
 type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
 
+type ChipColor = 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
+
 const MAX_EVENTS = 100;
+
+const EVENT_COLOR_MAP: Record<string, ChipColor> = {
+  search: 'info',
+  view_image: 'primary',
+  view_episode: 'secondary',
+  add_to_library: 'success',
+  library_upload: 'success',
+  library_delete: 'warning',
+  favorite_add: 'success',
+  favorite_remove: 'warning',
+  random_frame: 'info',
+  collage_generate: 'secondary',
+  view_image_advanced: 'primary',
+  advanced_editor_save: 'success',
+  advanced_editor_add_text_layer: 'info',
+};
+
+const safeStringify = (input: unknown) => {
+  if (input === undefined) return 'undefined';
+  try {
+    return JSON.stringify(input, null, 2);
+  } catch (error) {
+    return String(input);
+  }
+};
+
+const parseEventData = (rawValue: string | null | undefined) => {
+  if (rawValue === null || rawValue === undefined) {
+    return { formatted: undefined };
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    return { formatted: safeStringify(parsed) };
+  } catch (error) {
+    return { formatted: safeStringify(rawValue) };
+  }
+};
+
+const formatTimestamp = (iso: string | null | undefined) => {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(date);
+};
+
+const formatEventTypeLabel = (value: string | null | undefined) => {
+  if (!value) return 'Unknown Event';
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((word) => (word ? `${word.charAt(0).toUpperCase()}${word.slice(1)}` : word))
+    .join(' ');
+};
+
+const shortenIdentifier = (value: string | null | undefined) => {
+  if (!value) return null;
+  return value.length <= 20 ? value : `${value.slice(0, 8)}…${value.slice(-6)}`;
+};
 
 export default function AdminUsageEventsLog() {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const isAdmin = Array.isArray(user?.['cognito:groups']) && user['cognito:groups'].includes('admins');
   const [events, setEvents] = useState<UsageEventLogEntry[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle');
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  const isAdmin = Array.isArray(user?.['cognito:groups']) && user['cognito:groups'].includes('admins');
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (user !== false && !isAdmin) {
@@ -57,7 +179,6 @@ export default function AdminUsageEventsLog() {
       const { payload } = capsule || {};
       if (payload?.event === CONNECTION_STATE_CHANGE) {
         const state = payload?.data?.connectionState as string | undefined;
-        if (!state) return;
         switch (state) {
           case 'Connected':
             setConnectionStatus('connected');
@@ -77,6 +198,8 @@ export default function AdminUsageEventsLog() {
       }
     };
 
+    let isActive = true;
+
     const observable = API.graphql(graphqlOperation(USAGE_EVENT_SUBSCRIPTION)) as any;
 
     if (!observable || typeof observable.subscribe !== 'function') {
@@ -89,31 +212,23 @@ export default function AdminUsageEventsLog() {
 
     const subscription = observable.subscribe({
       next: ({ value }: { value: any }) => {
+        if (!isActive || !isMountedRef.current) return;
+
         setConnectionStatus('connected');
         const subscriptionData = value?.data?.onCreateUsageEvent;
         const subscriptionErrors = value?.errors;
-
-        const safeStringify = (input: unknown) => {
-          try {
-            return JSON.stringify(input, null, 2);
-          } catch (error) {
-            return String(input);
-          }
-        };
-
         const eventId: string | undefined = subscriptionData?.id;
 
+        const entryId = eventId || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
         const baseEntry: UsageEventLogEntry = {
-          id: eventId || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          id: entryId,
           receivedAt: new Date().toISOString(),
-          eventPayload: null,
-          formattedEvent: eventId
-            ? 'Loading usage event details…'
-            : 'No event id returned by subscription. Raw payload logged below.',
-          formattedRaw: safeStringify(value),
-          formattedErrors: subscriptionErrors?.length ? safeStringify(subscriptionErrors) : undefined,
-          status: eventId ? 'pending' : 'error',
-          fetchError: eventId ? undefined : 'Subscription did not include an event id.',
+          summaryStatus: eventId ? 'loading' : 'error',
+          detailStatus: 'idle',
+          rawPayload: safeStringify(value),
+          rawErrors: subscriptionErrors?.length ? safeStringify(subscriptionErrors) : undefined,
+          summaryError: eventId ? undefined : 'Subscription did not include an event id.',
         };
 
         setEvents((prev) => [baseEntry, ...prev].slice(0, MAX_EVENTS));
@@ -125,38 +240,40 @@ export default function AdminUsageEventsLog() {
         void (async () => {
           try {
             const result: any = await API.graphql(
-              graphqlOperation(getUsageEvent, { id: eventId })
+              graphqlOperation(GET_USAGE_EVENT_SUMMARY, { id: eventId })
             );
-            const record = result?.data?.getUsageEvent;
+            const summary = result?.data?.getUsageEvent as UsageEventSummary | null;
+
+            if (!isActive || !isMountedRef.current) return;
 
             setEvents((prev) =>
               prev.map((entry) => {
-                if (entry.id !== baseEntry.id) return entry;
-
-                const summaryParts: string[] = [];
-                if (record?.eventType) summaryParts.push(String(record.eventType));
-                if (record?.identityId) summaryParts.push(String(record.identityId));
-
+                if (entry.id !== entryId) return entry;
+                if (!summary) {
+                  return {
+                    ...entry,
+                    summaryStatus: 'error',
+                    summaryError: 'Usage event record was empty.',
+                  };
+                }
                 return {
                   ...entry,
-                  eventPayload: record,
-                  eventSummary: summaryParts.length ? summaryParts.join(' · ') : entry.eventSummary,
-                  formattedEvent: safeStringify(record ?? entry.formattedEvent),
-                  status: 'loaded',
-                  fetchError: undefined,
+                  summaryStatus: 'loaded',
+                  summary,
+                  summaryError: undefined,
                 };
               })
             );
           } catch (error) {
+            if (!isActive || !isMountedRef.current) return;
+
             setEvents((prev) =>
               prev.map((entry) => {
-                if (entry.id !== baseEntry.id) return entry;
-
+                if (entry.id !== entryId) return entry;
                 return {
                   ...entry,
-                  status: 'error',
-                  fetchError: safeStringify(error),
-                  formattedEvent: 'Failed to load usage event details.',
+                  summaryStatus: 'error',
+                  summaryError: safeStringify(error),
                 };
               })
             );
@@ -165,6 +282,7 @@ export default function AdminUsageEventsLog() {
       },
       error: (error: any) => {
         console.warn('Usage event subscription error', error);
+        if (!isActive || !isMountedRef.current) return;
         setConnectionStatus('error');
         const message = error?.errors?.[0]?.message || error?.message || 'Unknown subscription error.';
         setSubscriptionError(message);
@@ -172,12 +290,101 @@ export default function AdminUsageEventsLog() {
     });
 
     return () => {
+      isActive = false;
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe();
       }
       Hub.remove('api', handleHubCapsule);
     };
   }, [isAdmin]);
+
+  const fetchEventDetail = (entryId: string) => {
+    const currentEntry = events.find((event) => event.id === entryId);
+
+    if (!currentEntry || currentEntry.detailStatus === 'loading' || currentEntry.detailStatus === 'loaded') {
+      return;
+    }
+
+    const recordId = currentEntry.summary?.id ?? currentEntry.id;
+
+    if (!recordId) {
+      setEvents((prev) =>
+        prev.map((entry) => {
+          if (entry.id !== entryId) return entry;
+          return {
+            ...entry,
+            detailStatus: 'error',
+            detailError: 'Usage event id was unavailable.',
+          };
+        })
+      );
+      return;
+    }
+
+    setEvents((prev) =>
+      prev.map((entry) => {
+        if (entry.id !== entryId) return entry;
+        return {
+          ...entry,
+          detailStatus: 'loading',
+          detailError: undefined,
+        };
+      })
+    );
+
+    void (async () => {
+      try {
+        const result: any = await API.graphql(
+          graphqlOperation(getUsageEvent, { id: recordId })
+        );
+        const detail = result?.data?.getUsageEvent as UsageEventDetail | null;
+        if (!isMountedRef.current) return;
+
+        if (!detail) {
+          setEvents((prev) =>
+            prev.map((entry) => {
+              if (entry.id !== entryId) return entry;
+              return {
+                ...entry,
+                detailStatus: 'error',
+                detailError: 'Usage event record was empty.',
+              };
+            })
+          );
+          return;
+        }
+
+        const { formatted: formattedEventData } = parseEventData(detail.eventData ?? null);
+
+        setEvents((prev) =>
+          prev.map((entry) => {
+            if (entry.id !== entryId) return entry;
+            return {
+              ...entry,
+              detailStatus: 'loaded',
+              detail,
+              formattedEventData,
+              formattedDetail: safeStringify(detail),
+              detailError: undefined,
+            };
+          })
+        );
+      } catch (error) {
+        if (!isMountedRef.current) return;
+
+        setEvents((prev) =>
+          prev.map((entry) => {
+            if (entry.id !== entryId) return entry;
+            return {
+              ...entry,
+              detailStatus: 'error',
+              detailError: safeStringify(error),
+            };
+          })
+        );
+      }
+    })();
+  };
 
   const isUserLoading = user === false;
 
@@ -188,12 +395,43 @@ export default function AdminUsageEventsLog() {
     return 'Idle';
   }, [connectionStatus]);
 
-  const statusColor: 'default' | 'success' | 'error' | 'warning' = useMemo(() => {
+  const statusColor: ChipColor = useMemo(() => {
     if (connectionStatus === 'connected') return 'success';
     if (connectionStatus === 'error') return 'error';
     if (connectionStatus === 'connecting') return 'warning';
     return 'default';
   }, [connectionStatus]);
+
+  const handleToggleExpand = (eventId: string) => {
+    const isExpanding = expandedEventId !== eventId;
+    setExpandedEventId(isExpanding ? eventId : null);
+
+    if (isExpanding) {
+      fetchEventDetail(eventId);
+    }
+  };
+
+  const renderJsonBlock = (title: string, content: string | null | undefined, emptyLabel?: string) => (
+    <Paper variant="outlined" sx={{ borderRadius: 2, px: 2, py: 1.5, backgroundColor: alpha(theme.palette.background.paper, isDarkMode ? 0.6 : 0.9) }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+        {title}
+      </Typography>
+      <Box
+        component="pre"
+        sx={{
+          m: 0,
+          fontFamily: 'Roboto Mono, Menlo, Consolas, "Liberation Mono", "Courier New", monospace',
+          fontSize: 13,
+          lineHeight: 1.6,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          color: theme.palette.text.primary,
+        }}
+      >
+        {content ?? emptyLabel ?? 'No data available.'}
+      </Box>
+    </Paper>
+  );
 
   if (isUserLoading) {
     return (
@@ -210,167 +448,233 @@ export default function AdminUsageEventsLog() {
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
       <Stack spacing={3}>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+        >
           <Box>
             <Typography variant="h4" fontWeight={800} gutterBottom>
               Usage Event Stream
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Showing raw payloads from the `onCreateUsageEvent` subscription.
+              Live feed of `onCreateUsageEvent`. Click any row to see the raw JSON payload.
             </Typography>
           </Box>
-          <Stack direction="column" spacing={1} alignItems="flex-end">
-            <Chip label={`Status: ${statusLabel}`} color={statusColor} size="small" variant={statusColor === 'default' ? 'outlined' : 'filled'} />
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Chip
+              label={`Status: ${statusLabel}`}
+              color={statusColor === 'default' ? 'default' : statusColor}
+              size="small"
+              variant={statusColor === 'default' ? 'outlined' : 'filled'}
+              sx={{ fontWeight: 600, letterSpacing: 0.3 }}
+            />
             <Button
               size="small"
-              onClick={() => setEvents([])}
+              onClick={() => {
+                setEvents([]);
+                setExpandedEventId(null);
+              }}
               disabled={events.length === 0}
               variant="outlined"
             >
               Clear log
             </Button>
           </Stack>
-        </Box>
+        </Stack>
 
         {subscriptionError && (
-          <Alert severity="error">{subscriptionError}</Alert>
+          <Alert severity="error" variant="outlined">
+            {subscriptionError}
+          </Alert>
         )}
 
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 2,
-            bgcolor: isDarkMode
-              ? alpha(theme.palette.common.white, 0.04)
-              : alpha(theme.palette.common.black, 0.03),
-            minHeight: 320,
-            maxHeight: '70vh',
-            overflow: 'auto',
-            fontFamily: 'monospace',
-            color: theme.palette.text.primary,
-          }}
-        >
-          {events.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              Waiting for events…
+        {events.length === 0 ? (
+          <Paper
+            variant="outlined"
+            sx={{
+              px: 3,
+              py: 6,
+              textAlign: 'center',
+              borderRadius: 3,
+              backgroundColor: alpha(theme.palette.primary.main, isDarkMode ? 0.12 : 0.06),
+            }}
+          >
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Waiting for events
             </Typography>
-          ) : (
-            <Stack spacing={2}>
-              {events.map((event) => {
-                const borderColor = (event.status === 'error' || event.formattedErrors)
-                  ? theme.palette.error.main
-                  : event.status === 'pending'
-                    ? theme.palette.warning.main
-                    : theme.palette.primary.main;
+            <Typography variant="body2" color="text.secondary">
+              Trigger any tracked action in the product and the event will appear here instantly.
+            </Typography>
+          </Paper>
+        ) : (
+          <Stack spacing={1.5}>
+            {events.map((event) => {
+              const normalizedType = event.summary?.eventType?.toLowerCase() ?? '';
+              const chipColor = EVENT_COLOR_MAP[normalizedType] ?? 'default';
+              const eventTypeLabel = event.summaryStatus === 'loaded'
+                ? formatEventTypeLabel(event.summary?.eventType)
+                : event.summaryStatus === 'loading'
+                  ? 'Loading…'
+                  : 'Event unavailable';
+              const identityShort = shortenIdentifier(event.summary?.identityId) ?? 'Unknown identity';
+              const timestampLabel =
+                formatTimestamp(event.summary?.createdAt ?? event.receivedAt) ?? event.receivedAt;
+              const isExpanded = expandedEventId === event.id;
 
-                return (
-                  <Box
-                    key={`${event.id}-${event.receivedAt}`}
+              return (
+                <Paper
+                  key={`${event.id}-${event.receivedAt}`}
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 2.5,
+                    overflow: 'hidden',
+                    borderColor: alpha(theme.palette.divider, 0.6),
+                    backgroundColor: alpha(
+                      theme.palette.background.paper,
+                      isExpanded ? (isDarkMode ? 0.75 : 0.98) : 0.92
+                    ),
+                    transition: theme.transitions.create(['border-color', 'background-color', 'box-shadow'], {
+                      duration: theme.transitions.duration.shorter,
+                    }),
+                    boxShadow: isExpanded
+                      ? `0 18px 40px ${alpha(theme.palette.common.black, isDarkMode ? 0.45 : 0.18)}`
+                      : `0 8px 24px ${alpha(theme.palette.common.black, isDarkMode ? 0.35 : 0.12)}`,
+                    '&:hover': {
+                      borderColor: alpha(theme.palette.primary.main, 0.4),
+                    },
+                  }}
+                >
+                  <ButtonBase
+                    onClick={() => handleToggleExpand(event.id)}
                     sx={{
-                      borderLeft: 3,
-                      borderColor,
-                      pl: 1.5,
+                      width: '100%',
+                      textAlign: 'left',
+                      p: 2.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
                     }}
                   >
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5, flexWrap: 'wrap' }}>
+                    <Stack spacing={0.75} sx={{ flexGrow: 1 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                        <Chip
+                          size="small"
+                          label={eventTypeLabel}
+                          color={chipColor === 'default' ? 'default' : chipColor}
+                          variant={chipColor === 'default' ? 'outlined' : 'filled'}
+                          sx={{ fontWeight: 700, letterSpacing: 0.5 }}
+                        />
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          {identityShort}
+                        </Typography>
+                      </Stack>
                       <Typography variant="caption" color="text.secondary">
-                        {event.receivedAt}
-                        {event.eventSummary ? ` · ${event.eventSummary}` : ''}
+                        {timestampLabel}
                       </Typography>
-                      <Chip
-                        label={event.status === 'pending' ? 'Fetching' : event.status === 'loaded' ? 'Loaded' : 'Error'}
-                        size="small"
-                        color={event.status === 'loaded' ? 'success' : event.status === 'pending' ? 'warning' : 'error'}
-                      />
+                      {event.summaryStatus === 'error' && event.summaryError && (
+                        <Typography variant="caption" color={theme.palette.error.main}>
+                          {event.summaryError}
+                        </Typography>
+                      )}
                     </Stack>
-
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                        Usage Event
-                      </Typography>
-                      <pre
-                        style={{
-                          margin: 0,
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {event.formattedEvent}
-                      </pre>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: alpha(theme.palette.text.secondary, 0.9),
+                        transition: theme.transitions.create('transform', {
+                          duration: theme.transitions.duration.shortest,
+                        }),
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      }}
+                    >
+                      <ExpandMoreIcon fontSize="small" />
                     </Box>
+                  </ButtonBase>
 
-                    <Box sx={{ mb: event.formattedRaw ? 1 : 0 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                        Raw Subscription Payload
-                      </Typography>
-                      <pre
-                        style={{
-                          margin: 0,
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {event.formattedRaw}
-                      </pre>
+                  <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                    <Box sx={{ borderTop: `1px solid ${alpha(theme.palette.divider, 0.7)}`, px: 3, py: 2.5 }}>
+                      {event.detailStatus === 'loading' && (
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          <CircularProgress size={18} thickness={5} />
+                          <Typography variant="body2" color="text.secondary">
+                            Loading event details…
+                          </Typography>
+                        </Stack>
+                      )}
+
+                      {event.detailStatus === 'error' && event.detailError && (
+                        <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>
+                          {event.detailError}
+                        </Alert>
+                      )}
+
+                      {event.detailStatus === 'loaded' && event.detail && (
+                        <Stack spacing={2.5}>
+                          <Stack spacing={1}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                              Event metadata
+                            </Typography>
+                            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                              {[{
+                                label: 'Event ID',
+                                value: event.detail.id,
+                              }, {
+                                label: 'Identity',
+                                value: event.detail.identityId,
+                              }, {
+                                label: 'Session',
+                                value: event.detail.sessionId,
+                              }, {
+                                label: 'Created',
+                                value: formatTimestamp(event.detail.createdAt) ?? event.detail.createdAt,
+                              }, {
+                                label: 'Updated',
+                                value: formatTimestamp(event.detail.updatedAt) ?? event.detail.updatedAt,
+                              }]
+                                .filter((item) => Boolean(item.value))
+                                .map((item) => (
+                                  <Box
+                                    key={`${event.id}-${item.label}`}
+                                    sx={{
+                                      px: 1.5,
+                                      py: 1,
+                                      borderRadius: 2,
+                                      border: `1px solid ${alpha(theme.palette.primary.main, isDarkMode ? 0.3 : 0.15)}`,
+                                      backgroundColor: alpha(theme.palette.primary.main, isDarkMode ? 0.12 : 0.06),
+                                      minWidth: 0,
+                                    }}
+                                  >
+                                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                                      {item.label}
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
+                                      {item.value}
+                                    </Typography>
+                                  </Box>
+                                ))}
+                            </Stack>
+                          </Stack>
+
+                          {renderJsonBlock('Event Data', event.formattedEventData, 'No eventData payload was returned.')}
+
+                          {renderJsonBlock('Usage Event Record', event.formattedDetail ?? safeStringify(event.detail), 'Usage event record was empty.')}
+
+                          {event.rawErrors &&
+                            renderJsonBlock('GraphQL Errors', event.rawErrors, 'No GraphQL errors reported.')}
+
+                          {renderJsonBlock('Raw Subscription Payload', event.rawPayload, 'Subscription payload was empty.')}
+                        </Stack>
+                      )}
                     </Box>
-
-                    {event.formattedErrors && (
-                      <Box
-                        sx={{
-                          mt: 1,
-                          px: 1.5,
-                          py: 1,
-                          borderRadius: 1,
-                          bgcolor: alpha(theme.palette.error.main, isDarkMode ? 0.24 : 0.12),
-                        }}
-                      >
-                        <Typography variant="caption" color={theme.palette.error.contrastText} sx={{ display: 'block', mb: 0.5 }}>
-                          GraphQL Errors
-                        </Typography>
-                        <pre
-                          style={{
-                            margin: 0,
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            color: theme.palette.error.contrastText,
-                          }}
-                        >
-                          {event.formattedErrors}
-                        </pre>
-                      </Box>
-                    )}
-
-                    {event.fetchError && (
-                      <Box
-                        sx={{
-                          mt: 1,
-                          px: 1.5,
-                          py: 1,
-                          borderRadius: 1,
-                          bgcolor: alpha(theme.palette.warning.main, isDarkMode ? 0.24 : 0.12),
-                        }}
-                      >
-                        <Typography variant="caption" color={theme.palette.warning.contrastText} sx={{ display: 'block', mb: 0.5 }}>
-                          Fetch Error
-                        </Typography>
-                        <pre
-                          style={{
-                            margin: 0,
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            color: theme.palette.warning.contrastText,
-                          }}
-                        >
-                          {event.fetchError}
-                        </pre>
-                      </Box>
-                    )}
-                  </Box>
-                );
-              })}
-            </Stack>
-          )}
-        </Paper>
+                  </Collapse>
+                </Paper>
+              );
+            })}
+          </Stack>
+        )}
       </Stack>
     </Container>
   );
