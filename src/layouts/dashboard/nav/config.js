@@ -128,7 +128,7 @@ const navConfig = [
       },
       {
         title: 'Usage Events',
-        path: 'http://192.168.0.37:3000/dashboard/usage-events',
+        path: '/dashboard/usage-events',
         externalLink: true,
         icon: <Article />,
       },
