@@ -2323,6 +2323,57 @@ export const deleteProSupportMessage = /* GraphQL */ `
     }
   }
 `;
+export const createUsageEvent = /* GraphQL */ `
+  mutation CreateUsageEvent(
+    $input: CreateUsageEventInput!
+    $condition: ModelUsageEventConditionInput
+  ) {
+    createUsageEvent(input: $input, condition: $condition) {
+      id
+      identityId
+      eventType
+      eventData
+      sessionId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateUsageEvent = /* GraphQL */ `
+  mutation UpdateUsageEvent(
+    $input: UpdateUsageEventInput!
+    $condition: ModelUsageEventConditionInput
+  ) {
+    updateUsageEvent(input: $input, condition: $condition) {
+      id
+      identityId
+      eventType
+      eventData
+      sessionId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteUsageEvent = /* GraphQL */ `
+  mutation DeleteUsageEvent(
+    $input: DeleteUsageEventInput!
+    $condition: ModelUsageEventConditionInput
+  ) {
+    deleteUsageEvent(input: $input, condition: $condition) {
+      id
+      identityId
+      eventType
+      eventData
+      sessionId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const createLocationLeads = /* GraphQL */ `
   mutation CreateLocationLeads(
     $input: CreateLocationLeadsInput!

@@ -24,6 +24,7 @@ import LoadingBackdrop from '../components/LoadingBackdrop';
 import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
+import { trackUsageEvent } from '../utils/trackUsageEvent';
 
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import getV2Metadata from '../utils/getV2Metadata';
@@ -191,6 +192,8 @@ const EditorPage = ({ shows }) => {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const fromCollage = Boolean(location.state?.collageState);
+  const uploadedImageSource = location.state?.uploadedImage || null;
 
   const saveCollageImage = () => {
     const resultImage = editor.canvas.toDataURL({
@@ -236,6 +239,46 @@ const EditorPage = ({ shows }) => {
   };
 
   const handleClickDialogOpen = () => {
+    const eventPayload = {
+      source: 'V2EditorPage',
+      fromCollage: Boolean(location.state?.collageState),
+    };
+
+    if (confirmedCid) {
+      eventPayload.cid = confirmedCid;
+    }
+
+    if (season) {
+      eventPayload.season = season;
+    }
+
+    if (episode) {
+      eventPayload.episode = episode;
+    }
+
+    if (frame) {
+      eventPayload.frame = frame;
+    }
+
+    if (typeof fineTuningIndex !== 'undefined') {
+      eventPayload.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (editorProjectId) {
+      eventPayload.editorProjectId = editorProjectId;
+    }
+
+    if (location.state?.uploadedImage) {
+      eventPayload.hasUploadedImage = true;
+    }
+
+    const trimmedSearchTerm = typeof searchQuery === 'string' ? searchQuery.trim() : '';
+    if (trimmedSearchTerm) {
+      eventPayload.searchTerm = trimmedSearchTerm;
+    }
+
+    trackUsageEvent('advanced_editor_save', eventPayload);
+
     if (location.state?.collageState) {
       saveCollageImage();
     } else {
@@ -421,6 +464,7 @@ const EditorPage = ({ shows }) => {
   };
 
   const fileInputRef = useRef(null); // Define the ref
+  const lastTrackedAdvancedViewRef = useRef('');
 
   const handleDeleteLayer = (index) => {
     deleteLayer(editor.canvas, index, setLayerFonts, setCanvasObjects);
@@ -1232,14 +1276,117 @@ const EditorPage = ({ shows }) => {
     setBgEditorStates([]);
   };
 
-  // ------------------------------------------------------------------------
-
-  /* -------------------------------- New Stuff ------------------------------- */
-
-
   const { cid, season, episode, frame } = useParams();
   const [confirmedCid, setConfirmedCid] = useState();
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
+
+  const handleViewEpisodeClick = useCallback(() => {
+    const eventPayload = {
+      source: 'V2EditorPage',
+    };
+
+    const resolvedCid = confirmedCid || cid;
+    if (resolvedCid) {
+      eventPayload.cid = resolvedCid;
+    }
+
+    if (season) {
+      eventPayload.season = season;
+    }
+
+    if (episode) {
+      eventPayload.episode = episode;
+    }
+
+    if (frame) {
+      eventPayload.frame = frame;
+    }
+
+    if (typeof fineTuningIndex !== 'undefined') {
+      eventPayload.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (editorProjectId) {
+      eventPayload.editorProjectId = editorProjectId;
+    }
+
+    const trimmedSearchTerm = typeof searchQuery === 'string' ? searchQuery.trim() : '';
+    if (trimmedSearchTerm) {
+      eventPayload.searchTerm = trimmedSearchTerm;
+    }
+
+    trackUsageEvent('view_episode', eventPayload);
+  }, [confirmedCid, cid, season, episode, frame, fineTuningIndex, editorProjectId, searchQuery]);
+
+  const handleAddTextLayer = useCallback(() => {
+    const eventPayload = {
+      source: 'V2EditorPage',
+    };
+
+    const resolvedCid = confirmedCid || cid;
+    if (resolvedCid) {
+      eventPayload.cid = resolvedCid;
+    }
+
+    if (season) {
+      eventPayload.season = season;
+    }
+
+    if (episode) {
+      eventPayload.episode = episode;
+    }
+
+    if (frame) {
+      eventPayload.frame = frame;
+    }
+
+    if (typeof fineTuningIndex !== 'undefined') {
+      eventPayload.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (typeof selectedFrameIndex !== 'undefined') {
+      eventPayload.selectedFrameIndex = selectedFrameIndex;
+    }
+
+    if (editorProjectId) {
+      eventPayload.editorProjectId = editorProjectId;
+    }
+
+    const currentLayerCount = Array.isArray(canvasObjects) ? canvasObjects.length : 0;
+    eventPayload.canvasObjectCount = currentLayerCount;
+    eventPayload.nextCanvasObjectCount = currentLayerCount + 1;
+
+    const trimmedSearchTerm = typeof searchQuery === 'string' ? searchQuery.trim() : '';
+    if (trimmedSearchTerm) {
+      eventPayload.searchTerm = trimmedSearchTerm;
+    }
+
+    trackUsageEvent('advanced_editor_add_text_layer', eventPayload);
+    addText('text', true);
+  }, [
+    addText,
+    canvasObjects,
+    confirmedCid,
+    cid,
+    season,
+    episode,
+    frame,
+    fineTuningIndex,
+    selectedFrameIndex,
+    editorProjectId,
+    searchQuery,
+  ]);
+
+  const episodeLink = (() => {
+    const frameNumber = Number(frame);
+    const anchorFrame = Number.isFinite(frameNumber) ? Math.round(frameNumber / 10) * 10 : frame;
+    const searchSuffix = searchQuery ? `?searchTerm=${searchQuery}` : '';
+    return `/episode/${cid}/${season}/${episode}/${anchorFrame}${searchSuffix}`;
+  })();
+
+  // ------------------------------------------------------------------------
+
+  /* -------------------------------- New Stuff ------------------------------- */
   const [loadingCsv, setLoadingCsv] = useState();
   const [frames, setFrames] = useState();
   const params = useParams();
@@ -1431,6 +1578,96 @@ const EditorPage = ({ shows }) => {
         });
     }
   };
+
+  useEffect(() => {
+    if (!defaultFrame) {
+      return;
+    }
+
+    let uniqueKey;
+
+    if (confirmedCid && season && episode && frame) {
+      uniqueKey = `cid:${confirmedCid}|s:${season}|e:${episode}|f:${frame}|sel:${selectedFrameIndex ?? ''}`;
+    } else if (uploadedImageSource) {
+      uniqueKey = `uploaded:${uploadedImageSource}`;
+    } else if (editorProjectId) {
+      uniqueKey = `project:${editorProjectId}`;
+    } else if (typeof defaultFrame?.getSrc === 'function') {
+      uniqueKey = `src:${defaultFrame.getSrc()}`;
+    } else {
+      uniqueKey = `fid:${fid || ''}|selected:${selectedFid || ''}`;
+    }
+
+    if (lastTrackedAdvancedViewRef.current === uniqueKey) {
+      return;
+    }
+
+    lastTrackedAdvancedViewRef.current = uniqueKey;
+
+    const eventPayload = {
+      source: 'V2EditorPage',
+      fromCollage,
+      imageLoaded,
+    };
+
+    if (confirmedCid) {
+      eventPayload.cid = confirmedCid;
+    }
+
+    if (season) {
+      eventPayload.season = season;
+    }
+
+    if (episode) {
+      eventPayload.episode = episode;
+    }
+
+    if (frame) {
+      eventPayload.frame = frame;
+    }
+
+    if (typeof fineTuningIndex !== 'undefined') {
+      eventPayload.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (typeof selectedFrameIndex !== 'undefined') {
+      eventPayload.selectedFrameIndex = selectedFrameIndex;
+    }
+
+    if (uploadedImageSource) {
+      eventPayload.hasUploadedImage = true;
+    }
+
+    if (editorProjectId) {
+      eventPayload.editorProjectId = editorProjectId;
+    }
+
+    if (fid) {
+      eventPayload.fid = fid;
+    }
+
+    const trimmedSearchTerm = typeof searchQuery === 'string' ? searchQuery.trim() : '';
+    if (trimmedSearchTerm) {
+      eventPayload.searchTerm = trimmedSearchTerm;
+    }
+
+    trackUsageEvent('view_image_advanced', eventPayload);
+  }, [
+    defaultFrame,
+    confirmedCid,
+    season,
+    episode,
+    frame,
+    fineTuningIndex,
+    selectedFrameIndex,
+    uploadedImageSource,
+    editorProjectId,
+    fromCollage,
+    searchQuery,
+    imageLoaded,
+    fid,
+    selectedFid,
+  ]);
 
   // Add these state variables near the top of your component, with the other useState declarations
   const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
@@ -1858,7 +2095,7 @@ const EditorPage = ({ shows }) => {
                       <Grid item xs={12} order={canvasObjects?.length} key="add-text-layer-button">
                         <Button
                           variant="contained"
-                          onClick={() => addText('text', true)}
+                          onClick={handleAddTextLayer}
                           fullWidth
                           sx={{
                             zIndex: '50',
@@ -2245,7 +2482,9 @@ const EditorPage = ({ shows }) => {
                   <Button
                     variant="contained"
                     fullWidth
-                    href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                    component={Link}
+                    to={episodeLink}
+                    onClick={handleViewEpisodeClick}
                     sx={{
                       color: '#e5e7eb',
                       background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
