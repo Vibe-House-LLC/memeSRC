@@ -49,6 +49,7 @@ const V2EpisodePage = lazy(() => import('./pages/V2EpisodePage'));
 const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
 const ProSupport = lazy(() => import('./pages/ProSupport'));
 const ProSupportAdmin = lazy(() => import('./pages/ProSupportAdmin'));
+const AdminUsageEventsLog = lazy(() => import('./pages/AdminUsageEventsLog'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
@@ -64,7 +65,6 @@ const ServerPage = lazy(() => import('./pages/ServerPage'));
 const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
 const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
 const AdminFileReview = lazy(() => import('./pages/AdminFileReview'));
-const AdminActivityLogsPage = lazy(() => import('./pages/AdminActivityLogsPage'));
 const MagicPage = lazy(() => import('./pages/MagicPage'));
 // Removed insecure HelloWorldPage route
 
@@ -131,6 +131,7 @@ export default function Router() {
         { path: 'app', element: <DashboardAppPage /> },
         { path: 'user', element: <UserListPage /> },
         { path: 'support', element: <ProSupportAdmin /> },
+        { path: 'usage-events', element: <AdminUsageEventsLog /> },
         { path: 'home', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
@@ -145,7 +146,6 @@ export default function Router() {
         { path: 'websiteSettings', element: <WebsiteSettings /> },
         { path: 'addtoseries/:seriesId', element: <AddToSeriesPage /> },
         { path: 'subtitles', element: <SubtitleViewerPage /> },
-        { path: 'activity-logs', element: <AdminActivityLogsPage /> },
         { path: 'sourcemedia', element: <AdminSourceMedia /> },
         { path: 'review-upload', element: <AdminFileReview /> },
       ],

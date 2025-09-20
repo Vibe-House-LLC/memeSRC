@@ -133,6 +133,12 @@ const navConfig = [
         icon: <Timeline />,
       },
       {
+        title: 'Usage Events',
+        path: '/dashboard/usage-events',
+        externalLink: false,
+        icon: <Article />,
+      },
+      {
         title: 'Website Settings',
         path: '/dashboard/websiteSettings',
         externalLink: false,
