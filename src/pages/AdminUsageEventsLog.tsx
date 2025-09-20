@@ -10,12 +10,14 @@ import {
   CircularProgress,
   Collapse,
   Container,
+  IconButton,
   Paper,
   Stack,
   Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
 import { getUsageEvent } from '../graphql/queries';
@@ -153,6 +155,7 @@ export default function AdminUsageEventsLog() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle');
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [subscriptionAttempt, setSubscriptionAttempt] = useState(0);
   const isMountedRef = useRef(true);
 
   const isAdmin = Array.isArray(user?.['cognito:groups']) && user['cognito:groups'].includes('admins');
@@ -296,7 +299,7 @@ export default function AdminUsageEventsLog() {
       }
       Hub.remove('api', handleHubCapsule);
     };
-  }, [isAdmin]);
+  }, [isAdmin, subscriptionAttempt]);
 
   const fetchEventDetail = (entryId: string) => {
     const currentEntry = events.find((event) => event.id === entryId);
@@ -411,6 +414,12 @@ export default function AdminUsageEventsLog() {
     }
   };
 
+  const handleManualReconnect = () => {
+    setConnectionStatus('connecting');
+    setSubscriptionError(null);
+    setSubscriptionAttempt((prev) => prev + 1);
+  };
+
   const renderJsonBlock = (title: string, content: string | null | undefined, emptyLabel?: string) => (
     <Paper variant="outlined" sx={{ borderRadius: 2, px: 2, py: 1.5, backgroundColor: alpha(theme.palette.background.paper, isDarkMode ? 0.6 : 0.9) }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
@@ -470,6 +479,16 @@ export default function AdminUsageEventsLog() {
               variant={statusColor === 'default' ? 'outlined' : 'filled'}
               sx={{ fontWeight: 600, letterSpacing: 0.3 }}
             />
+            {connectionStatus === 'error' && (
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={handleManualReconnect}
+                aria-label="Reconnect subscription"
+              >
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            )}
             <Button
               size="small"
               onClick={() => {
