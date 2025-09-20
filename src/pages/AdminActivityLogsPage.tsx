@@ -33,8 +33,6 @@ interface UsageEventDetail extends UsageEventSummary {
   eventData: Record<string, unknown>;
 }
 
-const INITIAL_EVENT_LIMIT = 10;
-const INITIAL_FETCH_DELAY_MS = 250;
 const STREAM_EVENT_LIMIT = 30;
 const DETAIL_FETCH_DELAY_MS = 350;
 const NEW_EVENT_HIGHLIGHT_DURATION_MS = 1600;
@@ -132,271 +130,29 @@ const generateMockUsageEventData = (
     };
   };
 
+  // Minimal set of mock templates
   registerEvent('search', 45, {
-      index: 'stooges',
-      resolvedIndex: 'stooges,stooges_hd',
-      searchTerm: 'cream pies',
-      source: 'HomePage',
-    });
-  registerEvent('search', 210, {
-      index: 'office',
-      searchTerm: 'bear beets',
-      source: 'NavSearch',
-    });
+    index: 'stooges',
+    resolvedIndex: 'stooges,stooges_hd',
+    searchTerm: 'cream pies',
+    source: 'HomePage',
+  });
+
   registerEvent('view_image', 75, {
-      cid: 'stooges',
-      season: '3',
-      episode: '5',
-      frame: '12345',
-      fineTuningIndex: '2',
-      source: 'V2FramePage',
-      searchTerm: 'cream pies',
-    });
-  registerEvent('view_image', 180, {
-      cid: 'office',
-      season: '2',
-      episode: '3',
-      frame: '20482',
-      fineTuningIndex: '1',
-      source: 'FavoritesPage',
-      searchTerm: 'dundies',
-    });
-  registerEvent('view_episode', 90, {
-      source: 'V2FramePage',
-      cid: 'stooges',
-      season: '3',
-      episode: '5',
-      frame: '12345',
-      fineTuningIndex: '2',
-      searchTerm: 'cream pies',
-    });
-  registerEvent('view_episode', 240, {
-      source: 'V2EditorPage',
-      cid: 'office',
-      season: '2',
-      episode: '12',
-      frame: '50231',
-      fineTuningIndex: '0',
-      searchTerm: 'finer things club',
-      editorProjectId: 'proj-42',
-    });
-  registerEvent('add_to_library', 105, {
-      cid: 'stooges',
-      season: '3',
-      episode: '5',
-      frame: '12345',
-      fineTuningIndex: '2',
-      source: 'V2FramePage',
-      searchTerm: 'cream pies',
-    });
-  registerEvent('add_to_library', 300, {
-      cid: 'office',
-      season: '4',
-      episode: '1',
-      frame: '67890',
-      fineTuningIndex: '3',
-      source: 'V2EditorPage',
-      searchTerm: 'fun run',
-    });
-  registerEvent('library_upload', 150, {
-      source: 'LibraryBrowser',
-      storageLevel: 'private',
-      uploadedCount: 2,
-      batchSize: 2,
-      files: [
-        {
-          key: 'library/1700000000000-kfj2-photo.png',
-          fileName: 'photo.png',
-          fileSize: 512341,
-          fileType: 'image/png',
-        },
-        {
-          key: 'library/1700000000001-2jd9-landscape.jpg',
-          fileName: 'landscape.jpg',
-          fileSize: 413276,
-          fileType: 'image/jpeg',
-        },
-      ],
-    });
-  registerEvent('library_upload', 360, {
-      source: 'AdminCollageUploader',
-      storageLevel: 'protected',
-      uploadedCount: 3,
-      batchSize: 3,
-      files: [
-        {
-          key: 'library/1700000001000-hd94-canvas.psd',
-          fileName: 'canvas.psd',
-          fileSize: 1051234,
-          fileType: 'application/octet-stream',
-        },
-        {
-          key: 'library/1700000001001-gj32-poster.png',
-          fileName: 'poster.png',
-          fileSize: 815321,
-          fileType: 'image/png',
-        },
-        {
-          key: 'library/1700000001002-fj20-caption.txt',
-          fileName: 'caption.txt',
-          fileSize: 1320,
-          fileType: 'text/plain',
-        },
-      ],
-    });
-  registerEvent('library_delete', 165, {
-      source: 'LibraryBrowser',
-      storageLevel: 'private',
-      deletedCount: 1,
-      keys: ['library/1700000000003-8as8-old-photo.png'],
-    });
-  registerEvent('library_delete', 420, {
-      source: 'AdminCleanup',
-      storageLevel: 'protected',
-      deletedCount: 2,
-      keys: [
-        'library/1700000000004-f9s0-background.png',
-        'library/1700000000005-d9x4-meme.jpg',
-      ],
-    });
-  registerEvent('favorite_add', 195, {
-      indexId: 'stooges',
-      source: 'FavoriteToggle',
-      nextIsFavorite: true,
-      favoritesCount: 6,
-    });
-  registerEvent('favorite_add', 480, {
-      indexId: 'office',
-      source: 'FavoriteToggle',
-      nextIsFavorite: true,
-      favoritesCount: 21,
-    });
-  registerEvent('favorite_remove', 210, {
-      indexId: 'office',
-      source: 'FavoriteToggle',
-      nextIsFavorite: false,
-      favoritesCount: 20,
-    });
-  registerEvent('favorite_remove', 510, {
-      indexId: 'parks_and_rec',
-      source: 'FavoriteToggle',
-      nextIsFavorite: false,
-      favoritesCount: 14,
-    });
+    cid: 'stooges',
+    season: '3',
+    episode: '5',
+    frame: '12345',
+    fineTuningIndex: '2',
+    source: 'V2FramePage',
+    searchTerm: 'cream pies',
+  });
+
   registerEvent('random_frame', 240, {
-      source: 'FloatingActionButtons',
-      showCount: 12,
-      hasAd: false,
-    });
-  registerEvent('random_frame', 540, {
-      source: 'FloatingActionButtons',
-      showCount: 15,
-      hasAd: true,
-    });
-  registerEvent('collage_generate', 255, {
-      source: 'CollagePage',
-      panelCount: 4,
-      aspectRatio: 'square',
-      imageCount: 4,
-      hasCustomLayout: false,
-      allPanelsHaveImages: true,
-      borderThickness: 1.5,
-      borderColor: '#000000',
-      canvasElementFound: true,
-      templateId: 'baseline-2x2',
-    });
-  registerEvent('collage_generate', 570, {
-      source: 'CollagePage',
-      panelCount: 6,
-      aspectRatio: 'widescreen',
-      imageCount: 6,
-      hasCustomLayout: true,
-      allPanelsHaveImages: false,
-      borderThickness: 2.5,
-      borderColor: '#FFFFFF',
-      canvasElementFound: true,
-      templateId: 'story-3x2',
-      projectId: 'proj-99',
-    });
-  
-  registerEvent('view_image_advanced', 285, {
-      source: 'V2EditorPage',
-      cid: 'office',
-      season: '3',
-      episode: '8',
-      frame: '34211',
-      fineTuningIndex: '1',
-      selectedFrameIndex: 7,
-      fid: 'office-3-8-34211',
-      editorProjectId: 'proj-17',
-      fromCollage: false,
-      hasUploadedImage: false,
-      imageLoaded: true,
-      searchTerm: 'the merger',
-    });
-  registerEvent('view_image_advanced', 450, {
-      source: 'V2EditorPage',
-      cid: 'parks_and_rec',
-      season: '5',
-      episode: '4',
-      frame: '55201',
-      fineTuningIndex: '4',
-      selectedFrameIndex: 3,
-      fid: 'parks_and_rec-5-4-55201',
-      editorProjectId: 'proj-54',
-      fromCollage: true,
-      hasUploadedImage: true,
-      imageLoaded: true,
-      searchTerm: 'cones of dunshire',
-    });
-  registerEvent('advanced_editor_save', 300, {
-      source: 'V2EditorPage',
-      cid: 'office',
-      season: '3',
-      episode: '8',
-      frame: '34211',
-      fineTuningIndex: '1',
-      editorProjectId: 'proj-17',
-      fromCollage: false,
-      hasUploadedImage: false,
-      searchTerm: 'the merger',
-    });
-  registerEvent('advanced_editor_save', 465, {
-      source: 'V2EditorPage',
-      cid: 'parks_and_rec',
-      season: '5',
-      episode: '4',
-      frame: '55201',
-      fineTuningIndex: '4',
-      editorProjectId: 'proj-54',
-      fromCollage: true,
-      hasUploadedImage: true,
-      searchTerm: 'cones of dunshire',
-    });
-  registerEvent('advanced_editor_add_text_layer', 315, {
-      source: 'V2EditorPage',
-      cid: 'office',
-      season: '3',
-      episode: '8',
-      frame: '34211',
-      fineTuningIndex: '1',
-      selectedFrameIndex: 7,
-      canvasObjectCount: 2,
-      nextCanvasObjectCount: 3,
-      searchTerm: 'the merger',
-    });
-  registerEvent('advanced_editor_add_text_layer', 495, {
-      source: 'V2EditorPage',
-      cid: 'parks_and_rec',
-      season: '5',
-      episode: '4',
-      frame: '55201',
-      fineTuningIndex: '4',
-      selectedFrameIndex: 3,
-      canvasObjectCount: 3,
-      nextCanvasObjectCount: 4,
-      searchTerm: 'cones of dunshire',
-    });
+    source: 'FloatingActionButtons',
+    showCount: 12,
+    hasAd: false,
+  });
 
   return { summaries, detailById };
 };
@@ -406,14 +162,11 @@ const AdminActivityLogsPage: React.FC = () => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const { summaries: mockSummaryEvents, detailById: mockDetailById } = useMemo(
+  const { detailById: mockDetailById } = useMemo(
     () => generateMockUsageEventData(lastRefresh),
     [lastRefresh],
   );
 
-  const [initialEvents, setInitialEvents] = useState<UsageEventSummary[]>([]);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [initialError, setInitialError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [detailCache, setDetailCache] = useState<Record<string, Record<string, unknown>>>({});
   const [loadingEventId, setLoadingEventId] = useState<string | null>(null);
@@ -439,17 +192,13 @@ const AdminActivityLogsPage: React.FC = () => {
   );
 
   const sortedEvents = useMemo(() => {
-    const combined = [...streamSummaries, ...initialEvents];
-    return combined.sort(
+    return [...streamSummaries].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-  }, [streamSummaries, initialEvents]);
+  }, [streamSummaries]);
 
   useEffect(() => {
     setNow(Date.now());
-    setInitialLoading(true);
-    setInitialError(null);
-    setInitialEvents([]);
     setExpandedEventId(null);
     setDetailCache({});
     setDetailErrors({});
@@ -458,24 +207,7 @@ const AdminActivityLogsPage: React.FC = () => {
     setHighlightedIds([]);
     highlightTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
     highlightTimeoutsRef.current = [];
-
-    const timeoutId = window.setTimeout(() => {
-      try {
-        const latestEvents = [...mockSummaryEvents]
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, INITIAL_EVENT_LIMIT);
-        setInitialEvents(latestEvents);
-      } catch (_error) {
-        setInitialError('Failed to load mock activity events. Please refresh.');
-      } finally {
-        setInitialLoading(false);
-      }
-    }, INITIAL_FETCH_DELAY_MS);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [mockSummaryEvents, lastRefresh]);
+  }, [lastRefresh]);
 
   const fetchEventDetail = useCallback(
     (eventId: string): Promise<UsageEventDetail> =>
@@ -647,24 +379,7 @@ const AdminActivityLogsPage: React.FC = () => {
           Activity data and detail lookups are mocked until the updated GraphQL schema is deployed.
         </Alert>
 
-        <Typography variant="body2" color="text.secondary">
-          Initial load fetches the latest 10 events. Subscription events will appear at the top.
-        </Typography>
-
-        {initialError && <Alert severity="error">{initialError}</Alert>}
-
-        {initialLoading && sortedEvents.length === 0 ? (
-          <Card variant="outlined">
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
-                <CircularProgress size={20} />
-                <Typography variant="body2" color="text.secondary">
-                  Fetching the latest mock events...
-                </Typography>
-              </Stack>
-            </CardContent>
-          </Card>
-        ) : sortedEvents.length === 0 ? (
+        {sortedEvents.length === 0 ? (
           <Card variant="outlined">
             <CardContent>
               <Typography variant="body2" color="text.secondary" align="center">
