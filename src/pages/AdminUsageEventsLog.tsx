@@ -12,6 +12,7 @@ import {
   Container,
   IconButton,
   Paper,
+  Skeleton,
   Stack,
   Typography,
 } from '@mui/material';
@@ -541,6 +542,7 @@ export default function AdminUsageEventsLog() {
               const timestampLabel =
                 formatTimestamp(event.summary?.createdAt ?? event.receivedAt) ?? event.receivedAt;
               const isExpanded = expandedEventId === event.id;
+              const isSummaryLoading = event.summaryStatus === 'loading';
 
               return (
                 <Paper
@@ -563,10 +565,12 @@ export default function AdminUsageEventsLog() {
                     '&:hover': {
                       borderColor: alpha(theme.palette.primary.main, 0.4),
                     },
+                    opacity: isSummaryLoading ? 0.9 : 1,
                   }}
                 >
                   <ButtonBase
                     onClick={() => handleToggleExpand(event.id)}
+                    disabled={isSummaryLoading}
                     sx={{
                       width: '100%',
                       textAlign: 'left',
@@ -574,24 +578,40 @@ export default function AdminUsageEventsLog() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 2,
+                      '&.Mui-disabled': {
+                        cursor: 'default',
+                        color: 'inherit',
+                      },
                     }}
                   >
                     <Stack spacing={0.75} sx={{ flexGrow: 1 }}>
                       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexWrap: 'wrap' }}>
-                        <Chip
-                          size="small"
-                          label={eventTypeLabel}
-                          color={chipColor === 'default' ? 'default' : chipColor}
-                          variant={chipColor === 'default' ? 'outlined' : 'filled'}
-                          sx={{ fontWeight: 700, letterSpacing: 0.5 }}
-                        />
-                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                          {identityShort}
-                        </Typography>
+                        {isSummaryLoading ? (
+                          <Skeleton variant="rounded" width={140} height={28} sx={{ borderRadius: 14 }} />
+                        ) : (
+                          <Chip
+                            size="small"
+                            label={eventTypeLabel}
+                            color={chipColor === 'default' ? 'default' : chipColor}
+                            variant={chipColor === 'default' ? 'outlined' : 'filled'}
+                            sx={{ fontWeight: 700, letterSpacing: 0.5 }}
+                          />
+                        )}
+                        {isSummaryLoading ? (
+                          <Skeleton variant="text" width={180} sx={{ fontSize: 16 }} />
+                        ) : (
+                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                            {identityShort}
+                          </Typography>
+                        )}
                       </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        {timestampLabel}
-                      </Typography>
+                      {isSummaryLoading ? (
+                        <Skeleton variant="text" width={160} sx={{ fontSize: 12 }} />
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          {timestampLabel}
+                        </Typography>
+                      )}
                       {event.summaryStatus === 'error' && event.summaryError && (
                         <Typography variant="caption" color={theme.palette.error.main}>
                           {event.summaryError}
@@ -607,6 +627,7 @@ export default function AdminUsageEventsLog() {
                           duration: theme.transitions.duration.shortest,
                         }),
                         transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        opacity: isSummaryLoading ? 0.6 : 1,
                       }}
                     >
                       <ExpandMoreIcon fontSize="small" />

@@ -1,5 +1,5 @@
 // component
-import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections, NewReleases, Timeline } from '@mui/icons-material';
+import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections, NewReleases } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -127,15 +127,9 @@ const navConfig = [
         icon: icon('ic_analytics'),
       },
       {
-        title: 'Activity Logs',
-        path: '/dashboard/activity-logs',
-        externalLink: false,
-        icon: <Timeline />,
-      },
-      {
         title: 'Usage Events',
-        path: '/dashboard/usage-events',
-        externalLink: false,
+        path: 'http://192.168.0.37:3000/dashboard/usage-events',
+        externalLink: true,
         icon: <Article />,
       },
       {
