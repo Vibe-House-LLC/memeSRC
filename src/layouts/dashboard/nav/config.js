@@ -129,7 +129,7 @@ const navConfig = [
       {
         title: 'Usage Events',
         path: '/dashboard/usage-events',
-        externalLink: true,
+        externalLink: false,
         icon: <Article />,
       },
       {
