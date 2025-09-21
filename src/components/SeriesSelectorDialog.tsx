@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -156,6 +156,28 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
   const showQuickPicks = !isFiltering && !isInputFocused;
 
+  const getDefaultSelectionId = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem('memeSRCDefaultIndex');
+      if (stored === '_favorites' && includeAllFavorites && hasAnyFavorite) return '_favorites';
+      if (stored === '_universal') return '_universal';
+
+      const legacyKey = Object.keys(window.localStorage ?? {}).find((key) => key.startsWith('defaultsearch'));
+      const legacyValue = legacyKey ? window.localStorage.getItem(legacyKey) : null;
+      if (legacyValue === '_favorites' && includeAllFavorites && hasAnyFavorite) return '_favorites';
+      if (legacyValue === '_universal') return '_universal';
+    }
+
+    if (includeAllFavorites && hasAnyFavorite) return '_favorites';
+    return '_universal';
+  }, [includeAllFavorites, hasAnyFavorite]);
+
+  const handleClearCurrent = useCallback(() => {
+    const defaultId = getDefaultSelectionId();
+    setFilter('');
+    onSelect(defaultId);
+  }, [getDefaultSelectionId, onSelect]);
+
   return (
     <Dialog
       open={open}
@@ -266,7 +288,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           {showQuickPicks && (
             <>
               <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
-                Quick Picks
+                Quick Filters
               </ListSubheader>
               <ListItemButton
                 selected={currentValueId === '_universal'}
@@ -329,9 +351,8 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
               {currentSeries && (
                 <>
-                  <Divider sx={{ my: 1.5 }} />
                   <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
-                    Current Selection
+                    Current Filter
                   </ListSubheader>
                   <ListItemButton
                     selected={currentValueId === currentSeries.id}
@@ -341,10 +362,11 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                       borderColor: 'divider',
                       borderRadius: 1.5,
                       mb: 1,
-                      py: 1.25,
+                      py: 1,
+                      px: 1,
                     }}
                   >
-                    <ListItemIcon sx={{ minWidth: 36 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
                       {currentSeries.emoji ? (
                         <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{currentSeries.emoji}</Box>
                       ) : (
@@ -354,15 +376,31 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                     <ListItemText
                       primaryTypographyProps={{ sx: { fontWeight: 600 } }}
                       primary={currentSeries.title}
-                      secondary="Current selection"
-                      secondaryTypographyProps={{ sx: { color: 'text.secondary' } }}
                     />
+                    <IconButton
+                      size="small"
+                      edge="end"
+                      aria-label="Clear selection"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClearCurrent();
+                      }}
+                      sx={{ ml: 1 }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
                   </ListItemButton>
                 </>
               )}
 
               <Divider sx={{ my: 1.5 }} />
             </>
+          )}
+
+          {(filteredFavorites.length + filteredNonFavorites.length > 0) && (
+            <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
+              Browse
+            </ListSubheader>
           )}
 
           {/* Full list */}
