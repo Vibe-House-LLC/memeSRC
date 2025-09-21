@@ -12,6 +12,7 @@ import { UserContext } from "../../UserContext";
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from "../../components/floating-action-buttons/FloatingActionButtons";
 import SeriesSelectorDialog from '../../components/SeriesSelectorDialog';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 
 // Define constants for colors and fonts
 const FONT_FAMILY = 'Roboto, sans-serif';
@@ -174,25 +175,30 @@ export default function IpfsSearchBar(props) {
 
               return (
                 <>
-                  <Button
-                    size="small"
-                    onClick={() => setSelectorOpen(true)}
-                    sx={{
-                      minWidth: 160,
-                      width: 'fit-content',
-                      height: 40,
-                      fontFamily: FONT_FAMILY,
-                      fontSize: '16px',
-                      bgcolor: 'transparent',
-                      color: '#fff',
-                      borderRadius: 0,
-                      px: 0,
-                      textTransform: 'none',
-                      '&:hover': { bgcolor: 'transparent' },
-                    }}
-                  >
-                    {currentLabel}
-                  </Button>
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                    <Button
+                      size="small"
+                      onClick={() => setSelectorOpen(true)}
+                      endIcon={<ArrowDropDownIcon fontSize="small" />}
+                      sx={{
+                        minWidth: 'auto',
+                        width: 'fit-content',
+                        height: 40,
+                        fontFamily: FONT_FAMILY,
+                        fontSize: '16px',
+                        fontWeight: 400,
+                        bgcolor: 'transparent',
+                        color: '#fff',
+                        borderRadius: 0,
+                        px: 0,
+                        textTransform: 'none',
+                        whiteSpace: 'nowrap',
+                        '&:hover': { bgcolor: 'transparent' },
+                      }}
+                    >
+                      {currentLabel}
+                    </Button>
+                  </Box>
                   <SeriesSelectorDialog
                     open={selectorOpen}
                     onClose={() => setSelectorOpen(false)}

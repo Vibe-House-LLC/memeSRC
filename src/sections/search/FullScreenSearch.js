@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Button, Grid, Typography, useMediaQuery, useTheme, IconButton, Slide } from '@mui/material';
+import { Button, Grid, Typography, useMediaQuery, useTheme, IconButton, Slide, Box as MuiBox } from '@mui/material';
 import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
@@ -14,6 +14,7 @@ import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
 import SeriesSelectorDialog from '../../components/SeriesSelectorDialog';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
@@ -465,26 +466,30 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
                   return (
                     <>
-                      <Button
-                        onClick={() => setSelectorOpen(true)}
-                        sx={{
-                          fontFamily: FONT_FAMILY,
-                          fontSize: '16px',
-                          color: '#333',
-                          backgroundColor: '#fff',
-                          border: 'none',
-                          borderRadius: '8px',
-                          height: '50px',
-                          width: '100%',
-                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                          textTransform: 'none',
-                          justifyContent: 'flex-start',
-                          px: 1.5,
-                          '&:hover': { backgroundColor: '#fff' },
-                        }}
-                      >
-                        {currentLabel}
-                      </Button>
+                      <MuiBox sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Button
+                          onClick={() => setSelectorOpen(true)}
+                          endIcon={<ArrowDropDownIcon />}
+                          sx={{
+                            fontFamily: FONT_FAMILY,
+                            fontSize: '16px',
+                            fontWeight: 400,
+                            color: '#333',
+                            backgroundColor: '#fff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            height: '50px',
+                            width: '100%',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            textTransform: 'none',
+                            justifyContent: 'space-between',
+                            px: 1.5,
+                            '&:hover': { backgroundColor: '#fff' },
+                          }}
+                        >
+                          {currentLabel}
+                        </Button>
+                      </MuiBox>
                       <SeriesSelectorDialog
                         open={selectorOpen}
                         onClose={() => setSelectorOpen(false)}

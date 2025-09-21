@@ -20,6 +20,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import TuneIcon from '@mui/icons-material/Tune';
+import SearchIcon from '@mui/icons-material/Search';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 export interface SeriesItem {
   id: string;
@@ -50,6 +52,7 @@ function normalizeString(input: string): string {
 export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const { open, onClose, onSelect, shows, savedCids, currentValueId, includeEditFavorites = false, includeAllFavorites = true } = props;
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -73,9 +76,8 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   }, [allSeries, filter]);
 
   const filteredOthers = useMemo(() => {
-    return allSeries
-      .filter((s) => !s.isFavorite)
-      .filter((s) => !filter || normalizeString(s.title).includes(normalizeString(filter)));
+    // Full list should include all, including favorites; keep a separate list for the bottom section
+    return allSeries.filter((s) => !filter || normalizeString(s.title).includes(normalizeString(filter)));
   }, [allSeries, filter]);
 
   const isFiltering = Boolean(filter && filter.trim());
@@ -124,7 +126,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth={isMobile ? undefined : 'md'} fullScreen={isMobile}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography variant="h6" sx={{ flex: 1 }}>
           Select show or movie
@@ -136,82 +138,115 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
         ) : null}
       </DialogTitle>
       <DialogContent dividers>
-        <Box sx={{ mb: 1.5 }}>
-          <TextField
-            inputRef={inputRef}
-            fullWidth
-            size="small"
-            placeholder="Filter shows & movies"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            onKeyDown={handleKeyDown}
-            InputProps={{
-              endAdornment: (
-                filter ? (
-                  <InputAdornment position="end">
-                    <IconButton size="small" edge="end" onMouseDown={(e) => e.preventDefault()} onClick={() => setFilter('')}>
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ) : null
-              )
+        <List disablePadding sx={{ bgcolor: 'transparent' }}>
+          {/* Meaty primary options */}
+          <ListItemButton
+            selected={currentValueId === '_universal'}
+            onClick={() => handleSelect('_universal')}
+            sx={{
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1.5,
+              mb: 1,
+              py: 1.25,
             }}
-          />
-        </Box>
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>🌈</ListItemIcon>
+            <ListItemText primaryTypographyProps={{ sx: { fontWeight: 600 } }} primary="All Shows & Movies" />
+          </ListItemButton>
 
-        <List dense disablePadding sx={{
-          bgcolor: theme.palette.background.paper,
-          borderRadius: 1,
-        }}>
-          {!isFiltering && (
-            <>
-              <ListItemButton selected={currentValueId === '_universal'} onClick={() => handleSelect('_universal')}>
-                <ListItemIcon sx={{ minWidth: 32 }}>🌈</ListItemIcon>
-                <ListItemText primary="All Shows & Movies" />
-              </ListItemButton>
-              {includeAllFavorites && hasAnyFavorite && (
-                <ListItemButton selected={currentValueId === '_favorites'} onClick={() => handleSelect('_favorites')}>
-                  <ListItemIcon sx={{ minWidth: 32 }}>
-                    <StarIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="All Favorites" />
-                </ListItemButton>
-              )}
-            </>
-          )}
-
-          {!isFiltering && filteredFavorites.length > 0 && (
-            <ListSubheader disableSticky>Favorites</ListSubheader>
-          )}
-          {filteredFavorites.map((s) => (
-            <ListItemButton key={s.id} selected={currentValueId === s.id} onClick={() => handleSelect(s.id)}>
-              <ListItemIcon sx={{ minWidth: 32 }}>
-                <FavoriteBorderIcon fontSize="small" />
+          {includeAllFavorites && hasAnyFavorite && (
+            <ListItemButton
+              selected={currentValueId === '_favorites'}
+              onClick={() => handleSelect('_favorites')}
+              sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1.5,
+                mb: 1.5,
+                py: 1.25,
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <StarIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary={`${s.emoji ? `${s.emoji} ` : ''}${s.title}`} />
+              <ListItemText primaryTypographyProps={{ sx: { fontWeight: 600 } }} primary="All Favorites" />
             </ListItemButton>
-          ))}
+          )}
 
-          {!isFiltering && includeEditFavorites && (hasAnyFavorite || includeEditFavorites) && (
+          {/* Inline filter row */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <SearchIcon fontSize="small" sx={{ opacity: 0.8 }} />
+            <TextField
+              inputRef={inputRef}
+              variant="standard"
+              fullWidth
+              placeholder="Type to filter"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onKeyDown={handleKeyDown}
+              InputProps={{
+                endAdornment: (
+                  filter ? (
+                    <InputAdornment position="end">
+                      <IconButton size="small" edge="end" onMouseDown={(e) => e.preventDefault()} onClick={() => setFilter('')}>
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null
+                )
+              }}
+            />
+          </Box>
+
+          {/* Favorites area */}
+          {filteredFavorites.length > 0 && (
+            <Box sx={{
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1.5,
+              mb: 2,
+              overflow: 'hidden',
+            }}>
+              <Box sx={{ px: 2, py: 1, bgcolor: 'action.hover' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Favorites</Typography>
+              </Box>
+              <List dense disablePadding>
+                {filteredFavorites.map((s) => (
+                  <ListItemButton key={s.id} selected={currentValueId === s.id} onClick={() => handleSelect(s.id)} sx={{ py: 1 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <FavoriteBorderIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={`${s.emoji ? `${s.emoji} ` : ''}${s.title}`} />
+                  </ListItemButton>
+                ))}
+              </List>
+              {includeEditFavorites && (hasAnyFavorite || includeEditFavorites) && (
+                <Box sx={{ px: 2, py: 0.5 }}>
+                  <ListItemButton onClick={() => handleSelect('editFavorites')} sx={{ py: 0.75 }}>
+                    <ListItemIcon sx={{ minWidth: 36, opacity: 0.75 }}>
+                      <TuneIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ sx: { fontSize: 13, opacity: 0.8 } }} primary="Edit favorites" />
+                  </ListItemButton>
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Full list area */}
+          {filteredOthers.length > 0 && (
             <>
-              <Divider sx={{ my: 0.5 }} />
-              <ListItemButton onClick={() => handleSelect('editFavorites')}>
-                <ListItemIcon sx={{ minWidth: 32 }}>
-                  <TuneIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary="Edit Favorites" secondary="Manage your favorites" />
-              </ListItemButton>
+              <ListSubheader disableSticky sx={{ px: 0, mb: 0.5 }}>Full List</ListSubheader>
+              <List dense disablePadding>
+                {filteredOthers.map((s) => (
+                  <ListItemButton key={s.id} selected={currentValueId === s.id} onClick={() => handleSelect(s.id)} sx={{ borderRadius: 1, py: 1 }}>
+                    <ListItemText primary={`${s.emoji ? `${s.emoji} ` : ''}${s.title}`} />
+                  </ListItemButton>
+                ))}
+              </List>
             </>
           )}
-
-          {!isFiltering && filteredOthers.length > 0 && (
-            <ListSubheader disableSticky>Other</ListSubheader>
-          )}
-          {filteredOthers.map((s) => (
-            <ListItemButton key={s.id} selected={currentValueId === s.id} onClick={() => handleSelect(s.id)}>
-              <ListItemText primary={`${s.emoji ? `${s.emoji} ` : ''}${s.title}`} />
-            </ListItemButton>
-          ))}
         </List>
       </DialogContent>
     </Dialog>
