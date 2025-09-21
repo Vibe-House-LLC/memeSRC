@@ -12,7 +12,6 @@ import {
   Container,
   FormControl,
   FormHelperText,
-  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -21,7 +20,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
+import { alpha, keyframes, useTheme } from '@mui/material/styles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useNavigate } from 'react-router-dom';
@@ -166,6 +165,42 @@ const getEventSpecificSummary = (entry: UsageEventLogEntry) => {
   }
 
   return renderer(entry);
+};
+
+const LIVE_PULSE = keyframes`
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  65% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+`;
+
+const CONNECTING_STRIPES = keyframes`
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+`;
+
+type StreamStatusTone = {
+  badge: string;
+  statusText: string;
+  helperText: string;
+  accent: string;
+  dotColor: string;
+  background: string;
+  border: string;
+  textColor: string;
+  variant: 'pulse' | 'shimmer' | 'offline' | 'idle';
 };
 
 const safeStringify = (input: unknown) => {
@@ -649,19 +684,65 @@ export default function AdminUsageEventsLog() {
 
   const isUserLoading = user === false;
 
-  const statusLabel = useMemo(() => {
-    if (connectionStatus === 'connecting') return 'Connecting…';
-    if (connectionStatus === 'connected') return 'Live';
-    if (connectionStatus === 'error') return 'Disconnected';
-    return 'Idle';
-  }, [connectionStatus]);
+  const statusTone = useMemo<StreamStatusTone>(() => {
+    const liveAccent = theme.palette.success.main;
+    const connectingAccent = theme.palette.warning.main;
+    const idleAccent = theme.palette.info.main;
 
-  const statusColor: ChipColor = useMemo(() => {
-    if (connectionStatus === 'connected') return 'success';
-    if (connectionStatus === 'error') return 'error';
-    if (connectionStatus === 'connecting') return 'warning';
-    return 'default';
-  }, [connectionStatus]);
+    if (connectionStatus === 'connected') {
+      return {
+        badge: 'LIVE',
+        statusText: 'Connected',
+        helperText: 'Live updates streaming.',
+        accent: liveAccent,
+        dotColor: liveAccent,
+        background: alpha(liveAccent, isDarkMode ? 0.16 : 0.09),
+        border: alpha(liveAccent, isDarkMode ? 0.45 : 0.24),
+        textColor: isDarkMode ? theme.palette.success.light : theme.palette.success.dark,
+        variant: 'pulse',
+      };
+    }
+
+    if (connectionStatus === 'connecting') {
+      return {
+        badge: 'CONNECTING',
+        statusText: 'Connecting…',
+        helperText: 'Establishing stream.',
+        accent: connectingAccent,
+        dotColor: connectingAccent,
+        background: `linear-gradient(120deg, ${alpha(connectingAccent, isDarkMode ? 0.18 : 0.08)} 0%, ${alpha(connectingAccent, isDarkMode ? 0.04 : 0.02)} 55%, ${alpha(connectingAccent, isDarkMode ? 0.18 : 0.08)} 100%)`,
+        border: alpha(connectingAccent, isDarkMode ? 0.35 : 0.2),
+        textColor: isDarkMode ? theme.palette.warning.light : theme.palette.warning.dark,
+        variant: 'shimmer',
+      };
+    }
+
+    if (connectionStatus === 'error') {
+      return {
+        badge: 'OFFLINE',
+        statusText: 'Offline',
+        helperText: 'Retry to reconnect.',
+        accent: theme.palette.error.main,
+        dotColor: theme.palette.error.main,
+        background: alpha(theme.palette.error.main, isDarkMode ? 0.18 : 0.1),
+        border: alpha(theme.palette.error.main, isDarkMode ? 0.55 : 0.33),
+        textColor: isDarkMode ? theme.palette.error.light : theme.palette.error.dark,
+        variant: 'offline',
+      };
+    }
+
+    return {
+      badge: 'STANDBY',
+      statusText: 'Standby',
+      helperText: 'Awaiting connection.',
+      accent: idleAccent,
+      dotColor: alpha(idleAccent, 0.9),
+      background: alpha(idleAccent, isDarkMode ? 0.14 : 0.07),
+      border: alpha(idleAccent, isDarkMode ? 0.32 : 0.18),
+      textColor: isDarkMode ? theme.palette.info.light : theme.palette.info.dark,
+      variant: 'idle',
+    };
+  }, [connectionStatus, isDarkMode, theme]);
 
   const normalizedSelectedType = useMemo(
     () => normalizeEventType(selectedEventType),
@@ -893,24 +974,100 @@ export default function AdminUsageEventsLog() {
               {eventTypeError && <FormHelperText error>{eventTypeError}</FormHelperText>}
             </FormControl>
 
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Chip
-                label={`Status: ${statusLabel}`}
-                color={statusColor === 'default' ? 'default' : statusColor}
-                size="small"
-                variant={statusColor === 'default' ? 'outlined' : 'filled'}
-                sx={{ fontWeight: 600, letterSpacing: 0.3 }}
-              />
-              {connectionStatus === 'error' && (
-                <IconButton
-                  size="small"
-                  color="primary"
-                  onClick={handleManualReconnect}
-                  aria-label="Reconnect subscription"
-                >
-                  <RefreshIcon fontSize="small" />
-                </IconButton>
-              )}
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.25}
+              alignItems={{ xs: 'stretch', sm: 'center' }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.1,
+                  flexWrap: 'nowrap',
+                  px: 1.75,
+                  py: 0.95,
+                  borderRadius: 1.75,
+                  border: `1px solid ${statusTone.border}`,
+                  background: statusTone.background,
+                  color: statusTone.textColor,
+                  minWidth: { sm: 240 },
+                  width: { xs: '100%', sm: 'auto' },
+                  minHeight: 56,
+                  boxShadow:
+                    statusTone.variant === 'pulse'
+                      ? `0 0 0 1px ${alpha(statusTone.accent, isDarkMode ? 0.45 : 0.2)}, 0 6px 16px ${alpha(statusTone.accent, isDarkMode ? 0.28 : 0.12)}`
+                      : `0 3px 12px ${alpha(statusTone.accent, isDarkMode ? 0.22 : 0.1)}`,
+                  backgroundSize: statusTone.variant === 'shimmer' ? '200% 100%' : undefined,
+                  animation: statusTone.variant === 'shimmer' ? `${CONNECTING_STRIPES} 2.6s linear infinite` : undefined,
+                  transition: theme.transitions.create(['background', 'border-color', 'box-shadow'], {
+                    duration: theme.transitions.duration.shorter,
+                  }),
+                }}
+              >
+                <Box
+                  sx={{
+                    position: 'relative',
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    backgroundColor: statusTone.dotColor,
+                    color: statusTone.dotColor,
+                    boxShadow:
+                      statusTone.variant === 'offline'
+                        ? `0 0 0 2px ${alpha(statusTone.dotColor, isDarkMode ? 0.35 : 0.18)}`
+                        : statusTone.variant === 'idle'
+                          ? `0 0 0 1px ${alpha(statusTone.dotColor, 0.35)}`
+                          : `0 0 0 0 ${alpha(statusTone.dotColor, 0.35)}`,
+                    ...(statusTone.variant === 'pulse'
+                      ? {
+                          '&::after': {
+                            content: "''",
+                            position: 'absolute',
+                            inset: 0,
+                            borderRadius: '50%',
+                            border: '1px solid currentColor',
+                            opacity: 0.7,
+                            animation: `${LIVE_PULSE} 1.6s ease-out infinite`,
+                          },
+                        }
+                      : {}),
+                  }}
+                />
+                <Stack spacing={0.2} sx={{ minWidth: 0, flexGrow: 1 }}>
+                  <Typography
+                    variant="overline"
+                    sx={{ fontSize: 10, letterSpacing: 1.3, fontWeight: 700, color: alpha(statusTone.textColor, 0.9) }}
+                  >
+                    {statusTone.badge}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: statusTone.textColor }}>
+                    {statusTone.statusText}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: alpha(statusTone.textColor, 0.75) }}>
+                    {statusTone.helperText}
+                  </Typography>
+                </Stack>
+                {connectionStatus === 'error' && (
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={handleManualReconnect}
+                    startIcon={<RefreshIcon fontSize="small" />}
+                    sx={{
+                      ml: 'auto',
+                      fontWeight: 600,
+                      color: statusTone.textColor,
+                      textTransform: 'none',
+                    }}
+                  >
+                    Retry
+                  </Button>
+                )}
+              </Box>
+
               <Button
                 size="small"
                 onClick={() => {
@@ -919,6 +1076,10 @@ export default function AdminUsageEventsLog() {
                 }}
                 disabled={events.length === 0}
                 variant="outlined"
+                sx={{
+                  alignSelf: { xs: 'stretch', sm: 'auto' },
+                  whiteSpace: 'nowrap',
+                }}
               >
                 Clear log
               </Button>
