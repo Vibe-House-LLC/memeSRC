@@ -177,6 +177,25 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
   };
 };
 
+const sectionHeaderSx = (theme: Theme, options?: { topSpacing?: 'tight' | 'regular' }) => {
+  const topSpacing = options?.topSpacing === 'tight' ? 0.75 : 1;
+
+  return {
+    bgcolor: 'transparent',
+    px: 0,
+    pt: theme.spacing(topSpacing),
+    pb: theme.spacing(0.5),
+    fontSize: '0.95rem',
+    fontWeight: 700,
+    color: theme.palette.text.secondary,
+  };
+};
+
+const sectionDividerSx = (theme: Theme) => ({
+  my: theme.spacing(1),
+  opacity: theme.palette.mode === 'light' ? 0.5 : 0.45,
+});
+
 const radioIconSx = (theme: Theme, selected: boolean, options?: { inverted?: boolean }) => {
   const inverted = Boolean(options?.inverted);
   const baseColor = inverted
@@ -428,7 +447,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           </IconButton>
         </Box>
 
-        <List disablePadding sx={{ bgcolor: 'transparent', px: 2, py: 2 }}>
+        <List disablePadding sx={{ bgcolor: 'transparent', px: 2, pt: 1.25, pb: 2 }}>
 
           {/* Unified content: quick picks when no filter; results/full list below */}
           {/* No results state */}
@@ -441,7 +460,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           {/* Quick picks when not filtering */}
           {showQuickPicks && (
             <>
-              <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
+              <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { topSpacing: 'tight' })}>
                 Quick Filters
               </ListSubheader>
               <ListItemButton
@@ -486,12 +505,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               )}
 
               {(favoritesForSection.length > 0 || filteredAllSeries.length > 0) && (
-                <Divider sx={{ mt: 2, mb: 2, opacity: 0.55 }} />
+                <Divider sx={(theme) => sectionDividerSx(theme)} />
               )}
 
               {favoritesForSection.length > 0 && (
                 <>
-                  <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
+                  <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { topSpacing: 'tight' })}>
                     Favorites
                   </ListSubheader>
                   {favoritesForSection.map((s) => {
@@ -529,7 +548,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                       </ListItemButton>
                     );
                   })}
-                  <Divider sx={{ mt: 3 }} />
+                  <Divider sx={(theme) => sectionDividerSx(theme)} />
                 </>
               )}
             </>
@@ -537,7 +556,11 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
           {filteredAllSeries.length > 0 && (
             <>
-              <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
+              <ListSubheader
+                disableSticky
+                component="div"
+                sx={(theme) => sectionHeaderSx(theme, { topSpacing: showQuickPicks ? 'tight' : 'regular' })}
+              >
                 Everything
               </ListSubheader>
               {filteredAllSeries.map((s) => {
