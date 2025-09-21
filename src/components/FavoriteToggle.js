@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { API } from 'aws-amplify';
 import { IconButton, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -29,7 +29,7 @@ const IconContainer = styled('div')({
   justifyContent: 'center',
 });
 
-const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
+const FavoriteToggle = ({ indexId, initialIsFavorite, onToggle }) => {
   const { user, handleUpdateUserDetails } = useContext(UserContext);
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,8 +38,14 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
   const isAuthorized = !!user; // Check if user is truthy (logged in)
 
   useEffect(() => {
-    console.log("FavoriteToggle rendered", { indexId, initialIsFavorite });
-  }, [indexId, initialIsFavorite]);
+    setIsFavorite(initialIsFavorite);
+  }, [initialIsFavorite]);
+
+  const emitToggle = useCallback((nextValue) => {
+    if (onToggle) {
+      onToggle(nextValue);
+    }
+  }, [onToggle]);
 
   const toggleFavorite = async () => {
     if (!isAuthorized) {
@@ -56,7 +62,11 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
         }
       });
       handleUpdateUserDetails(result?.updatedUserDetails);
-      setIsFavorite(!isFavorite);
+      setIsFavorite((prev) => {
+        const next = !prev;
+        emitToggle(next);
+        return next;
+      });
     } catch (err) {
       console.error('Error toggling favorite:', err);
     } finally {
@@ -87,6 +97,7 @@ const FavoriteToggle = ({ indexId, initialIsFavorite }) => {
 FavoriteToggle.propTypes = {
   indexId: PropTypes.string.isRequired,
   initialIsFavorite: PropTypes.bool,
+  onToggle: PropTypes.func,
 };
 
 export default FavoriteToggle;

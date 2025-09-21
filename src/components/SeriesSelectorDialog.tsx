@@ -21,6 +21,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import SearchIcon from '@mui/icons-material/Search';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import FavoriteToggle from './FavoriteToggle';
 
 export interface SeriesItem {
   id: string;
@@ -48,17 +49,22 @@ function normalizeString(input: string): string {
     .replace(/\p{Diacritic}/gu, '');
 }
 
+function sortSeries<T extends SeriesItem>(items: T[]): T[] {
+  return [...items].sort((a, b) => normalizeString(a.title).localeCompare(normalizeString(b.title)));
+}
+
 export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const { open, onClose, onSelect, shows, savedCids, currentValueId, includeEditFavorites = false, includeAllFavorites = true } = props;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
   const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
+  const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Merge shows + savedCids and dedupe by id
-  const allSeries: SeriesItem[] = useMemo(() => {
+  const baseSeries: SeriesItem[] = useMemo(() => {
     const map = new Map<string, SeriesItem>();
     [...(shows || []), ...(savedCids || [])].forEach((item) => {
       if (!map.has(item.id)) {
@@ -68,30 +74,33 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     return Array.from(map.values());
   }, [shows, savedCids]);
 
+  const allSeries: SeriesItem[] = useMemo(() => {
+    if (!favoriteOverrides || Object.keys(favoriteOverrides).length === 0) return baseSeries;
+    return baseSeries.map((item) => {
+      const override = favoriteOverrides[item.id];
+      if (override === undefined) return item;
+      return { ...item, isFavorite: override };
+    });
+  }, [baseSeries, favoriteOverrides]);
+
   const hasAnyFavorite = useMemo(() => allSeries.some((s) => s.isFavorite), [allSeries]);
 
   const isFiltering = Boolean(filter && filter.trim());
 
   const filteredFavorites = useMemo(() => {
-    if (isFiltering) {
-      return allSeries
-        .filter((s) => Boolean(s.isFavorite))
-        .filter((s) => normalizeString(s.title).includes(normalizeString(filter)));
-    }
-    return allSeries.filter((s) => Boolean(s.isFavorite));
+    const favorites = allSeries.filter((s) => Boolean(s.isFavorite));
+    const list = isFiltering
+      ? favorites.filter((s) => normalizeString(s.title).includes(normalizeString(filter)))
+      : favorites;
+    return sortSeries(list);
   }, [allSeries, filter, isFiltering]);
 
-  const filteredOthers = useMemo(() => {
-    // Full list should include all, including favorites; keep a separate list for the bottom section
-    if (isFiltering) {
-      return allSeries.filter((s) => normalizeString(s.title).includes(normalizeString(filter)));
-    }
-    return allSeries;
+  const filteredAllSeries = useMemo(() => {
+    const list = isFiltering
+      ? allSeries.filter((s) => normalizeString(s.title).includes(normalizeString(filter)))
+      : allSeries;
+    return sortSeries(list);
   }, [allSeries, filter, isFiltering]);
-
-  const filteredNonFavorites = useMemo(() => {
-    return filteredOthers.filter((s) => !s.isFavorite);
-  }, [filteredOthers]);
 
   useEffect(() => {
     if (open && !isMobile) {
@@ -137,14 +146,15 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
   const flatVisibleIds = useMemo(() => {
     const ids: string[] = [];
-    // Universal always visible when not filtering
-    if (!isFiltering) ids.push('_universal');
-    if (!isFiltering && includeAllFavorites && hasAnyFavorite) ids.push('_favorites');
-    if (!isFiltering && includeEditFavorites && (hasAnyFavorite || includeEditFavorites)) ids.push('editFavorites');
+    if (!isFiltering) {
+      ids.push('_universal');
+      if (includeAllFavorites && hasAnyFavorite) ids.push('_favorites');
+      if (includeEditFavorites && (hasAnyFavorite || includeEditFavorites)) ids.push('editFavorites');
+    }
     filteredFavorites.forEach((s) => ids.push(s.id));
-    filteredOthers.forEach((s) => ids.push(s.id));
-    return ids;
-  }, [filteredFavorites, filteredOthers, isFiltering, includeAllFavorites, hasAnyFavorite, includeEditFavorites]);
+    filteredAllSeries.forEach((s) => ids.push(s.id));
+    return Array.from(new Set(ids));
+  }, [filteredFavorites, filteredAllSeries, isFiltering, includeAllFavorites, hasAnyFavorite, includeEditFavorites]);
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
     if (e.key === 'Enter') {
@@ -155,6 +165,37 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   };
 
   const showQuickPicks = !isFiltering && !isInputFocused;
+  const favoritesForSection = showQuickPicks ? filteredFavorites : [];
+
+  const handleFavoriteOverride = useCallback((id: string, nextIsFavorite: boolean) => {
+    setFavoriteOverrides((prev) => {
+      const baseItem = baseSeries.find((s) => s.id === id);
+      const baseValue = baseItem ? Boolean(baseItem.isFavorite) : false;
+      if (baseValue === nextIsFavorite) {
+        if (!(id in prev)) return prev;
+        const { [id]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [id]: nextIsFavorite };
+    });
+  }, [baseSeries]);
+
+  useEffect(() => {
+    setFavoriteOverrides((prev) => {
+      if (!prev || Object.keys(prev).length === 0) return prev;
+      let hasChanges = false;
+      const nextState: Record<string, boolean> = { ...prev };
+      Object.keys(prev).forEach((id) => {
+        const baseItem = baseSeries.find((s) => s.id === id);
+        const baseValue = baseItem ? Boolean(baseItem.isFavorite) : undefined;
+        if (baseValue !== undefined && baseValue === prev[id]) {
+          delete nextState[id];
+          hasChanges = true;
+        }
+      });
+      return hasChanges ? nextState : prev;
+    });
+  }, [baseSeries]);
 
   const getDefaultSelectionId = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -278,7 +319,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
           {/* Unified content: quick picks when no filter; results/full list below */}
           {/* No results state */}
-          {isFiltering && filteredOthers.length === 0 && filteredFavorites.length === 0 && (
+          {isFiltering && filteredAllSeries.length === 0 && (
             <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
               <Typography variant="body2">No results</Typography>
             </Box>
@@ -390,23 +431,64 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                       <CloseIcon fontSize="small" />
                     </IconButton>
                   </ListItemButton>
+                  <Divider sx={{ mt: 3 }} />
                 </>
               )}
 
-              <Divider sx={{ my: 1.5 }} />
+              {favoritesForSection.length > 0 && (
+                <>
+                  <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
+                    Favorites
+                  </ListSubheader>
+                  {favoritesForSection.map((s) => (
+                    <ListItemButton
+                      key={s.id}
+                      selected={currentValueId === s.id}
+                      onClick={() => handleSelect(s.id)}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1.5,
+                        mb: 1,
+                        py: 1,
+                        px: 1,
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 32 }}>
+                        {s.emoji ? (
+                          <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{s.emoji}</Box>
+                        ) : (
+                          <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>⭐</Box>
+                        )}
+                      </ListItemIcon>
+                      <ListItemText primaryTypographyProps={{ sx: { fontWeight: 600 } }} primary={s.title} />
+                      <Box
+                        sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                      >
+                        <FavoriteToggle
+                          indexId={s.id}
+                          initialIsFavorite={Boolean(s.isFavorite)}
+                          onToggle={(next) => handleFavoriteOverride(s.id, next)}
+                        />
+                      </Box>
+                    </ListItemButton>
+                  ))}
+                </>
+              )}
+
+              <Divider sx={{ mt: 3 }} />
             </>
           )}
 
-          {(filteredFavorites.length + filteredNonFavorites.length > 0) && (
-            <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
-              Browse
-            </ListSubheader>
-          )}
-
-          {/* Full list */}
-          {isFiltering ? (
+          {filteredAllSeries.length > 0 && (
             <>
-              {filteredFavorites.map((s) => (
+              <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
+                Everything
+              </ListSubheader>
+              {filteredAllSeries.map((s) => (
                 <ListItemButton
                   key={s.id}
                   selected={currentValueId === s.id}
@@ -416,78 +498,33 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                     borderColor: 'divider',
                     borderRadius: 1.5,
                     mb: 1,
-                    py: 1.25,
+                    py: 1,
+                    px: 1,
                   }}
                 >
-                  <ListItemIcon sx={{ minWidth: 36 }}>
+                  <ListItemIcon sx={{ minWidth: 32 }}>
                     {s.emoji ? (
                       <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{s.emoji}</Box>
                     ) : (
-                      <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>⭐</Box>
+                      <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{s.isFavorite ? '⭐' : '🎬'}</Box>
                     )}
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ sx: { fontWeight: 600 } }} primary={s.title} />
-                  {s.emoji && (
-                    <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }} aria-label="Favorited">
-                      <Box component="span" sx={{ fontSize: 16, lineHeight: 1 }}>⭐</Box>
-                    </Box>
-                  )}
-                </ListItemButton>
-              ))}
-
-              {filteredNonFavorites.map((s) => (
-                <ListItemButton
-                  key={s.id}
-                  selected={currentValueId === s.id}
-                  onClick={() => handleSelect(s.id)}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1.5,
-                    mb: 1,
-                    py: 1.25,
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 36, opacity: 0.9 }}>
-                    {s.emoji ? (
-                      <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{s.emoji}</Box>
-                    ) : (
-                      <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>🎬</Box>
-                    )}
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ sx: { fontWeight: 600 } }} primary={s.title} />
+                  <Box
+                    sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                  >
+                    <FavoriteToggle
+                      indexId={s.id}
+                      initialIsFavorite={Boolean(s.isFavorite)}
+                      onToggle={(next) => handleFavoriteOverride(s.id, next)}
+                    />
+                  </Box>
                 </ListItemButton>
               ))}
             </>
-          ) : (
-            [...filteredFavorites, ...filteredNonFavorites].map((s) => (
-              <ListItemButton
-                key={s.id}
-                selected={currentValueId === s.id}
-                onClick={() => handleSelect(s.id)}
-                sx={{
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 1.5,
-                  mb: 1,
-                  py: 1.25,
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  {s.emoji ? (
-                    <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{s.emoji}</Box>
-                  ) : (
-                    <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{s.isFavorite ? '⭐' : '🎬'}</Box>
-                  )}
-                </ListItemIcon>
-                <ListItemText primaryTypographyProps={{ sx: { fontWeight: 600 } }} primary={s.title} />
-                {s.isFavorite && s.emoji && (
-                  <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }} aria-label="Favorited">
-                    <Box component="span" sx={{ fontSize: 16, lineHeight: 1 }}>⭐</Box>
-                  </Box>
-                )}
-              </ListItemButton>
-            ))
           )}
         </List>
       </DialogContent>
