@@ -11,7 +11,6 @@ import {
   ListSubheader,
   ListItemButton,
   ListItemText,
-  ListItemIcon,
   Typography,
   Divider,
   useTheme,
@@ -23,6 +22,8 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import FavoriteToggle from './FavoriteToggle';
 import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 
 export interface SeriesItem {
   id: string;
@@ -76,9 +77,6 @@ const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
       '& .MuiListItemText-secondary': {
         color: alpha(textColor, 0.85),
       },
-      '& .MuiListItemIcon-root': {
-        color: textColor,
-      },
     },
     '&.Mui-selected:hover': {
       backgroundColor: highlightColor,
@@ -92,13 +90,12 @@ const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
 
 const quickActionButtonSx = (theme: Theme) => {
   const isLight = theme.palette.mode === 'light';
-  const borderTone = alpha(theme.palette.grey[900], isLight ? 0.65 : 0.5);
-  const hoverBorderTone = alpha(isLight ? theme.palette.common.white : theme.palette.grey[50], isLight ? 0.7 : 0.6);
-  const backgroundColor = alpha(theme.palette.grey[900], isLight ? 0.86 : 0.55);
-  const backgroundGradient = `linear-gradient(135deg, ${alpha(theme.palette.grey[900], isLight ? 0.95 : 0.65)} 0%, ${alpha(theme.palette.grey[800], isLight ? 0.88 : 0.55)} 60%, ${alpha(theme.palette.grey[700], isLight ? 0.8 : 0.5)} 100%)`;
+  const borderTone = alpha(theme.palette.grey[800], isLight ? 0.7 : 0.55);
+  const hoverBorderTone = alpha(theme.palette.grey[50], isLight ? 0.7 : 0.55);
+  const backgroundColor = alpha(theme.palette.grey[900], isLight ? 0.92 : 0.58);
+  const backgroundGradient = `linear-gradient(135deg, ${alpha(theme.palette.grey[900], isLight ? 0.98 : 0.7)} 0%, ${alpha(theme.palette.grey[800], isLight ? 0.9 : 0.6)} 60%, ${alpha(theme.palette.grey[700], isLight ? 0.82 : 0.5)} 100%)`;
   const textColor = theme.palette.common.white;
-  const subTextColor = alpha(theme.palette.common.white, isLight ? 0.78 : 0.7);
-  const iconColor = alpha(theme.palette.common.white, isLight ? 0.85 : 0.75);
+  const subTextColor = alpha(theme.palette.common.white, isLight ? 0.82 : 0.72);
 
   return {
     border: '1px solid',
@@ -109,6 +106,9 @@ const quickActionButtonSx = (theme: Theme) => {
     paddingBottom: theme.spacing(2),
     paddingLeft: theme.spacing(1),
     paddingRight: theme.spacing(1),
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
     boxShadow: theme.shadows[3],
     backgroundColor,
     backgroundImage: backgroundGradient,
@@ -128,22 +128,18 @@ const quickActionButtonSx = (theme: Theme) => {
     '& .MuiListItemText-secondary': {
       color: subTextColor,
     },
-    '& .MuiListItemIcon-root': {
-      color: iconColor,
-    },
     ...getSelectedListItemStyles(theme),
   };
 };
 
 const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
   const isLight = theme.palette.mode === 'light';
-  const baseBorder = alpha(theme.palette.grey[900], isLight ? 0.24 : 0.4);
-  const hoverBorder = alpha(theme.palette.grey[900], isLight ? 0.42 : 0.6);
-  const baseBg = alpha(theme.palette.grey[900], isLight ? 0.12 : 0.32);
-  const hoverBg = alpha(theme.palette.grey[900], isLight ? 0.2 : 0.42);
+  const baseBorder = alpha(theme.palette.grey[800], isLight ? 0.34 : 0.45);
+  const hoverBorder = alpha(theme.palette.grey[900], isLight ? 0.5 : 0.65);
+  const baseBg = alpha(theme.palette.grey[900], isLight ? 0.16 : 0.34);
+  const hoverBg = alpha(theme.palette.grey[900], isLight ? 0.24 : 0.45);
   const primaryText = isLight ? theme.palette.text.primary : theme.palette.grey[50];
   const secondaryText = isLight ? alpha(theme.palette.text.primary, 0.68) : alpha(theme.palette.grey[100], 0.75);
-  const iconColor = isLight ? alpha(theme.palette.text.primary, 0.7) : alpha(theme.palette.grey[100], 0.7);
 
   return {
     border: '1px solid',
@@ -154,6 +150,9 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
     paddingBottom: theme.spacing(1),
     paddingLeft: theme.spacing(1),
     paddingRight: theme.spacing(1),
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.25),
     backgroundColor: baseBg,
     color: primaryText,
     boxShadow: theme.shadows[1],
@@ -167,9 +166,6 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
     '& .MuiListItemText-secondary': {
       color: secondaryText,
     },
-    '& .MuiListItemIcon-root': {
-      color: iconColor,
-    },
     '&:hover:not(.Mui-selected)': {
       borderColor: hoverBorder,
       boxShadow: theme.shadows[4],
@@ -177,6 +173,27 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
       transform: 'translate3d(0,-2px,0)',
     },
     ...getSelectedListItemStyles(theme, series),
+  };
+};
+
+const radioIconSx = (theme: Theme, selected: boolean, options?: { inverted?: boolean }) => {
+  const inverted = Boolean(options?.inverted);
+  const baseColor = inverted
+    ? alpha(theme.palette.common.white, theme.palette.mode === 'light' ? 0.55 : 0.5)
+    : alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.5 : 0.45);
+  const selectedColor = inverted
+    ? theme.palette.common.white
+    : theme.palette.primary.main;
+
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 28,
+    color: selected ? selectedColor : baseColor,
+    transition: theme.transitions.create('color', {
+      duration: theme.transitions.duration.shorter,
+    }),
   };
 };
 
@@ -279,6 +296,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
   const showQuickPicks = !isFiltering && !isInputFocused;
   const favoritesForSection = showQuickPicks ? filteredFavorites : [];
+  const hasFavoriteSelectionInQuick = showQuickPicks && favoritesForSection.some((fav) => fav.id === currentValueId);
 
   const handleFavoriteOverride = useCallback((id: string, nextIsFavorite: boolean) => {
     setFavoriteOverrides((prev) => {
@@ -427,10 +445,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                 onClick={() => handleSelect('_universal')}
                 sx={(theme) => quickActionButtonSx(theme)}
               >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <Box component="span" sx={{ fontSize: 24, lineHeight: 1 }}>🌈</Box>
-                </ListItemIcon>
+                <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
+                  {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+                </Box>
+                <Box component="span" sx={{ fontSize: 24, lineHeight: 1, mr: 1 }}>🌈</Box>
                 <ListItemText
+                  sx={{ ml: 0, flex: 1 }}
                   primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
                   primary="All Shows & Movies"
                   secondary="Everything across shows and movies"
@@ -447,10 +467,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                     marginBottom: theme.spacing(1.5),
                   })}
                 >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <Box component="span" sx={{ fontSize: 24, lineHeight: 1 }}>⭐</Box>
-                  </ListItemIcon>
+                  <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
+                    {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+                  </Box>
+                  <Box component="span" sx={{ fontSize: 24, lineHeight: 1, mr: 1 }}>⭐</Box>
                   <ListItemText
+                    sx={{ ml: 0, flex: 1 }}
                     primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
                     primary="All Favorites"
                     secondary="Only items you've starred as favorites"
@@ -468,35 +490,41 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                   <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
                     Favorites
                   </ListSubheader>
-                  {favoritesForSection.map((s) => (
-                    <ListItemButton
-                      key={s.id}
-                      selected={currentValueId === s.id}
-                      onClick={() => handleSelect(s.id)}
-                      sx={(theme) => listCardButtonSx(theme, s)}
-                    >
-                      <ListItemIcon sx={{ minWidth: 32 }}>
-                        {s.emoji ? (
-                          <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{s.emoji}</Box>
-                        ) : (
-                          <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>⭐</Box>
-                        )}
-                      </ListItemIcon>
-                      <ListItemText primaryTypographyProps={{ sx: { fontWeight: 600 } }} primary={s.title} />
-                      <Box
-                        sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
+                  {favoritesForSection.map((s) => {
+                    const isSelected = currentValueId === s.id;
+                    return (
+                      <ListItemButton
+                        key={s.id}
+                        selected={isSelected}
+                        onClick={() => handleSelect(s.id)}
+                        sx={(theme) => listCardButtonSx(theme, s)}
                       >
-                        <FavoriteToggle
-                          indexId={s.id}
-                          initialIsFavorite={Boolean(s.isFavorite)}
-                          onToggle={(next) => handleFavoriteOverride(s.id, next)}
+                        <Box sx={(theme) => radioIconSx(theme, isSelected)}>
+                          {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+                        </Box>
+                        <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
+                          {s.emoji ? s.emoji : '⭐'}
+                        </Box>
+                        <ListItemText
+                          sx={{ ml: 0, flex: 1 }}
+                          primaryTypographyProps={{ sx: { fontWeight: 600, color: 'inherit' } }}
+                          primary={s.title}
                         />
-                      </Box>
-                    </ListItemButton>
-                  ))}
+                        <Box
+                          sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                        >
+                          <FavoriteToggle
+                            indexId={s.id}
+                            initialIsFavorite={Boolean(s.isFavorite)}
+                            onToggle={(next) => handleFavoriteOverride(s.id, next)}
+                          />
+                        </Box>
+                      </ListItemButton>
+                    );
+                  })}
                   <Divider sx={{ mt: 3 }} />
                 </>
               )}
@@ -508,35 +536,41 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
                 Everything
               </ListSubheader>
-              {filteredAllSeries.map((s) => (
-                <ListItemButton
-                  key={s.id}
-                  selected={currentValueId === s.id}
-                  onClick={() => handleSelect(s.id)}
-                  sx={(theme) => listCardButtonSx(theme, s)}
-                >
-                  <ListItemIcon sx={{ minWidth: 32 }}>
-                    {s.emoji ? (
-                      <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{s.emoji}</Box>
-                    ) : (
-                      <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{s.isFavorite ? '⭐' : '🎬'}</Box>
-                    )}
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ sx: { fontWeight: 600 } }} primary={s.title} />
-                  <Box
-                    sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
+              {filteredAllSeries.map((s) => {
+                const isSelected = currentValueId === s.id && !(hasFavoriteSelectionInQuick && s.isFavorite);
+                return (
+                  <ListItemButton
+                    key={s.id}
+                    selected={isSelected}
+                    onClick={() => handleSelect(s.id)}
+                    sx={(theme) => listCardButtonSx(theme, s)}
                   >
-                    <FavoriteToggle
-                      indexId={s.id}
-                      initialIsFavorite={Boolean(s.isFavorite)}
-                      onToggle={(next) => handleFavoriteOverride(s.id, next)}
+                    <Box sx={(theme) => radioIconSx(theme, isSelected)}>
+                      {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+                    </Box>
+                    <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
+                      {s.emoji ? s.emoji : s.isFavorite ? '⭐' : '🎬'}
+                    </Box>
+                    <ListItemText
+                      sx={{ ml: 0, flex: 1 }}
+                      primaryTypographyProps={{ sx: { fontWeight: 600, color: 'inherit' } }}
+                      primary={s.title}
                     />
-                  </Box>
-                </ListItemButton>
-              ))}
+                    <Box
+                      sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                    >
+                      <FavoriteToggle
+                        indexId={s.id}
+                        initialIsFavorite={Boolean(s.isFavorite)}
+                        onToggle={(next) => handleFavoriteOverride(s.id, next)}
+                      />
+                    </Box>
+                  </ListItemButton>
+                );
+              })}
             </>
           )}
         </List>
