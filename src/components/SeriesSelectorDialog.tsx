@@ -17,7 +17,6 @@ import {
   useTheme,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import SettingsIcon from '@mui/icons-material/Settings';
 import SearchIcon from '@mui/icons-material/Search';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -41,7 +40,6 @@ export interface SeriesSelectorDialogProps {
   shows: SeriesItem[];
   savedCids?: SeriesItem[];
   currentValueId?: string;
-  includeEditFavorites?: boolean;
   includeAllFavorites?: boolean;
 }
 
@@ -68,6 +66,7 @@ const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
       borderColor: whiteBorder,
       borderWidth: 2,
       backgroundColor: highlightColor,
+      backgroundImage: 'none',
       boxShadow: `${theme.shadows[8]}, 0 0 0 1px ${alpha(highlightColor, theme.palette.mode === 'light' ? 0.4 : 0.55)}`,
       color: textColor,
       '& .MuiListItemText-primary': {
@@ -83,6 +82,7 @@ const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
     },
     '&.Mui-selected:hover': {
       backgroundColor: highlightColor,
+      backgroundImage: 'none',
       borderColor: whiteBorder,
       boxShadow: `${theme.shadows[10]}, 0 0 0 1px ${alpha(highlightColor, theme.palette.mode === 'light' ? 0.5 : 0.65)}`,
       transform: 'translate3d(0,-2px,0)',
@@ -90,58 +90,90 @@ const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
   };
 };
 
-const quickActionButtonSx = (theme: Theme) => ({
-  border: '1px solid',
-  borderColor: theme.palette.divider,
-  borderRadius: 2,
-  marginBottom: theme.spacing(1),
-  paddingTop: theme.spacing(2),
-  paddingBottom: theme.spacing(2),
-  paddingLeft: theme.spacing(1),
-  paddingRight: theme.spacing(1),
-  boxShadow: theme.shadows[1],
-  backgroundColor: theme.palette.background.paper,
-  transition: theme.transitions.create(['background-color', 'border-color', 'box-shadow', 'transform'], {
-    duration: theme.transitions.duration.shorter,
-  }),
-  '&:hover:not(.Mui-selected)': {
-    borderColor: theme.palette.primary.light,
-    boxShadow: theme.shadows[6],
-    transform: 'translate3d(0,-2px,0)',
-  },
-  ...getSelectedListItemStyles(theme),
-});
+const quickActionButtonSx = (theme: Theme) => {
+  const isLight = theme.palette.mode === 'light';
+  const borderTone = alpha(theme.palette.grey[900], isLight ? 0.65 : 0.5);
+  const hoverBorderTone = alpha(isLight ? theme.palette.common.white : theme.palette.grey[50], isLight ? 0.7 : 0.6);
+  const backgroundColor = alpha(theme.palette.grey[900], isLight ? 0.86 : 0.55);
+  const backgroundGradient = `linear-gradient(135deg, ${alpha(theme.palette.grey[900], isLight ? 0.95 : 0.65)} 0%, ${alpha(theme.palette.grey[800], isLight ? 0.88 : 0.55)} 60%, ${alpha(theme.palette.grey[700], isLight ? 0.8 : 0.5)} 100%)`;
+  const textColor = theme.palette.common.white;
+  const subTextColor = alpha(theme.palette.common.white, isLight ? 0.78 : 0.7);
+  const iconColor = alpha(theme.palette.common.white, isLight ? 0.85 : 0.75);
 
-const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
   return {
     border: '1px solid',
-    borderColor: theme.palette.divider,
+    borderColor: borderTone,
+    borderRadius: 2,
+    marginBottom: theme.spacing(1),
+    paddingTop: theme.spacing(2),
+    paddingBottom: theme.spacing(2),
+    paddingLeft: theme.spacing(1),
+    paddingRight: theme.spacing(1),
+    boxShadow: theme.shadows[3],
+    backgroundColor,
+    backgroundImage: backgroundGradient,
+    color: textColor,
+    transition: theme.transitions.create(['background-color', 'border-color', 'box-shadow', 'transform'], {
+      duration: theme.transitions.duration.shorter,
+    }),
+    '&:hover:not(.Mui-selected)': {
+      borderColor: hoverBorderTone,
+      boxShadow: theme.shadows[6],
+      transform: 'translate3d(0,-2px,0)',
+    },
+    '& .MuiListItemText-primary': {
+      color: textColor,
+      fontWeight: 700,
+    },
+    '& .MuiListItemText-secondary': {
+      color: subTextColor,
+    },
+    '& .MuiListItemIcon-root': {
+      color: iconColor,
+    },
+    ...getSelectedListItemStyles(theme),
+  };
+};
+
+const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
+  const isLight = theme.palette.mode === 'light';
+  const baseBorder = alpha(theme.palette.grey[900], isLight ? 0.24 : 0.4);
+  const hoverBorder = alpha(theme.palette.grey[900], isLight ? 0.42 : 0.6);
+  const baseBg = alpha(theme.palette.grey[900], isLight ? 0.12 : 0.32);
+  const hoverBg = alpha(theme.palette.grey[900], isLight ? 0.2 : 0.42);
+  const primaryText = isLight ? theme.palette.text.primary : theme.palette.grey[50];
+  const secondaryText = isLight ? alpha(theme.palette.text.primary, 0.68) : alpha(theme.palette.grey[100], 0.75);
+  const iconColor = isLight ? alpha(theme.palette.text.primary, 0.7) : alpha(theme.palette.grey[100], 0.7);
+
+  return {
+    border: '1px solid',
+    borderColor: baseBorder,
     borderRadius: 1.5,
     marginBottom: theme.spacing(1),
     paddingTop: theme.spacing(1),
     paddingBottom: theme.spacing(1),
     paddingLeft: theme.spacing(1),
     paddingRight: theme.spacing(1),
-    backgroundColor: theme.palette.background.paper,
-    color: theme.palette.text.primary,
+    backgroundColor: baseBg,
+    color: primaryText,
     boxShadow: theme.shadows[1],
     transition: theme.transitions.create(['background-color', 'border-color', 'box-shadow', 'transform'], {
       duration: theme.transitions.duration.shorter,
     }),
     '& .MuiListItemText-primary': {
-      color: theme.palette.text.primary,
+      color: primaryText,
       fontWeight: 600,
     },
     '& .MuiListItemText-secondary': {
-      color: theme.palette.text.secondary,
+      color: secondaryText,
     },
     '& .MuiListItemIcon-root': {
-      color: theme.palette.text.secondary,
+      color: iconColor,
     },
     '&:hover:not(.Mui-selected)': {
-      borderColor: theme.palette.primary.light,
+      borderColor: hoverBorder,
       boxShadow: theme.shadows[4],
-      backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'light' ? 0.08 : 0.26),
+      backgroundColor: hoverBg,
       transform: 'translate3d(0,-2px,0)',
     },
     ...getSelectedListItemStyles(theme, series),
@@ -149,7 +181,7 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
 };
 
 export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
-  const { open, onClose, onSelect, shows, savedCids, currentValueId, includeEditFavorites = false, includeAllFavorites = true } = props;
+  const { open, onClose, onSelect, shows, savedCids, currentValueId, includeAllFavorites = true } = props;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
@@ -231,12 +263,11 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     if (!isFiltering) {
       ids.push('_universal');
       if (includeAllFavorites && hasAnyFavorite) ids.push('_favorites');
-      if (includeEditFavorites && (hasAnyFavorite || includeEditFavorites)) ids.push('editFavorites');
     }
     filteredFavorites.forEach((s) => ids.push(s.id));
     filteredAllSeries.forEach((s) => ids.push(s.id));
     return Array.from(new Set(ids));
-  }, [filteredFavorites, filteredAllSeries, isFiltering, includeAllFavorites, hasAnyFavorite, includeEditFavorites]);
+  }, [filteredFavorites, filteredAllSeries, isFiltering, includeAllFavorites, hasAnyFavorite]);
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
     if (e.key === 'Enter') {
@@ -400,10 +431,10 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                   <Box component="span" sx={{ fontSize: 24, lineHeight: 1 }}>🌈</Box>
                 </ListItemIcon>
                 <ListItemText
-                  primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem' } }}
+                  primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
                   primary="All Shows & Movies"
                   secondary="Everything across shows and movies"
-                  secondaryTypographyProps={{ sx: { color: 'text.secondary' } }}
+                  secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
                 />
               </ListItemButton>
 
@@ -420,19 +451,16 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                     <Box component="span" sx={{ fontSize: 24, lineHeight: 1 }}>⭐</Box>
                   </ListItemIcon>
                   <ListItemText
-                    primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem' } }}
+                    primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
                     primary="All Favorites"
                     secondary="Only items you've starred as favorites"
-                    secondaryTypographyProps={{ sx: { color: 'text.secondary' } }}
+                    secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
                   />
-                  {includeEditFavorites && (
-                    <Box sx={{ ml: 'auto' }}>
-                      <IconButton size="small" aria-label="Edit favorites" onClick={(e) => { e.stopPropagation(); handleSelect('editFavorites'); }}>
-                        <SettingsIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  )}
                 </ListItemButton>
+              )}
+
+              {(favoritesForSection.length > 0 || filteredAllSeries.length > 0) && (
+                <Divider sx={{ mt: 2, mb: 2, opacity: 0.55 }} />
               )}
 
               {favoritesForSection.length > 0 && (
@@ -469,10 +497,9 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                       </Box>
                     </ListItemButton>
                   ))}
+                  <Divider sx={{ mt: 3 }} />
                 </>
               )}
-
-              <Divider sx={{ mt: 3 }} />
             </>
           )}
 

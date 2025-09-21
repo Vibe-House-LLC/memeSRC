@@ -88,9 +88,7 @@ export default function IpfsSearchBar(props) {
   }, [searchTerm]);
 
   const handleSelectSeries = (data) => {
-    if (data === "editFavorites") {
-      navigate("/favorites"); // Navigate to the favorites editing page
-    } else if (data === "addNewCid") {
+    if (data === "addNewCid") {
       setAddNewCidOpen(true);
     } else if (pathname.split('/')[1] === 'search') {
       navigate(`/search/${data}/${searchTerm ? `?searchTerm=${searchTerm}` : ''}`)
@@ -170,7 +168,6 @@ export default function IpfsSearchBar(props) {
                 return found ? `${found.emoji ? `${found.emoji} ` : ''}${found.title}` : 'Select show or movie';
               })();
 
-              const includeEdit = user?.userDetails?.subscriptionStatus === 'active' || shows.some((s) => s.isFavorite);
               const includeAllFav = shows.some((s) => s.isFavorite);
 
               return (
@@ -206,7 +203,6 @@ export default function IpfsSearchBar(props) {
                     shows={shows}
                     savedCids={savedCids}
                     currentValueId={cid}
-                    includeEditFavorites={includeEdit}
                     includeAllFavorites={includeAllFav}
                   />
                 </>

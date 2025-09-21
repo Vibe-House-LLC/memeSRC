@@ -448,10 +448,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   })();
 
                   const handleSelect = (selectedId) => {
-                    if (selectedId === 'editFavorites') {
-                      navigate('/favorites');
-                      return;
-                    }
                     setCid(selectedId || '_universal');
                     setSeriesTitle(selectedId);
                     handleChangeSeries(selectedId);
@@ -461,7 +457,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     navigate(selectedId === '_universal' ? '/' : `/${selectedId}`);
                   };
 
-                  const includeEdit = user?.userDetails?.subscriptionStatus === 'active' || shows.some((s) => s.isFavorite);
                   const includeAllFav = shows.some((s) => s.isFavorite);
 
                   return (
@@ -497,7 +492,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                         shows={shows}
                         savedCids={savedCids}
                         currentValueId={currentValueId}
-                        includeEditFavorites={includeEdit}
                         includeAllFavorites={includeAllFav}
                       />
                     </>
