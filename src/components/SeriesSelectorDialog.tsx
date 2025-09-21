@@ -22,12 +22,16 @@ import SearchIcon from '@mui/icons-material/Search';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import FavoriteToggle from './FavoriteToggle';
+import { alpha } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 
 export interface SeriesItem {
   id: string;
   title: string;
   emoji?: string;
   isFavorite?: boolean;
+  colorMain?: string;
+  colorSecondary?: string;
 }
 
 export interface SeriesSelectorDialogProps {
@@ -52,6 +56,97 @@ function normalizeString(input: string): string {
 function sortSeries<T extends SeriesItem>(items: T[]): T[] {
   return [...items].sort((a, b) => normalizeString(a.title).localeCompare(normalizeString(b.title)));
 }
+
+const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
+  const highlightColor = series?.colorMain || theme.palette.primary.main;
+  const textColor = series?.colorSecondary
+    || (series?.colorMain ? theme.palette.getContrastText(series.colorMain) : theme.palette.primary.contrastText);
+  const whiteBorder = alpha(theme.palette.common.white, theme.palette.mode === 'light' ? 0.82 : 0.92);
+
+  return {
+    '&.Mui-selected': {
+      borderColor: whiteBorder,
+      borderWidth: 2,
+      backgroundColor: highlightColor,
+      boxShadow: `${theme.shadows[8]}, 0 0 0 1px ${alpha(highlightColor, theme.palette.mode === 'light' ? 0.4 : 0.55)}`,
+      color: textColor,
+      '& .MuiListItemText-primary': {
+        color: textColor,
+        fontWeight: 700,
+      },
+      '& .MuiListItemText-secondary': {
+        color: alpha(textColor, 0.85),
+      },
+      '& .MuiListItemIcon-root': {
+        color: textColor,
+      },
+    },
+    '&.Mui-selected:hover': {
+      backgroundColor: highlightColor,
+      borderColor: whiteBorder,
+      boxShadow: `${theme.shadows[10]}, 0 0 0 1px ${alpha(highlightColor, theme.palette.mode === 'light' ? 0.5 : 0.65)}`,
+      transform: 'translate3d(0,-2px,0)',
+    },
+  };
+};
+
+const quickActionButtonSx = (theme: Theme) => ({
+  border: '1px solid',
+  borderColor: theme.palette.divider,
+  borderRadius: 2,
+  marginBottom: theme.spacing(1),
+  paddingTop: theme.spacing(2),
+  paddingBottom: theme.spacing(2),
+  paddingLeft: theme.spacing(1),
+  paddingRight: theme.spacing(1),
+  boxShadow: theme.shadows[1],
+  backgroundColor: theme.palette.background.paper,
+  transition: theme.transitions.create(['background-color', 'border-color', 'box-shadow', 'transform'], {
+    duration: theme.transitions.duration.shorter,
+  }),
+  '&:hover:not(.Mui-selected)': {
+    borderColor: theme.palette.primary.light,
+    boxShadow: theme.shadows[6],
+    transform: 'translate3d(0,-2px,0)',
+  },
+  ...getSelectedListItemStyles(theme),
+});
+
+const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
+  return {
+    border: '1px solid',
+    borderColor: theme.palette.divider,
+    borderRadius: 1.5,
+    marginBottom: theme.spacing(1),
+    paddingTop: theme.spacing(1),
+    paddingBottom: theme.spacing(1),
+    paddingLeft: theme.spacing(1),
+    paddingRight: theme.spacing(1),
+    backgroundColor: theme.palette.background.paper,
+    color: theme.palette.text.primary,
+    boxShadow: theme.shadows[1],
+    transition: theme.transitions.create(['background-color', 'border-color', 'box-shadow', 'transform'], {
+      duration: theme.transitions.duration.shorter,
+    }),
+    '& .MuiListItemText-primary': {
+      color: theme.palette.text.primary,
+      fontWeight: 600,
+    },
+    '& .MuiListItemText-secondary': {
+      color: theme.palette.text.secondary,
+    },
+    '& .MuiListItemIcon-root': {
+      color: theme.palette.text.secondary,
+    },
+    '&:hover:not(.Mui-selected)': {
+      borderColor: theme.palette.primary.light,
+      boxShadow: theme.shadows[4],
+      backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'light' ? 0.08 : 0.26),
+      transform: 'translate3d(0,-2px,0)',
+    },
+    ...getSelectedListItemStyles(theme, series),
+  };
+};
 
 export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const { open, onClose, onSelect, shows, savedCids, currentValueId, includeEditFavorites = false, includeAllFavorites = true } = props;
@@ -299,16 +394,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               <ListItemButton
                 selected={currentValueId === '_universal'}
                 onClick={() => handleSelect('_universal')}
-                sx={{
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 2,
-                  mb: 1,
-                  py: 2,
-                  px: 1,
-                  boxShadow: 1,
-                  bgcolor: 'background.default',
-                }}
+                sx={(theme) => quickActionButtonSx(theme)}
               >
                 <ListItemIcon sx={{ minWidth: 40 }}>
                   <Box component="span" sx={{ fontSize: 24, lineHeight: 1 }}>🌈</Box>
@@ -325,16 +411,10 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                 <ListItemButton
                   selected={currentValueId === '_favorites'}
                   onClick={() => handleSelect('_favorites')}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    mb: 1.5,
-                    py: 2,
-                    px: 1,
-                    boxShadow: 1,
-                    bgcolor: 'background.default',
-                  }}
+                  sx={(theme) => ({
+                    ...quickActionButtonSx(theme),
+                    marginBottom: theme.spacing(1.5),
+                  })}
                 >
                   <ListItemIcon sx={{ minWidth: 40 }}>
                     <Box component="span" sx={{ fontSize: 24, lineHeight: 1 }}>⭐</Box>
@@ -365,14 +445,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                       key={s.id}
                       selected={currentValueId === s.id}
                       onClick={() => handleSelect(s.id)}
-                      sx={{
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 1.5,
-                        mb: 1,
-                        py: 1,
-                        px: 1,
-                      }}
+                      sx={(theme) => listCardButtonSx(theme, s)}
                     >
                       <ListItemIcon sx={{ minWidth: 32 }}>
                         {s.emoji ? (
@@ -413,14 +486,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                   key={s.id}
                   selected={currentValueId === s.id}
                   onClick={() => handleSelect(s.id)}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1.5,
-                    mb: 1,
-                    py: 1,
-                    px: 1,
-                  }}
+                  sx={(theme) => listCardButtonSx(theme, s)}
                 >
                   <ListItemIcon sx={{ minWidth: 32 }}>
                     {s.emoji ? (
