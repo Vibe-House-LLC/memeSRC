@@ -131,19 +131,6 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     onClose();
   };
 
-  const currentLabel = useMemo(() => {
-    if (!currentValueId) return '';
-    if (currentValueId === '_universal') return '🌈 All Shows & Movies';
-    if (currentValueId === '_favorites') return '⭐ All Favorites';
-    const found = allSeries.find((s) => s.id === currentValueId);
-    return found ? `${found.emoji ? `${found.emoji} ` : ''}${found.title}` : '';
-  }, [currentValueId, allSeries]);
-
-  const currentSeries = useMemo(() => {
-    if (!currentValueId || currentValueId === '_universal' || currentValueId === '_favorites') return undefined;
-    return allSeries.find((s) => s.id === currentValueId);
-  }, [allSeries, currentValueId]);
-
   const flatVisibleIds = useMemo(() => {
     const ids: string[] = [];
     if (!isFiltering) {
@@ -196,28 +183,6 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       return hasChanges ? nextState : prev;
     });
   }, [baseSeries]);
-
-  const getDefaultSelectionId = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      const stored = window.localStorage.getItem('memeSRCDefaultIndex');
-      if (stored === '_favorites' && includeAllFavorites && hasAnyFavorite) return '_favorites';
-      if (stored === '_universal') return '_universal';
-
-      const legacyKey = Object.keys(window.localStorage ?? {}).find((key) => key.startsWith('defaultsearch'));
-      const legacyValue = legacyKey ? window.localStorage.getItem(legacyKey) : null;
-      if (legacyValue === '_favorites' && includeAllFavorites && hasAnyFavorite) return '_favorites';
-      if (legacyValue === '_universal') return '_universal';
-    }
-
-    if (includeAllFavorites && hasAnyFavorite) return '_favorites';
-    return '_universal';
-  }, [includeAllFavorites, hasAnyFavorite]);
-
-  const handleClearCurrent = useCallback(() => {
-    const defaultId = getDefaultSelectionId();
-    setFilter('');
-    onSelect(defaultId);
-  }, [getDefaultSelectionId, onSelect]);
 
   return (
     <Dialog
@@ -388,51 +353,6 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                     </Box>
                   )}
                 </ListItemButton>
-              )}
-
-              {currentSeries && (
-                <>
-                  <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
-                    Current Filter
-                  </ListSubheader>
-                  <ListItemButton
-                    selected={currentValueId === currentSeries.id}
-                    onClick={() => handleSelect(currentSeries.id)}
-                    sx={{
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1.5,
-                      mb: 1,
-                      py: 1,
-                      px: 1,
-                    }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 32 }}>
-                      {currentSeries.emoji ? (
-                        <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{currentSeries.emoji}</Box>
-                      ) : (
-                        <Box component="span" sx={{ fontSize: 18, lineHeight: 1 }}>{currentSeries.isFavorite ? '⭐' : '🎬'}</Box>
-                      )}
-                    </ListItemIcon>
-                    <ListItemText
-                      primaryTypographyProps={{ sx: { fontWeight: 600 } }}
-                      primary={currentSeries.title}
-                    />
-                    <IconButton
-                      size="small"
-                      edge="end"
-                      aria-label="Clear selection"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleClearCurrent();
-                      }}
-                      sx={{ ml: 1 }}
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </ListItemButton>
-                  <Divider sx={{ mt: 3 }} />
-                </>
               )}
 
               {favoritesForSection.length > 0 && (
