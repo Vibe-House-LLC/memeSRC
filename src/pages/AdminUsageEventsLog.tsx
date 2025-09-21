@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { API, graphqlOperation, Hub } from 'aws-amplify';
 import { CONNECTION_STATE_CHANGE } from '@aws-amplify/pubsub';
 import {
@@ -10,8 +10,13 @@ import {
   CircularProgress,
   Collapse,
   Container,
+  FormControl,
+  FormHelperText,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Skeleton,
   Stack,
   Typography,
@@ -21,7 +26,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
-import { getUsageEvent } from '../graphql/queries';
+import type { SelectChangeEvent } from '@mui/material/Select';
+import { getUsageEvent, listUsageEvents, usageEventsByType } from '../graphql/queries';
 
 const USAGE_EVENT_SUBSCRIPTION = /* GraphQL */ `
   subscription OnCreateUsageEvent {
@@ -80,7 +86,12 @@ type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
 
 type ChipColor = 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
 
+type AsyncStatus = 'idle' | 'loading' | 'loadingMore' | 'loaded' | 'error';
+
 const MAX_EVENTS = 100;
+const HISTORICAL_PAGE_SIZE = 50;
+const EVENT_TYPE_SAMPLE_LIMIT = 200;
+const ALL_EVENT_TYPES_OPTION = '__ALL__';
 
 const EVENT_COLOR_MAP: Record<string, ChipColor> = {
   search: 'info',
@@ -147,6 +158,19 @@ const shortenIdentifier = (value: string | null | undefined) => {
   return value.length <= 20 ? value : `${value.slice(0, 8)}…${value.slice(-6)}`;
 };
 
+const getEventTimestamp = (entry: UsageEventLogEntry) => {
+  const primaryTimestamp = entry.summary?.createdAt ?? entry.detail?.createdAt ?? entry.receivedAt;
+  if (primaryTimestamp) {
+    const parsedPrimary = new Date(primaryTimestamp).getTime();
+    if (!Number.isNaN(parsedPrimary)) {
+      return parsedPrimary;
+    }
+  }
+
+  const fallback = new Date(entry.receivedAt).getTime();
+  return Number.isNaN(fallback) ? 0 : fallback;
+};
+
 export default function AdminUsageEventsLog() {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
@@ -157,7 +181,58 @@ export default function AdminUsageEventsLog() {
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [subscriptionAttempt, setSubscriptionAttempt] = useState(0);
+  const [eventTypeOptions, setEventTypeOptions] = useState<string[]>(() => Object.keys(EVENT_COLOR_MAP).sort());
+  const [eventTypeStatus, setEventTypeStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const [eventTypeError, setEventTypeError] = useState<string | null>(null);
+  const [selectedEventType, setSelectedEventType] = useState<string | null>(null);
+  const [historicalEvents, setHistoricalEvents] = useState<UsageEventLogEntry[]>([]);
+  const [historicalNextToken, setHistoricalNextToken] = useState<string | null>(null);
+  const [historicalStatus, setHistoricalStatus] = useState<AsyncStatus>('idle');
+  const [historicalError, setHistoricalError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+
+  const addEventTypes = useCallback((types: Array<string | null | undefined>) => {
+    setEventTypeOptions((prev) => {
+      const normalized = new Set(prev);
+      let hasChange = false;
+
+      types.forEach((value) => {
+        if (!value) return;
+        const trimmed = value.trim();
+        if (!trimmed || normalized.has(trimmed)) return;
+        normalized.add(trimmed);
+        hasChange = true;
+      });
+
+      if (!hasChange) {
+        return prev;
+      }
+
+      return Array.from(normalized).sort((a, b) => a.localeCompare(b));
+    });
+  }, []);
+
+  const createLogEntryFromUsageRecord = useCallback((record: UsageEventDetail): UsageEventLogEntry => {
+    const { formatted: formattedEventData } = parseEventData(record.eventData ?? null);
+
+    return {
+      id: record.id,
+      receivedAt: record.createdAt ?? new Date().toISOString(),
+      summaryStatus: 'loaded',
+      detailStatus: 'loaded',
+      summary: {
+        id: record.id,
+        eventType: record.eventType,
+        identityId: record.identityId,
+        sessionId: record.sessionId,
+        createdAt: record.createdAt,
+      },
+      detail: record,
+      formattedEventData,
+      formattedDetail: safeStringify(record),
+      rawPayload: 'Historical fetch (subscription payload unavailable).',
+    };
+  }, []);
 
   const isAdmin = Array.isArray(user?.['cognito:groups']) && user['cognito:groups'].includes('admins');
 
@@ -172,6 +247,102 @@ export default function AdminUsageEventsLog() {
       navigate('/', { replace: true });
     }
   }, [isAdmin, navigate, user]);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    if (eventTypeStatus !== 'idle') return undefined;
+
+    let isActive = true;
+
+    setEventTypeStatus('loading');
+    setEventTypeError(null);
+
+    void (async () => {
+      try {
+        const result: any = await API.graphql(
+          graphqlOperation(listUsageEvents, { limit: EVENT_TYPE_SAMPLE_LIMIT })
+        );
+
+        if (!isActive || !isMountedRef.current) {
+          return;
+        }
+
+        const items = (result?.data?.listUsageEvents?.items ?? []) as UsageEventDetail[];
+        addEventTypes(items.map((item) => item?.eventType ?? null));
+        setEventTypeStatus('loaded');
+      } catch (error) {
+        if (!isActive || !isMountedRef.current) {
+          return;
+        }
+
+        setEventTypeStatus('error');
+        setEventTypeError(safeStringify(error));
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [addEventTypes, eventTypeStatus, isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      return undefined;
+    }
+
+    if (!selectedEventType) {
+      setHistoricalEvents([]);
+      setHistoricalNextToken(null);
+      setHistoricalStatus('idle');
+      setHistoricalError(null);
+      return undefined;
+    }
+
+    let isActive = true;
+
+    setHistoricalEvents([]);
+    setHistoricalNextToken(null);
+    setHistoricalStatus('loading');
+    setHistoricalError(null);
+
+    void (async () => {
+      try {
+        const response: any = await API.graphql(
+          graphqlOperation(usageEventsByType, {
+            eventType: selectedEventType,
+            sortDirection: 'DESC',
+            limit: HISTORICAL_PAGE_SIZE,
+          })
+        );
+
+        if (!isActive || !isMountedRef.current) {
+          return;
+        }
+
+        const connection = response?.data?.usageEventsByType;
+        const items = (connection?.items ?? []) as UsageEventDetail[];
+        const entries = items
+          .filter((item): item is UsageEventDetail => Boolean(item?.id))
+          .map(createLogEntryFromUsageRecord);
+
+        setHistoricalEvents(entries);
+        setHistoricalNextToken(connection?.nextToken ?? null);
+        setHistoricalStatus('loaded');
+        addEventTypes(items.map((item) => item?.eventType ?? null));
+      } catch (error) {
+        if (!isActive || !isMountedRef.current) {
+          return;
+        }
+
+        setHistoricalStatus('error');
+        setHistoricalError(safeStringify(error));
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [addEventTypes, createLogEntryFromUsageRecord, isAdmin, selectedEventType]);
 
   useEffect(() => {
     if (!isAdmin) return undefined;
@@ -302,6 +473,26 @@ export default function AdminUsageEventsLog() {
     };
   }, [isAdmin, subscriptionAttempt]);
 
+  useEffect(() => {
+    if (!events.length) {
+      return;
+    }
+
+    addEventTypes(
+      events.map((entry) => entry.summary?.eventType ?? entry.detail?.eventType ?? null)
+    );
+  }, [addEventTypes, events]);
+
+  useEffect(() => {
+    if (!historicalEvents.length) {
+      return;
+    }
+
+    addEventTypes(
+      historicalEvents.map((entry) => entry.summary?.eventType ?? entry.detail?.eventType ?? null)
+    );
+  }, [addEventTypes, historicalEvents]);
+
   const fetchEventDetail = (entryId: string) => {
     const currentEntry = events.find((event) => event.id === entryId);
 
@@ -406,6 +597,50 @@ export default function AdminUsageEventsLog() {
     return 'default';
   }, [connectionStatus]);
 
+  const normalizedSelectedType = useMemo(
+    () => selectedEventType?.toLowerCase() ?? null,
+    [selectedEventType]
+  );
+
+  const displayedEvents = useMemo(() => {
+    if (!normalizedSelectedType) {
+      return events;
+    }
+
+    const matchingLive = events.filter((entry) => {
+      const typeFromSummary = entry.summary?.eventType?.toLowerCase();
+      if (typeFromSummary) {
+        return typeFromSummary === normalizedSelectedType;
+      }
+
+      const typeFromDetail = entry.detail?.eventType?.toLowerCase();
+      return typeFromDetail === normalizedSelectedType;
+    });
+
+    const combined = [...historicalEvents, ...matchingLive];
+    if (!combined.length) {
+      return combined;
+    }
+
+    const deduped = new Map<string, UsageEventLogEntry>();
+
+    combined.forEach((entry) => {
+      const key = entry.summary?.id ?? entry.id;
+      if (!key) return;
+      deduped.set(key, entry);
+    });
+
+    return Array.from(deduped.values()).sort((a, b) => getEventTimestamp(b) - getEventTimestamp(a));
+  }, [events, historicalEvents, normalizedSelectedType]);
+
+  const isFilteredView = Boolean(selectedEventType);
+  const isHistoricalLoading = isFilteredView && historicalStatus === 'loading';
+  const isHistoricalLoadingMore = isFilteredView && historicalStatus === 'loadingMore';
+  const selectedEventTypeLabel = selectedEventType ? formatEventTypeLabel(selectedEventType) : null;
+  const canLoadMoreHistorical = Boolean(selectedEventType && historicalNextToken);
+  const shouldShowEmptyState =
+    displayedEvents.length === 0 && (!isFilteredView || (!isHistoricalLoading && !isHistoricalLoadingMore));
+
   const handleToggleExpand = (eventId: string) => {
     const isExpanding = expandedEventId !== eventId;
     setExpandedEventId(isExpanding ? eventId : null);
@@ -419,6 +654,74 @@ export default function AdminUsageEventsLog() {
     setConnectionStatus('connecting');
     setSubscriptionError(null);
     setSubscriptionAttempt((prev) => prev + 1);
+  };
+
+  const handleEventTypeChange = (event: SelectChangeEvent<string>) => {
+    const value = event.target.value;
+    const normalized = value === ALL_EVENT_TYPES_OPTION ? null : value;
+    setSelectedEventType(normalized);
+    setExpandedEventId(null);
+  };
+
+  const handleLoadMoreHistorical = () => {
+    if (!isAdmin) return;
+    if (!selectedEventType) return;
+    if (!historicalNextToken) return;
+    if (historicalStatus === 'loadingMore') return;
+
+    setHistoricalStatus('loadingMore');
+    setHistoricalError(null);
+
+    void (async () => {
+      try {
+        const response: any = await API.graphql(
+          graphqlOperation(usageEventsByType, {
+            eventType: selectedEventType,
+            sortDirection: 'DESC',
+            limit: HISTORICAL_PAGE_SIZE,
+            nextToken: historicalNextToken,
+          })
+        );
+
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        const connection = response?.data?.usageEventsByType;
+        const items = (connection?.items ?? []) as UsageEventDetail[];
+        const entries = items
+          .filter((item): item is UsageEventDetail => Boolean(item?.id))
+          .map(createLogEntryFromUsageRecord);
+
+        setHistoricalEvents((prev) => {
+          if (!prev.length) {
+            return entries;
+          }
+
+          const knownIds = new Set(prev.map((entry) => entry.id));
+          const merged = [...prev];
+
+          entries.forEach((entry) => {
+            if (knownIds.has(entry.id)) return;
+            knownIds.add(entry.id);
+            merged.push(entry);
+          });
+
+          return merged;
+        });
+
+        setHistoricalNextToken(connection?.nextToken ?? null);
+        setHistoricalStatus('loaded');
+        addEventTypes(items.map((item) => item?.eventType ?? null));
+      } catch (error) {
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        setHistoricalStatus('error');
+        setHistoricalError(safeStringify(error));
+      }
+    })();
   };
 
   const renderJsonBlock = (title: string, content: string | null | undefined, emptyLabel?: string) => (
@@ -472,35 +775,65 @@ export default function AdminUsageEventsLog() {
               Live feed of `onCreateUsageEvent`. Click any row to see the raw JSON payload.
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Chip
-              label={`Status: ${statusLabel}`}
-              color={statusColor === 'default' ? 'default' : statusColor}
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            <FormControl
               size="small"
-              variant={statusColor === 'default' ? 'outlined' : 'filled'}
-              sx={{ fontWeight: 600, letterSpacing: 0.3 }}
-            />
-            {connectionStatus === 'error' && (
-              <IconButton
-                size="small"
-                color="primary"
-                onClick={handleManualReconnect}
-                aria-label="Reconnect subscription"
-              >
-                <RefreshIcon fontSize="small" />
-              </IconButton>
-            )}
-            <Button
-              size="small"
-              onClick={() => {
-                setEvents([]);
-                setExpandedEventId(null);
-              }}
-              disabled={events.length === 0}
-              variant="outlined"
+              sx={{ minWidth: { xs: '100%', sm: 220 } }}
+              disabled={eventTypeStatus === 'loading' && eventTypeOptions.length === 0}
             >
-              Clear log
-            </Button>
+              <InputLabel id="usage-event-type-filter-label">Event Type</InputLabel>
+              <Select
+                labelId="usage-event-type-filter-label"
+                id="usage-event-type-filter"
+                label="Event Type"
+                value={selectedEventType ?? ALL_EVENT_TYPES_OPTION}
+                onChange={handleEventTypeChange}
+              >
+                <MenuItem value={ALL_EVENT_TYPES_OPTION}>All event types</MenuItem>
+                {eventTypeOptions.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {formatEventTypeLabel(option)}
+                  </MenuItem>
+                ))}
+              </Select>
+              {eventTypeError && <FormHelperText error>{eventTypeError}</FormHelperText>}
+            </FormControl>
+
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Chip
+                label={`Status: ${statusLabel}`}
+                color={statusColor === 'default' ? 'default' : statusColor}
+                size="small"
+                variant={statusColor === 'default' ? 'outlined' : 'filled'}
+                sx={{ fontWeight: 600, letterSpacing: 0.3 }}
+              />
+              {connectionStatus === 'error' && (
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={handleManualReconnect}
+                  aria-label="Reconnect subscription"
+                >
+                  <RefreshIcon fontSize="small" />
+                </IconButton>
+              )}
+              <Button
+                size="small"
+                onClick={() => {
+                  setEvents([]);
+                  setExpandedEventId(null);
+                }}
+                disabled={events.length === 0}
+                variant="outlined"
+              >
+                Clear log
+              </Button>
+            </Stack>
           </Stack>
         </Stack>
 
@@ -510,7 +843,30 @@ export default function AdminUsageEventsLog() {
           </Alert>
         )}
 
-        {events.length === 0 ? (
+        {isFilteredView && selectedEventTypeLabel && (
+          <Alert severity="info" variant="outlined">
+            Filtering to {selectedEventTypeLabel} events. Matching live events stream in automatically.
+          </Alert>
+        )}
+
+        {isFilteredView && historicalStatus === 'error' && historicalError && (
+          <Alert severity="error" variant="outlined">
+            {historicalError}
+          </Alert>
+        )}
+
+        {isHistoricalLoading && (
+          <Paper variant="outlined" sx={{ px: 3, py: 4, borderRadius: 3, textAlign: 'center' }}>
+            <Stack spacing={2} alignItems="center">
+              <CircularProgress size={22} thickness={5} />
+              <Typography variant="body2" color="text.secondary">
+                Loading {selectedEventTypeLabel ?? 'selected'} events…
+              </Typography>
+            </Stack>
+          </Paper>
+        )}
+
+        {shouldShowEmptyState ? (
           <Paper
             variant="outlined"
             sx={{
@@ -522,15 +878,23 @@ export default function AdminUsageEventsLog() {
             }}
           >
             <Typography variant="h6" fontWeight={700} gutterBottom>
-              Waiting for events
+              {isFilteredView ? 'No matching events yet' : 'Waiting for events'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Trigger any tracked action in the product and the event will appear here instantly.
+              {isFilteredView
+                ? 'No events found for this event type. Try a different filter or trigger a new event.'
+                : 'Trigger any tracked action in the product and the event will appear here instantly.'}
             </Typography>
+            {!isFilteredView && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+                This view only reflects live subscription events. Choose an event type above to load historical
+                records.
+              </Typography>
+            )}
           </Paper>
         ) : (
           <Stack spacing={1.5}>
-            {events.map((event) => {
+            {displayedEvents.map((event) => {
               const normalizedType = event.summary?.eventType?.toLowerCase() ?? '';
               const chipColor = EVENT_COLOR_MAP[normalizedType] ?? 'default';
               const eventTypeLabel = event.summaryStatus === 'loaded'
@@ -546,7 +910,7 @@ export default function AdminUsageEventsLog() {
 
               return (
                 <Paper
-                  key={`${event.id}-${event.receivedAt}`}
+                  key={event.id}
                   variant="outlined"
                   sx={{
                     borderRadius: 2.5,
@@ -713,6 +1077,25 @@ export default function AdminUsageEventsLog() {
                 </Paper>
               );
             })}
+
+            {!isFilteredView && (
+              <Alert severity="info" variant="outlined">
+                Live stream only shows new subscription events. Select an event type above to browse historical
+                activity.
+              </Alert>
+            )}
+
+            {isFilteredView && canLoadMoreHistorical && (
+              <Stack alignItems="center" sx={{ pt: 1.5 }}>
+                <Button
+                  variant="outlined"
+                  onClick={handleLoadMoreHistorical}
+                  disabled={isHistoricalLoadingMore}
+                >
+                  {isHistoricalLoadingMore ? 'Loading…' : 'Load more history'}
+                </Button>
+              </Stack>
+            )}
           </Stack>
         )}
       </Stack>
