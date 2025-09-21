@@ -19,7 +19,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SearchIcon from '@mui/icons-material/Search';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
 export interface SeriesItem {
@@ -53,6 +53,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
+  const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -153,6 +154,8 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     }
   };
 
+  const showQuickPicks = !isFiltering && !isInputFocused;
+
   return (
     <Dialog
       open={open}
@@ -173,10 +176,38 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           </IconButton>
         </DialogTitle>
       )}
-      <DialogContent dividers ref={contentRef}>
-        <Box sx={{ position: 'sticky', top: 0, zIndex: 2, bgcolor: 'background.paper', pt: 1, pb: 1, px: 0.5, display: 'flex', alignItems: 'center', gap: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <IconButton aria-label="Back" size="small" onClick={() => { setFilter(''); onClose(); }}>
-            <ArrowBackIcon fontSize="small" />
+      <DialogContent dividers ref={contentRef} sx={{ p: 0 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 0,
+            py: 0,
+            minHeight: 64,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.default',
+          }}
+        >
+          <IconButton
+            aria-label="Back"
+            size="small"
+            onClick={() => {
+              setFilter('');
+              onClose();
+            }}
+            sx={{
+              width: 40,
+              height: 40,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'text.primary',
+              '&:hover': { backgroundColor: 'action.hover' },
+            }}
+          >
+            <ChevronLeftIcon fontSize="medium" />
           </IconButton>
           <TextField
             inputRef={inputRef}
@@ -186,6 +217,8 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => setIsInputFocused(true)}
+            onBlur={() => setIsInputFocused(false)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -204,22 +237,22 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             }}
             sx={{
               '& .MuiOutlinedInput-root': {
-                bgcolor: '#fff',
-                borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                '& fieldset': { border: 'none' },
+                borderRadius: 1,
+                bgcolor: 'background.paper',
+                minHeight: 52,
+                '& fieldset': { borderColor: 'divider' },
+                '&:hover fieldset': { borderColor: 'text.primary' },
+                '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 1 },
               },
               '& .MuiOutlinedInput-input': {
-                fontSize: '18px',
-                height: '50px',
-                padding: '8px 12px',
-                color: '#333',
-              }
+                fontSize: '1rem',
+                py: 1.25,
+              },
             }}
           />
         </Box>
 
-        <List disablePadding sx={{ bgcolor: 'transparent' }}>
+        <List disablePadding sx={{ bgcolor: 'transparent', px: 2, py: 2 }}>
 
           {/* Unified content: quick picks when no filter; results/full list below */}
           {/* No results state */}
@@ -230,7 +263,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           )}
 
           {/* Quick picks when not filtering */}
-          {!isFiltering && (
+          {showQuickPicks && (
             <>
               <ListSubheader disableSticky component="div" sx={{ bgcolor: 'transparent', px: 0, py: 1, fontSize: '0.95rem', fontWeight: 700, color: 'text.secondary' }}>
                 Quick Picks
@@ -425,5 +458,3 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     </Dialog>
   );
 }
-
-
