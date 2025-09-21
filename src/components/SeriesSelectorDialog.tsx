@@ -24,6 +24,7 @@ import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
+import CheckIcon from '@mui/icons-material/Check';
 
 export interface SeriesItem {
   id: string;
@@ -181,9 +182,7 @@ const radioIconSx = (theme: Theme, selected: boolean, options?: { inverted?: boo
   const baseColor = inverted
     ? alpha(theme.palette.common.white, theme.palette.mode === 'light' ? 0.55 : 0.5)
     : alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.5 : 0.45);
-  const selectedColor = inverted
-    ? theme.palette.common.white
-    : theme.palette.primary.main;
+  const selectedColor = theme.palette.common.white;
 
   return {
     display: 'flex',
@@ -385,7 +384,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             inputRef={inputRef}
             variant="outlined"
             fullWidth
-            placeholder="Search shows & movies"
+            placeholder="Type to filter (titles)..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -422,6 +421,25 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               },
             }}
           />
+          <IconButton
+            aria-label="Done"
+            size="small"
+            onClick={() => {
+              inputRef.current?.blur();
+              onClose();
+            }}
+            sx={{
+              width: 40,
+              height: 40,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'text.primary',
+              '&:hover': { backgroundColor: 'action.hover' },
+            }}
+          >
+            <CheckIcon fontSize="medium" />
+          </IconButton>
         </Box>
 
         <List disablePadding sx={{ bgcolor: 'transparent', px: 2, py: 2 }}>
