@@ -27,6 +27,7 @@ import {
   getDismissedVersion,
   formatReleaseDisplay,
 } from '../../utils/githubReleases';
+import { safeGetItem } from '../../utils/storage';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -265,7 +266,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
           <Grid container justifyContent="center">
             <Grid item textAlign="center" marginBottom={2}>
-              <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
+              <Box onClick={() => handleChangeSeries(safeGetItem(`defaultsearch${user?.sub}`) || '_universal')}>
                 <Logo
                   color={currentThemeFontColor || 'white'}
                   sx={{

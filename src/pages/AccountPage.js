@@ -15,6 +15,7 @@ import { API, Auth } from 'aws-amplify';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
+import { safeRemoveItem, writeJSON } from '../utils/storage';
 
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
@@ -119,10 +120,10 @@ const AccountPage = () => {
   const handleLogout = () => {
     Auth.signOut().then(() => {
       userDetails?.setUser(null);
-      window.localStorage.removeItem('memeSRCUserDetails')
+      safeRemoveItem('memeSRCUserDetails')
       userDetails?.setDefaultShow('_universal')
       getShowsWithFavorites().then(loadedShows => {
-        window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
+        writeJSON('memeSRCShows', loadedShows)
         userDetails?.setShows(loadedShows)
       })
     }).catch((err) => {

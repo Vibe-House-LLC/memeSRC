@@ -6,6 +6,7 @@ import { getAlias, getContentMetadata, getV2ContentMetadata } from '../graphql/q
 import HomePage from './HomePage';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import Page404 from './Page404';
+import { safeSetItem } from '../utils/storage';
 
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
@@ -118,7 +119,7 @@ const DynamicRouteHandler = () => {
   }
 
   if (favorites) {
-    window.localStorage.setItem('memeSRCDefaultIndex', '_favorites')
+    safeSetItem('memeSRCDefaultIndex', '_favorites')
     navigate('/')
   }
 

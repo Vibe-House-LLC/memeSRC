@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Auth } from 'aws-amplify';
 import { UserContext } from '../../../UserContext';
 import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
+import { safeRemoveItem, writeJSON } from '../../../utils/storage';
 
 // ----------------------------------------------------------------------
 
@@ -35,11 +36,11 @@ export default function AccountPopover() {
   const logout = () => {
     Auth.signOut().then(() => {
       userDetails?.setUser(null);
-      window.localStorage.removeItem('memeSRCUserDetails')
+      safeRemoveItem('memeSRCUserDetails')
       console.log('USER GONE')
       userDetails?.setDefaultShow('_universal')
       getShowsWithFavorites().then(loadedShows => {
-        window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
+        writeJSON('memeSRCShows', loadedShows)
         userDetails?.setShows(loadedShows)
       })
     }).catch((err) => {
