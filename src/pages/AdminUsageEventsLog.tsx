@@ -76,6 +76,7 @@ type UsageEventLogEntry = {
   detail?: UsageEventDetail | null;
   formattedEventData?: string;
   formattedDetail?: string;
+  parsedEventData?: unknown;
   rawPayload: string;
   rawErrors?: string;
   summaryError?: string;
@@ -109,6 +110,64 @@ const EVENT_COLOR_MAP: Record<string, ChipColor> = {
   advanced_editor_add_text_layer: 'info',
 };
 
+const normalizeEventType = (value: string | null | undefined) => {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed.toLowerCase() : null;
+};
+
+type EventSpecificSummaryRenderer = (entry: UsageEventLogEntry) => React.ReactNode | null;
+
+// Surface signature payload fields per event type without bloating the main render path.
+const EVENT_SPECIFIC_SUMMARY_RENDERERS: Record<string, EventSpecificSummaryRenderer> = {
+  search: (entry) => {
+    if (!entry.parsedEventData || typeof entry.parsedEventData !== 'object') {
+      return null;
+    }
+
+    const data = entry.parsedEventData as Record<string, unknown>;
+    const searchTerm = typeof data.searchTerm === 'string' ? data.searchTerm.trim() : '';
+    if (!searchTerm) {
+      return null;
+    }
+
+    const resolvedIndex = typeof data.resolvedIndex === 'string' ? data.resolvedIndex.trim() : '';
+
+    return (
+      <Stack spacing={0.25}>
+        <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+          <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+            Search term
+          </Box>
+          : {searchTerm}
+        </Typography>
+        {resolvedIndex && (
+          <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+            Resolved index: {resolvedIndex}
+          </Typography>
+        )}
+      </Stack>
+    );
+  },
+};
+
+const getEventSpecificSummary = (entry: UsageEventLogEntry) => {
+  const typeKey = normalizeEventType(entry.detail?.eventType ?? entry.summary?.eventType ?? null);
+  if (!typeKey) {
+    return null;
+  }
+
+  const renderer = EVENT_SPECIFIC_SUMMARY_RENDERERS[typeKey];
+  if (!renderer) {
+    return null;
+  }
+
+  return renderer(entry);
+};
+
 const safeStringify = (input: unknown) => {
   if (input === undefined) return 'undefined';
   try {
@@ -118,16 +177,21 @@ const safeStringify = (input: unknown) => {
   }
 };
 
-const parseEventData = (rawValue: string | null | undefined) => {
+type ParsedEventDataResult = {
+  formatted: string | undefined;
+  parsed: unknown;
+};
+
+const parseEventData = (rawValue: string | null | undefined): ParsedEventDataResult => {
   if (rawValue === null || rawValue === undefined) {
-    return { formatted: undefined };
+    return { formatted: undefined, parsed: undefined };
   }
 
   try {
     const parsed = JSON.parse(rawValue);
-    return { formatted: safeStringify(parsed) };
+    return { formatted: safeStringify(parsed), parsed };
   } catch (error) {
-    return { formatted: safeStringify(rawValue) };
+    return { formatted: safeStringify(rawValue), parsed: rawValue };
   }
 };
 
@@ -213,7 +277,7 @@ export default function AdminUsageEventsLog() {
   }, []);
 
   const createLogEntryFromUsageRecord = useCallback((record: UsageEventDetail): UsageEventLogEntry => {
-    const { formatted: formattedEventData } = parseEventData(record.eventData ?? null);
+    const { formatted: formattedEventData, parsed: parsedEventData } = parseEventData(record.eventData ?? null);
 
     return {
       id: record.id,
@@ -229,6 +293,7 @@ export default function AdminUsageEventsLog() {
       },
       detail: record,
       formattedEventData,
+      parsedEventData,
       formattedDetail: safeStringify(record),
       rawPayload: 'Historical fetch (subscription payload unavailable).',
     };
@@ -493,7 +558,7 @@ export default function AdminUsageEventsLog() {
     );
   }, [addEventTypes, historicalEvents]);
 
-  const fetchEventDetail = (entryId: string) => {
+  const fetchEventDetail = useCallback((entryId: string) => {
     const currentEntry = events.find((event) => event.id === entryId);
 
     if (!currentEntry || currentEntry.detailStatus === 'loading' || currentEntry.detailStatus === 'loaded') {
@@ -549,7 +614,7 @@ export default function AdminUsageEventsLog() {
           return;
         }
 
-        const { formatted: formattedEventData } = parseEventData(detail.eventData ?? null);
+        const { formatted: formattedEventData, parsed: parsedEventData } = parseEventData(detail.eventData ?? null);
 
         setEvents((prev) =>
           prev.map((entry) => {
@@ -559,6 +624,7 @@ export default function AdminUsageEventsLog() {
               detailStatus: 'loaded',
               detail,
               formattedEventData,
+              parsedEventData,
               formattedDetail: safeStringify(detail),
               detailError: undefined,
             };
@@ -579,7 +645,7 @@ export default function AdminUsageEventsLog() {
         );
       }
     })();
-  };
+  }, [events]);
 
   const isUserLoading = user === false;
 
@@ -598,7 +664,7 @@ export default function AdminUsageEventsLog() {
   }, [connectionStatus]);
 
   const normalizedSelectedType = useMemo(
-    () => selectedEventType?.toLowerCase() ?? null,
+    () => normalizeEventType(selectedEventType),
     [selectedEventType]
   );
 
@@ -640,6 +706,29 @@ export default function AdminUsageEventsLog() {
   const canLoadMoreHistorical = Boolean(selectedEventType && historicalNextToken);
   const shouldShowEmptyState =
     displayedEvents.length === 0 && (!isFilteredView || (!isHistoricalLoading && !isHistoricalLoadingMore));
+
+  useEffect(() => {
+    if (!normalizedSelectedType) {
+      return;
+    }
+
+    displayedEvents.forEach((entry) => {
+      if (entry.detailStatus !== 'idle') {
+        return;
+      }
+
+      if (entry.parsedEventData !== undefined) {
+        return;
+      }
+
+      const entryType = normalizeEventType(entry.summary?.eventType ?? entry.detail?.eventType ?? null);
+      if (!entryType || entryType !== normalizedSelectedType) {
+        return;
+      }
+
+      fetchEventDetail(entry.id);
+    });
+  }, [displayedEvents, fetchEventDetail, normalizedSelectedType]);
 
   const handleToggleExpand = (eventId: string) => {
     const isExpanding = expandedEventId !== eventId;
@@ -895,7 +984,9 @@ export default function AdminUsageEventsLog() {
         ) : (
           <Stack spacing={1.5}>
             {displayedEvents.map((event) => {
-              const normalizedType = event.summary?.eventType?.toLowerCase() ?? '';
+              const normalizedType = normalizeEventType(
+                event.summary?.eventType ?? event.detail?.eventType ?? null
+              ) ?? '';
               const chipColor = EVENT_COLOR_MAP[normalizedType] ?? 'default';
               const eventTypeLabel = event.summaryStatus === 'loaded'
                 ? formatEventTypeLabel(event.summary?.eventType)
@@ -907,6 +998,7 @@ export default function AdminUsageEventsLog() {
                 formatTimestamp(event.summary?.createdAt ?? event.receivedAt) ?? event.receivedAt;
               const isExpanded = expandedEventId === event.id;
               const isSummaryLoading = event.summaryStatus === 'loading';
+              const eventSpecificSummary = isFilteredView ? getEventSpecificSummary(event) : null;
 
               return (
                 <Paper
@@ -976,6 +1068,7 @@ export default function AdminUsageEventsLog() {
                           {timestampLabel}
                         </Typography>
                       )}
+                      {eventSpecificSummary}
                       {event.summaryStatus === 'error' && event.summaryError && (
                         <Typography variant="caption" color={theme.palette.error.main}>
                           {event.summaryError}
