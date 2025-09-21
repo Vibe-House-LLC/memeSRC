@@ -245,20 +245,6 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     return sortSeries(list);
   }, [allSeries, filter, isFiltering]);
 
-  useEffect(() => {
-    if (open && !isMobile) {
-      // Desktop: focus immediately for convenience. Mobile: avoid popping keyboard on open.
-      const t = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 50);
-      return () => clearTimeout(t);
-    }
-    return;
-  }, [open, isMobile]);
-
-  // Ensure the top search input is visible and focused on desktop when opened
-  // Mobile: avoid popping keyboard on open; user taps to focus
-
   // Reset state each time the dialog opens
   useEffect(() => {
     if (open) {
