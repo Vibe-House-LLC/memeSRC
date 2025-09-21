@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Button, Grid, Typography, useMediaQuery, useTheme, IconButton, Slide, Select, MenuItem, ListSubheader, TextField, InputAdornment } from '@mui/material';
+import { Button, Grid, Typography, useMediaQuery, useTheme, IconButton, Slide } from '@mui/material';
 import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
@@ -13,6 +13,7 @@ import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
+import SeriesSelectorDialog from '../../components/SeriesSelectorDialog';
 
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
@@ -123,7 +124,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
   const { pathname } = useLocation();
-  const [seriesFilter, setSeriesFilter] = useState('');
+  const [selectorOpen, setSelectorOpen] = useState(false);
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const theme = useTheme();
@@ -437,139 +438,64 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 {(() => {
-                  const normalize = (str = '') => String(str).toLowerCase().replace(/^the\s+/, '').normalize('NFD').replace(/\p{Diacritic}/gu, '');
                   const currentValueId = cid || seriesTitle || (shows.some((s) => s.isFavorite) ? defaultShow : '_universal');
+                  const currentLabel = (() => {
+                    if (currentValueId === '_universal') return '🌈 All Shows & Movies';
+                    if (currentValueId === '_favorites') return '⭐ All Favorites';
+                    const found = shows.find((s) => s.id === currentValueId) || savedCids.find((s) => s.id === currentValueId);
+                    return found ? `${found.emoji ? `${found.emoji} ` : ''}${found.title}` : 'Select show or movie';
+                  })();
 
-                  const isFiltering = Boolean(seriesFilter && seriesFilter.trim());
-                  const filteredFavorites = shows
-                    .filter((s) => s.isFavorite)
-                    .filter((s) => !seriesFilter || normalize(s.title).includes(normalize(seriesFilter)));
-                  const filteredOthers = shows
-                    .filter((s) => !s.isFavorite)
-                    .filter((s) => !seriesFilter || normalize(s.title).includes(normalize(seriesFilter)));
+                  const handleSelect = (selectedId) => {
+                    if (selectedId === 'editFavorites') {
+                      navigate('/favorites');
+                      return;
+                    }
+                    setCid(selectedId || '_universal');
+                    setSeriesTitle(selectedId);
+                    handleChangeSeries(selectedId);
+                    if (selectedId === '_universal' || selectedId === '_favorites') {
+                      handleUpdateDefaultShow(selectedId);
+                    }
+                    navigate(selectedId === '_universal' ? '/' : `/${selectedId}`);
+                  };
+
+                  const includeEdit = user?.userDetails?.subscriptionStatus === 'active' || shows.some((s) => s.isFavorite);
+                  const includeAllFav = shows.some((s) => s.isFavorite);
 
                   return (
-                    <Select
-                      value={currentValueId}
-                      onChange={(e) => {
-                        const selectedId = e.target.value;
-                        if (selectedId === 'editFavorites') {
-                          navigate('/favorites');
-                          return;
-                        }
-                        setCid(selectedId || '_universal');
-                        setSeriesTitle(selectedId);
-                        handleChangeSeries(selectedId);
-                        if (selectedId === '_universal' || selectedId === '_favorites') {
-                          handleUpdateDefaultShow(selectedId);
-                        }
-                        navigate(selectedId === '_universal' ? '/' : `/${selectedId}`);
-                      }}
-                      displayEmpty
-                      inputProps={{ 'aria-label': 'series selection' }}
-                      MenuProps={{
-                        disableScrollLock: true,
-                        PaperProps: {
-                          sx: {
-                            bgcolor: (theme) => theme.palette.background.paper,
-                            color: (theme) => theme.palette.text.primary,
-                            maxHeight: 400,
-                            '& .MuiListSubheader-root': {
-                              position: 'sticky',
-                              top: 0,
-                              zIndex: 1,
-                              bgcolor: (theme) => theme.palette.background.paper,
-                            },
-                          },
-                        },
-                        MenuListProps: { autoFocusItem: false },
-                      }}
-                      sx={{
-                        fontFamily: FONT_FAMILY,
-                        fontSize: '16px',
-                        color: '#333',
-                        backgroundColor: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        height: '50px',
-                        width: '100%',
-                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                        transition: 'box-shadow 0.3s',
-                        '&:focus': {
-                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-                          outline: 'none',
-                        },
-                      }}
-                    >
-                      <ListSubheader disableSticky sx={{ px: 1, pt: 1, pb: 1 }}>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          value={seriesFilter}
-                          placeholder="Filter shows & movies"
-                          onChange={(e) => setSeriesFilter(e.target.value)}
-                          onKeyDown={(e) => e.stopPropagation()}
-                          sx={{
-                            '& .MuiInputBase-root': {
-                              fontSize: '16px',
-                              bgcolor: (theme) => theme.palette.background.paper,
-                            },
-                          }}
-                          InputProps={{
-                            endAdornment: (
-                              seriesFilter ? (
-                                <InputAdornment position="end">
-                                  <IconButton
-                                    size="small"
-                                    edge="end"
-                                    onMouseDown={(e) => e.preventDefault()}
-                                    onClick={() => setSeriesFilter('')}
-                                  >
-                                    <CloseIcon fontSize="small" />
-                                  </IconButton>
-                                </InputAdornment>
-                              ) : null
-                            )
-                          }}
-                        />
-                      </ListSubheader>
-
-                      {!isFiltering && (
-                        <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
-                      )}
-
-                      {!isFiltering && shows.some((s) => s.isFavorite) && (
-                        <MenuItem value="_favorites">⭐ All Favorites</MenuItem>
-                      )}
-
-                      {!isFiltering && (shows.some((s) => s.isFavorite) ? (
-                        <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
-                      ) : null)}
-
-                      {shows.some((s) => s.isFavorite)
-                        ? filteredFavorites.map((s) => (
-                            <MenuItem key={s.id} value={s.id}>
-                              ⭐ {s.emoji} {s.title}
-                            </MenuItem>
-                          ))
-                        : null}
-
-                      {!isFiltering && (user?.userDetails?.subscriptionStatus === 'active' || shows.some((s) => s.isFavorite) ? (
-                        <MenuItem value="editFavorites" style={{ fontSize: '0.9rem', opacity: 0.7 }}>
-                          ⚙ Edit Favorites
-                        </MenuItem>
-                      ) : null)}
-
-                      {!isFiltering && (user?.userDetails?.subscriptionStatus === 'active' || shows.some((s) => s.isFavorite) ? (
-                        <ListSubheader key="other-subheader">Other</ListSubheader>
-                      ) : null)}
-
-                      {filteredOthers.map((s) => (
-                        <MenuItem key={s.id} value={s.id}>
-                          {s.emoji} {s.title}
-                        </MenuItem>
-                      ))}
-                    </Select>
+                    <>
+                      <Button
+                        onClick={() => setSelectorOpen(true)}
+                        sx={{
+                          fontFamily: FONT_FAMILY,
+                          fontSize: '16px',
+                          color: '#333',
+                          backgroundColor: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          height: '50px',
+                          width: '100%',
+                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                          textTransform: 'none',
+                          justifyContent: 'flex-start',
+                          px: 1.5,
+                          '&:hover': { backgroundColor: '#fff' },
+                        }}
+                      >
+                        {currentLabel}
+                      </Button>
+                      <SeriesSelectorDialog
+                        open={selectorOpen}
+                        onClose={() => setSelectorOpen(false)}
+                        onSelect={handleSelect}
+                        shows={shows}
+                        savedCids={savedCids}
+                        currentValueId={currentValueId}
+                        includeEditFavorites={includeEdit}
+                        includeAllFavorites={includeAllFav}
+                      />
+                    </>
                   );
                 })()}
               </Grid>

@@ -1,7 +1,7 @@
 // ipfs-search-bar.js
 
 import styled from "@emotion/styled";
-import { Link, Grid, InputBase, Typography, Divider, Box, Stack, Container, Select, MenuItem, ListSubheader, TextField, InputAdornment, IconButton } from "@mui/material";
+import { Link, Grid, InputBase, Typography, Divider, Box, Stack, Container, Button } from "@mui/material";
 import { ArrowBack, Close, Search } from "@mui/icons-material";
 import { Children, cloneElement, useContext, useEffect, useRef, useState } from "react";
 import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -11,6 +11,7 @@ import AddCidPopup from "../../components/ipfs/add-cid-popup";
 import { UserContext } from "../../UserContext";
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from "../../components/floating-action-buttons/FloatingActionButtons";
+import SeriesSelectorDialog from '../../components/SeriesSelectorDialog';
 
 // Define constants for colors and fonts
 const FONT_FAMILY = 'Roboto, sans-serif';
@@ -64,7 +65,7 @@ export default function IpfsSearchBar(props) {
 
   const [search, setSearch] = useState(searchTerm || '');
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
-  const [seriesFilter, setSeriesFilter] = useState('');
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -161,134 +162,48 @@ export default function IpfsSearchBar(props) {
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
             {(() => {
-              const normalize = (str = '') => String(str)
-                .toLowerCase()
-                .replace(/^the\s+/, '')
-                .normalize('NFD')
-                .replace(/\p{Diacritic}/gu, '');
-              const filteredFavorites = shows
-                .filter((s) => s.isFavorite)
-                .filter((s) => !seriesFilter || normalize(s.title).includes(normalize(seriesFilter)));
-              const filteredOthers = shows
-                .filter((s) => !s.isFavorite)
-                .filter((s) => !seriesFilter || normalize(s.title).includes(normalize(seriesFilter)));
-              const isFiltering = Boolean(seriesFilter && seriesFilter.trim());
+              const currentLabel = (() => {
+                if (cid === '_universal') return '🌈 All Shows & Movies';
+                if (cid === '_favorites') return '⭐ All Favorites';
+                const found = shows.find((s) => s.id === cid) || savedCids.find((s) => s.id === cid);
+                return found ? `${found.emoji ? `${found.emoji} ` : ''}${found.title}` : 'Select show or movie';
+              })();
+
+              const includeEdit = user?.userDetails?.subscriptionStatus === 'active' || shows.some((s) => s.isFavorite);
+              const includeAllFav = shows.some((s) => s.isFavorite);
 
               return (
-                <Select
-                  value={cid}
-                  onChange={(event) => handleSelectSeries(event.target.value)}
-                  size="small"
-                  variant="standard"
-                  disableUnderline
-                  MenuProps={{
-                    disableScrollLock: true,
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1e1e1e',
-                        color: '#fff',
-                        maxHeight: 380,
-                        minWidth: 220,
-                        '& .MuiListSubheader-root': {
-                          position: 'sticky',
-                          top: 0,
-                          zIndex: 1,
-                          bgcolor: '#1e1e1e',
-                        },
-                      },
-                    },
-                    MenuListProps: { autoFocusItem: false },
-                  }}
-                  sx={{
-                    minWidth: 160,
-                    width: 'fit-content',
-                    height: 40,
-                    fontFamily: FONT_FAMILY,
-                    fontSize: '16px',
-                    bgcolor: 'transparent',
-                    color: '#fff',
-                    borderRadius: 0,
-                    px: 0,
-                    '& .MuiSelect-select': {
-                      paddingLeft: 0,
-                      paddingRight: 8,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                    },
-                    '& .MuiInput-underline:before': { borderBottom: 'none' },
-                    '& .MuiInput-underline:after': { borderBottom: 'none' },
-                    '&:before': { borderBottom: 'none' },
-                    '&:after': { borderBottom: 'none' },
-                  }}
-                >
-                  <ListSubheader disableSticky sx={{ px: 1, pt: 1, pb: 1 }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      value={seriesFilter}
-                      placeholder="Filter shows & movies"
-                      onChange={(e) => setSeriesFilter(e.target.value)}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          height: 32,
-                          fontSize: '16px',
-                          bgcolor: 'transparent',
-                          color: '#fff',
-                          borderRadius: 0,
-                          borderBottom: '1px solid rgba(255,255,255,0.35)',
-                        },
-                        '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-                      }}
-                      InputProps={{
-                        endAdornment: (
-                          seriesFilter ? (
-                            <InputAdornment position="end">
-                              <IconButton size="small" edge="end" onMouseDown={(e) => e.preventDefault()} onClick={() => setSeriesFilter('')}>
-                                <Close fontSize="small" />
-                              </IconButton>
-                            </InputAdornment>
-                          ) : null
-                        )
-                      }}
-                    />
-                  </ListSubheader>
-
-                  {!isFiltering && (
-                    <MenuItem key="_universal" value="_universal">🌈 All Shows & Movies</MenuItem>
-                  )}
-                  {!isFiltering && (shows.some(show => show.isFavorite) ? (
-                    <MenuItem value="_favorites">⭐ All Favorites</MenuItem>
-                  ) : null)}
-
-                  {!isFiltering && (shows.some(show => show.isFavorite) ? (
-                    <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
-                  ) : null)}
-
-                  {(shows.some(show => show.isFavorite)) && (
-                    filteredFavorites.map(show => (
-                      <MenuItem key={show.id} value={show.id}>
-                        ⭐ {show.emoji} {show.title}
-                      </MenuItem>
-                    ))
-                  )}
-
-                  {!isFiltering && (user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                    <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
-                      ⚙ Edit Favorites
-                    </MenuItem>
-                  ) : null)}
-
-                  {!isFiltering && (user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                    <ListSubheader key="other-subheader">Other</ListSubheader>
-                  ) : null)}
-
-                  {filteredOthers.map(show => (
-                    <MenuItem key={show.id} value={show.id}>
-                      {show.emoji} {show.title}
-                    </MenuItem>
-                  ))}
-                </Select>
+                <>
+                  <Button
+                    size="small"
+                    onClick={() => setSelectorOpen(true)}
+                    sx={{
+                      minWidth: 160,
+                      width: 'fit-content',
+                      height: 40,
+                      fontFamily: FONT_FAMILY,
+                      fontSize: '16px',
+                      bgcolor: 'transparent',
+                      color: '#fff',
+                      borderRadius: 0,
+                      px: 0,
+                      textTransform: 'none',
+                      '&:hover': { bgcolor: 'transparent' },
+                    }}
+                  >
+                    {currentLabel}
+                  </Button>
+                  <SeriesSelectorDialog
+                    open={selectorOpen}
+                    onClose={() => setSelectorOpen(false)}
+                    onSelect={handleSelectSeries}
+                    shows={shows}
+                    savedCids={savedCids}
+                    currentValueId={cid}
+                    includeEditFavorites={includeEdit}
+                    includeAllFavorites={includeAllFav}
+                  />
+                </>
               );
             })()}
           </Grid>
