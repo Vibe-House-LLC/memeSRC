@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Button, Grid, Typography, useMediaQuery, Select, MenuItem, ListSubheader, useTheme, IconButton, Slide } from '@mui/material';
+import { Button, Grid, Typography, useMediaQuery, useTheme, IconButton, Slide, Box as MuiBox } from '@mui/material';
 import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
@@ -13,6 +13,8 @@ import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
+import SeriesSelectorDialog from '../../components/SeriesSelectorDialog';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
@@ -25,6 +27,7 @@ import {
   getDismissedVersion,
   formatReleaseDisplay,
 } from '../../utils/githubReleases';
+import { safeGetItem } from '../../utils/storage';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -123,6 +126,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
   const { pathname } = useLocation();
+  const [selectorOpen, setSelectorOpen] = useState(false);
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const theme = useTheme();
@@ -262,7 +266,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
           <Grid container justifyContent="center">
             <Grid item textAlign="center" marginBottom={2}>
-              <Box onClick={() => handleChangeSeries(window.localStorage.getItem(`defaultsearch${user?.sub}`) || '_universal')}>
+              <Box onClick={() => handleChangeSeries(safeGetItem(`defaultsearch${user?.sub}`) || '_universal')}>
                 <Logo
                   color={currentThemeFontColor || 'white'}
                   sx={{
@@ -435,80 +439,65 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
             <Grid container justifyContent="center">
               <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <Select
-                  value={cid || seriesTitle || (shows.some(show => show.isFavorite) ? defaultShow : '_universal')}
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
+                {(() => {
+                  const currentValueId = cid || seriesTitle || (shows.some((s) => s.isFavorite) ? defaultShow : '_universal');
+                  const currentLabel = (() => {
+                    if (currentValueId === '_universal') return '🌈 All Shows & Movies';
+                    if (currentValueId === '_favorites') return '⭐ All Favorites';
+                    const found = shows.find((s) => s.id === currentValueId) || savedCids.find((s) => s.id === currentValueId);
+                    return found ? `${found.emoji ? `${found.emoji} ` : ''}${found.title}` : 'Select show or movie';
+                  })();
 
-                    if (selectedId === 'addNewCid') {
-                      setAddNewCidOpen(true);
-                    } else if (selectedId === 'editFavorites') {
-                      navigate('/favorites'); // Navigate to the favorites editing page
-                    } else {
-                      const newSeriesTitle = e.target.value;
-                      setCid(selectedId || '_universal');
-                      setSeriesTitle(newSeriesTitle);
-                      handleChangeSeries(newSeriesTitle);
-                      if (newSeriesTitle === '_universal' || newSeriesTitle === '_favorites') {
-                        handleUpdateDefaultShow(newSeriesTitle)
-                      }
-                      navigate((newSeriesTitle === '_universal') ? '/' : `/${newSeriesTitle}`);
+                  const handleSelect = (selectedId) => {
+                    setCid(selectedId || '_universal');
+                    setSeriesTitle(selectedId);
+                    handleChangeSeries(selectedId);
+                    if (selectedId === '_universal' || selectedId === '_favorites') {
+                      handleUpdateDefaultShow(selectedId);
                     }
-                  }}
-                  displayEmpty
-                  inputProps={{ 'aria-label': 'series selection' }}
-                  sx={{
-                    fontFamily: FONT_FAMILY,
-                    fontSize: '16px',
-                    color: '#333',
-                    backgroundColor: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    height: '50px',
-                    width: '100%',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                    transition: 'box-shadow 0.3s',
-                    '&:focus': {
-                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-                      outline: 'none',
-                    },
-                  }}
-                >
-                  <MenuItem value="_universal">🌈 All Shows & Movies</MenuItem>
+                    navigate(selectedId === '_universal' ? '/' : `/${selectedId}`);
+                  };
 
-                  {shows.some(show => show.isFavorite) ? (
-                    <MenuItem value="_favorites">⭐ All Favorites</MenuItem>
-                  ) : null}
+                  const includeAllFav = shows.some((s) => s.isFavorite);
 
-                  {/* Check if user is subscribed or has favorites and directly render each item */}
-                  {shows.some(show => show.isFavorite) ? (
-                    <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
-                  ) : null}
-
-                  {shows.some(show => show.isFavorite) ? (
-                    shows.filter(show => show.isFavorite).map(show => (
-                      <MenuItem key={show.id} value={show.id}>
-                        ⭐ {show.emoji} {show.title}
-                      </MenuItem>
-                    ))
-                  ) : null}
-
-                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                    <MenuItem value="editFavorites" style={{ fontSize: '0.9rem', opacity: 0.7 }}>
-                      ⚙ Edit Favorites
-                    </MenuItem>
-                  ) : null}
-
-                  {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                    <ListSubheader key="other-subheader">Other</ListSubheader>
-                  ) : null}
-
-                  {shows.filter(show => !show.isFavorite).map(show => (
-                    <MenuItem key={show.id} value={show.id}>
-                      {show.emoji} {show.title}
-                    </MenuItem>
-                  ))}
-                </Select>
+                  return (
+                    <>
+                      <MuiBox sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Button
+                          onClick={() => setSelectorOpen(true)}
+                          endIcon={<ArrowDropDownIcon />}
+                          sx={{
+                            fontFamily: FONT_FAMILY,
+                            fontSize: '16px',
+                            fontWeight: 400,
+                            color: '#333',
+                            backgroundColor: '#fff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            height: '50px',
+                            width: '100%',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            textTransform: 'none',
+                            justifyContent: 'space-between',
+                            px: 1.5,
+                            '&:hover': { backgroundColor: '#fff' },
+                          }}
+                        >
+                          {currentLabel}
+                        </Button>
+                      </MuiBox>
+                      <SeriesSelectorDialog
+                        open={selectorOpen}
+                        onClose={() => setSelectorOpen(false)}
+                        onSelect={handleSelect}
+                        shows={shows}
+                        savedCids={savedCids}
+                        currentValueId={currentValueId}
+                        includeAllFavorites={includeAllFav}
+                      />
+                    </>
+                  );
+                })()}
               </Grid>
               <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
                 <StyledLabel htmlFor="search-term">

@@ -10,6 +10,7 @@ import Iconify from '../../../components/iconify';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
+import { safeGetItem, writeJSON } from '../../../utils/storage';
 
 
 // ----------------------------------------------------------------------
@@ -69,9 +70,9 @@ export default function LoginForm() {
         API.post('publicapi', '/user/update/status').then(() => {
           getShowsWithFavorites().then(loadedShows => {
             setShows(loadedShows)
-            window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
+            writeJSON('memeSRCShows', loadedShows)
             setUser(x)
-            handleUpdateDefaultShow(window.localStorage.getItem('memeSRCDefaultIndex'))
+            handleUpdateDefaultShow(safeGetItem('memeSRCDefaultIndex'))
             navigate(dest ? decodeURIComponent(dest) : '/', { replace: true })
           })
         })

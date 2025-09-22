@@ -24,6 +24,7 @@ import { AutoFixHighRounded, Check, Close, LocalPoliceRounded } from '@mui/icons
 // utils
 import { useLocation, useNavigate } from "react-router-dom";
 import { bgBlur } from '../../../utils/cssStyles';
+import { safeGetItem, safeSetItem } from '../../../utils/storage';
 // components
 import Iconify from '../../../components/iconify';
 import Logo from "../../../components/logo";
@@ -119,14 +120,14 @@ export default function Header({ onOpenNav }) {
   }, [location.pathname, handleScroll, user]);
 
   useEffect(() => {
-    const hasDismissed = window.localStorage.getItem('earlyAccessInviteAlertDismissed')
+    const hasDismissed = safeGetItem('earlyAccessInviteAlertDismissed')
     if (user?.userDetails?.earlyAccessStatus === 'invited' && !hasDismissed) {
       setMagicAlertOpen(true)
     }
   }, [user])
 
   const handleEarlyAccessDismiss = () => {
-    window.localStorage.setItem('earlyAccessInviteAlertDismissed', 'true')
+    safeSetItem('earlyAccessInviteAlertDismissed', 'true')
   }
 
   useEffect(() => {

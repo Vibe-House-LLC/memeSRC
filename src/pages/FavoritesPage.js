@@ -1,7 +1,8 @@
 // FavoritesPage.js
 
 import React, { useState, useEffect, useContext } from 'react';
-import { Typography, Grid, Card, CardContent, Button, Collapse, Stack } from '@mui/material';
+import { Typography, Grid, Card, CardContent, Button, Collapse, Stack, TextField, InputAdornment, IconButton } from '@mui/material';
+import { Close } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import Container from '@mui/material/Container';
 import { Link } from 'react-router-dom';
@@ -110,6 +111,7 @@ const FavoritesPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [showBanner, setShowBanner] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
 
   const authorized = !!user; // Check if user is logged in
 
@@ -163,6 +165,22 @@ const FavoritesPage = () => {
     return titleA.localeCompare(titleB);
   });
 
+  const normalize = (str = '') => String(str)
+    .toLowerCase()
+    .replace(/^the\s+/, '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+
+  const query = normalize(filterQuery);
+
+  const visibleFavorites = query
+    ? favorites.filter(fav => normalize(fav.alias?.title || '').includes(query))
+    : favorites;
+
+  const visibleOther = query
+    ? sortedFilteredAvailableIndexes.filter(idx => normalize(idx.title || '').includes(query))
+    : sortedFilteredAvailableIndexes;
+
   if (loading) {
     return <div style={{ padding: '20px' }}>Loading...</div>;
   }
@@ -210,6 +228,25 @@ const FavoritesPage = () => {
   return (
     <Container maxWidth="md" sx={{ padding: '20px' }}>
       <h1>Edit Favorites</h1>
+      <TextField
+        fullWidth
+        size="small"
+        placeholder="Filter shows & movies"
+        value={filterQuery}
+        onChange={(e) => setFilterQuery(e.target.value)}
+        sx={{ mt: 1.5, mb: 3 }}
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              {filterQuery && (
+                <IconButton size="small" onClick={() => setFilterQuery('')}>
+                  <Close fontSize="small" />
+                </IconButton>
+              )}
+            </InputAdornment>
+          )
+        }}
+      />
       <Collapse in={showBanner}>
         <UpgradedIndexBanner show={showBanner}>
           {showBanner && (
@@ -273,9 +310,9 @@ const FavoritesPage = () => {
       {error && <p style={{ color: 'red' }}>{error}</p>}
       <div>
         <Typography variant="h4" gutterBottom>Favorites</Typography>
-        {favorites.length > 0 ? (
+        {visibleFavorites.length > 0 ? (
           <Grid container spacing={2} justifyContent="center">
-            {favorites.map((favorite) => (
+            {visibleFavorites.map((favorite) => (
               <Grid item xs={12} key={favorite.id}>
                 <Card
                   sx={{
@@ -320,14 +357,14 @@ const FavoritesPage = () => {
             ))}
           </Grid>
         ) : (
-          <Typography>No favorites added yet.</Typography>
+          <Typography>No favorites match your filter.</Typography>
         )}
       </div>
       <div style={{ marginTop: 20 }}>
         <Typography variant="h4" gutterBottom>Other</Typography>
-        {sortedFilteredAvailableIndexes.length > 0 ? (
+        {visibleOther.length > 0 ? (
           <Grid container spacing={2} justifyContent="center">
-            {sortedFilteredAvailableIndexes.map((index) => (
+            {visibleOther.map((index) => (
               <Grid item xs={12} key={index.id}>
                 <Card
                   sx={{
@@ -372,7 +409,7 @@ const FavoritesPage = () => {
             ))}
           </Grid>
         ) : (
-          <Typography>All indexes are in your favorites.</Typography>
+          <Typography>No other shows match your filter.</Typography>
         )}
       </div>
     </Container>

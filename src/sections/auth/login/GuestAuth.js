@@ -4,6 +4,7 @@ import { API, Auth } from 'aws-amplify';
 import PropTypes from "prop-types";
 import { UserContext } from '../../../UserContext';
 import { getShowsWithFavorites } from "../../../utils/fetchShowsRevised";
+import { readJSON, safeGetItem, safeRemoveItem, safeSetItem, writeJSON } from '../../../utils/storage';
 
 /* eslint-disable react-hooks/exhaustive-deps */
 
@@ -13,7 +14,7 @@ GuestAuth.propTypes = {
 
 export default function GuestAuth(props) {
   const [user, setUser] = useState(null);
-  const [shows, setShows] = useState(JSON.parse(window.localStorage.getItem('memeSRCShows')) || []);
+  const [shows, setShows] = useState(() => readJSON('memeSRCShows') || []);
   const [defaultShow, setDefaultShow] = useState();
   const location = useLocation();
 
@@ -21,17 +22,17 @@ export default function GuestAuth(props) {
   useEffect(() => {
     if (location.pathname !== 'login') {
       // console.log(user)
-      const userDetails = window.localStorage.getItem('memeSRCUserDetails')
+      const userDetails = safeGetItem('memeSRCUserDetails')
       const userObject = { ...userDetails }
       // console.log(userDetails)
 
       if (user && (user.userDetails !== userObject.userDetails)) {
-        window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...user?.signInUserSession?.accessToken?.payload, userDetails: { ...user.userDetails } }))
+        writeJSON('memeSRCUserDetails', { ...user?.signInUserSession?.accessToken?.payload, userDetails: { ...user.userDetails } })
       }
 
       if (user) {
         // console.log(user)
-        const localStorageDefaultShow = window.localStorage.getItem(`memeSRCDefaultIndex`) || '_universal'
+        const localStorageDefaultShow = safeGetItem('memeSRCDefaultIndex') || '_universal'
         setDefaultShow(localStorageDefaultShow)
       } else {
         setDefaultShow('_universal')
@@ -41,7 +42,7 @@ export default function GuestAuth(props) {
 
   const handleUpdateDefaultShow = (show) => {
     if (user) {
-      window.localStorage.setItem('memeSRCDefaultIndex', show)
+      safeSetItem('memeSRCDefaultIndex', show)
     }
     setDefaultShow(show)
   }
@@ -57,14 +58,11 @@ export default function GuestAuth(props) {
             ...user,
             userDetails: { ...newUserDetails },
           });
-          window.localStorage.setItem(
-            'memeSRCUserDetails',
-            JSON.stringify({
-              ...user,
-              userDetails: { ...newUserDetails },
-            })
-          );
-          window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows));
+          writeJSON('memeSRCUserDetails', {
+            ...user,
+            userDetails: { ...newUserDetails },
+          });
+          writeJSON('memeSRCShows', loadedShows);
           setShows(loadedShows);
           resolve();
         })
@@ -77,9 +75,9 @@ export default function GuestAuth(props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (location.pathname !== 'login') {
-      const localStorageUser = JSON.parse(window.localStorage.getItem('memeSRCUserDetails'))
-      const localStorageShows = JSON.parse(window.localStorage.getItem('memeSRCShows'))
-      const localStorageDefaultShow = window.localStorage.getItem('memeSRCDefaultIndex')
+      const localStorageUser = readJSON('memeSRCUserDetails')
+      const localStorageShows = readJSON('memeSRCShows')
+      const localStorageDefaultShow = safeGetItem('memeSRCDefaultIndex')
 
       // console.log(localStorageUser)
 
@@ -110,8 +108,8 @@ export default function GuestAuth(props) {
             }
             setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
             
-            window.localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails }))
-            window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
+            writeJSON('memeSRCUserDetails', { ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })
+            writeJSON('memeSRCShows', loadedShows)
             setShows(loadedShows)
             // console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
             // Amplify.configure({
@@ -127,8 +125,8 @@ export default function GuestAuth(props) {
             setDefaultShow('_universal')
           }
           setUser(false)  // indicate the context is ready but user is not auth'd
-          window.localStorage.removeItem('memeSRCUserInfo')
-          window.localStorage.setItem('memeSRCShows', JSON.stringify(loadedShows))
+          safeRemoveItem('memeSRCUserInfo')
+          writeJSON('memeSRCShows', loadedShows)
           setShows(loadedShows)
           setDefaultShow('_universal')
         }).catch(error => {

@@ -1,5 +1,7 @@
 // Shared utilities for interacting with GitHub Releases and formatting helpers
 
+import { readJSON, safeGetItem, safeRemoveItem, safeSetItem, writeJSON } from './storage';
+
 export type ReleaseType = 'major' | 'minor' | 'patch';
 export type ReleaseColor = 'error' | 'warning' | 'success' | 'info';
 
@@ -39,29 +41,21 @@ function getStorageKey(key: string): string {
 }
 
 function readFromLocalStorage<T>(key: string): CachedEntry<T> | null {
-  try {
-    const raw = window.localStorage.getItem(getStorageKey(key));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachedEntry<T>;
-    if (!parsed || typeof parsed.timestamp !== 'number') return null;
-    const isFresh = Date.now() - parsed.timestamp < GITHUB_CACHE_TTL_MS;
-    if (!isFresh) {
-      window.localStorage.removeItem(getStorageKey(key));
-      return null;
-    }
-    return parsed;
-  } catch {
+  const parsed = readJSON<CachedEntry<T>>(getStorageKey(key));
+  if (!parsed || typeof parsed.timestamp !== 'number') {
     return null;
   }
+  const isFresh = Date.now() - parsed.timestamp < GITHUB_CACHE_TTL_MS;
+  if (!isFresh) {
+    safeRemoveItem(getStorageKey(key));
+    return null;
+  }
+  return parsed;
 }
 
 function writeToLocalStorage<T>(key: string, data: T): void {
-  try {
-    const entry: CachedEntry<T> = { timestamp: Date.now(), data };
-    window.localStorage.setItem(getStorageKey(key), JSON.stringify(entry));
-  } catch {
-    // no-op if storage is unavailable or quota exceeded
-  }
+  const entry: CachedEntry<T> = { timestamp: Date.now(), data };
+  writeJSON(getStorageKey(key), entry);
 }
 
 function getCached<T>(key: string): T | null {
@@ -213,19 +207,11 @@ export function processGitHubLinks(
 export const DISMISSED_VERSION_KEY = 'updateBannerDismissedVersion';
 
 export function getDismissedVersion(): string {
-  try {
-    return window.localStorage.getItem(DISMISSED_VERSION_KEY) || '';
-  } catch (e) {
-    return '';
-  }
+  return safeGetItem(DISMISSED_VERSION_KEY) || '';
 }
 
 export function setDismissedVersion(tagName: string): void {
-  try {
-    window.localStorage.setItem(DISMISSED_VERSION_KEY, tagName);
-  } catch (e) {
-    // no-op
-  }
+  safeSetItem(DISMISSED_VERSION_KEY, tagName);
 }
 
 export function formatReleaseDisplay(input?: string): string {
@@ -254,5 +240,3 @@ export function formatReleaseDisplay(input?: string): string {
 
   return trimmed;
 }
-
-

@@ -1,7 +1,7 @@
 // ipfs-search-bar.js
 
 import styled from "@emotion/styled";
-import { Link, FormControl, Grid, InputBase, MenuItem, Select, Typography, Divider, Box, Stack, Container, ListSubheader } from "@mui/material";
+import { Link, Grid, InputBase, Typography, Divider, Box, Stack, Container, Button } from "@mui/material";
 import { ArrowBack, Close, Search } from "@mui/icons-material";
 import { Children, cloneElement, useContext, useEffect, useRef, useState } from "react";
 import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -12,6 +12,8 @@ import { UserContext } from "../../UserContext";
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from "../../components/floating-action-buttons/FloatingActionButtons";
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
+import SeriesSelectorDialog from '../../components/SeriesSelectorDialog';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 
 // Define constants for colors and fonts
 const FONT_FAMILY = 'Roboto, sans-serif';
@@ -65,6 +67,7 @@ export default function IpfsSearchBar(props) {
 
   const [search, setSearch] = useState(searchTerm || '');
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,9 +89,7 @@ export default function IpfsSearchBar(props) {
   }, [searchTerm]);
 
   const handleSelectSeries = (data) => {
-    if (data === "editFavorites") {
-      navigate("/favorites"); // Navigate to the favorites editing page
-    } else if (data === "addNewCid") {
+    if (data === "addNewCid") {
       setAddNewCidOpen(true);
     } else if (pathname.split('/')[1] === 'search') {
       navigate(`/search/${data}/${searchTerm ? `?searchTerm=${searchTerm}` : ''}`)
@@ -175,59 +176,54 @@ export default function IpfsSearchBar(props) {
         </Grid>
         <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
           <Grid item marginLeft={{ md: 6 }}>
+            {(() => {
+              const currentLabel = (() => {
+                if (cid === '_universal') return '🌈 All Shows & Movies';
+                if (cid === '_favorites') return '⭐ All Favorites';
+                const found = shows.find((s) => s.id === cid) || savedCids.find((s) => s.id === cid);
+                return found ? `${found.emoji ? `${found.emoji} ` : ''}${found.title}` : 'Select show or movie';
+              })();
 
-            <FormControl variant="standard" sx={{ minWidth: 120 }}>
-              <Select
-                labelId="demo-simple-select-standard-label"
-                id="demo-simple-select-standard"
-                value={cid}
-                onChange={(event) => handleSelectSeries(event.target.value)}
-                label="Series"
-                size="small"
-                autoWidth
-                disableUnderline
-              >
-                <MenuItem key="_universal" value="_universal">
-                  🌈 All Shows & Movies
-                </MenuItem>
+              const includeAllFav = shows.some((s) => s.isFavorite);
 
-                {shows.some(show => show.isFavorite) ? (
-                  <MenuItem value="_favorites">
-                    ⭐ All Favorites
-                  </MenuItem>
-                ) : null}
-
-                {shows.some(show => show.isFavorite) ? (
-                  <ListSubheader key="favorites-subheader">Favorites</ListSubheader>
-                ) : null}
-
-                {(shows.some(show => show.isFavorite)) && (
-                  shows.filter(show => show.isFavorite).map(show => (
-                    <MenuItem key={show.id} value={show.id}>
-                      ⭐ {show.emoji} {show.title}
-                    </MenuItem>
-                  ))
-                )}
-
-                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                  <MenuItem value="editFavorites" style={{ fontSize: "0.9rem", opacity: 0.7 }}>
-                    ⚙ Edit Favorites
-                  </MenuItem>
-                ) : null}
-
-                {user?.userDetails?.subscriptionStatus === 'active' || shows.some(show => show.isFavorite) ? (
-                  <ListSubheader key="other-subheader">Other</ListSubheader>
-                ) : null}
-
-                {shows.filter(show => !show.isFavorite).map(show => (
-                  <MenuItem key={show.id} value={show.id}>
-                    {show.emoji} {show.title}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-
+              return (
+                <>
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                    <Button
+                      size="small"
+                      onClick={() => setSelectorOpen(true)}
+                      endIcon={<ArrowDropDownIcon fontSize="small" />}
+                      sx={{
+                        minWidth: 'auto',
+                        width: 'fit-content',
+                        height: 40,
+                        fontFamily: FONT_FAMILY,
+                        fontSize: '16px',
+                        fontWeight: 400,
+                        bgcolor: 'transparent',
+                        color: '#fff',
+                        borderRadius: 0,
+                        px: 0,
+                        textTransform: 'none',
+                        whiteSpace: 'nowrap',
+                        '&:hover': { bgcolor: 'transparent' },
+                      }}
+                    >
+                      {currentLabel}
+                    </Button>
+                  </Box>
+                  <SeriesSelectorDialog
+                    open={selectorOpen}
+                    onClose={() => setSelectorOpen(false)}
+                    onSelect={handleSelectSeries}
+                    shows={shows}
+                    savedCids={savedCids}
+                    currentValueId={cid}
+                    includeAllFavorites={includeAllFav}
+                  />
+                </>
+              );
+            })()}
           </Grid>
           <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
             <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
