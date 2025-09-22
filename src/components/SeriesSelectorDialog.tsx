@@ -12,7 +12,6 @@ import {
   ListItemButton,
   ListItemText,
   Typography,
-  Divider,
   useTheme,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -102,7 +101,7 @@ const quickActionButtonSx = (theme: Theme) => {
     border: '1px solid',
     borderColor: borderTone,
     borderRadius: 2,
-    marginBottom: theme.spacing(1),
+    marginBottom: theme.spacing(0.75),
     paddingTop: theme.spacing(2),
     paddingBottom: theme.spacing(2),
     paddingLeft: theme.spacing(1),
@@ -188,11 +187,6 @@ const sectionHeaderSx = (theme: Theme, options?: { topSpacing?: 'tight' | 'regul
     color: theme.palette.text.secondary,
   };
 };
-
-const sectionDividerSx = (theme: Theme) => ({
-  my: theme.spacing(1),
-  opacity: theme.palette.mode === 'light' ? 0.5 : 0.45,
-});
 
 const radioIconSx = (theme: Theme, selected: boolean, options?: { inverted?: boolean }) => {
   const inverted = Boolean(options?.inverted);
@@ -502,13 +496,13 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                 </ListItemButton>
               )}
 
-              {(favoritesForSection.length > 0 || filteredAllSeries.length > 0) && (
-                <Divider sx={(theme) => sectionDividerSx(theme)} />
-              )}
-
               {favoritesForSection.length > 0 && (
                 <>
-                  <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { topSpacing: 'tight' })}>
+                  <ListSubheader
+                    disableSticky
+                    component="div"
+                    sx={(theme) => sectionHeaderSx(theme, { topSpacing: showQuickPicks ? 'regular' : 'tight' })}
+                  >
                     Favorites
                   </ListSubheader>
                   {favoritesForSection.map((s) => {
@@ -546,7 +540,6 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                       </ListItemButton>
                     );
                   })}
-                  <Divider sx={(theme) => sectionDividerSx(theme)} />
                 </>
               )}
             </>
@@ -557,7 +550,10 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               <ListSubheader
                 disableSticky
                 component="div"
-                sx={(theme) => sectionHeaderSx(theme, { topSpacing: showQuickPicks ? 'tight' : 'regular' })}
+                sx={(theme) => sectionHeaderSx(
+                  theme,
+                  { topSpacing: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
+                )}
               >
                 Everything
               </ListSubheader>
