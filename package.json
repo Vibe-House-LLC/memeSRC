@@ -2,7 +2,7 @@
   "name": "memesrc",
   "author": "vibehouse.net",
   "licence": "MIT",
-  "version": "2.15.0",
+  "version": "2.15.1",
   "private": false,
   "scripts": {
     "start": "react-scripts start",
@@ -60,6 +60,7 @@
     "html2canvas": "^1.4.1",
     "jszip": "^3.10.1",
     "lodash": "^4.17.21",
+    "nanoid": "^5.1.6",
     "numeral": "^2.0.6",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
