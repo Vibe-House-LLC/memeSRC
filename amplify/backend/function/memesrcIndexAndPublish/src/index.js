@@ -117,13 +117,13 @@ const indexToOpenSearch = async (data) => {
     const batchSize = 100;
 
     try {
-        const client = new Client({
-            node: OPENSEARCH_ENDPOINT,
-            auth: {
-                username: OPENSEARCH_USER,
-                password: OPENSEARCH_PASS,
-            },
-        });
+        // const client = new Client({
+        //     node: OPENSEARCH_ENDPOINT,
+        //     auth: {
+        //         username: OPENSEARCH_USER,
+        //         password: OPENSEARCH_PASS,
+        //     },
+        // });
 
         const rows = [];
 
