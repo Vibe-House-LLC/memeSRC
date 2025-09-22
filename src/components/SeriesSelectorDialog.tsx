@@ -292,6 +292,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
   const showQuickPicks = !isFiltering && !isInputFocused;
   const favoritesForSection = showQuickPicks ? filteredFavorites : [];
+  const showEverythingHeader = showQuickPicks;
   const hasFavoriteSelectionInQuick = showQuickPicks && favoritesForSection.some((fav) => fav.id === currentValueId);
 
   const handleFavoriteOverride = useCallback((id: string, nextIsFavorite: boolean) => {
@@ -439,7 +440,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           </IconButton>
         </Box>
 
-        <List disablePadding sx={{ bgcolor: 'transparent', px: 2, pt: 1.25, pb: 2 }}>
+        <List disablePadding sx={{ bgcolor: 'transparent', px: 2, pt: showQuickPicks ? 1.25 : 0.75, pb: 2 }}>
 
           {/* Unified content: quick picks when no filter; results/full list below */}
           {/* No results state */}
@@ -545,27 +546,35 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             </>
           )}
 
-          {filteredAllSeries.length > 0 && (
-            <>
-              <ListSubheader
-                disableSticky
-                component="div"
-                sx={(theme) => sectionHeaderSx(
-                  theme,
-                  { topSpacing: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
-                )}
-              >
-                Everything
-              </ListSubheader>
-              {filteredAllSeries.map((s) => {
-                const isSelected = currentValueId === s.id && !(hasFavoriteSelectionInQuick && s.isFavorite);
-                return (
-                  <ListItemButton
-                    key={s.id}
-                    selected={isSelected}
-                    onClick={() => handleSelect(s.id)}
-                    sx={(theme) => listCardButtonSx(theme, s)}
-                  >
+              {filteredAllSeries.length > 0 && (
+                <>
+                  {showEverythingHeader && (
+                    <ListSubheader
+                      disableSticky
+                      component="div"
+                      sx={(theme) => sectionHeaderSx(
+                        theme,
+                        { topSpacing: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
+                      )}
+                    >
+                      Everything
+                    </ListSubheader>
+                  )}
+                  {filteredAllSeries.map((s, index) => {
+                    const isSelected = currentValueId === s.id && !(hasFavoriteSelectionInQuick && s.isFavorite);
+                    return (
+                      <ListItemButton
+                        key={s.id}
+                        selected={isSelected}
+                        onClick={() => handleSelect(s.id)}
+                        sx={(theme) => {
+                          const base = listCardButtonSx(theme, s);
+                          if (!showEverythingHeader && index === 0) {
+                            return { ...base, mt: theme.spacing(0.25) };
+                          }
+                          return base;
+                        }}
+                      >
                     <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
                       {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
                     </Box>
