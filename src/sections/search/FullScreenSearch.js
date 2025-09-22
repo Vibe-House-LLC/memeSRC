@@ -479,11 +479,31 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                             textTransform: 'none',
                             justifyContent: 'space-between',
+                            alignItems: 'center',
+                            display: 'flex',
+                            gap: 1,
                             px: 1.5,
+                            '& .MuiButton-endIcon': {
+                              marginLeft: 1,
+                              marginRight: 0,
+                              flexShrink: 0,
+                            },
                             '&:hover': { backgroundColor: '#fff' },
                           }}
                         >
-                          {currentLabel}
+                          <MuiBox
+                            component="span"
+                            sx={{
+                              flex: 1,
+                              minWidth: 0,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              textAlign: 'left',
+                            }}
+                          >
+                            {currentLabel}
+                          </MuiBox>
                         </Button>
                       </MuiBox>
                       <SeriesSelectorDialog
