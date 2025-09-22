@@ -16,6 +16,7 @@ import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderT
 import { get as getFromLibrary } from "../utils/library/storage";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 import CollageResultDialog from "../components/collage/components/CollageResultDialog";
+import { trackUsageEvent } from "../utils/trackUsageEvent";
 
 // Pure helpers (module scope) to avoid TDZ and keep stable references
 function computeSnapshotSignature(snap) {
@@ -821,6 +822,28 @@ export default function CollagePage() {
     
     // Find the canvas element instead of the HTML element
     const canvasElement = document.querySelector('[data-testid="canvas-collage-preview"]');
+
+    const eventPayload = {
+      source: 'CollagePage',
+      panelCount,
+      aspectRatio: selectedAspectRatio,
+      imageCount: Array.isArray(selectedImages) ? selectedImages.length : 0,
+      hasCustomLayout: Boolean(customLayout),
+      allPanelsHaveImages,
+      borderThickness: borderThicknessValue,
+      borderColor,
+      canvasElementFound: Boolean(canvasElement),
+    };
+
+    if (selectedTemplate?.id) {
+      eventPayload.templateId = selectedTemplate.id;
+    }
+
+    if (activeProjectId) {
+      eventPayload.projectId = activeProjectId;
+    }
+
+    trackUsageEvent('collage_generate', eventPayload);
 
     if (!canvasElement) {
       console.error('Canvas collage preview element not found.');

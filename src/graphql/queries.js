@@ -1342,6 +1342,106 @@ export const listProSupportMessages = /* GraphQL */ `
     }
   }
 `;
+export const getUsageEvent = /* GraphQL */ `
+  query GetUsageEvent($id: ID!) {
+    getUsageEvent(id: $id) {
+      id
+      identityId
+      eventType
+      eventData
+      sessionId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listUsageEvents = /* GraphQL */ `
+  query ListUsageEvents(
+    $filter: ModelUsageEventFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listUsageEvents(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        identityId
+        eventType
+        eventData
+        sessionId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const usageEventsByIdentity = /* GraphQL */ `
+  query UsageEventsByIdentity(
+    $identityId: String!
+    $createdAt: ModelStringKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelUsageEventFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    usageEventsByIdentity(
+      identityId: $identityId
+      createdAt: $createdAt
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        identityId
+        eventType
+        eventData
+        sessionId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const usageEventsByType = /* GraphQL */ `
+  query UsageEventsByType(
+    $eventType: String!
+    $createdAt: ModelStringKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelUsageEventFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    usageEventsByType(
+      eventType: $eventType
+      createdAt: $createdAt
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        identityId
+        eventType
+        eventData
+        sessionId
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getLocationLeads = /* GraphQL */ `
   query GetLocationLeads($id: ID!) {
     getLocationLeads(id: $id) {

@@ -332,6 +332,36 @@ type ProSupportMessage @model @auth(
   createdAt: AWSDateTime!
 }
 
+type UsageEvent
+  @model
+  @auth(
+    rules: [
+      {
+        allow: owner
+        ownerField: "identityId"
+        operations: [create, read]
+      },
+      { allow: groups, groups: ["admins", "mods"], operations: [read] }
+    ]
+  ) {
+  id: ID!
+  identityId: String
+    @index(
+      name: "byIdentityId", 
+      queryField: "usageEventsByIdentity"
+      sortKeyFields: ["createdAt"]
+    )
+  eventType: String!
+    @index(
+      name: "byEventType"
+      queryField: "usageEventsByType"
+      sortKeyFields: ["createdAt"]
+    )
+  eventData: AWSJSON
+  sessionId: String
+  createdAt: AWSDateTime!
+}
+
 type LocationLeads @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] },
