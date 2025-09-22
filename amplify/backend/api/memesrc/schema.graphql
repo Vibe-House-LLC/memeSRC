@@ -341,6 +341,11 @@ type UsageEvent
         ownerField: "identityId"
         operations: [create, read]
       },
+      {
+        allow: public
+        provider: iam
+        operations: [create]
+      },
       { allow: groups, groups: ["admins", "mods"], operations: [read] }
     ]
   ) {
