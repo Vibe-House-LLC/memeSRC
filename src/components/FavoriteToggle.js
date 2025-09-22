@@ -5,6 +5,7 @@ import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { UserContext } from '../UserContext';
+import { trackUsageEvent } from '../utils/trackUsageEvent';
 
 const StyledIconButton = styled(IconButton)(({ isFavorite }) => ({
   padding: '8px',
@@ -54,6 +55,7 @@ const FavoriteToggle = ({ indexId, initialIsFavorite, onToggle }) => {
     }
 
     setIsSaving(true);
+    const nextIsFavorite = !isFavorite;
     try {
       const result = await API.post('publicapi', '/user/update/updateFavorites', {
         body: {
@@ -67,6 +69,35 @@ const FavoriteToggle = ({ indexId, initialIsFavorite, onToggle }) => {
         emitToggle(next);
         return next;
       });
+
+      const updatedFavoritesRaw = result?.updatedUserDetails?.favorites;
+      let favoritesCount;
+
+      if (typeof updatedFavoritesRaw === 'string') {
+        try {
+          const parsedFavorites = JSON.parse(updatedFavoritesRaw);
+          if (Array.isArray(parsedFavorites)) {
+            favoritesCount = parsedFavorites.length;
+          }
+        } catch (parseError) {
+          if (process.env.NODE_ENV !== 'production') {
+            // eslint-disable-next-line no-console
+            console.warn('Failed to parse favorites payload for tracking', parseError);
+          }
+        }
+      }
+
+      const eventPayload = {
+        indexId,
+        source: 'FavoriteToggle',
+        nextIsFavorite,
+      };
+
+      if (typeof favoritesCount === 'number') {
+        eventPayload.favoritesCount = favoritesCount;
+      }
+
+      trackUsageEvent(nextIsFavorite ? 'favorite_add' : 'favorite_remove', eventPayload);
     } catch (err) {
       console.error('Error toggling favorite:', err);
     } finally {

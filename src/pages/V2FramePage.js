@@ -3,7 +3,7 @@
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useEffect, useRef, useState, useContext, memo } from 'react';
+import { useEffect, useRef, useState, useContext, memo, useCallback } from 'react';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
 import {
@@ -55,6 +55,7 @@ import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 // Removed collage collector usage
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
+import { trackUsageEvent } from '../utils/trackUsageEvent';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -97,11 +98,17 @@ export default function FramePage() {
   const [fineTuningLoadStarted, setFineTuningLoadStarted] = useState(false);
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
   const [searchParams] = useSearchParams();
-  const searchQuery = searchParams.get('searchTerm');
+  const urlSearchTerm = searchParams.get('searchTerm');
+  const {
+    selectedFrameIndex,
+    setSelectedFrameIndex,
+    searchQuery: contextSearchQuery,
+  } = useSearchDetailsV2();
 
   const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   const throttleTimeoutRef = useRef(null);
+  const lastTrackedFrameRef = useRef('');
 
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
@@ -163,6 +170,22 @@ export default function FramePage() {
           defaultCaption,
         },
       });
+
+      const eventPayload = {
+        cid: confirmedCid,
+        season,
+        episode,
+        frame,
+        fineTuningIndex,
+        source: 'V2FramePage',
+      };
+
+      const resolvedSearchTerm = resolveSearchTerm();
+      if (resolvedSearchTerm !== undefined) {
+        eventPayload.searchTerm = resolvedSearchTerm;
+      }
+
+      trackUsageEvent('add_to_library', eventPayload);
       
       setSavedToLibrary(true);
     } catch (error) {
@@ -223,7 +246,44 @@ export default function FramePage() {
   // Inline confirmation for library (no snackbar)
   const [savedToLibrary, setSavedToLibrary] = useState(false);
   const [savingToLibrary, setSavingToLibrary] = useState(false);
+  const [loadedSubtitle, setLoadedSubtitle] = useState('');
 
+  const resolveSearchTerm = useCallback(() => {
+    if (typeof urlSearchTerm === 'string' && urlSearchTerm.length > 0) {
+      return urlSearchTerm;
+    }
+
+    if (typeof contextSearchQuery === 'string' && contextSearchQuery.length > 0) {
+      return contextSearchQuery;
+    }
+
+    return undefined;
+  }, [contextSearchQuery, urlSearchTerm]);
+
+  const handleViewEpisodeClick = useCallback(() => {
+    const eventPayload = {
+      source: 'V2FramePage',
+      cid: confirmedCid || cid,
+      season,
+      episode,
+      frame,
+      fineTuningIndex,
+    };
+
+    const resolvedSearchTerm = resolveSearchTerm();
+    if (resolvedSearchTerm !== undefined) {
+      eventPayload.searchTerm = resolvedSearchTerm;
+    }
+
+    trackUsageEvent('view_episode', eventPayload);
+  }, [cid, confirmedCid, season, episode, frame, fineTuningIndex, resolveSearchTerm]);
+
+  const episodeLink = (() => {
+    const frameNumber = Number(frame);
+    const anchorFrame = Number.isFinite(frameNumber) ? Math.round(frameNumber / 10) * 10 : frame;
+    const searchSuffix = urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : '';
+    return `/episode/${cid}/${season}/${episode}/${anchorFrame}${searchSuffix}`;
+  })();
 
   const theme = useTheme();
 
@@ -239,6 +299,43 @@ export default function FramePage() {
   useEffect(() => {
     setSavedToLibrary(false);
   }, [displayImage, confirmedCid, season, episode, frame]);
+
+  useEffect(() => {
+    if (!confirmedCid || !frame || !displayImage) {
+      return;
+    }
+
+    const frameKey = `${confirmedCid}:${season}:${episode}:${frame}`;
+    if (lastTrackedFrameRef.current === frameKey) {
+      return;
+    }
+
+    lastTrackedFrameRef.current = frameKey;
+
+    const eventPayload = {
+      cid: confirmedCid,
+      season,
+      episode,
+      frame,
+      fineTuningIndex,
+      source: 'V2FramePage',
+    };
+
+    const resolvedSearchTerm = resolveSearchTerm();
+    if (resolvedSearchTerm !== undefined) {
+      eventPayload.searchTerm = resolvedSearchTerm;
+    }
+
+    trackUsageEvent('view_image', eventPayload);
+  }, [
+    confirmedCid,
+    season,
+    episode,
+    frame,
+    fineTuningIndex,
+    displayImage,
+    resolveSearchTerm,
+  ]);
 
   /* ---------------------------- Subtitle Function --------------------------- */
 
@@ -621,9 +718,7 @@ useEffect(() => {
     setSubtitlesExpanded(!subtitlesExpanded);
   };
 
-  const { selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
   const [frames, setFrames] = useState();
-  const [loadedSubtitle, setLoadedSubtitle] = useState('');  // TODO
   const [, setOriginalSubtitle] = useState('');
   const [, setSubtitleUserInteracted] = useState(false);
   const [, setLoadedSeason] = useState('');
@@ -787,7 +882,7 @@ useEffect(() => {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) - 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)
+              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) - 10}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`)
             }}
           >
             <ArrowBackIos style={{ fontSize: '2rem' }} />
@@ -806,7 +901,7 @@ useEffect(() => {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) + 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)
+              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) + 10}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`)
             }}
           >
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
@@ -834,7 +929,7 @@ useEffect(() => {
               onMouseDown={loadFineTuningImages}
               onTouchStart={loadFineTuningImages}
               onChange={(e, newValue) => handleSliderChange(newValue)}
-              onChangeCommitted={(e, value) => {navigate(`/frame/${cid}/${season}/${episode}/${frame}/${value}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)}}
+              onChangeCommitted={(e, value) => {navigate(`/frame/${cid}/${season}/${episode}/${frame}/${value}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`)}}
               valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
               marks
               componentsProps={{
@@ -955,7 +1050,7 @@ useEffect(() => {
                 const frameRate = 10;
                 const totalSeconds = Math.round(frame / frameRate);
                 const nearestSecondFrame = totalSeconds * frameRate;
-                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
+                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`);
               }}
               sx={{
                 marginBottom: '15px',
@@ -972,7 +1067,7 @@ useEffect(() => {
                 const frameRate = 10;
                 const totalSeconds = Math.round(frame / frameRate);
                 const nearestSecondFrame = totalSeconds * frameRate;
-                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
+                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`);
               }}
               sx={{
                 marginBottom: '15px',
@@ -1463,7 +1558,7 @@ useEffect(() => {
                   size="medium"
                   fullWidth
                   variant="contained"
-                  to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                  to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`}
                   component={RouterLink}
                   sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                   startIcon={<Edit />}
@@ -1520,7 +1615,7 @@ useEffect(() => {
                                     },
                                   },
                                 }}
-                                onClick={() => navigate(`/frame/${cid}/${season}/${episode}/${result?.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)}
+                                onClick={() => navigate(`/frame/${cid}/${season}/${episode}/${result?.frame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`)}
                               >
                                 {loading ? (
                                   <CircularProgress size={20} sx={{ color: '#565656' }} />
@@ -1623,7 +1718,7 @@ useEffect(() => {
                           src={`${surroundingFrame.frameImage}`}
                           title={surroundingFrame.subtitle || 'No subtitle'}
                           onClick={() => {
-                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
+                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`);
                           }}
                           onLoad={() => handleImageLoad(surroundingFrame.frame)}
                           onError={() => {
@@ -1651,7 +1746,9 @@ useEffect(() => {
               <Button
                 variant="contained"
                 fullWidth
-                href={`/episode/${cid}/${season}/${episode}/${Math.round(frame / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                component={RouterLink}
+                to={episodeLink}
+                onClick={handleViewEpisodeClick}
                 sx={{
                   color: '#e5e7eb',
                   background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',

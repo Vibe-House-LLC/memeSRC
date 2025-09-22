@@ -127,6 +127,12 @@ const navConfig = [
         icon: icon('ic_analytics'),
       },
       {
+        title: 'Usage Events',
+        path: '/dashboard/usage-events',
+        externalLink: false,
+        icon: <Article />,
+      },
+      {
         title: 'Website Settings',
         path: '/dashboard/websiteSettings',
         externalLink: false,

@@ -2224,6 +2224,57 @@ export const onDeleteProSupportMessage = /* GraphQL */ `
     }
   }
 `;
+export const onCreateUsageEvent = /* GraphQL */ `
+  subscription OnCreateUsageEvent(
+    $filter: ModelSubscriptionUsageEventFilterInput
+    $identityId: String
+  ) {
+    onCreateUsageEvent(filter: $filter, identityId: $identityId) {
+      id
+      identityId
+      eventType
+      eventData
+      sessionId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateUsageEvent = /* GraphQL */ `
+  subscription OnUpdateUsageEvent(
+    $filter: ModelSubscriptionUsageEventFilterInput
+    $identityId: String
+  ) {
+    onUpdateUsageEvent(filter: $filter, identityId: $identityId) {
+      id
+      identityId
+      eventType
+      eventData
+      sessionId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteUsageEvent = /* GraphQL */ `
+  subscription OnDeleteUsageEvent(
+    $filter: ModelSubscriptionUsageEventFilterInput
+    $identityId: String
+  ) {
+    onDeleteUsageEvent(filter: $filter, identityId: $identityId) {
+      id
+      identityId
+      eventType
+      eventData
+      sessionId
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const onCreateLocationLeads = /* GraphQL */ `
   subscription OnCreateLocationLeads(
     $filter: ModelSubscriptionLocationLeadsFilterInput

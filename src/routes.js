@@ -49,6 +49,7 @@ const V2EpisodePage = lazy(() => import('./pages/V2EpisodePage'));
 const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
 const ProSupport = lazy(() => import('./pages/ProSupport'));
 const ProSupportAdmin = lazy(() => import('./pages/ProSupportAdmin'));
+const AdminUsageEventsLog = lazy(() => import('./pages/AdminUsageEventsLog'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
@@ -130,6 +131,7 @@ export default function Router() {
         { path: 'app', element: <DashboardAppPage /> },
         { path: 'user', element: <UserListPage /> },
         { path: 'support', element: <ProSupportAdmin /> },
+        { path: 'usage-events', element: <AdminUsageEventsLog /> },
         { path: 'home', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },

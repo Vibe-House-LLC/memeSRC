@@ -1,8 +1,8 @@
 // V2EpisodePage.js
 
 import { Buffer } from "buffer";
-import React, { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { Link as RouterLink, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container, Typography, Card, CardMedia, CardContent, Button, Grid, Box, Skeleton } from "@mui/material";
 import { Storage } from "aws-amplify";
 import sanitizeHtml from 'sanitize-html';
@@ -29,6 +29,8 @@ export default function V2EpisodePage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const { cid, season, episode, frame } = useParams();
+  const [searchParams] = useSearchParams();
+  const urlSearchTerm = searchParams.get('searchTerm');
   const [confirmedCid, setConfirmedCid] = useState();
   const [subtitles, setSubtitles] = useState([]);
   const [lastPrev, setLastPrev] = useState(null);
@@ -172,15 +174,25 @@ export default function V2EpisodePage() {
     setLoadingMore(false);
   };
 
+  const buildEpisodeLink = useCallback((targetFrame) => {
+    const base = `/episode/${cid}/${season}/${episode}/${targetFrame}`;
+    return urlSearchTerm ? `${base}?searchTerm=${encodeURIComponent(urlSearchTerm)}` : base;
+  }, [cid, season, episode, urlSearchTerm]);
+
+  const buildFrameLink = useCallback((fid) => {
+    const base = `/frame/${cid}/${season}/${episode}/${fid}`;
+    return urlSearchTerm ? `${base}?searchTerm=${encodeURIComponent(urlSearchTerm)}` : base;
+  }, [cid, season, episode, urlSearchTerm]);
+
   const skipToStart = () => {
-    navigate(`/episode/${cid}/${season}/${episode}/1`);
+    navigate(buildEpisodeLink(1));
   };
 
   const skipToEnd = () => {
     if (subtitles.length > 0) {
       const lastSubtitle = subtitles[subtitles.length - 5];
       const lastFrameIndex = lastSubtitle.end_frame - 30;
-      navigate(`/episode/${cid}/${season}/${episode}/${lastFrameIndex}`);
+      navigate(buildEpisodeLink(lastFrameIndex));
       window.scrollTo(0, 0);
     }
   };
@@ -258,7 +270,7 @@ export default function V2EpisodePage() {
                   <EpisodePageResultsAd />
                 </Card>
               ) : (
-                <Card component="a" href={`/frame/${cid}/${season}/${episode}/${result.fid}`} style={{ textDecoration: 'none' }}>
+                <Card component={RouterLink} to={buildFrameLink(result.fid)} style={{ textDecoration: 'none' }}>
                   <Box sx={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#1f1f1f' }}>
                     <CardMedia
                       component="img"
