@@ -91,12 +91,12 @@ const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
 
 const quickActionButtonSx = (theme: Theme) => {
   const isLight = theme.palette.mode === 'light';
-  const borderTone = alpha(theme.palette.grey[800], isLight ? 0.7 : 0.55);
-  const hoverBorderTone = alpha(theme.palette.grey[50], isLight ? 0.7 : 0.55);
-  const backgroundColor = alpha(theme.palette.grey[900], isLight ? 0.92 : 0.58);
-  const backgroundGradient = `linear-gradient(135deg, ${alpha(theme.palette.grey[900], isLight ? 0.98 : 0.7)} 0%, ${alpha(theme.palette.grey[800], isLight ? 0.9 : 0.6)} 60%, ${alpha(theme.palette.grey[700], isLight ? 0.82 : 0.5)} 100%)`;
+  const borderTone = alpha(theme.palette.grey[700], isLight ? 0.85 : 0.55);
+  const hoverBorderTone = alpha(theme.palette.grey[500], isLight ? 0.95 : 0.7);
+  const backgroundColor = alpha(theme.palette.grey[900], isLight ? 0.985 : 0.7);
+  const backgroundGradient = `linear-gradient(135deg, ${alpha(theme.palette.grey[900], isLight ? 0.995 : 0.82)} 0%, ${alpha(theme.palette.grey[800], isLight ? 0.94 : 0.72)} 55%, ${alpha(theme.palette.grey[700], isLight ? 0.88 : 0.62)} 100%)`;
   const textColor = theme.palette.common.white;
-  const subTextColor = alpha(theme.palette.common.white, isLight ? 0.82 : 0.72);
+  const subTextColor = alpha(theme.palette.common.white, isLight ? 0.7 : 0.62);
 
   return {
     border: '1px solid',
@@ -110,17 +110,16 @@ const quickActionButtonSx = (theme: Theme) => {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(1.5),
-    boxShadow: theme.shadows[3],
+    boxShadow: theme.shadows[4],
     backgroundColor,
     backgroundImage: backgroundGradient,
     color: textColor,
-    transition: theme.transitions.create(['background-color', 'border-color', 'box-shadow', 'transform'], {
+    transition: theme.transitions.create(['background-color', 'border-color', 'box-shadow'], {
       duration: theme.transitions.duration.shorter,
     }),
     '&:hover:not(.Mui-selected)': {
       borderColor: hoverBorderTone,
-      boxShadow: theme.shadows[6],
-      transform: 'translate3d(0,-2px,0)',
+      boxShadow: theme.shadows[7],
     },
     '& .MuiListItemText-primary': {
       color: textColor,
@@ -135,12 +134,12 @@ const quickActionButtonSx = (theme: Theme) => {
 
 const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
   const isLight = theme.palette.mode === 'light';
-  const baseBorder = alpha(theme.palette.grey[800], isLight ? 0.34 : 0.45);
-  const hoverBorder = alpha(theme.palette.grey[900], isLight ? 0.5 : 0.65);
-  const baseBg = alpha(theme.palette.grey[900], isLight ? 0.16 : 0.34);
-  const hoverBg = alpha(theme.palette.grey[900], isLight ? 0.24 : 0.45);
-  const primaryText = isLight ? theme.palette.text.primary : theme.palette.grey[50];
-  const secondaryText = isLight ? alpha(theme.palette.text.primary, 0.68) : alpha(theme.palette.grey[100], 0.75);
+  const baseBorder = alpha(theme.palette.grey[700], isLight ? 0.9 : 0.6);
+  const hoverBorder = alpha(theme.palette.grey[500], isLight ? 0.95 : 0.72);
+  const baseBg = alpha(theme.palette.grey[900], isLight ? 0.58 : 0.65);
+  const hoverBg = alpha(theme.palette.grey[900], isLight ? 0.66 : 0.75);
+  const primaryText = theme.palette.common.white;
+  const secondaryText = alpha(theme.palette.common.white, isLight ? 0.68 : 0.72);
 
   return {
     border: '1px solid',
@@ -156,8 +155,8 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
     gap: theme.spacing(1.25),
     backgroundColor: baseBg,
     color: primaryText,
-    boxShadow: theme.shadows[1],
-    transition: theme.transitions.create(['background-color', 'border-color', 'box-shadow', 'transform'], {
+    boxShadow: theme.shadows[2],
+    transition: theme.transitions.create(['background-color', 'border-color', 'box-shadow'], {
       duration: theme.transitions.duration.shorter,
     }),
     '& .MuiListItemText-primary': {
@@ -171,7 +170,6 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
       borderColor: hoverBorder,
       boxShadow: theme.shadows[4],
       backgroundColor: hoverBg,
-      transform: 'translate3d(0,-2px,0)',
     },
     ...getSelectedListItemStyles(theme, series),
   };
@@ -522,7 +520,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                         onClick={() => handleSelect(s.id)}
                         sx={(theme) => listCardButtonSx(theme, s)}
                       >
-                        <Box sx={(theme) => radioIconSx(theme, isSelected)}>
+                        <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
                           {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
                         </Box>
                         <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
@@ -572,7 +570,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                     onClick={() => handleSelect(s.id)}
                     sx={(theme) => listCardButtonSx(theme, s)}
                   >
-                    <Box sx={(theme) => radioIconSx(theme, isSelected)}>
+                    <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
                       {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
                     </Box>
                     <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
