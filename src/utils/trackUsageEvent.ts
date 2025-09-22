@@ -1,5 +1,6 @@
 import { API, Auth } from 'aws-amplify';
 import { GraphQLResult, GraphQLOptions } from '@aws-amplify/api-graphql';
+import { nanoid } from 'nanoid';
 
 const createUsageEventMutation = /* GraphQL */ `
   mutation CreateUsageEvent($input: CreateUsageEventInput!) {
@@ -31,10 +32,83 @@ type CreateUsageEventMutation = {
 
 type GraphQLAuthMode = 'AWS_IAM' | 'AMAZON_COGNITO_USER_POOLS';
 
-const resolveAuthMode = async (): Promise<GraphQLAuthMode> => {
+type AuthContext = {
+  authMode: GraphQLAuthMode;
+  trackingUserId?: string;
+};
+
+const ANONYMOUS_TRACKING_ID_STORAGE_KEY = 'anonymousTrackingId';
+const ANONYMOUS_TRACKING_ID_PREFIX = 'noauth-';
+
+let inMemoryAnonymousTrackingId: string | null = null;
+let hasLoggedStorageReadFailure = false;
+let hasLoggedStorageWriteFailure = false;
+
+const buildAnonymousTrackingId = (): string => `${ANONYMOUS_TRACKING_ID_PREFIX}${nanoid(12)}`;
+
+const readAnonymousTrackingId = (): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(ANONYMOUS_TRACKING_ID_STORAGE_KEY);
+
+    if (storedValue && storedValue.startsWith(ANONYMOUS_TRACKING_ID_PREFIX)) {
+      return storedValue;
+    }
+  } catch (storageError) {
+    if (process.env.NODE_ENV !== 'production' && !hasLoggedStorageReadFailure) {
+      hasLoggedStorageReadFailure = true;
+      // eslint-disable-next-line no-console
+      console.warn('Unable to read anonymous tracking id from storage', storageError);
+    }
+  }
+
+  return null;
+};
+
+const persistAnonymousTrackingId = (trackingId: string): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(ANONYMOUS_TRACKING_ID_STORAGE_KEY, trackingId);
+  } catch (storageError) {
+    if (process.env.NODE_ENV !== 'production' && !hasLoggedStorageWriteFailure) {
+      hasLoggedStorageWriteFailure = true;
+      // eslint-disable-next-line no-console
+      console.warn('Unable to persist anonymous tracking id', storageError);
+    }
+  }
+};
+
+const getAnonymousTrackingId = (): string => {
+  if (inMemoryAnonymousTrackingId) {
+    return inMemoryAnonymousTrackingId;
+  }
+
+  const storedValue = readAnonymousTrackingId();
+
+  if (storedValue) {
+    inMemoryAnonymousTrackingId = storedValue;
+    return storedValue;
+  }
+
+  const newId = buildAnonymousTrackingId();
+  inMemoryAnonymousTrackingId = newId;
+  persistAnonymousTrackingId(newId);
+
+  return newId;
+};
+
+const resolveAuthContext = async (): Promise<AuthContext> => {
   try {
     await Auth.currentAuthenticatedUser();
-    return 'AMAZON_COGNITO_USER_POOLS';
+    return {
+      authMode: 'AMAZON_COGNITO_USER_POOLS',
+    };
   } catch {
     try {
       await Auth.currentCredentials();
@@ -45,7 +119,10 @@ const resolveAuthMode = async (): Promise<GraphQLAuthMode> => {
       }
     }
 
-    return 'AWS_IAM';
+    return {
+      authMode: 'AWS_IAM',
+      trackingUserId: getAnonymousTrackingId(),
+    };
   }
 };
 
@@ -61,6 +138,45 @@ const parseEventData = (eventData?: string | null): unknown => {
   } catch (parseError) {
     return eventData;
   }
+};
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (value === null) {
+    return false;
+  }
+
+  return typeof value === 'object' && !Array.isArray(value);
+};
+
+const augmentEventPayloadWithTrackingUserId = (
+  eventData: UsageEventPayload,
+  trackingUserId?: string
+): UsageEventPayload => {
+  if (!trackingUserId) {
+    return eventData;
+  }
+
+  if (isPlainObject(eventData)) {
+    if ('anonymousUserId' in eventData) {
+      return eventData;
+    }
+
+    return {
+      ...eventData,
+      anonymousUserId: trackingUserId,
+    };
+  }
+
+  if (eventData === undefined || eventData === null) {
+    return {
+      anonymousUserId: trackingUserId,
+    };
+  }
+
+  return {
+    anonymousUserId: trackingUserId,
+    originalEventData: eventData,
+  };
 };
 
 const logUsageEventError = (
@@ -132,10 +248,35 @@ const serializeEventData = (eventData?: UsageEventPayload): string | null => {
   }
 };
 
-const sendUsageEvent = (input: CreateUsageEventInput): void => {
+const buildCreateUsageEventInput = (
+  eventType: string,
+  eventData: UsageEventPayload,
+  trackingUserId?: string
+): CreateUsageEventInput => {
+  const input: CreateUsageEventInput = {
+    eventType,
+  };
+
+  const payloadWithTrackingId = augmentEventPayloadWithTrackingUserId(eventData, trackingUserId);
+  const serializedEventData = serializeEventData(payloadWithTrackingId);
+
+  if (serializedEventData) {
+    input.eventData = serializedEventData;
+  }
+
+  return input;
+};
+
+const sendUsageEvent = (
+  eventType: string,
+  eventData: UsageEventPayload
+): void => {
   const requestTask = (async () => {
+    let input: CreateUsageEventInput | undefined;
+
     try {
-      const authMode = await resolveAuthMode();
+      const { authMode, trackingUserId } = await resolveAuthContext();
+      input = buildCreateUsageEventInput(eventType, eventData, trackingUserId);
       const graphQLRequest: GraphQLOptions = {
         query: createUsageEventMutation,
         variables: { input },
@@ -144,7 +285,7 @@ const sendUsageEvent = (input: CreateUsageEventInput): void => {
 
       await (API.graphql(graphQLRequest) as Promise<GraphQLResult<CreateUsageEventMutation>>);
     } catch (error) {
-      logUsageEventError(error, input);
+      logUsageEventError(error, input ?? { eventType });
     }
   })();
 
@@ -173,21 +314,18 @@ export const trackUsageEvent = (
     return;
   }
 
-  const input: CreateUsageEventInput = {
-    eventType,
-  };
-
-  const serializedEventData = serializeEventData(eventData);
-  if (serializedEventData) {
-    input.eventData = serializedEventData;
-  }
-
   Promise.resolve()
     .then(() => {
-      sendUsageEvent(input);
+      sendUsageEvent(eventType, eventData);
     })
     .catch((error) => {
-      logUsageEventError(error, input);
+      const fallbackContext: CreateUsageEventInput = { eventType };
+      const serializedEventData = serializeEventData(eventData);
+      if (serializedEventData) {
+        fallbackContext.eventData = serializedEventData;
+      }
+
+      logUsageEventError(error, fallbackContext);
     });
 };
 
