@@ -1,6 +1,6 @@
 // V2SearchPage.js
 
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -18,6 +18,7 @@ import ImageSkeleton from '../components/ImageSkeleton.tsx';
 import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 
 
 
@@ -91,6 +92,92 @@ const BottomCardLabel = styled.div`
   color: ${props => props.theme.palette.common.white};
   text-align: left;
 `;
+
+const SearchResultMedia = ({
+  result,
+  resultId,
+  resultIndex,
+  searchTerm,
+  mediaSrc,
+  isMediaLoaded,
+  onMediaLoad,
+  addVideoRef,
+  animationsEnabled,
+}) => {
+  const frameCandidate = Number.isFinite(Number(result?.start_frame)) && Number.isFinite(Number(result?.end_frame))
+    ? Math.round(((Number(result.start_frame) + Number(result.end_frame)) / 2) / 10) * 10
+    : undefined;
+
+  const saveIntentMeta = useMemo(() => {
+    const meta = {
+      source: 'V2SearchPage',
+      intentTarget: 'SearchResultThumbnail',
+      position: resultIndex,
+      resultId,
+    };
+
+    if (result?.cid) {
+      meta.cid = result.cid;
+    }
+
+    if (result?.season) {
+      meta.season = result.season;
+    }
+
+    if (result?.episode) {
+      meta.episode = result.episode;
+    }
+
+    if (typeof frameCandidate === 'number' && Number.isFinite(frameCandidate)) {
+      meta.frame = frameCandidate;
+    }
+
+    if (typeof searchTerm === 'string' && searchTerm.length > 0) {
+      meta.searchTerm = searchTerm;
+    }
+
+    return meta;
+  }, [frameCandidate, result, resultId, resultIndex, searchTerm]);
+
+  const saveIntentHandlers = useTrackImageSaveIntent(saveIntentMeta);
+
+  if (animationsEnabled) {
+    return (
+      <StyledCardVideoContainer>
+        {!isMediaLoaded && <ImageSkeleton />}
+        <StyledCardMedia
+          ref={addVideoRef}
+          src={mediaSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          onError={() => console.error('Error loading video:', JSON.stringify(result))}
+          key={`${resultId}-video`}
+          style={{ display: isMediaLoaded ? 'block' : 'none' }}
+          onLoad={onMediaLoad}
+          {...saveIntentHandlers}
+        />
+      </StyledCardVideoContainer>
+    );
+  }
+
+  return (
+    <StyledCardImageContainer>
+      {!isMediaLoaded && <ImageSkeleton />}
+      <StyledCardImage
+        src={mediaSrc}
+        alt={`Frame from S${result?.season} E${result?.episode}`}
+        key={`${resultId}-image`}
+        style={{ display: isMediaLoaded ? 'block' : 'none' }}
+        onLoad={onMediaLoad}
+        draggable
+        {...saveIntentHandlers}
+      />
+    </StyledCardImageContainer>
+  );
+};
 
 export default function SearchPage() {
   const navigate = useNavigate();
@@ -474,35 +561,17 @@ export default function SearchPage() {
                       style={{ textDecoration: 'none' }}
                     >
                       <StyledCard>
-                        {animationsEnabled ? (
-                          <StyledCardVideoContainer>
-                            {!isMediaLoaded && <ImageSkeleton />}
-                            <StyledCardMedia
-                              ref={addVideoRef}
-                              src={videoUrls[resultId]}
-                              autoPlay
-                              loop
-                              muted
-                              playsInline
-                              preload="auto"
-                              onError={() => console.error('Error loading video:', JSON.stringify(result))}
-                              key={`${resultId}-video`}
-                              style={{ display: isMediaLoaded ? 'block' : 'none' }}
-                              onLoad={() => handleMediaLoad(resultId)}
-                            />
-                          </StyledCardVideoContainer>
-                        ) : (
-                          <StyledCardImageContainer>
-                            {!isMediaLoaded && <ImageSkeleton />}
-                            <StyledCardImage
-                              src={videoUrls[resultId]}
-                              alt={`Frame from S${result.season} E${result.episode}`}
-                              key={`${resultId}-image`}
-                              style={{ display: isMediaLoaded ? 'block' : 'none' }}
-                              onLoad={() => handleMediaLoad(resultId)}
-                            />
-                          </StyledCardImageContainer>
-                        )}
+                        <SearchResultMedia
+                          result={result}
+                          resultId={resultId}
+                          resultIndex={index}
+                          searchTerm={searchQuery}
+                          mediaSrc={videoUrls[resultId]}
+                          isMediaLoaded={isMediaLoaded}
+                          onMediaLoad={() => handleMediaLoad(resultId)}
+                          addVideoRef={addVideoRef}
+                          animationsEnabled={animationsEnabled}
+                        />
                         <BottomCardCaption>{sanitizedSubtitleText}</BottomCardCaption>
                         <BottomCardLabel>
                           <Chip
