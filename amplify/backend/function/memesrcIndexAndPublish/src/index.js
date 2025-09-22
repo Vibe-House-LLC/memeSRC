@@ -154,16 +154,20 @@ const indexToOpenSearch = async (data) => {
             batches.push(bulkBody);
         }
 
-        let processedCount = 0;
+        // TODO: Console log a random row from the CSV
+        console.log('RANDOM ROW: ', rows[Math.floor(Math.random() * rows.length)]);
+        console.log('ROWS: ', rows.length);
 
-        for (const bulkBody of batches) {
-            const bulkResponse = await client.bulk({
-                body: bulkBody,
-            });
-            console.log("Bulk indexing response:", bulkResponse.body);
-            processedCount += bulkBody.length / 2;
-            console.log(`Processed ${processedCount} out of ${rows.length} rows`);
-        }
+        // let processedCount = 0;
+
+        // for (const bulkBody of batches) {
+        //     const bulkResponse = await client.bulk({
+        //         body: bulkBody,
+        //     });
+        //     console.log("Bulk indexing response:", bulkResponse.body);
+        //     processedCount += bulkBody.length / 2;
+        //     console.log(`Processed ${processedCount} out of ${rows.length} rows`);
+        // }
 
         console.log('CSV indexing completed.');
         return true;
