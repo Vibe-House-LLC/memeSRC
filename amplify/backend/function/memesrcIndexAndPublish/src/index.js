@@ -21,7 +21,6 @@ Amplify Params - DO NOT EDIT */
 const { makeGraphQLRequest } = require('/opt/graphql-handler');
 const AWS = require('aws-sdk');
 const { Client } = require('@opensearch-project/opensearch');
-const axios = require('axios');
 const csv = require('csv-parser');
 
 const getSourceMediaQuery = `
@@ -112,7 +111,8 @@ const indexToOpenSearch = async (data) => {
     const OPENSEARCH_ENDPOINT = "https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com";
     const alias = data.alias;
     const env = process.env.ENV === "dev" ? "dev" : "v2";
-    const csvUrl = `https://img.memesrc.com/v2/${alias}/_docs.csv`;
+    const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+    const csvKey = `protected/${alias}/_docs.csv`;
     const indexName = `${env}-${alias}`;
     const batchSize = 100;
 
@@ -125,12 +125,14 @@ const indexToOpenSearch = async (data) => {
             },
         });
 
-        const response = await axios.get(csvUrl, { responseType: 'stream' });
-
         const rows = [];
 
+        const s3Stream = s3.getObject({ Bucket: bucketName, Key: csvKey }).createReadStream();
+
         await new Promise((resolve, reject) => {
-            response.data.pipe(csv())
+            s3Stream
+                .on('error', reject)
+                .pipe(csv())
                 .on('data', (row) => {
                     if (row.subtitle_text) {
                         const decodedSubtitle = Buffer.from(row.subtitle_text, 'base64').toString('utf-8');
