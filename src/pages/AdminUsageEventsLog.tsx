@@ -27,6 +27,8 @@ import { alpha, keyframes, useTheme } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PersonIcon from '@mui/icons-material/Person';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
 import type { SelectChangeEvent } from '@mui/material/Select';
@@ -96,6 +98,7 @@ const MAX_EVENTS = 100;
 const HISTORICAL_PAGE_SIZE = 50;
 const EVENT_TYPE_SAMPLE_LIMIT = 200;
 const ALL_EVENT_TYPES_OPTION = '__ALL__';
+const NOAUTH_IDENTITY_PREFIX = 'noauth-';
 
 const EVENT_COLOR_MAP: Record<string, ChipColor> = {
   search: 'info',
@@ -372,6 +375,14 @@ type UsageEventCardProps = {
   showEventSpecificSummary: boolean;
 };
 
+type MetaItem = {
+  key: string;
+  label: string;
+  value: string;
+  tooltip?: string | null;
+  icon?: React.ReactNode;
+};
+
 const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onToggle, showEventSpecificSummary }) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -384,7 +395,8 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
       : entry.summaryStatus === 'loading'
         ? 'Loading…'
         : 'Event unavailable';
-  const identityFull = entry.summary?.identityId ?? entry.detail?.identityId ?? 'Unknown identity';
+  const identityRaw = entry.summary?.identityId ?? entry.detail?.identityId ?? null;
+  const identityFull = identityRaw ?? 'Unknown identity';
   const identityShort = shortenIdentifier(identityFull) ?? identityFull;
   const sessionFull = entry.summary?.sessionId ?? entry.detail?.sessionId ?? null;
   const sessionShort = sessionFull ? shortenIdentifier(sessionFull) ?? sessionFull : null;
@@ -406,6 +418,13 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
   const metaBackground = alpha(accentBase, isDarkMode ? 0.22 : 0.08);
   const metaLabelColor = alpha(theme.palette.text.secondary, isDarkMode ? 0.85 : 0.68);
 
+  const isNoAuthIdentity = typeof identityRaw === 'string' && identityRaw.startsWith(NOAUTH_IDENTITY_PREFIX);
+  const identityIcon = identityShort
+    ? isNoAuthIdentity || !identityRaw
+      ? <HelpOutlineIcon sx={{ fontSize: 14, color: metaLabelColor }} />
+      : <PersonIcon sx={{ fontSize: 14, color: metaLabelColor }} />
+    : undefined;
+
   const timestampIso = entry.summary?.createdAt ?? entry.receivedAt;
   const timeLabel = formatTimeLabel(timestampIso) ?? '—';
   const fullTimestampLabel = formatTimestamp(timestampIso) ?? timestampIso ?? 'Timestamp unavailable';
@@ -414,7 +433,13 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
   const metaItems = (
     [
       identityShort
-        ? { key: 'identity', label: 'Identity', value: identityShort, tooltip: identityFull }
+        ? {
+            key: 'identity',
+            label: 'Identity',
+            value: identityShort,
+            tooltip: identityFull,
+            icon: identityIcon,
+          }
         : null,
       sessionShort && sessionFull
         ? { key: 'session', label: 'Session', value: sessionShort, tooltip: sessionFull }
@@ -422,7 +447,7 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
       eventIdShort && eventIdFull
         ? { key: 'event', label: 'Event', value: eventIdShort, tooltip: eventIdFull }
         : null,
-    ].filter(Boolean) as Array<{ key: string; label: string; value: string; tooltip?: string | null }>
+    ].filter(Boolean) as MetaItem[]
   );
 
   return (
@@ -560,8 +585,8 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                             component="span"
                             sx={{
                               display: 'inline-flex',
-                              alignItems: 'baseline',
-                              gap: 0.4,
+                              alignItems: 'center',
+                              gap: 0.45,
                               px: 0.75,
                               py: 0.35,
                               borderRadius: 1,
@@ -570,6 +595,14 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                               maxWidth: '100%',
                             }}
                           >
+                            {item.icon && (
+                              <Box
+                                component="span"
+                                sx={{ display: 'inline-flex', alignItems: 'center', lineHeight: 0 }}
+                              >
+                                {item.icon}
+                              </Box>
+                            )}
                             <Typography
                               component="span"
                               variant="overline"
