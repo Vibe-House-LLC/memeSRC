@@ -1,5 +1,5 @@
-import { API, graphqlOperation } from 'aws-amplify';
-import { GraphQLResult } from '@aws-amplify/api-graphql';
+import { API, Auth } from 'aws-amplify';
+import { GraphQLResult, GraphQLOptions } from '@aws-amplify/api-graphql';
 
 const createUsageEventMutation = /* GraphQL */ `
   mutation CreateUsageEvent($input: CreateUsageEventInput!) {
@@ -27,6 +27,26 @@ type CreateUsageEventMutation = {
   createUsageEvent?: {
     id: string;
   } | null;
+};
+
+type GraphQLAuthMode = 'AWS_IAM' | 'AMAZON_COGNITO_USER_POOLS';
+
+const resolveAuthMode = async (): Promise<GraphQLAuthMode> => {
+  try {
+    await Auth.currentAuthenticatedUser();
+    return 'AMAZON_COGNITO_USER_POOLS';
+  } catch {
+    try {
+      await Auth.currentCredentials();
+    } catch (credentialError) {
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.warn('Falling back to AWS_IAM for usage tracking', credentialError);
+      }
+    }
+
+    return 'AWS_IAM';
+  }
 };
 
 const inflightEvents = new Set<Promise<void>>();
@@ -113,17 +133,22 @@ const serializeEventData = (eventData?: UsageEventPayload): string | null => {
 };
 
 const sendUsageEvent = (input: CreateUsageEventInput): void => {
-  const request = (async () => {
+  const requestTask = (async () => {
     try {
-      await (API.graphql(
-        graphqlOperation(createUsageEventMutation, { input })
-      ) as Promise<GraphQLResult<CreateUsageEventMutation>>);
+      const authMode = await resolveAuthMode();
+      const graphQLRequest: GraphQLOptions = {
+        query: createUsageEventMutation,
+        variables: { input },
+        authMode,
+      };
+
+      await (API.graphql(graphQLRequest) as Promise<GraphQLResult<CreateUsageEventMutation>>);
     } catch (error) {
       logUsageEventError(error, input);
     }
   })();
 
-  void trackPromise(request);
+  void trackPromise(requestTask);
 };
 
 export const flushUsageEvents = async (): Promise<void> => {
