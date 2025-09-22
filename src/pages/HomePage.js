@@ -7,19 +7,15 @@ import FullScreenSearch from '../sections/search/FullScreenSearch';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { UserContext } from '../UserContext';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
+import getSessionID from '../utils/getSessionsId';
 
-const prepSessionID = async () => {
-  if (!("sessionID" in sessionStorage)) {
-    API.get('publicapi', '/uuid')
-      .then(generatedSessionID => {
-        sessionStorage.setItem("sessionID", generatedSessionID);
-        return generatedSessionID;
-      })
-      .catch(err => {
-        console.log(`UUID Gen Fetch Error:  ${err}`);
-        throw err;
-      });
-  }
+const prepSessionID = () => {
+  void getSessionID().catch((error) => {
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to initialize session id', error);
+    }
+  });
 };
 
 export default function SearchPage({ metadata }) {

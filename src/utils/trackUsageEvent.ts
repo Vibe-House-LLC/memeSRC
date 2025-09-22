@@ -1,6 +1,7 @@
 import { API, Auth } from 'aws-amplify';
 import { GraphQLResult, GraphQLOptions } from '@aws-amplify/api-graphql';
 import { nanoid } from 'nanoid';
+import getSessionID from './getSessionsId';
 
 const createUsageEventMutation = /* GraphQL */ `
   mutation CreateUsageEvent($input: CreateUsageEventInput!) {
@@ -23,6 +24,7 @@ type CreateUsageEventInput = {
   eventType: string;
   eventData?: string | null;
   identityId?: string | null;
+  sessionId?: string | null;
 };
 
 type CreateUsageEventMutation = {
@@ -252,7 +254,8 @@ const serializeEventData = (eventData?: UsageEventPayload): string | null => {
 const buildCreateUsageEventInput = (
   eventType: string,
   eventData: UsageEventPayload,
-  trackingUserId?: string
+  trackingUserId?: string,
+  sessionId?: string
 ): CreateUsageEventInput => {
   const input: CreateUsageEventInput = {
     eventType,
@@ -260,6 +263,10 @@ const buildCreateUsageEventInput = (
 
   if (trackingUserId) {
     input.identityId = trackingUserId;
+  }
+
+  if (sessionId) {
+    input.sessionId = sessionId;
   }
 
   const payloadWithTrackingId = augmentEventPayloadWithTrackingUserId(eventData, trackingUserId);
@@ -281,7 +288,8 @@ const sendUsageEvent = (
 
     try {
       const { authMode, trackingUserId } = await resolveAuthContext();
-      input = buildCreateUsageEventInput(eventType, eventData, trackingUserId);
+      const sessionId = await getSessionID();
+      input = buildCreateUsageEventInput(eventType, eventData, trackingUserId, sessionId);
       const graphQLRequest: GraphQLOptions = {
         query: createUsageEventMutation,
         variables: { input },
@@ -323,11 +331,20 @@ export const trackUsageEvent = (
     .then(() => {
       sendUsageEvent(eventType, eventData);
     })
-    .catch((error) => {
+    .catch(async (error) => {
       const fallbackContext: CreateUsageEventInput = { eventType };
       const serializedEventData = serializeEventData(eventData);
       if (serializedEventData) {
         fallbackContext.eventData = serializedEventData;
+      }
+
+      try {
+        fallbackContext.sessionId = await getSessionID();
+      } catch (sessionError) {
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.warn('Unable to resolve session id for usage event logging', sessionError);
+        }
       }
 
       logUsageEventError(error, fallbackContext);
