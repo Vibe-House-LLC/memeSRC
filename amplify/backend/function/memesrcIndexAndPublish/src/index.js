@@ -1,10 +1,10 @@
 /* Amplify Params - DO NOT EDIT
-	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
-	API_MEMESRC_GRAPHQLAPIIDOUTPUT
-	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
-	ENV
-	REGION
-	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+    API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+    API_MEMESRC_GRAPHQLAPIIDOUTPUT
+    API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+    ENV
+    REGION
+    STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT *//* Amplify Params - DO NOT EDIT
     API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
     API_MEMESRC_GRAPHQLAPIIDOUTPUT
@@ -110,10 +110,13 @@ const indexToOpenSearch = async (data) => {
 
     const OPENSEARCH_ENDPOINT = "https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com";
     const alias = data.alias;
-    const env = process.env.ENV === "dev" ? "dev" : "v2";
+    const env = process.env.ENV === "beta" ? "v2" : process.env.ENV || "unknownEnv";
+    console.log('ENV: ', env);
     const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
     const csvKey = `protected/${alias}/_docs.csv`;
+    console.log('CSV KEY: ', csvKey);
     const indexName = `${env}-${alias}`;
+    console.log('INDEX NAME: ', indexName);
     const batchSize = 100;
 
     try {
@@ -207,11 +210,11 @@ exports.handler = async (event) => {
             seriesData = sourceMedia?.series;
             console.log('SOURCE MEDIA DATA: ', JSON.stringify(sourceMedia));
 
-            const updateSourceMediaResponse = await updateSourceMedia({
-                id: sourceMediaId,
-                status: 'indexing'
-            });
-            console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
+            // const updateSourceMediaResponse = await updateSourceMedia({
+            //     id: sourceMediaId,
+            //     status: 'indexing'
+            // });
+            // console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
         }
 
         // TODO: Add secrets
@@ -228,28 +231,28 @@ exports.handler = async (event) => {
         console.log('INDEX TO OPENSEARCH RESPONSE: ', JSON.stringify('indexToOpenSearchResponse: ', indexToOpenSearchResponse));
 
         // Once indexing is complete, we can add the alias (if it doesn't exist) and update the series
-        if (sourceMediaId) {
-            const doesAliasExist = await checkForExistingAlias(alias);
-            if (!doesAliasExist) {
-                const aliasData = await createAlias({
-                    id: alias,
-                    aliasV2ContentMetadataId: alias
-                });
-                console.log('ALIAS DATA: ', JSON.stringify(aliasData));
+        // if (sourceMediaId) {
+        //     const doesAliasExist = await checkForExistingAlias(alias);
+        //     if (!doesAliasExist) {
+        //         const aliasData = await createAlias({
+        //             id: alias,
+        //             aliasV2ContentMetadataId: alias
+        //         });
+        //         console.log('ALIAS DATA: ', JSON.stringify(aliasData));
 
-                const seriesResponse = await updateSeries({
-                    id: seriesData?.id,
-                    slug: alias,
-                });
-                console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
-            }
-        }
+        //         const seriesResponse = await updateSeries({
+        //             id: seriesData?.id,
+        //             slug: alias,
+        //         });
+        //         console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
+        //     }
 
-        const updateSourceMediaResponse = await updateSourceMedia({
-            id: sourceMediaId,
-            status: 'published'
-        });
-        console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
+        //     const updateSourceMediaResponse = await updateSourceMedia({
+        //         id: sourceMediaId,
+        //         status: 'published'
+        //     });
+        //     console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
+        // }
     } catch (error) {
         console.error('Error:', error);
         throw error;
