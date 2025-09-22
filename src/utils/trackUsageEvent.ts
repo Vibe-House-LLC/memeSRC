@@ -22,6 +22,7 @@ type UsageEventPayload =
 type CreateUsageEventInput = {
   eventType: string;
   eventData?: string | null;
+  identityId?: string | null;
 };
 
 type CreateUsageEventMutation = {
@@ -256,6 +257,10 @@ const buildCreateUsageEventInput = (
   const input: CreateUsageEventInput = {
     eventType,
   };
+
+  if (trackingUserId) {
+    input.identityId = trackingUserId;
+  }
 
   const payloadWithTrackingId = augmentEventPayloadWithTrackingUserId(eventData, trackingUserId);
   const serializedEventData = serializeEventData(payloadWithTrackingId);
