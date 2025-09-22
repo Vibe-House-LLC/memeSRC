@@ -64,11 +64,8 @@ const FavoriteToggle = ({ indexId, initialIsFavorite, onToggle }) => {
         }
       });
       handleUpdateUserDetails(result?.updatedUserDetails);
-      setIsFavorite((prev) => {
-        const next = !prev;
-        emitToggle(next);
-        return next;
-      });
+      setIsFavorite(nextIsFavorite);
+      emitToggle(nextIsFavorite);
 
       const updatedFavoritesRaw = result?.updatedUserDetails?.favorites;
       let favoritesCount;
