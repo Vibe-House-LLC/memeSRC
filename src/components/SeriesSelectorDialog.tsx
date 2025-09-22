@@ -21,6 +21,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import FavoriteToggle from './FavoriteToggle';
 import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
+import { normalizeColorValue } from '../utils/colors';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import CheckIcon from '@mui/icons-material/Check';
@@ -57,9 +58,11 @@ function sortSeries<T extends SeriesItem>(items: T[]): T[] {
 }
 
 const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
-  const highlightColor = series?.colorMain || theme.palette.primary.main;
-  const textColor = series?.colorSecondary
-    || (series?.colorMain ? theme.palette.getContrastText(series.colorMain) : theme.palette.primary.contrastText);
+  const normalizedHighlight = normalizeColorValue(series?.colorMain);
+  const highlightColor = normalizedHighlight || theme.palette.primary.main;
+  const normalizedText = normalizeColorValue(series?.colorSecondary);
+  const textColor = normalizedText
+    || (normalizedHighlight ? theme.palette.getContrastText(highlightColor) : theme.palette.primary.contrastText);
   const whiteBorder = alpha(theme.palette.common.white, theme.palette.mode === 'light' ? 0.82 : 0.92);
 
   return {
