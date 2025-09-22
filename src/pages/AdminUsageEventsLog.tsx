@@ -595,14 +595,6 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                               maxWidth: '100%',
                             }}
                           >
-                            {item.icon && (
-                              <Box
-                                component="span"
-                                sx={{ display: 'inline-flex', alignItems: 'center', lineHeight: 0 }}
-                              >
-                                {item.icon}
-                              </Box>
-                            )}
                             <Typography
                               component="span"
                               variant="overline"
@@ -617,6 +609,14 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                             >
                               {item.value}
                             </Typography>
+                            {item.icon && (
+                              <Box
+                                component="span"
+                                sx={{ display: 'inline-flex', alignItems: 'center', lineHeight: 0 }}
+                              >
+                                {item.icon}
+                              </Box>
+                            )}
                           </Box>
                         </Tooltip>
                       );
