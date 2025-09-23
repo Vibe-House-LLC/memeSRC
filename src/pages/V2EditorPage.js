@@ -245,6 +245,7 @@ const EditorPage = ({ shows }) => {
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [canvasObjects, setCanvasObjects] = useState();
   const [surroundingFrames, setSurroundingFrames] = useState([]);
+  const [surroundingFramesLoaded, setSurroundingFramesLoaded] = useState({});
   const [selectedFid, setSelectedFid] = useState(fid);
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
@@ -323,6 +324,20 @@ const EditorPage = ({ shows }) => {
   const handleSnackbarClose = () => {
     setSnackBarOpen(false);
   }
+
+  const handleSurroundingFrameLoad = useCallback((index) => {
+    setSurroundingFramesLoaded((prev) => ({
+      ...prev,
+      [index]: true,
+    }));
+  }, []);
+
+  const handleSurroundingFrameError = useCallback((index) => {
+    setSurroundingFramesLoaded((prev) => ({
+      ...prev,
+      [index]: false,
+    }));
+  }, []);
 
   useEffect(() => {
     setFineTuningValue(searchDetails.fineTuningFrame);
@@ -1758,6 +1773,7 @@ const EditorPage = ({ shows }) => {
       setFrames([]);
       setSurroundingSubtitles([]);
       setSurroundingFrames(new Array(9).fill('loading'));
+      setSurroundingFramesLoaded({});
       setLoadingFineTuning(false)
       setFineTuningLoadStarted(false)
       setFineTuningBlobs([])
@@ -2692,7 +2708,9 @@ const EditorPage = ({ shows }) => {
                       onNavigate={() => {
                         navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
                       }}
-                      isLoaded
+                      onLoad={() => handleSurroundingFrameLoad(index)}
+                      onError={() => handleSurroundingFrameError(index)}
+                      isLoaded={Boolean(surroundingFramesLoaded[index])}
                     />
                   </Box>
                 ) : (
