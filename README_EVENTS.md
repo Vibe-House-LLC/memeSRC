@@ -61,6 +61,40 @@ Sent after a frame successfully saves to a user's library.
 }
 ```
 
+## save_intent_image
+Captures strong signals that a user intends to save or download an image. Emitted when save-related UI affordances trigger (context menu, long-press, drag gestures, or explicit actions such as copy/share in the advanced editor dialog).
+
+```json
+{
+  "source": "V2SearchPage",
+  "intentTarget": "SearchResultThumbnail",
+  "trigger": "context_menu",
+  "cid": "stooges",
+  "season": "3",
+  "episode": "5",
+  "frame": 12340,
+  "position": 4,
+  "searchTerm": "cream pies"
+}
+```
+
+Common `trigger` values include:
+- `context_menu` — right-click or long-press context menu on an image surface
+- `long_press` — pointer hold beyond ~600 ms on touch/pen devices
+- `drag_start` — user begins a drag gesture on the image
+- `share_button` / `share_button_error` — explicit share attempts from the advanced editor dialog
+- `copy_button` — advanced editor copy-to-clipboard action
+
+Representative `intentTarget` values:
+- `SearchResultThumbnail` – search result posters and animated previews
+- `FrameHeroImage` – primary frame detail hero image
+- `SurroundingFrameThumbnail` – nearby frame previews on frame and editor pages
+- `SaveDialogPreview` – image shown inside the editor’s save modal
+- `SaveDialogAction` – explicit share/copy actions initiated from the modal
+- `MagicResultOption` – AI variation previews displayed in the advanced editor dialog
+
+Advanced editor payloads may also include fields such as `editorProjectId`, `generatedImageFilename`, `imageUploading`, `hasShareImageFile`, and `hasClipboardImage` to describe the save surface state.
+
 ## library_upload
 Represents successful uploads into the user's library, whether from the library browser or admin collage tooling.
 
