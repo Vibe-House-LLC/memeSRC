@@ -110,23 +110,23 @@ const indexToOpenSearch = async (data) => {
 
     const OPENSEARCH_ENDPOINT = "https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com";
     const alias = data.alias;
-    const env = process.env.ENV === "beta" ? "v2" : process.env.ENV || "unknownEnv";
+    const env = process.env.ENV === "beta" ? "v2" : process.env.ENV || "unknown-env";
     console.log('ENV: ', env);
     const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
-    const csvKey = `protected/${alias}/_docs.csv`;
+    const csvKey = `protected/src/${alias}/_docs.csv`;
     console.log('CSV KEY: ', csvKey);
     const indexName = `${env}-${alias}`;
     console.log('INDEX NAME: ', indexName);
     const batchSize = 100;
 
     try {
-        // const client = new Client({
-        //     node: OPENSEARCH_ENDPOINT,
-        //     auth: {
-        //         username: OPENSEARCH_USER,
-        //         password: OPENSEARCH_PASS,
-        //     },
-        // });
+        const client = new Client({
+            node: OPENSEARCH_ENDPOINT,
+            auth: {
+                username: OPENSEARCH_USER,
+                password: OPENSEARCH_PASS,
+            },
+        });
 
         const rows = [];
 
@@ -147,6 +147,25 @@ const indexToOpenSearch = async (data) => {
                 .on('error', reject);
         });
 
+        if (rows.length === 0) {
+            console.log('No rows found in CSV. Nothing to index.');
+            return true;
+        }
+
+        // Create index if not exists
+        try {
+            const exists = await client.indices.exists({ index: indexName });
+            if (!exists.body) {
+                await client.indices.create({ index: indexName });
+                console.log(`Created index: ${indexName}`);
+            }
+        } catch (idxErr) {
+            // Some OpenSearch versions return boolean directly
+            if (idxErr.meta?.statusCode !== 400) {
+                console.warn('Index existence/create warning:', idxErr.message);
+            }
+        }
+
         const batches = [];
         for (let i = 0; i < rows.length; i += batchSize) {
             const batch = rows.slice(i, i + batchSize);
@@ -157,20 +176,19 @@ const indexToOpenSearch = async (data) => {
             batches.push(bulkBody);
         }
 
-        // TODO: Console log a random row from the CSV
         console.log('RANDOM ROW: ', rows[Math.floor(Math.random() * rows.length)]);
         console.log('ROWS: ', rows.length);
 
-        // let processedCount = 0;
+        let processedCount = 0;
 
-        // for (const bulkBody of batches) {
-        //     const bulkResponse = await client.bulk({
-        //         body: bulkBody,
-        //     });
-        //     console.log("Bulk indexing response:", bulkResponse.body);
-        //     processedCount += bulkBody.length / 2;
-        //     console.log(`Processed ${processedCount} out of ${rows.length} rows`);
-        // }
+        for (const bulkBody of batches) {
+            const bulkResponse = await client.bulk({
+                body: bulkBody,
+            });
+            console.log("Bulk indexing response:", bulkResponse.body);
+            processedCount += bulkBody.length / 2;
+            console.log(`Processed ${processedCount} out of ${rows.length} rows`);
+        }
 
         console.log('CSV indexing completed.');
         return true;
@@ -210,11 +228,11 @@ exports.handler = async (event) => {
             seriesData = sourceMedia?.series;
             console.log('SOURCE MEDIA DATA: ', JSON.stringify(sourceMedia));
 
-            // const updateSourceMediaResponse = await updateSourceMedia({
-            //     id: sourceMediaId,
-            //     status: 'indexing'
-            // });
-            // console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
+            const updateSourceMediaResponse = await updateSourceMedia({
+                id: sourceMediaId,
+                status: 'indexing'
+            });
+            console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
         }
 
         // TODO: Add secrets
@@ -231,28 +249,28 @@ exports.handler = async (event) => {
         console.log('INDEX TO OPENSEARCH RESPONSE: ', JSON.stringify('indexToOpenSearchResponse: ', indexToOpenSearchResponse));
 
         // Once indexing is complete, we can add the alias (if it doesn't exist) and update the series
-        // if (sourceMediaId) {
-        //     const doesAliasExist = await checkForExistingAlias(alias);
-        //     if (!doesAliasExist) {
-        //         const aliasData = await createAlias({
-        //             id: alias,
-        //             aliasV2ContentMetadataId: alias
-        //         });
-        //         console.log('ALIAS DATA: ', JSON.stringify(aliasData));
+        if (sourceMediaId) {
+            const doesAliasExist = await checkForExistingAlias(alias);
+            if (!doesAliasExist) {
+                const aliasData = await createAlias({
+                    id: alias,
+                    aliasV2ContentMetadataId: alias
+                });
+                console.log('ALIAS DATA: ', JSON.stringify(aliasData));
 
-        //         const seriesResponse = await updateSeries({
-        //             id: seriesData?.id,
-        //             slug: alias,
-        //         });
-        //         console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
-        //     }
+                const seriesResponse = await updateSeries({
+                    id: seriesData?.id,
+                    slug: alias,
+                });
+                console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
+            }
 
-        //     const updateSourceMediaResponse = await updateSourceMedia({
-        //         id: sourceMediaId,
-        //         status: 'published'
-        //     });
-        //     console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
-        // }
+            const updateSourceMediaResponse = await updateSourceMedia({
+                id: sourceMediaId,
+                status: 'published'
+            });
+            console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
+        }
     } catch (error) {
         console.error('Error:', error);
         throw error;
