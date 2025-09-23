@@ -1,10 +1,24 @@
+/*
+Use the following code to retrieve configured secrets from SSM:
+
+const aws = require('aws-sdk');
+
+const { Parameters } = await (new aws.SSM())
+  .getParameters({
+    Names: ["opensearchUser","opensearchPass"].map(secretName => process.env[secretName]),
+    WithDecryption: true,
+  })
+  .promise();
+
+Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }[]
+*/
 /* Amplify Params - DO NOT EDIT
-	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
-	API_MEMESRC_GRAPHQLAPIIDOUTPUT
-	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
-	ENV
-	REGION
-	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+    API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+    API_MEMESRC_GRAPHQLAPIIDOUTPUT
+    API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+    ENV
+    REGION
+    STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT *//* Amplify Params - DO NOT EDIT
     API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
     API_MEMESRC_GRAPHQLAPIIDOUTPUT
@@ -21,7 +35,6 @@ Amplify Params - DO NOT EDIT */
 const { makeGraphQLRequest } = require('/opt/graphql-handler');
 const AWS = require('aws-sdk');
 const { Client } = require('@opensearch-project/opensearch');
-const axios = require('axios');
 const csv = require('csv-parser');
 
 const getSourceMediaQuery = `
@@ -111,9 +124,13 @@ const indexToOpenSearch = async (data) => {
 
     const OPENSEARCH_ENDPOINT = "https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com";
     const alias = data.alias;
-    const env = process.env.ENV === "dev" ? "dev" : "v2";
-    const csvUrl = `https://img.memesrc.com/v2/${alias}/_docs.csv`;
+    const env = process.env.ENV === "beta" ? "v2" : process.env.ENV || "unknown-env";
+    console.log('ENV: ', env);
+    const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+    const csvKey = `protected/src/${alias}/_docs.csv`;
+    console.log('CSV KEY: ', csvKey);
     const indexName = `${env}-${alias}`;
+    console.log('INDEX NAME: ', indexName);
     const batchSize = 100;
 
     try {
@@ -125,12 +142,14 @@ const indexToOpenSearch = async (data) => {
             },
         });
 
-        const response = await axios.get(csvUrl, { responseType: 'stream' });
-
         const rows = [];
 
+        const s3Stream = s3.getObject({ Bucket: bucketName, Key: csvKey }).createReadStream();
+
         await new Promise((resolve, reject) => {
-            response.data.pipe(csv())
+            s3Stream
+                .on('error', reject)
+                .pipe(csv())
                 .on('data', (row) => {
                     if (row.subtitle_text) {
                         const decodedSubtitle = Buffer.from(row.subtitle_text, 'base64').toString('utf-8');
@@ -142,6 +161,25 @@ const indexToOpenSearch = async (data) => {
                 .on('error', reject);
         });
 
+        if (rows.length === 0) {
+            console.log('No rows found in CSV. Nothing to index.');
+            return true;
+        }
+
+        // Create index if not exists
+        try {
+            const exists = await client.indices.exists({ index: indexName });
+            if (!exists.body) {
+                await client.indices.create({ index: indexName });
+                console.log(`Created index: ${indexName}`);
+            }
+        } catch (idxErr) {
+            // Some OpenSearch versions return boolean directly
+            if (idxErr.meta?.statusCode !== 400) {
+                console.warn('Index existence/create warning:', idxErr.message);
+            }
+        }
+
         const batches = [];
         for (let i = 0; i < rows.length; i += batchSize) {
             const batch = rows.slice(i, i + batchSize);
@@ -151,6 +189,9 @@ const indexToOpenSearch = async (data) => {
             ]);
             batches.push(bulkBody);
         }
+
+        console.log('RANDOM ROW: ', rows[Math.floor(Math.random() * rows.length)]);
+        console.log('ROWS: ', rows.length);
 
         let processedCount = 0;
 
@@ -185,6 +226,15 @@ const checkForExistingAlias = async (alias) => {
 }
 
 exports.handler = async (event) => {
+    const { Parameters } = await (new AWS.SSM())
+        .getParameters({
+            Names: ["opensearchUser", "opensearchPass"].map(secretName => process.env[secretName]),
+            WithDecryption: true,
+        }).promise();
+
+    const openSearchUser = Parameters.find(param => param.Name === process.env.opensearchUser).Value;
+    const openSearchPass = Parameters.find(param => param.Name === process.env.opensearchPass).Value;
+
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
         const { sourceMediaId = null, existingAlias = null } = JSON.parse(event?.body);
@@ -208,10 +258,22 @@ exports.handler = async (event) => {
             console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
         }
 
+        if (!alias) {
+            console.log('No alias found. Nothing to index.');
+            return {
+                statusCode: 400,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "*"
+                },
+                body: JSON.stringify('No alias found. Nothing to index. Please check the alias and try again.'),
+            };
+        }
+
         // TODO: Add secrets
         // Placeholders:
-        const openSearchUser = 'opensearch_user';
-        const openSearchPass = 'opensearch_pass';
+        // const openSearchUser = 'opensearch_user';
+        // const openSearchPass = 'opensearch_pass';
 
         // Index to OpenSearch
         const indexToOpenSearchResponse = await indexToOpenSearch({
@@ -237,13 +299,13 @@ exports.handler = async (event) => {
                 });
                 console.log('SERIES DATA: ', JSON.stringify(seriesResponse));
             }
-        }
 
-        const updateSourceMediaResponse = await updateSourceMedia({
-            id: sourceMediaId,
-            status: 'published'
-        });
-        console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
+            const updateSourceMediaResponse = await updateSourceMedia({
+                id: sourceMediaId,
+                status: 'published'
+            });
+            console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
+        }
     } catch (error) {
         console.error('Error:', error);
         throw error;
