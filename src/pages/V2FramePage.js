@@ -3,7 +3,7 @@
 // eslint-disable camelcase
 import { Helmet } from 'react-helmet-async';
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useEffect, useRef, useState, useContext, memo, useCallback } from 'react';
+import { useEffect, useRef, useState, useContext, memo, useCallback, useMemo } from 'react';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@emotion/react';
 import {
@@ -56,6 +56,7 @@ import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 // Removed collage collector usage
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
+import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -74,6 +75,79 @@ const StyledCardMedia = styled('img')`
   height: auto;
   background-color: black;
 `;
+
+const SurroundingFrameThumbnail = ({
+  frameData,
+  index,
+  activeFrame,
+  cid,
+  season,
+  episode,
+  searchTerm,
+  onNavigate,
+  onLoad,
+  onError,
+  isLoaded,
+}) => {
+  const meta = useMemo(() => {
+    const payload = {
+      source: 'V2FramePage',
+      intentTarget: 'SurroundingFrameThumbnail',
+      position: index,
+    };
+
+    const resolvedCid = frameData?.cid || cid;
+    if (resolvedCid) {
+      payload.cid = resolvedCid;
+    }
+
+    if (frameData?.season || season) {
+      payload.season = frameData?.season || season;
+    }
+
+    if (frameData?.episode || episode) {
+      payload.episode = frameData?.episode || episode;
+    }
+
+    if (frameData?.frame) {
+      payload.frame = frameData.frame;
+    }
+
+    if (typeof searchTerm === 'string' && searchTerm.length > 0) {
+      payload.searchTerm = searchTerm;
+    }
+
+    return payload;
+  }, [cid, episode, frameData, index, searchTerm, season]);
+
+  const intentHandlers = useTrackImageSaveIntent(meta);
+  const isActive = Number(activeFrame) === Number(frameData?.frame);
+
+  return (
+    <StyledCard
+      sx={{
+        ...(isActive && { border: '3px solid orange' }),
+        cursor: isActive ? 'default' : 'pointer',
+      }}
+    >
+      <StyledCardMedia
+        component="img"
+        alt={`${frameData?.frame}`}
+        src={`${frameData?.frameImage}`}
+        title={frameData?.subtitle || 'No subtitle'}
+        draggable
+        onClick={onNavigate}
+        onLoad={onLoad}
+        onError={onError}
+        sx={{ display: isLoaded ? 'block' : 'none' }}
+        {...intentHandlers}
+      />
+      {!isLoaded && (
+        <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
+      )}
+    </StyledCard>
+  );
+};
 
 export default function FramePage() {
   const { setFrame } = useSearchDetails();
@@ -286,6 +360,57 @@ export default function FramePage() {
   })();
 
   const theme = useTheme();
+
+  const resolvedSearchTermValue = resolveSearchTerm();
+
+  const mainImageSaveIntentMeta = useMemo(() => {
+    const meta = {
+      source: 'V2FramePage',
+      intentTarget: 'FrameHeroImage',
+    };
+
+    const resolvedCid = confirmedCid || cid;
+    if (resolvedCid) {
+      meta.cid = resolvedCid;
+    }
+
+    if (season) {
+      meta.season = season;
+    }
+
+    if (episode) {
+      meta.episode = episode;
+    }
+
+    if (frame) {
+      meta.frame = frame;
+    }
+
+    if (fineTuningIndex !== null && fineTuningIndex !== undefined) {
+      meta.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (typeof selectedFrameIndex === 'number') {
+      meta.selectedFrameIndex = selectedFrameIndex;
+    }
+
+    if (typeof resolvedSearchTermValue === 'string' && resolvedSearchTermValue.length > 0) {
+      meta.searchTerm = resolvedSearchTermValue;
+    }
+
+    return meta;
+  }, [
+    cid,
+    confirmedCid,
+    season,
+    episode,
+    frame,
+    fineTuningIndex,
+    selectedFrameIndex,
+    resolvedSearchTermValue,
+  ]);
+
+  const mainImageSaveIntentHandlers = useTrackImageSaveIntent(mainImageSaveIntentMeta);
 
   const handleSnackbarOpen = () => {
     setSnackBarOpen(true);
@@ -848,6 +973,8 @@ useEffect(() => {
             console.error(`Failed to load main image`);
             handleMainImageLoad();
           }}
+          draggable
+          {...mainImageSaveIntentHandlers}
           sx={{
             display: mainImageLoaded ? 'block' : 'none',
           }}
@@ -1707,32 +1834,24 @@ useEffect(() => {
                   {surroundingFrame !== 'loading' ? (
                     // Render the actual content if the surrounding frame data is available
                     <Box component="div" sx={{ textDecoration: 'none' }}>
-                      <StyledCard
-                        sx={{
-                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
-                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer'
-                        }}>
-                        <StyledCardMedia
-                          component="img"
-                          alt={`${surroundingFrame.frame}`}
-                          src={`${surroundingFrame.frameImage}`}
-                          title={surroundingFrame.subtitle || 'No subtitle'}
-                          onClick={() => {
-                            navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`);
-                          }}
-                          onLoad={() => handleImageLoad(surroundingFrame.frame)}
-                          onError={() => {
-                            console.error(`Failed to load image for frame ${surroundingFrame.frame}`);
-                            handleImageLoad(surroundingFrame.frame);
-                          }}
-                          sx={{
-                            display: imagesLoaded[surroundingFrame.frame] ? 'block' : 'none',
-                          }}
-                        />
-                        {!imagesLoaded[surroundingFrame.frame] && (
-                          <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
-                        )}
-                      </StyledCard>
+                      <SurroundingFrameThumbnail
+                        frameData={surroundingFrame}
+                        index={index}
+                        activeFrame={frame}
+                        cid={cid}
+                        season={season}
+                        episode={episode}
+                        searchTerm={resolvedSearchTermValue}
+                        onNavigate={() => {
+                          navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`);
+                        }}
+                        onLoad={() => handleImageLoad(surroundingFrame.frame)}
+                        onError={() => {
+                          console.error(`Failed to load image for frame ${surroundingFrame.frame}`);
+                          handleImageLoad(surroundingFrame.frame);
+                        }}
+                        isLoaded={Boolean(imagesLoaded[surroundingFrame.frame])}
+                      />
                     </Box>
                   ) : (
                     // Render a skeleton if the data is not yet available (loading)

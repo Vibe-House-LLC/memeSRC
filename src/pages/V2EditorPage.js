@@ -1,7 +1,7 @@
 // V2EditorPage.js
 /* eslint-disable no-unused-vars, func-names */
 
-import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types';
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
@@ -25,6 +25,7 @@ import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
+import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import getV2Metadata from '../utils/getV2Metadata';
@@ -75,6 +76,152 @@ const StyledCardMedia = styled('img')`
 `;
 
 
+const EditorSurroundingFrameThumbnail = ({
+  baseMeta,
+  frameData,
+  index,
+  activeFrame,
+  cid,
+  season,
+  episode,
+  searchTerm,
+  onNavigate,
+  onLoad,
+  onError,
+  isLoaded = true,
+}) => {
+  const intentMeta = useMemo(() => {
+    const meta = {
+      ...baseMeta,
+      intentTarget: 'SurroundingFrameThumbnail',
+      position: index,
+    };
+
+    const resolvedCid = frameData?.cid || cid;
+    if (resolvedCid) {
+      meta.cid = resolvedCid;
+    }
+
+    if (frameData?.season || season) {
+      meta.season = frameData?.season || season;
+    }
+
+    if (frameData?.episode || episode) {
+      meta.episode = frameData?.episode || episode;
+    }
+
+    if (frameData?.frame) {
+      meta.frame = frameData.frame;
+    }
+
+    if (typeof searchTerm === 'string' && searchTerm.length > 0) {
+      meta.searchTerm = searchTerm;
+    }
+
+    return meta;
+  }, [baseMeta, cid, season, episode, frameData, index, searchTerm]);
+
+  const intentHandlers = useTrackImageSaveIntent(intentMeta);
+  const isActive = Number(activeFrame) === Number(frameData?.frame);
+
+  return (
+    <StyledCard
+      sx={{
+        ...(isActive && { border: '3px solid orange' }),
+        cursor: isActive ? 'default' : 'pointer',
+      }}
+    >
+      <StyledCardMedia
+        component="img"
+        alt={`${frameData?.frame}`}
+        src={`${frameData?.frameImage}`}
+        title={frameData?.subtitle || 'No subtitle'}
+        draggable
+        onClick={onNavigate}
+        onLoad={onLoad}
+        onError={onError}
+        sx={{
+          display: isLoaded ? 'block' : 'none',
+        }}
+        {...intentHandlers}
+      />
+      {!isLoaded && (
+        <Skeleton variant='rounded' sx={{ width: '100%', height: 0, paddingTop: '56.25%' }} />
+      )}
+    </StyledCard>
+  );
+};
+
+const MagicResultOption = ({
+  baseMeta,
+  image,
+  index,
+  columns,
+  isSelected,
+  isDimmed,
+  onSelect,
+  aspectRatio,
+}) => {
+  const intentMeta = useMemo(
+    () => ({
+      ...baseMeta,
+      intentTarget: 'MagicResultOption',
+      position: index,
+      magicResultSelected: Boolean(isSelected),
+      magicResultHasImage: Boolean(image),
+    }),
+    [baseMeta, image, index, isSelected]
+  );
+
+  const intentHandlers = useTrackImageSaveIntent(intentMeta);
+
+  return (
+    <Grid
+      item
+      xs={columns === 2 ? 6 : 12}
+      onClick={onSelect}
+      style={{ padding: '5px' }}
+    >
+      <div
+        style={{
+          position: 'relative',
+          border: isSelected ? '2px solid green' : '2px solid lightgray',
+          borderRadius: '4px',
+        }}
+      >
+        <img
+          src={image}
+          alt="placeholder"
+          draggable
+          {...intentHandlers}
+          style={{
+            width: '100%',
+            aspectRatio: `${aspectRatio}/1`,
+            objectFit: 'cover',
+            objectPosition: 'center',
+            filter: isDimmed ? 'brightness(50%)' : 'none',
+          }}
+        />
+        {isSelected && (
+          <Fab
+            size='small'
+            style={{
+              position: 'absolute',
+              top: 10,
+              left: 10,
+              backgroundColor: 'green',
+              color: 'white',
+            }}
+          >
+            <CheckCircleOutline />
+          </Fab>
+        )}
+      </div>
+    </Grid>
+  );
+};
+
+
 
 const EditorPage = ({ shows }) => {
   const searchDetails = useSearchDetails();
@@ -98,6 +245,7 @@ const EditorPage = ({ shows }) => {
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [canvasObjects, setCanvasObjects] = useState();
   const [surroundingFrames, setSurroundingFrames] = useState([]);
+  const [surroundingFramesLoaded, setSurroundingFramesLoaded] = useState({});
   const [selectedFid, setSelectedFid] = useState(fid);
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
@@ -176,6 +324,20 @@ const EditorPage = ({ shows }) => {
   const handleSnackbarClose = () => {
     setSnackBarOpen(false);
   }
+
+  const handleSurroundingFrameLoad = useCallback((index) => {
+    setSurroundingFramesLoaded((prev) => ({
+      ...prev,
+      [index]: true,
+    }));
+  }, []);
+
+  const handleSurroundingFrameError = useCallback((index) => {
+    setSurroundingFramesLoaded((prev) => ({
+      ...prev,
+      [index]: false,
+    }));
+  }, []);
 
   useEffect(() => {
     setFineTuningValue(searchDetails.fineTuningFrame);
@@ -1263,6 +1425,101 @@ const EditorPage = ({ shows }) => {
   const [confirmedCid, setConfirmedCid] = useState();
   const { showObj, setShowObj, selectedFrameIndex, setSelectedFrameIndex } = useSearchDetailsV2();
 
+  const editorImageIntentBaseMeta = useMemo(() => {
+    const meta = {
+      source: 'V2EditorPage',
+    };
+
+    const resolvedCid = confirmedCid || cid;
+    if (resolvedCid) {
+      meta.cid = resolvedCid;
+    }
+
+    if (season) {
+      meta.season = season;
+    }
+
+    if (episode) {
+      meta.episode = episode;
+    }
+
+    if (frame) {
+      meta.frame = frame;
+    }
+
+    if (typeof fineTuningIndex !== 'undefined') {
+      meta.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (editorProjectId) {
+      meta.editorProjectId = editorProjectId;
+    }
+
+    if (generatedImageFilename) {
+      meta.generatedImageFilename = generatedImageFilename;
+    }
+
+    if (typeof searchQuery === 'string') {
+      const trimmed = searchQuery.trim();
+      if (trimmed.length > 0) {
+        meta.searchTerm = trimmed;
+      }
+    }
+
+    if (!meta.searchTerm && typeof searchTerms === 'string') {
+      const trimmedLegacy = searchTerms.trim();
+      if (trimmedLegacy.length > 0) {
+        meta.searchTerm = trimmedLegacy;
+      }
+    }
+
+    if (typeof selectedFrameIndex !== 'undefined') {
+      meta.selectedFrameIndex = selectedFrameIndex;
+    }
+
+    return meta;
+  }, [
+    cid,
+    confirmedCid,
+    season,
+    episode,
+    frame,
+    fineTuningIndex,
+    editorProjectId,
+    generatedImageFilename,
+    searchQuery,
+    searchTerms,
+    selectedFrameIndex,
+  ]);
+
+  const saveDialogImageIntentMeta = useMemo(
+    () => ({
+      ...editorImageIntentBaseMeta,
+      intentTarget: 'SaveDialogPreview',
+      imageUploading: Boolean(imageUploading),
+      hasShareImageFile: Boolean(shareImageFile),
+      hasClipboardImage: Boolean(imageBlob),
+    }),
+    [editorImageIntentBaseMeta, imageUploading, shareImageFile, imageBlob]
+  );
+
+  const saveDialogImageIntentHandlers = useTrackImageSaveIntent(saveDialogImageIntentMeta);
+
+  const trackSaveDialogAction = useCallback(
+    (trigger, extra = {}) => {
+      const payload = {
+        ...saveDialogImageIntentMeta,
+        intentTarget: 'SaveDialogAction',
+        trigger,
+      };
+
+      Object.assign(payload, extra);
+
+      trackUsageEvent('save_intent_image', payload);
+    },
+    [saveDialogImageIntentMeta]
+  );
+
   const handleViewEpisodeClick = useCallback(() => {
     const eventPayload = {
       source: 'V2EditorPage',
@@ -1516,6 +1773,7 @@ const EditorPage = ({ shows }) => {
       setFrames([]);
       setSurroundingSubtitles([]);
       setSurroundingFrames(new Array(9).fill('loading'));
+      setSurroundingFramesLoaded({});
       setLoadingFineTuning(false)
       setFineTuningLoadStarted(false)
       setFineTuningBlobs([])
@@ -2435,27 +2693,28 @@ const EditorPage = ({ shows }) => {
             <Grid container item spacing={1}>
               {surroundingFrames?.map((surroundingFrame, index) => (
                 <Grid item xs={4} sm={4} md={12 / 9} key={`surrounding-frame-${surroundingFrame?.frame ? surroundingFrame?.frame : index}`}>
-                  {surroundingFrame !== 'loading' ? (
-                    // Render the actual content if the surrounding frame data is available
-                    <Box component="div" sx={{ textDecoration: 'none' }}>
-                      <StyledCard
-                        sx={{
-                          ...((parseInt(frame, 10) === surroundingFrame.frame) && { border: '3px solid orange' }),
-                          cursor: (parseInt(frame, 10) === surroundingFrame.frame) ? 'default' : 'pointer'
-                        }}>
-                        <StyledCardMedia
-                          component="img"
-                          alt={`${surroundingFrame.frame}`}
-                          src={`${surroundingFrame.frameImage}`}
-                          title={surroundingFrame.subtitle || 'No subtitle'}
-                          onClick={() => {
-                            navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
-                          }}
-                        />
-                      </StyledCard>
-                    </Box>
-                  ) : (
-                    // Render a skeleton if the data is not yet available (undefined)
+                {surroundingFrame !== 'loading' ? (
+                  // Render the actual content if the surrounding frame data is available
+                  <Box component="div" sx={{ textDecoration: 'none' }}>
+                    <EditorSurroundingFrameThumbnail
+                      baseMeta={editorImageIntentBaseMeta}
+                      frameData={surroundingFrame}
+                      index={index}
+                      activeFrame={frame}
+                      cid={cid}
+                      season={season}
+                      episode={episode}
+                      searchTerm={editorImageIntentBaseMeta.searchTerm}
+                      onNavigate={() => {
+                        navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
+                      }}
+                      onLoad={() => handleSurroundingFrameLoad(index)}
+                      onError={() => handleSurroundingFrameError(index)}
+                      isLoaded={Boolean(surroundingFramesLoaded[index])}
+                    />
+                  </Box>
+                ) : (
+                  // Render a skeleton if the data is not yet available (undefined)
                     <Skeleton variant='rounded' sx={{ width: '100%', height: 'auto', aspectRatio: `${editorAspectRatio === 1 ? (16 / 9) : editorAspectRatio}/1` }} />
                   )}
                 </Grid>
@@ -2579,6 +2838,8 @@ const EditorPage = ({ shows }) => {
                     src={`https://i${process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
                       }.memesrc.com/${generatedImageFilename}`}
                     alt="generated meme"
+                    draggable
+                    {...saveDialogImageIntentHandlers}
                   />
                 )}
                 {imageUploading && (
@@ -2610,10 +2871,19 @@ const EditorPage = ({ shows }) => {
                     sx={{ marginBottom: 2, padding: '12px 16px' }}
                     disabled={imageUploading}
                     onClick={() => {
+                      trackSaveDialogAction('share_button', {
+                        shareSupported: true,
+                        shareHasFile: Boolean(shareImageFile),
+                      });
                       navigator.share({
                         title: 'memeSRC.com',
                         text: 'Check out this meme I made on memeSRC.com',
                         files: [shareImageFile],
+                      }).catch(() => {
+                        trackSaveDialogAction('share_button_error', {
+                          shareSupported: true,
+                          shareHasFile: Boolean(shareImageFile),
+                        });
                       });
                     }}
                     startIcon={<IosShare />}
@@ -2628,6 +2898,9 @@ const EditorPage = ({ shows }) => {
                   disabled={imageUploading}
                   autoFocus
                   onClick={() => {
+                    trackSaveDialogAction('copy_button', {
+                      clipboardSupported: Boolean(navigator?.clipboard?.write),
+                    });
                     const { ClipboardItem } = window;
                     navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
                     handleSnackbarOpen();
@@ -2691,44 +2964,17 @@ const EditorPage = ({ shows }) => {
         <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
           <Grid container>
             {returnedImages?.map((image, index) => (
-              <Grid
-                item xs={variationDisplayColumns === 2 ? 6 : 12}
+              <MagicResultOption
                 key={`image-key-${index}`}
-                onClick={() => setSelectedImage(image)}
-                style={{ padding: '5px' }}
-              >
-                <div style={{
-                  position: 'relative',
-                  border: selectedImage === image ? '2px solid green' : '2px solid lightgray',
-                  borderRadius: '4px'
-                }}>
-                  <img
-                    src={image}
-                    alt="placeholder"
-                    style={{
-                      width: '100%',
-                      aspectRatio: `${editorAspectRatio}/1`,
-                      objectFit: 'cover',
-                      objectPosition: 'center',
-                      filter: selectedImage && selectedImage !== image ? 'brightness(50%)' : 'none'
-                    }}
-                  />
-                  {selectedImage === image && (
-                    <Fab
-                      size='small'
-                      style={{
-                        position: 'absolute',
-                        top: 10,
-                        left: 10,
-                        backgroundColor: 'green',
-                        color: 'white'
-                      }}
-                    >
-                      <CheckCircleOutline />
-                    </Fab>
-                  )}
-                </div>
-              </Grid>
+                baseMeta={editorImageIntentBaseMeta}
+                image={image}
+                index={index}
+                columns={variationDisplayColumns}
+                isSelected={selectedImage === image}
+                isDimmed={Boolean(selectedImage && selectedImage !== image)}
+                onSelect={() => setSelectedImage(image)}
+                aspectRatio={editorAspectRatio}
+              />
             ))}
           </Grid>
         </DialogContent>
