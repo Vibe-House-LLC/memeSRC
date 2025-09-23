@@ -235,6 +235,18 @@ exports.handler = async (event) => {
             console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
         }
 
+        if (!alias) {
+            console.log('No alias found. Nothing to index.');
+            return {
+                statusCode: 400,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "*"
+                },
+                body: JSON.stringify('No alias found. Nothing to index. Please check the alias and try again.'),
+            };
+        }
+
         // TODO: Add secrets
         // Placeholders:
         const openSearchUser = 'opensearch_user';
