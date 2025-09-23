@@ -195,7 +195,7 @@
         },
         "memesrcIndexAndPublish": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcIndexAndPublish-55627563783777706a41-build.zip",
+          "s3Key": "amplify-builds/memesrcIndexAndPublish-55576d47473232616663-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcAxiosLayer": {
