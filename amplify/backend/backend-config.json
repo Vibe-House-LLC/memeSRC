@@ -1406,6 +1406,14 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcIndexAndPublish_secretsPathAmplifyAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcIndexAndPublish"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcIndexToOpenSearch_deploymentBucketName": {
       "usedBy": [
         {

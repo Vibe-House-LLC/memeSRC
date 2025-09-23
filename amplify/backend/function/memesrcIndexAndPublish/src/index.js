@@ -1,3 +1,17 @@
+/*
+Use the following code to retrieve configured secrets from SSM:
+
+const aws = require('aws-sdk');
+
+const { Parameters } = await (new aws.SSM())
+  .getParameters({
+    Names: ["opensearchUser","opensearchPass"].map(secretName => process.env[secretName]),
+    WithDecryption: true,
+  })
+  .promise();
+
+Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }[]
+*/
 /* Amplify Params - DO NOT EDIT
     API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
     API_MEMESRC_GRAPHQLAPIIDOUTPUT
@@ -212,6 +226,15 @@ const checkForExistingAlias = async (alias) => {
 }
 
 exports.handler = async (event) => {
+    const { Parameters } = await (new AWS.SSM())
+        .getParameters({
+            Names: ["opensearchUser", "opensearchPass"].map(secretName => process.env[secretName]),
+            WithDecryption: true,
+        }).promise();
+
+    const openSearchUser = Parameters.find(param => param.Name === process.env.opensearchUser).Value;
+    const openSearchPass = Parameters.find(param => param.Name === process.env.opensearchPass).Value;
+
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
         const { sourceMediaId = null, existingAlias = null } = JSON.parse(event?.body);
@@ -249,8 +272,8 @@ exports.handler = async (event) => {
 
         // TODO: Add secrets
         // Placeholders:
-        const openSearchUser = 'opensearch_user';
-        const openSearchPass = 'opensearch_pass';
+        // const openSearchUser = 'opensearch_user';
+        // const openSearchPass = 'opensearch_pass';
 
         // Index to OpenSearch
         const indexToOpenSearchResponse = await indexToOpenSearch({
