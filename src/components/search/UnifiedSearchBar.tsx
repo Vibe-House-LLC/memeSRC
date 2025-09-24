@@ -5,6 +5,7 @@ import { keyframes } from '@mui/system';
 import { ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
 
@@ -346,6 +347,31 @@ const SubmitButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
+const ClearInputButton = styled(IconButton)(({ theme }) => ({
+  width: 32,
+  height: 32,
+  borderRadius: 16,
+  padding: theme.spacing(0.4),
+  color: 'rgba(100, 116, 139, 0.78)',
+  transition:
+    'color 160ms cubic-bezier(0.4, 0, 0.2, 1), background-color 160ms cubic-bezier(0.4, 0, 0.2, 1), transform 160ms cubic-bezier(0.4, 0, 0.2, 1)',
+  backgroundColor: 'transparent',
+  '&:hover': {
+    color: '#0f172a',
+    backgroundColor: 'rgba(148, 163, 184, 0.16)',
+  },
+  '&:active': {
+    transform: 'scale(0.95)',
+  },
+  '&.Mui-focusVisible': {
+    outline: `2px solid rgba(99, 102, 241, 0.42)`,
+    outlineOffset: 2,
+  },
+  '& svg': {
+    fontSize: '1rem',
+  },
+}));
+
 function findSeriesItem(currentValueId: string, shows: SeriesItem[], savedCids: SeriesItem[]): SeriesItem | undefined {
   if (!currentValueId || currentValueId.startsWith('_')) {
     return undefined;
@@ -425,9 +451,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   const handleClear = useCallback(() => {
     onClear();
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
   }, [onClear]);
 
   const handleInputKeyDown = useCallback(
@@ -530,6 +553,17 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               }),
             }}
           />
+          {hasInput && (
+            <ClearInputButton
+              type="button"
+              onClick={handleClear}
+              onPointerDown={(event) => event.preventDefault()}
+              aria-label="Clear search"
+              title="Clear"
+            >
+              <CloseRoundedIcon fontSize="small" />
+            </ClearInputButton>
+          )}
           {!scopeExpanded && (
             <>
               <RandomButton
