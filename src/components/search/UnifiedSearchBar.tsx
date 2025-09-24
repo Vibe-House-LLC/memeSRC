@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
-import { styled, alpha, darken, useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { ButtonBase, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
@@ -8,7 +8,6 @@ import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import KeyboardArrowUpRoundedIcon from '@mui/icons-material/KeyboardArrowUpRounded';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
-import { normalizeColorValue } from '../../utils/colors';
 
 type SeriesSelectorDialogProps = React.ComponentProps<typeof SeriesSelectorDialog>;
 
@@ -38,52 +37,52 @@ const FormRoot = styled('form')(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
-  gap: theme.spacing(2),
+  gap: theme.spacing(1),
 }));
 
 const FieldShell = styled('div')(({ theme }) => ({
-  '--scope-button-size': '44px',
-  '--scope-gap': theme.spacing(0.9),
+  '--scope-button-size': '40px',
+  '--scope-gap': theme.spacing(0.75),
   position: 'relative',
   width: '100%',
-  borderRadius: 24,
+  borderRadius: 18,
   border: '1px solid rgba(15, 23, 42, 0.08)',
   background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94))',
-  boxShadow: '0 18px 36px rgba(15, 23, 42, 0.14)',
-  padding: theme.spacing(1.55, 2.25, 2.4),
+  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.14)',
+  padding: theme.spacing(1.1, 1.5, 1.6),
   display: 'flex',
   flexDirection: 'column',
-  gap: theme.spacing(0.95),
-  transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+  gap: theme.spacing(0.6),
+  transition: 'border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease',
   overflow: 'hidden',
   '&[data-active="true"]': {
     borderColor: 'rgba(15, 157, 88, 0.35)',
   },
   '&[data-expanded="false"]': {
-    paddingBottom: theme.spacing(1),
-    gap: theme.spacing(0.3),
+    paddingBottom: theme.spacing(0.6),
+    gap: theme.spacing(0.2),
   },
   '&[data-expanded="true"]': {
-    paddingBottom: theme.spacing(2.35),
-    gap: theme.spacing(1.15),
+    paddingBottom: theme.spacing(1.4),
+    gap: theme.spacing(0.8),
   },
   '&:focus-within': {
     borderColor: '#0F9D58',
-    boxShadow: '0 0 0 4px rgba(15, 157, 88, 0.12), 0 24px 42px rgba(15, 23, 42, 0.18)',
+    boxShadow: '0 0 0 3px rgba(15, 157, 88, 0.12), 0 16px 28px rgba(15, 23, 42, 0.18)',
     transform: 'translateY(-1px)',
   },
   [theme.breakpoints.down('sm')]: {
-    '--scope-button-size': '38px',
-    '--scope-gap': theme.spacing(0.7),
-    padding: theme.spacing(1.2, 1.5, 2),
-    borderRadius: 20,
+    '--scope-button-size': '34px',
+    '--scope-gap': theme.spacing(0.55),
+    padding: theme.spacing(0.9, 1.1, 1.4),
+    borderRadius: 16,
     '&[data-expanded="false"]': {
-      paddingBottom: theme.spacing(0.85),
-      gap: theme.spacing(0.2),
+      paddingBottom: theme.spacing(0.55),
+      gap: theme.spacing(0.15),
     },
     '&[data-expanded="true"]': {
-      paddingBottom: theme.spacing(2.1),
-      gap: theme.spacing(0.9),
+      paddingBottom: theme.spacing(1.2),
+      gap: theme.spacing(0.65),
     },
   },
 }));
@@ -92,7 +91,7 @@ const FieldRow = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--scope-gap)',
-  transition: 'align-items 0.2s ease, gap 0.2s ease',
+  transition: 'align-items 180ms ease, gap 180ms ease',
   '&[data-expanded="true"]': {
     alignItems: 'flex-end',
   },
@@ -101,11 +100,11 @@ const FieldRow = styled('div')(({ theme }) => ({
 const StyledInput = styled(InputBase)(({ theme }) => ({
   flex: 1,
   fontFamily: FONT_FAMILY,
-  fontSize: '1.125rem',
+  fontSize: '1.06rem',
   fontWeight: 500,
   color: '#0f172a',
   '& input': {
-    padding: theme.spacing(1, 1.1),
+    padding: theme.spacing(0.8, 0.9),
     border: 'none',
     outline: 'none',
     background: 'transparent',
@@ -116,9 +115,9 @@ const StyledInput = styled(InputBase)(({ theme }) => ({
     },
   },
   [theme.breakpoints.down('sm')]: {
-    fontSize: '1.05rem',
+    fontSize: '1rem',
     '& input': {
-      padding: theme.spacing(0.65, 0.75),
+      padding: theme.spacing(0.55, 0.6),
     },
   },
 }));
@@ -128,15 +127,15 @@ const buildCircleButtonStyles = (theme: Theme) => ({
   height: 'var(--scope-button-size)',
   borderRadius: '999px',
   border: '1px solid rgba(148, 163, 184, 0.32)',
-  boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
-  transition: 'transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
+  boxShadow: '0 8px 20px rgba(15, 23, 42, 0.15)',
+  transition: 'transform 160ms ease, box-shadow 160ms ease, background 160ms ease',
   '&:hover': {
     transform: 'translateY(-1px)',
-    boxShadow: '0 14px 26px rgba(15, 23, 42, 0.2)',
+    boxShadow: '0 10px 22px rgba(15, 23, 42, 0.2)',
   },
   '&:active': {
     transform: 'translateY(0)',
-    boxShadow: '0 10px 20px rgba(15, 23, 42, 0.16)',
+    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.16)',
   },
 });
 
@@ -145,9 +144,9 @@ const DEFAULT_SCOPE_STYLING = {
   hoverBackground: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(226, 232, 240, 0.96))',
   color: '#0f172a',
   borderColor: 'rgba(148, 163, 184, 0.36)',
-  boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
-  hoverBoxShadow: '0 16px 28px rgba(15, 23, 42, 0.2)',
-  activeBoxShadow: '0 10px 20px rgba(15, 23, 42, 0.18)',
+  boxShadow: '0 8px 20px rgba(15, 23, 42, 0.15)',
+  hoverBoxShadow: '0 10px 22px rgba(15, 23, 42, 0.2)',
+  activeBoxShadow: '0 6px 16px rgba(15, 23, 42, 0.18)',
 } as const;
 
 const ScopeButton = styled(IconButton)(({ theme }) => {
@@ -210,11 +209,11 @@ const ScopeGlyph = styled('span')(({ theme }) => ({
   justifyContent: 'center',
   fontFamily: FONT_FAMILY,
   fontWeight: 600,
-  fontSize: '1.05rem',
+  fontSize: '0.98rem',
   lineHeight: 1,
   color: 'inherit',
   [theme.breakpoints.down('sm')]: {
-    fontSize: '0.95rem',
+    fontSize: '0.9rem',
   },
 }));
 
@@ -225,7 +224,7 @@ const ScopeFlipButton = styled(ScopeButton)(({ theme }) => ({
     width: '100%',
     height: '100%',
     transformStyle: 'preserve-3d',
-    transition: 'transform 220ms ease',
+    transition: 'transform 180ms ease',
   },
   '& .flipFace': {
     position: 'absolute',
@@ -250,20 +249,20 @@ const FilterRail = styled('div')(({ theme }) => ({
   alignSelf: 'stretch',
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(1.25),
+  gap: theme.spacing(0.9),
   marginTop: 0,
   maxHeight: 0,
   opacity: 0,
   overflow: 'hidden',
   pointerEvents: 'none',
-  transition: 'max-height 0.3s ease, opacity 0.2s ease, margin-top 0.2s ease',
+  transition: 'max-height 180ms ease, opacity 160ms ease, margin-top 160ms ease',
   [theme.breakpoints.down('sm')]: {
     flexWrap: 'wrap',
-    gap: theme.spacing(1),
+    gap: theme.spacing(0.75),
   },
   '&[data-expanded="true"]': {
-    marginTop: theme.spacing(1.5),
-    maxHeight: 160,
+    marginTop: theme.spacing(1),
+    maxHeight: 120,
     opacity: 1,
     pointerEvents: 'auto',
   },
@@ -273,29 +272,29 @@ const FilterTrigger = styled(ButtonBase)(({ theme }) => ({
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: theme.spacing(1),
-  padding: theme.spacing(0.72, 1.4),
-  borderRadius: 18,
+  gap: theme.spacing(0.75),
+  padding: theme.spacing(0.6, 1.05),
+  borderRadius: 16,
   background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.96))',
   border: '1px solid rgba(148, 163, 184, 0.32)',
-  boxShadow: '0 12px 24px rgba(15, 23, 42, 0.16)',
+  boxShadow: '0 10px 20px rgba(15, 23, 42, 0.16)',
   color: '#0f172a',
   fontFamily: FONT_FAMILY,
-  fontSize: '0.9rem',
+  fontSize: '0.86rem',
   fontWeight: 600,
   lineHeight: 1.2,
   maxWidth: '100%',
   pointerEvents: 'auto',
-  transition: 'transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease',
+  transition: 'transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease',
   textAlign: 'left',
   '&:hover': {
     background: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(255, 255, 255, 0.98))',
     transform: 'translateY(-1px)',
-    boxShadow: '0 16px 28px rgba(15, 23, 42, 0.22)',
+    boxShadow: '0 12px 22px rgba(15, 23, 42, 0.22)',
   },
   '&:active': {
     transform: 'translateY(0)',
-    boxShadow: '0 10px 20px rgba(15, 23, 42, 0.18)',
+    boxShadow: '0 8px 18px rgba(15, 23, 42, 0.18)',
     background: 'linear-gradient(135deg, rgba(229, 238, 246, 0.98), rgba(245, 248, 252, 0.96))',
   },
   '& svg': {
@@ -315,16 +314,16 @@ const SubmitButton = styled(IconButton)(({ theme }) => ({
   border: '1px solid transparent',
   background: '#0f172a',
   color: theme.palette.common.white,
-  boxShadow: '0 12px 22px rgba(15, 23, 42, 0.28)',
-  transition: 'transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
+  boxShadow: '0 10px 20px rgba(15, 23, 42, 0.28)',
+  transition: 'transform 180ms ease, box-shadow 180ms ease, background 180ms ease',
   '&:hover': {
     transform: 'translateY(-1px)',
-    boxShadow: '0 16px 30px rgba(15, 23, 42, 0.4)',
+    boxShadow: '0 12px 22px rgba(15, 23, 42, 0.4)',
     background: '#111827',
   },
   '&:active': {
     transform: 'translateY(0)',
-    boxShadow: '0 10px 20px rgba(15, 23, 42, 0.32)',
+    boxShadow: '0 8px 18px rgba(15, 23, 42, 0.32)',
     background: '#0b1220',
   },
   '&.Mui-disabled': {
@@ -366,13 +365,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const shellRef = useRef<HTMLDivElement | null>(null);
   const skipBlurCollapseRef = useRef(false);
   const railId = useId();
-  const theme = useTheme();
-  const currentSeries = useMemo<SeriesItem | undefined>(() => {
-    if (!currentValueId || currentValueId.startsWith('_')) {
-      return undefined;
-    }
-    return shows.find((s) => s.id === currentValueId) || savedCids.find((s) => s.id === currentValueId);
-  }, [currentValueId, shows, savedCids]);
   const scopeButtonSx = useMemo(() => {
     const palette = DEFAULT_SCOPE_STYLING;
     return {
@@ -545,8 +537,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             onKeyDown={handleInputKeyDown}
             sx={{
               '& input': (theme) => ({
-                padding: scopeExpanded ? theme.spacing(1.05, 0.75) : theme.spacing(1, 1.1),
-                transition: 'padding 0.2s ease',
+                padding: scopeExpanded ? theme.spacing(0.65, 0.6) : theme.spacing(0.8, 0.9),
+                transition: 'padding 180ms ease',
               }),
             }}
           />
@@ -599,7 +591,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               noWrap
               sx={{
                 fontFamily: FONT_FAMILY,
-                fontSize: '0.88rem',
+                fontSize: '0.86rem',
                 fontWeight: 600,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
