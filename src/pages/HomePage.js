@@ -26,7 +26,11 @@ const readStoredSearchTerm = () => {
   }
   try {
     const stored = window.sessionStorage.getItem(SEARCH_TERM_STORAGE_KEY);
-    return typeof stored === 'string' ? stored : '';
+    if (typeof stored === 'string' && stored.length > 0) {
+      window.sessionStorage.removeItem(SEARCH_TERM_STORAGE_KEY);
+      return stored;
+    }
+    return '';
   } catch (error) {
     return '';
   }
@@ -40,20 +44,20 @@ export default function SearchPage({ metadata }) {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const persistSearchTerm = useCallback((term) => {
     if (typeof window === 'undefined') {
       return;
     }
     try {
-      if (searchTerm) {
-        window.sessionStorage.setItem(SEARCH_TERM_STORAGE_KEY, searchTerm);
+      if (term) {
+        window.sessionStorage.setItem(SEARCH_TERM_STORAGE_KEY, term);
       } else {
         window.sessionStorage.removeItem(SEARCH_TERM_STORAGE_KEY);
       }
     } catch (error) {
       // Swallow storage errors (private mode, quota, etc.)
     }
-  }, [searchTerm]);
+  }, []);
 
   useEffect(() => {
     const runWarmups = () => {
@@ -103,7 +107,9 @@ export default function SearchPage({ metadata }) {
 
     const encodedSearchTerms = encodeURI(rawSearchTerm)
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
-  }, [seriesTitle, searchTerm, shows, navigate]);
+    setSearchTerm('')
+    persistSearchTerm('')
+  }, [seriesTitle, searchTerm, shows, navigate, setSearchTerm, setV2SearchQuery, persistSearchTerm]);
 
   const memoizedFullScreenSearch = useMemo(() => (
     <FullScreenSearch
@@ -114,8 +120,9 @@ export default function SearchPage({ metadata }) {
       seriesTitle={seriesTitle}
       shows={shows}
       metadata={metadata}
+      persistSearchTerm={persistSearchTerm}
     />
-  ), [handleSearch, setSearchTerm, setSeriesTitle, searchTerm, seriesTitle, shows, metadata]);
+  ), [handleSearch, setSearchTerm, setSeriesTitle, searchTerm, seriesTitle, shows, metadata, persistSearchTerm]);
 
   return (
     <>
