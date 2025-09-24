@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
-import { ButtonBase, IconButton, InputBase, Typography } from '@mui/material';
+import { keyframes } from '@mui/system';
+import { ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
@@ -17,7 +18,7 @@ export interface UnifiedSearchBarProps {
   onValueChange: (value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onClear: () => void;
-  onRandom?: () => void;
+  onRandom?: () => void | PromiseLike<void>;
   isRandomLoading?: boolean;
   shows: SeriesItem[];
   savedCids: SeriesItem[];
@@ -51,7 +52,7 @@ const FieldShell = styled('div')(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   gap: theme.spacing(0.66),
-  transition: 'padding-bottom 200ms ease, gap 200ms ease',
+  transition: 'padding-bottom 260ms cubic-bezier(0.4, 0, 0.2, 1), gap 220ms cubic-bezier(0.4, 0, 0.2, 1)',
   // remove hover/box-shadow animations
   overflow: 'hidden',
   '&[data-expanded="false"]': {
@@ -67,13 +68,14 @@ const FieldShell = styled('div')(({ theme }) => ({
     '--scope-gap': theme.spacing(0.6),
     padding: theme.spacing(1, 1.2, 1.5),
     borderRadius: 12,
+    transition: 'padding-bottom 240ms cubic-bezier(0.4, 0, 0.2, 1), gap 200ms cubic-bezier(0.4, 0, 0.2, 1)',
     '&[data-expanded="false"]': {
       paddingBottom: theme.spacing(0.6),
       gap: theme.spacing(0.18),
     },
     '&[data-expanded="true"]': {
       paddingBottom: theme.spacing(1.32),
-    gap: theme.spacing(0.5),
+      gap: theme.spacing(0.5),
     },
   },
 }));
@@ -82,7 +84,7 @@ const FieldRow = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--scope-gap)',
-  transition: 'align-items 180ms ease, gap 180ms ease',
+  transition: 'align-items 220ms cubic-bezier(0.4, 0, 0.2, 1), gap 220ms cubic-bezier(0.4, 0, 0.2, 1)',
   '&[data-expanded="true"]': {
     alignItems: 'flex-end',
   },
@@ -121,6 +123,11 @@ const buildCircleButtonStyles = (theme: Theme) => ({
   boxShadow: '0 8px 20px rgba(15, 23, 42, 0.15)',
 });
 
+const isPromiseLike = <T,>(value: unknown): value is PromiseLike<T> =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as PromiseLike<T>).then === 'function';
+
 const DEFAULT_SCOPE_STYLING = {
   background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96))',
   hoverBackground: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(226, 232, 240, 0.96))',
@@ -131,31 +138,16 @@ const DEFAULT_SCOPE_STYLING = {
   activeBoxShadow: '0 6px 16px rgba(15, 23, 42, 0.18)',
 } as const;
 
-const ScopeButton = styled(IconButton)(({ theme }) => {
-  const base = buildCircleButtonStyles(theme);
-  return {
-    ...base,
-    position: 'relative',
-    background: DEFAULT_SCOPE_STYLING.background,
-    color: DEFAULT_SCOPE_STYLING.color,
-    borderColor: DEFAULT_SCOPE_STYLING.borderColor,
-    boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
-    // no hover/active animations
-    '&:hover': {
-      background: DEFAULT_SCOPE_STYLING.background,
-      boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
-      borderColor: DEFAULT_SCOPE_STYLING.borderColor,
-    },
-    '&:active': {
-      boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
-      borderColor: DEFAULT_SCOPE_STYLING.borderColor,
-    },
-    '& svg': {
-      flexShrink: 0,
-      color: 'inherit',
-    },
-  };
-});
+const labelSwitchIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
 
 const RandomButton = styled(IconButton)(({ theme }) => {
   const base = buildCircleButtonStyles(theme);
@@ -213,7 +205,7 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
     color: DEFAULT_SCOPE_STYLING.color,
     boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
     width: 'var(--scope-button-size)',
-    transition: 'width 180ms ease, padding 180ms ease',
+    transition: 'width 240ms cubic-bezier(0.4, 0, 0.2, 1), padding 240ms cubic-bezier(0.4, 0, 0.2, 1)',
     minWidth: 0,
     // no hover/active animations
     '&:hover': {
@@ -259,20 +251,18 @@ const ControlsRail = styled('div')(({ theme }) => ({
   alignItems: 'center',
   gap: theme.spacing(1),
   marginTop: 0,
-  maxHeight: 0,
   opacity: 0,
   overflow: 'hidden',
   pointerEvents: 'none',
   flexWrap: 'nowrap',
   minWidth: 0,
-  transition: 'max-height 200ms ease, opacity 160ms ease, margin-top 160ms ease',
+  transition: 'opacity 220ms cubic-bezier(0.4, 0, 0.2, 1), margin-top 220ms cubic-bezier(0.4, 0, 0.2, 1)',
   [theme.breakpoints.down('sm')]: {
     flexWrap: 'nowrap',
     gap: theme.spacing(0.82),
   },
   '&[data-expanded="true"]': {
     marginTop: theme.spacing(0.4),
-    maxHeight: 96,
     opacity: 1,
     pointerEvents: 'auto',
   },
@@ -316,6 +306,11 @@ const LabeledRandomButton = styled(ButtonBase)(({ theme }) => ({
     fontSize: '0.94rem',
     color: '#0f172a',
     whiteSpace: 'nowrap',
+    animation: `${labelSwitchIn} 180ms ease both`,
+    willChange: 'opacity, transform',
+    '@media (prefers-reduced-motion: reduce)': {
+      animation: 'none',
+    },
   },
 }));
 
@@ -337,6 +332,11 @@ const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
     color: theme.palette.common.white,
     whiteSpace: 'nowrap',
     paddingLeft: theme.spacing(0.5),
+    animation: `${labelSwitchIn} 180ms ease both`,
+    willChange: 'opacity, transform',
+    '@media (prefers-reduced-motion: reduce)': {
+      animation: 'none',
+    },
   },
   '&.Mui-disabled': {
     background: '#374151',
@@ -371,13 +371,20 @@ const SubmitButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
-function buildCurrentLabel(currentValueId: string, shows: SeriesItem[], savedCids: SeriesItem[]): string {
+function findSeriesItem(currentValueId: string, shows: SeriesItem[], savedCids: SeriesItem[]): SeriesItem | undefined {
+  if (!currentValueId || currentValueId.startsWith('_')) {
+    return undefined;
+  }
+  return shows.find((s) => s.id === currentValueId) ?? savedCids.find((s) => s.id === currentValueId);
+}
+
+function buildCurrentLabel(currentValueId: string, currentSeries?: SeriesItem): string {
   if (currentValueId === '_universal') return '🌈 All Shows & Movies';
   if (currentValueId === '_favorites') return '⭐ All Favorites';
-  const found = shows.find((s) => s.id === currentValueId) || savedCids.find((s) => s.id === currentValueId);
-  if (!found) return 'Select show or movie';
-  const emojiPrefix = found.emoji ? `${found.emoji} ` : '';
-  return `${emojiPrefix}${found.title}`;
+  if (!currentSeries) return 'Select show or movie';
+  const emoji = currentSeries.emoji?.trim();
+  const emojiPrefix = emoji ? `${emoji} ` : '';
+  return `${emojiPrefix}${currentSeries.title}`;
 }
 
 export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
@@ -395,18 +402,27 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   onSelectSeries,
 }) => {
   const [selectorOpen, setSelectorOpen] = useState(false);
-  const [scopeExpanded, setScopeExpanded] = useState(false);
-  const [shellHasFocus, setShellHasFocus] = useState(false);
+  const [internalRandomLoading, setInternalRandomLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const shellRef = useRef<HTMLDivElement | null>(null);
+  const shouldRestoreFocusRef = useRef(false);
   // railId and scopeButtonSx removed with inline expansion approach
+  const currentSeries = useMemo(
+    () => findSeriesItem(currentValueId, shows, savedCids),
+    [currentValueId, savedCids, shows],
+  );
+
   const currentLabel = useMemo(
-    () => buildCurrentLabel(currentValueId, shows, savedCids),
-    [currentValueId, shows, savedCids],
+    () => buildCurrentLabel(currentValueId, currentSeries),
+    [currentSeries, currentValueId],
   );
 
   const scopeGlyph = useMemo(() => {
-    const trimmed = currentLabel.trim();
+    if (currentValueId === '_universal') return '🌈';
+    if (currentValueId === '_favorites') return '⭐';
+    const trimmedEmoji = currentSeries?.emoji?.trim();
+    if (trimmedEmoji) return trimmedEmoji;
+    const source = currentSeries?.title ?? currentLabel;
+    const trimmed = source.trim();
     if (!trimmed) return '∙';
     const [glyph] = Array.from(trimmed);
     if (!glyph) return '∙';
@@ -414,32 +430,17 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     const lower = glyph.toLocaleLowerCase();
     if (upper !== lower) return upper;
     return glyph;
-  }, [currentLabel]);
+  }, [currentLabel, currentSeries, currentValueId]);
 
   const handleFilterClick = useCallback(() => {
     // open selector without forcing expansion
     setSelectorOpen(true);
   }, []);
 
-  const handleShellFocus = useCallback(() => {
-    setShellHasFocus(true);
-  }, []);
-
-  const handleShellBlur = useCallback(() => {
-    requestAnimationFrame(() => {
-      if (shellRef.current && shellRef.current.contains(document.activeElement)) {
-        return;
-      }
-      setShellHasFocus(false);
-      setScopeExpanded(false);
-    });
-  }, []);
-
   const handleSelect: OnSelectSeries = useCallback(
     (selectedId) => {
       onSelectSeries(selectedId);
       setSelectorOpen(false);
-      setScopeExpanded(false);
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
@@ -464,16 +465,51 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     [handleClear, value],
   );
 
+  const handleRandomPointerDown = useCallback(() => {
+    if (typeof document === 'undefined') {
+      shouldRestoreFocusRef.current = false;
+      return;
+    }
+    shouldRestoreFocusRef.current = document.activeElement === inputRef.current;
+  }, []);
+
+  const randomLoading = isRandomLoading ?? internalRandomLoading;
+
   const handleRandomClick = useCallback(() => {
-    onRandom?.();
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
-  }, [onRandom]);
+    if (!onRandom || randomLoading) {
+      shouldRestoreFocusRef.current = false;
+      return;
+    }
+
+    const shouldRestoreFocus = shouldRestoreFocusRef.current;
+    const restoreFocus = () => {
+      requestAnimationFrame(() => {
+        if (shouldRestoreFocus) {
+          inputRef.current?.focus();
+        }
+        shouldRestoreFocusRef.current = false;
+      });
+    };
+
+    const result = onRandom();
+
+    if (isRandomLoading === undefined && isPromiseLike(result)) {
+      setInternalRandomLoading(true);
+      Promise.resolve(result)
+        .catch(() => undefined)
+        .finally(() => {
+          setInternalRandomLoading(false);
+          restoreFocus();
+        });
+      return;
+    }
+
+    restoreFocus();
+  }, [onRandom, randomLoading, isRandomLoading]);
 
   const trimmedValue = value.trim();
   const hasInput = trimmedValue.length > 0;
-  const showRandomButton = !hasInput;
+  const scopeExpanded = hasInput;
   // Controls move to second line when expanded
   // SubmitButton now uses consistent black styling; disabled state is dark grey
   const scopeButtonLabel = scopeExpanded
@@ -487,12 +523,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   return (
     <FormRoot onSubmit={onSubmit} noValidate>
-      <FieldShell
-        ref={shellRef}
-        onFocus={handleShellFocus}
-        onBlur={handleShellBlur}
-        data-expanded={scopeExpanded ? 'true' : 'false'}
-      >
+      <FieldShell data-expanded={scopeExpanded ? 'true' : 'false'}>
         <FieldRow data-expanded={scopeExpanded ? 'true' : 'false'}>
           {!scopeExpanded && (
             <ScopeSelectorButton
@@ -514,11 +545,13 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             placeholder={placeholder}
             onChange={(event) => onValueChange(event.target.value)}
             onKeyDown={handleInputKeyDown}
-            onFocus={() => setScopeExpanded(true)}
+            onBlur={() => {
+              shouldRestoreFocusRef.current = false;
+            }}
             sx={{
               '& input': (theme) => ({
                 padding: scopeExpanded ? theme.spacing(0.72, 0.66) : theme.spacing(0.9, 1),
-                transition: 'padding 180ms ease',
+                transition: 'padding 220ms cubic-bezier(0.4, 0, 0.2, 1)',
               }),
             }}
           />
@@ -528,11 +561,16 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                 type="button"
                 aria-label="Show something random"
                 onClick={handleRandomClick}
-                disabled={isRandomLoading}
-                aria-busy={isRandomLoading}
+                onPointerDown={handleRandomPointerDown}
+                disabled={randomLoading}
+                aria-busy={randomLoading}
                 title="Random"
               >
-                <ShuffleIcon fontSize="small" />
+                {randomLoading ? (
+                  <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
+                ) : (
+                  <ShuffleIcon fontSize="small" />
+                )}
               </RandomButton>
               <SubmitButton
                 type="submit"
@@ -545,77 +583,85 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             </>
           )}
         </FieldRow>
-        <ControlsRail data-expanded={scopeExpanded ? 'true' : 'false'}>
-          {scopeExpanded && (
-            <>
-              <ScopeSelectorButton
-                type="button"
-                onClick={handleScopeClick}
-                data-expanded="true"
-                aria-expanded={scopeExpanded}
-                aria-pressed={scopeExpanded}
-                aria-label={scopeButtonLabel}
-                aria-haspopup="dialog"
-                title={currentLabel}
-                className="railButton"
-              >
-                <Typography component="span" className="scopeLabel" noWrap>
-                  {currentLabel}
-                </Typography>
-                <ArrowDropDownIcon fontSize="small" />
-              </ScopeSelectorButton>
-              <RailRight>
-                {hasInput ? (
-                  <>
-                    <RandomButton
-                      className="railButton"
-                      type="button"
-                      aria-label="Show something random"
-                      onClick={handleRandomClick}
-                      disabled={isRandomLoading}
-                      aria-busy={isRandomLoading}
-                      title="Random"
-                    >
+        <Collapse in={scopeExpanded} timeout={260} unmountOnExit>
+          <ControlsRail data-expanded={scopeExpanded ? 'true' : 'false'}>
+            <ScopeSelectorButton
+              type="button"
+              onClick={handleScopeClick}
+              data-expanded="true"
+              aria-expanded={scopeExpanded}
+              aria-pressed={scopeExpanded}
+              aria-label={scopeButtonLabel}
+              aria-haspopup="dialog"
+              title={currentLabel}
+              className="railButton"
+            >
+              <Typography component="span" className="scopeLabel" noWrap>
+                {currentLabel}
+              </Typography>
+              <ArrowDropDownIcon fontSize="small" />
+            </ScopeSelectorButton>
+            <RailRight>
+              {hasInput ? (
+                <>
+                  <RandomButton
+                    className="railButton"
+                    type="button"
+                    aria-label="Show something random"
+                    onClick={handleRandomClick}
+                    onPointerDown={handleRandomPointerDown}
+                    disabled={randomLoading}
+                    aria-busy={randomLoading}
+                    title="Random"
+                  >
+                    {randomLoading ? (
+                      <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
+                    ) : (
                       <ShuffleIcon fontSize="small" />
-                    </RandomButton>
-                    <LabeledSubmitButton
-                      type="submit"
-                      aria-label="Search"
-                      disabled={!hasInput}
-                      className="railButton"
-                    >
-                      <span className="actionLabel">Search</span>
-                      <ArrowForwardRoundedIcon fontSize="small" />
-                    </LabeledSubmitButton>
-                  </>
-                ) : (
-                  <>
-                    <LabeledRandomButton
-                      type="button"
-                      aria-label="Show something random"
-                      onClick={handleRandomClick}
-                      disabled={isRandomLoading}
-                      aria-busy={isRandomLoading}
-                      className="railButton"
-                    >
+                    )}
+                  </RandomButton>
+                  <LabeledSubmitButton
+                    type="submit"
+                    aria-label="Search"
+                    disabled={!hasInput}
+                    className="railButton"
+                  >
+                    <span className="actionLabel">Search</span>
+                    <ArrowForwardRoundedIcon fontSize="small" />
+                  </LabeledSubmitButton>
+                </>
+              ) : (
+                <>
+                  <LabeledRandomButton
+                    type="button"
+                    aria-label="Show something random"
+                    onClick={handleRandomClick}
+                    onPointerDown={handleRandomPointerDown}
+                    disabled={randomLoading}
+                    aria-busy={randomLoading}
+                    className="railButton"
+                  >
+                    {randomLoading ? (
+                      <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
+                    ) : (
                       <ShuffleIcon fontSize="small" />
-                      <span className="actionLabel">Random</span>
-                    </LabeledRandomButton>
-                    <SubmitButton
-                      className="railButton"
-                      type="submit"
-                      aria-label="Search"
-                      disabled={!hasInput}
-                      title="Search"
-                    >
-                      <ArrowForwardRoundedIcon fontSize="small" />
-                    </SubmitButton>
-                  </>
-                )}
-              </RailRight>
-            </>
-          )}
-        </ControlsRail>
+                    )}
+                    <span className="actionLabel">Random</span>
+                  </LabeledRandomButton>
+                  <SubmitButton
+                    className="railButton"
+                    type="submit"
+                    aria-label="Search"
+                    disabled={!hasInput}
+                    title="Search"
+                  >
+                    <ArrowForwardRoundedIcon fontSize="small" />
+                  </SubmitButton>
+                </>
+              )}
+            </RailRight>
+          </ControlsRail>
+        </Collapse>
       </FieldShell>
       <SeriesSelectorDialog
         open={selectorOpen}
