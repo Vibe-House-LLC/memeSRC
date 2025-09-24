@@ -5,6 +5,7 @@ export const searchPropTypes = {
   searchTerm: PropTypes.string,
   setSearchTerm: PropTypes.func,
   setSeriesTitle: PropTypes.func,
+  persistSearchTerm: PropTypes.func,
   seriesTitle: PropTypes.string,
   loading: PropTypes.string
 };
