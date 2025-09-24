@@ -5,7 +5,7 @@ import { keyframes } from '@mui/system';
 import { ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import ShuffleIcon from '@mui/icons-material/Shuffle';
+import { Shuffle as ShuffleIcon } from 'lucide-react';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
 
 type SeriesSelectorDialogProps = React.ComponentProps<typeof SeriesSelectorDialog>;
@@ -569,7 +569,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                 {randomLoading ? (
                   <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
                 ) : (
-                  <ShuffleIcon fontSize="small" />
+                  <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                 )}
               </RandomButton>
               <SubmitButton
@@ -617,7 +617,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     {randomLoading ? (
                       <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
                     ) : (
-                      <ShuffleIcon fontSize="small" />
+                      <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                     )}
                   </RandomButton>
                   <LabeledSubmitButton
@@ -644,7 +644,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     {randomLoading ? (
                       <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
                     ) : (
-                      <ShuffleIcon fontSize="small" />
+                      <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                     )}
                     <span className="actionLabel">Random</span>
                   </LabeledRandomButton>

@@ -1,7 +1,8 @@
 import React, { useContext } from 'react';
 import PropTypes from 'prop-types';
 import { Fab, styled } from '@mui/material';
-import { MapsUgc, Favorite, Shuffle, Dashboard } from '@mui/icons-material';
+import { MapsUgc, Favorite, Dashboard } from '@mui/icons-material';
+import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
@@ -105,7 +106,15 @@ function FloatingActionButtons({ shows, showAd }) {
                 )}
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn" hasAd={showAd}>
-                <StyledButton onClick={handleRandomClick} loading={loadingRandom} startIcon={<Shuffle />} variant="contained" style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }} >Random</StyledButton>
+                <StyledButton
+                    onClick={handleRandomClick}
+                    loading={loadingRandom}
+                    startIcon={<ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />}
+                    variant="contained"
+                    style={{ backgroundColor: "black", marginLeft: 'auto', zIndex: '1300' }}
+                >
+                    Random
+                </StyledButton>
             </StyledRightFooter>
             
         </>
