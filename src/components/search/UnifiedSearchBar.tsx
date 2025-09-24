@@ -4,8 +4,6 @@ import type { Theme } from '@mui/material/styles';
 import { ButtonBase, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
-import KeyboardArrowUpRoundedIcon from '@mui/icons-material/KeyboardArrowUpRounded';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
 
@@ -209,35 +207,59 @@ const ScopeGlyph = styled('span')(({ theme }) => ({
   },
 }));
 
-const ScopeFlipButton = styled(ScopeButton)(({ theme }) => ({
-  position: 'relative',
-  '& .flipInner': {
+const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
+  const base = buildCircleButtonStyles(theme);
+  return {
+    ...base,
     position: 'relative',
-    width: '100%',
-    height: '100%',
-    transformStyle: 'preserve-3d',
-    transition: 'transform 180ms ease',
-  },
-  '& .flipFace': {
-    position: 'absolute',
-    inset: 0,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backfaceVisibility: 'hidden',
-    WebkitBackfaceVisibility: 'hidden',
-  },
-  '& .flipBack': {
-    transform: 'rotateY(180deg)',
-  },
-  '&[aria-expanded="true"] .flipInner': {
-    transform: 'rotateY(180deg)',
-  },
-}));
+    height: 'var(--scope-button-size)',
+    borderRadius: 999,
+    padding: 0,
+    border: '1px solid ' + DEFAULT_SCOPE_STYLING.borderColor,
+    background: DEFAULT_SCOPE_STYLING.background,
+    color: DEFAULT_SCOPE_STYLING.color,
+    boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
+    width: 'var(--scope-button-size)',
+    transition: 'width 180ms ease, padding 180ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease',
+    '&:hover': {
+      ...(base['&:hover'] ?? {}),
+      background: DEFAULT_SCOPE_STYLING.hoverBackground,
+      boxShadow: DEFAULT_SCOPE_STYLING.hoverBoxShadow,
+    },
+    '&:active': {
+      ...(base['&:active'] ?? {}),
+      boxShadow: DEFAULT_SCOPE_STYLING.activeBoxShadow,
+    },
+    '&[data-expanded="true"]': {
+      width: 'auto',
+      padding: theme.spacing(0.66, 1.15),
+      gap: theme.spacing(0.82),
+    },
+    '& .scopeLabel': {
+      fontFamily: FONT_FAMILY,
+      fontWeight: 600,
+      fontSize: '0.94rem',
+      color: '#0f172a',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      maxWidth: 520,
+      [theme.breakpoints.down('sm')]: {
+        fontSize: '0.9rem',
+        maxWidth: 260,
+      },
+    },
+    '& svg': {
+      flexShrink: 0,
+      color: '#0F9D58',
+    },
+  };
+});
 
-// No inline scope control; we use the circular flip button instead
-
-const FilterRail = styled('div')(({ theme }) => ({
+const ControlsRail = styled('div')(({ theme }) => ({
   alignSelf: 'stretch',
   display: 'flex',
   alignItems: 'center',
@@ -247,56 +269,37 @@ const FilterRail = styled('div')(({ theme }) => ({
   opacity: 0,
   overflow: 'hidden',
   pointerEvents: 'none',
-  transition: 'max-height 180ms ease, opacity 160ms ease, margin-top 160ms ease',
+  transition: 'max-height 200ms ease, opacity 160ms ease, margin-top 160ms ease',
   [theme.breakpoints.down('sm')]: {
     flexWrap: 'wrap',
     gap: theme.spacing(0.82),
   },
   '&[data-expanded="true"]': {
-    marginTop: theme.spacing(1.1),
-    maxHeight: 132,
+    marginTop: theme.spacing(0.9),
+    maxHeight: 96,
     opacity: 1,
     pointerEvents: 'auto',
   },
+  // Remove heavy shadows in the compact second row
+  '& .railButton': {
+    boxShadow: 'none !important',
+    transform: 'none',
+  },
+  '& .railButton:hover': {
+    boxShadow: 'none !important',
+    transform: 'translateY(-1px)',
+  },
+  '& .railButton:active': {
+    boxShadow: 'none !important',
+    transform: 'translateY(0)',
+  },
 }));
 
-const FilterTrigger = styled(ButtonBase)(({ theme }) => ({
+const RailRight = styled('div')(({ theme }) => ({
+  marginLeft: 'auto',
   display: 'inline-flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: theme.spacing(0.82),
-  padding: theme.spacing(0.66, 1.15),
-  borderRadius: 18,
-  background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.96))',
-  border: '1px solid rgba(148, 163, 184, 0.32)',
-  boxShadow: '0 10px 20px rgba(15, 23, 42, 0.16)',
-  color: '#0f172a',
-  fontFamily: FONT_FAMILY,
-  fontSize: '0.94rem',
-  fontWeight: 600,
-  lineHeight: 1.2,
-  maxWidth: '100%',
-  pointerEvents: 'auto',
-  transition: 'transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease',
-  textAlign: 'left',
-  '&:hover': {
-    background: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(255, 255, 255, 0.98))',
-    transform: 'translateY(-1px)',
-    boxShadow: '0 12px 22px rgba(15, 23, 42, 0.22)',
-  },
-  '&:active': {
-    transform: 'translateY(0)',
-    boxShadow: '0 8px 18px rgba(15, 23, 42, 0.18)',
-    background: 'linear-gradient(135deg, rgba(229, 238, 246, 0.98), rgba(245, 248, 252, 0.96))',
-  },
-  '& svg': {
-    transition: 'transform 0.2s ease',
-    flexShrink: 0,
-    color: '#0F9D58',
-  },
-  '&[aria-expanded="true"] svg': {
-    transform: 'rotate(-180deg)',
-  },
+  gap: theme.spacing(1),
 }));
 
 const SubmitButton = styled(IconButton)(({ theme }) => ({
@@ -356,25 +359,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const skipBlurCollapseRef = useRef(false);
-  const railId = useId();
-  const scopeButtonSx = useMemo(() => {
-    const palette = DEFAULT_SCOPE_STYLING;
-    return {
-      background: palette.background,
-      color: palette.color,
-      borderColor: palette.borderColor,
-      boxShadow: palette.boxShadow,
-      '&:hover': {
-        background: palette.hoverBackground,
-        boxShadow: palette.hoverBoxShadow,
-        borderColor: palette.borderColor,
-      },
-      '&:active': {
-        boxShadow: palette.activeBoxShadow,
-        borderColor: palette.borderColor,
-      },
-    } as const;
-  }, []);
+  // railId and scopeButtonSx removed with inline expansion approach
   const currentLabel = useMemo(
     () => buildCurrentLabel(currentValueId, shows, savedCids),
     [currentValueId, shows, savedCids],
@@ -479,13 +464,20 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const trimmedValue = value.trim();
   const hasInput = trimmedValue.length > 0;
   const showRandomButton = !hasInput;
-  const controlsAlignment = scopeExpanded ? 'flex-end' : 'center';
+  // Controls move to second line when expanded
   // SubmitButton now uses consistent black styling; disabled state is dark grey
-  const isRailVisible = scopeExpanded || selectorOpen;
-  const isShellActive = shellHasFocus || scopeExpanded || selectorOpen;
   const scopeButtonLabel = scopeExpanded
-    ? 'Hide filter options'
+    ? `Choose series: ${currentLabel}`
     : `Show filter options for ${currentLabel}`;
+
+  const handleScopeClick = useCallback(() => {
+    if (!scopeExpanded) {
+      handleScopeToggle();
+      return;
+    }
+    // When expanded, clicking opens the selector dialog
+    handleFilterClick();
+  }, [handleFilterClick, handleScopeToggle, scopeExpanded]);
 
   return (
     <FormRoot onSubmit={onSubmit} noValidate>
@@ -497,28 +489,17 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       >
         <FieldRow data-expanded={scopeExpanded ? 'true' : 'false'}>
           {!scopeExpanded && (
-            <ScopeFlipButton
+            <ScopeSelectorButton
               type="button"
-              onClick={handleScopeToggle}
+              onClick={handleScopeClick}
+              data-expanded="false"
               aria-expanded={scopeExpanded}
               aria-pressed={scopeExpanded}
               aria-label={scopeButtonLabel}
-              aria-controls={railId}
               title={currentLabel}
-              sx={{
-                ...scopeButtonSx,
-                alignSelf: controlsAlignment,
-              }}
             >
-              <span className="flipInner">
-                <span className="flipFace flipFront">
-                  <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
-                </span>
-                <span className="flipFace flipBack">
-                  <TuneRoundedIcon fontSize="small" />
-                </span>
-              </span>
-            </ScopeFlipButton>
+              <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
+            </ScopeSelectorButton>
           )}
           <StyledInput
             value={value}
@@ -533,67 +514,71 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               }),
             }}
           />
-          {showRandomButton && (
+          {!scopeExpanded && showRandomButton && (
             <RandomButton
               type="button"
               aria-label="Show something random"
               onClick={handleRandomClick}
               disabled={isRandomLoading}
               aria-busy={isRandomLoading}
-              sx={{ alignSelf: controlsAlignment }}
             >
               <ShuffleIcon fontSize="small" />
             </RandomButton>
           )}
-          <SubmitButton
-            type="submit"
-            aria-label="Search"
-            disabled={!hasInput}
-            sx={{
-              alignSelf: controlsAlignment,
-            }}
-          >
-            <ArrowForwardRoundedIcon fontSize="small" />
-          </SubmitButton>
-        </FieldRow>
-        <FilterRail id={railId} data-expanded={isRailVisible ? 'true' : 'false'}>
-          {scopeExpanded && (
-            <ScopeButton
-              type="button"
-              onClick={handleScopeToggle}
-              aria-expanded={scopeExpanded}
-              aria-pressed={scopeExpanded}
-              aria-label={scopeButtonLabel}
-              aria-controls={railId}
-              title={currentLabel}
-              sx={scopeButtonSx}
+          {!scopeExpanded && (
+            <SubmitButton
+              type="submit"
+              aria-label="Search"
+              disabled={!hasInput}
             >
-              <KeyboardArrowUpRoundedIcon fontSize="small" />
-            </ScopeButton>
+              <ArrowForwardRoundedIcon fontSize="small" />
+            </SubmitButton>
           )}
-          <FilterTrigger
-            type="button"
-            onClick={handleFilterClick}
-            aria-haspopup="dialog"
-            aria-expanded={selectorOpen}
-          >
-            <Typography
-              component="span"
-              noWrap
-              sx={{
-                fontFamily: FONT_FAMILY,
-                fontSize: '0.94rem',
-                fontWeight: 600,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                color: '#0f172a',
-              }}
-            >
-              {currentLabel}
-            </Typography>
-            <ArrowDropDownIcon fontSize="small" />
-          </FilterTrigger>
-        </FilterRail>
+        </FieldRow>
+        <ControlsRail data-expanded={scopeExpanded ? 'true' : 'false'}>
+          {scopeExpanded && (
+            <>
+              <ScopeSelectorButton
+                type="button"
+                onClick={handleScopeClick}
+                data-expanded="true"
+                aria-expanded={scopeExpanded}
+                aria-pressed={scopeExpanded}
+                aria-label={scopeButtonLabel}
+                aria-haspopup="dialog"
+                title={currentLabel}
+                className="railButton"
+              >
+                <Typography component="span" className="scopeLabel" noWrap>
+                  {currentLabel}
+                </Typography>
+                <ArrowDropDownIcon fontSize="small" />
+              </ScopeSelectorButton>
+              <RailRight>
+                {showRandomButton && (
+                  <RandomButton
+                    className="railButton"
+                    type="button"
+                    aria-label="Show something random"
+                    onClick={handleRandomClick}
+                    disabled={isRandomLoading}
+                    aria-busy={isRandomLoading}
+                  >
+                    <ShuffleIcon fontSize="small" />
+                  </RandomButton>
+                )}
+                <SubmitButton
+                  className="railButton"
+                  type="submit"
+                  aria-label="Search"
+                  disabled={!hasInput}
+                >
+                  <ArrowForwardRoundedIcon fontSize="small" />
+                </SubmitButton>
+              </RailRight>
+            </>
+          )}
+        </ControlsRail>
       </FieldShell>
       <SeriesSelectorDialog
         open={selectorOpen}
