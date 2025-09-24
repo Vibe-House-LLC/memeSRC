@@ -75,7 +75,7 @@ const defaultBackground = `linear-gradient(45deg,
   #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
   #00a3e0 0)`;
 
-export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata }) {
+export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata, persistSearchTerm }) {
   const { savedCids, cid, setCid, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
   const { show, setShow, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
@@ -239,6 +239,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const handleSelect = useCallback(
     (selectedId) => {
       const nextId = selectedId || '_universal';
+      persistSearchTerm(searchTerm);
       setCid(nextId);
       setSeriesTitle(nextId);
       handleChangeSeries(nextId);
@@ -247,12 +248,13 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       }
       navigate(nextId === '_universal' ? '/' : `/${nextId}`);
     },
-    [handleChangeSeries, handleUpdateDefaultShow, navigate, setCid, setSeriesTitle]
+    [handleChangeSeries, handleUpdateDefaultShow, navigate, persistSearchTerm, searchTerm, setCid, setSeriesTitle]
   );
 
   const handleClearSearch = useCallback(() => {
     setSearchTerm('');
-  }, [setSearchTerm]);
+    persistSearchTerm('');
+  }, [setSearchTerm, persistSearchTerm]);
 
   const handleSearchTermChange = useCallback(
     (value) => {
