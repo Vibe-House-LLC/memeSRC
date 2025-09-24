@@ -1589,16 +1589,23 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             
             console.log('Listing files from S3 bucket root path:', fullPath);
             
-            // List files from S3 bucket root using custom prefix (empty string)
-            const result = await Storage.list(fullPath, {
-                level: 'public',
-                pageSize: 1000
-            });
-            
-            console.log('Storage.list result:', result);
-            
-            const resultArray = (result?.results || result || []) as any[];
-            console.log('Result array:', resultArray);
+            // List files from S3 using pagination to retrieve all results
+            const aggregatedResults: any[] = [];
+            let nextToken: string | undefined = undefined;
+            do {
+                const page: any = await Storage.list(fullPath, {
+                    level: 'public',
+                    pageSize: 1000,
+                    nextToken
+                });
+                const pageArray = (page?.results || page || []) as any[];
+                aggregatedResults.push(...pageArray);
+                nextToken = (page as any)?.nextToken as string | undefined;
+            } while (nextToken);
+
+            console.log('Storage.list aggregated results count:', aggregatedResults.length);
+
+            const resultArray = aggregatedResults as any[];
             
             const fileItems: FileItem[] = resultArray.map((item: any) => {
                 const key = item.key || '';

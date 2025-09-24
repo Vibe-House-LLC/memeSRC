@@ -2,7 +2,7 @@
 import { Container, Grid, Stack, Typography, Card, CircularProgress, Backdrop, Divider, LinearProgress } from '@mui/material';
 // components
 import { useState, useEffect, useRef, useContext, Fragment } from 'react';
-import { API, Storage, graphqlOperation } from 'aws-amplify';
+import { API, Storage, graphqlOperation, Auth } from 'aws-amplify';
 import { UploadFile } from '@mui/icons-material';
 import Dropzone from 'react-dropzone';
 import { LoadingButton } from '@mui/lab';
@@ -58,8 +58,29 @@ export default function UploadToSeriesPage({ seriesId }) {
             }
           }
         `;
+        const createFileQuery = /* GraphQL */ `
+          mutation CreateFile(
+            $input: CreateFileInput!
+            $condition: ModelFileConditionInput
+          ) {
+            createFile(input: $input, condition: $condition) {
+              id
+            }
+          }
+        `;
         const sourceMedia = await API.graphql(graphqlOperation(createSourceMedia, { input: sourceMediaInput }));
         const sourceMediaId = sourceMedia.data.createSourceMedia.id;
+
+
+
+        // Resolve the current user's Cognito Identity ID for building the full S3 key
+        let identityId;
+        try {
+          const credentials = await Auth.currentCredentials();
+          identityId = credentials?.identityId;
+        } catch (credentialsError) {
+          console.log('Unable to resolve identity id', credentialsError);
+        }
 
         // Calculate total data size
         const totalDataSize = files.reduce((total, file) => total + file.size, 0);
@@ -78,12 +99,29 @@ export default function UploadToSeriesPage({ seriesId }) {
             setUploadedData(uploadProgresses.reduce((a, b) => a + b, 0)); // Sum all progresses
           };
 
-          await Storage.put(`${sourceMediaId}/${file.name}`, file, {
+          const uploadedFile = await Storage.put(`${sourceMediaId}/${file.name}`, file, {
             contentType: file.type,
             level: 'protected',
             progressCallback,
           });
+          console.log(uploadedFile)
           console.log(`${file.name} uploaded!`);
+
+          // Log the full S3 key including the protected identity prefix
+          if (identityId) {
+            const fullKey = `protected/${identityId}/${uploadedFile.key}`;
+            const createFileInput = {
+              sourceMediaFilesId: sourceMediaId,
+              key: fullKey,
+              status: 'uploaded',
+            };
+            const createFile = await API.graphql(graphqlOperation(createFileQuery, { input: createFileInput }));
+            console.log(createFile)
+            console.log('Full S3 key:', fullKey);
+          } else {
+            console.log('Full S3 key (identityId unavailable):', `protected/<identityId>/${uploadedFile.key}`);
+          }
+
 
           // Increment uploaded files count
           setUploadedFilesCount(prevCount => prevCount + 1);

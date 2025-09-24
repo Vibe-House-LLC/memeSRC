@@ -180,6 +180,7 @@ export const getFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
@@ -199,6 +200,7 @@ export const listFiles = /* GraphQL */ `
         createdAt
         updatedAt
         sourceMediaFilesId
+        owner
         __typename
       }
       nextToken

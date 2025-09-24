@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Typography, Container, Grid, Stack, FormControl, InputLabel, Select, MenuItem, } from '@mui/material';
+import { Typography, Container, Grid, Stack, TextField, Autocomplete } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { API } from 'aws-amplify';
 import { Link, useNavigate } from 'react-router-dom';
@@ -123,9 +123,7 @@ export default function ContributorRequest() {
     }
   }
 
-  const handleChooseSeries = (seriesId) => {
-    setSeries(seriesId.target.value)
-  }
+  // Replaced Select with Autocomplete; selection handled inline in onChange
 
   useEffect(() => {
     if (user?.userDetails?.contributorAccessStatus) {
@@ -188,27 +186,24 @@ export default function ContributorRequest() {
               <Grid item>
                 <ReactMarkdown>{headerMarkdownContent}</ReactMarkdown>
               </Grid>
-              <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel id="demo-simple-select-label">
-                  {seriesList ? 'Choose Series' : 'Loading series...'}
-                </InputLabel>
-                <Select
-                  labelId="demo-simple-select-label"
-                  id="demo-simple-select"
-                  value={series}
-                  label={seriesList ? 'Choose Series' : 'Loading all series...'}
-                  fullWidth
-                  onChange={handleChooseSeries}
-                  disabled={!seriesList}
-                >
-                  {seriesList &&
-                    seriesList.map((seriesObj) => (
-                      <MenuItem key={seriesObj.id} value={seriesObj.id}>
-                        {seriesObj.name}
-                      </MenuItem>
-                    ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                id="choose-series"
+                fullWidth
+                sx={{ mb: 3 }}
+                options={seriesList || []}
+                disabled={!seriesList}
+                value={(seriesList || []).find((s) => s.id === series) || null}
+                onChange={(event, selected) => setSeries(selected ? selected.id : '')}
+                getOptionLabel={(option) => (option && option.name ? option.name : '')}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={seriesList ? 'Choose Series' : 'Loading series...'}
+                    placeholder={seriesList ? 'Type to filter…' : ''}
+                  />
+                )}
+              />
               {series && <UploadToSeriesPage seriesId={series} />}
               <Grid item>
                 <ReactMarkdown>{bodyMarkdownContent}</ReactMarkdown>

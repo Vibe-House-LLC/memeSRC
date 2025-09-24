@@ -264,6 +264,7 @@ export const onCreateFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
@@ -288,6 +289,7 @@ export const onUpdateFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
@@ -312,6 +314,7 @@ export const onDeleteFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }

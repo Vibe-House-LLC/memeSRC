@@ -279,6 +279,7 @@ export const createFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
@@ -306,6 +307,7 @@ export const updateFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
@@ -333,6 +335,7 @@ export const deleteFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
