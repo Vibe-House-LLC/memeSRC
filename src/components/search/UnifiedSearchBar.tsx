@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { ButtonBase, IconButton, InputBase, Typography } from '@mui/material';
@@ -343,7 +343,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [shellHasFocus, setShellHasFocus] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
-  const skipBlurCollapseRef = useRef(false);
   // railId and scopeButtonSx removed with inline expansion approach
   const currentLabel = useMemo(
     () => buildCurrentLabel(currentValueId, shows, savedCids),
@@ -361,34 +360,9 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     return glyph;
   }, [currentLabel]);
 
-  useEffect(() => {
-    if (selectorOpen) {
-      setScopeExpanded(true);
-    }
-  }, [selectorOpen]);
-
   const handleFilterClick = useCallback(() => {
-    setScopeExpanded(true);
+    // open selector without forcing expansion
     setSelectorOpen(true);
-  }, []);
-
-  const handleScopeToggle = useCallback(() => {
-    setScopeExpanded((prev) => {
-      const next = !prev;
-      if (next) {
-        skipBlurCollapseRef.current = true;
-        requestAnimationFrame(() => {
-          skipBlurCollapseRef.current = false;
-          inputRef.current?.focus();
-        });
-      } else {
-        setSelectorOpen(false);
-        requestAnimationFrame(() => {
-          inputRef.current?.focus();
-        });
-      }
-      return next;
-    });
   }, []);
 
   const handleShellFocus = useCallback(() => {
@@ -400,15 +374,10 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       if (shellRef.current && shellRef.current.contains(document.activeElement)) {
         return;
       }
-      if (skipBlurCollapseRef.current) {
-        return;
-      }
       setShellHasFocus(false);
-      if (!selectorOpen) {
-        setScopeExpanded(false);
-      }
+      setScopeExpanded(false);
     });
-  }, [selectorOpen]);
+  }, []);
 
   const handleSelect: OnSelectSeries = useCallback(
     (selectedId) => {
@@ -456,13 +425,9 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     : `Show filter options for ${currentLabel}`;
 
   const handleScopeClick = useCallback(() => {
-    if (!scopeExpanded) {
-      handleScopeToggle();
-      return;
-    }
-    // When expanded, clicking opens the selector dialog
+    // Always open selector; do not force expansion here
     handleFilterClick();
-  }, [handleFilterClick, handleScopeToggle, scopeExpanded]);
+  }, [handleFilterClick]);
 
   return (
     <FormRoot onSubmit={onSubmit} noValidate>
@@ -481,6 +446,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               aria-expanded={scopeExpanded}
               aria-pressed={scopeExpanded}
               aria-label={scopeButtonLabel}
+              aria-haspopup="dialog"
               title={currentLabel}
             >
               <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
@@ -492,6 +458,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             placeholder={placeholder}
             onChange={(event) => onValueChange(event.target.value)}
             onKeyDown={handleInputKeyDown}
+            onFocus={() => setScopeExpanded(true)}
             sx={{
               '& input': (theme) => ({
                 padding: scopeExpanded ? theme.spacing(0.72, 0.66) : theme.spacing(0.9, 1),
