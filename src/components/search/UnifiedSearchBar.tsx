@@ -37,52 +37,44 @@ const FormRoot = styled('form')(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
-  gap: theme.spacing(1),
+  gap: theme.spacing(1.1),
 }));
 
 const FieldShell = styled('div')(({ theme }) => ({
-  '--scope-button-size': '40px',
-  '--scope-gap': theme.spacing(0.75),
+  '--scope-button-size': '44px',
+  '--scope-gap': theme.spacing(0.82),
   position: 'relative',
   width: '100%',
-  borderRadius: 18,
+  borderRadius: 20,
   border: '1px solid rgba(15, 23, 42, 0.08)',
   background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94))',
   boxShadow: '0 10px 24px rgba(15, 23, 42, 0.14)',
-  padding: theme.spacing(1.1, 1.5, 1.6),
+  padding: theme.spacing(1.2, 1.65, 1.75),
   display: 'flex',
   flexDirection: 'column',
-  gap: theme.spacing(0.6),
-  transition: 'border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease',
+  gap: theme.spacing(0.66),
+  transition: 'box-shadow 180ms ease',
   overflow: 'hidden',
-  '&[data-active="true"]': {
-    borderColor: 'rgba(15, 157, 88, 0.35)',
-  },
   '&[data-expanded="false"]': {
-    paddingBottom: theme.spacing(0.6),
-    gap: theme.spacing(0.2),
+    paddingBottom: theme.spacing(0.66),
+    gap: theme.spacing(0.22),
   },
   '&[data-expanded="true"]': {
-    paddingBottom: theme.spacing(1.4),
-    gap: theme.spacing(0.8),
-  },
-  '&:focus-within': {
-    borderColor: '#0F9D58',
-    boxShadow: '0 0 0 3px rgba(15, 157, 88, 0.12), 0 16px 28px rgba(15, 23, 42, 0.18)',
-    transform: 'translateY(-1px)',
+    paddingBottom: theme.spacing(1.54),
+    gap: theme.spacing(0.88),
   },
   [theme.breakpoints.down('sm')]: {
-    '--scope-button-size': '34px',
-    '--scope-gap': theme.spacing(0.55),
-    padding: theme.spacing(0.9, 1.1, 1.4),
-    borderRadius: 16,
+    '--scope-button-size': '37px',
+    '--scope-gap': theme.spacing(0.6),
+    padding: theme.spacing(1, 1.2, 1.5),
+    borderRadius: 17,
     '&[data-expanded="false"]': {
-      paddingBottom: theme.spacing(0.55),
-      gap: theme.spacing(0.15),
+      paddingBottom: theme.spacing(0.6),
+      gap: theme.spacing(0.18),
     },
     '&[data-expanded="true"]': {
-      paddingBottom: theme.spacing(1.2),
-      gap: theme.spacing(0.65),
+      paddingBottom: theme.spacing(1.32),
+      gap: theme.spacing(0.72),
     },
   },
 }));
@@ -100,11 +92,11 @@ const FieldRow = styled('div')(({ theme }) => ({
 const StyledInput = styled(InputBase)(({ theme }) => ({
   flex: 1,
   fontFamily: FONT_FAMILY,
-  fontSize: '1.06rem',
+  fontSize: '1.14rem',
   fontWeight: 500,
   color: '#0f172a',
   '& input': {
-    padding: theme.spacing(0.8, 0.9),
+    padding: theme.spacing(0.9, 1),
     border: 'none',
     outline: 'none',
     background: 'transparent',
@@ -115,9 +107,9 @@ const StyledInput = styled(InputBase)(({ theme }) => ({
     },
   },
   [theme.breakpoints.down('sm')]: {
-    fontSize: '1rem',
+    fontSize: '1.08rem',
     '& input': {
-      padding: theme.spacing(0.55, 0.6),
+      padding: theme.spacing(0.6, 0.66),
     },
   },
 }));
@@ -209,11 +201,11 @@ const ScopeGlyph = styled('span')(({ theme }) => ({
   justifyContent: 'center',
   fontFamily: FONT_FAMILY,
   fontWeight: 600,
-  fontSize: '0.98rem',
+  fontSize: '1.06rem',
   lineHeight: 1,
   color: 'inherit',
   [theme.breakpoints.down('sm')]: {
-    fontSize: '0.9rem',
+    fontSize: '0.98rem',
   },
 }));
 
@@ -249,7 +241,7 @@ const FilterRail = styled('div')(({ theme }) => ({
   alignSelf: 'stretch',
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(0.9),
+  gap: theme.spacing(1),
   marginTop: 0,
   maxHeight: 0,
   opacity: 0,
@@ -258,11 +250,11 @@ const FilterRail = styled('div')(({ theme }) => ({
   transition: 'max-height 180ms ease, opacity 160ms ease, margin-top 160ms ease',
   [theme.breakpoints.down('sm')]: {
     flexWrap: 'wrap',
-    gap: theme.spacing(0.75),
+    gap: theme.spacing(0.82),
   },
   '&[data-expanded="true"]': {
-    marginTop: theme.spacing(1),
-    maxHeight: 120,
+    marginTop: theme.spacing(1.1),
+    maxHeight: 132,
     opacity: 1,
     pointerEvents: 'auto',
   },
@@ -272,15 +264,15 @@ const FilterTrigger = styled(ButtonBase)(({ theme }) => ({
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: theme.spacing(0.75),
-  padding: theme.spacing(0.6, 1.05),
-  borderRadius: 16,
+  gap: theme.spacing(0.82),
+  padding: theme.spacing(0.66, 1.15),
+  borderRadius: 18,
   background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.96))',
   border: '1px solid rgba(148, 163, 184, 0.32)',
   boxShadow: '0 10px 20px rgba(15, 23, 42, 0.16)',
   color: '#0f172a',
   fontFamily: FONT_FAMILY,
-  fontSize: '0.86rem',
+  fontSize: '0.94rem',
   fontWeight: 600,
   lineHeight: 1.2,
   maxWidth: '100%',
@@ -501,7 +493,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         ref={shellRef}
         onFocus={handleShellFocus}
         onBlur={handleShellBlur}
-        data-active={isShellActive ? 'true' : 'false'}
         data-expanded={scopeExpanded ? 'true' : 'false'}
       >
         <FieldRow data-expanded={scopeExpanded ? 'true' : 'false'}>
@@ -537,7 +528,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             onKeyDown={handleInputKeyDown}
             sx={{
               '& input': (theme) => ({
-                padding: scopeExpanded ? theme.spacing(0.65, 0.6) : theme.spacing(0.8, 0.9),
+                padding: scopeExpanded ? theme.spacing(0.72, 0.66) : theme.spacing(0.9, 1),
                 transition: 'padding 180ms ease',
               }),
             }}
@@ -591,7 +582,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               noWrap
               sx={{
                 fontFamily: FONT_FAMILY,
-                fontSize: '0.86rem',
+                fontSize: '0.94rem',
                 fontWeight: 600,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
