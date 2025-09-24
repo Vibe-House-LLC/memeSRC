@@ -42,7 +42,7 @@ const FormRoot = styled('form')(({ theme }) => ({
 
 const FieldShell = styled('div')(({ theme }) => ({
   '--scope-button-size': '44px',
-  '--scope-gap': theme.spacing(0.5),
+  '--scope-gap': theme.spacing(0.92),
   position: 'relative',
   width: '100%',
   borderRadius: 14,
@@ -59,24 +59,28 @@ const FieldShell = styled('div')(({ theme }) => ({
   '&[data-expanded="false"]': {
     padding: theme.spacing(0.82, 1.04),
     gap: theme.spacing(0.26),
+    '--scope-gap': theme.spacing(0.6),
   },
   '&[data-expanded="true"]': {
     padding: theme.spacing(1.28, 1.52),
     gap: theme.spacing(0.6),
+    '--scope-gap': theme.spacing(1.1),
   },
   [theme.breakpoints.down('sm')]: {
     '--scope-button-size': '37px',
-    '--scope-gap': theme.spacing(0.46),
+    '--scope-gap': theme.spacing(0.74),
     padding: theme.spacing(0.86, 1.06),
     borderRadius: 12,
     transition: 'padding 240ms cubic-bezier(0.4, 0, 0.2, 1), gap 200ms cubic-bezier(0.4, 0, 0.2, 1)',
     '&[data-expanded="false"]': {
       padding: theme.spacing(0.68, 0.92),
       gap: theme.spacing(0.18),
+      '--scope-gap': theme.spacing(0.5),
     },
     '&[data-expanded="true"]': {
       padding: theme.spacing(1.04, 1.26),
       gap: theme.spacing(0.5),
+      '--scope-gap': theme.spacing(1),
     },
   },
 }));
@@ -130,8 +134,9 @@ const isPromiseLike = <T,>(value: unknown): value is PromiseLike<T> =>
   typeof (value as PromiseLike<T>).then === 'function';
 
 const DEFAULT_SCOPE_STYLING = {
-  background: 'linear-gradient(135deg, rgba(248, 248, 248, 0.98), rgba(232, 232, 232, 0.96))',
-  hoverBackground: 'linear-gradient(135deg, rgba(244, 244, 244, 0.98), rgba(228, 228, 228, 0.96))',
+  background: '#f0f0f0',
+  hoverBackground: '#e7e7e7',
+  activeBackground: '#dedede',
   color: '#2f2f2f',
   borderColor: 'rgba(50, 50, 50, 0.2)',
   boxShadow: 'none',
@@ -154,22 +159,23 @@ const RandomButton = styled(IconButton)(({ theme }) => {
   const base = buildCircleButtonStyles(theme);
   return {
     ...base,
-    background: 'linear-gradient(135deg, rgba(248, 248, 248, 0.98), rgba(232, 232, 232, 0.96))',
+    background: '#f0f0f0',
     color: '#2e2e2e',
     borderColor: 'rgba(50, 50, 50, 0.2)',
     boxShadow: 'none',
     '&:hover': {
-      background: 'linear-gradient(135deg, rgba(244, 244, 244, 0.98), rgba(230, 230, 230, 0.96))',
+      background: '#e7e7e7',
       boxShadow: 'none',
     },
     '&:active': {
+      background: '#dedede',
       boxShadow: 'none',
     },
     '&.Mui-disabled': {
       opacity: 0.85,
       boxShadow: 'none',
       transform: 'none',
-      background: 'linear-gradient(135deg, rgba(224, 224, 224, 0.9), rgba(224, 224, 224, 0.96))',
+      background: '#e6e6e6',
       color: 'rgba(80, 80, 80, 0.8)',
       borderColor: 'rgba(60, 60, 60, 0.22)',
     },
@@ -202,14 +208,14 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
     height: 'auto',
     minHeight: 'var(--scope-button-size)',
     borderRadius: theme.spacing(1.1),
-    padding: theme.spacing(0.36, 0.84),
+    padding: theme.spacing(0.36, 0.54),
     border: '1px solid ' + DEFAULT_SCOPE_STYLING.borderColor,
     background: DEFAULT_SCOPE_STYLING.background,
     color: DEFAULT_SCOPE_STYLING.color,
     boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
     width: 'auto',
     minWidth: 'var(--scope-button-size)',
-    gap: theme.spacing(0.26),
+    gap: theme.spacing(0.08),
     transition:
       'min-width 240ms cubic-bezier(0.4, 0, 0.2, 1), padding 240ms cubic-bezier(0.4, 0, 0.2, 1), gap 240ms cubic-bezier(0.4, 0, 0.2, 1)',
     // no hover/active animations
@@ -218,15 +224,19 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
       boxShadow: DEFAULT_SCOPE_STYLING.hoverBoxShadow,
     },
     '&:active': {
+      background: DEFAULT_SCOPE_STYLING.activeBackground,
       boxShadow: DEFAULT_SCOPE_STYLING.activeBoxShadow,
     },
     '&[data-expanded="false"]': {
       minWidth: 'calc(var(--scope-button-size) * 1.42)',
+      gap: theme.spacing(0.06),
     },
     '&[data-expanded="true"]': {
       flex: '0 1 auto',
       minWidth: 0,
       justifyContent: 'flex-start',
+      padding: theme.spacing(0.36, 0.6),
+      gap: theme.spacing(0.2),
     },
     '& .scopeLabel': {
       fontFamily: FONT_FAMILY,
@@ -252,7 +262,7 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
       fontSize: '1.26rem',
     },
     '& .collapsedIcon': {
-      marginLeft: theme.spacing(0.1),
+      marginLeft: 0,
     },
   };
 });
@@ -418,6 +428,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shouldRestoreFocusRef = useRef(false);
   // railId and scopeButtonSx removed with inline expansion approach
+  const showRandomButton = false;
   const currentSeries = useMemo(
     () => findSeriesItem(currentValueId, shows, savedCids),
     [currentValueId, savedCids, shows],
@@ -578,21 +589,23 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           )}
           {!scopeExpanded && (
             <>
-              <RandomButton
-                type="button"
-                aria-label="Show something random"
-                onClick={handleRandomClick}
-                onPointerDown={handleRandomPointerDown}
-                disabled={randomLoading}
-                aria-busy={randomLoading}
-                title="Random"
-              >
-                {randomLoading ? (
-                  <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
-                ) : (
-                  <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
-                )}
-              </RandomButton>
+              {showRandomButton && (
+                <RandomButton
+                  type="button"
+                  aria-label="Show something random"
+                  onClick={handleRandomClick}
+                  onPointerDown={handleRandomPointerDown}
+                  disabled={randomLoading}
+                  aria-busy={randomLoading}
+                  title="Random"
+                >
+                  {randomLoading ? (
+                    <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
+                  ) : (
+                    <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                  )}
+                </RandomButton>
+              )}
               <SubmitButton
                 type="submit"
                 aria-label="Search"
