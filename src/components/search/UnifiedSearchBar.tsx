@@ -51,7 +51,7 @@ const FieldShell = styled('div')(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   gap: theme.spacing(0.66),
-  transition: 'box-shadow 180ms ease',
+  // remove hover/box-shadow animations
   overflow: 'hidden',
   '&[data-expanded="false"]': {
     paddingBottom: theme.spacing(0.66),
@@ -118,15 +118,6 @@ const buildCircleButtonStyles = (theme: Theme) => ({
   borderRadius: '999px',
   border: '1px solid rgba(148, 163, 184, 0.32)',
   boxShadow: '0 8px 20px rgba(15, 23, 42, 0.15)',
-  transition: 'transform 160ms ease, box-shadow 160ms ease, background 160ms ease',
-  '&:hover': {
-    transform: 'translateY(-1px)',
-    boxShadow: '0 10px 22px rgba(15, 23, 42, 0.2)',
-  },
-  '&:active': {
-    transform: 'translateY(0)',
-    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.16)',
-  },
 });
 
 const DEFAULT_SCOPE_STYLING = {
@@ -148,15 +139,14 @@ const ScopeButton = styled(IconButton)(({ theme }) => {
     color: DEFAULT_SCOPE_STYLING.color,
     borderColor: DEFAULT_SCOPE_STYLING.borderColor,
     boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
+    // no hover/active animations
     '&:hover': {
-      ...base['&:hover'],
-      background: DEFAULT_SCOPE_STYLING.hoverBackground,
-      boxShadow: DEFAULT_SCOPE_STYLING.hoverBoxShadow,
+      background: DEFAULT_SCOPE_STYLING.background,
+      boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
       borderColor: DEFAULT_SCOPE_STYLING.borderColor,
     },
     '&:active': {
-      ...(base['&:active'] ?? {}),
-      boxShadow: DEFAULT_SCOPE_STYLING.activeBoxShadow,
+      boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
       borderColor: DEFAULT_SCOPE_STYLING.borderColor,
     },
     '& svg': {
@@ -175,12 +165,11 @@ const RandomButton = styled(IconButton)(({ theme }) => {
     borderColor: 'rgba(148, 163, 184, 0.36)',
     boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
     '&:hover': {
-      ...base['&:hover'],
-      background: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(226, 232, 240, 0.96))',
-      boxShadow: '0 16px 28px rgba(15, 23, 42, 0.2)',
+      background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96))',
+      boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
     },
     '&:active': {
-      boxShadow: '0 10px 20px rgba(15, 23, 42, 0.18)',
+      boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
     },
     '&.Mui-disabled': {
       opacity: 0.85,
@@ -223,15 +212,14 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
     color: DEFAULT_SCOPE_STYLING.color,
     boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
     width: 'var(--scope-button-size)',
-    transition: 'width 180ms ease, padding 180ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease',
+    transition: 'width 180ms ease, padding 180ms ease',
+    // no hover/active animations
     '&:hover': {
-      ...(base['&:hover'] ?? {}),
-      background: DEFAULT_SCOPE_STYLING.hoverBackground,
-      boxShadow: DEFAULT_SCOPE_STYLING.hoverBoxShadow,
+      background: DEFAULT_SCOPE_STYLING.background,
+      boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
     },
     '&:active': {
-      ...(base['&:active'] ?? {}),
-      boxShadow: DEFAULT_SCOPE_STYLING.activeBoxShadow,
+      boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
     },
     '&[data-expanded="true"]': {
       width: 'auto',
@@ -287,11 +275,11 @@ const ControlsRail = styled('div')(({ theme }) => ({
   },
   '& .railButton:hover': {
     boxShadow: 'none !important',
-    transform: 'translateY(-1px)',
+    transform: 'none',
   },
   '& .railButton:active': {
     boxShadow: 'none !important',
-    transform: 'translateY(0)',
+    transform: 'none',
   },
 }));
 
@@ -310,16 +298,13 @@ const SubmitButton = styled(IconButton)(({ theme }) => ({
   background: '#0f172a',
   color: theme.palette.common.white,
   boxShadow: '0 10px 20px rgba(15, 23, 42, 0.28)',
-  transition: 'transform 180ms ease, box-shadow 180ms ease, background 180ms ease',
   '&:hover': {
-    transform: 'translateY(-1px)',
-    boxShadow: '0 12px 22px rgba(15, 23, 42, 0.4)',
-    background: '#111827',
+    background: '#0f172a',
+    boxShadow: '0 10px 20px rgba(15, 23, 42, 0.28)',
   },
   '&:active': {
-    transform: 'translateY(0)',
-    boxShadow: '0 8px 18px rgba(15, 23, 42, 0.32)',
-    background: '#0b1220',
+    background: '#0f172a',
+    boxShadow: '0 10px 20px rgba(15, 23, 42, 0.28)',
   },
   '&.Mui-disabled': {
     background: '#374151',
