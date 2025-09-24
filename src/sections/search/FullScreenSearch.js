@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Button, Grid, Typography, useMediaQuery, useTheme, IconButton, Slide, Box as MuiBox } from '@mui/material';
+import { Grid, Typography, useMediaQuery, useTheme, IconButton, Slide } from '@mui/material';
 import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
@@ -13,12 +13,11 @@ import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
-import SeriesSelectorDialog from '../../components/SeriesSelectorDialog';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
+import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
 import {
   fetchLatestRelease,
   getReleaseType,
@@ -28,58 +27,11 @@ import {
   formatReleaseDisplay,
 } from '../../utils/githubReleases';
 import { safeGetItem } from '../../utils/storage';
+import useLoadRandomFrame from '../../utils/loadRandomFrame';
+import { trackUsageEvent } from '../../utils/trackUsageEvent';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
-
-// Define constants for colors and fonts
-const SECONDARY_COLOR = '#0F9D58';
-const FONT_FAMILY = 'Roboto, sans-serif';
-
-// Create a search form component
-const StyledSearchForm = styled.form`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  width: 800px;
-`;
-
-// Create a search button component
-const StyledSearchButton = styled(Button)`
-  font-family: ${FONT_FAMILY};
-  font-size: 18px;
-  color: #fff;
-  background-color: ${SECONDARY_COLOR};
-  border-radius: 8px;
-  padding: 10px 12px;
-`;
-
-// Create a label component
-const StyledLabel = styled.label`
-  margin-bottom: 8px;
-  color: ${SECONDARY_COLOR};
-  font-family: ${FONT_FAMILY};
-  font-size: 14px;
-`;
-
-
-const StyledSearchInput = styled.input`
-  font-family: ${FONT_FAMILY};
-  font-size: 18px;
-  color: #333;
-  background-color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  width: 100%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.3s;
-  height: 50px;
-  &:focus {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    outline: none;
-  }
-`;
 
 // Height of the fixed navbar on mobile
 const NAVBAR_HEIGHT = 45;
@@ -94,6 +46,10 @@ const StyledGridContainer = styled(Grid)`
     min-height: 100dvh;
     padding-left: ${theme.spacing(3)};
     padding-right: ${theme.spacing(3)};
+    ${theme.breakpoints.down('sm')} {
+      padding-left: ${theme.spacing(2)};
+      padding-right: ${theme.spacing(2)};
+    }
     /* Reserve space so the logo is clear of the fixed navbar */
     padding-top: ${NAVBAR_HEIGHT * 2}px;
     /* Allow a little room at the bottom so floating buttons don't
@@ -126,10 +82,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
   const { pathname } = useLocation();
-  const [selectorOpen, setSelectorOpen] = useState(false);
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
   const theme = useTheme();
+  const showAd = user?.userDetails?.subscriptionStatus !== 'active';
 
   // Recent update indicator state
   const [latestRelease, setLatestRelease] = useState(null);
@@ -259,7 +216,56 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     }
   }, [pathname, defaultShow, metadata?.id, seriesId, setCid, setCidSearchQuery, setSearchQuery, setShowObj, shows]);
 
+  const hasFavoriteShows = useMemo(() => shows.some((s) => s.isFavorite), [shows]);
 
+  const currentValueId = useMemo(() => {
+    const fallback = cid || seriesTitle || (hasFavoriteShows ? defaultShow : '_universal');
+    return fallback || '_universal';
+  }, [cid, seriesTitle, hasFavoriteShows, defaultShow]);
+
+  const includeAllFavorites = hasFavoriteShows;
+
+  const handleRandomSearch = useCallback(() => {
+    const scope = currentValueId || '_universal';
+    trackUsageEvent('random_frame', {
+      source: 'UnifiedSearchBar',
+      scope,
+      showCount: Array.isArray(shows) ? shows.length : 0,
+      hasAd: showAd,
+    });
+    loadRandomFrame(scope);
+  }, [currentValueId, loadRandomFrame, shows, showAd]);
+
+  const handleSelect = useCallback(
+    (selectedId) => {
+      const nextId = selectedId || '_universal';
+      setCid(nextId);
+      setSeriesTitle(nextId);
+      handleChangeSeries(nextId);
+      if (nextId === '_universal' || nextId === '_favorites') {
+        handleUpdateDefaultShow(nextId);
+      }
+      navigate(nextId === '_universal' ? '/' : `/${nextId}`);
+    },
+    [handleChangeSeries, handleUpdateDefaultShow, navigate, setCid, setSeriesTitle]
+  );
+
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+  }, [setSearchTerm]);
+
+  const handleSearchTermChange = useCallback(
+    (value) => {
+      let nextValue = value;
+      nextValue = nextValue.replace(/[\u2018\u2019]/g, "'");
+      nextValue = nextValue.replace(/[\u201C\u201D]/g, '"');
+      nextValue = nextValue.replace(/[\u2013\u2014]/g, '-');
+      setSearchTerm(nextValue);
+    },
+    [setSearchTerm],
+  );
+
+  
   return (
     <>
       <StyledGridContainer container sx={currentThemeBackground}>
@@ -436,130 +442,29 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               )}
             </Grid>
           </Grid>
-          <StyledSearchForm onSubmit={(e) => searchFunction(e)}>
-            <Grid container justifyContent="center">
-              <Grid item sm={3.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                {(() => {
-                  const currentValueId = cid || seriesTitle || (shows.some((s) => s.isFavorite) ? defaultShow : '_universal');
-                  const currentLabel = (() => {
-                    if (currentValueId === '_universal') return '🌈 All Shows & Movies';
-                    if (currentValueId === '_favorites') return '⭐ All Favorites';
-                    const found = shows.find((s) => s.id === currentValueId) || savedCids.find((s) => s.id === currentValueId);
-                    return found ? `${found.emoji ? `${found.emoji} ` : ''}${found.title}` : 'Select show or movie';
-                  })();
-
-                  const handleSelect = (selectedId) => {
-                    setCid(selectedId || '_universal');
-                    setSeriesTitle(selectedId);
-                    handleChangeSeries(selectedId);
-                    if (selectedId === '_universal' || selectedId === '_favorites') {
-                      handleUpdateDefaultShow(selectedId);
-                    }
-                    navigate(selectedId === '_universal' ? '/' : `/${selectedId}`);
-                  };
-
-                  const includeAllFav = shows.some((s) => s.isFavorite);
-
-                  return (
-                    <>
-                      <MuiBox sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Button
-                          onClick={() => setSelectorOpen(true)}
-                          endIcon={<ArrowDropDownIcon />}
-                          sx={{
-                            fontFamily: FONT_FAMILY,
-                            fontSize: '16px',
-                            fontWeight: 400,
-                            color: '#333',
-                            backgroundColor: '#fff',
-                            border: 'none',
-                            borderRadius: '8px',
-                            height: '50px',
-                            width: '100%',
-                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                            textTransform: 'none',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            display: 'flex',
-                            gap: 1,
-                            px: 1.5,
-                            '& .MuiButton-endIcon': {
-                              marginLeft: 1,
-                              marginRight: 0,
-                              flexShrink: 0,
-                            },
-                            '&:hover': { backgroundColor: '#fff' },
-                          }}
-                        >
-                          <MuiBox
-                            component="span"
-                            sx={{
-                              flex: 1,
-                              minWidth: 0,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              textAlign: 'left',
-                            }}
-                          >
-                            {currentLabel}
-                          </MuiBox>
-                        </Button>
-                      </MuiBox>
-                      <SeriesSelectorDialog
-                        open={selectorOpen}
-                        onClose={() => setSelectorOpen(false)}
-                        onSelect={handleSelect}
-                        shows={shows}
-                        savedCids={savedCids}
-                        currentValueId={currentValueId}
-                        includeAllFavorites={includeAllFav}
-                      />
-                    </>
-                  );
-                })()}
-              </Grid>
-              <Grid item sm={7} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledLabel htmlFor="search-term">
-                  <StyledSearchInput
-                    type="text"
-                    id="search-term"
-                    value={searchTerm}
-                    placeholder="What's the quote?"
-                    onChange={(e) => {
-                      let { value } = e.target;
-
-                      // Replace curly single quotes with straight single quotes
-                      value = value.replace(/[\u2018\u2019]/g, "'");
-
-                      // Replace curly double quotes with straight double quotes
-                      value = value.replace(/[\u201C\u201D]/g, '"');
-
-                      // Replace en-dash and em-dash with hyphen
-                      value = value.replace(/[\u2013\u2014]/g, '-');
-
-                      setSearchTerm(value);
-                    }}
-                  />
-                </StyledLabel>
-              </Grid>
-              <Grid item sm={1.5} xs={12} paddingX={0.25} paddingBottom={{ xs: 1, sm: 0 }}>
-                <StyledSearchButton
-                  type="submit"
-                  style={{ backgroundColor: 'black' }}
-                  fullWidth={window.innerWidth <= 600}
-                >
-                  Search
-                </StyledSearchButton>
-              </Grid>
+          <Grid container justifyContent="center">
+            <Grid item xs={12}>
+              <UnifiedSearchBar
+                value={searchTerm}
+                onValueChange={handleSearchTermChange}
+                onSubmit={(event) => searchFunction(event)}
+                onClear={handleClearSearch}
+                onRandom={handleRandomSearch}
+                isRandomLoading={loadingRandom}
+                shows={shows}
+                savedCids={savedCids}
+                currentValueId={currentValueId}
+                includeAllFavorites={includeAllFavorites}
+                onSelectSeries={handleSelect}
+              />
             </Grid>
-          </StyledSearchForm>
+          </Grid>
           <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={2} marginTop={1}>
             <Typography component="h2" variant="h4">
               {currentThemeBragText}
             </Typography>
           </Grid>
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
+          {showAd &&
             <Grid item xs={12} mt={1}>
               <center>
                 <Box >
