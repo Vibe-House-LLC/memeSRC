@@ -18,13 +18,42 @@ const prepSessionID = () => {
   });
 };
 
+const SEARCH_TERM_STORAGE_KEY = 'memeSRC:lastSearchTerm';
+
+const readStoredSearchTerm = () => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  try {
+    const stored = window.sessionStorage.getItem(SEARCH_TERM_STORAGE_KEY);
+    return typeof stored === 'string' ? stored : '';
+  } catch (error) {
+    return '';
+  }
+};
+
 export default function SearchPage({ metadata }) {
   const { defaultShow, shows } = useContext(UserContext)
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => readStoredSearchTerm());
   const [seriesTitle, setSeriesTitle] = useState(shows.some(show => show.isFavorite) ? defaultShow : '_universal');
   const { setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      if (searchTerm) {
+        window.sessionStorage.setItem(SEARCH_TERM_STORAGE_KEY, searchTerm);
+      } else {
+        window.sessionStorage.removeItem(SEARCH_TERM_STORAGE_KEY);
+      }
+    } catch (error) {
+      // Swallow storage errors (private mode, quota, etc.)
+    }
+  }, [searchTerm]);
 
   useEffect(() => {
     const runWarmups = () => {
