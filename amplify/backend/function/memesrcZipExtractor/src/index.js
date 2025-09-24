@@ -13,6 +13,7 @@ const AWS = require('aws-sdk');
 const yauzl = require('yauzl');
 const fs = require('fs');
 const path = require('path');
+const { pipeline } = require('stream/promises');
 
 // Initialize S3 client
 const s3 = new AWS.S3();
@@ -96,16 +97,16 @@ const extractZipToS3 = async (sourceBucket, sourceKey, destinationBucket, destin
     
     try {
         
-        // Download zip file to ephemeral storage
-        console.log('Downloading zip file to ephemeral storage...');
-        const zipObject = await s3.getObject({
+        // Download zip file to ephemeral storage via streaming (avoid buffering in memory)
+        console.log('Downloading zip file to ephemeral storage (streaming)...');
+        const s3ReadStream = s3.getObject({
             Bucket: sourceBucket,
             Key: sourceKey
-        }).promise();
-        
-        // Write zip file to /tmp
-        fs.writeFileSync(zipFilePath, zipObject.Body);
-        console.log(`Downloaded zip file to ${zipFilePath}: ${zipObject.Body.length} bytes`);
+        }).createReadStream();
+        const fileWriteStream = fs.createWriteStream(zipFilePath);
+        await pipeline(s3ReadStream, fileWriteStream);
+        const { size: downloadedSize } = fs.statSync(zipFilePath);
+        console.log(`Downloaded zip file to ${zipFilePath}: ${downloadedSize} bytes`);
         
         // Extract zip file using yauzl
         console.log(`Opening zip file with yauzl...`);
@@ -273,7 +274,7 @@ const extractZipToS3 = async (sourceBucket, sourceKey, destinationBucket, destin
                                 ContentType: getContentType(fileName)
                             };
                             
-                            s3.upload(uploadParams, (uploadErr, result) => {
+                            s3.upload(uploadParams, { partSize: 64 * 1024 * 1024, queueSize: 2 }, (uploadErr, result) => {
                                 if (uploadErr) {
                                     reject(uploadErr);
                                     return;
