@@ -4,7 +4,7 @@ import type { Theme } from '@mui/material/styles';
 import { ButtonBase, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import KeyboardArrowUpRoundedIcon from '@mui/icons-material/KeyboardArrowUpRounded';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
@@ -218,35 +218,33 @@ const ScopeGlyph = styled('span')(({ theme }) => ({
   },
 }));
 
-const ScopeButtonContent = styled('span')(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: '100%',
-  height: '100%',
-  color: 'inherit',
+const ScopeFlipButton = styled(ScopeButton)(({ theme }) => ({
+  position: 'relative',
+  '& .flipInner': {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    transformStyle: 'preserve-3d',
+    transition: 'transform 220ms ease',
+  },
+  '& .flipFace': {
+    position: 'absolute',
+    inset: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
+  },
+  '& .flipBack': {
+    transform: 'rotateY(180deg)',
+  },
+  '&[aria-expanded="true"] .flipInner': {
+    transform: 'rotateY(180deg)',
+  },
 }));
 
-const ScopeControl = styled(ButtonBase)(({ theme }) => ({
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: theme.spacing(0.5),
-  padding: theme.spacing(0.25, 0.5),
-  borderRadius: 10,
-  background: 'transparent',
-  color: '#0f172a',
-  transition: 'transform 0.2s ease',
-  '&:hover': {
-    transform: 'translateY(-1px)',
-  },
-  '&:active': {
-    transform: 'translateY(0)',
-  },
-  '& svg': {
-    flexShrink: 0,
-    color: '#0F9D58',
-  },
-}));
+// No inline scope control; we use the circular flip button instead
 
 const FilterRail = styled('div')(({ theme }) => ({
   alignSelf: 'stretch',
@@ -516,7 +514,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       >
         <FieldRow data-expanded={scopeExpanded ? 'true' : 'false'}>
           {!scopeExpanded && (
-            <ScopeControl
+            <ScopeFlipButton
               type="button"
               onClick={handleScopeToggle}
               aria-expanded={scopeExpanded}
@@ -524,13 +522,20 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               aria-label={scopeButtonLabel}
               aria-controls={railId}
               title={currentLabel}
-              sx={{ alignSelf: controlsAlignment }}
+              sx={{
+                ...scopeButtonSx,
+                alignSelf: controlsAlignment,
+              }}
             >
-              <ScopeButtonContent>
-                <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
-                <KeyboardArrowDownRoundedIcon fontSize="small" />
-              </ScopeButtonContent>
-            </ScopeControl>
+              <span className="flipInner">
+                <span className="flipFace flipFront">
+                  <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
+                </span>
+                <span className="flipFace flipBack">
+                  <TuneRoundedIcon fontSize="small" />
+                </span>
+              </span>
+            </ScopeFlipButton>
           )}
           <StyledInput
             value={value}
