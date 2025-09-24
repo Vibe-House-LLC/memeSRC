@@ -43,7 +43,7 @@ const FieldShell = styled('div')(({ theme }) => ({
   '--scope-gap': theme.spacing(0.82),
   position: 'relative',
   width: '100%',
-  borderRadius: 20,
+  borderRadius: 14,
   border: '1px solid rgba(15, 23, 42, 0.08)',
   background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94))',
   boxShadow: '0 10px 24px rgba(15, 23, 42, 0.14)',
@@ -65,7 +65,7 @@ const FieldShell = styled('div')(({ theme }) => ({
     '--scope-button-size': '37px',
     '--scope-gap': theme.spacing(0.6),
     padding: theme.spacing(1, 1.2, 1.5),
-    borderRadius: 17,
+    borderRadius: 12,
     '&[data-expanded="false"]': {
       paddingBottom: theme.spacing(0.6),
       gap: theme.spacing(0.18),
@@ -290,6 +290,53 @@ const RailRight = styled('div')(({ theme }) => ({
   gap: theme.spacing(1),
 }));
 
+const LabeledRandomButton = styled(ButtonBase)(({ theme }) => ({
+  height: 'var(--scope-button-size)',
+  borderRadius: 999,
+  padding: theme.spacing(0.66, 1.15),
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: theme.spacing(0.72),
+  border: '1px solid rgba(148, 163, 184, 0.36)',
+  background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96))',
+  color: '#0f172a',
+  boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
+  '& .actionLabel': {
+    fontFamily: FONT_FAMILY,
+    fontWeight: 600,
+    fontSize: '0.94rem',
+    color: '#0f172a',
+    whiteSpace: 'nowrap',
+  },
+}));
+
+const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
+  height: 'var(--scope-button-size)',
+  borderRadius: 999,
+  padding: theme.spacing(0.66, 1.15),
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: theme.spacing(0.72),
+  border: '1px solid transparent',
+  background: '#0f172a',
+  color: theme.palette.common.white,
+  boxShadow: '0 10px 20px rgba(15, 23, 42, 0.28)',
+  '& .actionLabel': {
+    fontFamily: FONT_FAMILY,
+    fontWeight: 700,
+    fontSize: '0.94rem',
+    color: theme.palette.common.white,
+    whiteSpace: 'nowrap',
+    paddingLeft: theme.spacing(0.5),
+  },
+  '&.Mui-disabled': {
+    background: '#374151',
+    color: '#e5e7eb',
+    boxShadow: 'none',
+    borderColor: 'transparent',
+  },
+}));
+
 const SubmitButton = styled(IconButton)(({ theme }) => ({
   width: 'var(--scope-button-size)',
   height: 'var(--scope-button-size)',
@@ -466,25 +513,27 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               }),
             }}
           />
-          {!scopeExpanded && showRandomButton && (
-            <RandomButton
-              type="button"
-              aria-label="Show something random"
-              onClick={handleRandomClick}
-              disabled={isRandomLoading}
-              aria-busy={isRandomLoading}
-            >
-              <ShuffleIcon fontSize="small" />
-            </RandomButton>
-          )}
           {!scopeExpanded && (
-            <SubmitButton
-              type="submit"
-              aria-label="Search"
-              disabled={!hasInput}
-            >
-              <ArrowForwardRoundedIcon fontSize="small" />
-            </SubmitButton>
+            <>
+              <RandomButton
+                type="button"
+                aria-label="Show something random"
+                onClick={handleRandomClick}
+                disabled={isRandomLoading}
+                aria-busy={isRandomLoading}
+                title="Random"
+              >
+                <ShuffleIcon fontSize="small" />
+              </RandomButton>
+              <SubmitButton
+                type="submit"
+                aria-label="Search"
+                disabled={!hasInput}
+                title="Search"
+              >
+                <ArrowForwardRoundedIcon fontSize="small" />
+              </SubmitButton>
+            </>
           )}
         </FieldRow>
         <ControlsRail data-expanded={scopeExpanded ? 'true' : 'false'}>
@@ -507,26 +556,53 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                 <ArrowDropDownIcon fontSize="small" />
               </ScopeSelectorButton>
               <RailRight>
-                {showRandomButton && (
-                  <RandomButton
-                    className="railButton"
-                    type="button"
-                    aria-label="Show something random"
-                    onClick={handleRandomClick}
-                    disabled={isRandomLoading}
-                    aria-busy={isRandomLoading}
-                  >
-                    <ShuffleIcon fontSize="small" />
-                  </RandomButton>
+                {hasInput ? (
+                  <>
+                    <RandomButton
+                      className="railButton"
+                      type="button"
+                      aria-label="Show something random"
+                      onClick={handleRandomClick}
+                      disabled={isRandomLoading}
+                      aria-busy={isRandomLoading}
+                      title="Random"
+                    >
+                      <ShuffleIcon fontSize="small" />
+                    </RandomButton>
+                    <LabeledSubmitButton
+                      type="submit"
+                      aria-label="Search"
+                      disabled={!hasInput}
+                      className="railButton"
+                    >
+                      <span className="actionLabel">Search</span>
+                      <ArrowForwardRoundedIcon fontSize="small" />
+                    </LabeledSubmitButton>
+                  </>
+                ) : (
+                  <>
+                    <LabeledRandomButton
+                      type="button"
+                      aria-label="Show something random"
+                      onClick={handleRandomClick}
+                      disabled={isRandomLoading}
+                      aria-busy={isRandomLoading}
+                      className="railButton"
+                    >
+                      <ShuffleIcon fontSize="small" />
+                      <span className="actionLabel">Random</span>
+                    </LabeledRandomButton>
+                    <SubmitButton
+                      className="railButton"
+                      type="submit"
+                      aria-label="Search"
+                      disabled={!hasInput}
+                      title="Search"
+                    >
+                      <ArrowForwardRoundedIcon fontSize="small" />
+                    </SubmitButton>
+                  </>
                 )}
-                <SubmitButton
-                  className="railButton"
-                  type="submit"
-                  aria-label="Search"
-                  disabled={!hasInput}
-                >
-                  <ArrowForwardRoundedIcon fontSize="small" />
-                </SubmitButton>
               </RailRight>
             </>
           )}
