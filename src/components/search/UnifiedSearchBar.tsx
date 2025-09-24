@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
-import { styled } from '@mui/material/styles';
+import { styled, alpha, darken, useTheme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 import { ButtonBase, IconButton, InputBase, Typography } from '@mui/material';
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
+import KeyboardArrowUpRoundedIcon from '@mui/icons-material/KeyboardArrowUpRounded';
+import ShuffleIcon from '@mui/icons-material/Shuffle';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
+import { normalizeColorValue } from '../../utils/colors';
 
 type SeriesSelectorDialogProps = React.ComponentProps<typeof SeriesSelectorDialog>;
 
@@ -16,6 +20,8 @@ export interface UnifiedSearchBarProps {
   onValueChange: (value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onClear: () => void;
+  onRandom?: () => void;
+  isRandomLoading?: boolean;
   shows: SeriesItem[];
   savedCids: SeriesItem[];
   currentValueId: string;
@@ -37,21 +43,29 @@ const FormRoot = styled('form')(({ theme }) => ({
 
 const FieldShell = styled('div')(({ theme }) => ({
   '--scope-button-size': '44px',
-  '--scope-gap': theme.spacing(1),
+  '--scope-gap': theme.spacing(0.9),
   position: 'relative',
   width: '100%',
   borderRadius: 24,
   border: '1px solid rgba(15, 23, 42, 0.08)',
   background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94))',
   boxShadow: '0 18px 36px rgba(15, 23, 42, 0.14)',
-  padding: theme.spacing(1.75, 2.25, 2.5),
+  padding: theme.spacing(1.55, 2.25, 2.4),
   display: 'flex',
   flexDirection: 'column',
-  gap: theme.spacing(1),
+  gap: theme.spacing(0.95),
   transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
   overflow: 'hidden',
   '&[data-active="true"]': {
     borderColor: 'rgba(15, 157, 88, 0.35)',
+  },
+  '&[data-expanded="false"]': {
+    paddingBottom: theme.spacing(1),
+    gap: theme.spacing(0.3),
+  },
+  '&[data-expanded="true"]': {
+    paddingBottom: theme.spacing(2.35),
+    gap: theme.spacing(1.15),
   },
   '&:focus-within': {
     borderColor: '#0F9D58',
@@ -60,9 +74,17 @@ const FieldShell = styled('div')(({ theme }) => ({
   },
   [theme.breakpoints.down('sm')]: {
     '--scope-button-size': '38px',
-    '--scope-gap': theme.spacing(0.75),
-    padding: theme.spacing(1.35, 1.5, 2.25),
+    '--scope-gap': theme.spacing(0.7),
+    padding: theme.spacing(1.2, 1.5, 2),
     borderRadius: 20,
+    '&[data-expanded="false"]': {
+      paddingBottom: theme.spacing(0.85),
+      gap: theme.spacing(0.2),
+    },
+    '&[data-expanded="true"]': {
+      paddingBottom: theme.spacing(2.1),
+      gap: theme.spacing(0.9),
+    },
   },
 }));
 
@@ -70,6 +92,10 @@ const FieldRow = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--scope-gap)',
+  transition: 'align-items 0.2s ease, gap 0.2s ease',
+  '&[data-expanded="true"]': {
+    alignItems: 'flex-end',
+  },
 }));
 
 const StyledInput = styled(InputBase)(({ theme }) => ({
@@ -97,32 +123,14 @@ const StyledInput = styled(InputBase)(({ theme }) => ({
   },
 }));
 
-const ClearButton = styled(IconButton)(({ theme }) => ({
+const buildCircleButtonStyles = (theme: Theme) => ({
   width: 'var(--scope-button-size)',
   height: 'var(--scope-button-size)',
   borderRadius: '999px',
-  color: '#475569',
-  background: 'linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(241, 245, 249, 0.86))',
-  border: '1px solid rgba(148, 163, 184, 0.26)',
-  transition: 'background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease',
-  '&:hover': {
-    background: 'linear-gradient(180deg, rgba(236, 242, 247, 0.98), rgba(248, 250, 252, 0.92))',
-    transform: 'translateY(-1px)',
-    boxShadow: '0 12px 22px rgba(15, 23, 42, 0.18)',
-  },
-}));
-
-const ScopeButton = styled(IconButton)(({ theme }) => ({
-  width: 'var(--scope-button-size)',
-  height: 'var(--scope-button-size)',
-  borderRadius: '999px',
-  background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.96))',
   border: '1px solid rgba(148, 163, 184, 0.32)',
   boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
-  color: '#0f172a',
   transition: 'transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
   '&:hover': {
-    background: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(255, 255, 255, 0.96))',
     transform: 'translateY(-1px)',
     boxShadow: '0 14px 26px rgba(15, 23, 42, 0.2)',
   },
@@ -130,21 +138,104 @@ const ScopeButton = styled(IconButton)(({ theme }) => ({
     transform: 'translateY(0)',
     boxShadow: '0 10px 20px rgba(15, 23, 42, 0.16)',
   },
-}));
+});
+
+const DEFAULT_SCOPE_STYLING = {
+  background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96))',
+  hoverBackground: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(226, 232, 240, 0.96))',
+  color: '#0f172a',
+  borderColor: 'rgba(148, 163, 184, 0.36)',
+  boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
+  hoverBoxShadow: '0 16px 28px rgba(15, 23, 42, 0.2)',
+  activeBoxShadow: '0 10px 20px rgba(15, 23, 42, 0.18)',
+} as const;
+
+const ScopeButton = styled(IconButton)(({ theme }) => {
+  const base = buildCircleButtonStyles(theme);
+  return {
+    ...base,
+    position: 'relative',
+    background: DEFAULT_SCOPE_STYLING.background,
+    color: DEFAULT_SCOPE_STYLING.color,
+    borderColor: DEFAULT_SCOPE_STYLING.borderColor,
+    boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
+    '&:hover': {
+      ...base['&:hover'],
+      background: DEFAULT_SCOPE_STYLING.hoverBackground,
+      boxShadow: DEFAULT_SCOPE_STYLING.hoverBoxShadow,
+      borderColor: DEFAULT_SCOPE_STYLING.borderColor,
+    },
+    '&:active': {
+      ...(base['&:active'] ?? {}),
+      boxShadow: DEFAULT_SCOPE_STYLING.activeBoxShadow,
+      borderColor: DEFAULT_SCOPE_STYLING.borderColor,
+    },
+    '& svg': {
+      flexShrink: 0,
+      color: 'inherit',
+    },
+  };
+});
+
+const RandomButton = styled(IconButton)(({ theme }) => {
+  const base = buildCircleButtonStyles(theme);
+  return {
+    ...base,
+    background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96))',
+    color: '#0f172a',
+    borderColor: 'rgba(148, 163, 184, 0.36)',
+    boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
+    '&:hover': {
+      ...base['&:hover'],
+      background: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(226, 232, 240, 0.96))',
+      boxShadow: '0 16px 28px rgba(15, 23, 42, 0.2)',
+    },
+    '&:active': {
+      boxShadow: '0 10px 20px rgba(15, 23, 42, 0.18)',
+    },
+    '&.Mui-disabled': {
+      opacity: 0.85,
+      boxShadow: 'none',
+      transform: 'none',
+      background: 'linear-gradient(135deg, rgba(226, 232, 240, 0.9), rgba(226, 232, 240, 0.96))',
+      color: 'rgba(100, 116, 139, 0.82)',
+      borderColor: 'rgba(148, 163, 184, 0.3)',
+    },
+  };
+});
 
 const ScopeGlyph = styled('span')(({ theme }) => ({
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: '100%',
-  height: '100%',
   fontFamily: FONT_FAMILY,
   fontWeight: 600,
   fontSize: '1.05rem',
-  letterSpacing: 0.25,
-  color: '#0f172a',
+  lineHeight: 1,
+  color: 'inherit',
   [theme.breakpoints.down('sm')]: {
     fontSize: '0.95rem',
+  },
+}));
+
+const ScopeButtonContent = styled('span')(({ theme }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: theme.spacing(0.4),
+  color: 'inherit',
+}));
+
+const ScopeCaretDown = styled(KeyboardArrowDownRoundedIcon)(({ theme }) => ({
+  position: 'absolute',
+  right: theme.spacing(0.4),
+  bottom: theme.spacing(0.2),
+  fontSize: '0.95rem',
+  color: 'inherit',
+  pointerEvents: 'none',
+  [theme.breakpoints.down('sm')]: {
+    fontSize: '0.9rem',
+    right: theme.spacing(0.3),
+    bottom: theme.spacing(0.15),
   },
 }));
 
@@ -214,18 +305,26 @@ const SubmitButton = styled(IconButton)(({ theme }) => ({
   width: 'var(--scope-button-size)',
   height: 'var(--scope-button-size)',
   borderRadius: '999px',
-  background: 'linear-gradient(135deg, #0F9D58, #22C55E)',
-  color: theme.palette.common.white,
-  boxShadow: '0 14px 28px rgba(15, 23, 42, 0.24)',
+  border: '1px solid transparent',
+  background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(226, 232, 240, 0.94))',
+  color: '#0f172a',
+  boxShadow: '0 12px 22px rgba(15, 23, 42, 0.18)',
   transition: 'transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
   '&:hover': {
     transform: 'translateY(-1px)',
-    boxShadow: '0 18px 32px rgba(15, 23, 42, 0.28)',
-    background: 'linear-gradient(135deg, #0c8c4a, #16a34a)',
+    boxShadow: '0 16px 28px rgba(15, 23, 42, 0.24)',
+    background: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(226, 232, 240, 0.96))',
   },
   '&:active': {
     transform: 'translateY(0)',
-    boxShadow: '0 12px 20px rgba(15, 23, 42, 0.22)',
+    boxShadow: '0 10px 18px rgba(15, 23, 42, 0.2)',
+  },
+  '&.Mui-disabled': {
+    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.32))',
+    color: 'rgba(248, 250, 252, 0.68)',
+    boxShadow: 'none',
+    transform: 'none',
+    borderColor: 'rgba(15, 23, 42, 0.4)',
   },
 }));
 
@@ -244,6 +343,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   onValueChange,
   onSubmit,
   onClear,
+  onRandom,
+  isRandomLoading,
   shows,
   savedCids,
   currentValueId,
@@ -255,7 +356,54 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [shellHasFocus, setShellHasFocus] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
+  const skipBlurCollapseRef = useRef(false);
   const railId = useId();
+  const theme = useTheme();
+  const currentSeries = useMemo<SeriesItem | undefined>(() => {
+    if (!currentValueId || currentValueId.startsWith('_')) {
+      return undefined;
+    }
+    return shows.find((s) => s.id === currentValueId) || savedCids.find((s) => s.id === currentValueId);
+  }, [currentValueId, shows, savedCids]);
+  const scopePalette = useMemo(() => {
+    if (!currentSeries) return null;
+    const mainColor = normalizeColorValue(currentSeries.colorMain);
+    if (!mainColor) return null;
+    const textColor = normalizeColorValue(currentSeries.colorSecondary) || theme.palette.getContrastText(mainColor);
+    const baseBackground = `linear-gradient(135deg, ${alpha(mainColor, 0.9)}, ${darken(mainColor, 0.08)})`;
+    const hoverBackground = `linear-gradient(135deg, ${alpha(mainColor, 0.95)}, ${darken(mainColor, 0.16)})`;
+    const borderColor = alpha(mainColor, 0.55);
+    const boxShadow = `0 12px 24px ${alpha(mainColor, 0.35)}`;
+    const hoverBoxShadow = `0 14px 26px ${alpha(mainColor, 0.42)}`;
+    const activeBoxShadow = `0 10px 20px ${alpha(mainColor, 0.32)}`;
+    return {
+      background: baseBackground,
+      hoverBackground,
+      color: textColor,
+      borderColor,
+      boxShadow,
+      hoverBoxShadow,
+      activeBoxShadow,
+    };
+  }, [currentSeries, theme]);
+  const scopeButtonSx = useMemo(() => {
+    const palette = scopePalette ?? DEFAULT_SCOPE_STYLING;
+    return {
+      background: palette.background,
+      color: palette.color,
+      borderColor: palette.borderColor,
+      boxShadow: palette.boxShadow,
+      '&:hover': {
+        background: palette.hoverBackground,
+        boxShadow: palette.hoverBoxShadow,
+        borderColor: palette.borderColor,
+      },
+      '&:active': {
+        boxShadow: palette.activeBoxShadow,
+        borderColor: palette.borderColor,
+      },
+    } as const;
+  }, [scopePalette]);
   const currentLabel = useMemo(
     () => buildCurrentLabel(currentValueId, shows, savedCids),
     [currentValueId, shows, savedCids],
@@ -286,7 +434,14 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const handleScopeToggle = useCallback(() => {
     setScopeExpanded((prev) => {
       const next = !prev;
-      if (!prev) {
+      if (next) {
+        skipBlurCollapseRef.current = true;
+        requestAnimationFrame(() => {
+          skipBlurCollapseRef.current = false;
+          inputRef.current?.focus();
+        });
+      } else {
+        setSelectorOpen(false);
         requestAnimationFrame(() => {
           inputRef.current?.focus();
         });
@@ -302,6 +457,9 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const handleShellBlur = useCallback(() => {
     requestAnimationFrame(() => {
       if (shellRef.current && shellRef.current.contains(document.activeElement)) {
+        return;
+      }
+      if (skipBlurCollapseRef.current) {
         return;
       }
       setShellHasFocus(false);
@@ -330,6 +488,43 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     });
   }, [onClear]);
 
+  const handleInputKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Escape' && value.trim()) {
+        event.preventDefault();
+        handleClear();
+      }
+    },
+    [handleClear, value],
+  );
+
+  const handleRandomClick = useCallback(() => {
+    onRandom?.();
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, [onRandom]);
+
+  const trimmedValue = value.trim();
+  const hasInput = trimmedValue.length > 0;
+  const showRandomButton = !hasInput;
+  const controlsAlignment = scopeExpanded ? 'flex-end' : 'center';
+  const submitButtonActiveStyles = useMemo(() => {
+    if (!hasInput) return null;
+    return {
+      background: 'linear-gradient(135deg, #0f172a, #111827)',
+      color: theme.palette.common.white,
+      borderColor: 'rgba(15, 23, 42, 0.75)',
+      boxShadow: '0 16px 30px rgba(15, 23, 42, 0.36)',
+      '&:hover': {
+        background: 'linear-gradient(135deg, #111827, #1f2937)',
+        boxShadow: '0 18px 34px rgba(15, 23, 42, 0.42)',
+      },
+      '&:active': {
+        boxShadow: '0 12px 24px rgba(15, 23, 42, 0.32)',
+      },
+    } as const;
+  }, [hasInput, theme.palette.common.white]);
   const isRailVisible = scopeExpanded || selectorOpen;
   const isShellActive = shellHasFocus || scopeExpanded || selectorOpen;
   const scopeButtonLabel = scopeExpanded
@@ -345,7 +540,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         data-active={isShellActive ? 'true' : 'false'}
         data-expanded={scopeExpanded ? 'true' : 'false'}
       >
-        <FieldRow>
+        <FieldRow data-expanded={scopeExpanded ? 'true' : 'false'}>
           {!scopeExpanded && (
             <ScopeButton
               type="button"
@@ -355,8 +550,15 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               aria-label={scopeButtonLabel}
               aria-controls={railId}
               title={currentLabel}
+              sx={{
+                ...scopeButtonSx,
+                alignSelf: controlsAlignment,
+              }}
             >
-              <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
+              <ScopeButtonContent>
+                <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
+                <KeyboardArrowDownRoundedIcon fontSize="small" />
+              </ScopeButtonContent>
             </ScopeButton>
           )}
           <StyledInput
@@ -364,6 +566,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             inputRef={inputRef}
             placeholder={placeholder}
             onChange={(event) => onValueChange(event.target.value)}
+            onKeyDown={handleInputKeyDown}
             sx={{
               '& input': (theme) => ({
                 padding: scopeExpanded ? theme.spacing(1.05, 0.75) : theme.spacing(1, 1.1),
@@ -371,12 +574,27 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               }),
             }}
           />
-          {value && (
-            <ClearButton aria-label="Clear search" size="small" onClick={handleClear}>
-              <CloseRoundedIcon fontSize="small" />
-            </ClearButton>
+          {showRandomButton && (
+            <RandomButton
+              type="button"
+              aria-label="Show something random"
+              onClick={handleRandomClick}
+              disabled={isRandomLoading}
+              aria-busy={isRandomLoading}
+              sx={{ alignSelf: controlsAlignment }}
+            >
+              <ShuffleIcon fontSize="small" />
+            </RandomButton>
           )}
-          <SubmitButton type="submit" aria-label="Search">
+          <SubmitButton
+            type="submit"
+            aria-label="Search"
+            disabled={!hasInput}
+            sx={{
+              alignSelf: controlsAlignment,
+              ...(submitButtonActiveStyles ?? {}),
+            }}
+          >
             <ArrowForwardRoundedIcon fontSize="small" />
           </SubmitButton>
         </FieldRow>
@@ -390,8 +608,9 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               aria-label={scopeButtonLabel}
               aria-controls={railId}
               title={currentLabel}
+              sx={scopeButtonSx}
             >
-              <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
+              <KeyboardArrowUpRoundedIcon fontSize="small" />
             </ScopeButton>
           )}
           <FilterTrigger

@@ -27,6 +27,8 @@ import {
   formatReleaseDisplay,
 } from '../../utils/githubReleases';
 import { safeGetItem } from '../../utils/storage';
+import useLoadRandomFrame from '../../utils/loadRandomFrame';
+import { trackUsageEvent } from '../../utils/trackUsageEvent';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -78,7 +80,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { pathname } = useLocation();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
   const theme = useTheme();
+  const showAd = user?.userDetails?.subscriptionStatus !== 'active';
 
   // Recent update indicator state
   const [latestRelease, setLatestRelease] = useState(null);
@@ -216,6 +220,17 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }, [cid, seriesTitle, hasFavoriteShows, defaultShow]);
 
   const includeAllFavorites = hasFavoriteShows;
+
+  const handleRandomSearch = useCallback(() => {
+    const scope = currentValueId || '_universal';
+    trackUsageEvent('random_frame', {
+      source: 'UnifiedSearchBar',
+      scope,
+      showCount: Array.isArray(shows) ? shows.length : 0,
+      hasAd: showAd,
+    });
+    loadRandomFrame(scope);
+  }, [currentValueId, loadRandomFrame, shows, showAd]);
 
   const handleSelect = useCallback(
     (selectedId) => {
@@ -430,6 +445,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 onValueChange={handleSearchTermChange}
                 onSubmit={(event) => searchFunction(event)}
                 onClear={handleClearSearch}
+                onRandom={handleRandomSearch}
+                isRandomLoading={loadingRandom}
                 shows={shows}
                 savedCids={savedCids}
                 currentValueId={currentValueId}
@@ -443,7 +460,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               {currentThemeBragText}
             </Typography>
           </Grid>
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
+          {showAd &&
             <Grid item xs={12} mt={1}>
               <center>
                 <Box >
