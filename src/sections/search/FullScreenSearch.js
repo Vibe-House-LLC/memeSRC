@@ -46,6 +46,10 @@ const StyledGridContainer = styled(Grid)`
     min-height: 100dvh;
     padding-left: ${theme.spacing(3)};
     padding-right: ${theme.spacing(3)};
+    ${theme.breakpoints.down('sm')} {
+      padding-left: ${theme.spacing(2)};
+      padding-right: ${theme.spacing(2)};
+    }
     /* Reserve space so the logo is clear of the fixed navbar */
     padding-top: ${NAVBAR_HEIGHT * 2}px;
     /* Allow a little room at the bottom so floating buttons don't
