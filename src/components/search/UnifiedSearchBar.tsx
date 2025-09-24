@@ -51,6 +51,7 @@ const FieldShell = styled('div')(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   gap: theme.spacing(0.66),
+  transition: 'padding-bottom 200ms ease, gap 200ms ease',
   // remove hover/box-shadow animations
   overflow: 'hidden',
   '&[data-expanded="false"]': {
@@ -213,6 +214,7 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
     boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
     width: 'var(--scope-button-size)',
     transition: 'width 180ms ease, padding 180ms ease',
+    minWidth: 0,
     // no hover/active animations
     '&:hover': {
       background: DEFAULT_SCOPE_STYLING.background,
@@ -225,6 +227,9 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
       width: 'auto',
       padding: theme.spacing(0.66, 1.15),
       gap: theme.spacing(0.82),
+      flex: '0 1 auto',
+      minWidth: 0,
+      justifyContent: 'flex-start',
     },
     '& .scopeLabel': {
       fontFamily: FONT_FAMILY,
@@ -234,10 +239,11 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
-      maxWidth: 520,
+      flex: '0 1 auto',
+      minWidth: 0,
+      maxWidth: '100%',
       [theme.breakpoints.down('sm')]: {
         fontSize: '0.9rem',
-        maxWidth: 260,
       },
     },
     '& svg': {
@@ -257,9 +263,11 @@ const ControlsRail = styled('div')(({ theme }) => ({
   opacity: 0,
   overflow: 'hidden',
   pointerEvents: 'none',
+  flexWrap: 'nowrap',
+  minWidth: 0,
   transition: 'max-height 200ms ease, opacity 160ms ease, margin-top 160ms ease',
   [theme.breakpoints.down('sm')]: {
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: theme.spacing(0.82),
   },
   '&[data-expanded="true"]': {
@@ -288,6 +296,7 @@ const RailRight = styled('div')(({ theme }) => ({
   display: 'inline-flex',
   alignItems: 'center',
   gap: theme.spacing(1),
+  flex: '0 0 auto',
 }));
 
 const LabeledRandomButton = styled(ButtonBase)(({ theme }) => ({
