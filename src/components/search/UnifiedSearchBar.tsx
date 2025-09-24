@@ -59,7 +59,7 @@ const FieldShell = styled('div')(({ theme }) => ({
   },
   '&[data-expanded="true"]': {
     paddingBottom: theme.spacing(1.54),
-    gap: theme.spacing(0.88),
+    gap: theme.spacing(0.6),
   },
   [theme.breakpoints.down('sm')]: {
     '--scope-button-size': '37px',
@@ -72,7 +72,7 @@ const FieldShell = styled('div')(({ theme }) => ({
     },
     '&[data-expanded="true"]': {
       paddingBottom: theme.spacing(1.32),
-      gap: theme.spacing(0.72),
+    gap: theme.spacing(0.5),
     },
   },
 }));
@@ -263,7 +263,7 @@ const ControlsRail = styled('div')(({ theme }) => ({
     gap: theme.spacing(0.82),
   },
   '&[data-expanded="true"]': {
-    marginTop: theme.spacing(0.9),
+    marginTop: theme.spacing(0.4),
     maxHeight: 96,
     opacity: 1,
     pointerEvents: 'auto',
