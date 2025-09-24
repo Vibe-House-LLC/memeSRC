@@ -54,7 +54,10 @@ type File @model @auth(
     { allow: groups, groups: ["admins", "mods"] }
     { allow: owner, operations: [create] }
   ]),
-  status: String,
+  status: String @auth(rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+    { allow: owner, operations: [create, update, read] }
+  ]),
 }
 
 type Season @model @auth(

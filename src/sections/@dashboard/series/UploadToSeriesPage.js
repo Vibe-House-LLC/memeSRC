@@ -68,6 +68,17 @@ export default function UploadToSeriesPage({ seriesId }) {
             }
           }
         `;
+        const updateFileQuery = /* GraphQL */ `
+          mutation UpdateFile(
+            $input: UpdateFileInput!
+            $condition: ModelFileConditionInput
+          ) {
+            updateFile(input: $input, condition: $condition) {
+              id
+              status
+            }
+          }
+        `;
         const sourceMedia = await API.graphql(graphqlOperation(createSourceMedia, { input: sourceMediaInput }));
         const sourceMediaId = sourceMedia.data.createSourceMedia.id;
 
@@ -92,6 +103,24 @@ export default function UploadToSeriesPage({ seriesId }) {
         const uploadProgresses = files.map(() => 0); // Initialize progress for each file
         const uploadPromises = files.map(async (file, index) => {
           console.log(`Attempting to upload ${file.name}...`);
+          const s3Key = `${sourceMediaId}/${file.name}`
+          let fileId;
+
+          // Log the full S3 key including the protected identity prefix
+          if (identityId) {
+            const fullKey = `protected/${identityId}/${s3Key}`;
+            const createFileInput = {
+              sourceMediaFilesId: sourceMediaId,
+              key: fullKey,
+              status: 'uploading',
+            };
+            const createFile = await API.graphql(graphqlOperation(createFileQuery, { input: createFileInput }));
+            fileId = createFile.data.createFile.id;
+            console.log(createFile)
+            console.log('Full S3 key:', fullKey);
+          } else {
+            console.log('Full S3 key (identityId unavailable):', `protected/<identityId>/${uploadedFile.key}`);
+          }
 
           const progressCallback = progress => {
             console.log(`Uploaded: ${progress.loaded}/${progress.total}`);
@@ -99,7 +128,7 @@ export default function UploadToSeriesPage({ seriesId }) {
             setUploadedData(uploadProgresses.reduce((a, b) => a + b, 0)); // Sum all progresses
           };
 
-          const uploadedFile = await Storage.put(`${sourceMediaId}/${file.name}`, file, {
+          const uploadedFile = await Storage.put(s3Key, file, {
             contentType: file.type,
             level: 'protected',
             progressCallback,
@@ -107,21 +136,14 @@ export default function UploadToSeriesPage({ seriesId }) {
           console.log(uploadedFile)
           console.log(`${file.name} uploaded!`);
 
-          // Log the full S3 key including the protected identity prefix
-          if (identityId) {
-            const fullKey = `protected/${identityId}/${uploadedFile.key}`;
-            const createFileInput = {
-              sourceMediaFilesId: sourceMediaId,
-              key: fullKey,
+          if (fileId) {
+            const updateFileInput = {
+              id: fileId,
               status: 'uploaded',
             };
-            const createFile = await API.graphql(graphqlOperation(createFileQuery, { input: createFileInput }));
-            console.log(createFile)
-            console.log('Full S3 key:', fullKey);
-          } else {
-            console.log('Full S3 key (identityId unavailable):', `protected/<identityId>/${uploadedFile.key}`);
+            const updateFile = await API.graphql(graphqlOperation(updateFileQuery, { input: updateFileInput }));
+            console.log(updateFile)
           }
-
 
           // Increment uploaded files count
           setUploadedFilesCount(prevCount => prevCount + 1);
