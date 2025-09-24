@@ -32,13 +32,15 @@ exports.handler = async (event) => {
     })
     .promise();
 
+  const prefix = process.env.ENV === "beta" ? "v2" : process.env.ENV || "unknown-env";
+
   const OPENSEARCH_USER = Parameters.find(param => param.Name === process.env.opensearchUser).Value;
   const OPENSEARCH_PASS = Parameters.find(param => param.Name === process.env.opensearchPass).Value;
 
   const OPENSEARCH_ENDPOINT = "https://search-memesrc-3lcaiflaubqkqafuim5oyxupwa.us-east-1.es.amazonaws.com";
   const inputArg = event.index;
   const csvUrl = `https://img.memesrc.com/v2/${inputArg}/_docs.csv`;
-  const indexName = `v2-${inputArg}`;
+  const indexName = `${prefix}-${inputArg}`;
   const batchSize = 100;
 
   try {
