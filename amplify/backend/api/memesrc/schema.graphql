@@ -176,6 +176,7 @@ type Alias @model @auth(
 ) {
   id: ID!,
   v2ContentMetadata: V2ContentMetadata @belongsTo
+  status: String
 }
 
 type HomepageSection @model @auth(

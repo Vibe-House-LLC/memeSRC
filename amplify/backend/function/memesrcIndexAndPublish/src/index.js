@@ -63,6 +63,15 @@ const createAliasMutation = `
     }
 `;
 
+const updateAliasMutation = `
+    mutation UpdateAlias($input: UpdateAliasInput!) {
+        updateAlias(input: $input) {
+            id
+            status
+        }
+    }
+`;
+
 const updateSeriesMutation = `
 
     mutation UpdateSeries($input: UpdateSeriesInput!) {
@@ -110,6 +119,16 @@ const updateSourceMedia = async (data) => {
         return sourceMediaDetails?.body?.data?.updateSourceMedia || null;
     } catch (error) {
         console.error('Error updating source media:', error);
+        throw error;
+    }
+}
+
+const updateAliasStatus = async (alias, status) => {
+    try {
+        const aliasDetails = await makeGraphQLRequest({ query: updateAliasMutation, variables: { input: { id: alias, status } } });
+        return aliasDetails?.body?.data?.updateAlias || null;
+    } catch (error) {
+        console.error('Error updating alias:', error);
         throw error;
     }
 }
@@ -226,6 +245,7 @@ const checkForExistingAlias = async (alias) => {
 }
 
 exports.handler = async (event) => {
+    const { sourceMediaId = null, existingAlias = null } = JSON.parse(event?.body);
     const { Parameters } = await (new AWS.SSM())
         .getParameters({
             Names: ["opensearchUser", "opensearchPass"].map(secretName => process.env[secretName]),
@@ -237,12 +257,21 @@ exports.handler = async (event) => {
 
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
-        const { sourceMediaId = null, existingAlias = null } = JSON.parse(event?.body);
         let sourceMediaDetails;
         let sourceMedia;
         let seriesData;
         // Get the source media details
         let alias = existingAlias || null;
+
+        if (alias) {
+            try {
+            const updateAliasResponse = await updateAliasStatus(alias, 'reindexing');
+                console.log('UPDATE ALIAS RESPONSE: ', JSON.stringify(updateAliasResponse));
+            } catch (error) {
+                console.error('Error updating alias:', error);
+                throw error;
+            }
+        }
 
         if (sourceMediaId) {
             sourceMediaDetails = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id: sourceMediaId } });
@@ -306,8 +335,27 @@ exports.handler = async (event) => {
             });
             console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
         }
+
+        if (alias) {
+            try {
+                const updateAliasResponse = await updateAliasStatus(alias, 'indexed');
+                console.log('UPDATE ALIAS RESPONSE: ', JSON.stringify(updateAliasResponse));
+            } catch (error) {
+                console.error('Error updating alias:', error);
+                throw error;
+            }
+        }
     } catch (error) {
         console.error('Error:', error);
+        if (existingAlias) {
+            try {
+                const updateAliasResponse = await updateAliasStatus(existingAlias, 'indexingFailed');
+                console.log('UPDATE ALIAS RESPONSE: ', JSON.stringify(updateAliasResponse));
+            } catch (error) {
+                console.error('Error updating alias:', error);
+                throw error;
+            }
+        }
         throw error;
     }
 
