@@ -7,6 +7,7 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import LoadingButton from '@mui/lab/LoadingButton'
 import { SnackbarContext } from '../../SnackbarContext'
+import { API } from 'aws-amplify'
 
 type SnackbarSeverity = 'success' | 'info' | 'warning' | 'error'
 
@@ -25,14 +26,6 @@ export interface ReindexConfirmationDialogProps {
   onClose: () => void
 }
 
-// Simulated async reindex function
-function simulateReindexRequest(alias: string): Promise<void> {
-  return new Promise((resolve) => {
-    // Simulate network latency
-    setTimeout(() => resolve(), 1500)
-  })
-}
-
 export default function ReindexConfirmationDialog({ open, alias, onClose }: ReindexConfirmationDialogProps) {
   const snackbar = useContext(SnackbarContext) as SnackbarContextValue | null
   const [submitting, setSubmitting] = useState(false)
@@ -40,7 +33,9 @@ export default function ReindexConfirmationDialog({ open, alias, onClose }: Rein
   const handleConfirm = async () => {
     setSubmitting(true)
     try {
-      await simulateReindexRequest(alias)
+      await API.post('publicapi', '/media/index', {
+        body: { existingAlias: alias }
+      });
       // Close dialog first
       onClose?.()
       // Notify via global snackbar
