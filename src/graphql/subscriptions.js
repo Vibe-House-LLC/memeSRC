@@ -909,6 +909,7 @@ export const onCreateV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -956,6 +957,7 @@ export const onUpdateV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -1003,6 +1005,7 @@ export const onDeleteV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -1051,6 +1054,7 @@ export const onCreateAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId
@@ -1079,6 +1083,7 @@ export const onUpdateAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId
@@ -1107,6 +1112,7 @@ export const onDeleteAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId

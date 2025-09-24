@@ -7,7 +7,15 @@ import { getV2ContentMetadata, listAliases } from '../graphql/queries';
 import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata, updateV2ContentMetadata } from '../graphql/mutations';
 import { SnackbarContext } from '../SnackbarContext';
 import ReindexConfirmationDialog from 'src/components/alias/reindex-confirmation-dialog';
-import { onUpdateAlias } from 'src/graphql/subscriptions';
+
+const onUpdateAlias = /* GraphQL */ `
+  subscription OnUpdateAlias($filter: ModelSubscriptionAliasFilterInput) {
+    onUpdateAlias(filter: $filter) {
+      id
+      status
+    }
+  }
+`;
 
 /* Utility Functions */
 
@@ -296,14 +304,20 @@ const AliasManagementPageRevised = () => {
     setAliasToReindex(alias)
   }
 
-  const handleUpdateAliasStatus = async (id, status) => {
-    const updatedAliases = aliases.map((alias) => {
-      if (alias.id === id) {
-        return { ...alias, status }
-      }
-      return alias
+  const handleUpdateAliasStatus = (id, status) => {
+    console.log(id, status)
+    console.log(aliases)
+    setAliases((prevAliases) => {
+      console.log(prevAliases)
+      const nextAliases = prevAliases.map((alias) => {
+        if (alias.id === id) {
+          return { ...alias, status, updatedAt: new Date().toISOString() }
+        }
+        return alias
+      })
+      console.log(nextAliases)
+      return nextAliases
     })
-    setAliases(updatedAliases)
   }
 
   useEffect(() => {
@@ -312,8 +326,8 @@ const AliasManagementPageRevised = () => {
     ).subscribe({
       next: (event) => {
         console.log(event)
-        const id = event.data.onUpdateAlias.id
-        const newStatus = event.data.onUpdateAlias.status
+        const id = event.value.data.onUpdateAlias.id
+        const newStatus = event.value.data.onUpdateAlias.status
         handleUpdateAliasStatus(id, newStatus)
       },
       error: (error) => {
@@ -344,7 +358,11 @@ const AliasManagementPageRevised = () => {
             <TableBody>
               {aliases.map((alias) => (
                 <TableRow key={alias.id}>
-                  <TableCell>{alias.id} <Chip sx={{ ml: 1 }} size="small" label={alias.status} color={alias.status === 'reindexing' ? 'warning' : alias.status === 'indexed' ? 'success' : alias.status === 'indexingFailed' ? 'error' : 'default'} /></TableCell>
+                  <TableCell>
+                    {alias.id} <Chip sx={{ ml: 1, color: '#000000 !important' }} size="small" label={alias.status} color={alias.status === 'reindexing' ? 'warning' : alias.status === 'indexed' ? 'success' : alias.status === 'indexingFailed' ? 'error' : 'default'} />
+                    <br />
+                    <Typography fontSize={12}>Last updated: {new Date(alias.updatedAt).toLocaleString()}</Typography>
+                  </TableCell>
                   <TableCell>{alias.aliasV2ContentMetadataId}</TableCell>
                   <TableCell align="right">
                     <IconButton
@@ -355,7 +373,7 @@ const AliasManagementPageRevised = () => {
                     </IconButton>
                     <IconButton onClick={() => handleOpenDialog(alias)}><Edit /></IconButton>
                     <IconButton onClick={() => handleOpenDeleteDialog(alias)} color="error"><Delete /></IconButton>
-                    <IconButton onClick={() => handleReindex(alias.id)}><StorageOutlined /></IconButton>
+                    <IconButton disabled={alias.status === 'reindexing'} onClick={() => handleReindex(alias.id)}><StorageOutlined /></IconButton>
                   </TableCell>
                 </TableRow>
               ))}

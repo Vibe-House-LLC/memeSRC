@@ -591,6 +591,7 @@ export const getV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -709,6 +710,7 @@ export const getAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId
@@ -725,6 +727,7 @@ export const listAliases = /* GraphQL */ `
     listAliases(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
