@@ -42,40 +42,40 @@ const FormRoot = styled('form')(({ theme }) => ({
 
 const FieldShell = styled('div')(({ theme }) => ({
   '--scope-button-size': '44px',
-  '--scope-gap': theme.spacing(0.82),
+  '--scope-gap': theme.spacing(0.5),
   position: 'relative',
   width: '100%',
   borderRadius: 14,
-  border: '1px solid rgba(15, 23, 42, 0.08)',
-  background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94))',
-  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.14)',
-  padding: theme.spacing(1.2, 1.65, 1.75),
+  border: '1px solid rgba(30, 30, 30, 0.08)',
+  background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 242, 242, 0.94))',
+  boxShadow: '0 10px 24px rgba(0, 0, 0, 0.14)',
+  padding: theme.spacing(1.05, 1.26),
   display: 'flex',
   flexDirection: 'column',
   gap: theme.spacing(0.66),
-  transition: 'padding-bottom 260ms cubic-bezier(0.4, 0, 0.2, 1), gap 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'padding 260ms cubic-bezier(0.4, 0, 0.2, 1), gap 220ms cubic-bezier(0.4, 0, 0.2, 1)',
   // remove hover/box-shadow animations
   overflow: 'hidden',
   '&[data-expanded="false"]': {
-    paddingBottom: theme.spacing(0.66),
-    gap: theme.spacing(0.22),
+    padding: theme.spacing(0.82, 1.04),
+    gap: theme.spacing(0.26),
   },
   '&[data-expanded="true"]': {
-    paddingBottom: theme.spacing(1.54),
+    padding: theme.spacing(1.28, 1.52),
     gap: theme.spacing(0.6),
   },
   [theme.breakpoints.down('sm')]: {
     '--scope-button-size': '37px',
-    '--scope-gap': theme.spacing(0.6),
-    padding: theme.spacing(1, 1.2, 1.5),
+    '--scope-gap': theme.spacing(0.46),
+    padding: theme.spacing(0.86, 1.06),
     borderRadius: 12,
-    transition: 'padding-bottom 240ms cubic-bezier(0.4, 0, 0.2, 1), gap 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+    transition: 'padding 240ms cubic-bezier(0.4, 0, 0.2, 1), gap 200ms cubic-bezier(0.4, 0, 0.2, 1)',
     '&[data-expanded="false"]': {
-      paddingBottom: theme.spacing(0.6),
+      padding: theme.spacing(0.68, 0.92),
       gap: theme.spacing(0.18),
     },
     '&[data-expanded="true"]': {
-      paddingBottom: theme.spacing(1.32),
+      padding: theme.spacing(1.04, 1.26),
       gap: theme.spacing(0.5),
     },
   },
@@ -96,15 +96,15 @@ const StyledInput = styled(InputBase)(({ theme }) => ({
   fontFamily: FONT_FAMILY,
   fontSize: '1.14rem',
   fontWeight: 500,
-  color: '#0f172a',
+  color: '#2d2d2d',
   '& input': {
     padding: theme.spacing(0.9, 1),
     border: 'none',
     outline: 'none',
     background: 'transparent',
-    caretColor: '#0F9D58',
+    caretColor: '#3a3a3a',
     '::placeholder': {
-      color: 'rgba(100, 116, 139, 0.78)',
+      color: 'rgba(90, 90, 90, 0.7)',
       opacity: 1,
     },
   },
@@ -120,8 +120,8 @@ const buildCircleButtonStyles = (theme: Theme) => ({
   width: 'var(--scope-button-size)',
   height: 'var(--scope-button-size)',
   borderRadius: '999px',
-  border: '1px solid rgba(148, 163, 184, 0.32)',
-  boxShadow: '0 8px 20px rgba(15, 23, 42, 0.15)',
+  border: '1px solid rgba(40, 40, 40, 0.18)',
+  boxShadow: 'none',
 });
 
 const isPromiseLike = <T,>(value: unknown): value is PromiseLike<T> =>
@@ -130,13 +130,13 @@ const isPromiseLike = <T,>(value: unknown): value is PromiseLike<T> =>
   typeof (value as PromiseLike<T>).then === 'function';
 
 const DEFAULT_SCOPE_STYLING = {
-  background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96))',
-  hoverBackground: 'linear-gradient(135deg, rgba(236, 242, 247, 0.98), rgba(226, 232, 240, 0.96))',
-  color: '#0f172a',
-  borderColor: 'rgba(148, 163, 184, 0.36)',
-  boxShadow: '0 8px 20px rgba(15, 23, 42, 0.15)',
-  hoverBoxShadow: '0 10px 22px rgba(15, 23, 42, 0.2)',
-  activeBoxShadow: '0 6px 16px rgba(15, 23, 42, 0.18)',
+  background: 'linear-gradient(135deg, rgba(248, 248, 248, 0.98), rgba(232, 232, 232, 0.96))',
+  hoverBackground: 'linear-gradient(135deg, rgba(244, 244, 244, 0.98), rgba(228, 228, 228, 0.96))',
+  color: '#2f2f2f',
+  borderColor: 'rgba(50, 50, 50, 0.2)',
+  boxShadow: 'none',
+  hoverBoxShadow: 'none',
+  activeBoxShadow: 'none',
 } as const;
 
 const labelSwitchIn = keyframes`
@@ -154,24 +154,24 @@ const RandomButton = styled(IconButton)(({ theme }) => {
   const base = buildCircleButtonStyles(theme);
   return {
     ...base,
-    background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96))',
-    color: '#0f172a',
-    borderColor: 'rgba(148, 163, 184, 0.36)',
-    boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
+    background: 'linear-gradient(135deg, rgba(248, 248, 248, 0.98), rgba(232, 232, 232, 0.96))',
+    color: '#2e2e2e',
+    borderColor: 'rgba(50, 50, 50, 0.2)',
+    boxShadow: 'none',
     '&:hover': {
-      background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.96))',
-      boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
+      background: 'linear-gradient(135deg, rgba(244, 244, 244, 0.98), rgba(230, 230, 230, 0.96))',
+      boxShadow: 'none',
     },
     '&:active': {
-      boxShadow: '0 12px 24px rgba(15, 23, 42, 0.15)',
+      boxShadow: 'none',
     },
     '&.Mui-disabled': {
       opacity: 0.85,
       boxShadow: 'none',
       transform: 'none',
-      background: 'linear-gradient(135deg, rgba(226, 232, 240, 0.9), rgba(226, 232, 240, 0.96))',
-      color: 'rgba(100, 116, 139, 0.82)',
-      borderColor: 'rgba(148, 163, 184, 0.3)',
+      background: 'linear-gradient(135deg, rgba(224, 224, 224, 0.9), rgba(224, 224, 224, 0.96))',
+      color: 'rgba(80, 80, 80, 0.8)',
+      borderColor: 'rgba(60, 60, 60, 0.22)',
     },
   };
 });
@@ -185,6 +185,7 @@ const ScopeGlyph = styled('span')(({ theme }) => ({
   fontSize: '1.06rem',
   lineHeight: 1,
   color: 'inherit',
+  flexShrink: 0,
   [theme.breakpoints.down('sm')]: {
     fontSize: '0.98rem',
   },
@@ -197,29 +198,32 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
     position: 'relative',
     display: 'inline-flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    height: 'var(--scope-button-size)',
-    borderRadius: 999,
-    padding: 0,
+    justifyContent: 'flex-start',
+    height: 'auto',
+    minHeight: 'var(--scope-button-size)',
+    borderRadius: theme.spacing(1.1),
+    padding: theme.spacing(0.36, 0.84),
     border: '1px solid ' + DEFAULT_SCOPE_STYLING.borderColor,
     background: DEFAULT_SCOPE_STYLING.background,
     color: DEFAULT_SCOPE_STYLING.color,
     boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
-    width: 'var(--scope-button-size)',
-    transition: 'width 240ms cubic-bezier(0.4, 0, 0.2, 1), padding 240ms cubic-bezier(0.4, 0, 0.2, 1)',
-    minWidth: 0,
+    width: 'auto',
+    minWidth: 'var(--scope-button-size)',
+    gap: theme.spacing(0.26),
+    transition:
+      'min-width 240ms cubic-bezier(0.4, 0, 0.2, 1), padding 240ms cubic-bezier(0.4, 0, 0.2, 1), gap 240ms cubic-bezier(0.4, 0, 0.2, 1)',
     // no hover/active animations
     '&:hover': {
-      background: DEFAULT_SCOPE_STYLING.background,
-      boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
+      background: DEFAULT_SCOPE_STYLING.hoverBackground,
+      boxShadow: DEFAULT_SCOPE_STYLING.hoverBoxShadow,
     },
     '&:active': {
-      boxShadow: DEFAULT_SCOPE_STYLING.boxShadow,
+      boxShadow: DEFAULT_SCOPE_STYLING.activeBoxShadow,
+    },
+    '&[data-expanded="false"]': {
+      minWidth: 'calc(var(--scope-button-size) * 1.42)',
     },
     '&[data-expanded="true"]': {
-      width: 'auto',
-      padding: theme.spacing(0.66, 1.15),
-      gap: theme.spacing(0.82),
       flex: '0 1 auto',
       minWidth: 0,
       justifyContent: 'flex-start',
@@ -228,7 +232,10 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
       fontFamily: FONT_FAMILY,
       fontWeight: 600,
       fontSize: '0.94rem',
-      color: '#0f172a',
+      color: '#2f2f2f',
+      display: 'inline-flex',
+      alignItems: 'center',
+      lineHeight: 1.2,
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
@@ -241,7 +248,11 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
     },
     '& svg': {
       flexShrink: 0,
-      color: '#0F9D58',
+      color: '#4a4a4a',
+      fontSize: '1.26rem',
+    },
+    '& .collapsedIcon': {
+      marginLeft: theme.spacing(0.1),
     },
   };
 });
@@ -300,7 +311,7 @@ const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
   border: '1px solid transparent',
   background: '#000',
   color: theme.palette.common.white,
-  boxShadow: '0 10px 20px rgba(0, 0, 0, 0.28)',
+  boxShadow: 'none',
   '& .actionLabel': {
     fontFamily: FONT_FAMILY,
     fontWeight: 700,
@@ -329,14 +340,14 @@ const SubmitButton = styled(IconButton)(({ theme }) => ({
   border: '1px solid transparent',
   background: '#000',
   color: theme.palette.common.white,
-  boxShadow: '0 10px 20px rgba(0, 0, 0, 0.28)',
+  boxShadow: 'none',
   '&:hover': {
     background: '#000',
-    boxShadow: '0 10px 20px rgba(0, 0, 0, 0.28)',
+    boxShadow: 'none',
   },
   '&:active': {
     background: '#000',
-    boxShadow: '0 10px 20px rgba(0, 0, 0, 0.28)',
+    boxShadow: 'none',
   },
   '&.Mui-disabled': {
     background: '#3f3f3f',
@@ -352,19 +363,19 @@ const ClearInputButton = styled(IconButton)(({ theme }) => ({
   height: 32,
   borderRadius: 16,
   padding: theme.spacing(0.4),
-  color: 'rgba(100, 116, 139, 0.78)',
+  color: 'rgba(80, 80, 80, 0.78)',
   transition:
     'color 160ms cubic-bezier(0.4, 0, 0.2, 1), background-color 160ms cubic-bezier(0.4, 0, 0.2, 1), transform 160ms cubic-bezier(0.4, 0, 0.2, 1)',
   backgroundColor: 'transparent',
   '&:hover': {
-    color: '#0f172a',
-    backgroundColor: 'rgba(148, 163, 184, 0.16)',
+    color: '#2d2d2d',
+    backgroundColor: 'rgba(80, 80, 80, 0.16)',
   },
   '&:active': {
     transform: 'scale(0.95)',
   },
   '&.Mui-focusVisible': {
-    outline: `2px solid rgba(99, 102, 241, 0.42)`,
+    outline: `2px solid rgba(100, 100, 100, 0.42)`,
     outlineOffset: 2,
   },
   '& svg': {
@@ -535,6 +546,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               title={currentLabel}
             >
               <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
+              <ArrowDropDownIcon fontSize="small" className="collapsedIcon" aria-hidden="true" />
             </ScopeSelectorButton>
           )}
           <StyledInput
