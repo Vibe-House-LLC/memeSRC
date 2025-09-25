@@ -232,7 +232,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       )}
 
       {Children.map(children, (child) => cloneElement(child, { shows }))}
-      <FloatingActionButtons shows={cid} showAd={showAd} />
+      <FloatingActionButtons shows={resolvedCid} showAd={showAd} />
 
       {showAd && (
         <Box
