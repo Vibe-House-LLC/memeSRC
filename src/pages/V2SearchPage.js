@@ -452,16 +452,6 @@ export default function SearchPage() {
 
   return (
     <>
-    <Grid item xs={12} mt={2}>
-      <Typography variant="h3" textAlign="center" mb={2}>
-        {newResults && 
-          <>
-            Found <b>{newResults.filter(result => !result.isAd).length}</b> {newResults.filter(result => !result.isAd).length === 1 ? 'result' : 'results'}
-          </>
-        }
-      </Typography>
-    </Grid>
-
     {/* Add the ad section here */}
     {user?.userDetails?.subscriptionStatus !== 'active' && (
       <Grid item xs={12} mb={3}>

@@ -458,6 +458,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 currentValueId={currentValueId}
                 includeAllFavorites={includeAllFavorites}
                 onSelectSeries={handleSelect}
+                appearance="light"
               />
             </Grid>
           </Grid>

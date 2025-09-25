@@ -26,6 +26,7 @@ export interface UnifiedSearchBarProps {
   currentValueId: string;
   includeAllFavorites: boolean;
   onSelectSeries: OnSelectSeries;
+  appearance?: 'light' | 'dark';
 }
 
 const FONT_FAMILY = 'Roboto, sans-serif';
@@ -66,6 +67,18 @@ const FieldShell = styled('div')(({ theme }) => ({
     gap: theme.spacing(0.6),
     '--scope-gap': theme.spacing(1.1),
   },
+  '&[data-appearance="dark"]': {
+    border: '1px solid rgba(255, 255, 255, 0.16)',
+    background: 'linear-gradient(180deg, rgba(32, 32, 34, 0.96), rgba(20, 20, 22, 0.98))',
+    color: 'rgba(245, 245, 245, 0.95)',
+    boxShadow: '0 18px 44px rgba(0, 0, 0, 0.55)',
+  },
+  '&[data-appearance="dark"][data-expanded="false"]': {
+    background: 'linear-gradient(180deg, rgba(28, 28, 30, 0.94), rgba(18, 18, 20, 0.98))',
+  },
+  '&[data-appearance="dark"][data-expanded="true"]': {
+    background: 'linear-gradient(180deg, rgba(36, 36, 38, 0.96), rgba(24, 24, 26, 0.98))',
+  },
   [theme.breakpoints.down('sm')]: {
     '--scope-button-size': '37px',
     '--scope-gap': theme.spacing(0.74),
@@ -82,6 +95,16 @@ const FieldShell = styled('div')(({ theme }) => ({
       gap: theme.spacing(0.5),
       '--scope-gap': theme.spacing(1),
     },
+    '&[data-appearance="dark"]': {
+      background: 'linear-gradient(180deg, rgba(30, 30, 32, 0.95), rgba(18, 18, 20, 0.98))',
+      boxShadow: '0 14px 36px rgba(0, 0, 0, 0.52)',
+    },
+    '&[data-appearance="dark"][data-expanded="false"]': {
+      background: 'linear-gradient(180deg, rgba(26, 26, 28, 0.95), rgba(16, 16, 18, 0.98))',
+    },
+    '&[data-appearance="dark"][data-expanded="true"]': {
+      background: 'linear-gradient(180deg, rgba(34, 34, 36, 0.96), rgba(22, 22, 24, 0.98))',
+    },
   },
 }));
 
@@ -92,6 +115,9 @@ const FieldRow = styled('div')(({ theme }) => ({
   transition: 'align-items 220ms cubic-bezier(0.4, 0, 0.2, 1), gap 220ms cubic-bezier(0.4, 0, 0.2, 1)',
   '&[data-expanded="true"]': {
     alignItems: 'flex-end',
+  },
+  '&[data-appearance="dark"]': {
+    color: 'rgba(245, 245, 245, 0.95)',
   },
 }));
 
@@ -116,6 +142,16 @@ const StyledInput = styled(InputBase)(({ theme }) => ({
     fontSize: '1.08rem',
     '& input': {
       padding: theme.spacing(0.6, 0.66),
+    },
+  },
+  '&[data-appearance="dark"]': {
+    color: '#f5f5f5',
+    '& input': {
+      color: '#f5f5f5',
+      caretColor: '#f5f5f5',
+      '::placeholder': {
+        color: 'rgba(220, 220, 220, 0.68)',
+      },
     },
   },
 }));
@@ -178,6 +214,24 @@ const RandomButton = styled(IconButton)(({ theme }) => {
       background: '#e6e6e6',
       color: 'rgba(80, 80, 80, 0.8)',
       borderColor: 'rgba(60, 60, 60, 0.22)',
+    },
+    '&[data-appearance="dark"]': {
+      background: '#29292d',
+      color: '#f5f5f5',
+      borderColor: 'rgba(255, 255, 255, 0.14)',
+      '&:hover': {
+        background: '#323236',
+        boxShadow: 'none',
+      },
+      '&:active': {
+        background: '#26262b',
+        boxShadow: 'none',
+      },
+      '&.Mui-disabled': {
+        background: '#232327',
+        color: 'rgba(200, 200, 200, 0.7)',
+        borderColor: 'rgba(135, 135, 135, 0.25)',
+      },
     },
   };
 });
@@ -264,6 +318,23 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
     '& .collapsedIcon': {
       marginLeft: 0,
     },
+    '&[data-appearance="dark"]': {
+      background: '#29292d',
+      color: '#f5f5f5',
+      borderColor: 'rgba(255, 255, 255, 0.18)',
+      '&:hover': {
+        background: '#323236',
+      },
+      '&:active': {
+        background: '#26262b',
+      },
+      '& .scopeLabel': {
+        color: '#f5f5f5',
+      },
+      '& svg': {
+        color: '#d0d3da',
+      },
+    },
   };
 });
 
@@ -300,6 +371,9 @@ const ControlsRail = styled('div')(({ theme }) => ({
   '& .railButton:active': {
     boxShadow: 'none !important',
     transform: 'none',
+  },
+  '&[data-appearance="dark"]': {
+    color: '#f5f5f5',
   },
 }));
 
@@ -341,6 +415,18 @@ const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
     boxShadow: 'none',
     borderColor: 'transparent',
   },
+  '&[data-appearance="dark"]': {
+    background: '#f5f5f5',
+    color: '#111',
+    '& .actionLabel': {
+      color: '#111',
+    },
+    '&.Mui-disabled': {
+      background: '#3a3a3a',
+      color: 'rgba(200, 200, 200, 0.7)',
+      borderColor: 'transparent',
+    },
+  },
 }));
 
 const SubmitButton = styled(IconButton)(({ theme }) => ({
@@ -366,6 +452,21 @@ const SubmitButton = styled(IconButton)(({ theme }) => ({
     transform: 'none',
     borderColor: 'transparent',
   },
+  '&[data-appearance="dark"]': {
+    background: '#f5f5f5',
+    color: '#111',
+    '&:hover': {
+      background: '#ffffff',
+    },
+    '&:active': {
+      background: '#f0f0f0',
+    },
+    '&.Mui-disabled': {
+      background: '#3a3a3a',
+      color: 'rgba(200, 200, 200, 0.7)',
+      borderColor: 'transparent',
+    },
+  },
 }));
 
 const ClearInputButton = styled(IconButton)(({ theme }) => ({
@@ -390,6 +491,13 @@ const ClearInputButton = styled(IconButton)(({ theme }) => ({
   },
   '& svg': {
     fontSize: '1rem',
+  },
+  '&[data-appearance="dark"]': {
+    color: 'rgba(220, 220, 220, 0.78)',
+    '&:hover': {
+      color: '#ffffff',
+      backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    },
   },
 }));
 
@@ -422,6 +530,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   currentValueId,
   includeAllFavorites,
   onSelectSeries,
+  appearance = 'light',
 }) => {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
@@ -543,13 +652,14 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   return (
     <FormRoot onSubmit={onSubmit} noValidate>
-      <FieldShell data-expanded={scopeExpanded ? 'true' : 'false'}>
-        <FieldRow data-expanded={scopeExpanded ? 'true' : 'false'}>
+      <FieldShell data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
+        <FieldRow data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
           {!scopeExpanded && (
             <ScopeSelectorButton
               type="button"
               onClick={handleScopeClick}
               data-expanded="false"
+              data-appearance={appearance}
               aria-expanded={scopeExpanded}
               aria-pressed={scopeExpanded}
               aria-label={scopeButtonLabel}
@@ -569,6 +679,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             onBlur={() => {
               shouldRestoreFocusRef.current = false;
             }}
+            data-appearance={appearance}
             sx={{
               '& input': (theme) => ({
                 padding: scopeExpanded ? theme.spacing(0.72, 0.66) : theme.spacing(0.9, 1),
@@ -582,6 +693,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               onClick={handleClear}
               onPointerDown={(event) => event.preventDefault()}
               aria-label="Clear search"
+              data-appearance={appearance}
               title="Clear"
             >
               <CloseRoundedIcon fontSize="small" />
@@ -598,6 +710,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   disabled={randomLoading}
                   aria-busy={randomLoading}
                   title="Random"
+                  data-appearance={appearance}
                 >
                   {randomLoading ? (
                     <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
@@ -611,6 +724,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                 aria-label="Search"
                 disabled={!hasInput}
                 title="Search"
+                data-appearance={appearance}
               >
                 <ArrowForwardRoundedIcon fontSize="small" />
               </SubmitButton>
@@ -618,11 +732,12 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           )}
         </FieldRow>
         <Collapse in={scopeExpanded} timeout={260} unmountOnExit>
-          <ControlsRail data-expanded={scopeExpanded ? 'true' : 'false'}>
+          <ControlsRail data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
             <ScopeSelectorButton
               type="button"
               onClick={handleScopeClick}
               data-expanded="true"
+              data-appearance={appearance}
               aria-expanded={scopeExpanded}
               aria-pressed={scopeExpanded}
               aria-label={scopeButtonLabel}
@@ -642,6 +757,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   aria-label="Search"
                   disabled={!hasInput}
                   className="railButton"
+                  data-appearance={appearance}
                 >
                   <span className="actionLabel">Search</span>
                   <ArrowForwardRoundedIcon fontSize="small" />
@@ -653,6 +769,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   aria-label="Search"
                   disabled={!hasInput}
                   title="Search"
+                  data-appearance={appearance}
                 >
                   <ArrowForwardRoundedIcon fontSize="small" />
                 </SubmitButton>

@@ -1,251 +1,176 @@
-// ipfs-search-bar.js
+import { Children, cloneElement, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Box, Container, Link as MuiLink, Stack, Typography } from '@mui/material';
+import ArrowBack from '@mui/icons-material/ArrowBack';
+import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import styled from "@emotion/styled";
-import { Link, Grid, InputBase, Typography, Divider, Box, Stack, Container, Button } from "@mui/material";
-import { ArrowBack, Close, Search } from "@mui/icons-material";
-import { Children, cloneElement, useContext, useEffect, useRef, useState } from "react";
-import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { searchPropTypes } from "./SearchPropTypes";
-import useSearchDetailsV2 from "../../hooks/useSearchDetailsV2";
-import AddCidPopup from "../../components/ipfs/add-cid-popup";
-import { UserContext } from "../../UserContext";
+import { searchPropTypes } from './SearchPropTypes';
+import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
+import AddCidPopup from '../../components/ipfs/add-cid-popup';
+import { UserContext } from '../../UserContext';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
-import FloatingActionButtons from "../../components/floating-action-buttons/FloatingActionButtons";
+import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
-import SeriesSelectorDialog from '../../components/SeriesSelectorDialog';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
 
-// Define constants for colors and fonts
-const FONT_FAMILY = 'Roboto, sans-serif';
-
-const StyledSearchInput = styled(InputBase)`
-  font-family: ${FONT_FAMILY};
-  font-size: 16px;
-  color: #FFFFFF;
-  background-color: #2b2b2b;
-  border-radius: 7px;
-  padding: 8px 12px;
-  height: 40px;
-  margin-top: auto;
-  margin-bottom: auto;
-`;
-
-
-const StyledHeader = styled('header')(() => ({
-  lineHeight: 0,
-  width: '100%',
-  zIndex: '1000',
-  paddingBottom: '10px'
-}));
-
-const StyledAdFooter = styled(Box)`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: black;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1299;
-`;
+const sanitizeSearchValue = (value) => {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  let nextValue = String(value);
+  nextValue = nextValue.replace(/[\u2018\u2019]/g, "'");
+  nextValue = nextValue.replace(/[\u201C\u201D]/g, '"');
+  nextValue = nextValue.replace(/[\u2013\u2014]/g, '-');
+  return nextValue;
+};
 
 IpfsSearchBar.propTypes = searchPropTypes;
 
 export default function IpfsSearchBar(props) {
   const params = useParams();
   const { pathname } = useLocation();
-  const { user, shows, defaultShow } = useContext(UserContext);
-  const { searchQuery, setSearchQuery, cid = shows.some(show => show.isFavorite) ? params?.cid || defaultShow : params?.cid || '_universal', setCid, selectedFrameIndex, setSelectedFrameIndex, savedCids } = useSearchDetailsV2();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const searchTerm = searchParams.get('searchTerm');
 
-  /* ----------------------------------- New ---------------------------------- */
+  const { user, shows: contextShows, defaultShow } = useContext(UserContext);
+  const {
+    searchQuery,
+    setSearchQuery,
+    cid,
+    setCid,
+    selectedFrameIndex,
+    setSelectedFrameIndex,
+    savedCids,
+  } = useSearchDetailsV2();
 
-  const searchInputRef = useRef(null);
-
-  const [search, setSearch] = useState(searchTerm || '');
+  const [search, setSearch] = useState(() => sanitizeSearchValue(searchTerm));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
-  const [selectorOpen, setSelectorOpen] = useState(false);
-  const navigate = useNavigate();
+
+  const shows = useMemo(() => (Array.isArray(contextShows) ? contextShows : []), [contextShows]);
+  const savedSeries = useMemo(() => (Array.isArray(savedCids) ? savedCids : []), [savedCids]);
+
+  const hasFavoriteShows = useMemo(() => shows.some((show) => show.isFavorite), [shows]);
+  const resolvedCid = useMemo(() => {
+    if (cid) return cid;
+    if (params?.cid) return params.cid;
+    if (hasFavoriteShows) {
+      return defaultShow || '_favorites';
+    }
+    return '_universal';
+  }, [cid, defaultShow, hasFavoriteShows, params?.cid]);
 
   useEffect(() => {
     if (!cid) {
-      setCid(params?.cid || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
+      const fallback = hasFavoriteShows ? params?.cid || defaultShow : params?.cid || '_universal';
+      setCid(fallback);
     }
-  }, [cid]);
+  }, [cid, defaultShow, hasFavoriteShows, params?.cid, setCid]);
 
   useEffect(() => {
-    setSearch(searchTerm)
-  }, [pathname]);
-
-
-  useEffect(() => {
-    if (searchTerm) {
-      setSearchQuery(searchTerm);
-      setSearch(searchTerm);
-    }
-  }, [searchTerm]);
-
-  const handleSelectSeries = (data) => {
-    if (data === "addNewCid") {
-      setAddNewCidOpen(true);
-    } else if (pathname.split('/')[1] === 'search') {
-      navigate(`/search/${data}/${searchTerm ? `?searchTerm=${searchTerm}` : ''}`)
-      setCid(data);
-    } else {
-      setCid(data);
-    }
-  };
+    const normalized = sanitizeSearchValue(searchTerm);
+    setSearch(normalized);
+    setSearchQuery(normalized);
+  }, [searchTerm, setSearchQuery]);
 
   useEffect(() => {
-    setSelectedFrameIndex()
-  }, [params?.subtitleIndex]);
+    setSelectedFrameIndex(undefined);
+  }, [params?.subtitleIndex, setSelectedFrameIndex]);
 
+  const handleSelectSeries = useCallback(
+    (selectedId) => {
+      if (!selectedId) {
+        return;
+      }
 
+      if (selectedId === 'addNewCid') {
+        setAddNewCidOpen(true);
+        return;
+      }
 
-  const searchFunction = (searchEvent) => {
-    searchEvent?.preventDefault();
-    // console.log(search)
-    const selectedCid = cid || params?.cid || (shows.some(show => show.isFavorite) ? defaultShow : '_universal');
-    const normalizedSearch = typeof search === 'string' ? search.trim() : '';
+      const nextCid = selectedId;
+      const encodedSearch = search ? `?searchTerm=${encodeURIComponent(search)}` : '';
 
-    let resolvedIndex = selectedCid;
-    if (selectedCid === '_favorites') {
-      resolvedIndex = shows.filter((show) => show.isFavorite).map((show) => show.id).join(',') || '_favorites';
-    }
+      if (pathname.split('/')[1] === 'search') {
+        navigate(`/search/${nextCid}/${encodedSearch}`);
+      }
 
-    trackUsageEvent('search', {
-      index: selectedCid,
-      searchTerm: normalizedSearch,
-      resolvedIndex,
-      source: 'IpfsSearchBar',
-    });
+      setCid(nextCid);
+    },
+    [navigate, pathname, search, setCid],
+  );
 
-    navigate(`/search/${selectedCid}/?searchTerm=${encodeURIComponent(search || '')}`)
-    return false
-  }
+  const handleClearSearch = useCallback(() => {
+    setSearch('');
+  }, []);
+
+  const handleSearchChange = useCallback((value) => {
+    setSearch(sanitizeSearchValue(value));
+  }, []);
+
+  const handleSubmit = useCallback(
+    (event) => {
+      event?.preventDefault();
+      const selectedCidValue = resolvedCid;
+      const normalizedSearch = sanitizeSearchValue(search).trim();
+      const resolvedIndex = selectedCidValue === '_favorites'
+        ? shows
+            .filter((show) => show.isFavorite)
+            .map((show) => show.id)
+            .join(',') || '_favorites'
+        : selectedCidValue;
+
+      trackUsageEvent('search', {
+        index: selectedCidValue,
+        searchTerm: normalizedSearch,
+        resolvedIndex,
+        source: 'UnifiedSearchBar',
+      });
+
+      setSearchQuery(normalizedSearch);
+      const encodedSearch = encodeURIComponent(search || '');
+      navigate(`/search/${selectedCidValue}/?searchTerm=${encodedSearch}`);
+      return false;
+    },
+    [navigate, resolvedCid, search, setSearchQuery, shows],
+  );
 
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
 
   return (
     <>
-      <StyledHeader>
-        <Grid container mb={1.5} paddingX={2}>
-          <Grid item xs={12} md={6} paddingLeft={{ xs: 0, md: 2 }}>
-            <form onSubmit={e => searchFunction(e)}>
-              <StyledSearchInput
-                label="With normal TextField"
-                id="outlined-start-adornment"
-                endAdornment={
-                  <>
-                    {search && (
-                      <Close
-                        fontSize='small'
-                        onClick={() => {
-                          setSearch('');
-                          searchInputRef.current.focus(); // Focus the text field
-                        }}
-                        sx={{ cursor: 'pointer', mr: 1, color: 'grey.400' }}
-                      />
-                    )}
-                    <Search onClick={() => searchFunction()} style={{ cursor: 'pointer' }} />
-                  </>
-                }
-                sx={{ width: '100%' }}
-                value={search || ''} // Ensure value is never null
-                onChange={(e) => {
-                  let {value} = e.target;
+      <Box component="header" sx={{ width: '100%', zIndex: 1000, pb: 2 }}>
+        <Container
+          maxWidth="xl"
+          disableGutters
+          sx={{
+            px: { xs: 2, sm: 3, md: 4 },
+            pt: { xs: 2, sm: 3 },
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1.5,
+          }}
+        >
+          <UnifiedSearchBar
+            value={search}
+            onValueChange={handleSearchChange}
+            onSubmit={handleSubmit}
+            onClear={handleClearSearch}
+            shows={shows}
+            savedCids={savedSeries}
+            currentValueId={resolvedCid}
+            includeAllFavorites={hasFavoriteShows}
+            onSelectSeries={handleSelectSeries}
+            appearance="dark"
+          />
+        </Container>
+      </Box>
 
-                  // Replace curly single quotes with straight single quotes
-                  value = value.replace(/[\u2018\u2019]/g, "'");
-
-                  // Replace curly double quotes with straight double quotes
-                  value = value.replace(/[\u201C\u201D]/g, '"');
-
-                  // Replace en-dash and em-dash with hyphen
-                  value = value.replace(/[\u2013\u2014]/g, '-');
-
-                  setSearch(value);
-                }}
-                inputRef={searchInputRef} // Add the ref to the text field
-              />
-            </form>
-          </Grid>
-        </Grid>
-        <Grid container wrap="nowrap" sx={{ overflowX: "scroll", flexWrap: "nowrap", scrollbarWidth: 'none', '&::-webkit-scrollbar': { height: '0 !important', width: '0 !important', display: 'none' } }} paddingX={2}>
-          <Grid item marginLeft={{ md: 6 }}>
-            {(() => {
-              const currentLabel = (() => {
-                if (cid === '_universal') return '🌈 All Shows & Movies';
-                if (cid === '_favorites') return '⭐ All Favorites';
-                const found = shows.find((s) => s.id === cid) || savedCids.find((s) => s.id === cid);
-                return found ? `${found.emoji ? `${found.emoji} ` : ''}${found.title}` : 'Select show or movie';
-              })();
-
-              const includeAllFav = shows.some((s) => s.isFavorite);
-
-              return (
-                <>
-                  <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <Button
-                      size="small"
-                      onClick={() => setSelectorOpen(true)}
-                      endIcon={<ArrowDropDownIcon fontSize="small" />}
-                      sx={{
-                        minWidth: 'auto',
-                        width: 'fit-content',
-                        height: 40,
-                        fontFamily: FONT_FAMILY,
-                        fontSize: '16px',
-                        fontWeight: 400,
-                        bgcolor: 'transparent',
-                        color: '#fff',
-                        borderRadius: 0,
-                        px: 0,
-                        textTransform: 'none',
-                        whiteSpace: 'nowrap',
-                        '&:hover': { bgcolor: 'transparent' },
-                      }}
-                    >
-                      {currentLabel}
-                    </Button>
-                  </Box>
-                  <SeriesSelectorDialog
-                    open={selectorOpen}
-                    onClose={() => setSelectorOpen(false)}
-                    onSelect={handleSelectSeries}
-                    shows={shows}
-                    savedCids={savedCids}
-                    currentValueId={cid}
-                    includeAllFavorites={includeAllFav}
-                  />
-                </>
-              );
-            })()}
-          </Grid>
-          <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}><a href="/vote" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Request a show</a></Typography>
-          </Grid>
-          <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}><a href="/support" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Report issues</a></Typography>
-          </Grid>
-          <Grid item marginLeft={{ xs: 3 }} marginY='auto' display='flex' style={{ whiteSpace: 'nowrap' }}>
-            <Typography fontSize={13}><a href="https://memesrc.com/donate" target="_blank" rel="noreferrer" style={{ color: 'white', textDecoration: 'none' }}>Support the team</a></Typography>
-          </Grid>
-        </Grid>
-      </StyledHeader>
-      <Divider sx={{ mb: 2.5 }} />
-
-      {pathname.startsWith("/frame") &&
-        <Container maxWidth='xl' disableGutters sx={{ px: 1 }}>
-          <Box
-            sx={{ width: '100%', px: 2 }}
-          >
-            <Link
+      {pathname.startsWith('/frame') && (
+        <Container maxWidth="xl" disableGutters sx={{ px: 1 }}>
+          <Box sx={{ width: '100%', px: 2 }}>
+            <MuiLink
               component={RouterLink}
-              to={searchTerm ? `/search/${cid}${searchQuery ? `?searchTerm=${searchQuery}` : ''}` : "/"}
+              to={searchQuery ? `/search/${resolvedCid}${searchQuery ? `?searchTerm=${searchQuery}` : ''}` : '/'}
               sx={{
                 color: 'white',
                 textDecoration: 'none',
@@ -254,27 +179,38 @@ export default function IpfsSearchBar(props) {
                 },
               }}
             >
-              <Stack direction='row' alignItems='center'>
+              <Stack direction="row" alignItems="center">
                 <ArrowBack fontSize="small" />
                 <Typography variant="body1" ml={1}>
-                  Back to {searchTerm ? 'search results' : 'home'}
+                  Back to {searchQuery ? 'search results' : 'home'}
                 </Typography>
               </Stack>
-            </Link>
+            </MuiLink>
           </Box>
-          <Typography variant='h2' mt={1} pl={2}>
-            {savedCids ? `${shows.find(obj => obj.id === params?.cid)?.emoji || savedCids.find(obj => obj.id === params?.cid)?.emoji} ${shows.find(obj => obj.id === params?.cid)?.title || savedCids.find(obj => obj.id === params?.cid)?.title}` : ''}
+          <Typography variant="h2" mt={1} pl={2}>
+            {savedSeries
+              ? `${
+                  shows.find((obj) => obj.id === params?.cid)?.emoji
+                    || savedSeries.find((obj) => obj.id === params?.cid)?.emoji
+                    || ''
+                } ${
+                  shows.find((obj) => obj.id === params?.cid)?.title
+                    || savedSeries.find((obj) => obj.id === params?.cid)?.title
+                    || ''
+                }`
+              : ''}
           </Typography>
         </Container>
-      }
-      {pathname.startsWith("/editor") &&
-        <Container maxWidth='xl' disableGutters sx={{ px: 1 }}>
-          <Box
-            sx={{ width: '100%', px: 2 }}
-          >
-            <Link
+      )}
+
+      {pathname.startsWith('/editor') && (
+        <Container maxWidth="xl" disableGutters sx={{ px: 1 }}>
+          <Box sx={{ width: '100%', px: 2 }}>
+            <MuiLink
               component={RouterLink}
-              to={`/frame/${params?.cid}/${params?.season}/${params?.episode}/${params?.frame}${selectedFrameIndex ? `/${selectedFrameIndex}` : ''}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+              to={`/frame/${params?.cid}/${params?.season}/${params?.episode}/${params?.frame}${
+                selectedFrameIndex ? `/${selectedFrameIndex}` : ''
+              }${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
               sx={{
                 color: 'white',
                 textDecoration: 'none',
@@ -283,26 +219,39 @@ export default function IpfsSearchBar(props) {
                 },
               }}
             >
-              <Stack direction='row' alignItems='center'>
+              <Stack direction="row" alignItems="center">
                 <ArrowBack fontSize="small" />
                 <Typography variant="body1" ml={1}>
                   Back to frame
                 </Typography>
               </Stack>
-            </Link>
+            </MuiLink>
           </Box>
         </Container>
-      }
+      )}
+
       {Children.map(props.children, (child) => cloneElement(child, { shows }))}
       <FloatingActionButtons shows={cid} showAd={showAd} />
 
       {showAd && (
-        <StyledAdFooter>
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: 'black',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1299,
+          }}
+        >
           <FixedMobileBannerAd />
-        </StyledAdFooter>
+        </Box>
       )}
-      
+
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
-  )
+  );
 }
