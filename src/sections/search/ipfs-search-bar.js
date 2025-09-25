@@ -87,10 +87,10 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       }
 
       const nextCid = selectedId;
-      const encodedSearch = search ? `?searchTerm=${encodeURIComponent(search)}` : '';
+      const encodedSearch = search ? encodeURIComponent(search) : '';
 
       if (pathname.split('/')[1] === 'search') {
-        navigate(`/search/${nextCid}/${encodedSearch}`);
+        navigate(`/search/${nextCid}/` + (encodedSearch ? `?searchTerm=${encodedSearch}` : ''));
       }
 
       setCid(nextCid);
