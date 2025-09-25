@@ -173,6 +173,10 @@ export default function FramePage() {
   const [fineTuningBlobs, setFineTuningBlobs] = useState([]);
   const [searchParams] = useSearchParams();
   const urlSearchTerm = searchParams.get('searchTerm');
+  const encodedSearchTerm = useMemo(
+    () => (urlSearchTerm ? encodeURIComponent(urlSearchTerm) : ''),
+    [urlSearchTerm],
+  );
   const {
     selectedFrameIndex,
     setSelectedFrameIndex,
@@ -355,7 +359,7 @@ export default function FramePage() {
   const episodeLink = (() => {
     const frameNumber = Number(frame);
     const anchorFrame = Number.isFinite(frameNumber) ? Math.round(frameNumber / 10) * 10 : frame;
-    const searchSuffix = urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : '';
+    const searchSuffix = encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : '';
     return `/episode/${cid}/${season}/${episode}/${anchorFrame}${searchSuffix}`;
   })();
 
@@ -1009,7 +1013,7 @@ useEffect(() => {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) - 10}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`)
+              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) - 10}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`)
             }}
           >
             <ArrowBackIos style={{ fontSize: '2rem' }} />
@@ -1028,7 +1032,7 @@ useEffect(() => {
               margin: '-10px'
             }}
             onClick={() => {
-              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) + 10}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`)
+              navigate(`/frame/${cid}/${season}/${episode}/${Number(frame) + 10}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`)
             }}
           >
             <ArrowForwardIos style={{ fontSize: '2rem' }} />
@@ -1056,7 +1060,7 @@ useEffect(() => {
               onMouseDown={loadFineTuningImages}
               onTouchStart={loadFineTuningImages}
               onChange={(e, newValue) => handleSliderChange(newValue)}
-              onChangeCommitted={(e, value) => {navigate(`/frame/${cid}/${season}/${episode}/${frame}/${value}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`)}}
+              onChangeCommitted={(e, value) => {navigate(`/frame/${cid}/${season}/${episode}/${frame}/${value}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`)}}
               valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
               marks
               componentsProps={{
@@ -1177,7 +1181,7 @@ useEffect(() => {
                 const frameRate = 10;
                 const totalSeconds = Math.round(frame / frameRate);
                 const nearestSecondFrame = totalSeconds * frameRate;
-                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`);
+                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`);
               }}
               sx={{
                 marginBottom: '15px',
@@ -1194,7 +1198,7 @@ useEffect(() => {
                 const frameRate = 10;
                 const totalSeconds = Math.round(frame / frameRate);
                 const nearestSecondFrame = totalSeconds * frameRate;
-                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`);
+                navigate(`/episode/${cid}/${season}/${episode}/${nearestSecondFrame}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`);
               }}
               sx={{
                 marginBottom: '15px',
@@ -1685,7 +1689,7 @@ useEffect(() => {
                   size="medium"
                   fullWidth
                   variant="contained"
-                  to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`}
+                  to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`}
                   component={RouterLink}
                   sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                   startIcon={<Edit />}
@@ -1742,7 +1746,7 @@ useEffect(() => {
                                     },
                                   },
                                 }}
-                                onClick={() => navigate(`/frame/${cid}/${season}/${episode}/${result?.frame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`)}
+                                onClick={() => navigate(`/frame/${cid}/${season}/${episode}/${result?.frame}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`)}
                               >
                                 {loading ? (
                                   <CircularProgress size={20} sx={{ color: '#565656' }} />
@@ -1843,7 +1847,7 @@ useEffect(() => {
                         episode={episode}
                         searchTerm={resolvedSearchTermValue}
                         onNavigate={() => {
-                          navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}${urlSearchTerm ? `?searchTerm=${urlSearchTerm}` : ''}`);
+                          navigate(`/frame/${cid}/${season}/${episode}/${surroundingFrame.frame}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`);
                         }}
                         onLoad={() => handleImageLoad(surroundingFrame.frame)}
                         onError={() => {
