@@ -119,7 +119,7 @@ export default function UploadToSeriesPage({ seriesId }) {
             console.log(createFile)
             console.log('Full S3 key:', fullKey);
           } else {
-            console.log('Full S3 key (identityId unavailable):', `protected/<identityId>/${uploadedFile.key}`);
+            console.log('Full S3 key (identityId unavailable):', `protected/<identityId>/${s3Key}`);
           }
 
           const progressCallback = progress => {
