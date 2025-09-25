@@ -94,6 +94,15 @@ export default function UploadToSeriesPage({ seriesId }) {
           console.log('Unable to resolve identity id', credentialsError);
         }
 
+        if (!identityId) {
+          setUploading(false);
+          setDisableButton(true)
+          setMessage('Error: Unauthorized')
+          setSeverity('error')
+          setOpen(true)
+          return;
+        }
+
         // Calculate total data size
         const totalDataSize = files.reduce((total, file) => total + file.size, 0);
         setTotalData(totalDataSize);
