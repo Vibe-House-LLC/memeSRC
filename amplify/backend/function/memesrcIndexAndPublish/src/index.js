@@ -245,7 +245,6 @@ const checkForExistingAlias = async (alias) => {
 }
 
 exports.handler = async (event) => {
-    const { sourceMediaId = null, existingAlias = null } = event?.body && typeof event?.body === 'string' ? JSON.parse(event?.body) : {};
     const { Parameters } = await (new AWS.SSM())
         .getParameters({
             Names: ["opensearchUser", "opensearchPass"].map(secretName => process.env[secretName]),
@@ -257,6 +256,7 @@ exports.handler = async (event) => {
 
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
+        const { sourceMediaId = null, existingAlias = null } = JSON.parse(event?.body);
         let sourceMediaDetails;
         let sourceMedia;
         let seriesData;
@@ -347,6 +347,7 @@ exports.handler = async (event) => {
         }
     } catch (error) {
         console.error('Error:', error);
+        const { existingAlias = null } = JSON.parse(event?.body);
         if (existingAlias) {
             try {
                 const updateAliasResponse = await updateAliasStatus(existingAlias, 'indexingFailed');
