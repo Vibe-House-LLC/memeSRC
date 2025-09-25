@@ -245,6 +245,8 @@ const checkForExistingAlias = async (alias) => {
 }
 
 exports.handler = async (event) => {
+    let requestSourceMediaId = null;
+    let requestExistingAlias = null;
     const { Parameters } = await (new AWS.SSM())
         .getParameters({
             Names: ["opensearchUser", "opensearchPass"].map(secretName => process.env[secretName]),
@@ -256,12 +258,14 @@ exports.handler = async (event) => {
 
     try {
         console.log(`EVENT: ${JSON.stringify(event)}`);
-        const { sourceMediaId = null, existingAlias = null } = JSON.parse(event?.body);
+        const parsedBody = JSON.parse(event?.body);
+        requestSourceMediaId = parsedBody?.sourceMediaId ?? null;
+        requestExistingAlias = parsedBody?.existingAlias ?? null;
         let sourceMediaDetails;
         let sourceMedia;
         let seriesData;
         // Get the source media details
-        let alias = existingAlias || null;
+        let alias = requestExistingAlias || null;
 
         if (alias) {
             try {
@@ -273,15 +277,15 @@ exports.handler = async (event) => {
             }
         }
 
-        if (sourceMediaId) {
-            sourceMediaDetails = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id: sourceMediaId } });
+        if (requestSourceMediaId) {
+            sourceMediaDetails = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id: requestSourceMediaId } });
             sourceMedia = sourceMediaDetails?.body?.data?.getSourceMedia;
             alias = sourceMedia?.pendingAlias;
             seriesData = sourceMedia?.series;
             console.log('SOURCE MEDIA DATA: ', JSON.stringify(sourceMedia));
 
             const updateSourceMediaResponse = await updateSourceMedia({
-                id: sourceMediaId,
+                id: requestSourceMediaId,
                 status: 'indexing'
             });
             console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
@@ -313,7 +317,7 @@ exports.handler = async (event) => {
         console.log('INDEX TO OPENSEARCH RESPONSE: ', JSON.stringify('indexToOpenSearchResponse: ', indexToOpenSearchResponse));
 
         // Once indexing is complete, we can add the alias (if it doesn't exist) and update the series
-        if (sourceMediaId) {
+        if (requestSourceMediaId) {
             const doesAliasExist = await checkForExistingAlias(alias);
             if (!doesAliasExist) {
                 const aliasData = await createAlias({
@@ -330,7 +334,7 @@ exports.handler = async (event) => {
             }
 
             const updateSourceMediaResponse = await updateSourceMedia({
-                id: sourceMediaId,
+                id: requestSourceMediaId,
                 status: 'published'
             });
             console.log('UPDATE SOURCE MEDIA RESPONSE: ', JSON.stringify(updateSourceMediaResponse));
@@ -347,14 +351,13 @@ exports.handler = async (event) => {
         }
     } catch (error) {
         console.error('Error:', error);
-        const { existingAlias = null } = JSON.parse(event?.body);
-        if (existingAlias) {
+        if (requestExistingAlias) {
             try {
-                const updateAliasResponse = await updateAliasStatus(existingAlias, 'indexingFailed');
+                const updateAliasResponse = await updateAliasStatus(requestExistingAlias, 'indexingFailed');
                 console.log('UPDATE ALIAS RESPONSE: ', JSON.stringify(updateAliasResponse));
-            } catch (error) {
-                console.error('Error updating alias:', error);
-                throw error;
+            } catch (aliasUpdateError) {
+                console.error('Error updating alias:', aliasUpdateError);
+                // Preserve and rethrow the original error below
             }
         }
         throw error;
