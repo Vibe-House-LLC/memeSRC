@@ -43,7 +43,7 @@ type File @model @auth(
 ) {
   id: ID! @auth(rules: [
     { allow: groups, groups: ["admins", "mods"] }
-    { allow: owner, operations: [create] }
+    { allow: owner, operations: [create, read] }
   ]),
   sourceMedia: SourceMedia @belongsTo,
   key: String @auth(rules: [

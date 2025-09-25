@@ -245,8 +245,11 @@ export const onDeleteSourceMedia = /* GraphQL */ `
   }
 `;
 export const onCreateFile = /* GraphQL */ `
-  subscription OnCreateFile($filter: ModelSubscriptionFileFilterInput) {
-    onCreateFile(filter: $filter) {
+  subscription OnCreateFile(
+    $filter: ModelSubscriptionFileFilterInput
+    $owner: String
+  ) {
+    onCreateFile(filter: $filter, owner: $owner) {
       id
       sourceMedia {
         id
@@ -270,8 +273,11 @@ export const onCreateFile = /* GraphQL */ `
   }
 `;
 export const onUpdateFile = /* GraphQL */ `
-  subscription OnUpdateFile($filter: ModelSubscriptionFileFilterInput) {
-    onUpdateFile(filter: $filter) {
+  subscription OnUpdateFile(
+    $filter: ModelSubscriptionFileFilterInput
+    $owner: String
+  ) {
+    onUpdateFile(filter: $filter, owner: $owner) {
       id
       sourceMedia {
         id
@@ -295,8 +301,11 @@ export const onUpdateFile = /* GraphQL */ `
   }
 `;
 export const onDeleteFile = /* GraphQL */ `
-  subscription OnDeleteFile($filter: ModelSubscriptionFileFilterInput) {
-    onDeleteFile(filter: $filter) {
+  subscription OnDeleteFile(
+    $filter: ModelSubscriptionFileFilterInput
+    $owner: String
+  ) {
+    onDeleteFile(filter: $filter, owner: $owner) {
       id
       sourceMedia {
         id

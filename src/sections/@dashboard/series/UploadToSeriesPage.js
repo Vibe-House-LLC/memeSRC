@@ -65,6 +65,7 @@ export default function UploadToSeriesPage({ seriesId }) {
           ) {
             createFile(input: $input, condition: $condition) {
               id
+              status
             }
           }
         `;
