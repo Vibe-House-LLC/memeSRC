@@ -44,6 +44,10 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
   const [search, setSearch] = useState(() => sanitizeSearchValue(searchTerm));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
+  const encodedSearchQuery = useMemo(
+    () => (searchQuery ? encodeURIComponent(searchQuery) : ''),
+    [searchQuery],
+  );
 
   const shows = useMemo(() => (Array.isArray(contextShows) ? contextShows : []), [contextShows]);
   const savedSeries = useMemo(() => (Array.isArray(savedCids) ? savedCids : []), [savedCids]);
@@ -171,7 +175,9 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
           <Box sx={{ width: '100%', px: 2 }}>
             <MuiLink
               component={RouterLink}
-              to={searchQuery ? `/search/${resolvedCid}${searchQuery ? `?searchTerm=${searchQuery}` : ''}` : '/'}
+              to={searchQuery
+                ? `/search/${resolvedCid}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`
+                : '/'}
               sx={{
                 color: 'white',
                 textDecoration: 'none',
@@ -211,7 +217,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
               component={RouterLink}
               to={`/frame/${params?.cid}/${params?.season}/${params?.episode}/${params?.frame}${
                 selectedFrameIndex ? `/${selectedFrameIndex}` : ''
-              }${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+              }${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
               sx={{
                 color: 'white',
                 textDecoration: 'none',

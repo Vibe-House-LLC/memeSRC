@@ -230,6 +230,10 @@ const EditorPage = ({ shows }) => {
   const [selectedNavItemFid, setSelectedNavItemFid] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
+  const encodedSearchQuery = useMemo(
+    () => (searchQuery ? encodeURIComponent(searchQuery) : ''),
+    [searchQuery],
+  );
 
   // Get everything ready
   const { fid, editorProjectId, fineTuningIndex, searchTerms } = useParams();
@@ -1412,7 +1416,7 @@ const EditorPage = ({ shows }) => {
   };
 
   const handleNavigate = (cid, season, episode, frame) => {
-    navigate(`/editor/${cid}/${season}/${episode}/${frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
+    navigate(`/editor/${cid}/${season}/${episode}/${frame}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`);
     setOpenNavWithoutSavingDialog(false);
     editor.canvas.discardActiveObject().requestRenderAll();
     setFutureStates([]);
@@ -1620,7 +1624,7 @@ const EditorPage = ({ shows }) => {
   const episodeLink = (() => {
     const frameNumber = Number(frame);
     const anchorFrame = Number.isFinite(frameNumber) ? Math.round(frameNumber / 10) * 10 : frame;
-    const searchSuffix = searchQuery ? `?searchTerm=${searchQuery}` : '';
+    const searchSuffix = encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : '';
     return `/episode/${cid}/${season}/${episode}/${anchorFrame}${searchSuffix}`;
   })();
 
@@ -2388,7 +2392,7 @@ const EditorPage = ({ shows }) => {
                         onMouseDown={loadFineTuningImages}
                         onTouchStart={loadFineTuningImages}
                         onChange={(e, newValue) => handleSliderChange(newValue)}
-                        onChangeCommitted={(e, value) => {navigate(`/editor/${cid}/${season}/${episode}/${frame}/${value}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`)}}
+                        onChangeCommitted={(e, value) => {navigate(`/editor/${cid}/${season}/${episode}/${frame}/${value}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`)}}
                         valueLabelFormat={(value) => `Fine Tuning: ${((value - 4) / 10).toFixed(1)}s`}
                         marks
                         disabled={loadingFineTuning}
@@ -2706,7 +2710,7 @@ const EditorPage = ({ shows }) => {
                       episode={episode}
                       searchTerm={editorImageIntentBaseMeta.searchTerm}
                       onNavigate={() => {
-                        navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`);
+                        navigate(`/editor/${cid}/${season}/${episode}/${surroundingFrame.frame}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`);
                       }}
                       onLoad={() => handleSurroundingFrameLoad(index)}
                       onError={() => handleSurroundingFrameError(index)}
