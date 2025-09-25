@@ -1,4 +1,5 @@
 import { Children, cloneElement, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
 import { Box, Container, Link as MuiLink, Stack, Typography } from '@mui/material';
 import ArrowBack from '@mui/icons-material/ArrowBack';
 import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -23,9 +24,7 @@ const sanitizeSearchValue = (value) => {
   return nextValue;
 };
 
-IpfsSearchBar.propTypes = searchPropTypes;
-
-export default function IpfsSearchBar(props) {
+export default function IpfsSearchBar({ children, showSearchBar = true }) {
   const params = useParams();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -138,32 +137,34 @@ export default function IpfsSearchBar(props) {
 
   return (
     <>
-      <Box component="header" sx={{ width: '100%', zIndex: 1000, pb: 2 }}>
-        <Container
-          maxWidth="xl"
-          disableGutters
-          sx={{
-            px: { xs: 2, sm: 3, md: 4 },
-            pt: { xs: 2, sm: 3 },
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1.5,
-          }}
-        >
-          <UnifiedSearchBar
-            value={search}
-            onValueChange={handleSearchChange}
-            onSubmit={handleSubmit}
-            onClear={handleClearSearch}
-            shows={shows}
-            savedCids={savedSeries}
-            currentValueId={resolvedCid}
-            includeAllFavorites={hasFavoriteShows}
-            onSelectSeries={handleSelectSeries}
-            appearance="dark"
-          />
-        </Container>
-      </Box>
+      {showSearchBar && (
+        <Box component="header" sx={{ width: '100%', zIndex: 1000, pb: 2 }}>
+          <Container
+            maxWidth="xl"
+            disableGutters
+            sx={{
+              px: { xs: 2, sm: 3, md: 4 },
+              pt: { xs: 2, sm: 3 },
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5,
+            }}
+          >
+            <UnifiedSearchBar
+              value={search}
+              onValueChange={handleSearchChange}
+              onSubmit={handleSubmit}
+              onClear={handleClearSearch}
+              shows={shows}
+              savedCids={savedSeries}
+              currentValueId={resolvedCid}
+              includeAllFavorites={hasFavoriteShows}
+              onSelectSeries={handleSelectSeries}
+              appearance="dark"
+            />
+          </Container>
+        </Box>
+      )}
 
       {pathname.startsWith('/frame') && (
         <Container maxWidth="xl" disableGutters sx={{ px: 1 }}>
@@ -230,7 +231,7 @@ export default function IpfsSearchBar(props) {
         </Container>
       )}
 
-      {Children.map(props.children, (child) => cloneElement(child, { shows }))}
+      {Children.map(children, (child) => cloneElement(child, { shows }))}
       <FloatingActionButtons shows={cid} showAd={showAd} />
 
       {showAd && (
@@ -255,3 +256,9 @@ export default function IpfsSearchBar(props) {
     </>
   );
 }
+
+IpfsSearchBar.propTypes = {
+  ...searchPropTypes,
+  showSearchBar: PropTypes.bool,
+  children: PropTypes.node.isRequired,
+};
