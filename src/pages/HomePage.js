@@ -105,7 +105,7 @@ export default function SearchPage({ metadata }) {
       source: 'HomePage',
     });
 
-    const encodedSearchTerms = encodeURI(rawSearchTerm)
+    const encodedSearchTerms = encodeURIComponent(rawSearchTerm)
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
     setSearchTerm('')
     persistSearchTerm('')

@@ -211,6 +211,10 @@ export default function SearchPage() {
   const [videoUrls, setVideoUrls] = useState({});
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
+  const encodedSearchQuery = useMemo(
+    () => (searchQuery ? encodeURIComponent(searchQuery) : ''),
+    [searchQuery],
+  );
 
   const [autoplay] = useState(true);
 
@@ -452,16 +456,6 @@ export default function SearchPage() {
 
   return (
     <>
-    <Grid item xs={12} mt={2}>
-      <Typography variant="h3" textAlign="center" mb={2}>
-        {newResults && 
-          <>
-            Found <b>{newResults.filter(result => !result.isAd).length}</b> {newResults.filter(result => !result.isAd).length === 1 ? 'result' : 'results'}
-          </>
-        }
-      </Typography>
-    </Grid>
-
     {/* Add the ad section here */}
     {user?.userDetails?.subscriptionStatus !== 'active' && (
       <Grid item xs={12} mb={3}>
@@ -557,7 +551,7 @@ export default function SearchPage() {
                     </StyledCard>
                   ) : (
                     <Link
-                      to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`}
+                      to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
                       style={{ textDecoration: 'none' }}
                     >
                       <StyledCard>
@@ -651,7 +645,7 @@ export default function SearchPage() {
             <Grid item xs={12} key={show.id}>
               <Card
                 onClick={() => {
-                  window.location.href = `/search/${show.cid}${searchQuery ? `?searchTerm=${searchQuery}` : ''}`;
+                  window.location.href = `/search/${show.cid}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`;
                 }}
                 sx={{
                   backgroundColor: show.colorMain,
