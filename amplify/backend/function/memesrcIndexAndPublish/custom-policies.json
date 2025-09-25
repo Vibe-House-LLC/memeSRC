@@ -1,6 +1,17 @@
 [
   {
-    "Action": [],
-    "Resource": []
+    "Effect": "Allow",
+    "Action": [
+      "cloudfront:CreateInvalidation"
+    ],
+    "Resource": [
+      {
+        "Fn::If": [
+          "IsBetaEnv",
+          "arn:aws:cloudfront::458585755494:distribution/E27309Q1D0QSZZ",
+          "arn:aws:cloudfront::458585755494:distribution/E10MX49ROQE79J"
+        ]
+      }
+    ]
   }
 ]
