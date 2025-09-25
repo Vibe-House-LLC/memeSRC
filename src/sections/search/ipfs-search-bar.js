@@ -126,7 +126,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       });
 
       setSearchQuery(normalizedSearch);
-      const encodedSearch = encodeURIComponent(search || '');
+      const encodedSearch = encodeURIComponent(normalizedSearch);
       navigate(`/search/${selectedCidValue}/?searchTerm=${encodedSearch}`);
       return false;
     },
