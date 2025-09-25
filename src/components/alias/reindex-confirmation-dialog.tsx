@@ -44,6 +44,14 @@ export default function ReindexConfirmationDialog({ open, alias, onClose }: Rein
         snackbar.setMessage(`"${alias}" reindexing has been started.`)
         snackbar.setOpen(true)
       }
+    }
+    catch (error) {
+      console.error('Error:', error);
+      if (snackbar) {
+        snackbar.setSeverity('error')
+        snackbar.setMessage('Error: Failed to reindex')
+        snackbar.setOpen(true)
+      }
     } finally {
       setSubmitting(false)
     }
