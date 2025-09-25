@@ -64,6 +64,14 @@
         },
         "NONE"
       ]
+    },
+    "IsBetaEnv": {
+      "Fn::Equals": [
+        {
+          "Ref": "env"
+        },
+        "beta"
+      ]
     }
   },
   "Resources": {
@@ -458,6 +466,38 @@
       "DependsOn": [
         "LambdaExecutionRole"
       ]
+    },
+    "CustomLambdaExecutionPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "custom-lambda-execution-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "cloudfront:CreateInvalidation"
+              ],
+              "Resource": [
+                {
+                  "Fn::If": [
+                    "IsBetaEnv",
+                    "arn:aws:cloudfront::458585755494:distribution/E27309Q1D0QSZZ",
+                    "arn:aws:cloudfront::458585755494:distribution/E10MX49ROQE79J"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ]
+      },
+      "DependsOn": "LambdaExecutionRole"
     }
   },
   "Outputs": {

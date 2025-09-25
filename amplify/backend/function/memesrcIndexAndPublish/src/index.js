@@ -133,8 +133,9 @@ const updateAliasStatus = async (alias, status) => {
     }
 }
 
-// Initialize S3 client
+// Initialize AWS clients
 const s3 = new AWS.S3();
+const cloudFront = new AWS.CloudFront();
 
 const indexToOpenSearch = async (data) => {
     const { openSearchUser, openSearchPass } = data;
@@ -244,6 +245,42 @@ const checkForExistingAlias = async (alias) => {
     return aliasDetails?.body?.data?.getAlias?.id ? true : false;
 }
 
+const invalidateSearchCache = async () => {
+    const distributionMap = {
+        dev: 'E10MX49ROQE79J',
+        beta: 'E27309Q1D0QSZZ',
+    };
+
+    const env = process.env.ENV;
+    const distributionId = distributionMap[env];
+
+    if (!distributionId) {
+        console.log(`No CloudFront distribution configured for env: ${env}`);
+        return;
+    }
+
+    const callerReference = `search-invalidation-${distributionId}-${Date.now()}`;
+    const paths = ['/search', '/search*'];
+
+    try {
+        const response = await cloudFront.createInvalidation({
+            DistributionId: distributionId,
+            InvalidationBatch: {
+                CallerReference: callerReference,
+                Paths: {
+                    Quantity: paths.length,
+                    Items: paths,
+                },
+            },
+        }).promise();
+
+        console.log(`Submitted CloudFront invalidation for /search: ${JSON.stringify(response)}`);
+    } catch (error) {
+        console.error('Error creating CloudFront invalidation:', error);
+        throw error;
+    }
+}
+
 exports.handler = async (event) => {
     let requestSourceMediaId = null;
     let requestExistingAlias = null;
@@ -315,6 +352,12 @@ exports.handler = async (event) => {
             openSearchPass
         });
         console.log('INDEX TO OPENSEARCH RESPONSE: ', JSON.stringify('indexToOpenSearchResponse: ', indexToOpenSearchResponse));
+
+        if (indexToOpenSearchResponse) {
+            await invalidateSearchCache();
+        } else {
+            console.warn('Indexing did not complete successfully; skipping CloudFront invalidation.');
+        }
 
         // Once indexing is complete, we can add the alias (if it doesn't exist) and update the series
         if (requestSourceMediaId) {
