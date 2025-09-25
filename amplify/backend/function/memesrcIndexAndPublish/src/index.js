@@ -189,7 +189,7 @@ const indexToOpenSearch = async (data) => {
         // Recreate the index each run to avoid duplicate documents
         try {
             const existsResponse = await client.indices.exists({ index: indexName });
-            const indexExists = typeof existsResponse?.body === 'boolean' ? existsResponse.body : existsResponse;
+            const indexExists = existsResponse.statusCode === 200;
 
             if (indexExists) {
                 await client.indices.delete({ index: indexName });
