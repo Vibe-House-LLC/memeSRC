@@ -321,7 +321,7 @@ const AliasManagementPageRevised = () => {
   }
 
   useEffect(() => {
-    API.graphql(
+    const subscription = API.graphql(
       graphqlOperation(onUpdateAlias)
     ).subscribe({
       next: (event) => {
@@ -334,6 +334,10 @@ const AliasManagementPageRevised = () => {
         console.error("Error subscribing to alias updates:", error);
       }
     })
+
+    return () => {
+      subscription.unsubscribe();
+    }
   }, [])
 
   return (
