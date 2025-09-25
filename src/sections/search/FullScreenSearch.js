@@ -3,7 +3,7 @@
 import styled from '@emotion/styled';
 import { Grid, Typography, useMediaQuery, useTheme, IconButton, Slide } from '@mui/material';
 import { Box } from '@mui/system';
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
 import { UserContext } from '../../UserContext';
@@ -26,7 +26,7 @@ import {
   getDismissedVersion,
   formatReleaseDisplay,
 } from '../../utils/githubReleases';
-import { safeGetItem } from '../../utils/storage';
+import { safeGetItem, safeSetItem } from '../../utils/storage';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 
@@ -35,6 +35,9 @@ import { trackUsageEvent } from '../../utils/trackUsageEvent';
 
 // Height of the fixed navbar on mobile
 const NAVBAR_HEIGHT = 45;
+const AUTO_DISMISS_TOTAL_MS = 30 * 1000;
+const AUTO_DISMISS_MIN_VISIBLE_MS = 3 * 1000;
+const VISIBILITY_STORAGE_PREFIX = 'recentUpdateVisible:';
 
 // Simplified grid container
 const StyledGridContainer = styled(Grid)`
@@ -91,6 +94,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   // Recent update indicator state
   const [latestRelease, setLatestRelease] = useState(null);
   const [dismissedVersion, setDismissedVersionState] = useState(() => getDismissedVersion());
+  const visibilityAccumulatedRef = useRef(0);
+  const visibilitySessionStartRef = useRef(null);
+  const autoDismissTimeoutRef = useRef(null);
 
   const hasRecentUndismissedUpdate = useMemo(() => {
     if (!latestRelease) return false;
@@ -119,6 +125,62 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     }
   }, [latestRelease, theme]);
 
+  const releaseVisibilityStorageKey = useMemo(() => {
+    if (!latestRelease?.tag_name) return null;
+    return `${VISIBILITY_STORAGE_PREFIX}${latestRelease.tag_name}`;
+  }, [latestRelease?.tag_name]);
+
+  useEffect(() => {
+    if (!releaseVisibilityStorageKey) {
+      visibilityAccumulatedRef.current = 0;
+      return;
+    }
+    const stored = safeGetItem(releaseVisibilityStorageKey);
+    if (!stored) {
+      visibilityAccumulatedRef.current = 0;
+      return;
+    }
+    const parsed = Number.parseInt(stored, 10);
+    visibilityAccumulatedRef.current = Number.isFinite(parsed) ? parsed : 0;
+  }, [releaseVisibilityStorageKey]);
+
+  const releaseLinkStyle = useMemo(
+    () => ({
+      color: '#bfdbfe',
+      textDecoration: 'none',
+      whiteSpace: isMobile ? 'normal' : 'nowrap',
+      fontWeight: 600,
+      display: 'inline-flex',
+      gap: 4,
+      alignItems: 'center'
+    }),
+    [isMobile]
+  );
+
+  const updateBannerSx = useMemo(
+    () => ({
+      maxWidth: { xs: 'min(420px, calc(100% - 32px))', sm: 340 },
+      width: { xs: '100%', sm: 'auto' },
+      display: 'grid',
+      gridTemplateColumns: { xs: '1fr auto auto', sm: '1fr auto auto' },
+      alignItems: 'center',
+      gap: { xs: 1.1, sm: 1.25 },
+      position: 'fixed',
+      top: { xs: `${NAVBAR_HEIGHT + 8}px`, sm: `${NAVBAR_HEIGHT + 12}px` },
+      right: { xs: 16, sm: 20 },
+      zIndex: (theme) => (theme?.zIndex?.appBar || 1100) + 1,
+      px: { xs: 1.6, sm: 1.75 },
+      py: { xs: 1.1, sm: 1.2 },
+      borderRadius: '16px',
+      backgroundColor: 'rgba(15,23,42,0.74)',
+      backdropFilter: 'blur(18px) saturate(140%)',
+      color: '#e2e8f0',
+      border: '1px solid rgba(148,163,184,0.18)',
+      boxShadow: '0 18px 36px rgba(15,23,42,0.28)'
+    }),
+    []
+  );
+
   useEffect(() => {
     let didCancel = false;
     const load = async () => {
@@ -143,6 +205,59 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       }
     }
   }, [latestRelease]);
+
+  const persistVisibilityTime = useCallback(() => {
+    if (!releaseVisibilityStorageKey) return;
+    const clamped = Math.min(
+      visibilityAccumulatedRef.current,
+      AUTO_DISMISS_TOTAL_MS + AUTO_DISMISS_MIN_VISIBLE_MS
+    );
+    safeSetItem(releaseVisibilityStorageKey, String(Math.round(clamped)));
+  }, [releaseVisibilityStorageKey]);
+
+  useEffect(() => {
+    if (!hasRecentUndismissedUpdate || !releaseVisibilityStorageKey) {
+      if (autoDismissTimeoutRef.current) {
+        clearTimeout(autoDismissTimeoutRef.current);
+        autoDismissTimeoutRef.current = null;
+      }
+      if (visibilitySessionStartRef.current) {
+        visibilityAccumulatedRef.current += Math.max(0, Date.now() - visibilitySessionStartRef.current);
+        visibilitySessionStartRef.current = null;
+        persistVisibilityTime();
+      }
+      return undefined;
+    }
+
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    visibilitySessionStartRef.current = Date.now();
+
+    const remaining = Math.max(AUTO_DISMISS_TOTAL_MS - visibilityAccumulatedRef.current, 0);
+    const delay = Math.max(remaining, AUTO_DISMISS_MIN_VISIBLE_MS);
+
+    if (autoDismissTimeoutRef.current) {
+      clearTimeout(autoDismissTimeoutRef.current);
+    }
+    autoDismissTimeoutRef.current = window.setTimeout(() => {
+      autoDismissTimeoutRef.current = null;
+      handleDismissUpdateBanner();
+    }, delay);
+
+    return () => {
+      if (autoDismissTimeoutRef.current) {
+        clearTimeout(autoDismissTimeoutRef.current);
+        autoDismissTimeoutRef.current = null;
+      }
+      if (visibilitySessionStartRef.current) {
+        visibilityAccumulatedRef.current += Math.max(0, Date.now() - visibilitySessionStartRef.current);
+        visibilitySessionStartRef.current = null;
+        persistVisibilityTime();
+      }
+    };
+  }, [hasRecentUndismissedUpdate, handleDismissUpdateBanner, persistVisibilityTime, releaseVisibilityStorageKey]);
 
   // Scroll to top when arriving at this page
   useEffect(() => {
@@ -313,134 +428,87 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
                 <span />
               </Typography>
-              {hasRecentUndismissedUpdate && (
-                isMobile ? (
-                  <Box
-                    sx={{
-                      mt: { xs: 1, sm: 0.75 },
-                      maxWidth: { xs: 520, sm: 'unset' },
-                      width: { xs: '100%', sm: 'auto' },
-                      display: { xs: 'flex', sm: 'inline-flex' },
-                      position: { xs: 'static', sm: 'fixed' },
-                      top: { xs: 'auto', sm: `${NAVBAR_HEIGHT + 12}px` },
-                      right: { xs: 'auto', sm: 20 },
-                      zIndex: { xs: 'auto', sm: (theme) => (theme?.zIndex?.appBar || 1100) + 1 },
-                      alignItems: 'center',
-                      justifyContent: 'flex-start',
-                      gap: { xs: 1, sm: 1.5 },
-                      px: { xs: 1.25, sm: 2 },
-                      py: { xs: 0.75, sm: 1.25 },
-                      borderRadius: { xs: 2, sm: 2 },
-                      bgcolor: 'rgba(0,0,0,0.45)',
-                      backdropFilter: 'blur(12px)',
-                      color: '#fff',
-                      border: '1px solid rgba(255,255,255,0.4)',
-                      boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0, flex: 1 }}>
-                      <Box sx={{
-                        width: { xs: 10, sm: 10 },
-                        height: { xs: 10, sm: 10 },
-                        borderRadius: '50%',
-                        backgroundColor: statusDotColor,
-                        flexShrink: 0
-                      }} />
-                      <Typography 
-                        variant="body2" 
-                        noWrap 
-                        sx={{ 
-                          fontSize: { xs: '1rem', sm: '1rem' }, 
-                          fontWeight: { xs: 700, sm: 700 }
-                        }} 
+              {latestRelease?.tag_name && (
+                <Slide
+                  in={hasRecentUndismissedUpdate}
+                  direction="left"
+                  mountOnEnter
+                  unmountOnExit
+                  timeout={{ appear: 420, enter: 420, exit: 360 }}
+                >
+                  <Box sx={updateBannerSx}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: { xs: 1.05, sm: 1.15 },
+                        minWidth: 0
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          backgroundColor: statusDotColor,
+                          boxShadow: '0 0 0 3px rgba(148,163,184,0.2)'
+                        }}
+                      />
+                      <Typography
+                        variant="subtitle2"
                         component="span"
+                        noWrap={!isMobile}
+                        sx={{
+                          fontSize: { xs: '0.95rem', sm: '0.98rem' },
+                          fontWeight: 600,
+                          color: '#f8fafc',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
                       >
                         Updated to{' '}
-                        <Link 
-                          to="/releases" 
-                          style={{ 
-                            color: 'inherit',
-                            textDecoration: 'none', 
-                            whiteSpace: 'nowrap',
-                            borderBottom: '1px solid rgba(255,255,255,0.4)'
-                          }}
-                        >
+                        <Link to="/releases" style={releaseLinkStyle}>
                           {formatReleaseDisplay(latestRelease?.tag_name)}
-                        </Link>{' '}
-                      </Typography>
-                      <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 }, ml: 'auto' }}>
-                        {formatRelativeTimeCompact(latestRelease?.published_at)}
+                        </Link>
                       </Typography>
                     </Box>
-                    <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit' }}>
+                    <Box
+                      component="span"
+                      sx={{
+                        justifySelf: 'flex-end',
+                        px: 1,
+                        py: 0.28,
+                        borderRadius: '999px',
+                        backgroundColor: 'rgba(148,163,184,0.16)',
+                        color: 'rgba(226,232,240,0.88)',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        letterSpacing: 0.5,
+                        textTransform: 'uppercase',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {formatRelativeTimeCompact(latestRelease?.published_at)}
+                    </Box>
+                    <IconButton
+                      aria-label="Dismiss update"
+                      size="small"
+                      onClick={handleDismissUpdateBanner}
+                      sx={{
+                        color: 'rgba(226,232,240,0.72)',
+                        backgroundColor: 'transparent',
+                        p: 0.4,
+                        transition: 'color 160ms ease, background-color 160ms ease',
+                        '&:hover': {
+                          color: '#f8fafc',
+                          backgroundColor: 'rgba(148,163,184,0.16)'
+                        }
+                      }}
+                    >
                       <CloseIcon fontSize="small" />
                     </IconButton>
                   </Box>
-                ) : (
-                  <Slide in direction="left" mountOnEnter unmountOnExit timeout={{ appear: 400, enter: 400 }}>
-                    <Box
-                      sx={{
-                        mt: { xs: 1, sm: 0.75 },
-                        maxWidth: { xs: 520, sm: 'unset' },
-                        width: { xs: '100%', sm: 'auto' },
-                        display: { xs: 'flex', sm: 'inline-flex' },
-                        position: { xs: 'static', sm: 'fixed' },
-                        top: { xs: 'auto', sm: `${NAVBAR_HEIGHT + 12}px` },
-                        right: { xs: 'auto', sm: 20 },
-                        zIndex: { xs: 'auto', sm: (theme) => (theme?.zIndex?.appBar || 1100) + 1 },
-                        alignItems: 'center',
-                        justifyContent: 'flex-start',
-                        gap: { xs: 1, sm: 1.5 },
-                        px: { xs: 1.25, sm: 2 },
-                        py: { xs: 0.75, sm: 1.25 },
-                        borderRadius: { xs: 2, sm: 2 },
-                        bgcolor: 'rgba(0,0,0,0.45)',
-                        backdropFilter: 'blur(12px)',
-                        color: '#fff',
-                        border: '1px solid rgba(255,255,255,0.4)',
-                        boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.15)', sm: '0 10px 30px rgba(0,0,0,0.25)' }
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.25 }, minWidth: 0, flex: 1 }}>
-                        <Box sx={{
-                          width: { xs: 10, sm: 10 },
-                          height: { xs: 10, sm: 10 },
-                          borderRadius: '50%',
-                          backgroundColor: statusDotColor,
-                          flexShrink: 0
-                        }} />
-                        <Typography 
-                          variant="body2" 
-                          noWrap 
-                          sx={{ 
-                            fontSize: { xs: '1rem', sm: '1rem' }, 
-                            fontWeight: { xs: 700, sm: 700 }
-                          }}
-                          component="span"
-                        >
-                          Updated to{' '}
-                          <Link 
-                            to="/releases" 
-                            style={{ 
-                              color: 'inherit',
-                              textDecoration: 'none', 
-                              whiteSpace: 'nowrap',
-                              borderBottom: '1px solid rgba(255,255,255,0.4)'
-                            }}
-                          >
-                            {formatReleaseDisplay(latestRelease?.tag_name)}
-                          </Link>{' '}
-                        </Typography>
-                        <Typography variant="body2" noWrap sx={{ opacity: 0.9, fontSize: { xs: '0.9rem', sm: '0.9rem' }, fontWeight: { xs: 500, sm: 500 }, ml: 'auto' }}>
-                          {formatRelativeTimeCompact(latestRelease?.published_at)}
-                        </Typography>
-                      </Box>
-                      <IconButton aria-label="Dismiss update" size="small" onClick={handleDismissUpdateBanner} sx={{ color: 'inherit' }}>
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Slide>
-                )
+                </Slide>
               )}
             </Grid>
           </Grid>
