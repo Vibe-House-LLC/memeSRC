@@ -54,7 +54,8 @@ import {
     Palette as PaletteIcon,
     Analytics as AnalyticsIcon,
     Visibility as VisibilityIcon,
-    PlaylistAddCheck as EpisodeSelectIcon
+    PlaylistAddCheck as EpisodeSelectIcon,
+    Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { ChromePicker } from 'react-color';
@@ -140,6 +141,7 @@ interface FileBrowserProps {
     base64Columns?: string[]; // Optional: column names to decode from base64 in CSV files
     srcEditor?: boolean; // Optional: if true, show the src editor options
     onEpisodeSelectionChange?: (selectedEpisodes: { season: number; episode: number }[]) => void; // Optional: callback for episode selection
+    refreshKey?: number; // Optional: when changed, triggers a refresh of the file list
 }
 
 // Custom TreeNode component
@@ -1551,7 +1553,7 @@ const CsvViewer: React.FC<{
     );
 };
 
-const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: providedFiles, base64Columns = [], srcEditor = false, onEpisodeSelectionChange }) => {
+const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: providedFiles, base64Columns = [], srcEditor = false, onEpisodeSelectionChange, refreshKey }) => {
     const [files, setFiles] = useState<FileItem[]>([]);
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
     const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
@@ -1589,16 +1591,23 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
             
             console.log('Listing files from S3 bucket root path:', fullPath);
             
-            // List files from S3 bucket root using custom prefix (empty string)
-            const result = await Storage.list(fullPath, {
-                level: 'public',
-                pageSize: 1000
-            });
-            
-            console.log('Storage.list result:', result);
-            
-            const resultArray = (result?.results || result || []) as any[];
-            console.log('Result array:', resultArray);
+            // List files from S3 using pagination to retrieve all results
+            const aggregatedResults: any[] = [];
+            let nextToken: string | undefined = undefined;
+            do {
+                const page: any = await Storage.list(fullPath, {
+                    level: 'public',
+                    pageSize: 1000,
+                    nextToken
+                });
+                const pageArray = (page?.results || page || []) as any[];
+                aggregatedResults.push(...pageArray);
+                nextToken = (page as any)?.nextToken as string | undefined;
+            } while (nextToken);
+
+            console.log('Storage.list aggregated results count:', aggregatedResults.length);
+
+            const resultArray = aggregatedResults as any[];
             
             const fileItems: FileItem[] = resultArray.map((item: any) => {
                 const key = item.key || '';
@@ -1724,7 +1733,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
 
     useEffect(() => {
         loadFiles();
-    }, [loadFiles]);
+    }, [loadFiles, refreshKey]);
 
     useEffect(() => {
         if (selectedFile) {
@@ -2787,9 +2796,21 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                 </Alert>
             )}
             
-            <Typography variant="h6" gutterBottom>
-                File Browser: {fullPath}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>
+                    File Browser: {fullPath}
+                </Typography>
+                <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={() => loadFiles()}
+                    disabled={loading}
+                    sx={{ textTransform: 'none' }}
+                >
+                    Refresh
+                </Button>
+            </Box>
 
             {/* Save Confirmation Dialog */}
             <Dialog

@@ -28,6 +28,8 @@ const axios = require('axios');
 // Analytics bucket name
 const analyticsBucket = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
 
+const prefix = process.env.ENV === "dev" ? "dev" : "v2";
+
 const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
     const uniqueId = uuid.v4();
     const s3 = new S3();
@@ -83,7 +85,7 @@ exports.handler = async (event) => {
                 auth: opensearch_auth,
                 headers
             }).then((response) => {
-                const indexes = response.data.filter(item => !item.index.startsWith('.'));
+                const indexes = response.data.filter(item => !item.index.startsWith('.') && item.index.startsWith(`${prefix}-`));
                 // console.log(indexes)
                 return indexes;
             }).catch((error) => {

@@ -245,8 +245,11 @@ export const onDeleteSourceMedia = /* GraphQL */ `
   }
 `;
 export const onCreateFile = /* GraphQL */ `
-  subscription OnCreateFile($filter: ModelSubscriptionFileFilterInput) {
-    onCreateFile(filter: $filter) {
+  subscription OnCreateFile(
+    $filter: ModelSubscriptionFileFilterInput
+    $owner: String
+  ) {
+    onCreateFile(filter: $filter, owner: $owner) {
       id
       sourceMedia {
         id
@@ -264,13 +267,17 @@ export const onCreateFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
 `;
 export const onUpdateFile = /* GraphQL */ `
-  subscription OnUpdateFile($filter: ModelSubscriptionFileFilterInput) {
-    onUpdateFile(filter: $filter) {
+  subscription OnUpdateFile(
+    $filter: ModelSubscriptionFileFilterInput
+    $owner: String
+  ) {
+    onUpdateFile(filter: $filter, owner: $owner) {
       id
       sourceMedia {
         id
@@ -288,13 +295,17 @@ export const onUpdateFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
 `;
 export const onDeleteFile = /* GraphQL */ `
-  subscription OnDeleteFile($filter: ModelSubscriptionFileFilterInput) {
-    onDeleteFile(filter: $filter) {
+  subscription OnDeleteFile(
+    $filter: ModelSubscriptionFileFilterInput
+    $owner: String
+  ) {
+    onDeleteFile(filter: $filter, owner: $owner) {
       id
       sourceMedia {
         id
@@ -312,6 +323,7 @@ export const onDeleteFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
@@ -909,6 +921,7 @@ export const onCreateV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -956,6 +969,7 @@ export const onUpdateV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -1003,6 +1017,7 @@ export const onDeleteV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -1051,6 +1066,7 @@ export const onCreateAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId
@@ -1079,6 +1095,7 @@ export const onUpdateAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId
@@ -1107,6 +1124,7 @@ export const onDeleteAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId

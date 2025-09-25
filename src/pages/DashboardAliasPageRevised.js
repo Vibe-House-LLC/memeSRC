@@ -1,11 +1,21 @@
 import React, { useContext, useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress } from "@mui/material";
+import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress, Chip } from "@mui/material";
 import { API, Storage, graphqlOperation } from 'aws-amplify';
-import { Add, Edit, Delete, Refresh } from "@mui/icons-material";
+import { Add, Edit, Delete, Refresh, StorageOutlined } from "@mui/icons-material";
 import { getV2ContentMetadata, listAliases } from '../graphql/queries';
 import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata, updateV2ContentMetadata } from '../graphql/mutations';
 import { SnackbarContext } from '../SnackbarContext';
+import ReindexConfirmationDialog from 'src/components/alias/reindex-confirmation-dialog';
+
+const onUpdateAlias = /* GraphQL */ `
+  subscription OnUpdateAlias($filter: ModelSubscriptionAliasFilterInput) {
+    onUpdateAlias(filter: $filter) {
+      id
+      status
+    }
+  }
+`;
 
 /* Utility Functions */
 
@@ -83,17 +93,17 @@ AliasFormDialog.propTypes = {
 
 
 const ConfirmDeleteDialog = ({ open, onClose, onConfirm }) => (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Confirm Delete</DialogTitle>
-      <DialogContent>
-        Are you sure you want to delete this alias?
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={onConfirm} color="error">Delete</Button>
-      </DialogActions>
-    </Dialog>
-  );
+  <Dialog open={open} onClose={onClose}>
+    <DialogTitle>Confirm Delete</DialogTitle>
+    <DialogContent>
+      Are you sure you want to delete this alias?
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={onClose}>Cancel</Button>
+      <Button onClick={onConfirm} color="error">Delete</Button>
+    </DialogActions>
+  </Dialog>
+);
 
 ConfirmDeleteDialog.propTypes = {
   open: PropTypes.bool.isRequired,
@@ -112,10 +122,17 @@ const AliasManagementPageRevised = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [refreshingMetadata, setRefreshingMetadata] = useState(false);
   const { setOpen: setSnackbarOpen, setMessage, setSeverity } = useContext(SnackbarContext)
+  const [aliasToReindex, setAliasToReindex] = useState(null);
 
   useEffect(() => {
     fetchAliases().then(data => {
-      setAliases(data);
+      const updatedAliases = data.map((alias) => {
+        if (!alias.status) {
+          return { ...alias, status: 'indexed' }
+        }
+        return alias
+      })
+      setAliases(updatedAliases);
       setLoading(false);
     });
   }, []);
@@ -282,6 +299,47 @@ const AliasManagementPageRevised = () => {
     }
   };
 
+  const handleReindex = async (alias) => {
+    console.log(alias)
+    setAliasToReindex(alias)
+  }
+
+  const handleUpdateAliasStatus = (id, status) => {
+    console.log(id, status)
+    console.log(aliases)
+    setAliases((prevAliases) => {
+      console.log(prevAliases)
+      const nextAliases = prevAliases.map((alias) => {
+        if (alias.id === id) {
+          return { ...alias, status, updatedAt: new Date().toISOString() }
+        }
+        return alias
+      })
+      console.log(nextAliases)
+      return nextAliases
+    })
+  }
+
+  useEffect(() => {
+    const subscription = API.graphql(
+      graphqlOperation(onUpdateAlias)
+    ).subscribe({
+      next: (event) => {
+        console.log(event)
+        const id = event.value.data.onUpdateAlias.id
+        const newStatus = event.value.data.onUpdateAlias.status
+        handleUpdateAliasStatus(id, newStatus)
+      },
+      error: (error) => {
+        console.error("Error subscribing to alias updates:", error);
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe();
+    }
+  }, [])
+
   return (
     <>
       <Container maxWidth="md">
@@ -304,7 +362,11 @@ const AliasManagementPageRevised = () => {
             <TableBody>
               {aliases.map((alias) => (
                 <TableRow key={alias.id}>
-                  <TableCell>{alias.id}</TableCell>
+                  <TableCell>
+                    {alias.id} <Chip sx={{ ml: 1, color: '#000000 !important' }} size="small" label={alias.status} color={alias.status === 'reindexing' ? 'warning' : alias.status === 'indexed' ? 'success' : alias.status === 'indexingFailed' ? 'error' : 'default'} />
+                    <br />
+                    <Typography fontSize={12}>Last updated: {new Date(alias.updatedAt).toLocaleString()}</Typography>
+                  </TableCell>
                   <TableCell>{alias.aliasV2ContentMetadataId}</TableCell>
                   <TableCell align="right">
                     <IconButton
@@ -315,6 +377,7 @@ const AliasManagementPageRevised = () => {
                     </IconButton>
                     <IconButton onClick={() => handleOpenDialog(alias)}><Edit /></IconButton>
                     <IconButton onClick={() => handleOpenDeleteDialog(alias)} color="error"><Delete /></IconButton>
+                    <IconButton disabled={alias.status === 'reindexing'} onClick={() => handleReindex(alias.id)}><StorageOutlined /></IconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -324,6 +387,15 @@ const AliasManagementPageRevised = () => {
       </Container>
       <AliasFormDialog open={dialogOpen} onClose={handleCloseDialog} onSubmit={handleSubmitForm} initialValues={currentAlias || {}} />
       <ConfirmDeleteDialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} onConfirm={handleDeleteAlias} />
+      <ReindexConfirmationDialog
+        open={Boolean(aliasToReindex)}
+        onClose={
+          () => {
+            setAliasToReindex(null)
+          }
+        }
+        alias={aliasToReindex}
+      />
     </>
   );
 };

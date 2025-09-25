@@ -38,13 +38,26 @@ type SourceMedia @model @auth(
 type File @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] }
+    { allow: owner, operations: [create, update] }
   ]
 ) {
-  id: ID!,
+  id: ID! @auth(rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+    { allow: owner, operations: [create, read] }
+  ]),
   sourceMedia: SourceMedia @belongsTo,
-  key: String,
-  unzippedPath: String,
-  status: String,
+  key: String @auth(rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+    { allow: owner, operations: [create] }
+  ]),
+  unzippedPath: String @auth(rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+    { allow: owner, operations: [create] }
+  ]),
+  status: String @auth(rules: [
+    { allow: groups, groups: ["admins", "mods"] }
+    { allow: owner, operations: [create, update, read] }
+  ]),
 }
 
 type Season @model @auth(
@@ -176,6 +189,7 @@ type Alias @model @auth(
 ) {
   id: ID!,
   v2ContentMetadata: V2ContentMetadata @belongsTo
+  status: String
 }
 
 type HomepageSection @model @auth(

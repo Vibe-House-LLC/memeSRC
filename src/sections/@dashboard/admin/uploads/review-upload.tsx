@@ -43,15 +43,15 @@ const onUpdateSourceMedia = /* GraphQL */ `
 const FileBrowserPlaceholder = ({ sourceMediaStatus, filePathPrefix }: { sourceMediaStatus?: string, filePathPrefix?: string }) => {
     // Determine the message based on the state
     let title = "File Browser";
-    let message = "No uploaded files selected.";
-    let subtitle = "Files will appear here once an alias is saved";
+    let message = "No uploaded files unzipped.";
+    let subtitle = "Files will appear here once an alias is saved and files are unzipped";
     
     if (sourceMediaStatus && sourceMediaStatus.toLowerCase() !== 'uploaded') {
         title = "File Browser: Disabled";
         message = `File browser is disabled when source media status is "${sourceMediaStatus}".`;
         subtitle = "File browser will be available once the source media status is 'uploaded'.";
     } else if (!filePathPrefix) {
-        message = "No uploaded files selected.";
+        message = "No uploaded files unzipped.";
         subtitle = "Files will appear here once an alias is saved";
     }
 
@@ -149,6 +149,7 @@ export default function AdminReviewUpload({
     const [approvingUpload, setApprovingUpload] = useState(false);
     const [indexing, setIndexing] = useState(false);
     const [selectedEpisodes, setSelectedEpisodes] = useState<{ season: number; episode: number }[]>([]);
+    const [fileBrowserRefreshKey, setFileBrowserRefreshKey] = useState<number>(0);
     
     // Snackbar context for success messages
     const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -396,6 +397,8 @@ export default function AdminReviewUpload({
             ...prev,
             [fileId]: newStatus
         }));
+        // Trigger a FileBrowser refresh whenever any file status changes
+        setFileBrowserRefreshKey(prev => prev + 1);
     };
 
     const handleEpisodeSelectionChange = (episodes: { season: number; episode: number }[]) => {
@@ -631,6 +634,7 @@ export default function AdminReviewUpload({
                         id={savedAlias} 
                         base64Columns={['subtitle_text']} 
                         srcEditor 
+                        refreshKey={fileBrowserRefreshKey}
                         onEpisodeSelectionChange={handleEpisodeSelectionChange}
                     />
                 ) : (

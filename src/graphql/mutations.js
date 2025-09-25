@@ -279,6 +279,7 @@ export const createFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
@@ -306,6 +307,7 @@ export const updateFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
@@ -333,6 +335,7 @@ export const deleteFile = /* GraphQL */ `
       createdAt
       updatedAt
       sourceMediaFilesId
+      owner
       __typename
     }
   }
@@ -964,6 +967,7 @@ export const createV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -1012,6 +1016,7 @@ export const updateV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -1060,6 +1065,7 @@ export const deleteV2ContentMetadata = /* GraphQL */ `
       }
       alias {
         id
+        status
         createdAt
         updatedAt
         aliasV2ContentMetadataId
@@ -1111,6 +1117,7 @@ export const createAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId
@@ -1142,6 +1149,7 @@ export const updateAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId
@@ -1173,6 +1181,7 @@ export const deleteAlias = /* GraphQL */ `
         v2ContentMetadataSeriesId
         __typename
       }
+      status
       createdAt
       updatedAt
       aliasV2ContentMetadataId

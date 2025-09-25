@@ -31,6 +31,8 @@ const path = require('path');
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
     console.log('Throw Away Console Log');
+
+    const prefix = process.env.ENV === "dev" ? "dev" : 'v2'
     
     const { id, query } = event.pathParameters;
     const decodedQuery = decodeURIComponent(query);
@@ -39,10 +41,10 @@ exports.handler = async (event) => {
     let searchPath;
     
     if (id === '_universal') {
-        searchPath = '/v2-*,-fc-*/_search';
+        searchPath = `/${prefix}-*,-fc-*/_search`;
     } else {
         const indices = id.split(',');
-        const processedIndices = indices.map(index => `v2-${index}`);
+        const processedIndices = indices.map(index => `${prefix}-${index}`);
         searchPath = `/${processedIndices.join(',')}/_search`;
     }
 
@@ -121,7 +123,7 @@ exports.handler = async (event) => {
 
         const sources = opensearchResponse.hits.hits.map(hit => ({
             ...hit._source,
-            cid: hit._index.replace(/^v2-/, '')
+            cid: hit._index.replace(new RegExp(`^${prefix}-`), '')
         }));
 
         return {
