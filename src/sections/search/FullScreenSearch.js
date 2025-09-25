@@ -431,7 +431,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               {latestRelease?.tag_name && (
                 <Slide
                   in={hasRecentUndismissedUpdate}
-                  direction="left"
+                  direction={isMobile ? 'down' : 'left'}
                   mountOnEnter
                   unmountOnExit
                   timeout={{ appear: 420, enter: 420, exit: 360 }}
