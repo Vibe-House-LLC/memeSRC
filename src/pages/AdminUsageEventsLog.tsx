@@ -435,46 +435,64 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
       <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
         <ListItemButton
           onClick={() => onToggle(entry.id)}
-          sx={{
-            px: { xs: 1.5, sm: 2 },
-            py: { xs: 1.5, sm: 1.75 },
-          }}
+          sx={{ p: 0 }}
         >
-          <Stack spacing={1.25} sx={{ width: '100%', minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'stretch', width: '100%' }}>
+            <Box
+              sx={(theme) => ({
+                width: 6,
+                flexShrink: 0,
+                backgroundColor:
+                  chipColor === 'default'
+                    ? theme.palette.text.disabled
+                    : theme.palette[chipColor].main,
+                opacity: isSummaryLoading ? 0.35 : 1,
+                transition: 'opacity 150ms ease, background-color 150ms ease',
+              })}
+            />
             <Stack
-              direction="row"
-              alignItems="flex-start"
-              justifyContent="space-between"
-              spacing={1}
-              sx={{ flexWrap: 'wrap', rowGap: 0.25, columnGap: 0.5 }}
+              spacing={1.25}
+              sx={{
+                width: '100%',
+                minWidth: 0,
+                px: { xs: 1.5, sm: 2 },
+                py: { xs: 1.5, sm: 1.75 },
+              }}
             >
-              <Tooltip title={identityFull} placement="top" enterTouchDelay={20}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: 600,
-                    color: 'text.primary',
-                    maxWidth: '100%',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {identityLine}
-                </Typography>
-              </Tooltip>
-              <Tooltip title={fullTimestampLabel} placement="top" enterTouchDelay={20}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}
-                >
-                  {timeLabel ?? '—'}
-                </Typography>
-              </Tooltip>
-            </Stack>
+              <Stack
+                direction="row"
+                alignItems="flex-start"
+                justifyContent="space-between"
+                spacing={1}
+                sx={{ flexWrap: 'wrap', rowGap: 0.25, columnGap: 0.5 }}
+              >
+                <Tooltip title={identityFull} placement="top" enterTouchDelay={20}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      color: 'text.primary',
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {identityLine}
+                  </Typography>
+                </Tooltip>
+                <Tooltip title={fullTimestampLabel} placement="top" enterTouchDelay={20}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}
+                  >
+                    {timeLabel ?? '—'}
+                  </Typography>
+                </Tooltip>
+              </Stack>
 
-            <Stack direction="row" alignItems="center" spacing={0.75} sx={{ width: '100%', minWidth: 0 }}>
+              <Stack direction="row" alignItems="center" spacing={0.75} sx={{ width: '100%', minWidth: 0 }}>
               {!isSummaryLoading && (
                 <Box
                   sx={(theme) => ({
@@ -519,6 +537,7 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
               </Box>
             </Stack>
           </Stack>
+          </Box>
         </ListItemButton>
 
         {hasSummaryError && entry.summaryError && (
@@ -1286,9 +1305,6 @@ export default function AdminUsageEventsLog() {
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: -0.2, whiteSpace: 'nowrap' }}>
                   Usage events
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Live feed
                 </Typography>
               </Box>
 
