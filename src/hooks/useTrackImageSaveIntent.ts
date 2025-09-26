@@ -5,6 +5,7 @@ import { trackUsageEvent } from '../utils/trackUsageEvent';
 export type SaveIntentTrigger = 'context_menu' | 'long_press' | 'drag_start';
 
 const DUPLICATE_TRIGGER_WINDOW_MS = 800;
+const DEFAULT_LONG_PRESS_DELAY_MS = 400; // fire slightly before native save menus
 
 export interface ImageSaveIntentMeta extends Record<string, unknown> {
   source: string;
@@ -59,7 +60,7 @@ export const useTrackImageSaveIntent = (
   meta: ImageSaveIntentMeta,
   options?: UseTrackImageSaveIntentOptions
 ) => {
-  const longPressDelayMs = options?.longPressDelayMs ?? 600;
+  const longPressDelayMs = options?.longPressDelayMs ?? DEFAULT_LONG_PRESS_DELAY_MS;
   const pointerStateRef = useRef<PointerState>({ timeoutId: null, pointerId: null, pointerType: null });
   const lastIntentRef = useRef<{ type: SaveIntentTrigger; timestamp: number; pointerType?: string } | null>(null);
   const latestMetaRef = useRef<ImageSaveIntentMeta>(meta);
