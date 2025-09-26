@@ -338,19 +338,9 @@ const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps> = ({ s
       direction="row"
       alignItems="center"
       spacing={showRetry ? 1 : 0.75}
-      sx={(theme) => ({
-        borderRadius: 999,
-        border: `1px solid ${theme.palette.divider}`,
-        backgroundColor: theme.palette.background.paper,
-        px: 1.25,
-        py: 0.5,
-        width: 'fit-content',
-        minHeight: 32,
-        height: 32,
-      })}
       aria-label={config.description}
     >
-      <Stack direction="row" alignItems="center" spacing={0.75}>
+      <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minHeight: 24 }}>
         <Box
           sx={(theme) => ({
             width: 10,
@@ -360,12 +350,16 @@ const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps> = ({ s
               config.color === 'default'
                 ? theme.palette.text.disabled
                 : theme.palette[config.color].main,
-            boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
           })}
         />
         <Typography
           variant="caption"
-          sx={{ fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase' }}
+          sx={{
+            fontWeight: 700,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            color: 'text.primary',
+          }}
         >
           {config.label}
         </Typography>
@@ -1391,41 +1385,9 @@ export default function AdminUsageEventsLog() {
                 backgroundColor: theme.palette.background.default,
               })}
             >
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Typography
-                  variant="caption"
-                  sx={{
-                    minWidth: { xs: 90, sm: 120 },
-                    fontWeight: 600,
-                    letterSpacing: 0.6,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Time
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    flexGrow: 1,
-                    fontWeight: 600,
-                    letterSpacing: 0.6,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Identity
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    minWidth: 120,
-                    fontWeight: 600,
-                    letterSpacing: 0.6,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Event
-                </Typography>
-              </Stack>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {eventCountLabel}
+              </Typography>
             </Box>
 
             <Stack spacing={1.25} sx={{ px: 2, py: 2 }}>
@@ -1440,35 +1402,21 @@ export default function AdminUsageEventsLog() {
               ))}
             </Stack>
 
-            <Divider />
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={{ xs: 1, sm: 2 }}
-              justifyContent="space-between"
-              alignItems={{ xs: 'flex-start', sm: 'center' }}
-              sx={{ px: 2, py: 1.5 }}
-            >
-              <Stack spacing={0.25}>
-                <Typography variant="caption" color="text.secondary">
-                  {eventCountLabel}
-                </Typography>
-                {!isFilteredView && (
-                  <Typography variant="caption" color="text.secondary">
-                    Live view lists new events only.
-                  </Typography>
-                )}
-              </Stack>
-              {isFilteredView && canLoadMoreHistorical && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleLoadMoreHistorical}
-                  disabled={isHistoricalLoadingMore}
-                >
-                  {isHistoricalLoadingMore ? 'Loading…' : 'Load more history'}
-                </Button>
-              )}
-            </Stack>
+            {isFilteredView && canLoadMoreHistorical && (
+              <>
+                <Divider />
+                <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleLoadMoreHistorical}
+                    disabled={isHistoricalLoadingMore}
+                  >
+                    {isHistoricalLoadingMore ? 'Loading…' : 'Load more history'}
+                  </Button>
+                </Box>
+              </>
+            )}
           </Paper>
         )}
       </Stack>
