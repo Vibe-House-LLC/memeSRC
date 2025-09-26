@@ -427,25 +427,7 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
     entry.formattedEventData || entry.formattedDetail || entry.rawErrors || entry.rawPayload
   );
 
-  const metaLines: Array<{ label: string; value: string }> = [];
-
-  if (entry.detailStatus === 'loaded' && entry.detail) {
-    const detail = entry.detail;
-    const summary = entry.summary;
-
-    const pushLine = (label: string, value: string | null | undefined) => {
-      if (!value) return;
-      metaLines.push({ label, value });
-    };
-
-    pushLine('ID', detail.id ?? summary?.id ?? entry.id);
-    pushLine('Identity', detail.identityId ?? summary?.identityId ?? 'Unknown identity');
-    pushLine('Session', detail.sessionId ?? summary?.sessionId ?? undefined);
-    pushLine('Created', formatTimestamp(detail.createdAt) ?? detail.createdAt ?? summary?.createdAt ?? undefined);
-    pushLine('Updated', formatTimestamp(detail.updatedAt) ?? detail.updatedAt ?? undefined);
-  }
-
-  const metaFieldEntries: StringEntry[] = metaLines.map((item) => ({ key: item.label, value: item.value }));
+  const hasParsedFields = eventSpecificFields.length > 0 || payloadStringEntries.length > 0;
 
   return (
     <Box>
@@ -587,15 +569,17 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                     />
                   )}
 
-                  {metaFieldEntries.length > 0 && (
-                    <FieldTiles idPrefix={`${entry.id}-meta`} items={metaFieldEntries} />
-                  )}
-
                   {payloadStringEntries.length > 0 && (
                     <FieldTiles
                       idPrefix={`${entry.id}-payload`}
                       items={payloadStringEntries}
                     />
+                  )}
+
+                  {!hasParsedFields && (
+                    <Typography variant="body2" color="text.secondary">
+                      No event data captured.
+                    </Typography>
                   )}
                 </Stack>
 
