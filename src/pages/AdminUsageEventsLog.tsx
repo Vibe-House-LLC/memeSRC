@@ -195,6 +195,55 @@ const hashIdentityToColor = (identity: string | null | undefined): string | null
   return IDENTITY_ACCENT_COLORS[paletteIndex];
 };
 
+const ICON_CONTRAST_LUMINANCE_THRESHOLD = 0.6;
+
+const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+  const normalized = hex.trim().replace(/^#/, '');
+
+  if (normalized.length !== 6 || /[^0-9a-fA-F]/.test(normalized)) {
+    return null;
+  }
+
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+    return null;
+  }
+
+  return { r, g, b };
+};
+
+const calculateRelativeLuminance = (hex: string): number | null => {
+  const rgb = hexToRgb(hex);
+
+  if (!rgb) {
+    return null;
+  }
+
+  const normalizeChannel = (channel: number) => {
+    const srgb = channel / 255;
+    return srgb <= 0.03928 ? srgb / 12.92 : Math.pow((srgb + 0.055) / 1.055, 2.4);
+  };
+
+  const r = normalizeChannel(rgb.r);
+  const g = normalizeChannel(rgb.g);
+  const b = normalizeChannel(rgb.b);
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+const isHexColorLight = (hex: string): boolean => {
+  const luminance = calculateRelativeLuminance(hex);
+
+  if (luminance === null) {
+    return false;
+  }
+
+  return luminance > ICON_CONTRAST_LUMINANCE_THRESHOLD;
+};
+
 const logStorageWarning = (message: string, error: unknown) => {
   if (process.env.NODE_ENV !== 'production') {
     console.warn(message, error);
@@ -586,6 +635,10 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
     return shortenIdentifier(identityRaw) ?? identityRaw;
   }, [identityRaw, isNoAuthIdentity]);
   const identityAccentColor = useMemo(() => hashIdentityToColor(identityRaw), [identityRaw]);
+  const isIdentityAccentLight = useMemo(
+    () => (identityAccentColor ? isHexColorLight(identityAccentColor) : false),
+    [identityAccentColor]
+  );
   const timestampIso = entry.summary?.createdAt ?? entry.receivedAt;
   const fullTimestampLabel = formatTimestamp(timestampIso) ?? timestampIso ?? 'Timestamp unavailable';
   const relativeLabel = formatRelativeTimeLabel(timestampIso);
@@ -648,19 +701,28 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                   title={identityFull}
                 >
                   <Box
-                    sx={(theme) => ({
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      lineHeight: 0,
-                      flexShrink: 0,
-                      color: theme.palette.common.white,
-                      backgroundColor: identityAccentColor ?? theme.palette.text.secondary,
-                      borderRadius: '50%',
-                      width: 22,
-                      height: 22,
-                      transition: 'background-color 150ms ease, color 150ms ease',
-                    })}
+                    sx={(theme) => {
+                      const backgroundColor = identityAccentColor ?? theme.palette.text.secondary;
+                      const contrastColor = identityAccentColor
+                        ? isIdentityAccentLight
+                          ? theme.palette.common.black
+                          : theme.palette.common.white
+                        : theme.palette.common.white;
+
+                      return {
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 0,
+                        flexShrink: 0,
+                        color: contrastColor,
+                        backgroundColor,
+                        borderRadius: '50%',
+                        width: 22,
+                        height: 22,
+                        transition: 'background-color 150ms ease, color 150ms ease',
+                      };
+                    }}
                   >
                     <IdentityIconComponent sx={{ fontSize: 16 }} />
                   </Box>
