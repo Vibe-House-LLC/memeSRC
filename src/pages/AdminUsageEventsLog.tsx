@@ -346,6 +346,7 @@ const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps> = ({ s
         py: 0.5,
         width: 'fit-content',
         minHeight: 32,
+        height: 32,
       })}
       aria-label={config.description}
     >
@@ -439,83 +440,70 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
             py: { xs: 1.5, sm: 1.75 },
           }}
         >
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
-            spacing={{ xs: 1.25, sm: 2 }}
-            sx={{ width: '100%', minWidth: 0 }}
-          >
-            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              <Stack spacing={0.75} sx={{ minWidth: 0 }}>
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  spacing={1}
-                  sx={{ flexWrap: 'wrap', gap: 0.5 }}
-                >
-                  <Tooltip title={identityFull} placement="top" enterTouchDelay={20}>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 600,
-                        color: 'text.primary',
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {identityLine}
-                    </Typography>
-                  </Tooltip>
-                  <Tooltip title={fullTimestampLabel} placement="top" enterTouchDelay={20}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-                      {timeLabel ? `(${timeLabel})` : '—'}
-                    </Typography>
-                  </Tooltip>
-                </Stack>
-
-                <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
-                  {!isSummaryLoading && (
-                    <Box
-                      sx={(theme) => ({
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        backgroundColor:
-                          chipColor === 'default'
-                            ? theme.palette.text.disabled
-                            : theme.palette[chipColor].main,
-                        boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
-                        flexShrink: 0,
-                      })}
-                    />
-                  )}
-                  <Tooltip title={eventTypeLabel} placement="top" enterTouchDelay={20}>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{
-                        fontWeight: 600,
-                        lineHeight: 1.3,
-                        color: 'text.primary',
-                        wordBreak: 'break-word',
-                        flexGrow: 1,
-                      }}
-                    >
-                      {eventTypeLabel}
-                    </Typography>
-                  </Tooltip>
-                </Stack>
-              </Stack>
-            </Box>
-
+          <Stack spacing={1.25} sx={{ width: '100%', minWidth: 0 }}>
             <Stack
               direction="row"
-              alignItems="center"
+              alignItems="flex-start"
+              justifyContent="space-between"
               spacing={1}
-              sx={{ alignSelf: { xs: 'flex-start', sm: 'center' }, flexShrink: 0 }}
+              sx={{ flexWrap: 'wrap', rowGap: 0.25, columnGap: 0.5 }}
             >
+              <Tooltip title={identityFull} placement="top" enterTouchDelay={20}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                    color: 'text.primary',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {identityLine}
+                </Typography>
+              </Tooltip>
+              <Tooltip title={fullTimestampLabel} placement="top" enterTouchDelay={20}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}
+                >
+                  {timeLabel ?? '—'}
+                </Typography>
+              </Tooltip>
+            </Stack>
+
+            <Stack direction="row" alignItems="center" spacing={0.75} sx={{ width: '100%', minWidth: 0 }}>
+              {!isSummaryLoading && (
+                <Box
+                  sx={(theme) => ({
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    backgroundColor:
+                      chipColor === 'default'
+                        ? theme.palette.text.disabled
+                        : theme.palette[chipColor].main,
+                    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+                    flexShrink: 0,
+                  })}
+                />
+              )}
+              <Tooltip title={eventTypeLabel} placement="top" enterTouchDelay={20}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 600,
+                    lineHeight: 1.3,
+                    color: 'text.primary',
+                    wordBreak: 'break-word',
+                    flexGrow: 1,
+                  }}
+                >
+                  {eventTypeLabel}
+                </Typography>
+              </Tooltip>
               {isSummaryLoading && <CircularProgress size={18} thickness={5} />}
               <Box
                 sx={{
@@ -524,6 +512,7 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                   transition: 'transform 150ms ease',
                   transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                   color: 'text.secondary',
+                  flexShrink: 0,
                 }}
               >
                 <ExpandMoreIcon fontSize="small" />
@@ -1283,15 +1272,19 @@ export default function AdminUsageEventsLog() {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={3}>
         <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
-          <Stack spacing={{ xs: 2, sm: 2.5 }}>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={{ xs: 1.5, sm: 2 }}
-              alignItems={{ xs: 'flex-start', sm: 'center' }}
-              justifyContent="space-between"
+          <Stack spacing={{ xs: 1.75, sm: 2.5 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: { xs: 'center', sm: 'center' },
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                rowGap: 1,
+                columnGap: { xs: 1.5, sm: 2 },
+              }}
             >
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: -0.2 }}>
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: -0.2, whiteSpace: 'nowrap' }}>
                   Usage events
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -1299,16 +1292,10 @@ export default function AdminUsageEventsLog() {
                 </Typography>
               </Box>
 
-              <Box
-                sx={{
-                  width: { xs: '100%', sm: 'auto' },
-                  display: 'flex',
-                  justifyContent: { xs: 'flex-start', sm: 'flex-end' },
-                }}
-              >
+              <Box sx={{ flexShrink: 0 }}>
                 <ConnectionStatusIndicator status={connectionStatus} onRetry={handleManualReconnect} />
               </Box>
-            </Stack>
+            </Box>
 
             <FormControl
               size="small"
