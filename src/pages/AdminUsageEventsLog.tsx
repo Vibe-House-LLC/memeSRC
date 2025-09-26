@@ -96,6 +96,35 @@ const EVENT_TYPE_SAMPLE_LIMIT = 200;
 const ALL_EVENT_TYPES_OPTION = '__ALL__';
 const NOAUTH_IDENTITY_PREFIX = 'noauth-';
 
+const IDENTITY_ACCENT_COLORS = [
+  '#38BDF8',
+  '#F472B6',
+  '#34D399',
+  '#F97316',
+  '#8B5CF6',
+  '#22D3EE',
+  '#F59E0B',
+  '#6366F1',
+  '#14B8A6',
+  '#EF4444',
+  '#A855F7',
+  '#2DD4BF',
+] as const;
+
+const hashIdentityToColor = (identity: string | null | undefined): string | null => {
+  if (!identity) {
+    return null;
+  }
+
+  let hash = 0;
+  for (let index = 0; index < identity.length; index += 1) {
+    hash = (hash * 31 + identity.charCodeAt(index)) >>> 0; // simple deterministic hash
+  }
+
+  const paletteIndex = hash % IDENTITY_ACCENT_COLORS.length;
+  return IDENTITY_ACCENT_COLORS[paletteIndex];
+};
+
 const EVENT_COLOR_MAP: Record<string, ChipColor> = {
   search: 'info',
   view_image: 'primary',
@@ -407,14 +436,29 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
 
   const identityRaw = entry.summary?.identityId ?? entry.detail?.identityId ?? null;
   const identityFull = identityRaw ?? 'Unknown identity';
-  const identityShort = shortenIdentifier(identityFull) ?? identityFull;
   const isNoAuthIdentity = typeof identityRaw === 'string' && identityRaw.startsWith(NOAUTH_IDENTITY_PREFIX);
   const IdentityIconComponent = isNoAuthIdentity || !identityRaw ? HelpOutlineIcon : PersonIcon;
+  const identityLabel = useMemo(() => {
+    if (!identityRaw) {
+      return 'Unknown identity';
+    }
+
+    if (isNoAuthIdentity) {
+      const trimmed = identityRaw.trim();
+      if (trimmed.length <= 12) {
+        return trimmed;
+      }
+
+      return `${trimmed.slice(0, 6)}…${trimmed.slice(-4)}`;
+    }
+
+    return shortenIdentifier(identityRaw) ?? identityRaw;
+  }, [identityRaw, isNoAuthIdentity]);
+  const identityAccentColor = useMemo(() => hashIdentityToColor(identityRaw), [identityRaw]);
   const timestampIso = entry.summary?.createdAt ?? entry.receivedAt;
   const timeLabel = formatTimeLabel(timestampIso);
   const fullTimestampLabel = formatTimestamp(timestampIso) ?? timestampIso ?? 'Timestamp unavailable';
   const relativeLabel = formatRelativeTimeLabel(timestampIso);
-  const identityLine = relativeLabel ? `${identityShort} • ${relativeLabel}` : identityShort;
   const canSurfaceEventSummary = showEventSpecificSummary || entry.detailStatus === 'loaded';
   const eventSpecificFields = canSurfaceEventSummary ? getEventSpecificFields(entry) : [];
   const [showRawDetails, setShowRawDetails] = useState(false);
@@ -491,7 +535,25 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                         flexGrow: 1,
                       }}
                     >
-                      {identityLine}
+                      <Box
+                        component="span"
+                        sx={(theme) => ({
+                          color: identityAccentColor ?? theme.palette.text.primary,
+                        })}
+                      >
+                        {identityLabel}
+                      </Box>
+                      {relativeLabel ? (
+                        <Box
+                          component="span"
+                          sx={{
+                            color: 'text.secondary',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {` • ${relativeLabel}`}
+                        </Box>
+                      ) : null}
                     </Typography>
                   </Box>
                 </Tooltip>
