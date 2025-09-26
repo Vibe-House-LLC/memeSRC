@@ -31,20 +31,19 @@ Logged when a frame renders on the V2 frame page, including navigation between f
 ```
 
 ## view_episode
-Runs when the "View Episode" button is clicked from the frame page or advanced editor.
+Dispatched when the V2 episode page loads, regardless of whether the user arrived from the frame page, advanced editor, or another deep link.
 
 ```json
 {
-  "source": "V2FramePage",
+  "source": "V2EpisodePage",
   "cid": "stooges",
   "season": "3",
   "episode": "5",
-  "frame": "12345",
-  "fineTuningIndex": "2",
+  "frame": "12340",
   "searchTerm": "cream pies"
 }
 ```
-Optional fields: `editorProjectId` (when coming from the advanced editor).
+Optional fields: `frame` (when the route includes an anchor frame) and `searchTerm` (forwarded from navigation state or query params).
 
 ## add_to_library
 Sent after a frame successfully saves to a user's library.

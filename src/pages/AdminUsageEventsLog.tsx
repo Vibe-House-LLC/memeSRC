@@ -105,6 +105,7 @@ const EVENT_COLOR_MAP: Record<string, ChipColor> = {
   view_image: 'primary',
   view_episode: 'secondary',
   add_to_library: 'success',
+  save_intent_image: 'info',
   library_upload: 'success',
   library_delete: 'warning',
   favorite_add: 'success',
