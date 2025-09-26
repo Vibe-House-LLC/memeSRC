@@ -89,19 +89,22 @@ type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
 
 type ChipColor = 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
 
-type AsyncStatus = 'idle' | 'loading' | 'loadingMore' | 'loaded' | 'error';
+type AsyncStatus = 'idle' | 'loading' | 'loaded' | 'error';
 
-type HistoricalEventState = {
-  events: UsageEventLogEntry[];
-  nextToken: string | null;
+type HistoricalCollectionState = {
+  eventsByType: Record<string, UsageEventLogEntry[]>;
+  combined: UsageEventLogEntry[];
   status: AsyncStatus;
   error: string | null;
   cutoffIso: string | null;
 };
 
 const MAX_EVENTS = 100;
-const HISTORICAL_BATCH_LIMIT = 100;
+const HISTORICAL_PAGE_SIZE = 100;
 const EVENT_TYPE_SAMPLE_LIMIT = 200;
+const HISTORICAL_MAX_PAGES = 200;
+const INITIAL_VISIBLE_COUNT = 25;
+const LOAD_MORE_STEP = 25;
 const ALL_EVENT_TYPES_OPTION = '__ALL__';
 const NOAUTH_IDENTITY_PREFIX = 'noauth-';
 
@@ -200,29 +203,6 @@ const EVENT_COLOR_MAP: Record<string, ChipColor> = {
   view_image_advanced: 'primary',
   advanced_editor_save: 'success',
   advanced_editor_add_text_layer: 'info',
-};
-
-const allocateHistoricalPageSizes = (types: string[]): Record<string, number> => {
-  if (!types.length) {
-    return {};
-  }
-
-  const limited = types.slice(0, HISTORICAL_BATCH_LIMIT);
-  const base = Math.floor(HISTORICAL_BATCH_LIMIT / limited.length);
-  const remainder = HISTORICAL_BATCH_LIMIT % limited.length;
-
-  const limits: Record<string, number> = {};
-
-  limited.forEach((type, index) => {
-    const allocation = base + (index < remainder ? 1 : 0);
-    limits[type] = Math.max(allocation, 1);
-  });
-
-  types.slice(limited.length).forEach((type) => {
-    limits[type] = 0;
-  });
-
-  return limits;
 };
 
 const normalizeEventType = (value: string | null | undefined) => {
@@ -869,34 +849,6 @@ const entryIsAfterCutoff = (entry: UsageEventLogEntry, cutoffIso: string | null 
   return getEventTimestamp(entry) >= cutoffTimestamp;
 };
 
-const mergeUsageEventEntries = (
-  existing: UsageEventLogEntry[],
-  incoming: UsageEventLogEntry[]
-): UsageEventLogEntry[] => {
-  if (!existing.length && !incoming.length) {
-    return [];
-  }
-
-  const combined = new Map<string, UsageEventLogEntry>();
-
-  const upsert = (entry: UsageEventLogEntry) => {
-    const key = entry.summary?.id ?? entry.id;
-    if (!key) {
-      return;
-    }
-
-    const current = combined.get(key);
-    if (!current || getEventTimestamp(entry) > getEventTimestamp(current)) {
-      combined.set(key, entry);
-    }
-  };
-
-  existing.forEach(upsert);
-  incoming.forEach(upsert);
-
-  return Array.from(combined.values()).sort((a, b) => getEventTimestamp(b) - getEventTimestamp(a));
-};
-
 export default function AdminUsageEventsLog() {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
@@ -910,12 +862,18 @@ export default function AdminUsageEventsLog() {
   const [eventTypeError, setEventTypeError] = useState<string | null>(null);
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
   const [isAllTypesSelected, setIsAllTypesSelected] = useState(true);
-  const [historicalByType, setHistoricalByType] = useState<Record<string, HistoricalEventState>>({});
-  const historicalByTypeRef = useRef(historicalByType);
+  const [historicalState, setHistoricalState] = useState<HistoricalCollectionState>({
+    eventsByType: {},
+    combined: [],
+    status: 'idle',
+    error: null,
+    cutoffIso: null,
+  });
   const fetchContextRef = useRef({ generation: 0, key: '' });
   const previousSelectionKeyRef = useRef<string>('');
   const [timeRange, setTimeRange] = useState<TimeRangeKey>(DEFAULT_TIME_RANGE);
   const isMountedRef = useRef(true);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
 
   const addEventTypes = useCallback((types: Array<string | null | undefined>) => {
     setEventTypeOptions((prev) => {
@@ -974,10 +932,6 @@ export default function AdminUsageEventsLog() {
   const selectedTimeRangeOption = useMemo(() => {
     return TIME_RANGE_OPTIONS.find((option) => option.value === timeRange) ?? DEFAULT_TIME_RANGE_OPTION;
   }, [timeRange]);
-
-  useEffect(() => {
-    historicalByTypeRef.current = historicalByType;
-  }, [historicalByType]);
 
   const historicalCutoffIso = useMemo(() => {
     const windowMs = selectedTimeRangeOption.durationMs;
@@ -1058,6 +1012,94 @@ export default function AdminUsageEventsLog() {
     };
   }, [addEventTypes, eventTypeStatus, isAdmin]);
 
+  const loadEventsForType = useCallback(
+    async (eventType: string, cutoffIso: string, generation: number): Promise<UsageEventLogEntry[]> => {
+      const collected: UsageEventLogEntry[] = [];
+      let nextToken: string | null = null;
+      const seenTokens = new Set<string>();
+
+      for (let page = 0; page < HISTORICAL_MAX_PAGES; page += 1) {
+        if (!isMountedRef.current || fetchContextRef.current.generation !== generation) {
+          break;
+        }
+
+        if (page > 0) {
+          if (!nextToken) {
+            break;
+          }
+
+          if (seenTokens.has(nextToken)) {
+            break;
+          }
+
+          seenTokens.add(nextToken);
+        }
+
+        const variables: Record<string, unknown> = {
+          eventType,
+          sortDirection: 'DESC',
+          limit: HISTORICAL_PAGE_SIZE,
+          createdAt: { ge: cutoffIso },
+        };
+
+        if (page > 0 && nextToken) {
+          variables.nextToken = nextToken;
+        }
+
+        const response: any = await API.graphql(
+          graphqlOperation(usageEventsByType, variables)
+        );
+
+        const connection = response?.data?.usageEventsByType;
+        const items = (connection?.items ?? []) as UsageEventDetail[];
+
+        if (!Array.isArray(items) || !items.length) {
+          nextToken = connection?.nextToken ?? null;
+          if (!nextToken) {
+            break;
+          }
+          continue;
+        }
+
+        const entries = items
+          .filter((item): item is UsageEventDetail => Boolean(item?.id))
+          .map(createLogEntryFromUsageRecord)
+          .filter((entry) => entryIsAfterCutoff(entry, cutoffIso));
+
+        if (entries.length) {
+          collected.push(...entries);
+        }
+
+        nextToken = connection?.nextToken ?? null;
+
+        if (!nextToken) {
+          break;
+        }
+      }
+
+      if (collected.length <= 1) {
+        return collected;
+      }
+
+      const deduped = new Map<string, UsageEventLogEntry>();
+
+      collected.forEach((entry) => {
+        const key = entry.summary?.id ?? entry.id;
+        if (!key) {
+          return;
+        }
+
+        const current = deduped.get(key);
+        if (!current || getEventTimestamp(entry) > getEventTimestamp(current)) {
+          deduped.set(key, entry);
+        }
+      });
+
+      return Array.from(deduped.values()).sort((a, b) => getEventTimestamp(b) - getEventTimestamp(a));
+    },
+    [createLogEntryFromUsageRecord]
+  );
+
   useEffect(() => {
     if (previousSelectionKeyRef.current !== historicalSelectionKey) {
       fetchContextRef.current = {
@@ -1067,227 +1109,108 @@ export default function AdminUsageEventsLog() {
       previousSelectionKeyRef.current = historicalSelectionKey;
     }
 
-    if (!isAdmin) {
-      setHistoricalByType((prev) => (Object.keys(prev).length ? {} : prev));
-      return;
-    }
-
-    if (!effectiveSelectedEventTypes.length) {
-      setHistoricalByType((prev) => (Object.keys(prev).length ? {} : prev));
-      return;
-    }
-
-    setHistoricalByType((prev) => {
-      const next: Record<string, HistoricalEventState> = {};
-      let mutated = false;
-
-      effectiveSelectedEventTypes.forEach((eventType) => {
-        const existing = prev[eventType];
-        if (existing && existing.cutoffIso === historicalCutoffIso) {
-          next[eventType] = existing;
-          return;
+    if (!isAdmin || !effectiveSelectedEventTypes.length) {
+      setHistoricalState((prev) => {
+        if (prev.status === 'idle' && !prev.combined.length && !prev.error) {
+          return prev;
         }
-
-        mutated = true;
-        next[eventType] = {
-          events: [],
-          nextToken: null,
+        return {
+          eventsByType: {},
+          combined: [],
           status: 'idle',
           error: null,
           cutoffIso: historicalCutoffIso,
         };
       });
+      setVisibleCount(INITIAL_VISIBLE_COUNT);
+      return;
+    }
 
-      if (Object.keys(prev).length !== effectiveSelectedEventTypes.length) {
-        mutated = true;
-      } else {
-        Object.keys(prev).forEach((key) => {
-          if (!next[key]) {
-            mutated = true;
-          }
-        });
-      }
+    const generation = fetchContextRef.current.generation;
 
-      return mutated ? next : prev;
+    setHistoricalState({
+      eventsByType: {},
+      combined: [],
+      status: 'loading',
+      error: null,
+      cutoffIso: historicalCutoffIso,
     });
-  }, [effectiveSelectedEventTypes, historicalCutoffIso, historicalSelectionKey, isAdmin]);
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
 
-  const fetchHistoricalBatch = useCallback(
-    async (types: string[], mode: 'initial' | 'loadMore') => {
-      if (!isAdmin || !types.length) {
-        return;
-      }
+    let cancelled = false;
 
-      const stateSnapshot = historicalByTypeRef.current;
-      const pageSizes = allocateHistoricalPageSizes(types);
-
-      const fetchable = types.filter((eventType) => {
-        const limit = pageSizes[eventType] ?? 0;
-        if (limit <= 0) {
-          return false;
-        }
-
-        const state = stateSnapshot[eventType];
-        if (mode === 'loadMore') {
-          return Boolean(state?.nextToken);
-        }
-
-        return true;
-      });
-
-      if (!fetchable.length) {
-        return;
-      }
-
-      const generation = fetchContextRef.current.generation;
-
-      setHistoricalByType((prev) => {
-        const next = { ...prev };
-        fetchable.forEach((eventType) => {
-          const current = prev[eventType];
-          const cutoffIso = current?.cutoffIso ?? historicalCutoffIso;
-          next[eventType] = {
-            events: current?.events ?? [],
-            nextToken: current?.nextToken ?? null,
-            status: mode === 'loadMore' ? 'loadingMore' : 'loading',
-            error: null,
-            cutoffIso,
-          };
-        });
-        return next;
-      });
-
-      const results = await Promise.all(
-        fetchable.map(async (eventType) => {
-          const snapshot = historicalByTypeRef.current[eventType];
-          const cutoffIsoForType = snapshot?.cutoffIso ?? historicalCutoffIso;
-          const nextToken = mode === 'loadMore' ? snapshot?.nextToken : undefined;
-
-          try {
-            const variables: Record<string, unknown> = {
-              eventType,
-              sortDirection: 'DESC',
-              limit: pageSizes[eventType],
-              createdAt: { ge: cutoffIsoForType },
-            };
-
-            if (mode === 'loadMore' && nextToken) {
-              variables.nextToken = nextToken;
-            }
-
-            const response: any = await API.graphql(
-              graphqlOperation(usageEventsByType, variables)
-            );
-
-            const connection = response?.data?.usageEventsByType;
-            const items = (connection?.items ?? []) as UsageEventDetail[];
-            const entries = items
-              .filter((item): item is UsageEventDetail => Boolean(item?.id))
-              .map(createLogEntryFromUsageRecord)
-              .filter((entry) => entryIsAfterCutoff(entry, cutoffIsoForType));
-
-            return {
-              eventType,
-              entries,
-              nextToken: connection?.nextToken ?? null,
-              cutoffIso: cutoffIsoForType,
-              error: null as string | null,
-            };
-          } catch (error) {
-            return {
-              eventType,
-              entries: [] as UsageEventLogEntry[],
-              nextToken,
-              cutoffIso: cutoffIsoForType,
-              error: safeStringify(error),
-            };
-          }
-        })
-      );
-
-      if (!isMountedRef.current || fetchContextRef.current.generation !== generation) {
-        return;
-      }
-
+    void (async () => {
+      const results: Record<string, UsageEventLogEntry[]> = {};
       const discoveredEventTypes: (string | null | undefined)[] = [];
+      const errors: string[] = [];
 
-      setHistoricalByType((prev) => {
-        const next = { ...prev };
-        results.forEach(({ eventType, entries, nextToken, cutoffIso, error }) => {
-          const current = prev[eventType];
-          if (!current) {
-            next[eventType] = {
-              events: entries,
-              nextToken,
-              status: error ? 'error' : 'loaded',
-              error,
-              cutoffIso,
-            };
-            if (!error) {
-              entries.forEach((entry) => {
-                discoveredEventTypes.push(
-                  entry.summary?.eventType ?? entry.detail?.eventType ?? null
-                );
-              });
-            }
-            return;
-          }
+      for (const eventType of effectiveSelectedEventTypes) {
+        if (!isMountedRef.current || fetchContextRef.current.generation !== generation || cancelled) {
+          return;
+        }
 
-          if (error) {
-            next[eventType] = {
-              ...current,
-              status: 'error',
-              error,
-              cutoffIso,
-            };
-            return;
-          }
-
-          const mergedEvents =
-            mode === 'loadMore'
-              ? mergeUsageEventEntries(current.events, entries)
-              : entries;
-
-          next[eventType] = {
-            events: mergedEvents,
-            nextToken,
-            status: 'loaded',
-            error: null,
-            cutoffIso,
-          };
-
+        try {
+          const entries = await loadEventsForType(eventType, historicalCutoffIso, generation);
+          results[eventType] = entries;
           entries.forEach((entry) => {
             discoveredEventTypes.push(
               entry.summary?.eventType ?? entry.detail?.eventType ?? null
             );
           });
+        } catch (error) {
+          errors.push(safeStringify(error));
+          results[eventType] = [];
+        }
+      }
+
+      if (!isMountedRef.current || fetchContextRef.current.generation !== generation || cancelled) {
+        return;
+      }
+
+      const combinedMap = new Map<string, UsageEventLogEntry>();
+
+      Object.values(results).forEach((entries) => {
+        entries.forEach((entry) => {
+          const key = entry.summary?.id ?? entry.id;
+          if (!key) {
+            return;
+          }
+
+          const current = combinedMap.get(key);
+          if (!current || getEventTimestamp(entry) > getEventTimestamp(current)) {
+            combinedMap.set(key, entry);
+          }
         });
-        return next;
+      });
+
+      const combined = Array.from(combinedMap.values()).sort(
+        (a, b) => getEventTimestamp(b) - getEventTimestamp(a)
+      );
+
+      setHistoricalState({
+        eventsByType: results,
+        combined,
+        status: errors.length ? 'error' : 'loaded',
+        error: errors[0] ?? null,
+        cutoffIso: historicalCutoffIso,
       });
 
       if (discoveredEventTypes.length) {
         addEventTypes(discoveredEventTypes);
       }
-    },
-    [addEventTypes, createLogEntryFromUsageRecord, historicalCutoffIso, isAdmin]
-  );
+    })();
 
-  useEffect(() => {
-    if (!isAdmin) {
-      return;
-    }
-
-    const idleTypes = effectiveSelectedEventTypes.filter((eventType) => {
-      const state = historicalByType[eventType];
-      return Boolean(state && state.status === 'idle');
-    });
-
-    if (!idleTypes.length) {
-      return;
-    }
-
-    void fetchHistoricalBatch(idleTypes, 'initial');
-  }, [effectiveSelectedEventTypes, fetchHistoricalBatch, historicalByType, isAdmin]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    addEventTypes,
+    effectiveSelectedEventTypes,
+    historicalCutoffIso,
+    historicalSelectionKey,
+    isAdmin,
+    loadEventsForType,
+  ]);
 
   useEffect(() => {
     if (!isAdmin) return undefined;
@@ -1429,13 +1352,13 @@ export default function AdminUsageEventsLog() {
   }, [addEventTypes, events]);
 
   useEffect(() => {
-    const collections = Object.values(historicalByType);
+    const collections = Object.values(historicalState.eventsByType);
     if (!collections.length) {
       return;
     }
 
     const eventTypes = collections.flatMap((collection) =>
-      collection.events.map((entry) => entry.summary?.eventType ?? entry.detail?.eventType ?? null)
+      collection.map((entry) => entry.summary?.eventType ?? entry.detail?.eventType ?? null)
     );
 
     if (!eventTypes.length) {
@@ -1443,7 +1366,7 @@ export default function AdminUsageEventsLog() {
     }
 
     addEventTypes(eventTypes);
-  }, [addEventTypes, historicalByType]);
+  }, [addEventTypes, historicalState.eventsByType]);
 
   const fetchEventDetail = useCallback((entryId: string) => {
     const currentEntry = events.find((event) => event.id === entryId);
@@ -1544,9 +1467,12 @@ export default function AdminUsageEventsLog() {
     [effectiveSelectedEventTypes]
   );
 
-  const displayedEvents = useMemo(() => {
-    const cutoffTimestamp = Date.now() - selectedTimeRangeOption.durationMs;
+  const cutoffTimestamp = useMemo(
+    () => Date.now() - selectedTimeRangeOption.durationMs,
+    [selectedTimeRangeOption.durationMs]
+  );
 
+  const combinedEvents = useMemo(() => {
     const liveWithinWindow = events.filter((entry) => getEventTimestamp(entry) >= cutoffTimestamp);
 
     if (!normalizedSelectedTypes.length) {
@@ -1555,12 +1481,11 @@ export default function AdminUsageEventsLog() {
 
     const selectedTypeSet = new Set(normalizedSelectedTypes);
 
-    const historicalSelectedEvents = effectiveSelectedEventTypes.flatMap((eventType) => {
-      const records = historicalByType[eventType]?.events ?? [];
-      return records.filter((entry) => getEventTimestamp(entry) >= cutoffTimestamp);
-    });
+    const historicalMatches = historicalState.combined.filter((entry) => {
+      if (getEventTimestamp(entry) < cutoffTimestamp) {
+        return false;
+      }
 
-    const matchingLive = liveWithinWindow.filter((entry) => {
       const summaryType = normalizeEventType(entry.summary?.eventType ?? null);
       if (summaryType && selectedTypeSet.has(summaryType)) {
         return true;
@@ -1570,14 +1495,23 @@ export default function AdminUsageEventsLog() {
       return Boolean(detailType && selectedTypeSet.has(detailType));
     });
 
-    const combined = [...historicalSelectedEvents, ...matchingLive];
-    if (!combined.length) {
-      return combined;
+    const liveMatches = liveWithinWindow.filter((entry) => {
+      const summaryType = normalizeEventType(entry.summary?.eventType ?? null);
+      if (summaryType && selectedTypeSet.has(summaryType)) {
+        return true;
+      }
+
+      const detailType = normalizeEventType(entry.detail?.eventType ?? null);
+      return Boolean(detailType && selectedTypeSet.has(detailType));
+    });
+
+    if (!historicalMatches.length && !liveMatches.length) {
+      return [];
     }
 
     const deduped = new Map<string, UsageEventLogEntry>();
 
-    combined.forEach((entry) => {
+    [...historicalMatches, ...liveMatches].forEach((entry) => {
       const key = entry.summary?.id ?? entry.id;
       if (!key) {
         return;
@@ -1590,23 +1524,32 @@ export default function AdminUsageEventsLog() {
     });
 
     return Array.from(deduped.values()).sort((a, b) => getEventTimestamp(b) - getEventTimestamp(a));
-  }, [effectiveSelectedEventTypes, events, historicalByType, isAllTypesSelected, normalizedSelectedTypes, selectedTimeRangeOption.durationMs]);
+  }, [
+    cutoffTimestamp,
+    events,
+    historicalState.combined,
+    isAllTypesSelected,
+    normalizedSelectedTypes,
+  ]);
+
+  const totalEventCount = combinedEvents.length;
+
+  const displayedEvents = useMemo(() => {
+    if (!totalEventCount) {
+      return combinedEvents;
+    }
+
+    return combinedEvents.slice(0, visibleCount);
+  }, [combinedEvents, totalEventCount, visibleCount]);
 
   const hasSelection = normalizedSelectedTypes.length > 0;
   const isCustomSelection = !isAllTypesSelected && selectedEventTypes.length > 0;
-  const isHistoricalLoading =
-    hasSelection && effectiveSelectedEventTypes.some((type) => historicalByType[type]?.status === 'loading');
-  const isHistoricalLoadingMore =
-    hasSelection && effectiveSelectedEventTypes.some((type) => historicalByType[type]?.status === 'loadingMore');
-  const historicalErrors = effectiveSelectedEventTypes
-    .map((type) => historicalByType[type]?.error)
-    .filter((error): error is string => Boolean(error));
-  const historicalErrorMessage = historicalErrors[0] ?? null;
-  const canLoadMoreHistorical =
-    hasSelection && effectiveSelectedEventTypes.some((type) => Boolean(historicalByType[type]?.nextToken));
+  const isHistoricalLoading = hasSelection && historicalState.status === 'loading';
+  const historicalErrorMessage = hasSelection ? historicalState.error : null;
+  const canLoadMoreHistorical = hasSelection && visibleCount < totalEventCount;
   const shouldShowEmptyState =
-    displayedEvents.length === 0 && (!hasSelection || (!isHistoricalLoading && !isHistoricalLoadingMore));
-  const eventCountLabel = `${displayedEvents.length} event${displayedEvents.length === 1 ? '' : 's'}`;
+    totalEventCount === 0 && (!hasSelection || (!isHistoricalLoading && !historicalErrorMessage));
+  const eventCountLabel = `${totalEventCount} event${totalEventCount === 1 ? '' : 's'}`;
 
   useEffect(() => {
     if (!normalizedSelectedTypes.length) {
@@ -1719,22 +1662,7 @@ export default function AdminUsageEventsLog() {
   };
 
   const handleLoadMoreHistorical = () => {
-    if (!isAdmin) return;
-
-    const eligibleTypes = effectiveSelectedEventTypes.filter((eventType) => {
-      const state = historicalByType[eventType];
-      if (!state || !state.nextToken) {
-        return false;
-      }
-
-      return state.status !== 'loading' && state.status !== 'loadingMore';
-    });
-
-    if (!eligibleTypes.length) {
-      return;
-    }
-
-    void fetchHistoricalBatch(eligibleTypes, 'loadMore');
+    setVisibleCount((prev) => prev + LOAD_MORE_STEP);
   };
 
   if (isUserLoading) {
@@ -1869,12 +1797,17 @@ export default function AdminUsageEventsLog() {
         )}
 
         {isHistoricalLoading && (
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, textAlign: 'center' }}>
-            <Stack spacing={2} alignItems="center">
-              <CircularProgress size={22} thickness={5} />
-              <Typography variant="body2" color="text.secondary">
-                Loading events…
-              </Typography>
+          <Paper variant="outlined" sx={{ p: 4, borderRadius: 2, textAlign: 'center' }}>
+            <Stack spacing={2.5} alignItems="center">
+              <CircularProgress size={32} thickness={4} />
+              <Stack spacing={0.5} alignItems="center">
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Preparing event timeline…
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 280 }}>
+                  Gathering usage records for the selected time range.
+                </Typography>
+              </Stack>
             </Stack>
           </Paper>
         )}
@@ -1925,9 +1858,8 @@ export default function AdminUsageEventsLog() {
                     variant="outlined"
                     size="small"
                     onClick={handleLoadMoreHistorical}
-                    disabled={isHistoricalLoadingMore}
                   >
-                    {isHistoricalLoadingMore ? 'Loading…' : 'Load more history'}
+                    Load more history
                   </Button>
                 </Box>
               </>
