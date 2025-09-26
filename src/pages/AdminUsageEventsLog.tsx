@@ -107,6 +107,7 @@ const HISTORICAL_MAX_PAGES = 200;
 const INITIAL_VISIBLE_COUNT = 25;
 const LOAD_MORE_STEP = 25;
 const EVENT_TAG_LIMIT = 3;
+const MAX_SELECTED_EVENT_TYPES = 5;
 const NOAUTH_IDENTITY_PREFIX = 'noauth-';
 
 type TimeRangeKey = '5m' | '1h' | '24h' | '7d';
@@ -125,7 +126,7 @@ const TIME_RANGE_OPTIONS: readonly TimeRangeOption[] = [
   { value: '7d', label: 'Last 7 days', shortLabel: '7d', durationMs: 7 * 24 * 60 * 60 * 1000 },
 ];
 
-const DEFAULT_TIME_RANGE: TimeRangeKey = '1h';
+const DEFAULT_TIME_RANGE: TimeRangeKey = '5m';
 const DEFAULT_TIME_RANGE_OPTION =
   TIME_RANGE_OPTIONS.find((option) => option.value === DEFAULT_TIME_RANGE) ?? TIME_RANGE_OPTIONS[0];
 
@@ -290,7 +291,8 @@ const readStoredEventTypes = (): string[] => {
       return [];
     }
 
-    return sanitizeEventTypeList(JSON.parse(raw));
+    const parsed = sanitizeEventTypeList(JSON.parse(raw));
+    return parsed.slice(0, MAX_SELECTED_EVENT_TYPES);
   } catch (error) {
     logStorageWarning('Failed to read stored usage event type filters', error);
     return [];
@@ -299,9 +301,10 @@ const readStoredEventTypes = (): string[] => {
 
 const getStoredEventTypeState = () => {
   const types = readStoredEventTypes();
+  const cappedTypes = types.slice(0, MAX_SELECTED_EVENT_TYPES);
   return {
-    types,
-    isAll: types.length === 0,
+    types: cappedTypes,
+    isAll: cappedTypes.length === 0,
   };
 };
 
@@ -1007,6 +1010,7 @@ export default function AdminUsageEventsLog() {
   });
   const [eventTypeStatus, setEventTypeStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [eventTypeError, setEventTypeError] = useState<string | null>(null);
+  const [eventTypeSelectionError, setEventTypeSelectionError] = useState<string | null>(null);
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(storedEventTypeState.types);
   const [isAllTypesSelected, setIsAllTypesSelected] = useState(storedEventTypeState.isAll);
   const [historicalState, setHistoricalState] = useState<HistoricalCollectionState>({
@@ -1075,16 +1079,18 @@ export default function AdminUsageEventsLog() {
 
     setSelectedEventTypes((prev) => {
       const filtered = prev.filter((type) => eventTypeOptions.includes(type));
+      const capped = filtered.slice(0, MAX_SELECTED_EVENT_TYPES);
 
-      if (filtered.length === 0) {
+      if (capped.length === 0) {
         setIsAllTypesSelected(true);
+        setEventTypeSelectionError(null);
         return [];
       }
 
-      if (filtered.length === prev.length) {
+      if (capped.length === prev.length) {
         let unchanged = true;
-        for (let index = 0; index < filtered.length; index += 1) {
-          if (filtered[index] !== prev[index]) {
+        for (let index = 0; index < capped.length; index += 1) {
+          if (capped[index] !== prev[index]) {
             unchanged = false;
             break;
           }
@@ -1094,7 +1100,7 @@ export default function AdminUsageEventsLog() {
         }
       }
 
-      return filtered;
+      return capped;
     });
   }, [eventTypeOptions, isAllTypesSelected]);
 
@@ -1861,13 +1867,22 @@ export default function AdminUsageEventsLog() {
     if (!uniqueSelection.length) {
       setIsAllTypesSelected(true);
       setSelectedEventTypes([]);
+      setEventTypeSelectionError(null);
       setExpandedEventId(null);
       setVisibleCount(INITIAL_VISIBLE_COUNT);
       return;
     }
 
+    const cappedSelection = uniqueSelection.slice(0, MAX_SELECTED_EVENT_TYPES);
+
+    if (cappedSelection.length < uniqueSelection.length) {
+      setEventTypeSelectionError(`Select up to ${MAX_SELECTED_EVENT_TYPES} event types.`);
+    } else {
+      setEventTypeSelectionError(null);
+    }
+
     setIsAllTypesSelected(false);
-    setSelectedEventTypes(uniqueSelection);
+    setSelectedEventTypes(cappedSelection);
     setExpandedEventId(null);
     setVisibleCount(INITIAL_VISIBLE_COUNT);
   };
@@ -2040,13 +2055,28 @@ export default function AdminUsageEventsLog() {
                     <TextField
                       {...params}
                       label="Event types"
-                      placeholder={isAllTypesSelected ? 'All events' : undefined}
+                      placeholder={
+                        isAllTypesSelected ? 'All events' : `Select up to ${MAX_SELECTED_EVENT_TYPES} event types`
+                      }
+                      inputProps={{
+                        ...params.inputProps,
+                        readOnly: true,
+                      }}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          cursor: 'pointer',
+                        },
+                        '& .MuiInputBase-input': {
+                          cursor: 'pointer',
+                          caretColor: 'transparent',
+                        },
+                      }}
                     />
                   )}
                 />
-                {eventTypeError && (
+                {(eventTypeSelectionError || eventTypeError) && (
                   <FormHelperText error sx={{ mt: 0.75 }}>
-                    {eventTypeError}
+                    {eventTypeSelectionError ?? eventTypeError}
                   </FormHelperText>
                 )}
               </Box>
