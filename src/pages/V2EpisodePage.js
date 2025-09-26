@@ -1,7 +1,7 @@
 // V2EpisodePage.js
 
 import { Buffer } from "buffer";
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import { Link as RouterLink, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container, Typography, Card, CardMedia, CardContent, Button, Grid, Box, Skeleton } from "@mui/material";
 import { Storage } from "aws-amplify";
@@ -9,9 +9,11 @@ import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
 import { UserContext } from '../UserContext';
 import getV2Metadata from '../utils/getV2Metadata';
+import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 
 import EpisodePageBannerAd from '../ads/SearchPageBannerAd';
 import EpisodePageResultsAd from '../ads/SearchPageResultsAd';
+import { trackUsageEvent } from '../utils/trackUsageEvent';
 
 
 const formatTimecode = (frameId, fps) => {
@@ -21,6 +23,72 @@ const formatTimecode = (frameId, fps) => {
   const seconds = totalSeconds % 60;
 
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
+const EpisodeFrameCard = ({ result, frameLink, onLoad, onError, isLoaded, baseMeta }) => {
+  const intentMeta = useMemo(() => {
+    const meta = {
+      ...baseMeta,
+      intentTarget: 'EpisodeFrameImage',
+    };
+
+    if (result?.fid) {
+      meta.frame = result.fid;
+    }
+
+    if (result?.timecode) {
+      meta.timecode = result.timecode;
+    }
+
+    return meta;
+  }, [baseMeta, result?.fid, result?.timecode]);
+
+  const saveIntentHandlers = useTrackImageSaveIntent(intentMeta);
+
+  return (
+    <Card component={RouterLink} to={frameLink} style={{ textDecoration: 'none' }}>
+      <Box sx={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#1f1f1f' }}>
+        <CardMedia
+          component="img"
+          image={result?.frame_image}
+          alt={`Frame ${result?.fid}`}
+          draggable
+          onLoad={onLoad}
+          onError={onError}
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            display: isLoaded ? 'block' : 'none',
+          }}
+          {...saveIntentHandlers}
+        />
+        {!isLoaded && (
+          <Skeleton
+            variant="rectangular"
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+            }}
+          />
+        )}
+      </Box>
+      <CardContent sx={{ backgroundColor: '#1f1f1f', padding: '16px' }}>
+        <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px', minHeight: '3em' }}>
+          {result?.subtitle || '(...)'}
+        </Typography>
+        <Typography variant="caption" color="textSecondary">
+          Timecode: {result?.timecode}
+        </Typography>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default function V2EpisodePage() {
@@ -40,6 +108,33 @@ export default function V2EpisodePage() {
   const [imagesLoaded, setImagesLoaded] = useState({});
   const fps = 10; // Frames per second
   const navigate = useNavigate();
+  const lastTrackedViewEpisodeRef = useRef('');
+
+  const episodeFrameSaveIntentMetaBase = useMemo(() => {
+    const meta = {
+      source: 'V2EpisodePage',
+    };
+
+    const resolvedCid = confirmedCid || cid;
+    if (resolvedCid) {
+      meta.cid = resolvedCid;
+    }
+
+    if (season) {
+      meta.season = season;
+    }
+
+    if (episode) {
+      meta.episode = episode;
+    }
+
+    const trimmedSearchTerm = typeof urlSearchTerm === 'string' ? urlSearchTerm.trim() : '';
+    if (trimmedSearchTerm) {
+      meta.searchTerm = trimmedSearchTerm;
+    }
+
+    return meta;
+  }, [cid, confirmedCid, season, episode, urlSearchTerm]);
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -48,6 +143,49 @@ export default function V2EpisodePage() {
       console.log(error)
     })
   }, [cid]);
+
+  useEffect(() => {
+    const resolvedCid = confirmedCid || cid;
+    const trimmedSearchTerm = typeof urlSearchTerm === 'string' ? urlSearchTerm.trim() : '';
+    const trackingFingerprint = JSON.stringify({
+      resolvedCid: resolvedCid ?? null,
+      season: season ?? null,
+      episode: episode ?? null,
+      frame: frame ?? null,
+      searchTerm: trimmedSearchTerm,
+    });
+
+    if (trackingFingerprint === lastTrackedViewEpisodeRef.current) {
+      return;
+    }
+
+    const eventPayload = {
+      source: 'V2EpisodePage',
+    };
+
+    if (resolvedCid) {
+      eventPayload.cid = resolvedCid;
+    }
+
+    if (season) {
+      eventPayload.season = season;
+    }
+
+    if (episode) {
+      eventPayload.episode = episode;
+    }
+
+    if (frame) {
+      eventPayload.frame = frame;
+    }
+
+    if (trimmedSearchTerm) {
+      eventPayload.searchTerm = trimmedSearchTerm;
+    }
+
+    trackUsageEvent('view_episode', eventPayload);
+    lastTrackedViewEpisodeRef.current = trackingFingerprint;
+  }, [cid, confirmedCid, season, episode, frame, urlSearchTerm]);
 
   useEffect(() => {
     if (confirmedCid) {
@@ -263,59 +401,31 @@ export default function V2EpisodePage() {
         </Box>
       ) : (
         <Grid container spacing={2}>
-          {resultsWithAds.map((result, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              {result.isAd ? (
-                <Card>
-                  <EpisodePageResultsAd />
-                </Card>
-              ) : (
-                <Card component={RouterLink} to={buildFrameLink(result.fid)} style={{ textDecoration: 'none' }}>
-                  <Box sx={{ position: 'relative', paddingTop: '56.25%', backgroundColor: '#1f1f1f' }}>
-                    <CardMedia
-                      component="img"
-                      image={result.frame_image}
-                      alt={`Frame ${result.fid}`}
-                      onLoad={() => handleImageLoad(result.fid)}
-                      onError={() => {
-                        console.error(`Failed to load image for frame ${result.fid}`);
-                        handleImageLoad(result.fid);
-                      }}
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        display: imagesLoaded[result.fid] ? 'block' : 'none',
-                      }}
-                    />
-                    {!imagesLoaded[result.fid] && (
-                      <Skeleton
-                        variant="rectangular"
-                        sx={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                        }}
-                      />
-                    )}
-                  </Box>
-                  <CardContent sx={{ backgroundColor: '#1f1f1f', padding: '16px' }}>
-                    <Typography variant="subtitle1" color="textPrimary" style={{ marginBottom: '8px', minHeight: '3em' }}>
-                      {result.subtitle || '(...)'}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      Timecode: {result.timecode}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              )}
-            </Grid>
-          ))}
+          {resultsWithAds.map((result, index) => {
+            const key = result?.isAd ? `ad-${index}` : result?.fid ?? index;
+
+            return (
+              <Grid item xs={12} sm={6} md={4} key={key}>
+                {result?.isAd ? (
+                  <Card>
+                    <EpisodePageResultsAd />
+                  </Card>
+                ) : (
+                  <EpisodeFrameCard
+                    result={result}
+                    frameLink={buildFrameLink(result.fid)}
+                    onLoad={() => handleImageLoad(result.fid)}
+                    onError={() => {
+                      console.error(`Failed to load image for frame ${result.fid}`);
+                      handleImageLoad(result.fid);
+                    }}
+                    isLoaded={Boolean(imagesLoaded[result.fid])}
+                    baseMeta={episodeFrameSaveIntentMetaBase}
+                  />
+                )}
+              </Grid>
+            );
+          })}
         </Grid>
       )}
 
