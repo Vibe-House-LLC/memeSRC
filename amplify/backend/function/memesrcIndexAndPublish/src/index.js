@@ -186,18 +186,21 @@ const indexToOpenSearch = async (data) => {
             return true;
         }
 
-        // Create index if not exists
+        // Recreate the index each run to avoid duplicate documents
         try {
-            const exists = await client.indices.exists({ index: indexName });
-            if (!exists.body) {
-                await client.indices.create({ index: indexName });
-                console.log(`Created index: ${indexName}`);
+            const existsResponse = await client.indices.exists({ index: indexName });
+            const indexExists = existsResponse.statusCode === 200;
+
+            if (indexExists) {
+                await client.indices.delete({ index: indexName });
+                console.log(`Deleted existing index: ${indexName}`);
             }
+
+            await client.indices.create({ index: indexName });
+            console.log(`Created index: ${indexName}`);
         } catch (idxErr) {
-            // Some OpenSearch versions return boolean directly
-            if (idxErr.meta?.statusCode !== 400) {
-                console.warn('Index existence/create warning:', idxErr.message);
-            }
+            console.error('Failed to create or recreate index before bulk ingest:', idxErr);
+            throw idxErr;
         }
 
         const batches = [];
