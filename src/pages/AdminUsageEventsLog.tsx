@@ -10,15 +10,16 @@ import {
   Divider,
   IconButton,
   Button,
+  Checkbox,
   FormControl,
   FormHelperText,
   InputLabel,
   ListItemButton,
+  ListItemText,
   MenuItem,
   Paper,
   Select,
   Stack,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -90,26 +91,85 @@ type ChipColor = 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'succe
 
 type AsyncStatus = 'idle' | 'loading' | 'loadingMore' | 'loaded' | 'error';
 
+type HistoricalEventState = {
+  events: UsageEventLogEntry[];
+  nextToken: string | null;
+  status: AsyncStatus;
+  error: string | null;
+  cutoffIso: string | null;
+};
+
 const MAX_EVENTS = 100;
-const HISTORICAL_PAGE_SIZE = 50;
+const HISTORICAL_BATCH_LIMIT = 100;
 const EVENT_TYPE_SAMPLE_LIMIT = 200;
 const ALL_EVENT_TYPES_OPTION = '__ALL__';
 const NOAUTH_IDENTITY_PREFIX = 'noauth-';
 
-const IDENTITY_ACCENT_COLORS = [
-  '#38BDF8',
-  '#F472B6',
-  '#34D399',
-  '#F97316',
-  '#8B5CF6',
-  '#22D3EE',
-  '#F59E0B',
-  '#6366F1',
-  '#14B8A6',
-  '#EF4444',
-  '#A855F7',
-  '#2DD4BF',
-] as const;
+type TimeRangeKey = '5m' | '1h' | '24h' | '7d';
+
+type TimeRangeOption = {
+  value: TimeRangeKey;
+  label: string;
+  durationMs: number;
+};
+
+const TIME_RANGE_OPTIONS: readonly TimeRangeOption[] = [
+  { value: '5m', label: 'Last 5 minutes', durationMs: 5 * 60 * 1000 },
+  { value: '1h', label: 'Last hour', durationMs: 60 * 60 * 1000 },
+  { value: '24h', label: 'Last 24 hours', durationMs: 24 * 60 * 60 * 1000 },
+  { value: '7d', label: 'Last 7 days', durationMs: 7 * 24 * 60 * 60 * 1000 },
+];
+
+const DEFAULT_TIME_RANGE: TimeRangeKey = '1h';
+const DEFAULT_TIME_RANGE_OPTION =
+  TIME_RANGE_OPTIONS.find((option) => option.value === DEFAULT_TIME_RANGE) ?? TIME_RANGE_OPTIONS[0];
+
+const GOLDEN_RATIO_CONJUGATE = 0.618033988749895;
+
+const hslChannelToHex = (channel: number) => {
+  const bounded = Math.max(0, Math.min(255, Math.round(channel)));
+  return bounded.toString(16).padStart(2, '0');
+};
+
+const hslToHex = (hue: number, saturation: number, lightness: number) => {
+  const s = saturation / 100;
+  const l = lightness / 100;
+  const k = (n: number) => (n + hue / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const channel = (n: number) => l - a * Math.max(-1, Math.min(Math.min(k(n) - 3, 9 - k(n)), 1));
+
+  const r = hslChannelToHex(255 * channel(0));
+  const g = hslChannelToHex(255 * channel(8));
+  const b = hslChannelToHex(255 * channel(4));
+
+  return `#${r}${g}${b}`.toUpperCase();
+};
+
+const createIdentityAccentPalette = (count: number) => {
+  const palette: string[] = [];
+  let hue = 0.127318; // deterministic seed keeps distribution stable across reloads
+  const variants = [
+    { saturation: 86, lightness: 56 },
+    { saturation: 76, lightness: 61 },
+    { saturation: 90, lightness: 52 },
+    { saturation: 72, lightness: 64 },
+    { saturation: 82, lightness: 58 },
+    { saturation: 70, lightness: 66 },
+    { saturation: 88, lightness: 54 },
+    { saturation: 78, lightness: 62 },
+  ];
+
+  for (let index = 0; index < count; index += 1) {
+    hue = (hue + GOLDEN_RATIO_CONJUGATE) % 1;
+    const variant = variants[(index * 5) % variants.length];
+    const hueDegrees = (hue * 360 + 360) % 360;
+    palette.push(hslToHex(hueDegrees, variant.saturation, variant.lightness));
+  }
+
+  return palette;
+};
+
+const IDENTITY_ACCENT_COLORS = createIdentityAccentPalette(96);
 
 const hashIdentityToColor = (identity: string | null | undefined): string | null => {
   if (!identity) {
@@ -140,6 +200,29 @@ const EVENT_COLOR_MAP: Record<string, ChipColor> = {
   view_image_advanced: 'primary',
   advanced_editor_save: 'success',
   advanced_editor_add_text_layer: 'info',
+};
+
+const allocateHistoricalPageSizes = (types: string[]): Record<string, number> => {
+  if (!types.length) {
+    return {};
+  }
+
+  const limited = types.slice(0, HISTORICAL_BATCH_LIMIT);
+  const base = Math.floor(HISTORICAL_BATCH_LIMIT / limited.length);
+  const remainder = HISTORICAL_BATCH_LIMIT % limited.length;
+
+  const limits: Record<string, number> = {};
+
+  limited.forEach((type, index) => {
+    const allocation = base + (index < remainder ? 1 : 0);
+    limits[type] = Math.max(allocation, 1);
+  });
+
+  types.slice(limited.length).forEach((type) => {
+    limits[type] = 0;
+  });
+
+  return limits;
 };
 
 const normalizeEventType = (value: string | null | undefined) => {
@@ -397,19 +480,19 @@ const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps> = ({ s
         </Typography>
       </Stack>
       {showRetry && (
-        <Tooltip title="Retry connection">
-          <IconButton
-            size="small"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onRetry();
-            }}
-            sx={{ p: 0.5 }}
-          >
-            <RefreshIcon fontSize="inherit" sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Tooltip>
+        <IconButton
+          size="small"
+          aria-label="Retry connection"
+          title="Retry connection"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onRetry();
+          }}
+          sx={{ p: 0.5 }}
+        >
+          <RefreshIcon fontSize="inherit" sx={{ fontSize: 18 }} />
+        </IconButton>
       )}
     </Stack>
   );
@@ -445,18 +528,17 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
 
     if (isNoAuthIdentity) {
       const trimmed = identityRaw.trim();
-      if (trimmed.length <= 12) {
+      if (trimmed.length <= 6) {
         return trimmed;
       }
 
-      return `${trimmed.slice(0, 6)}…${trimmed.slice(-4)}`;
+      return trimmed.slice(-6);
     }
 
     return shortenIdentifier(identityRaw) ?? identityRaw;
   }, [identityRaw, isNoAuthIdentity]);
   const identityAccentColor = useMemo(() => hashIdentityToColor(identityRaw), [identityRaw]);
   const timestampIso = entry.summary?.createdAt ?? entry.receivedAt;
-  const timeLabel = formatTimeLabel(timestampIso);
   const fullTimestampLabel = formatTimestamp(timestampIso) ?? timestampIso ?? 'Timestamp unavailable';
   const relativeLabel = formatRelativeTimeLabel(timestampIso);
   const canSurfaceEventSummary = showEventSpecificSummary || entry.detailStatus === 'loaded';
@@ -486,10 +568,7 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
               sx={(theme) => ({
                 width: 6,
                 flexShrink: 0,
-                backgroundColor:
-                  chipColor === 'default'
-                    ? theme.palette.text.disabled
-                    : theme.palette[chipColor].main,
+                backgroundColor: identityAccentColor ?? theme.palette.grey[600],
                 opacity: isSummaryLoading ? 0.35 : 1,
                 transition: 'opacity 150ms ease, background-color 150ms ease',
               })}
@@ -505,86 +584,73 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
             >
               <Stack
                 direction="row"
-                alignItems="flex-start"
+                alignItems="center"
                 justifyContent="space-between"
                 spacing={1}
                 sx={{ flexWrap: 'wrap', rowGap: 0.25, columnGap: 0.5 }}
               >
-                <Tooltip title={identityFull} placement="top" enterTouchDelay={20}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    gap: 0.5,
+                  }}
+                  title={identityFull}
+                >
                   <Box
-                    sx={{
+                    sx={(theme) => ({
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 0.75,
-                      maxWidth: '100%',
-                      minWidth: 0,
-                    }}
+                      lineHeight: 0,
+                      flexShrink: 0,
+                      color: identityAccentColor ?? theme.palette.text.secondary,
+                    })}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', lineHeight: 0, color: 'text.secondary' }}>
-                      <IdentityIconComponent sx={{ fontSize: 16 }} />
-                    </Box>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 600,
-                        color: 'text.primary',
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        flexGrow: 1,
-                      }}
-                    >
-                      <Box
-                        component="span"
-                        sx={(theme) => ({
-                          color: identityAccentColor ?? theme.palette.text.primary,
-                        })}
-                      >
-                        {identityLabel}
-                      </Box>
-                      {relativeLabel ? (
-                        <Box
-                          component="span"
-                          sx={{
-                            color: 'text.secondary',
-                            fontWeight: 500,
-                          }}
-                        >
-                          {` • ${relativeLabel}`}
-                        </Box>
-                      ) : null}
-                    </Typography>
+                    <IdentityIconComponent sx={{ fontSize: 16 }} />
                   </Box>
-                </Tooltip>
-                <Tooltip title={fullTimestampLabel} placement="top" enterTouchDelay={20}>
                   <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}
+                    variant="body2"
+                    sx={(theme) => ({
+                      fontWeight: 600,
+                      color: identityAccentColor ?? theme.palette.text.primary,
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      minWidth: 0,
+                    })}
                   >
-                    {timeLabel ?? '—'}
+                    {identityLabel}
                   </Typography>
-                </Tooltip>
+                </Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+                  title={fullTimestampLabel}
+                >
+                  {relativeLabel ?? '—'}
+                </Typography>
               </Stack>
 
               <Stack direction="row" alignItems="center" spacing={0.75} sx={{ width: '100%', minWidth: 0 }}>
-              {!isSummaryLoading && (
-                <Box
-                  sx={(theme) => ({
-                    width: 10,
-                    height: 10,
-                    borderRadius: '50%',
-                    backgroundColor:
-                      chipColor === 'default'
-                        ? theme.palette.text.disabled
-                        : theme.palette[chipColor].main,
-                    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
-                    flexShrink: 0,
-                  })}
-                />
-              )}
-              <Tooltip title={eventTypeLabel} placement="top" enterTouchDelay={20}>
+                {!isSummaryLoading && (
+                  <Box
+                    sx={(theme) => ({
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      backgroundColor:
+                        chipColor === 'default'
+                          ? theme.palette.text.disabled
+                          : theme.palette[chipColor].main,
+                      boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+                      flexShrink: 0,
+                    })}
+                  />
+                )}
                 <Typography
                   variant="subtitle1"
                   sx={{
@@ -594,24 +660,24 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                     wordBreak: 'break-word',
                     flexGrow: 1,
                   }}
+                  title={eventTypeLabel}
                 >
                   {eventTypeLabel}
                 </Typography>
-              </Tooltip>
-              {isSummaryLoading && <CircularProgress size={18} thickness={5} />}
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  transition: 'transform 150ms ease',
-                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                  color: 'text.secondary',
-                  flexShrink: 0,
-                }}
-              >
-                <ExpandMoreIcon fontSize="small" />
-              </Box>
-            </Stack>
+                {isSummaryLoading && <CircularProgress size={18} thickness={5} />}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'transform 150ms ease',
+                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    color: 'text.secondary',
+                    flexShrink: 0,
+                  }}
+                >
+                  <ExpandMoreIcon fontSize="small" />
+                </Box>
+              </Stack>
           </Stack>
           </Box>
         </ListItemButton>
@@ -729,17 +795,6 @@ const formatTimestamp = (iso: string | null | undefined) => {
   }).format(date);
 };
 
-const formatTimeLabel = (iso: string | null | undefined) => {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(date);
-};
-
 const formatRelativeTimeLabel = (iso: string | null | undefined) => {
   if (!iso) return null;
   const date = new Date(iso);
@@ -770,6 +825,19 @@ const formatEventTypeLabel = (value: string | null | undefined) => {
     .join(' ');
 };
 
+const formatEventTypeList = (labels: string[]) => {
+  if (labels.length <= 1) {
+    return labels.join('');
+  }
+
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`;
+  }
+
+  const last = labels[labels.length - 1];
+  return `${labels.slice(0, -1).join(', ')}, and ${last}`;
+};
+
 const shortenIdentifier = (value: string | null | undefined) => {
   if (!value) return null;
   return value.length <= 20 ? value : `${value.slice(0, 8)}…${value.slice(-6)}`;
@@ -788,6 +856,47 @@ const getEventTimestamp = (entry: UsageEventLogEntry) => {
   return Number.isNaN(fallback) ? 0 : fallback;
 };
 
+const entryIsAfterCutoff = (entry: UsageEventLogEntry, cutoffIso: string | null | undefined) => {
+  if (!cutoffIso) {
+    return true;
+  }
+
+  const cutoffTimestamp = new Date(cutoffIso).getTime();
+  if (Number.isNaN(cutoffTimestamp)) {
+    return true;
+  }
+
+  return getEventTimestamp(entry) >= cutoffTimestamp;
+};
+
+const mergeUsageEventEntries = (
+  existing: UsageEventLogEntry[],
+  incoming: UsageEventLogEntry[]
+): UsageEventLogEntry[] => {
+  if (!existing.length && !incoming.length) {
+    return [];
+  }
+
+  const combined = new Map<string, UsageEventLogEntry>();
+
+  const upsert = (entry: UsageEventLogEntry) => {
+    const key = entry.summary?.id ?? entry.id;
+    if (!key) {
+      return;
+    }
+
+    const current = combined.get(key);
+    if (!current || getEventTimestamp(entry) > getEventTimestamp(current)) {
+      combined.set(key, entry);
+    }
+  };
+
+  existing.forEach(upsert);
+  incoming.forEach(upsert);
+
+  return Array.from(combined.values()).sort((a, b) => getEventTimestamp(b) - getEventTimestamp(a));
+};
+
 export default function AdminUsageEventsLog() {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
@@ -799,11 +908,13 @@ export default function AdminUsageEventsLog() {
   const [eventTypeOptions, setEventTypeOptions] = useState<string[]>(() => Object.keys(EVENT_COLOR_MAP).sort());
   const [eventTypeStatus, setEventTypeStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [eventTypeError, setEventTypeError] = useState<string | null>(null);
-  const [selectedEventType, setSelectedEventType] = useState<string | null>(null);
-  const [historicalEvents, setHistoricalEvents] = useState<UsageEventLogEntry[]>([]);
-  const [historicalNextToken, setHistoricalNextToken] = useState<string | null>(null);
-  const [historicalStatus, setHistoricalStatus] = useState<AsyncStatus>('idle');
-  const [historicalError, setHistoricalError] = useState<string | null>(null);
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
+  const [isAllTypesSelected, setIsAllTypesSelected] = useState(true);
+  const [historicalByType, setHistoricalByType] = useState<Record<string, HistoricalEventState>>({});
+  const historicalByTypeRef = useRef(historicalByType);
+  const fetchContextRef = useRef({ generation: 0, key: '' });
+  const previousSelectionKeyRef = useRef<string>('');
+  const [timeRange, setTimeRange] = useState<TimeRangeKey>(DEFAULT_TIME_RANGE);
   const isMountedRef = useRef(true);
 
   const addEventTypes = useCallback((types: Array<string | null | undefined>) => {
@@ -851,6 +962,52 @@ export default function AdminUsageEventsLog() {
   }, []);
 
   const isAdmin = Array.isArray(user?.['cognito:groups']) && user['cognito:groups'].includes('admins');
+
+  useEffect(() => {
+    if (isAllTypesSelected) {
+      return;
+    }
+
+    setSelectedEventTypes((prev) => prev.filter((type) => eventTypeOptions.includes(type)));
+  }, [eventTypeOptions, isAllTypesSelected]);
+
+  const selectedTimeRangeOption = useMemo(() => {
+    return TIME_RANGE_OPTIONS.find((option) => option.value === timeRange) ?? DEFAULT_TIME_RANGE_OPTION;
+  }, [timeRange]);
+
+  useEffect(() => {
+    historicalByTypeRef.current = historicalByType;
+  }, [historicalByType]);
+
+  const historicalCutoffIso = useMemo(() => {
+    const windowMs = selectedTimeRangeOption.durationMs;
+    return new Date(Date.now() - windowMs).toISOString();
+  }, [selectedTimeRangeOption]);
+
+  const effectiveSelectedEventTypes = useMemo(() => {
+    if (isAllTypesSelected) {
+      return eventTypeOptions;
+    }
+
+    if (!selectedEventTypes.length) {
+      return [];
+    }
+
+    const allowed = new Set(eventTypeOptions);
+    return selectedEventTypes.filter((type) => allowed.has(type));
+  }, [eventTypeOptions, isAllTypesSelected, selectedEventTypes]);
+
+  const historicalSelectionKey = useMemo(() => {
+    if (!isAdmin) {
+      return 'no-admin';
+    }
+
+    if (!effectiveSelectedEventTypes.length) {
+      return 'no-selection';
+    }
+
+    return `${effectiveSelectedEventTypes.join('|')}|${historicalCutoffIso}`;
+  }, [effectiveSelectedEventTypes, historicalCutoffIso, isAdmin]);
 
   useEffect(() => {
     return () => {
@@ -902,63 +1059,235 @@ export default function AdminUsageEventsLog() {
   }, [addEventTypes, eventTypeStatus, isAdmin]);
 
   useEffect(() => {
+    if (previousSelectionKeyRef.current !== historicalSelectionKey) {
+      fetchContextRef.current = {
+        generation: fetchContextRef.current.generation + 1,
+        key: historicalSelectionKey,
+      };
+      previousSelectionKeyRef.current = historicalSelectionKey;
+    }
+
     if (!isAdmin) {
-      return undefined;
+      setHistoricalByType((prev) => (Object.keys(prev).length ? {} : prev));
+      return;
     }
 
-    if (!selectedEventType) {
-      setHistoricalEvents([]);
-      setHistoricalNextToken(null);
-      setHistoricalStatus('idle');
-      setHistoricalError(null);
-      return undefined;
+    if (!effectiveSelectedEventTypes.length) {
+      setHistoricalByType((prev) => (Object.keys(prev).length ? {} : prev));
+      return;
     }
 
-    let isActive = true;
+    setHistoricalByType((prev) => {
+      const next: Record<string, HistoricalEventState> = {};
+      let mutated = false;
 
-    setHistoricalEvents([]);
-    setHistoricalNextToken(null);
-    setHistoricalStatus('loading');
-    setHistoricalError(null);
-
-    void (async () => {
-      try {
-        const response: any = await API.graphql(
-          graphqlOperation(usageEventsByType, {
-            eventType: selectedEventType,
-            sortDirection: 'DESC',
-            limit: HISTORICAL_PAGE_SIZE,
-          })
-        );
-
-        if (!isActive || !isMountedRef.current) {
+      effectiveSelectedEventTypes.forEach((eventType) => {
+        const existing = prev[eventType];
+        if (existing && existing.cutoffIso === historicalCutoffIso) {
+          next[eventType] = existing;
           return;
         }
 
-        const connection = response?.data?.usageEventsByType;
-        const items = (connection?.items ?? []) as UsageEventDetail[];
-        const entries = items
-          .filter((item): item is UsageEventDetail => Boolean(item?.id))
-          .map(createLogEntryFromUsageRecord);
+        mutated = true;
+        next[eventType] = {
+          events: [],
+          nextToken: null,
+          status: 'idle',
+          error: null,
+          cutoffIso: historicalCutoffIso,
+        };
+      });
 
-        setHistoricalEvents(entries);
-        setHistoricalNextToken(connection?.nextToken ?? null);
-        setHistoricalStatus('loaded');
-        addEventTypes(items.map((item) => item?.eventType ?? null));
-      } catch (error) {
-        if (!isActive || !isMountedRef.current) {
-          return;
-        }
-
-        setHistoricalStatus('error');
-        setHistoricalError(safeStringify(error));
+      if (Object.keys(prev).length !== effectiveSelectedEventTypes.length) {
+        mutated = true;
+      } else {
+        Object.keys(prev).forEach((key) => {
+          if (!next[key]) {
+            mutated = true;
+          }
+        });
       }
-    })();
 
-    return () => {
-      isActive = false;
-    };
-  }, [addEventTypes, createLogEntryFromUsageRecord, isAdmin, selectedEventType]);
+      return mutated ? next : prev;
+    });
+  }, [effectiveSelectedEventTypes, historicalCutoffIso, historicalSelectionKey, isAdmin]);
+
+  const fetchHistoricalBatch = useCallback(
+    async (types: string[], mode: 'initial' | 'loadMore') => {
+      if (!isAdmin || !types.length) {
+        return;
+      }
+
+      const stateSnapshot = historicalByTypeRef.current;
+      const pageSizes = allocateHistoricalPageSizes(types);
+
+      const fetchable = types.filter((eventType) => {
+        const limit = pageSizes[eventType] ?? 0;
+        if (limit <= 0) {
+          return false;
+        }
+
+        const state = stateSnapshot[eventType];
+        if (mode === 'loadMore') {
+          return Boolean(state?.nextToken);
+        }
+
+        return true;
+      });
+
+      if (!fetchable.length) {
+        return;
+      }
+
+      const generation = fetchContextRef.current.generation;
+
+      setHistoricalByType((prev) => {
+        const next = { ...prev };
+        fetchable.forEach((eventType) => {
+          const current = prev[eventType];
+          const cutoffIso = current?.cutoffIso ?? historicalCutoffIso;
+          next[eventType] = {
+            events: current?.events ?? [],
+            nextToken: current?.nextToken ?? null,
+            status: mode === 'loadMore' ? 'loadingMore' : 'loading',
+            error: null,
+            cutoffIso,
+          };
+        });
+        return next;
+      });
+
+      const results = await Promise.all(
+        fetchable.map(async (eventType) => {
+          const snapshot = historicalByTypeRef.current[eventType];
+          const cutoffIsoForType = snapshot?.cutoffIso ?? historicalCutoffIso;
+          const nextToken = mode === 'loadMore' ? snapshot?.nextToken : undefined;
+
+          try {
+            const variables: Record<string, unknown> = {
+              eventType,
+              sortDirection: 'DESC',
+              limit: pageSizes[eventType],
+              createdAt: { ge: cutoffIsoForType },
+            };
+
+            if (mode === 'loadMore' && nextToken) {
+              variables.nextToken = nextToken;
+            }
+
+            const response: any = await API.graphql(
+              graphqlOperation(usageEventsByType, variables)
+            );
+
+            const connection = response?.data?.usageEventsByType;
+            const items = (connection?.items ?? []) as UsageEventDetail[];
+            const entries = items
+              .filter((item): item is UsageEventDetail => Boolean(item?.id))
+              .map(createLogEntryFromUsageRecord)
+              .filter((entry) => entryIsAfterCutoff(entry, cutoffIsoForType));
+
+            return {
+              eventType,
+              entries,
+              nextToken: connection?.nextToken ?? null,
+              cutoffIso: cutoffIsoForType,
+              error: null as string | null,
+            };
+          } catch (error) {
+            return {
+              eventType,
+              entries: [] as UsageEventLogEntry[],
+              nextToken,
+              cutoffIso: cutoffIsoForType,
+              error: safeStringify(error),
+            };
+          }
+        })
+      );
+
+      if (!isMountedRef.current || fetchContextRef.current.generation !== generation) {
+        return;
+      }
+
+      const discoveredEventTypes: (string | null | undefined)[] = [];
+
+      setHistoricalByType((prev) => {
+        const next = { ...prev };
+        results.forEach(({ eventType, entries, nextToken, cutoffIso, error }) => {
+          const current = prev[eventType];
+          if (!current) {
+            next[eventType] = {
+              events: entries,
+              nextToken,
+              status: error ? 'error' : 'loaded',
+              error,
+              cutoffIso,
+            };
+            if (!error) {
+              entries.forEach((entry) => {
+                discoveredEventTypes.push(
+                  entry.summary?.eventType ?? entry.detail?.eventType ?? null
+                );
+              });
+            }
+            return;
+          }
+
+          if (error) {
+            next[eventType] = {
+              ...current,
+              status: 'error',
+              error,
+              cutoffIso,
+            };
+            return;
+          }
+
+          const mergedEvents =
+            mode === 'loadMore'
+              ? mergeUsageEventEntries(current.events, entries)
+              : entries;
+
+          next[eventType] = {
+            events: mergedEvents,
+            nextToken,
+            status: 'loaded',
+            error: null,
+            cutoffIso,
+          };
+
+          entries.forEach((entry) => {
+            discoveredEventTypes.push(
+              entry.summary?.eventType ?? entry.detail?.eventType ?? null
+            );
+          });
+        });
+        return next;
+      });
+
+      if (discoveredEventTypes.length) {
+        addEventTypes(discoveredEventTypes);
+      }
+    },
+    [addEventTypes, createLogEntryFromUsageRecord, historicalCutoffIso, isAdmin]
+  );
+
+  useEffect(() => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const idleTypes = effectiveSelectedEventTypes.filter((eventType) => {
+      const state = historicalByType[eventType];
+      return Boolean(state && state.status === 'idle');
+    });
+
+    if (!idleTypes.length) {
+      return;
+    }
+
+    void fetchHistoricalBatch(idleTypes, 'initial');
+  }, [effectiveSelectedEventTypes, fetchHistoricalBatch, historicalByType, isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) return undefined;
@@ -1100,14 +1429,21 @@ export default function AdminUsageEventsLog() {
   }, [addEventTypes, events]);
 
   useEffect(() => {
-    if (!historicalEvents.length) {
+    const collections = Object.values(historicalByType);
+    if (!collections.length) {
       return;
     }
 
-    addEventTypes(
-      historicalEvents.map((entry) => entry.summary?.eventType ?? entry.detail?.eventType ?? null)
+    const eventTypes = collections.flatMap((collection) =>
+      collection.events.map((entry) => entry.summary?.eventType ?? entry.detail?.eventType ?? null)
     );
-  }, [addEventTypes, historicalEvents]);
+
+    if (!eventTypes.length) {
+      return;
+    }
+
+    addEventTypes(eventTypes);
+  }, [addEventTypes, historicalByType]);
 
   const fetchEventDetail = useCallback((entryId: string) => {
     const currentEntry = events.find((event) => event.id === entryId);
@@ -1200,27 +1536,41 @@ export default function AdminUsageEventsLog() {
 
   const isUserLoading = user === false;
 
-  const normalizedSelectedType = useMemo(
-    () => normalizeEventType(selectedEventType),
-    [selectedEventType]
+  const normalizedSelectedTypes = useMemo(
+    () =>
+      effectiveSelectedEventTypes
+        .map((type) => normalizeEventType(type))
+        .filter((type): type is string => Boolean(type)),
+    [effectiveSelectedEventTypes]
   );
 
   const displayedEvents = useMemo(() => {
-    if (!normalizedSelectedType) {
-      return events;
+    const cutoffTimestamp = Date.now() - selectedTimeRangeOption.durationMs;
+
+    const liveWithinWindow = events.filter((entry) => getEventTimestamp(entry) >= cutoffTimestamp);
+
+    if (!normalizedSelectedTypes.length) {
+      return isAllTypesSelected ? liveWithinWindow : [];
     }
 
-    const matchingLive = events.filter((entry) => {
-      const typeFromSummary = entry.summary?.eventType?.toLowerCase();
-      if (typeFromSummary) {
-        return typeFromSummary === normalizedSelectedType;
-      }
+    const selectedTypeSet = new Set(normalizedSelectedTypes);
 
-      const typeFromDetail = entry.detail?.eventType?.toLowerCase();
-      return typeFromDetail === normalizedSelectedType;
+    const historicalSelectedEvents = effectiveSelectedEventTypes.flatMap((eventType) => {
+      const records = historicalByType[eventType]?.events ?? [];
+      return records.filter((entry) => getEventTimestamp(entry) >= cutoffTimestamp);
     });
 
-    const combined = [...historicalEvents, ...matchingLive];
+    const matchingLive = liveWithinWindow.filter((entry) => {
+      const summaryType = normalizeEventType(entry.summary?.eventType ?? null);
+      if (summaryType && selectedTypeSet.has(summaryType)) {
+        return true;
+      }
+
+      const detailType = normalizeEventType(entry.detail?.eventType ?? null);
+      return Boolean(detailType && selectedTypeSet.has(detailType));
+    });
+
+    const combined = [...historicalSelectedEvents, ...matchingLive];
     if (!combined.length) {
       return combined;
     }
@@ -1229,26 +1579,41 @@ export default function AdminUsageEventsLog() {
 
     combined.forEach((entry) => {
       const key = entry.summary?.id ?? entry.id;
-      if (!key) return;
-      deduped.set(key, entry);
+      if (!key) {
+        return;
+      }
+
+      const existing = deduped.get(key);
+      if (!existing || getEventTimestamp(entry) > getEventTimestamp(existing)) {
+        deduped.set(key, entry);
+      }
     });
 
     return Array.from(deduped.values()).sort((a, b) => getEventTimestamp(b) - getEventTimestamp(a));
-  }, [events, historicalEvents, normalizedSelectedType]);
+  }, [effectiveSelectedEventTypes, events, historicalByType, isAllTypesSelected, normalizedSelectedTypes, selectedTimeRangeOption.durationMs]);
 
-  const isFilteredView = Boolean(selectedEventType);
-  const isHistoricalLoading = isFilteredView && historicalStatus === 'loading';
-  const isHistoricalLoadingMore = isFilteredView && historicalStatus === 'loadingMore';
-  const selectedEventTypeLabel = selectedEventType ? formatEventTypeLabel(selectedEventType) : null;
-  const canLoadMoreHistorical = Boolean(selectedEventType && historicalNextToken);
+  const hasSelection = normalizedSelectedTypes.length > 0;
+  const isCustomSelection = !isAllTypesSelected && selectedEventTypes.length > 0;
+  const isHistoricalLoading =
+    hasSelection && effectiveSelectedEventTypes.some((type) => historicalByType[type]?.status === 'loading');
+  const isHistoricalLoadingMore =
+    hasSelection && effectiveSelectedEventTypes.some((type) => historicalByType[type]?.status === 'loadingMore');
+  const historicalErrors = effectiveSelectedEventTypes
+    .map((type) => historicalByType[type]?.error)
+    .filter((error): error is string => Boolean(error));
+  const historicalErrorMessage = historicalErrors[0] ?? null;
+  const canLoadMoreHistorical =
+    hasSelection && effectiveSelectedEventTypes.some((type) => Boolean(historicalByType[type]?.nextToken));
   const shouldShowEmptyState =
-    displayedEvents.length === 0 && (!isFilteredView || (!isHistoricalLoading && !isHistoricalLoadingMore));
+    displayedEvents.length === 0 && (!hasSelection || (!isHistoricalLoading && !isHistoricalLoadingMore));
   const eventCountLabel = `${displayedEvents.length} event${displayedEvents.length === 1 ? '' : 's'}`;
 
   useEffect(() => {
-    if (!normalizedSelectedType) {
+    if (!normalizedSelectedTypes.length) {
       return;
     }
+
+    const selectedTypeSet = new Set(normalizedSelectedTypes);
 
     displayedEvents.forEach((entry) => {
       if (entry.detailStatus !== 'idle') {
@@ -1259,14 +1624,40 @@ export default function AdminUsageEventsLog() {
         return;
       }
 
-      const entryType = normalizeEventType(entry.summary?.eventType ?? entry.detail?.eventType ?? null);
-      if (!entryType || entryType !== normalizedSelectedType) {
-        return;
-      }
+      const summaryType = normalizeEventType(entry.summary?.eventType ?? null);
+      const detailType = normalizeEventType(entry.detail?.eventType ?? null);
 
-      fetchEventDetail(entry.id);
+      if (
+        (summaryType && selectedTypeSet.has(summaryType)) ||
+        (detailType && selectedTypeSet.has(detailType))
+      ) {
+        fetchEventDetail(entry.id);
+      }
     });
-  }, [displayedEvents, fetchEventDetail, normalizedSelectedType]);
+  }, [displayedEvents, fetchEventDetail, normalizedSelectedTypes]);
+
+  const customSelectedEventTypeLabels = useMemo(
+    () => selectedEventTypes.map((type) => formatEventTypeLabel(type)),
+    [selectedEventTypes]
+  );
+
+  const selectedEventTypesSummary = useMemo(() => {
+    if (!isCustomSelection || !customSelectedEventTypeLabels.length) {
+      return null;
+    }
+
+    if (customSelectedEventTypeLabels.length === 1) {
+      return `Showing only ${customSelectedEventTypeLabels[0]} events.`;
+    }
+
+    if (customSelectedEventTypeLabels.length <= 3) {
+      return `Showing ${customSelectedEventTypeLabels.length} event types: ${formatEventTypeList(customSelectedEventTypeLabels)}.`;
+    }
+
+    const visible = customSelectedEventTypeLabels.slice(0, 2);
+    const remaining = customSelectedEventTypeLabels.length - visible.length;
+    return `Showing ${customSelectedEventTypeLabels.length} event types: ${visible.join(', ')}, and ${remaining} more.`;
+  }, [customSelectedEventTypeLabels, isCustomSelection]);
 
   const handleToggleExpand = (eventId: string) => {
     const isExpanding = expandedEventId !== eventId;
@@ -1283,72 +1674,67 @@ export default function AdminUsageEventsLog() {
     setSubscriptionAttempt((prev) => prev + 1);
   };
 
-  const handleEventTypeChange = (event: SelectChangeEvent<string>) => {
+  const handleTimeRangeChange = (event: SelectChangeEvent<TimeRangeKey>) => {
+    const nextValue = event.target.value as TimeRangeKey;
+    if (!nextValue || nextValue === timeRange) {
+      return;
+    }
+
+    const isSupported = TIME_RANGE_OPTIONS.some((option) => option.value === nextValue);
+    if (!isSupported) {
+      return;
+    }
+
+    setTimeRange(nextValue);
+    setExpandedEventId(null);
+  };
+
+  const handleEventTypeChange = (event: SelectChangeEvent<string[]>) => {
     const value = event.target.value;
-    const normalized = value === ALL_EVENT_TYPES_OPTION ? null : value;
-    setSelectedEventType(normalized);
+    const rawSelection = typeof value === 'string' ? value.split(',') : value;
+
+    if (rawSelection.includes(ALL_EVENT_TYPES_OPTION)) {
+      setIsAllTypesSelected(true);
+      setSelectedEventTypes([]);
+      setExpandedEventId(null);
+      return;
+    }
+
+    const nextSelection = Array.from(
+      new Set(
+        rawSelection.filter((item) => item && item !== ALL_EVENT_TYPES_OPTION)
+      )
+    );
+
+    if (nextSelection.length && nextSelection.length === eventTypeOptions.length) {
+      setIsAllTypesSelected(true);
+      setSelectedEventTypes([]);
+      setExpandedEventId(null);
+      return;
+    }
+
+    setIsAllTypesSelected(false);
+    setSelectedEventTypes(nextSelection);
     setExpandedEventId(null);
   };
 
   const handleLoadMoreHistorical = () => {
     if (!isAdmin) return;
-    if (!selectedEventType) return;
-    if (!historicalNextToken) return;
-    if (historicalStatus === 'loadingMore') return;
 
-    setHistoricalStatus('loadingMore');
-    setHistoricalError(null);
-
-    void (async () => {
-      try {
-        const response: any = await API.graphql(
-          graphqlOperation(usageEventsByType, {
-            eventType: selectedEventType,
-            sortDirection: 'DESC',
-            limit: HISTORICAL_PAGE_SIZE,
-            nextToken: historicalNextToken,
-          })
-        );
-
-        if (!isMountedRef.current) {
-          return;
-        }
-
-        const connection = response?.data?.usageEventsByType;
-        const items = (connection?.items ?? []) as UsageEventDetail[];
-        const entries = items
-          .filter((item): item is UsageEventDetail => Boolean(item?.id))
-          .map(createLogEntryFromUsageRecord);
-
-        setHistoricalEvents((prev) => {
-          if (!prev.length) {
-            return entries;
-          }
-
-          const knownIds = new Set(prev.map((entry) => entry.id));
-          const merged = [...prev];
-
-          entries.forEach((entry) => {
-            if (knownIds.has(entry.id)) return;
-            knownIds.add(entry.id);
-            merged.push(entry);
-          });
-
-          return merged;
-        });
-
-        setHistoricalNextToken(connection?.nextToken ?? null);
-        setHistoricalStatus('loaded');
-        addEventTypes(items.map((item) => item?.eventType ?? null));
-      } catch (error) {
-        if (!isMountedRef.current) {
-          return;
-        }
-
-        setHistoricalStatus('error');
-        setHistoricalError(safeStringify(error));
+    const eligibleTypes = effectiveSelectedEventTypes.filter((eventType) => {
+      const state = historicalByType[eventType];
+      if (!state || !state.nextToken) {
+        return false;
       }
-    })();
+
+      return state.status !== 'loading' && state.status !== 'loadingMore';
+    });
+
+    if (!eligibleTypes.length) {
+      return;
+    }
+
+    void fetchHistoricalBatch(eligibleTypes, 'loadMore');
   };
 
   if (isUserLoading) {
@@ -1389,31 +1775,78 @@ export default function AdminUsageEventsLog() {
               </Box>
             </Box>
 
-            <FormControl
-              size="small"
-              fullWidth
-              sx={{
-                maxWidth: { sm: 260 },
-              }}
-              disabled={eventTypeStatus === 'loading' && eventTypeOptions.length === 0}
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={{ xs: 1.5, sm: 2 }}
+              sx={{ width: '100%' }}
             >
-              <InputLabel id="usage-event-type-filter-label">Event type</InputLabel>
-              <Select
-                labelId="usage-event-type-filter-label"
-                id="usage-event-type-filter"
-                label="Event type"
-                value={selectedEventType ?? ALL_EVENT_TYPES_OPTION}
-                onChange={handleEventTypeChange}
+              <FormControl
+                size="small"
+                fullWidth
+                sx={{ maxWidth: { sm: 220 } }}
               >
-                <MenuItem value={ALL_EVENT_TYPES_OPTION}>All events</MenuItem>
-                {eventTypeOptions.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {formatEventTypeLabel(option)}
+                <InputLabel id="usage-event-time-range-label">Time range</InputLabel>
+                <Select
+                  labelId="usage-event-time-range-label"
+                  id="usage-event-time-range"
+                  label="Time range"
+                  value={timeRange}
+                  onChange={handleTimeRangeChange}
+                >
+                  {TIME_RANGE_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl
+                size="small"
+                fullWidth
+                sx={{ maxWidth: { sm: 280 } }}
+                disabled={eventTypeStatus === 'loading' && eventTypeOptions.length === 0}
+              >
+                <InputLabel id="usage-event-type-filter-label">Event type</InputLabel>
+                <Select
+                  labelId="usage-event-type-filter-label"
+                  id="usage-event-type-filter"
+                  label="Event type"
+                  multiple
+                  value={isAllTypesSelected ? eventTypeOptions : selectedEventTypes}
+                  onChange={handleEventTypeChange}
+                  displayEmpty
+                  renderValue={(selected) => {
+                    if (isAllTypesSelected) {
+                      return 'All events';
+                    }
+
+                    const values = selected as string[];
+                    const formatted = values.map((type) => formatEventTypeLabel(type));
+                    if (formatted.length <= 2) {
+                      return formatted.join(', ');
+                    }
+
+                    return `${formatted.length} selected`;
+                  }}
+                >
+                  <MenuItem value={ALL_EVENT_TYPES_OPTION}>
+                    <Checkbox size="small" checked={isAllTypesSelected} />
+                    <ListItemText primary="All events" />
                   </MenuItem>
-                ))}
-              </Select>
-              {eventTypeError && <FormHelperText error>{eventTypeError}</FormHelperText>}
-            </FormControl>
+                  {eventTypeOptions.map((option) => {
+                    const isSelected = isAllTypesSelected || selectedEventTypes.includes(option);
+                    return (
+                      <MenuItem key={option} value={option}>
+                        <Checkbox size="small" checked={isSelected} />
+                        <ListItemText primary={formatEventTypeLabel(option)} />
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+                {eventTypeError && <FormHelperText error>{eventTypeError}</FormHelperText>}
+              </FormControl>
+            </Stack>
           </Stack>
         </Paper>
 
@@ -1423,15 +1856,15 @@ export default function AdminUsageEventsLog() {
           </Alert>
         )}
 
-        {isFilteredView && selectedEventTypeLabel && (
+        {isCustomSelection && selectedEventTypesSummary && (
           <Alert severity="info" variant="outlined">
-            Showing only {selectedEventTypeLabel} events.
+            {selectedEventTypesSummary}
           </Alert>
         )}
 
-        {isFilteredView && historicalStatus === 'error' && historicalError && (
+        {hasSelection && historicalErrorMessage && (
           <Alert severity="error" variant="outlined">
-            {historicalError}
+            {historicalErrorMessage}
           </Alert>
         )}
 
@@ -1449,10 +1882,10 @@ export default function AdminUsageEventsLog() {
         {shouldShowEmptyState ? (
           <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, textAlign: 'center' }}>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              {isFilteredView ? 'No matches' : 'No events yet'}
+              {isCustomSelection ? 'No matches' : 'No events yet'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {isFilteredView
+              {isCustomSelection
                 ? 'Trigger this event or choose another type.'
                 : 'Fire any tracked action to see it here.'}
             </Typography>
@@ -1479,12 +1912,12 @@ export default function AdminUsageEventsLog() {
                   entry={entry}
                   isExpanded={expandedEventId === entry.id}
                   onToggle={handleToggleExpand}
-                  showEventSpecificSummary={isFilteredView}
+                  showEventSpecificSummary={isCustomSelection}
                 />
               ))}
             </Stack>
 
-            {isFilteredView && canLoadMoreHistorical && (
+            {hasSelection && canLoadMoreHistorical && (
               <>
                 <Divider />
                 <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
