@@ -23,6 +23,8 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PersonIcon from '@mui/icons-material/Person';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
 import type { SelectChangeEvent } from '@mui/material/Select';
@@ -92,6 +94,7 @@ const MAX_EVENTS = 100;
 const HISTORICAL_PAGE_SIZE = 50;
 const EVENT_TYPE_SAMPLE_LIMIT = 200;
 const ALL_EVENT_TYPES_OPTION = '__ALL__';
+const NOAUTH_IDENTITY_PREFIX = 'noauth-';
 
 const EVENT_COLOR_MAP: Record<string, ChipColor> = {
   search: 'info',
@@ -402,8 +405,11 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
         ? 'Loading…'
         : 'Event unavailable';
 
-  const identityFull = entry.summary?.identityId ?? entry.detail?.identityId ?? 'Unknown identity';
+  const identityRaw = entry.summary?.identityId ?? entry.detail?.identityId ?? null;
+  const identityFull = identityRaw ?? 'Unknown identity';
   const identityShort = shortenIdentifier(identityFull) ?? identityFull;
+  const isNoAuthIdentity = typeof identityRaw === 'string' && identityRaw.startsWith(NOAUTH_IDENTITY_PREFIX);
+  const IdentityIconComponent = isNoAuthIdentity || !identityRaw ? HelpOutlineIcon : PersonIcon;
   const timestampIso = entry.summary?.createdAt ?? entry.receivedAt;
   const timeLabel = formatTimeLabel(timestampIso);
   const fullTimestampLabel = formatTimestamp(timestampIso) ?? timestampIso ?? 'Timestamp unavailable';
@@ -461,19 +467,33 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                 sx={{ flexWrap: 'wrap', rowGap: 0.25, columnGap: 0.5 }}
               >
                 <Tooltip title={identityFull} placement="top" enterTouchDelay={20}>
-                  <Typography
-                    variant="body2"
+                  <Box
                     sx={{
-                      fontWeight: 600,
-                      color: 'text.primary',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.75,
                       maxWidth: '100%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      minWidth: 0,
                     }}
                   >
-                    {identityLine}
-                  </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', lineHeight: 0, color: 'text.secondary' }}>
+                      <IdentityIconComponent sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                        color: 'text.primary',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        flexGrow: 1,
+                      }}
+                    >
+                      {identityLine}
+                    </Typography>
+                  </Box>
                 </Tooltip>
                 <Tooltip title={fullTimestampLabel} placement="top" enterTouchDelay={20}>
                   <Typography
