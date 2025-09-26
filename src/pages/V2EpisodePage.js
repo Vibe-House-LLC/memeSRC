@@ -108,7 +108,7 @@ export default function V2EpisodePage() {
   const [imagesLoaded, setImagesLoaded] = useState({});
   const fps = 10; // Frames per second
   const navigate = useNavigate();
-  const hasTrackedViewEpisodeRef = useRef(false);
+  const lastTrackedViewEpisodeRef = useRef('');
 
   const episodeFrameSaveIntentMetaBase = useMemo(() => {
     const meta = {
@@ -145,7 +145,17 @@ export default function V2EpisodePage() {
   }, [cid]);
 
   useEffect(() => {
-    if (hasTrackedViewEpisodeRef.current) {
+    const resolvedCid = confirmedCid || cid;
+    const trimmedSearchTerm = typeof urlSearchTerm === 'string' ? urlSearchTerm.trim() : '';
+    const trackingFingerprint = JSON.stringify({
+      resolvedCid: resolvedCid ?? null,
+      season: season ?? null,
+      episode: episode ?? null,
+      frame: frame ?? null,
+      searchTerm: trimmedSearchTerm,
+    });
+
+    if (trackingFingerprint === lastTrackedViewEpisodeRef.current) {
       return;
     }
 
@@ -153,7 +163,6 @@ export default function V2EpisodePage() {
       source: 'V2EpisodePage',
     };
 
-    const resolvedCid = confirmedCid || cid;
     if (resolvedCid) {
       eventPayload.cid = resolvedCid;
     }
@@ -170,13 +179,12 @@ export default function V2EpisodePage() {
       eventPayload.frame = frame;
     }
 
-    const trimmedSearchTerm = typeof urlSearchTerm === 'string' ? urlSearchTerm.trim() : '';
     if (trimmedSearchTerm) {
       eventPayload.searchTerm = trimmedSearchTerm;
     }
 
     trackUsageEvent('view_episode', eventPayload);
-    hasTrackedViewEpisodeRef.current = true;
+    lastTrackedViewEpisodeRef.current = trackingFingerprint;
   }, [cid, confirmedCid, season, episode, frame, urlSearchTerm]);
 
   useEffect(() => {
