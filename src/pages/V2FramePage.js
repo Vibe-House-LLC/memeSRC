@@ -338,24 +338,6 @@ export default function FramePage() {
     return undefined;
   }, [contextSearchQuery, urlSearchTerm]);
 
-  const handleViewEpisodeClick = useCallback(() => {
-    const eventPayload = {
-      source: 'V2FramePage',
-      cid: confirmedCid || cid,
-      season,
-      episode,
-      frame,
-      fineTuningIndex,
-    };
-
-    const resolvedSearchTerm = resolveSearchTerm();
-    if (resolvedSearchTerm !== undefined) {
-      eventPayload.searchTerm = resolvedSearchTerm;
-    }
-
-    trackUsageEvent('view_episode', eventPayload);
-  }, [cid, confirmedCid, season, episode, frame, fineTuningIndex, resolveSearchTerm]);
-
   const episodeLink = (() => {
     const frameNumber = Number(frame);
     const anchorFrame = Number.isFinite(frameNumber) ? Math.round(frameNumber / 10) * 10 : frame;
@@ -1871,7 +1853,6 @@ useEffect(() => {
                 fullWidth
                 component={RouterLink}
                 to={episodeLink}
-                onClick={handleViewEpisodeClick}
                 sx={{
                   color: '#e5e7eb',
                   background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',

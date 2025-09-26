@@ -1,7 +1,7 @@
 // V2EpisodePage.js
 
 import { Buffer } from "buffer";
-import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import { Link as RouterLink, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container, Typography, Card, CardMedia, CardContent, Button, Grid, Box, Skeleton } from "@mui/material";
 import { Storage } from "aws-amplify";
@@ -13,6 +13,7 @@ import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 
 import EpisodePageBannerAd from '../ads/SearchPageBannerAd';
 import EpisodePageResultsAd from '../ads/SearchPageResultsAd';
+import { trackUsageEvent } from '../utils/trackUsageEvent';
 
 
 const formatTimecode = (frameId, fps) => {
@@ -107,6 +108,7 @@ export default function V2EpisodePage() {
   const [imagesLoaded, setImagesLoaded] = useState({});
   const fps = 10; // Frames per second
   const navigate = useNavigate();
+  const hasTrackedViewEpisodeRef = useRef(false);
 
   const episodeFrameSaveIntentMetaBase = useMemo(() => {
     const meta = {
@@ -141,6 +143,41 @@ export default function V2EpisodePage() {
       console.log(error)
     })
   }, [cid]);
+
+  useEffect(() => {
+    if (hasTrackedViewEpisodeRef.current) {
+      return;
+    }
+
+    const eventPayload = {
+      source: 'V2EpisodePage',
+    };
+
+    const resolvedCid = confirmedCid || cid;
+    if (resolvedCid) {
+      eventPayload.cid = resolvedCid;
+    }
+
+    if (season) {
+      eventPayload.season = season;
+    }
+
+    if (episode) {
+      eventPayload.episode = episode;
+    }
+
+    if (frame) {
+      eventPayload.frame = frame;
+    }
+
+    const trimmedSearchTerm = typeof urlSearchTerm === 'string' ? urlSearchTerm.trim() : '';
+    if (trimmedSearchTerm) {
+      eventPayload.searchTerm = trimmedSearchTerm;
+    }
+
+    trackUsageEvent('view_episode', eventPayload);
+    hasTrackedViewEpisodeRef.current = true;
+  }, [cid, confirmedCid, season, episode, frame, urlSearchTerm]);
 
   useEffect(() => {
     if (confirmedCid) {

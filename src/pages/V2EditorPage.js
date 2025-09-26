@@ -1524,44 +1524,6 @@ const EditorPage = ({ shows }) => {
     [saveDialogImageIntentMeta]
   );
 
-  const handleViewEpisodeClick = useCallback(() => {
-    const eventPayload = {
-      source: 'V2EditorPage',
-    };
-
-    const resolvedCid = confirmedCid || cid;
-    if (resolvedCid) {
-      eventPayload.cid = resolvedCid;
-    }
-
-    if (season) {
-      eventPayload.season = season;
-    }
-
-    if (episode) {
-      eventPayload.episode = episode;
-    }
-
-    if (frame) {
-      eventPayload.frame = frame;
-    }
-
-    if (typeof fineTuningIndex !== 'undefined') {
-      eventPayload.fineTuningIndex = fineTuningIndex;
-    }
-
-    if (editorProjectId) {
-      eventPayload.editorProjectId = editorProjectId;
-    }
-
-    const trimmedSearchTerm = typeof searchQuery === 'string' ? searchQuery.trim() : '';
-    if (trimmedSearchTerm) {
-      eventPayload.searchTerm = trimmedSearchTerm;
-    }
-
-    trackUsageEvent('view_episode', eventPayload);
-  }, [confirmedCid, cid, season, episode, frame, fineTuningIndex, editorProjectId, searchQuery]);
-
   const handleAddTextLayer = useCallback(() => {
     const eventPayload = {
       source: 'V2EditorPage',
@@ -2730,7 +2692,6 @@ const EditorPage = ({ shows }) => {
                     fullWidth
                     component={Link}
                     to={episodeLink}
-                    onClick={handleViewEpisodeClick}
                     sx={{
                       color: '#e5e7eb',
                       background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
