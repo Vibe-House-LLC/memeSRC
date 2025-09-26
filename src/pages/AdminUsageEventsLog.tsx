@@ -1932,22 +1932,27 @@ export default function AdminUsageEventsLog() {
                   value={timeRange}
                   onChange={handleTimeRangeChange}
                   size="small"
+                  aria-label="Usage events time range"
                   sx={{
-                    flexWrap: 'wrap',
-                    gap: 0.75,
+                    flexWrap: 'nowrap',
+                    overflowX: 'auto',
+                    px: 0.5,
+                    pb: 0.5,
+                    mx: -0.5,
+                    '&::-webkit-scrollbar': { display: 'none' },
+                    scrollbarWidth: 'none',
                     '& .MuiToggleButton-root': {
-                      flex: { xs: '1 0 calc(50% - 0.75rem)', sm: '0 0 auto' },
-                      minWidth: 64,
+                      flex: '0 0 auto',
+                      minWidth: 72,
                       fontWeight: 600,
+                    },
+                    '& .MuiToggleButton-root:not(:last-of-type)': {
+                      mr: 0.75,
                     },
                   }}
                 >
                   {TIME_RANGE_OPTIONS.map((option) => (
-                    <ToggleButton
-                      key={option.value}
-                      value={option.value}
-                      aria-label={option.label}
-                    >
+                    <ToggleButton key={option.value} value={option.value} aria-label={option.label}>
                       {option.shortLabel}
                     </ToggleButton>
                   ))}
