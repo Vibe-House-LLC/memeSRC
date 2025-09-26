@@ -3,7 +3,9 @@ import { API, graphqlOperation, Hub } from 'aws-amplify';
 import { CONNECTION_STATE_CHANGE } from '@aws-amplify/pubsub';
 import {
   Alert,
+  Autocomplete,
   Box,
+  Chip,
   CircularProgress,
   Collapse,
   Container,
@@ -11,15 +13,13 @@ import {
   IconButton,
   Button,
   Checkbox,
-  FormControl,
   FormHelperText,
-  InputLabel,
   ListItemButton,
-  ListItemText,
-  MenuItem,
   Paper,
-  Select,
   Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -28,7 +28,8 @@ import PersonIcon from '@mui/icons-material/Person';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
-import type { SelectChangeEvent } from '@mui/material/Select';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import { getUsageEvent, listUsageEvents, usageEventsByType } from '../graphql/queries';
 
 const USAGE_EVENT_SUBSCRIPTION = /* GraphQL */ `
@@ -105,7 +106,7 @@ const EVENT_TYPE_SAMPLE_LIMIT = 200;
 const HISTORICAL_MAX_PAGES = 200;
 const INITIAL_VISIBLE_COUNT = 25;
 const LOAD_MORE_STEP = 25;
-const ALL_EVENT_TYPES_OPTION = '__ALL__';
+const EVENT_TAG_LIMIT = 3;
 const NOAUTH_IDENTITY_PREFIX = 'noauth-';
 
 type TimeRangeKey = '5m' | '1h' | '24h' | '7d';
@@ -114,18 +115,24 @@ type TimeRangeOption = {
   value: TimeRangeKey;
   label: string;
   durationMs: number;
+  shortLabel: string;
 };
 
 const TIME_RANGE_OPTIONS: readonly TimeRangeOption[] = [
-  { value: '5m', label: 'Last 5 minutes', durationMs: 5 * 60 * 1000 },
-  { value: '1h', label: 'Last hour', durationMs: 60 * 60 * 1000 },
-  { value: '24h', label: 'Last 24 hours', durationMs: 24 * 60 * 60 * 1000 },
-  { value: '7d', label: 'Last 7 days', durationMs: 7 * 24 * 60 * 60 * 1000 },
+  { value: '5m', label: 'Last 5 minutes', shortLabel: '5m', durationMs: 5 * 60 * 1000 },
+  { value: '1h', label: 'Last hour', shortLabel: '1h', durationMs: 60 * 60 * 1000 },
+  { value: '24h', label: 'Last 24 hours', shortLabel: '24h', durationMs: 24 * 60 * 60 * 1000 },
+  { value: '7d', label: 'Last 7 days', shortLabel: '7d', durationMs: 7 * 24 * 60 * 60 * 1000 },
 ];
 
 const DEFAULT_TIME_RANGE: TimeRangeKey = '1h';
 const DEFAULT_TIME_RANGE_OPTION =
   TIME_RANGE_OPTIONS.find((option) => option.value === DEFAULT_TIME_RANGE) ?? TIME_RANGE_OPTIONS[0];
+
+const STORAGE_KEYS = {
+  timeRange: 'adminUsageEvents.timeRange',
+  eventTypes: 'adminUsageEvents.eventTypes',
+};
 
 const GOLDEN_RATIO_CONJUGATE = 0.618033988749895;
 
@@ -186,6 +193,67 @@ const hashIdentityToColor = (identity: string | null | undefined): string | null
 
   const paletteIndex = hash % IDENTITY_ACCENT_COLORS.length;
   return IDENTITY_ACCENT_COLORS[paletteIndex];
+};
+
+const logStorageWarning = (message: string, error: unknown) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(message, error);
+  }
+};
+
+const readStoredTimeRange = (): TimeRangeKey => {
+  if (typeof window === 'undefined') {
+    return DEFAULT_TIME_RANGE;
+  }
+
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEYS.timeRange) as TimeRangeKey | null;
+    if (stored && TIME_RANGE_OPTIONS.some((option) => option.value === stored)) {
+      return stored;
+    }
+  } catch (error) {
+    logStorageWarning('Failed to read stored usage event time range', error);
+  }
+
+  return DEFAULT_TIME_RANGE;
+};
+
+const sanitizeEventTypeList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const normalized = value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item): item is string => Boolean(item));
+
+  return Array.from(new Set(normalized));
+};
+
+const readStoredEventTypes = (): string[] => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS.eventTypes);
+    if (!raw) {
+      return [];
+    }
+
+    return sanitizeEventTypeList(JSON.parse(raw));
+  } catch (error) {
+    logStorageWarning('Failed to read stored usage event type filters', error);
+    return [];
+  }
+};
+
+const getStoredEventTypeState = () => {
+  const types = readStoredEventTypes();
+  return {
+    types,
+    isAll: types.length === 0,
+  };
 };
 
 const EVENT_COLOR_MAP: Record<string, ChipColor> = {
@@ -583,9 +651,15 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                     sx={(theme) => ({
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       lineHeight: 0,
                       flexShrink: 0,
-                      color: identityAccentColor ?? theme.palette.text.secondary,
+                      color: theme.palette.common.white,
+                      backgroundColor: identityAccentColor ?? theme.palette.text.secondary,
+                      borderRadius: '50%',
+                      width: 22,
+                      height: 22,
+                      transition: 'background-color 150ms ease, color 150ms ease',
                     })}
                   >
                     <IdentityIconComponent sx={{ fontSize: 16 }} />
@@ -600,6 +674,7 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                       minWidth: 0,
+                      transition: 'color 150ms ease',
                     })}
                   >
                     {identityLabel}
@@ -852,16 +927,26 @@ const entryIsAfterCutoff = (entry: UsageEventLogEntry, cutoffIso: string | null 
 export default function AdminUsageEventsLog() {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
+  const storedEventTypeStateRef = useRef(getStoredEventTypeState());
+  const storedEventTypeState = storedEventTypeStateRef.current;
   const [events, setEvents] = useState<UsageEventLogEntry[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle');
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [subscriptionAttempt, setSubscriptionAttempt] = useState(0);
-  const [eventTypeOptions, setEventTypeOptions] = useState<string[]>(() => Object.keys(EVENT_COLOR_MAP).sort());
+  const [eventTypeOptions, setEventTypeOptions] = useState<string[]>(() => {
+    const seeded = new Set(Object.keys(EVENT_COLOR_MAP));
+    storedEventTypeState.types.forEach((type) => {
+      if (type) {
+        seeded.add(type);
+      }
+    });
+    return Array.from(seeded).sort((a, b) => a.localeCompare(b));
+  });
   const [eventTypeStatus, setEventTypeStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [eventTypeError, setEventTypeError] = useState<string | null>(null);
-  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
-  const [isAllTypesSelected, setIsAllTypesSelected] = useState(true);
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(storedEventTypeState.types);
+  const [isAllTypesSelected, setIsAllTypesSelected] = useState(storedEventTypeState.isAll);
   const [historicalState, setHistoricalState] = useState<HistoricalCollectionState>({
     eventsByType: {},
     combined: [],
@@ -871,7 +956,7 @@ export default function AdminUsageEventsLog() {
   });
   const fetchContextRef = useRef({ generation: 0, key: '' });
   const previousSelectionKeyRef = useRef<string>('');
-  const [timeRange, setTimeRange] = useState<TimeRangeKey>(DEFAULT_TIME_RANGE);
+  const [timeRange, setTimeRange] = useState<TimeRangeKey>(() => readStoredTimeRange());
   const isMountedRef = useRef(true);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
 
@@ -926,12 +1011,65 @@ export default function AdminUsageEventsLog() {
       return;
     }
 
-    setSelectedEventTypes((prev) => prev.filter((type) => eventTypeOptions.includes(type)));
+    setSelectedEventTypes((prev) => {
+      const filtered = prev.filter((type) => eventTypeOptions.includes(type));
+
+      if (filtered.length === 0) {
+        setIsAllTypesSelected(true);
+        return [];
+      }
+
+      if (filtered.length === prev.length) {
+        let unchanged = true;
+        for (let index = 0; index < filtered.length; index += 1) {
+          if (filtered[index] !== prev[index]) {
+            unchanged = false;
+            break;
+          }
+        }
+        if (unchanged) {
+          return prev;
+        }
+      }
+
+      return filtered;
+    });
   }, [eventTypeOptions, isAllTypesSelected]);
 
   const selectedTimeRangeOption = useMemo(() => {
     return TIME_RANGE_OPTIONS.find((option) => option.value === timeRange) ?? DEFAULT_TIME_RANGE_OPTION;
   }, [timeRange]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.timeRange, timeRange);
+    } catch (error) {
+      logStorageWarning('Failed to persist usage event time range', error);
+    }
+  }, [timeRange]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      if (isAllTypesSelected || selectedEventTypes.length === 0) {
+        window.localStorage.removeItem(STORAGE_KEYS.eventTypes);
+      } else {
+        window.localStorage.setItem(
+          STORAGE_KEYS.eventTypes,
+          JSON.stringify(selectedEventTypes)
+        );
+      }
+    } catch (error) {
+      logStorageWarning('Failed to persist usage event type filters', error);
+    }
+  }, [isAllTypesSelected, selectedEventTypes]);
 
   const historicalCutoffIso = useMemo(() => {
     const windowMs = selectedTimeRangeOption.durationMs;
@@ -1534,6 +1672,28 @@ export default function AdminUsageEventsLog() {
 
   const totalEventCount = combinedEvents.length;
 
+  const uniqueUserCount = useMemo(() => {
+    if (!combinedEvents.length) {
+      return 0;
+    }
+
+    const userIds = new Set<string>();
+
+    combinedEvents.forEach((entry) => {
+      const identity = entry.summary?.identityId ?? entry.detail?.identityId ?? null;
+      if (!identity || typeof identity !== 'string') {
+        return;
+      }
+
+      const trimmed = identity.trim();
+      if (trimmed) {
+        userIds.add(trimmed);
+      }
+    });
+
+    return userIds.size;
+  }, [combinedEvents]);
+
   const displayedEvents = useMemo(() => {
     if (!totalEventCount) {
       return combinedEvents;
@@ -1550,6 +1710,7 @@ export default function AdminUsageEventsLog() {
   const shouldShowEmptyState =
     totalEventCount === 0 && (!hasSelection || (!isHistoricalLoading && !historicalErrorMessage));
   const eventCountLabel = `${totalEventCount} event${totalEventCount === 1 ? '' : 's'}`;
+  const userCountLabel = `${uniqueUserCount} user${uniqueUserCount === 1 ? '' : 's'}`;
 
   useEffect(() => {
     if (!normalizedSelectedTypes.length) {
@@ -1617,8 +1778,7 @@ export default function AdminUsageEventsLog() {
     setSubscriptionAttempt((prev) => prev + 1);
   };
 
-  const handleTimeRangeChange = (event: SelectChangeEvent<TimeRangeKey>) => {
-    const nextValue = event.target.value as TimeRangeKey;
+  const handleTimeRangeChange = (_event: React.SyntheticEvent, nextValue: TimeRangeKey | null) => {
     if (!nextValue || nextValue === timeRange) {
       return;
     }
@@ -1630,35 +1790,24 @@ export default function AdminUsageEventsLog() {
 
     setTimeRange(nextValue);
     setExpandedEventId(null);
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
   };
 
-  const handleEventTypeChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value;
-    const rawSelection = typeof value === 'string' ? value.split(',') : value;
+  const handleEventTypeChange = (_event: React.SyntheticEvent, newValue: string[]) => {
+    const uniqueSelection = Array.from(new Set(newValue));
 
-    if (rawSelection.includes(ALL_EVENT_TYPES_OPTION)) {
+    if (!uniqueSelection.length) {
       setIsAllTypesSelected(true);
       setSelectedEventTypes([]);
       setExpandedEventId(null);
-      return;
-    }
-
-    const nextSelection = Array.from(
-      new Set(
-        rawSelection.filter((item) => item && item !== ALL_EVENT_TYPES_OPTION)
-      )
-    );
-
-    if (nextSelection.length && nextSelection.length === eventTypeOptions.length) {
-      setIsAllTypesSelected(true);
-      setSelectedEventTypes([]);
-      setExpandedEventId(null);
+      setVisibleCount(INITIAL_VISIBLE_COUNT);
       return;
     }
 
     setIsAllTypesSelected(false);
-    setSelectedEventTypes(nextSelection);
+    setSelectedEventTypes(uniqueSelection);
     setExpandedEventId(null);
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
   };
 
   const handleLoadMoreHistorical = () => {
@@ -1705,75 +1854,130 @@ export default function AdminUsageEventsLog() {
 
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
-              spacing={{ xs: 1.5, sm: 2 }}
+              spacing={{ xs: 1.5, sm: 2.5 }}
               sx={{ width: '100%' }}
             >
-              <FormControl
-                size="small"
-                fullWidth
-                sx={{ maxWidth: { sm: 220 } }}
-              >
-                <InputLabel id="usage-event-time-range-label">Time range</InputLabel>
-                <Select
-                  labelId="usage-event-time-range-label"
-                  id="usage-event-time-range"
-                  label="Time range"
+              <Box sx={{ flex: 1, minWidth: 0, maxWidth: { sm: 260 } }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mb: 0.75, textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.6 }}
+                >
+                  Time range
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
                   value={timeRange}
                   onChange={handleTimeRangeChange}
-                >
-                  {TIME_RANGE_OPTIONS.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl
-                size="small"
-                fullWidth
-                sx={{ maxWidth: { sm: 280 } }}
-                disabled={eventTypeStatus === 'loading' && eventTypeOptions.length === 0}
-              >
-                <InputLabel id="usage-event-type-filter-label">Event type</InputLabel>
-                <Select
-                  labelId="usage-event-type-filter-label"
-                  id="usage-event-type-filter"
-                  label="Event type"
-                  multiple
-                  value={isAllTypesSelected ? eventTypeOptions : selectedEventTypes}
-                  onChange={handleEventTypeChange}
-                  displayEmpty
-                  renderValue={(selected) => {
-                    if (isAllTypesSelected) {
-                      return 'All events';
-                    }
-
-                    const values = selected as string[];
-                    const formatted = values.map((type) => formatEventTypeLabel(type));
-                    if (formatted.length <= 2) {
-                      return formatted.join(', ');
-                    }
-
-                    return `${formatted.length} selected`;
+                  size="small"
+                  sx={{
+                    flexWrap: 'wrap',
+                    gap: 0.75,
+                    '& .MuiToggleButton-root': {
+                      flex: { xs: '1 0 calc(50% - 0.75rem)', sm: '0 0 auto' },
+                      minWidth: 64,
+                      fontWeight: 600,
+                    },
                   }}
                 >
-                  <MenuItem value={ALL_EVENT_TYPES_OPTION}>
-                    <Checkbox size="small" checked={isAllTypesSelected} />
-                    <ListItemText primary="All events" />
-                  </MenuItem>
-                  {eventTypeOptions.map((option) => {
-                    const isSelected = isAllTypesSelected || selectedEventTypes.includes(option);
-                    return (
-                      <MenuItem key={option} value={option}>
-                        <Checkbox size="small" checked={isSelected} />
-                        <ListItemText primary={formatEventTypeLabel(option)} />
-                      </MenuItem>
-                    );
-                  })}
-                </Select>
-                {eventTypeError && <FormHelperText error>{eventTypeError}</FormHelperText>}
-              </FormControl>
+                  {TIME_RANGE_OPTIONS.map((option) => (
+                    <ToggleButton
+                      key={option.value}
+                      value={option.value}
+                      aria-label={option.label}
+                    >
+                      {option.shortLabel}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+              </Box>
+
+              <Box sx={{ flex: 1, minWidth: 0, maxWidth: { sm: 320 } }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mb: 0.75, textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.6 }}
+                >
+                  Event types
+                </Typography>
+                <Autocomplete
+                  multiple
+                  options={eventTypeOptions}
+                  value={isAllTypesSelected ? [] : selectedEventTypes}
+                  onChange={handleEventTypeChange}
+                  size="small"
+                  disableCloseOnSelect
+                  limitTags={2}
+                  disabled={eventTypeStatus === 'loading' && eventTypeOptions.length === 0}
+                  filterSelectedOptions={false}
+                  loading={eventTypeStatus === 'loading'}
+                  loadingText="Loading event types…"
+                  noOptionsText="No event types found"
+                  renderOption={(props, option, { selected }) => (
+                    <li {...props}>
+                      <Checkbox
+                        icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+                        checkedIcon={<CheckBoxIcon fontSize="small" />}
+                        sx={{ mr: 1 }}
+                        checked={selected}
+                        disableRipple
+                      />
+                      {formatEventTypeLabel(option)}
+                    </li>
+                  )}
+                  getOptionLabel={(option) => formatEventTypeLabel(option)}
+                  ChipProps={{ size: 'small' }}
+                  renderTags={(value, getTagProps) => {
+                    if (isAllTypesSelected || value.length === 0) {
+                      return [
+                        <Chip
+                          key="all-events"
+                          label="All events"
+                          size="small"
+                          color="default"
+                          sx={{ fontWeight: 600 }}
+                        />,
+                      ];
+                    }
+
+                    const visible = value.slice(0, EVENT_TAG_LIMIT);
+                    const extraCount = value.length - visible.length;
+
+                    const chips = visible.map((option, index) => (
+                      <Chip
+                        label={formatEventTypeLabel(option)}
+                        size="small"
+                        {...getTagProps({ index })}
+                        key={option}
+                      />
+                    ));
+
+                    if (extraCount > 0) {
+                      chips.push(
+                        <Chip
+                          key="event-type-overflow"
+                          label={`+${extraCount}`}
+                          size="small"
+                        />
+                      );
+                    }
+
+                    return chips;
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Event types"
+                      placeholder={isAllTypesSelected ? 'All events' : undefined}
+                    />
+                  )}
+                />
+                {eventTypeError && (
+                  <FormHelperText error sx={{ mt: 0.75 }}>
+                    {eventTypeError}
+                  </FormHelperText>
+                )}
+              </Box>
             </Stack>
           </Stack>
         </Paper>
@@ -1833,9 +2037,19 @@ export default function AdminUsageEventsLog() {
                 backgroundColor: theme.palette.background.default,
               })}
             >
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                {eventCountLabel}
-              </Typography>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={{ xs: 0.25, sm: 1 }}
+                justifyContent="space-between"
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  {eventCountLabel}
+                </Typography>
+                <Typography variant="subtitle2" color="text.secondary">
+                  {userCountLabel}
+                </Typography>
+              </Stack>
             </Box>
 
             <Stack spacing={1.25} sx={{ px: 2, py: 2 }}>
