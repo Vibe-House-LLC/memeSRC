@@ -1939,6 +1939,7 @@ export default function AdminUsageEventsLog() {
                     px: 0.5,
                     pb: 0.5,
                     mx: -0.5,
+                    gap: 0.75,
                     '&::-webkit-scrollbar': { display: 'none' },
                     scrollbarWidth: 'none',
                     '& .MuiToggleButton-root': {
@@ -1946,8 +1947,12 @@ export default function AdminUsageEventsLog() {
                       minWidth: 72,
                       fontWeight: 600,
                     },
-                    '& .MuiToggleButton-root:not(:last-of-type)': {
-                      mr: 0.75,
+                    '& .MuiToggleButtonGroup-grouped:not(:first-of-type)': {
+                      marginLeft: 0,
+                      borderLeft: (theme) => `1px solid ${theme.palette.divider}`,
+                    },
+                    '& .MuiToggleButtonGroup-grouped': {
+                      borderRadius: 1,
                     },
                   }}
                 >
