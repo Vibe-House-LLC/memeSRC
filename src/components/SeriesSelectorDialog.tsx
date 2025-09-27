@@ -3,6 +3,7 @@ import {
   Dialog,
   DialogContent,
   Popover,
+  type PopoverProps,
   Box,
   TextField,
   InputAdornment,
@@ -311,6 +312,8 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const showEverythingHeader = showQuickPicks;
   const hasFavoriteSelectionInQuick = showQuickPicks && favoritesForSection.some((fav) => fav.id === currentValueId);
 
+  const desktopMaxHeight = isFiltering ? 'calc(100vh - 96px)' : 'min(480px, calc(100vh - 96px))';
+
   const handleFavoriteOverride = useCallback((id: string, nextIsFavorite: boolean) => {
     setFavoriteOverrides((prev) => {
       const baseItem = baseSeries.find((s) => s.id === id);
@@ -390,7 +393,15 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   );
 
   const listContent = (
-    <List disablePadding sx={{ bgcolor: 'transparent', px: 2, pt: showQuickPicks ? 1.25 : 0.75, pb: 2 }}>
+    <List
+      disablePadding
+      sx={{
+        bgcolor: 'transparent',
+        px: { xs: 1.5, sm: 2 },
+        pt: showQuickPicks ? (isMobile ? 1 : 1.25) : isMobile ? 0.6 : 0.75,
+        pb: { xs: 1.5, sm: 2 },
+      }}
+    >
 
       {/* Unified content: quick picks when no filter; results/full list below */}
       {/* No results state */}
@@ -556,7 +567,21 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     </List>
   );
 
-  if (isMobile) {
+  const mobileMaxHeight = isFiltering
+    ? 'min(520px, calc(100vh - 112px))'
+    : 'min(460px, calc(100vh - 112px))';
+
+  const popoverAnchorOrigin: PopoverProps['anchorOrigin'] = isMobile
+    ? { vertical: 'bottom', horizontal: 'center' }
+    : { vertical: 'bottom', horizontal: 'left' };
+
+  const popoverTransformOrigin: PopoverProps['transformOrigin'] = isMobile
+    ? { vertical: 'top', horizontal: 'center' }
+    : { vertical: 'top', horizontal: 'left' };
+
+  if (!anchorEl) {
+    if (!isMobile) return null;
+
     return (
       <Dialog
         open={open}
@@ -564,14 +589,26 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
         fullWidth
         maxWidth="sm"
         scroll="paper"
-        fullScreen
-        sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' }, '& .MuiDialog-paper': { margin: 0, borderRadius: 0 } }}
+        sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' } }}
+        PaperProps={{
+          sx: {
+            width: 'calc(100vw - 24px)',
+            maxWidth: 440,
+            height: 'min(80vh, 600px)',
+            mt: 2,
+            borderRadius: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          },
+        }}
       >
         <DialogContent
           dividers
           sx={{
             p: 0,
             display: 'flex',
+            flex: 1,
             flexDirection: 'column',
             minHeight: 0,
             bgcolor: 'background.default',
@@ -646,26 +683,25 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     );
   }
 
-  if (!anchorEl) return null;
-
   return (
     <Popover
       open={open}
       onClose={onClose}
       anchorEl={anchorEl}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      anchorOrigin={popoverAnchorOrigin}
+      transformOrigin={popoverTransformOrigin}
       PaperProps={{
-        sx: {
-          mt: 1,
-          width: 420,
-          maxWidth: 'min(420px, calc(100vw - 32px))',
-          maxHeight: 'calc(100vh - 96px)',
+        sx: (theme) => ({
+          mt: isMobile ? 0.75 : 1,
+          width: isMobile ? 'min(420px, calc(100vw - 24px))' : 420,
+          maxWidth: 'min(420px, calc(100vw - 24px))',
+          maxHeight: isMobile ? mobileMaxHeight : desktopMaxHeight,
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: 2,
+          borderRadius: isMobile ? theme.spacing(1.75) : theme.spacing(1.25),
           overflow: 'hidden',
-        },
+          boxShadow: isMobile ? theme.shadows[10] : theme.shadows[12],
+        }),
       }}
     >
       <Box
@@ -682,9 +718,9 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             display: 'flex',
             alignItems: 'center',
             gap: 1,
-            px: 2,
-            pt: 1.5,
-            pb: 1,
+            px: isMobile ? 1.5 : 2,
+            pt: isMobile ? 1.25 : 1.5,
+            pb: isMobile ? 0.75 : 1,
             borderBottom: '1px solid',
             borderColor: 'divider',
           }}
@@ -696,7 +732,14 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Box sx={{ px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box
+          sx={{
+            px: isMobile ? 1.5 : 2,
+            py: isMobile ? 0.75 : 1,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
           {renderFilterInput()}
         </Box>
         <Box
