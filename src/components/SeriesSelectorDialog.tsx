@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
+  Popover,
   Box,
   TextField,
   InputAdornment,
@@ -43,6 +43,7 @@ export interface SeriesSelectorDialogProps {
   savedCids?: SeriesItem[];
   currentValueId?: string;
   includeAllFavorites?: boolean;
+  anchorEl?: HTMLElement | null;
 }
 
 function normalizeString(input: string): string {
@@ -211,11 +212,19 @@ const radioIconSx = (theme: Theme, selected: boolean, options?: { inverted?: boo
 };
 
 export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
-  const { open, onClose, onSelect, shows, savedCids, currentValueId, includeAllFavorites = true } = props;
+  const {
+    open,
+    onClose,
+    onSelect,
+    shows,
+    savedCids,
+    currentValueId,
+    includeAllFavorites = true,
+    anchorEl,
+  } = props;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
-  const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -261,13 +270,17 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
   // Reset state each time the dialog opens
   useEffect(() => {
-    if (open) {
-      setFilter('');
+    if (!open) return;
+    setFilter('');
+    requestAnimationFrame(() => {
+      contentRef.current?.scrollTo({ top: 0 });
+    });
+    if (!isMobile) {
       requestAnimationFrame(() => {
-        contentRef.current?.scrollTo({ top: 0 });
+        inputRef.current?.focus();
       });
     }
-  }, [open]);
+  }, [open, isMobile]);
 
   const handleSelect = (id: string) => {
     onSelect(id);
@@ -293,7 +306,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     }
   };
 
-  const showQuickPicks = !isFiltering && !isInputFocused;
+  const showQuickPicks = !isFiltering;
   const favoritesForSection = showQuickPicks ? filteredFavorites : [];
   const showEverythingHeader = showQuickPicks;
   const hasFavoriteSelectionInQuick = showQuickPicks && favoritesForSection.some((fav) => fav.id === currentValueId);
@@ -328,261 +341,135 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     });
   }, [baseSeries]);
 
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
+  const renderFilterInput = () => (
+    <TextField
+      inputRef={inputRef}
+      variant="outlined"
       fullWidth
-      maxWidth={isMobile ? 'sm' : 'md'}
-      scroll="paper"
-      fullScreen={isMobile}
-      sx={isMobile ? { '& .MuiDialog-container': { alignItems: 'flex-start' }, '& .MuiDialog-paper': { margin: 0, borderRadius: 0 } } : { '& .MuiDialog-container': { alignItems: 'flex-start' }, '& .MuiDialog-paper': { mt: 2, borderRadius: 2 } }}
-    >
-      {!isMobile && (
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="h6" sx={{ flex: 1 }}>
-            Select show or movie
-          </Typography>
-          <IconButton aria-label="Close" onClick={onClose} size="small">
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-      )}
-      <DialogContent dividers ref={contentRef} sx={{ p: 0 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            px: 0,
-            py: 0,
-            minHeight: 64,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.default',
-          }}
-        >
-          <IconButton
-            aria-label="Back"
-            size="small"
-            onClick={() => {
-              setFilter('');
-              onClose();
-            }}
-            sx={{
-              width: 40,
-              height: 40,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'text.primary',
-              '&:hover': { backgroundColor: 'action.hover' },
-            }}
-          >
-            <ChevronLeftIcon fontSize="medium" />
-          </IconButton>
-          <TextField
-            inputRef={inputRef}
-            variant="outlined"
-            fullWidth
-            placeholder="Type to filter (titles)..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setIsInputFocused(true)}
-            onBlur={() => setIsInputFocused(false)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" sx={{ opacity: 0.8 }} />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                filter ? (
-                  <InputAdornment position="end">
-                    <IconButton size="small" edge="end" onClick={(e) => { e.stopPropagation(); setFilter(''); }}>
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ) : null
-              )
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 1,
-                bgcolor: 'background.paper',
-                minHeight: 52,
-                '& fieldset': { borderColor: 'divider' },
-                '&:hover fieldset': { borderColor: 'text.primary' },
-                '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 1 },
-              },
-              '& .MuiOutlinedInput-input': {
-                fontSize: '1rem',
-                py: 1.25,
-              },
-            }}
-          />
-          <IconButton
-            aria-label="Done"
-            size="small"
-            onClick={() => {
-              inputRef.current?.blur();
-              onClose();
-            }}
-            sx={{
-              width: 40,
-              height: 40,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'text.primary',
-              '&:hover': { backgroundColor: 'action.hover' },
-            }}
-          >
-            <CheckIcon fontSize="medium" />
-          </IconButton>
+      placeholder="Type to filter (titles)..."
+      value={filter}
+      onChange={(e) => setFilter(e.target.value)}
+      onKeyDown={handleKeyDown}
+      InputProps={{
+        startAdornment: (
+          <InputAdornment position="start">
+            <SearchIcon fontSize="small" sx={{ opacity: 0.8 }} />
+          </InputAdornment>
+        ),
+        endAdornment: filter ? (
+          <InputAdornment position="end">
+            <IconButton
+              size="small"
+              edge="end"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFilter('');
+              }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </InputAdornment>
+        ) : null,
+      }}
+      sx={{
+        flex: 1,
+        '& .MuiOutlinedInput-root': {
+          borderRadius: isMobile ? 1 : 1.5,
+          bgcolor: 'background.paper',
+          minHeight: 52,
+          '& fieldset': { borderColor: 'divider' },
+          '&:hover fieldset': { borderColor: 'text.primary' },
+          '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 1 },
+        },
+        '& .MuiOutlinedInput-input': {
+          fontSize: '1rem',
+          py: 1.25,
+        },
+      }}
+    />
+  );
+
+  const listContent = (
+    <List disablePadding sx={{ bgcolor: 'transparent', px: 2, pt: showQuickPicks ? 1.25 : 0.75, pb: 2 }}>
+
+      {/* Unified content: quick picks when no filter; results/full list below */}
+      {/* No results state */}
+      {isFiltering && filteredAllSeries.length === 0 && (
+        <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
+          <Typography variant="body2">No results</Typography>
         </Box>
+      )}
 
-        <List disablePadding sx={{ bgcolor: 'transparent', px: 2, pt: showQuickPicks ? 1.25 : 0.75, pb: 2 }}>
-
-          {/* Unified content: quick picks when no filter; results/full list below */}
-          {/* No results state */}
-          {isFiltering && filteredAllSeries.length === 0 && (
-            <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
-              <Typography variant="body2">No results</Typography>
+      {/* Quick picks when not filtering */}
+      {showQuickPicks && (
+        <>
+          <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { topSpacing: 'tight' })}>
+            Quick Filters
+          </ListSubheader>
+          <ListItemButton
+            selected={currentValueId === '_universal'}
+            onClick={() => handleSelect('_universal')}
+            sx={(theme) => quickActionButtonSx(theme)}
+          >
+            <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
+              {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
             </Box>
+            <Box component="span" sx={{ fontSize: 24, lineHeight: 1, mr: 1 }}>🌈</Box>
+            <ListItemText
+              sx={{ ml: 0, flex: 1 }}
+              primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
+              primary="All Shows & Movies"
+              secondary="Everything across shows and movies"
+              secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
+            />
+          </ListItemButton>
+
+          {includeAllFavorites && hasAnyFavorite && (
+            <ListItemButton
+              selected={currentValueId === '_favorites'}
+              onClick={() => handleSelect('_favorites')}
+              sx={(theme) => ({
+                ...quickActionButtonSx(theme),
+                marginBottom: theme.spacing(1.5),
+              })}
+            >
+              <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
+                {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+              </Box>
+              <Box component="span" sx={{ fontSize: 24, lineHeight: 1, mr: 1 }}>⭐</Box>
+              <ListItemText
+                sx={{ ml: 0, flex: 1 }}
+                primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
+                primary="All Favorites"
+                secondary="Only items you've starred as favorites"
+                secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
+              />
+            </ListItemButton>
           )}
 
-          {/* Quick picks when not filtering */}
-          {showQuickPicks && (
+          {favoritesForSection.length > 0 && (
             <>
-              <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { topSpacing: 'tight' })}>
-                Quick Filters
-              </ListSubheader>
-              <ListItemButton
-                selected={currentValueId === '_universal'}
-                onClick={() => handleSelect('_universal')}
-                sx={(theme) => quickActionButtonSx(theme)}
+              <ListSubheader
+                disableSticky
+                component="div"
+                sx={(theme) => sectionHeaderSx(theme, { topSpacing: showQuickPicks ? 'regular' : 'tight' })}
               >
-                <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
-                  {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
-                </Box>
-                <Box component="span" sx={{ fontSize: 24, lineHeight: 1, mr: 1 }}>🌈</Box>
-                <ListItemText
-                  sx={{ ml: 0, flex: 1 }}
-                  primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
-                  primary="All Shows & Movies"
-                  secondary="Everything across shows and movies"
-                  secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
-                />
-              </ListItemButton>
-
-              {includeAllFavorites && hasAnyFavorite && (
-                <ListItemButton
-                  selected={currentValueId === '_favorites'}
-                  onClick={() => handleSelect('_favorites')}
-                  sx={(theme) => ({
-                    ...quickActionButtonSx(theme),
-                    marginBottom: theme.spacing(1.5),
-                  })}
-                >
-                  <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
-                    {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
-                  </Box>
-                  <Box component="span" sx={{ fontSize: 24, lineHeight: 1, mr: 1 }}>⭐</Box>
-                  <ListItemText
-                    sx={{ ml: 0, flex: 1 }}
-                    primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
-                    primary="All Favorites"
-                    secondary="Only items you've starred as favorites"
-                    secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
-                  />
-                </ListItemButton>
-              )}
-
-              {favoritesForSection.length > 0 && (
-                <>
-                  <ListSubheader
-                    disableSticky
-                    component="div"
-                    sx={(theme) => sectionHeaderSx(theme, { topSpacing: showQuickPicks ? 'regular' : 'tight' })}
+                Favorites
+              </ListSubheader>
+              {favoritesForSection.map((s) => {
+                const isSelected = currentValueId === s.id;
+                return (
+                  <ListItemButton
+                    key={s.id}
+                    selected={isSelected}
+                    onClick={() => handleSelect(s.id)}
+                    sx={(theme) => listCardButtonSx(theme, s)}
                   >
-                    Favorites
-                  </ListSubheader>
-                  {favoritesForSection.map((s) => {
-                    const isSelected = currentValueId === s.id;
-                    return (
-                      <ListItemButton
-                        key={s.id}
-                        selected={isSelected}
-                        onClick={() => handleSelect(s.id)}
-                        sx={(theme) => listCardButtonSx(theme, s)}
-                      >
-                        <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
-                          {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
-                        </Box>
-                        <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
-                          {s.emoji ? s.emoji : '⭐'}
-                        </Box>
-                        <ListItemText
-                          sx={{ ml: 0, flex: 1 }}
-                          primaryTypographyProps={{ sx: { fontWeight: 600, color: 'inherit' } }}
-                          primary={s.title}
-                        />
-                        <Box
-                          sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}
-                          onClick={(e) => e.stopPropagation()}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onTouchStart={(e) => e.stopPropagation()}
-                        >
-                          <FavoriteToggle
-                            indexId={s.id}
-                            initialIsFavorite={Boolean(s.isFavorite)}
-                            onToggle={(next) => handleFavoriteOverride(s.id, next)}
-                          />
-                        </Box>
-                      </ListItemButton>
-                    );
-                  })}
-                </>
-              )}
-            </>
-          )}
-
-              {filteredAllSeries.length > 0 && (
-                <>
-                  {showEverythingHeader && (
-                    <ListSubheader
-                      disableSticky
-                      component="div"
-                      sx={(theme) => sectionHeaderSx(
-                        theme,
-                        { topSpacing: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
-                      )}
-                    >
-                      Everything
-                    </ListSubheader>
-                  )}
-                  {filteredAllSeries.map((s, index) => {
-                    const isSelected = currentValueId === s.id && !(hasFavoriteSelectionInQuick && s.isFavorite);
-                    return (
-                      <ListItemButton
-                        key={s.id}
-                        selected={isSelected}
-                        onClick={() => handleSelect(s.id)}
-                        sx={(theme) => {
-                          const base = listCardButtonSx(theme, s);
-                          if (!showEverythingHeader && index === 0) {
-                            return { ...base, mt: theme.spacing(0.25) };
-                          }
-                          return base;
-                        }}
-                      >
                     <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
                       {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
                     </Box>
                     <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
-                      {s.emoji ? s.emoji : s.isFavorite ? '⭐' : '🎬'}
+                      {s.emoji ? s.emoji : '⭐'}
                     </Box>
                     <ListItemText
                       sx={{ ml: 0, flex: 1 }}
@@ -606,10 +493,225 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               })}
             </>
           )}
-        </List>
-      </DialogContent>
+        </>
+      )}
 
-      
-    </Dialog>
+      {filteredAllSeries.length > 0 && (
+        <>
+          {showEverythingHeader && (
+            <ListSubheader
+              disableSticky
+              component="div"
+              sx={(theme) => sectionHeaderSx(
+                theme,
+                { topSpacing: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
+              )}
+            >
+              Everything
+            </ListSubheader>
+          )}
+          {filteredAllSeries.map((s, index) => {
+            const isSelected = currentValueId === s.id && !(hasFavoriteSelectionInQuick && s.isFavorite);
+            return (
+              <ListItemButton
+                key={s.id}
+                selected={isSelected}
+                onClick={() => handleSelect(s.id)}
+                sx={(theme) => {
+                  const base = listCardButtonSx(theme, s);
+                  if (!showEverythingHeader && index === 0) {
+                    return { ...base, mt: theme.spacing(0.25) };
+                  }
+                  return base;
+                }}
+              >
+                <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
+                  {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+                </Box>
+                <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
+                  {s.emoji ? s.emoji : s.isFavorite ? '⭐' : '🎬'}
+                </Box>
+                <ListItemText
+                  sx={{ ml: 0, flex: 1 }}
+                  primaryTypographyProps={{ sx: { fontWeight: 600, color: 'inherit' } }}
+                  primary={s.title}
+                />
+                <Box
+                  sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                >
+                  <FavoriteToggle
+                    indexId={s.id}
+                    initialIsFavorite={Boolean(s.isFavorite)}
+                    onToggle={(next) => handleFavoriteOverride(s.id, next)}
+                  />
+                </Box>
+              </ListItemButton>
+            );
+          })}
+        </>
+      )}
+    </List>
+  );
+
+  if (isMobile) {
+    return (
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="sm"
+        scroll="paper"
+        fullScreen
+        sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' }, '& .MuiDialog-paper': { margin: 0, borderRadius: 0 } }}
+      >
+        <DialogContent
+          dividers
+          sx={{
+            p: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            bgcolor: 'background.default',
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1,
+              py: 0,
+              minHeight: 64,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <IconButton
+              aria-label="Back"
+              size="small"
+              onClick={() => {
+                setFilter('');
+                onClose();
+              }}
+              sx={{
+                width: 40,
+                height: 40,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'text.primary',
+                '&:hover': { backgroundColor: 'action.hover' },
+              }}
+            >
+              <ChevronLeftIcon fontSize="medium" />
+            </IconButton>
+            {renderFilterInput()}
+            <IconButton
+              aria-label="Done"
+              size="small"
+              onClick={() => {
+                inputRef.current?.blur();
+                onClose();
+              }}
+              sx={{
+                width: 40,
+                height: 40,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'text.primary',
+                '&:hover': { backgroundColor: 'action.hover' },
+              }}
+            >
+              <CheckIcon fontSize="medium" />
+            </IconButton>
+          </Box>
+          <Box
+            ref={contentRef}
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              bgcolor: 'background.default',
+            }}
+          >
+            {listContent}
+          </Box>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!anchorEl) return null;
+
+  return (
+    <Popover
+      open={open}
+      onClose={onClose}
+      anchorEl={anchorEl}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      PaperProps={{
+        sx: {
+          mt: 1,
+          width: 420,
+          maxWidth: 'min(420px, calc(100vw - 32px))',
+          maxHeight: 'calc(100vh - 96px)',
+          display: 'flex',
+          flexDirection: 'column',
+          borderRadius: 2,
+          overflow: 'hidden',
+        },
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minHeight: 0,
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 2,
+            pt: 1.5,
+            pb: 1,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ flex: 1, fontWeight: 700 }}>
+            Select show or movie
+          </Typography>
+          <IconButton aria-label="Close" size="small" onClick={onClose}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+        <Box sx={{ px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+          {renderFilterInput()}
+        </Box>
+        <Box
+          ref={contentRef}
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            bgcolor: 'background.default',
+          }}
+        >
+          {listContent}
+        </Box>
+      </Box>
+    </Popover>
   );
 }
