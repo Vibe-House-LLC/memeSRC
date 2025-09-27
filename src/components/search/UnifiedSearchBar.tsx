@@ -533,6 +533,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   appearance = 'light',
 }) => {
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shouldRestoreFocusRef = useRef(false);
@@ -564,20 +565,26 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     return glyph;
   }, [currentLabel, currentSeries, currentValueId]);
 
-  const handleFilterClick = useCallback(() => {
+  const handleFilterClick = useCallback((anchor: HTMLElement) => {
     // open selector without forcing expansion
+    setSelectorAnchorEl(anchor);
     setSelectorOpen(true);
+  }, []);
+
+  const handleCloseSelector = useCallback(() => {
+    setSelectorOpen(false);
+    setSelectorAnchorEl(null);
   }, []);
 
   const handleSelect: OnSelectSeries = useCallback(
     (selectedId) => {
       onSelectSeries(selectedId);
-      setSelectorOpen(false);
+      handleCloseSelector();
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
     },
-    [onSelectSeries],
+    [handleCloseSelector, onSelectSeries],
   );
 
   const handleClear = useCallback(() => {
@@ -645,9 +652,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     ? `Choose series: ${currentLabel}`
     : `Show filter options for ${currentLabel}`;
 
-  const handleScopeClick = useCallback(() => {
-    // Always open selector; do not force expansion here
-    handleFilterClick();
+  const handleScopeClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    handleFilterClick(event.currentTarget);
   }, [handleFilterClick]);
 
   return (
@@ -663,7 +669,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               aria-expanded={scopeExpanded}
               aria-pressed={scopeExpanded}
               aria-label={scopeButtonLabel}
-              aria-haspopup="dialog"
+              aria-haspopup="listbox"
               title={currentLabel}
             >
               <ScopeGlyph>{scopeGlyph}</ScopeGlyph>
@@ -741,7 +747,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               aria-expanded={scopeExpanded}
               aria-pressed={scopeExpanded}
               aria-label={scopeButtonLabel}
-              aria-haspopup="dialog"
+              aria-haspopup="listbox"
               title={currentLabel}
               className="railButton"
             >
@@ -780,12 +786,13 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       </FieldShell>
       <SeriesSelectorDialog
         open={selectorOpen}
-        onClose={() => setSelectorOpen(false)}
+        onClose={handleCloseSelector}
         onSelect={handleSelect}
         shows={shows}
         savedCids={savedCids}
         currentValueId={currentValueId}
         includeAllFavorites={includeAllFavorites}
+        anchorEl={selectorAnchorEl}
       />
     </FormRoot>
   );
