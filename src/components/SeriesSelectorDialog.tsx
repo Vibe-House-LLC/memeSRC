@@ -568,8 +568,8 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   );
 
   const mobileMaxHeight = isFiltering
-    ? 'min(520px, calc(100vh - 112px))'
-    : 'min(460px, calc(100vh - 112px))';
+    ? 'min(560px, calc(100vh - 96px))'
+    : 'min(500px, calc(100vh - 96px))';
 
   const popoverAnchorOrigin: PopoverProps['anchorOrigin'] = isMobile
     ? { vertical: 'bottom', horizontal: 'center' }
@@ -591,16 +591,25 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
         scroll="paper"
         sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' } }}
         PaperProps={{
-          sx: {
-            width: 'calc(100vw - 24px)',
-            maxWidth: 440,
-            height: 'min(80vh, 600px)',
+          sx: (theme) => ({
+            width: 'calc(100vw - 28px)',
+            maxWidth: 420,
+            height: 'min(85vh, 640px)',
             mt: 2,
-            borderRadius: 3,
+            borderRadius: theme.spacing(2.75),
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-          },
+            border: '1px solid',
+            borderColor: theme.palette.mode === 'light'
+              ? alpha(theme.palette.common.black, 0.1)
+              : alpha(theme.palette.common.white, 0.24),
+            backgroundImage: theme.palette.mode === 'light'
+              ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.98)} 0%, ${alpha(theme.palette.background.paper, 0.94)} 100%)`
+              : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.94)} 0%, ${alpha(theme.palette.background.default, 0.86)} 100%)`,
+            boxShadow: theme.shadows[18],
+            backdropFilter: 'blur(16px)',
+          }),
         }}
       >
         <DialogContent
@@ -692,15 +701,23 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       transformOrigin={popoverTransformOrigin}
       PaperProps={{
         sx: (theme) => ({
-          mt: isMobile ? 0.75 : 1,
-          width: isMobile ? 'min(420px, calc(100vw - 24px))' : 420,
-          maxWidth: 'min(420px, calc(100vw - 24px))',
+          mt: isMobile ? 0.9 : 1,
+          width: isMobile ? 'min(360px, calc(100vw - 32px))' : 420,
+          maxWidth: isMobile ? 'min(360px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 32px))',
           maxHeight: isMobile ? mobileMaxHeight : desktopMaxHeight,
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: isMobile ? theme.spacing(1.75) : theme.spacing(1.25),
+          borderRadius: isMobile ? theme.spacing(2) : theme.spacing(1.5),
           overflow: 'hidden',
-          boxShadow: isMobile ? theme.shadows[10] : theme.shadows[12],
+          border: '1px solid',
+          borderColor: theme.palette.mode === 'light'
+            ? alpha(theme.palette.common.black, 0.12)
+            : alpha(theme.palette.common.white, 0.26),
+          backgroundImage: theme.palette.mode === 'light'
+            ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
+            : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.96)} 0%, ${alpha(theme.palette.background.default, 0.88)} 100%)`,
+          boxShadow: isMobile ? theme.shadows[16] : theme.shadows[18],
+          backdropFilter: 'blur(18px)',
         }),
       }}
     >
