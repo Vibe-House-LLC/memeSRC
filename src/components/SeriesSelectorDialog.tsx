@@ -105,15 +105,15 @@ const quickActionButtonSx = (theme: Theme) => {
   return {
     border: '1px solid',
     borderColor: borderTone,
-    borderRadius: 2,
-    marginBottom: theme.spacing(0.75),
-    paddingTop: theme.spacing(2),
-    paddingBottom: theme.spacing(2),
-    paddingLeft: theme.spacing(1),
-    paddingRight: theme.spacing(1),
+    borderRadius: theme.spacing(1.5),
+    marginBottom: theme.spacing(0.6),
+    paddingTop: theme.spacing(1.35),
+    paddingBottom: theme.spacing(1.25),
+    paddingLeft: theme.spacing(1.1),
+    paddingRight: theme.spacing(1.1),
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1.5),
+    gap: theme.spacing(1.15),
     boxShadow: theme.shadows[4],
     backgroundColor,
     backgroundImage: backgroundGradient,
@@ -128,9 +128,13 @@ const quickActionButtonSx = (theme: Theme) => {
     '& .MuiListItemText-primary': {
       color: textColor,
       fontWeight: 700,
+      fontSize: '1.02rem',
+      lineHeight: 1.2,
     },
     '& .MuiListItemText-secondary': {
       color: subTextColor,
+      fontSize: '0.82rem',
+      fontWeight: 500,
     },
     ...getSelectedListItemStyles(theme),
   };
@@ -425,12 +429,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
               {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
             </Box>
-            <Box component="span" sx={{ fontSize: 24, lineHeight: 1, mr: 1 }}>🌈</Box>
+            <Box component="span" sx={{ fontSize: 22, lineHeight: 1, mr: 1 }}>🌈</Box>
             <ListItemText
               sx={{ ml: 0, flex: 1 }}
-              primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
+              primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
               primary="All Shows & Movies"
-              secondary="Everything across shows and movies"
+              secondary="Every quote in the library"
               secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
             />
           </ListItemButton>
@@ -441,18 +445,18 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               onClick={() => handleSelect('_favorites')}
               sx={(theme) => ({
                 ...quickActionButtonSx(theme),
-                marginBottom: theme.spacing(1.5),
+                marginBottom: theme.spacing(1.2),
               })}
             >
               <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
                 {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
               </Box>
-              <Box component="span" sx={{ fontSize: 24, lineHeight: 1, mr: 1 }}>⭐</Box>
+              <Box component="span" sx={{ fontSize: 22, lineHeight: 1, mr: 1 }}>⭐</Box>
               <ListItemText
                 sx={{ ml: 0, flex: 1 }}
-                primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.1rem', color: 'inherit' } }}
+                primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
                 primary="All Favorites"
-                secondary="Only items you've starred as favorites"
+                secondary="Only your saved favorites"
                 secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
               />
             </ListItemButton>
