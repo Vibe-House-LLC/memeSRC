@@ -39,6 +39,10 @@ const NAVBAR_HEIGHT = 45;
 const AUTO_DISMISS_TOTAL_MS = 30 * 1000;
 const AUTO_DISMISS_MIN_VISIBLE_MS = 3 * 1000;
 const VISIBILITY_STORAGE_PREFIX = 'recentUpdateVisible:';
+const MOBILE_SECTION_GUTTER = 24;
+const DESKTOP_SECTION_GUTTER = 32;
+const DESKTOP_STICKY_TOP_OFFSET = NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER;
+const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER * 2}px)`;
 
 // Simplified grid container
 const StyledGridContainer = styled(Grid)`
@@ -50,6 +54,8 @@ const StyledGridContainer = styled(Grid)`
     min-height: 100svh;
     background-color: #080808;
     padding: 0;
+    margin: 0 !important;
+    width: 100%;
     /* Edge-to-edge hero gradient lives inside the surface container */
     box-sizing: border-box;
   `}
@@ -464,30 +470,32 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             display: 'grid',
             gridTemplateColumns: {
               xs: '1fr',
-              md: 'minmax(0, 4fr) minmax(0, 1fr)',
+              md: 'minmax(0, 3fr) minmax(0, 1fr)',
             },
-            gap: { xs: 4, md: 5 },
+            gap: { xs: 3, md: 4 },
             alignItems: 'stretch',
-            px: { xs: 0, sm: 2, md: 4 },
-            py: { xs: 6, md: 4 },
+            px: { xs: 0, sm: 3, md: 4 },
+            paddingTop: { xs: `${NAVBAR_HEIGHT}px`, md: `${DESKTOP_STICKY_TOP_OFFSET}px` },
+            paddingBottom: { xs: `${MOBILE_SECTION_GUTTER}px`, md: `${DESKTOP_SECTION_GUTTER}px` },
             backgroundColor: '#000',
           }}
         >
           <Paper
             elevation={0}
             sx={{
-              borderRadius: { xs: 3.5, md: 4 },
+              borderRadius: { xs: '0px 0px 28px 28px', md: 4 },
               border: '1px solid rgba(255,255,255,0.06)',
+              borderTop: { xs: 'none', md: '1px solid rgba(255,255,255,0.06)' },
               background: 'rgba(8,8,10,0.92)',
               boxShadow: '0 30px 70px rgba(2,4,12,0.65)',
-              position: 'relative',
               overflow: 'hidden',
-              minHeight: { xs: '70vh', md: 'calc(100vh - 96px)' },
-              height: { xs: 'auto', md: 'calc(100vh - 96px)' },
+              minHeight: { xs: '70vh', md: DESKTOP_STICKY_HEIGHT },
+              height: { xs: 'auto', md: DESKTOP_STICKY_HEIGHT },
               display: 'flex',
               flexDirection: 'column',
-              position: { md: 'sticky' },
-              top: { md: 48 },
+              position: { xs: 'relative', md: 'sticky' },
+              top: { md: DESKTOP_STICKY_TOP_OFFSET },
+              alignSelf: { xs: 'stretch', md: 'start' },
             }}
           >
             <Box

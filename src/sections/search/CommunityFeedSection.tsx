@@ -16,7 +16,6 @@ import {
   CircularProgress,
   Dialog,
   DialogContent,
-  Grid,
   IconButton,
   LinearProgress,
   Paper,
@@ -86,6 +85,8 @@ const MAX_CAPTION_LENGTH = 140;
 const FEED_PAGE_SIZE = 12;
 
 const DEFAULT_ERROR_MESSAGE = 'Unable to load the community feed right now. Please try again shortly.';
+
+const SECTION_GUTTER_MOBILE = 24;
 
 function pseudoRandomFromString(source: string, min: number, max: number): number {
   if (max <= min) return min;
@@ -896,15 +897,17 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
       <Paper
         elevation={0}
         sx={{
-          borderRadius: { xs: 3, md: 3.5 },
+          borderRadius: { xs: 0, md: 3.5 },
           border: '1px solid rgba(148,163,184,0.2)',
           background: 'linear-gradient(170deg, rgba(15,23,42,0.96) 0%, rgba(2,6,23,0.98) 100%)',
           boxShadow: '0 28px 66px rgba(8,12,26,0.5)',
           display: 'flex',
           flexDirection: 'column',
           width: '100%',
-          height: '100%',
+          height: 'auto',
           overflow: 'hidden',
+          alignSelf: { xs: 'stretch', md: 'start' },
+          marginTop: { xs: SECTION_GUTTER_MOBILE, md: 0 },
           color: '#f8fafc',
         }}
       >
