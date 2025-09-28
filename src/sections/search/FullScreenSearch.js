@@ -49,7 +49,6 @@ const StyledGridContainer = styled(Grid)`
     min-height: 100vh;
     min-height: 100dvh;
     background-color: #080808;
-    background-image: radial-gradient(circle at top, rgba(229,229,229,0.08), transparent 55%);
     padding: 0;
     /* Edge-to-edge hero gradient lives inside the surface container */
     box-sizing: border-box;
@@ -63,14 +62,15 @@ const defaultTitleText = 'memeSRC';
 const defaultBragText = 'Search 85 million+ templates';
 const defaultFontColor = '#FFFFFF';
 const defaultBackground = `linear-gradient(45deg,
-  #5461c8 12.5% /* 1*12.5% */,
-  #c724b1 0, #c724b1 25%   /* 2*12.5% */,
-  #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
-  #ff6900 0, #ff6900 50%   /* 4*12.5% */,
-  #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
-  #97d700 0, #97d700 75%   /* 6*12.5% */,
-  #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
+  #5461c8 12.5%,
+  #c724b1 0, #c724b1 25%,
+  #e4002b 0, #e4002b 37.5%,
+  #ff6900 0, #ff6900 50%,
+  #f6be00 0, #f6be00 62.5%,
+  #97d700 0, #97d700 75%,
+  #00ab84 0, #00ab84 87.5%,
   #00a3e0 0)`;
+const defaultBackgroundColor = '#080808';
 
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata, persistSearchTerm }) {
   const { savedCids, cid, setCid, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
@@ -263,11 +263,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
   const [currentThemeFontFamily, setCurrentThemeFontFamily] = useState(metadata?.fontFamily || theme?.typography?.fontFamily);
   const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
-  const [currentThemeBackground, setCurrentThemeBackground] = useState(metadata?.colorMain ? { backgroundColor: `${metadata?.colorMain}` }
-    :
-    {
-      backgroundImage: defaultBackground,
-    }
+  const [currentThemeBackground, setCurrentThemeBackground] = useState(
+    metadata?.colorMain
+      ? { backgroundColor: `${metadata?.colorMain}` }
+      : { backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor },
   );
 
   const { seriesId } = useParams();
@@ -312,6 +311,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       setCurrentThemeFontFamily(theme?.typography?.fontFamily)
       setCurrentThemeBackground({
         backgroundImage: defaultBackground,
+        backgroundColor: defaultBackgroundColor,
       })
     }
   }, [pathname, theme?.typography?.fontFamily])
@@ -409,30 +409,18 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       position: 'relative',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'space-between',
+      justifyContent: 'center',
       minHeight: '85vh',
       minHeight: '85dvh',
-      paddingTop: { xs: `${NAVBAR_HEIGHT + 24}px`, md: `${NAVBAR_HEIGHT + 40}px` },
+      paddingTop: { xs: `${NAVBAR_HEIGHT + 56}px`, md: `${NAVBAR_HEIGHT + 88}px` },
       paddingBottom: { xs: 16, md: 24 },
+      gap: { xs: 4, md: 6 },
       ...currentThemeBackground,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       borderRadius: 0,
       border: 'none',
       boxShadow: 'none',
-      isolation: 'isolate',
-      overflow: 'hidden',
-      '&::after': {
-        content: '""',
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: { xs: '22dvh', md: '26dvh' },
-        background: 'linear-gradient(180deg, rgba(2, 6, 23, 0) 0%, rgba(2, 6, 23, 0.92) 75%, #020617 100%)',
-        pointerEvents: 'none',
-        zIndex: 1,
-      },
     }),
     [currentThemeBackground]
   );
@@ -446,9 +434,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       mx: 'auto',
       px: { xs: 3, sm: 6, md: 8 },
       py: { xs: 0, sm: 0, md: 0 },
+      mt: { xs: 5, md: 8 },
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
+      justifyContent: 'center',
       gap: { xs: 4, md: 6 },
     }),
     []
@@ -460,6 +450,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
+      gap: { xs: 4, md: 5 },
     }),
     []
   );
@@ -639,11 +630,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         </Box>
         <Box
           sx={{
-            width: '100vw',
-            marginLeft: 'calc(50% - 50vw)',
-            marginRight: 'calc(50% - 50vw)',
+            width: '100%',
             backgroundColor: '#020617',
             pb: { xs: 8, md: 12 },
+            mt: { xs: 4, md: 6 },
           }}
         >
           <CommunityFeedSection />
