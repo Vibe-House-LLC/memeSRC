@@ -552,13 +552,16 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
             key={post.id}
             sx={{
               borderRadius: { xs: 4, md: 5 },
-              border: '1px solid rgba(120,120,120,0.38)',
-              background: 'linear-gradient(180deg, rgba(30,30,30,0.96) 0%, rgba(14,14,14,0.98) 100%)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              backgroundColor: 'rgba(12,12,12,0.72)',
+              backdropFilter: 'blur(26px) saturate(135%)',
+              WebkitBackdropFilter: 'blur(26px) saturate(135%)',
               overflow: 'visible',
-              boxShadow: '0 32px 72px rgba(0,0,0,0.55)',
+              boxShadow: '0 42px 88px rgba(0,0,0,0.65)',
+              position: 'relative',
             }}
           >
-            <Stack spacing={0}>
+            <Stack spacing={0} sx={{ position: 'relative', zIndex: 1 }}>
               <Stack
                 spacing={post.caption ? 1.6 : 1.2}
                 sx={{
@@ -572,134 +575,134 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     src={post.authorAvatar}
                     alt={post.authorName}
                     sx={{
-                      width: 44,
-                      height: 44,
-                      backgroundColor: 'rgba(120,120,120,0.32)',
-                      color: 'rgba(243,244,246,0.92)',
-                    }}
-                  >
-                    {post.authorName?.charAt(0).toUpperCase()}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle2" color="rgba(229,229,229,0.92)" sx={{ fontWeight: 600 }}>
-                      {post.authorName || 'Anonymous'}
-                    </Typography>
-                    <Typography variant="caption" color="rgba(163,163,163,0.78)">
-                      {formatRelativeTime(post.createdAt)}
-                    </Typography>
-                  </Box>
-                </Stack>
-                {post.caption && (
-                  <Typography variant="body2" color="rgba(235,235,235,0.88)" sx={{ wordBreak: 'break-word' }}>
-                    {post.caption}
+                    width: 44,
+                    height: 44,
+                    backgroundColor: 'rgba(242,242,242,0.08)',
+                    color: 'rgba(244,244,245,0.94)',
+                  }}
+                >
+                  {post.authorName?.charAt(0).toUpperCase()}
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle2" color="rgba(245,245,245,0.94)" sx={{ fontWeight: 600 }}>
+                    {post.authorName || 'Anonymous'}
                   </Typography>
-                )}
+                  <Typography variant="caption" color="rgba(212,212,212,0.74)">
+                    {formatRelativeTime(post.createdAt)}
+                  </Typography>
+                </Box>
               </Stack>
+              {post.caption && (
+                <Typography variant="body2" color="rgba(244,244,245,0.9)" sx={{ wordBreak: 'break-word' }}>
+                  {post.caption}
+                </Typography>
+              )}
+            </Stack>
 
-              <ButtonBase
-                onClick={() => onSelectPost(post)}
-                sx={{
-                  display: 'block',
-                  width: '100%',
-                  p: 0,
-                  borderRadius: 0,
-                  overflow: 'visible',
-                  backgroundColor: '#101010',
-                  transition: 'background-color 180ms ease',
-                  '&:hover': {
-                    backgroundColor: '#1a1a1a',
-                  },
-                }}
-                aria-label="Open post preview"
-              >
+            <ButtonBase
+              onClick={() => onSelectPost(post)}
+              sx={{
+                display: 'block',
+                width: '100%',
+                p: 0,
+                borderRadius: 0,
+                overflow: 'visible',
+                backgroundColor: 'rgba(8,8,8,0.75)',
+                transition: 'background-color 180ms ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(32,32,32,0.75)',
+                },
+              }}
+              aria-label="Open post preview"
+            >
                 <Box
                   component="img"
                   src={post.imageUrl}
                   alt={post.caption || 'Community meme'}
                   sx={{
                     width: {
-                      xs: 'calc(100% + 40px)',
+                      xs: 'calc(100% + 28px)',
                       md: 'calc(100% + 48px)',
                     },
                     maxWidth: 'none',
-                    ml: { xs: '-20px', md: '-24px' },
-                    mr: { xs: '-20px', md: '-24px' },
+                    ml: { xs: '-14px', md: '-24px' },
+                    mr: { xs: '-14px', md: '-24px' },
                     height: 'auto',
                     maxHeight: { xs: '75dvh', md: '90dvh' },
                     objectFit: 'contain',
                     display: 'block',
-                    backgroundColor: '#111111',
-                  }}
-                />
-              </ButtonBase>
+                    backgroundColor: '#050505',
+                }}
+              />
+            </ButtonBase>
 
-              <Stack
-                direction="row"
-                spacing={2}
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                px: { xs: 2.5, md: 3 },
+                py: { xs: 1.6, md: 1.8 },
+                borderTop: '1px solid rgba(255,255,255,0.07)',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 1.5,
+              }}
+            >
+              <ButtonBase
+                disableRipple
                 sx={{
-                  px: { xs: 2.5, md: 3 },
-                  py: { xs: 1.6, md: 1.8 },
-                  borderTop: '1px solid rgba(82,82,82,0.32)',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 1.5,
+                  gap: 1,
+                  px: 1.75,
+                  py: 0.8,
+                  borderRadius: 999,
+                  backgroundColor: 'rgba(255,255,255,0.12)',
+                  color: 'rgba(249,250,251,0.92)',
+                  transition: 'background-color 180ms ease',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                  },
                 }}
               >
-                <ButtonBase
-                  disableRipple
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    px: 1.75,
-                    py: 0.8,
-                    borderRadius: 999,
-                    backgroundColor: 'rgba(115,115,115,0.2)',
-                    color: 'rgba(244,244,244,0.9)',
-                    transition: 'background-color 180ms ease',
-                    '&:hover': {
-                      backgroundColor: 'rgba(163,163,163,0.24)',
-                    },
-                  }}
-                >
-                  <Box component="span" sx={{ fontSize: '1.1rem' }}>
-                    🔥
-                  </Box>
-                  <Typography variant="body2">React</Typography>
-                  <Typography variant="caption" color="rgba(163,163,163,0.8)">
-                    {engagement.reactions}
-                  </Typography>
-                </ButtonBase>
-                <ButtonBase
-                  disableRipple
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    px: 1.75,
-                    py: 0.8,
-                    borderRadius: 999,
-                    backgroundColor: 'rgba(115,115,115,0.2)',
-                    color: 'rgba(244,244,244,0.9)',
-                    transition: 'background-color 180ms ease',
-                    '&:hover': {
-                      backgroundColor: 'rgba(163,163,163,0.24)',
-                    },
-                  }}
-                >
-                  <Box component="span" sx={{ fontSize: '1.1rem' }}>
-                    💬
-                  </Box>
-                  <Typography variant="body2">Comment</Typography>
-                  <Typography variant="caption" color="rgba(163,163,163,0.8)">
-                    {engagement.comments}
-                  </Typography>
-                </ButtonBase>
-                <Typography variant="body2" color="rgba(172,172,172,0.78)">
-                  Tap the image to zoom full screen
+                <Box component="span" sx={{ fontSize: '1.1rem' }}>
+                  🔥
+                </Box>
+                <Typography variant="body2" color="rgba(249,250,251,0.9)">React</Typography>
+                <Typography variant="caption" color="rgba(227,227,227,0.82)">
+                  {engagement.reactions}
                 </Typography>
-              </Stack>
+              </ButtonBase>
+              <ButtonBase
+                disableRipple
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: 1.75,
+                  py: 0.8,
+                  borderRadius: 999,
+                  backgroundColor: 'rgba(255,255,255,0.12)',
+                  color: 'rgba(249,250,251,0.92)',
+                  transition: 'background-color 180ms ease',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                  },
+                }}
+              >
+                <Box component="span" sx={{ fontSize: '1.1rem' }}>
+                  💬
+                </Box>
+                <Typography variant="body2" color="rgba(249,250,251,0.9)">Comment</Typography>
+                <Typography variant="caption" color="rgba(227,227,227,0.82)">
+                  {engagement.comments}
+                </Typography>
+              </ButtonBase>
+              <Typography variant="body2" color="rgba(232,232,232,0.78)">
+                Tap the image to zoom full screen
+              </Typography>
+            </Stack>
             </Stack>
           </Box>
         );
@@ -839,11 +842,11 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
       component="section"
       sx={{
         width: '100%',
-        maxWidth: 'min(1120px, 100%)',
+        maxWidth: 'min(1400px, 100%)',
         mx: 'auto',
         mt: { xs: -18, md: -22 },
         mb: { xs: 6, md: 10 },
-        px: { xs: 0, sm: 2 },
+        px: { xs: 0.5, sm: 1, md: 1.5 },
         color: '#f8fafc',
         position: 'relative',
         zIndex: 2,

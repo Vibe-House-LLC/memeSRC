@@ -439,18 +439,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               pointerEvents: 'none',
             }}
           />
-          <Box
-            sx={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: '42%',
-              background: 'linear-gradient(180deg, rgba(2,6,23,0) 0%, rgba(2,6,23,0.35) 45%, rgba(2,6,23,0.92) 100%)',
-              zIndex: 1,
-              pointerEvents: 'none',
-            }}
-          />
           <Box sx={heroInnerSx}>
             <Box sx={heroContentSx}>
               <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 4}>
