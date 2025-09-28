@@ -47,7 +47,7 @@ const StyledGridContainer = styled(Grid)`
        extra scroll space caused by mobile browser chrome.
        Use min-height so content can extend when needed. */
     min-height: 100vh;
-    min-height: 100dvh;
+    min-height: 100svh;
     background-color: #080808;
     padding: 0;
     /* Edge-to-edge hero gradient lives inside the surface container */
@@ -411,7 +411,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       flexDirection: 'column',
       justifyContent: 'center',
       minHeight: '85vh',
-      minHeight: '85dvh',
+      minHeight: '85svh',
       paddingTop: { xs: `${NAVBAR_HEIGHT + 56}px`, md: `${NAVBAR_HEIGHT + 88}px` },
       paddingBottom: { xs: 16, md: 24 },
       gap: { xs: 4, md: 6 },
