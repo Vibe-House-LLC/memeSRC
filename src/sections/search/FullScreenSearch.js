@@ -411,27 +411,27 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     [setSearchTerm],
   );
 
-  const heroSurfaceSx = useMemo(
-    () => ({
-      width: '100%',
-      position: 'relative',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      minHeight: '85vh',
-      minHeight: '85svh',
-      paddingTop: { xs: `${NAVBAR_HEIGHT + 56}px`, md: `${NAVBAR_HEIGHT + 88}px` },
-      paddingBottom: { xs: 16, md: 24 },
-      gap: { xs: 4, md: 6 },
-      ...currentThemeBackground,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      borderRadius: 0,
-      border: 'none',
-      boxShadow: 'none',
-    }),
-    [currentThemeBackground]
-  );
+const heroSurfaceSx = useMemo(
+  () => ({
+    width: '100%',
+    position: 'relative',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    minHeight: '85vh',
+    minHeight: '85svh',
+    paddingTop: { xs: `${NAVBAR_HEIGHT + 56}px`, md: `${NAVBAR_HEIGHT + 88}px` },
+    paddingBottom: { xs: 16, md: 24 },
+    gap: { xs: 4, md: 6 },
+    ...currentThemeBackground,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    borderRadius: 'inherit',
+    border: 'none',
+    boxShadow: 'none',
+  }),
+  [currentThemeBackground]
+);
 
   const heroInnerSx = useMemo(
     () => ({
@@ -486,9 +486,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           <Paper
             elevation={0}
             sx={{
-              borderRadius: { xs: '0px 0px 28px 28px', md: 4 },
+              borderRadius: { xs: '28px', md: 4 },
               border: '1px solid rgba(70,70,70,0.22)',
-              borderTop: { xs: 'none', md: '1px solid rgba(70,70,70,0.22)' },
               background: 'rgba(10,10,10,0.92)',
               boxShadow: 'none',
               overflow: 'hidden',
