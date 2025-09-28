@@ -545,7 +545,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
   }
 
   return (
-    <Stack spacing={{ xs: 2, md: 2.5 }} mt={0.5}>
+    <Stack spacing={{ xs: 1.5, md: 2 }} mt={0.5} sx={{ px: { xs: 0, sm: 2, md: 4 } }}>
       {posts.map((post) => {
         const engagement = getSimulatedEngagement(post.id);
         return (
@@ -554,8 +554,9 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
             key={post.id}
             sx={{
               width: '100%',
-              borderRadius: { xs: 2.25, sm: 2.75, md: 3 },
-              border: '1px solid rgba(148,163,184,0.24)',
+              maxWidth: '100%',
+              borderRadius: { xs: 3, sm: 4, md: 5 },
+              border: '1px solid rgba(148,163,184,0.18)',
               backgroundColor: 'rgba(26,30,41,0.88)',
               backdropFilter: 'blur(26px) saturate(160%)',
               WebkitBackdropFilter: 'blur(26px) saturate(160%)',
@@ -886,15 +887,15 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
     <Box
       component="section"
       sx={{
-        width: '100%',
-        mx: 'auto',
-        mt: { xs: -8, md: -12 },
+        width: '100vw',
+        ml: 'calc(50% - 50vw)',
+        mr: 'calc(50% - 50vw)',
+        mt: { xs: -10, md: -14 },
         mb: { xs: 6, md: 10 },
-        px: { xs: 2, sm: 3, md: 6 },
         color: '#f8fafc',
         position: 'relative',
         zIndex: 2,
-        maxWidth: 'min(1120px, 100%)',
+        px: { xs: 0, sm: 0, md: 0 },
       }}
     >
       <Stack spacing={3}>

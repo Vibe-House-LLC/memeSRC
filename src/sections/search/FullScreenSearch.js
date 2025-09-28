@@ -434,7 +434,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       mx: 'auto',
       px: { xs: 3, sm: 6, md: 8 },
       py: { xs: 0, sm: 0, md: 0 },
-      mt: { xs: 5, md: 8 },
+      mt: { xs: 6, md: 9 },
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
@@ -631,9 +631,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         <Box
           sx={{
             width: '100%',
-            backgroundColor: '#020617',
+            position: 'relative',
+            backgroundColor: '#000000',
             pb: { xs: 8, md: 12 },
-            mt: { xs: 4, md: 6 },
+            mt: { xs: 0, md: 0 },
+            pt: { xs: 6, md: 8 },
           }}
         >
           <CommunityFeedSection />
