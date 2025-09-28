@@ -897,7 +897,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
       <Paper
         elevation={0}
         sx={{
-          borderRadius: { xs: 0, md: 3.5 },
+          borderRadius: { xs: 3.5, md: 4 },
           border: '1px solid rgba(148,163,184,0.2)',
           background: 'linear-gradient(170deg, rgba(15,23,42,0.96) 0%, rgba(2,6,23,0.98) 100%)',
           boxShadow: '0 28px 66px rgba(8,12,26,0.5)',
@@ -907,7 +907,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
           height: 'auto',
           overflow: 'hidden',
           alignSelf: { xs: 'stretch', md: 'start' },
-          marginTop: { xs: SECTION_GUTTER_MOBILE, md: 0 },
+          marginTop: { xs: 1, md: 0 },
           color: '#f8fafc',
         }}
       >
