@@ -835,10 +835,12 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
         width: '100%',
         maxWidth: 'min(1120px, 100%)',
         mx: 'auto',
-        mt: { xs: 0, md: 0.5 },
+        mt: { xs: -18, md: -22 },
         mb: { xs: 6, md: 10 },
         px: { xs: 0, sm: 2 },
         color: '#f8fafc',
+        position: 'relative',
+        zIndex: 2,
       }}
     >
       <Stack spacing={3}>
