@@ -330,7 +330,7 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
         boxShadow: '0 32px 72px rgba(2,6,23,0.55)',
       }}
     >
-      <Stack direction={isSmall ? 'column' : 'row'} spacing={{ xs: 3, md: 4 }} alignItems="flex-start">
+                <Stack direction={isSmall ? 'column' : 'row'} spacing={{ xs: 3, md: 4 }} alignItems="flex-start">
         <Avatar
           src={resolveAvatarUrl(user)}
           alt={resolveDisplayName(user)}
@@ -448,7 +448,7 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
                 borderRadius: { xs: 3, md: 4 },
                 overflow: 'hidden',
                 border: '1px solid rgba(148,163,184,0.25)',
-                maxHeight: '60dvh',
+                  maxHeight: 'min(60vh, 60svh)',
                 maxWidth: isSmall ? '100%' : 420,
                 boxShadow: '0 20px 48px rgba(2,6,23,0.55)',
                 backgroundColor: 'rgba(15,23,42,0.85)',
@@ -632,7 +632,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                   sx={{
                     width: '100%',
                     height: 'auto',
-                    maxHeight: { xs: '75dvh', md: '90dvh' },
+                    maxHeight: { xs: 'min(75vh, 75svh)', md: 'min(90vh, 90svh)' },
                     objectFit: 'contain',
                     display: 'block',
                     backgroundColor: '#050505',
@@ -1009,7 +1009,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
                 sx={{
                   width: '100%',
                   maxWidth: 'min(980px, 100%)',
-                  maxHeight: '92dvh',
+                  maxHeight: 'min(92vh, 92svh)',
                   objectFit: 'contain',
                   display: 'block',
                   borderRadius: { xs: 0, md: 3 },
