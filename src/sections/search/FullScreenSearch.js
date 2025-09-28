@@ -494,7 +494,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             },
             paddingBottom: {
               xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
-              md: `${DESKTOP_CARD_PADDING}px`,
+              md: 0,
             },
             backgroundColor: '#000',
           }}
@@ -515,7 +515,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
               minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
               height: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
-              marginBottom: { xs: 0, md: DESKTOP_CARD_PADDING },
             }}
           >
             <Box
