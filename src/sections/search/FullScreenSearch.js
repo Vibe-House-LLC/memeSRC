@@ -40,10 +40,10 @@ const AUTO_DISMISS_TOTAL_MS = 30 * 1000;
 const AUTO_DISMISS_MIN_VISIBLE_MS = 3 * 1000;
 const VISIBILITY_STORAGE_PREFIX = 'recentUpdateVisible:';
 const MOBILE_SECTION_GUTTER = 6;
-const DESKTOP_SECTION_GUTTER = 16;
-const DESKTOP_CONTENT_TOP_OFFSET = 0;
-const DESKTOP_STICKY_TOP_OFFSET = 0;
-const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${DESKTOP_SECTION_GUTTER}px)`;
+const DESKTOP_CARD_PADDING = 32;
+const DESKTOP_NAVBAR_HEIGHT = NAVBAR_HEIGHT;
+const DESKTOP_STICKY_TOP_OFFSET = DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING;
+const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING * 2}px)`;
 const MOBILE_CARD_OFFSET = NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER;
 const MOBILE_CARD_CONTENT_OFFSET = MOBILE_CARD_OFFSET + 140;
 const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${MOBILE_CARD_OFFSET}px)`;
@@ -428,11 +428,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       position: 'relative',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'center',
-      minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '85svh' },
-      paddingTop: { xs: `${NAVBAR_HEIGHT + 12}px`, md: `${NAVBAR_HEIGHT + 18}px` },
-      paddingBottom: { xs: 32, md: 40 },
-      gap: { xs: 3.5, md: 5 },
+      justifyContent: { xs: 'center', md: 'flex-start' },
+      minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '100%' },
+      paddingTop: { xs: `${NAVBAR_HEIGHT + 12}px`, md: DESKTOP_CARD_PADDING },
+      paddingBottom: { xs: 28, md: DESKTOP_CARD_PADDING },
+      gap: { xs: 3.5, md: 4 },
       ...currentThemeBackground,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
@@ -490,11 +490,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             px: { xs: 0, sm: 2, md: 3 },
             paddingTop: {
               xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
-            md: `${DESKTOP_CONTENT_TOP_OFFSET - 4}px`,
+              md: `${DESKTOP_CARD_PADDING}px`,
             },
             paddingBottom: {
               xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
-              md: `${DESKTOP_SECTION_GUTTER / 2}px`,
+              md: `${DESKTOP_CARD_PADDING}px`,
             },
             backgroundColor: '#000',
           }}
@@ -515,6 +515,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
               minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
               height: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+              marginBottom: { xs: 0, md: DESKTOP_CARD_PADDING },
             }}
           >
             <Box
@@ -539,9 +540,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   sx={{
                     ...heroSurfaceSx,
                     minHeight: '100%',
-                    paddingTop: { xs: 24, md: 40 },
-                    paddingBottom: { xs: 24, md: 40 },
-                    gap: { xs: 3, md: 5 },
+                    justifyContent: { xs: 'center', md: 'flex-start' },
+                    paddingTop: { xs: 24, md: 32 },
+                    paddingBottom: { xs: 24, md: 24 },
+                    gap: { xs: 3, md: 4 },
                   }}
                 >
                     <Box
