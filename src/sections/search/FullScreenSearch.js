@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Grid, Typography, useMediaQuery, useTheme, IconButton, Slide } from '@mui/material';
+import { Grid, Typography, useMediaQuery, useTheme, IconButton, Slide, Paper } from '@mui/material';
 import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
@@ -402,7 +402,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     [setSearchTerm],
   );
 
-
   const heroSurfaceSx = useMemo(
     () => ({
       width: '100%',
@@ -455,191 +454,257 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     []
   );
 
+
   return (
     <>
       <StyledGridContainer container>
-        <Box sx={heroSurfaceSx}>
-          <Box sx={heroInnerSx}>
-            <Box sx={heroContentSx}>
-              <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 4}>
-                <Grid container justifyContent="center">
-                  <Grid item textAlign="center" marginBottom={1.5}>
-                    <Box onClick={() => handleChangeSeries(safeGetItem(`defaultsearch${user?.sub}`) || '_universal')}>
-                      <Logo
-                        color={currentThemeFontColor || 'white'}
-                        sx={{
-                          objectFit: 'contain',
-                          cursor: 'pointer',
-                          display: 'block',
-                          width: { xs: '92px', sm: '110px' },
-                          height: 'auto',
-                          margin: '0 auto',
-                          color: 'yellow',
-                        }}
-                      />
-                    </Box>
-                    <Typography
-                      component="h1"
-                      variant="h1"
-                      fontSize={{ xs: 26, sm: 30, md: 32 }}
-                      fontFamily={currentThemeFontFamily}
-                      sx={{
-                        color: currentThemeFontColor,
-                        textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20)',
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '26px 1fr 26px', sm: '30px 1fr 30px' },
-                        alignItems: 'center',
-                        gap: 0.75,
-                        lineHeight: 1.1,
-                      }}
-                    >
-                      {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
-                        <FavoriteToggle
-                          indexId={cid}
-                          initialIsFavorite={shows.find((singleShow) => singleShow.id === cid)?.isFavorite || false}
-                        />
-                      ) : (
-                        <span />
-                      )}
-                      {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
-                      <span />
-                    </Typography>
-                    {latestRelease?.tag_name && (
-                      <Slide
-                        in={hasRecentUndismissedUpdate}
-                        direction={isMobile ? 'down' : 'left'}
-                        mountOnEnter
-                        unmountOnExit
-                        timeout={{ appear: 420, enter: 420, exit: 360 }}
-                      >
-                        <Box sx={updateBannerSx}>
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: { xs: 1.05, sm: 1.15 },
-                              minWidth: 0,
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: '50%',
-                                backgroundColor: statusDotColor,
-                                boxShadow: '0 0 0 3px rgba(148,163,184,0.2)',
-                              }}
-                            />
-                            <Typography
-                              variant="subtitle2"
-                              component="span"
-                              noWrap={!isMobile}
-                              sx={{
-                                fontSize: { xs: '0.95rem', sm: '0.98rem' },
-                                fontWeight: 600,
-                                color: '#f8fafc',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
-                              Updated to{' '}
-                              <Link to="/releases" style={releaseLinkStyle}>
-                                {formatReleaseDisplay(latestRelease?.tag_name)}
-                              </Link>
-                            </Typography>
-                          </Box>
-                          <Box
-                            component="span"
-                            sx={{
-                              justifySelf: 'flex-end',
-                              px: 1,
-                              py: 0.28,
-                              borderRadius: '999px',
-                              backgroundColor: 'rgba(148,163,184,0.16)',
-                              color: 'rgba(226,232,240,0.88)',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              letterSpacing: 0.5,
-                              textTransform: 'uppercase',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {formatRelativeTimeCompact(latestRelease?.published_at)}
-                          </Box>
-                          <IconButton
-                            aria-label="Dismiss update"
-                            size="small"
-                            onClick={handleDismissUpdateBanner}
-                            sx={{
-                              color: 'rgba(226,232,240,0.72)',
-                              backgroundColor: 'transparent',
-                              p: 0.4,
-                              transition: 'color 160ms ease, background-color 160ms ease',
-                              '&:hover': {
-                                color: '#f8fafc',
-                                backgroundColor: 'rgba(148,163,184,0.16)',
-                              },
-                            }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      </Slide>
-                    )}
-                  </Grid>
-                </Grid>
-                <Grid container justifyContent="center">
-                  <Grid item xs={12}>
-                    <UnifiedSearchBar
-                      value={searchTerm}
-                      onValueChange={handleSearchTermChange}
-                      onSubmit={(event) => searchFunction(event)}
-                      onClear={handleClearSearch}
-                      onRandom={handleRandomSearch}
-                      isRandomLoading={loadingRandom}
-                      shows={shows}
-                      savedCids={savedCids}
-                      currentValueId={currentValueId}
-                      includeAllFavorites={includeAllFavorites}
-                      onSelectSeries={handleSelect}
-                      appearance={unifiedSearchAppearance}
-                    />
-                  </Grid>
-                </Grid>
-                <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={1.6} marginTop={0.8}>
-                  <Typography component="h2" variant="h4" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' }, fontWeight: 500 }}>
-                    {currentThemeBragText}
-                  </Typography>
-                </Grid>
-                {showAd && (
-                  <Grid item xs={12} mt={1}>
-                    <center>
-                      <Box>
-                        {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-                        <Link to="/pro" style={{ textDecoration: 'none' }}>
-                          <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                            ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                          </Typography>
-                        </Link>
-                      </Box>
-                    </center>
-                  </Grid>
-                )}
-              </Grid>
-            </Box>
-          </Box>
-        </Box>
         <Box
           sx={{
             width: '100%',
-            position: 'relative',
-            backgroundColor: '#000000',
-            pb: { xs: 8, md: 12 },
-            mt: { xs: 0, md: 0 },
-            pt: { xs: 6, md: 8 },
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              md: 'minmax(0, 4fr) minmax(0, 1fr)',
+            },
+            gap: { xs: 4, md: 5 },
+            alignItems: 'stretch',
+            px: { xs: 0, sm: 2, md: 4 },
+            py: { xs: 6, md: 4 },
+            backgroundColor: '#000',
           }}
         >
-          <CommunityFeedSection />
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: { xs: 3.5, md: 4 },
+              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(8,8,10,0.92)',
+              boxShadow: '0 30px 70px rgba(2,4,12,0.65)',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: { xs: '70vh', md: 'calc(100vh - 96px)' },
+              height: { xs: 'auto', md: 'calc(100vh - 96px)' },
+              display: 'flex',
+              flexDirection: 'column',
+              position: { md: 'sticky' },
+              top: { md: 48 },
+            }}
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                background: 'radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 55%)',
+                pointerEvents: 'none',
+              }}
+            />
+            <Box
+              sx={{
+                position: 'relative',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              }}
+            >
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Box
+                  sx={{
+                    ...heroSurfaceSx,
+                    minHeight: '100%',
+                    paddingTop: { xs: 32, md: 40 },
+                    paddingBottom: { xs: 32, md: 40 },
+                    gap: { xs: 4, md: 5 },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      ...heroInnerSx,
+                      maxWidth: 'min(960px, 100%)',
+                      px: { xs: 3, sm: 5, md: 6 },
+                      mt: 0,
+                    }}
+                  >
+                    <Box sx={heroContentSx}>
+                      <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 4}>
+                        <Grid container justifyContent="center">
+                          <Grid item textAlign="center" marginBottom={1.5}>
+                            <Box onClick={() => handleChangeSeries(safeGetItem(`defaultsearch${user?.sub}`) || '_universal')}>
+                              <Logo
+                                color={currentThemeFontColor || 'white'}
+                                sx={{
+                                  objectFit: 'contain',
+                                  cursor: 'pointer',
+                                  display: 'block',
+                                  width: { xs: '92px', sm: '110px' },
+                                  height: 'auto',
+                                  margin: '0 auto',
+                                  color: 'yellow',
+                                }}
+                              />
+                            </Box>
+                            <Typography
+                              component="h1"
+                              variant="h1"
+                              fontSize={{ xs: 26, sm: 30, md: 32 }}
+                              fontFamily={currentThemeFontFamily}
+                              sx={{
+                                color: currentThemeFontColor,
+                                textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20)',
+                                display: 'grid',
+                                gridTemplateColumns: { xs: '26px 1fr 26px', sm: '30px 1fr 30px' },
+                                alignItems: 'center',
+                                gap: 0.75,
+                                lineHeight: 1.1,
+                              }}
+                            >
+                              {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
+                                <FavoriteToggle
+                                  indexId={cid}
+                                  initialIsFavorite={shows.find((singleShow) => singleShow.id === cid)?.isFavorite || false}
+                                />
+                              ) : (
+                                <span />
+                              )}
+                              {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
+                              <span />
+                            </Typography>
+                            {latestRelease?.tag_name && (
+                              <Slide
+                                in={hasRecentUndismissedUpdate}
+                                direction={isMobile ? 'down' : 'left'}
+                                mountOnEnter
+                                unmountOnExit
+                                timeout={{ appear: 420, enter: 420, exit: 360 }}
+                              >
+                                <Box sx={updateBannerSx}>
+                                  <Box
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: { xs: 1.05, sm: 1.15 },
+                                      minWidth: 0,
+                                    }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: '50%',
+                                        backgroundColor: statusDotColor,
+                                        boxShadow: '0 0 0 3px rgba(148,163,184,0.2)',
+                                      }}
+                                    />
+                                    <Typography
+                                      variant="subtitle2"
+                                      component="span"
+                                      noWrap={!isMobile}
+                                      sx={{
+                                        fontSize: { xs: '0.95rem', sm: '0.98rem' },
+                                        fontWeight: 600,
+                                        color: '#f8fafc',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                      }}
+                                    >
+                                      Updated to{' '}
+                                      <Link to="/releases" style={releaseLinkStyle}>
+                                        {formatReleaseDisplay(latestRelease?.tag_name)}
+                                      </Link>
+                                    </Typography>
+                                  </Box>
+                                  <Box
+                                    component="span"
+                                    sx={{
+                                      justifySelf: 'flex-end',
+                                      px: 1,
+                                      py: 0.28,
+                                      borderRadius: '999px',
+                                      backgroundColor: 'rgba(148,163,184,0.16)',
+                                      color: 'rgba(226,232,240,0.88)',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      letterSpacing: 0.5,
+                                      textTransform: 'uppercase',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {formatRelativeTimeCompact(latestRelease?.published_at)}
+                                  </Box>
+                                  <IconButton
+                                    aria-label="Dismiss update"
+                                    size="small"
+                                    onClick={handleDismissUpdateBanner}
+                                    sx={{
+                                      color: 'rgba(226,232,240,0.72)',
+                                      backgroundColor: 'transparent',
+                                      p: 0.4,
+                                      transition: 'color 160ms ease, background-color 160ms ease',
+                                      '&:hover': {
+                                        color: '#f8fafc',
+                                        backgroundColor: 'rgba(148,163,184,0.16)',
+                                      },
+                                    }}
+                                  >
+                                    <CloseIcon fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              </Slide>
+                            )}
+                          </Grid>
+                        </Grid>
+                        <Grid container justifyContent="center">
+                          <Grid item xs={12}>
+                            <UnifiedSearchBar
+                              value={searchTerm}
+                              onValueChange={handleSearchTermChange}
+                              onSubmit={(event) => searchFunction(event)}
+                              onClear={handleClearSearch}
+                              onRandom={handleRandomSearch}
+                              isRandomLoading={loadingRandom}
+                              shows={shows}
+                              savedCids={savedCids}
+                              currentValueId={currentValueId}
+                              includeAllFavorites={includeAllFavorites}
+                              onSelectSeries={handleSelect}
+                              appearance={unifiedSearchAppearance}
+                            />
+                          </Grid>
+                        </Grid>
+                        <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={1.6} marginTop={0.8}>
+                          <Typography component="h2" variant="h4" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' }, fontWeight: 500 }}>
+                            {currentThemeBragText}
+                          </Typography>
+                        </Grid>
+                        {showAd && (
+                          <Grid item xs={12} mt={1}>
+                            <center>
+                              <Box>
+                                {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                                <Link to="/pro" style={{ textDecoration: 'none' }}>
+                                  <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                                    ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                                  </Typography>
+                                </Link>
+                              </Box>
+                            </center>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          </Paper>
+
+          <CommunityFeedSection
+            onPostsLoaded={(loadedPosts) => {
+              if (loadedPosts.length && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('community-feed-loaded'));
+              }
+            }}
+          />
         </Box>
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />

@@ -16,8 +16,10 @@ import {
   CircularProgress,
   Dialog,
   DialogContent,
+  Grid,
   IconButton,
   LinearProgress,
+  Paper,
   Stack,
   TextField,
   Typography,
@@ -545,7 +547,14 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
   }
 
   return (
-    <Stack spacing={{ xs: 1.5, md: 2 }} mt={0.5} sx={{ px: { xs: 0, sm: 2, md: 4 } }}>
+    <Stack
+      spacing={{ xs: 2.4, md: 2.8 }}
+      sx={{
+        mt: 0.5,
+        pr: { md: 0.75 },
+        pb: { md: 0.5 },
+      }}
+    >
       {posts.map((post) => {
         const engagement = getSimulatedEngagement(post.id);
         return (
@@ -554,14 +563,13 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
             key={post.id}
             sx={{
               width: '100%',
-              maxWidth: '100%',
-              borderRadius: { xs: 3, sm: 4, md: 5 },
+              borderRadius: { xs: 3, md: 3.5 },
               border: '1px solid rgba(148,163,184,0.18)',
-              backgroundColor: 'rgba(26,30,41,0.88)',
+              backgroundColor: 'rgba(26,30,41,0.9)',
               backdropFilter: 'blur(26px) saturate(160%)',
               WebkitBackdropFilter: 'blur(26px) saturate(160%)',
               overflow: 'hidden',
-              boxShadow: '0 24px 44px rgba(9,12,21,0.4)',
+              boxShadow: '0 20px 42px rgba(9,12,21,0.38)',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
@@ -571,12 +579,12 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
               <Stack
                 spacing={post.caption ? 1.2 : 1}
                 sx={{
-                  px: { xs: 2, md: 2.5 },
-                  pt: { xs: 2, md: 2.4 },
-                  pb: { xs: 1.4, md: 1.6 },
+                  px: { xs: 2, md: 2.4 },
+                  pt: { xs: 1.9, md: 2.2 },
+                  pb: { xs: 1.25, md: 1.35 },
                 }}
               >
-                <Stack direction="row" spacing={1.5} alignItems="center">
+                <Stack direction="row" spacing={1.45} alignItems="center">
                   <Avatar
                     src={post.authorAvatar}
                     alt={post.authorName}
@@ -632,7 +640,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                   sx={{
                     width: '100%',
                     height: 'auto',
-                    maxHeight: { xs: 'min(75vh, 75svh)', md: 'min(90vh, 90svh)' },
+                    maxHeight: { xs: 'min(68vh, 70svh)', md: 'min(72vh, 76svh)' },
                     objectFit: 'contain',
                     display: 'block',
                     backgroundColor: '#050505',
@@ -642,9 +650,9 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
 
               <Box
                 sx={{
-                  px: { xs: 2, md: 2.5 },
-                  pt: { xs: 1.05, md: 1.2 },
-                  pb: { xs: 0.6, md: 0.75 },
+                  px: { xs: 2, md: 2.4 },
+                  pt: { xs: 0.9, md: 1.05 },
+                  pb: { xs: 0.55, md: 0.65 },
                   borderTop: '1px solid rgba(148,163,184,0.14)',
                 }}
               >
@@ -656,8 +664,8 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
               <Stack
                 direction="row"
                 sx={{
-                  px: { xs: 2, md: 2.5 },
-                  pb: { xs: 1, md: 1.2 },
+                  px: { xs: 2, md: 2.4 },
+                  pb: { xs: 0.95, md: 1.05 },
                   gap: 1,
                   alignItems: 'stretch',
                 }}
@@ -745,7 +753,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
               <Typography
                 variant="caption"
                 color="rgba(232,232,232,0.72)"
-                sx={{ px: { xs: 2, md: 2.5 }, pb: { xs: 1.2, md: 1.35 } }}
+                sx={{ px: { xs: 2, md: 2.4 }, pb: { xs: 1.15, md: 1.2 } }}
               >
                 Tap the image to zoom full screen
               </Typography>
@@ -884,80 +892,114 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
   }, []);
 
   return (
-    <Box
-      component="section"
-      sx={{
-        width: '100vw',
-        ml: 'calc(50% - 50vw)',
-        mr: 'calc(50% - 50vw)',
-        mt: { xs: -10, md: -14 },
-        mb: { xs: 6, md: 10 },
-        color: '#f8fafc',
-        position: 'relative',
-        zIndex: 2,
-        px: { xs: 0, sm: 0, md: 0 },
-      }}
-    >
-      <Stack spacing={3}>
-        <FeedGrid
-          posts={posts}
-          loading={loading}
-          error={error}
-          onReload={loadFeed}
-          onSelectPost={handlePreviewPost}
-        />
-
-        {composerNotice && (
-          <Alert
-            severity="warning"
-            onClose={() => setComposerNotice(null)}
+    <>
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: { xs: 3, md: 3.5 },
+          border: '1px solid rgba(148,163,184,0.2)',
+          background: 'linear-gradient(170deg, rgba(15,23,42,0.96) 0%, rgba(2,6,23,0.98) 100%)',
+          boxShadow: '0 28px 66px rgba(8,12,26,0.5)',
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
+          color: '#f8fafc',
+        }}
+      >
+        <Stack
+          spacing={2.4}
+          sx={{
+            flex: 1,
+            px: { xs: 2.4, md: 2.8 },
+            py: { xs: 2.4, md: 2.8 },
+            minHeight: 0,
+          }}
+        >
+          <Typography
+            component="h2"
+            variant="subtitle1"
             sx={{
-              borderRadius: 2,
-              backgroundColor: 'rgba(253,186,116,0.16)',
-              color: '#fed7aa',
+              fontWeight: 600,
+              letterSpacing: 0.18,
+              color: 'rgba(226,232,240,0.92)',
             }}
           >
-            {composerNotice}
-          </Alert>
-        )}
+            Community Feed
+          </Typography>
 
-        {user ? (
-          <CommunityComposer user={user} onPostCreated={handlePostCreated} onError={handleComposerError} />
-        ) : (
-          <Box
-            sx={{
-              borderRadius: 3,
-              border: '1px dashed rgba(163,163,163,0.3)',
-              backgroundColor: 'rgba(18,18,18,0.6)',
-              backdropFilter: 'blur(12px)',
-              p: { xs: 3, md: 4 },
-              textAlign: 'center',
-            }}
-          >
-            <Typography variant="h6" color="rgba(226,232,240,0.88)">
-              Sign in to share your memes
-            </Typography>
-            <Typography variant="body2" color="rgba(209,213,219,0.72)" mt={1.5} mb={2.5}>
-              Upload originals, add captions, and see them land in the feed instantly.
-            </Typography>
-            <Button
-              component={RouterLink}
-              to="/login"
-              variant="contained"
-              color="secondary"
+          {composerNotice && (
+            <Alert
+              severity="warning"
+              onClose={() => setComposerNotice(null)}
               sx={{
-                borderRadius: 999,
-                px: 3.5,
-                py: 1,
-                textTransform: 'none',
-                fontWeight: 600,
+                borderRadius: 2,
+                backgroundColor: 'rgba(253,186,116,0.16)',
+                color: '#fed7aa',
               }}
             >
-              Sign in to post
-            </Button>
+              {composerNotice}
+            </Alert>
+          )}
+
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              pr: { xs: 0.5, md: 0 },
+              mr: { xs: -0.5, md: 0 },
+            }}
+          >
+            <FeedGrid
+              posts={posts}
+              loading={loading}
+              error={error}
+              onReload={loadFeed}
+              onSelectPost={handlePreviewPost}
+            />
           </Box>
-        )}
-      </Stack>
+
+          <Box sx={{ flexShrink: 0 }}>
+            {user ? (
+              <CommunityComposer user={user} onPostCreated={handlePostCreated} onError={handleComposerError} />
+            ) : (
+              <Box
+                sx={{
+                  borderRadius: 3,
+                  border: '1px dashed rgba(163,163,163,0.3)',
+                  backgroundColor: 'rgba(18,18,18,0.6)',
+                  backdropFilter: 'blur(12px)',
+                  p: { xs: 3, md: 3.5 },
+                  textAlign: 'center',
+                }}
+              >
+                <Typography variant="h6" color="rgba(226,232,240,0.9)">
+                  Sign in to share your memes
+                </Typography>
+                <Typography variant="body2" color="rgba(209,213,219,0.72)" mt={1.5} mb={2.5}>
+                  Upload originals, add captions, and see them land in the feed instantly.
+                </Typography>
+                <Button
+                  component={RouterLink}
+                  to="/login"
+                  variant="contained"
+                  color="secondary"
+                  sx={{
+                    borderRadius: 999,
+                    px: 3.5,
+                    py: 1,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  Sign in to post
+                </Button>
+              </Box>
+            )}
+          </Box>
+        </Stack>
+      </Paper>
 
       <Dialog
         open={Boolean(previewPost)}
@@ -1064,6 +1106,6 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
           )}
         </DialogContent>
       </Dialog>
-    </Box>
+    </>
   );
 }
