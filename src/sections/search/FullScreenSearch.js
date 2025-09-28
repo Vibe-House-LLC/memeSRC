@@ -432,14 +432,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       width: '100%',
       maxWidth: 'min(1040px, 100%)',
       mx: 'auto',
-      px: { xs: 3, sm: 6, md: 8 },
+      px: { xs: 3, sm: 5, md: 7 },
       py: { xs: 0, sm: 0, md: 0 },
-      mt: { xs: 6, md: 9 },
+      mt: { xs: 5, md: 8 },
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
       justifyContent: 'center',
-      gap: { xs: 4, md: 6 },
+      gap: { xs: 3, md: 5 },
     }),
     []
   );
@@ -450,7 +450,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
-      gap: { xs: 4, md: 5 },
+      gap: { xs: 3, md: 4 },
     }),
     []
   );
@@ -463,7 +463,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             <Box sx={heroContentSx}>
               <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 4}>
                 <Grid container justifyContent="center">
-                  <Grid item textAlign="center" marginBottom={2}>
+                  <Grid item textAlign="center" marginBottom={1.5}>
                     <Box onClick={() => handleChangeSeries(safeGetItem(`defaultsearch${user?.sub}`) || '_universal')}>
                       <Logo
                         color={currentThemeFontColor || 'white'}
@@ -471,7 +471,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                           objectFit: 'contain',
                           cursor: 'pointer',
                           display: 'block',
-                          width: '130px',
+                          width: { xs: '92px', sm: '110px' },
                           height: 'auto',
                           margin: '0 auto',
                           color: 'yellow',
@@ -481,15 +481,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     <Typography
                       component="h1"
                       variant="h1"
-                      fontSize={34}
+                      fontSize={{ xs: 26, sm: 30, md: 32 }}
                       fontFamily={currentThemeFontFamily}
                       sx={{
                         color: currentThemeFontColor,
                         textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20)',
                         display: 'grid',
-                        gridTemplateColumns: '36px 1fr 36px',
+                        gridTemplateColumns: { xs: '26px 1fr 26px', sm: '30px 1fr 30px' },
                         alignItems: 'center',
-                        gap: 1,
+                        gap: 0.75,
+                        lineHeight: 1.1,
                       }}
                     >
                       {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
@@ -605,8 +606,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     />
                   </Grid>
                 </Grid>
-                <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={2} marginTop={1}>
-                  <Typography component="h2" variant="h4">
+                <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={1.6} marginTop={0.8}>
+                  <Typography component="h2" variant="h4" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' }, fontWeight: 500 }}>
                     {currentThemeBragText}
                   </Typography>
                 </Grid>
