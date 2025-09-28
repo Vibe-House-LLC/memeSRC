@@ -43,10 +43,9 @@ const MOBILE_SECTION_GUTTER = 24;
 const DESKTOP_SECTION_GUTTER = 32;
 const DESKTOP_STICKY_TOP_OFFSET = NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER;
 const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER * 2}px)`;
-const MOBILE_MAX_CARD_HEIGHT = `calc(100vh - ${NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER}px)`;
-const MOBILE_CARD_MIN_HEIGHT = 460;
-const MOBILE_CARD_PREFERRED_HEIGHT = 520;
-const MOBILE_CARD_HEIGHT = `min(${MOBILE_CARD_PREFERRED_HEIGHT}px, ${MOBILE_MAX_CARD_HEIGHT})`;
+const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER}px)`;
+const MOBILE_CARD_MIN_HEIGHT = `clamp(460px, calc(75svh - ${NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER}px), ${MOBILE_MAX_CARD_HEIGHT})`;
+const MOBILE_CARD_CONTENT_MIN_HEIGHT = `min(calc(${MOBILE_CARD_MIN_HEIGHT} - 140px), ${MOBILE_MAX_CARD_HEIGHT})`;
 
 // Simplified grid container
 const StyledGridContainer = styled(Grid)`
@@ -500,7 +499,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               alignSelf: { xs: 'stretch', md: 'start' },
               maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
               minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
-              height: { xs: MOBILE_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+              height: { xs: 'auto', md: DESKTOP_STICKY_HEIGHT },
             }}
           >
             <Box
@@ -542,7 +541,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       sx={{
                         ...heroContentSx,
                         justifyContent: 'flex-start',
-                        minHeight: { xs: MOBILE_CARD_MIN_HEIGHT - 140, md: 'auto' },
+                        minHeight: { xs: MOBILE_CARD_CONTENT_MIN_HEIGHT, md: 'auto' },
                         pt: { xs: 1, md: 0 },
                       }}
                     >
