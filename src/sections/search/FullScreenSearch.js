@@ -28,6 +28,7 @@ import {
 import { safeGetItem, safeSetItem } from '../../utils/storage';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
+import { isColorNearBlack } from '../../utils/colors';
 import CommunityFeedSection from './CommunityFeedSection';
 
 
@@ -274,12 +275,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const navigate = useNavigate();
 
   // The handleChangeSeries function now only handles theme updates
-  const handleChangeSeries = useCallback((newSeriesTitle) => {
-    const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle) || savedCids.find((object) => object.id === newSeriesTitle);
-    if (!selectedSeriesProperties) {
-      navigate('/')
-    }
-  }, [shows, savedCids, navigate]);
+  const handleChangeSeries = useCallback(
+    (newSeriesTitle) => {
+      const selectedSeriesProperties =
+        shows.find((object) => object.id === newSeriesTitle) || savedCids?.find((object) => object.id === newSeriesTitle);
+      if (!selectedSeriesProperties) {
+        navigate('/');
+      }
+    },
+    [shows, savedCids, navigate]
+  );
 
   // This useEffect ensures the theme is applied based on the seriesId once the data is loaded
   useEffect(() => {
@@ -332,6 +337,28 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }, [cid, seriesTitle, hasFavoriteShows, defaultShow]);
 
   const includeAllFavorites = hasFavoriteShows;
+
+  const currentSeries = useMemo(() => {
+    if (!currentValueId || currentValueId.startsWith('_')) {
+      return undefined;
+    }
+    const fromShows = Array.isArray(shows) ? shows.find((item) => item.id === currentValueId) : undefined;
+    if (fromShows) {
+      return fromShows;
+    }
+    if (Array.isArray(savedCids)) {
+      return savedCids.find((item) => item.id === currentValueId);
+    }
+    return undefined;
+  }, [currentValueId, shows, savedCids]);
+
+  const unifiedSearchAppearance = useMemo(() => {
+    const candidateColor = currentSeries?.colorSecondary || currentThemeFontColor;
+    if (!candidateColor) {
+      return 'light';
+    }
+    return isColorNearBlack(candidateColor) ? 'dark' : 'light';
+  }, [currentSeries, currentThemeFontColor]);
 
   const handleRandomSearch = useCallback(() => {
     const scope = currentValueId || '_universal';
@@ -583,11 +610,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       currentValueId={currentValueId}
                       includeAllFavorites={includeAllFavorites}
                       onSelectSeries={handleSelect}
-                      appearance="light"
+                      appearance={unifiedSearchAppearance}
                     />
                   </Grid>
                 </Grid>
-                <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={2} marginTop={2}>
+                <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={2} marginTop={1}>
                   <Typography component="h2" variant="h4">
                     {currentThemeBragText}
                   </Typography>
