@@ -41,8 +41,9 @@ const AUTO_DISMISS_MIN_VISIBLE_MS = 3 * 1000;
 const VISIBILITY_STORAGE_PREFIX = 'recentUpdateVisible:';
 const MOBILE_SECTION_GUTTER = 6;
 const DESKTOP_SECTION_GUTTER = 16;
-const DESKTOP_STICKY_TOP_OFFSET = NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER;
-const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER * 2}px)`;
+const DESKTOP_CONTENT_TOP_OFFSET = 0;
+const DESKTOP_STICKY_TOP_OFFSET = 0;
+const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${DESKTOP_SECTION_GUTTER}px)`;
 const MOBILE_CARD_OFFSET = NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER;
 const MOBILE_CARD_CONTENT_OFFSET = MOBILE_CARD_OFFSET + 140;
 const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${MOBILE_CARD_OFFSET}px)`;
@@ -422,25 +423,25 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }, []);
 
   const heroSurfaceSx = useMemo(
-  () => ({
-    width: '100%',
-    position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '85svh' },
-    paddingTop: { xs: `${NAVBAR_HEIGHT + 56}px`, md: `${NAVBAR_HEIGHT + 88}px` },
-    paddingBottom: { xs: 16, md: 24 },
-    gap: { xs: 4, md: 6 },
-    ...currentThemeBackground,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    borderRadius: 'inherit',
-    border: 'none',
-    boxShadow: 'none',
-  }),
-  [currentThemeBackground]
-);
+    () => ({
+      width: '100%',
+      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '85svh' },
+      paddingTop: { xs: `${NAVBAR_HEIGHT + 12}px`, md: `${NAVBAR_HEIGHT + 18}px` },
+      paddingBottom: { xs: 32, md: 40 },
+      gap: { xs: 3.5, md: 5 },
+      ...currentThemeBackground,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      borderRadius: 'inherit',
+      border: 'none',
+      boxShadow: 'none',
+    }),
+    [currentThemeBackground]
+  );
 
   const heroInnerSx = useMemo(
     () => ({
@@ -451,12 +452,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       mx: 'auto',
       px: { xs: 3, sm: 5, md: 7 },
       py: { xs: 0, sm: 0, md: 0 },
-      mt: { xs: 5, md: 8 },
+      mt: { xs: 1, md: 0 },
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
       justifyContent: 'center',
-      gap: { xs: 3, md: 5 },
+      gap: { xs: 2.5, md: 4 },
     }),
     []
   );
@@ -484,16 +485,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               xs: '1fr',
               md: 'minmax(0, 3fr) minmax(0, 1fr)',
             },
-            gap: { xs: 0.25, md: 4 },
+            gap: { xs: 0.25, md: 3 },
             alignItems: 'stretch',
-            px: { xs: 0, sm: 3, md: 4 },
+            px: { xs: 0, sm: 2, md: 3 },
             paddingTop: {
               xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
-              md: `${DESKTOP_STICKY_TOP_OFFSET}px`,
+            md: `${DESKTOP_CONTENT_TOP_OFFSET - 4}px`,
             },
             paddingBottom: {
-              xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
-              md: `${DESKTOP_SECTION_GUTTER}px`,
+              xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
+              md: `${DESKTOP_SECTION_GUTTER / 2}px`,
             },
             backgroundColor: '#000',
           }}

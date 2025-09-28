@@ -36,12 +36,17 @@ import { SnowEffect } from '../../../components/CountdownTimer';
 
 // ----------------------------------------------------------------------
 
-const StyledRoot = styled(AppBar)(() => ({
+const StyledRoot = styled(AppBar)(({ theme }) => ({
   backgroundColor: '#000000',
   borderBottom: '1px solid rgba(255,255,255,0.04)',
   boxShadow: '0 2px 12px rgba(0, 0, 0, 0.65)',
   color: '#fff',
   position: 'static',
+  [theme.breakpoints.up('md')]: {
+    position: 'sticky',
+    top: -1,
+    zIndex: theme.zIndex.appBar + 1,
+  },
 }));
 
 const StyledToolbar = styled(Toolbar)(() => ({
