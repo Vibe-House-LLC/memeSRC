@@ -87,6 +87,8 @@ const FEED_SURFACE_COLOR = '#1f1f1f';
 const FEED_BORDER_COLOR = 'rgba(255, 255, 255, 0.06)';
 
 const DEFAULT_ERROR_MESSAGE = 'Unable to load the community feed right now. Please try again shortly.';
+const COMMUNITY_FEED_CACHE_KEY = 'community-feed-cache:v1';
+const COMMUNITY_FEED_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function pseudoRandomFromString(source: string, min: number, max: number): number {
   if (max <= min) return min;
@@ -783,6 +785,41 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
   const [composerNotice, setComposerNotice] = useState<string | null>(null);
   const [previewPost, setPreviewPost] = useState<CommunityPost | null>(null);
 
+  const readCache = useCallback((): { posts: CommunityPost[]; timestamp: number } | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.localStorage.getItem(COMMUNITY_FEED_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { posts?: CommunityPost[]; timestamp?: number };
+      if (!Array.isArray(parsed.posts) || typeof parsed.timestamp !== 'number') return null;
+      return parsed as { posts: CommunityPost[]; timestamp: number };
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const writeCache = useCallback((nextPosts: CommunityPost[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const payload = JSON.stringify({ posts: nextPosts, timestamp: Date.now() });
+      window.localStorage.setItem(COMMUNITY_FEED_CACHE_KEY, payload);
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  useEffect(() => {
+    const cached = readCache();
+    if (!cached) return;
+    const isFresh = Date.now() - cached.timestamp <= COMMUNITY_FEED_CACHE_TTL_MS;
+    if (!isFresh || !cached.posts.length) return;
+    setPosts(cached.posts);
+    setFeedState({ loading: false, error: null });
+    if (onPostsLoaded) {
+      onPostsLoaded(cached.posts);
+    }
+  }, [onPostsLoaded, readCache]);
+
   const loadFeed = useCallback(async () => {
     if (typeof window === 'undefined') return;
     setFeedState({ loading: true, error: null });
@@ -854,6 +891,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
       );
       setPosts(validPosts);
       setFeedState({ loading: false, error: null });
+      writeCache(validPosts);
       if (onPostsLoaded) {
         onPostsLoaded(validPosts);
       }
@@ -874,6 +912,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
     (post: CommunityPost) => {
       setPosts((prev) => {
         const next = [post, ...prev];
+        writeCache(next);
         if (onPostsLoaded) {
           onPostsLoaded(next);
         }

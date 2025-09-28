@@ -414,7 +414,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     [setSearchTerm],
   );
 
-const heroSurfaceSx = useMemo(
+  const handleCommunityPostsLoaded = useCallback((loadedPosts) => {
+    if (!loadedPosts.length || typeof window === 'undefined') {
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('community-feed-loaded'));
+  }, []);
+
+  const heroSurfaceSx = useMemo(
   () => ({
     width: '100%',
     position: 'relative',
@@ -730,11 +737,7 @@ const heroSurfaceSx = useMemo(
           </Paper>
 
           <CommunityFeedSection
-            onPostsLoaded={(loadedPosts) => {
-              if (loadedPosts.length && typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('community-feed-loaded'));
-              }
-            }}
+            onPostsLoaded={handleCommunityPostsLoaded}
           />
         </Box>
       </StyledGridContainer>
