@@ -43,9 +43,12 @@ const MOBILE_SECTION_GUTTER = 6;
 const DESKTOP_SECTION_GUTTER = 16;
 const DESKTOP_STICKY_TOP_OFFSET = NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER;
 const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER * 2}px)`;
-const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER}px)`;
-const MOBILE_CARD_MIN_HEIGHT = `clamp(460px, calc(75svh - ${NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER}px), ${MOBILE_MAX_CARD_HEIGHT})`;
-const MOBILE_CARD_CONTENT_MIN_HEIGHT = `min(calc(${MOBILE_CARD_MIN_HEIGHT} - 140px), ${MOBILE_MAX_CARD_HEIGHT})`;
+const MOBILE_CARD_OFFSET = NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER;
+const MOBILE_CARD_CONTENT_OFFSET = MOBILE_CARD_OFFSET + 140;
+const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${MOBILE_CARD_OFFSET}px)`;
+const MOBILE_CARD_TARGET_HEIGHT = `calc(80svh - ${MOBILE_CARD_OFFSET}px)`;
+const MOBILE_CARD_MIN_HEIGHT = `clamp(460px, ${MOBILE_CARD_TARGET_HEIGHT}, ${MOBILE_MAX_CARD_HEIGHT})`;
+const MOBILE_CARD_CONTENT_MIN_HEIGHT = `clamp(280px, calc(80svh - ${MOBILE_CARD_CONTENT_OFFSET}px), calc(100svh - ${MOBILE_CARD_CONTENT_OFFSET}px))`;
 
 // Simplified grid container
 const StyledGridContainer = styled(Grid)`
@@ -418,8 +421,7 @@ const heroSurfaceSx = useMemo(
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    minHeight: '85vh',
-    minHeight: '85svh',
+    minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '85svh' },
     paddingTop: { xs: `${NAVBAR_HEIGHT + 56}px`, md: `${NAVBAR_HEIGHT + 88}px` },
     paddingBottom: { xs: 16, md: 24 },
     gap: { xs: 4, md: 6 },
@@ -504,7 +506,7 @@ const heroSurfaceSx = useMemo(
               alignSelf: { xs: 'stretch', md: 'start' },
               maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
               minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
-              height: { xs: 'auto', md: DESKTOP_STICKY_HEIGHT },
+              height: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
             }}
           >
             <Box
