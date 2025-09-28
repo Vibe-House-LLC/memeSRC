@@ -542,7 +542,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
   }
 
   return (
-    <Stack spacing={{ xs: 3.5, md: 4 }} mt={0.5}>
+    <Stack spacing={{ xs: 2, md: 2.5 }} mt={0.5}>
       {posts.map((post) => {
         const engagement = getSimulatedEngagement(post.id);
         return (
@@ -551,66 +551,76 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
             key={post.id}
             sx={{
               width: '100%',
-              borderRadius: { xs: 3, sm: 3.5, md: 4 },
-              border: '1px solid rgba(148,163,184,0.22)',
-              backgroundColor: 'rgba(15,17,25,0.92)',
-              backdropFilter: 'blur(30px) saturate(140%)',
-              WebkitBackdropFilter: 'blur(30px) saturate(140%)',
+              borderRadius: { xs: 2.25, sm: 2.75, md: 3 },
+              border: '1px solid rgba(148,163,184,0.16)',
+              backgroundColor: 'rgba(13,16,24,0.9)',
+              backdropFilter: 'blur(26px) saturate(130%)',
+              WebkitBackdropFilter: 'blur(26px) saturate(130%)',
               overflow: 'hidden',
-              boxShadow: '0 36px 72px rgba(8,11,19,0.55)',
+              boxShadow: '0 24px 48px rgba(8,11,19,0.48)',
               position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
-            <Stack spacing={0} sx={{ position: 'relative', zIndex: 1 }}>
+            <Stack spacing={0} sx={{ position: 'relative', zIndex: 1, flex: 1 }}>
               <Stack
-                spacing={post.caption ? 1.6 : 1.2}
+                spacing={post.caption ? 1.2 : 1}
                 sx={{
-                px: { xs: 2.5, md: 3 },
-                pt: { xs: 2.5, md: 3 },
-                pb: { xs: 1.8, md: 2 },
-              }}
-            >
+                  px: { xs: 2, md: 2.5 },
+                  pt: { xs: 2, md: 2.4 },
+                  pb: { xs: 1.4, md: 1.6 },
+                }}
+              >
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Avatar
                     src={post.authorAvatar}
                     alt={post.authorName}
                     sx={{
-                    width: 44,
-                    height: 44,
-                    backgroundColor: 'rgba(242,242,242,0.08)',
-                    color: 'rgba(244,244,245,0.94)',
-                  }}
-                >
-                  {post.authorName?.charAt(0).toUpperCase()}
-                </Avatar>
-                <Box>
-                  <Typography variant="subtitle2" color="rgba(245,245,245,0.94)" sx={{ fontWeight: 600 }}>
-                    {post.authorName || 'Anonymous'}
+                      width: 40,
+                      height: 40,
+                      backgroundColor: 'rgba(242,242,242,0.08)',
+                      color: 'rgba(244,244,245,0.94)',
+                    }}
+                  >
+                    {post.authorName?.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      color="rgba(245,245,245,0.94)"
+                      sx={{ fontWeight: 600, lineHeight: 1.3 }}
+                    >
+                      {post.authorName || 'Anonymous'}
+                    </Typography>
+                    <Typography variant="caption" color="rgba(212,212,212,0.74)">
+                      {formatRelativeTime(post.createdAt)}
+                    </Typography>
+                  </Box>
+                </Stack>
+                {post.caption && (
+                  <Typography
+                    variant="body2"
+                    color="rgba(244,244,245,0.9)"
+                    sx={{ wordBreak: 'break-word', lineHeight: 1.5 }}
+                  >
+                    {post.caption}
                   </Typography>
-                  <Typography variant="caption" color="rgba(212,212,212,0.74)">
-                    {formatRelativeTime(post.createdAt)}
-                  </Typography>
-                </Box>
+                )}
               </Stack>
-              {post.caption && (
-                <Typography variant="body2" color="rgba(244,244,245,0.9)" sx={{ wordBreak: 'break-word' }}>
-                  {post.caption}
-                </Typography>
-              )}
-            </Stack>
 
-            <ButtonBase
-              onClick={() => onSelectPost(post)}
-              sx={{
-                display: 'block',
-                width: '100%',
-                p: 0,
-                borderRadius: 0,
-                overflow: 'hidden',
-                backgroundColor: 'transparent',
-              }}
-              aria-label="Open post preview"
-            >
+              <ButtonBase
+                onClick={() => onSelectPost(post)}
+                sx={{
+                  display: 'block',
+                  width: '100%',
+                  p: 0,
+                  borderRadius: 0,
+                  overflow: 'hidden',
+                  backgroundColor: 'transparent',
+                }}
+                aria-label="Open post preview"
+              >
                 <Box
                   component="img"
                   src={post.imageUrl}
@@ -622,44 +632,44 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     objectFit: 'contain',
                     display: 'block',
                     backgroundColor: '#050505',
-                }}
-              />
-            </ButtonBase>
+                  }}
+                />
+              </ButtonBase>
 
-            <Stack
-              direction="row"
-              spacing={2}
-              sx={{
-                px: { xs: 2.5, md: 3 },
-                py: { xs: 1.6, md: 1.8 },
-                borderTop: '1px solid rgba(148,163,184,0.18)',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 1.5,
-              }}
-            >
-              <ButtonBase
-                disableRipple
+              <Stack
+                direction="row"
+                spacing={1.5}
                 sx={{
-                  display: 'inline-flex',
+                  px: { xs: 2, md: 2.5 },
+                  py: { xs: 1.1, md: 1.3 },
+                  borderTop: '1px solid rgba(148,163,184,0.14)',
                   alignItems: 'center',
-                  gap: 1,
-                  px: 1.75,
-                  py: 0.8,
-                  borderRadius: 999,
-                  backgroundColor: 'rgba(255,255,255,0.12)',
-                  color: 'rgba(249,250,251,0.92)',
-                  transition: 'background-color 180ms ease',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                  },
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 1.2,
                 }}
               >
+                <ButtonBase
+                  disableRipple
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.9,
+                    px: 1.4,
+                    py: 0.6,
+                    borderRadius: 999,
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    color: 'rgba(249,250,251,0.9)',
+                    transition: 'background-color 160ms ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.18)',
+                    },
+                  }}
+                >
                 <Box component="span" sx={{ fontSize: '1.1rem' }}>
                   🔥
                 </Box>
-                <Typography variant="body2" color="rgba(249,250,251,0.9)">React</Typography>
+                <Typography variant="body2" color="rgba(249,250,251,0.88)">React</Typography>
                 <Typography variant="caption" color="rgba(227,227,227,0.82)">
                   {engagement.reactions}
                 </Typography>
@@ -669,30 +679,30 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                 sx={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 1,
-                  px: 1.75,
-                  py: 0.8,
+                  gap: 0.9,
+                  px: 1.4,
+                  py: 0.6,
                   borderRadius: 999,
-                  backgroundColor: 'rgba(255,255,255,0.12)',
-                  color: 'rgba(249,250,251,0.92)',
-                  transition: 'background-color 180ms ease',
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  color: 'rgba(249,250,251,0.9)',
+                  transition: 'background-color 160ms ease',
                   '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    backgroundColor: 'rgba(255,255,255,0.18)',
                   },
                 }}
               >
                 <Box component="span" sx={{ fontSize: '1.1rem' }}>
                   💬
                 </Box>
-                <Typography variant="body2" color="rgba(249,250,251,0.9)">Comment</Typography>
+                <Typography variant="body2" color="rgba(249,250,251,0.88)">Comment</Typography>
                 <Typography variant="caption" color="rgba(227,227,227,0.82)">
                   {engagement.comments}
                 </Typography>
               </ButtonBase>
-              <Typography variant="body2" color="rgba(232,232,232,0.78)">
+              <Typography variant="caption" color="rgba(232,232,232,0.75)">
                 Tap the image to zoom full screen
               </Typography>
-            </Stack>
+              </Stack>
             </Stack>
           </Box>
         );
@@ -833,7 +843,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
       sx={{
         width: '100%',
         mx: 'auto',
-        mt: { xs: -18, md: -22 },
+        mt: { xs: -8, md: -12 },
         mb: { xs: 6, md: 10 },
         px: { xs: 2, sm: 3, md: 6 },
         color: '#f8fafc',
