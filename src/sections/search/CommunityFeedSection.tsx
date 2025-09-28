@@ -83,6 +83,26 @@ const FEED_PAGE_SIZE = 12;
 
 const DEFAULT_ERROR_MESSAGE = 'Unable to load the community feed right now. Please try again shortly.';
 
+function pseudoRandomFromString(source: string, min: number, max: number): number {
+  if (max <= min) return min;
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash << 5) - hash + source.charCodeAt(index);
+    hash |= 0;
+  }
+  const range = max - min + 1;
+  const value = Math.abs(hash) % range;
+  return value + min;
+}
+
+function getSimulatedEngagement(postId: string): { reactions: number; comments: number } {
+  const safeId = postId || 'seed';
+  return {
+    reactions: pseudoRandomFromString(safeId, 18, 240),
+    comments: pseudoRandomFromString(`${safeId}:comments`, 2, 64),
+  };
+}
+
 function resolveDisplayName(user: MaybeAppUser): string {
   if (!user) return 'Anonymous';
   const details = user.userDetails ?? {};
@@ -509,7 +529,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
           Be the first to share something epic.
         </Typography>
         <Typography variant="body2" color="rgba(226,232,240,0.65)" textAlign="center">
-          Upload a meme above and it will appear here instantly.
+          Upload a meme below and it will appear here instantly.
         </Typography>
         <Button
           variant="outlined"
@@ -524,88 +544,170 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
 
   return (
     <Stack spacing={{ xs: 3.5, md: 4 }} mt={0.5}>
-      {posts.map((post) => (
-        <Box
-          component="article"
-          key={post.id}
-          sx={{
-            borderRadius: { xs: 4, md: 5 },
-            border: '1px solid rgba(148,163,184,0.14)',
-            background: 'linear-gradient(155deg, rgba(8,12,28,0.96) 0%, rgba(2,6,23,0.98) 100%)',
-            overflow: 'hidden',
-            boxShadow: '0 36px 80px rgba(2,6,23,0.55)',
-          }}
-        >
-          <ButtonBase
-            onClick={() => onSelectPost(post)}
+      {posts.map((post) => {
+        const engagement = getSimulatedEngagement(post.id);
+        return (
+          <Box
+            component="article"
+            key={post.id}
             sx={{
-              display: 'block',
-              width: '100%',
-              p: 0,
-              borderRadius: 0,
+              borderRadius: { xs: 4, md: 5 },
+              border: '1px solid rgba(148,163,184,0.16)',
+              background: 'linear-gradient(155deg, rgba(8,12,28,0.96) 0%, rgba(2,6,23,0.98) 100%)',
               overflow: 'hidden',
-              backgroundColor: 'rgba(2,6,23,0.85)',
-              '&:hover': {
-                backgroundColor: 'rgba(15,23,42,0.65)',
-              },
+              boxShadow: '0 36px 82px rgba(2,6,23,0.55)',
             }}
           >
-            <Box
-              component="img"
-              src={post.imageUrl}
-              alt={post.caption || 'Community meme'}
-              sx={{
-                width: '100%',
-                height: 'auto',
-                maxHeight: { xs: '75dvh', md: '90dvh' },
-                objectFit: 'contain',
-                display: 'block',
-                backgroundColor: 'rgba(2,6,23,0.95)',
-              }}
-            />
-          </ButtonBase>
-          <Stack
-            spacing={1.5}
-            sx={{
-              px: { xs: 2.5, md: 3 },
-              py: { xs: 2.25, md: 2.75 },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Avatar
-                src={post.authorAvatar}
-                alt={post.authorName}
+            <Stack spacing={0}>
+              <Stack
+                spacing={post.caption ? 1.6 : 1.2}
                 sx={{
-                  width: 42,
-                  height: 42,
-                  backgroundColor: 'rgba(37,99,235,0.18)',
-                  color: 'rgba(191,219,254,0.92)',
+                  px: { xs: 2.5, md: 3 },
+                  pt: { xs: 2.5, md: 3 },
+                  pb: { xs: 1.8, md: 2 },
                 }}
               >
-                {post.authorName?.charAt(0).toUpperCase()}
-              </Avatar>
-              <Box>
-                <Typography variant="subtitle2" color="rgba(226,232,240,0.92)">
-                  {post.authorName || 'Anonymous'}
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Avatar
+                    src={post.authorAvatar}
+                    alt={post.authorName}
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      backgroundColor: 'rgba(37,99,235,0.18)',
+                      color: 'rgba(191,219,254,0.92)',
+                    }}
+                  >
+                    {post.authorName?.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle2" color="rgba(226,232,240,0.92)" sx={{ fontWeight: 600 }}>
+                      {post.authorName || 'Anonymous'}
+                    </Typography>
+                    <Typography variant="caption" color="rgba(148,163,184,0.82)">
+                      {formatRelativeTime(post.createdAt)}
+                    </Typography>
+                  </Box>
+                </Stack>
+                {post.caption && (
+                  <Typography variant="body2" color="rgba(226,232,240,0.88)" sx={{ wordBreak: 'break-word' }}>
+                    {post.caption}
+                  </Typography>
+                )}
+              </Stack>
+
+              <ButtonBase
+                onClick={() => onSelectPost(post)}
+                sx={{
+                  display: 'block',
+                  width: '100%',
+                  p: 0,
+                  borderRadius: 0,
+                  overflow: 'hidden',
+                  backgroundColor: 'rgba(2,6,23,0.95)',
+                  transition: 'background-color 180ms ease',
+                  '&:hover': {
+                    backgroundColor: 'rgba(15,23,42,0.78)',
+                  },
+                }}
+                aria-label="Open post preview"
+              >
+                <Box
+                  component="img"
+                  src={post.imageUrl}
+                  alt={post.caption || 'Community meme'}
+                  sx={{
+                    width: '100%',
+                    height: 'auto',
+                    maxHeight: { xs: '75dvh', md: '90dvh' },
+                    objectFit: 'contain',
+                    display: 'block',
+                    backgroundColor: 'rgba(2,6,23,0.95)',
+                  }}
+                />
+              </ButtonBase>
+
+              <Stack
+                direction="row"
+                spacing={2}
+                sx={{
+                  px: { xs: 2.5, md: 3 },
+                  py: { xs: 1.6, md: 1.8 },
+                  borderTop: '1px solid rgba(148,163,184,0.12)',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 1.5,
+                }}
+              >
+                <ButtonBase
+                  disableRipple
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    px: 1.75,
+                    py: 0.8,
+                    borderRadius: 999,
+                    backgroundColor: 'rgba(30,64,175,0.12)',
+                    color: 'rgba(248,250,252,0.9)',
+                    transition: 'background-color 180ms ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(59,130,246,0.18)',
+                    },
+                  }}
+                >
+                  <Box component="span" sx={{ fontSize: '1.1rem' }}>
+                    🔥
+                  </Box>
+                  <Typography variant="body2">React</Typography>
+                  <Typography variant="caption" color="rgba(148,163,184,0.8)">
+                    {engagement.reactions}
+                  </Typography>
+                </ButtonBase>
+                <ButtonBase
+                  disableRipple
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    px: 1.75,
+                    py: 0.8,
+                    borderRadius: 999,
+                    backgroundColor: 'rgba(30,64,175,0.12)',
+                    color: 'rgba(248,250,252,0.9)',
+                    transition: 'background-color 180ms ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(59,130,246,0.18)',
+                    },
+                  }}
+                >
+                  <Box component="span" sx={{ fontSize: '1.1rem' }}>
+                    💬
+                  </Box>
+                  <Typography variant="body2">Comment</Typography>
+                  <Typography variant="caption" color="rgba(148,163,184,0.8)">
+                    {engagement.comments}
+                  </Typography>
+                </ButtonBase>
+                <Typography variant="body2" color="rgba(148,163,184,0.78)">
+                  Tap the image to zoom full screen
                 </Typography>
-                <Typography variant="caption" color="rgba(148,163,184,0.85)">
-                  {formatRelativeTime(post.createdAt)}
-                </Typography>
-              </Box>
+              </Stack>
             </Stack>
-            {post.caption && (
-              <Typography variant="body2" color="rgba(226,232,240,0.88)" sx={{ wordBreak: 'break-word' }}>
-                {post.caption}
-              </Typography>
-            )}
-          </Stack>
-        </Box>
-      ))}
+          </Box>
+        );
+      })}
     </Stack>
   );
 }
 
-export default function CommunityFeedSection(): ReactElement | null {
+type CommunityFeedSectionProps = {
+  onPostsLoaded?: (posts: CommunityPost[]) => void;
+};
+
+export default function CommunityFeedSection(props: CommunityFeedSectionProps = {}): ReactElement | null {
+  const { onPostsLoaded } = props;
   const { user: rawUser } = useContext(UserContext);
   const user = isAppUser(rawUser) ? rawUser : null;
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -684,11 +786,17 @@ export default function CommunityFeedSection(): ReactElement | null {
       );
       setPosts(validPosts);
       setFeedState({ loading: false, error: null });
+      if (onPostsLoaded) {
+        onPostsLoaded(validPosts);
+      }
     } catch (err) {
       console.error('Failed to load community feed', err);
       setFeedState({ loading: false, error: DEFAULT_ERROR_MESSAGE });
+      if (onPostsLoaded) {
+        onPostsLoaded([]);
+      }
     }
-  }, []);
+  }, [onPostsLoaded]);
 
   useEffect(() => {
     loadFeed();
@@ -696,10 +804,16 @@ export default function CommunityFeedSection(): ReactElement | null {
 
   const handlePostCreated = useCallback(
     (post: CommunityPost) => {
-      setPosts((prev) => [post, ...prev]);
+      setPosts((prev) => {
+        const next = [post, ...prev];
+        if (onPostsLoaded) {
+          onPostsLoaded(next);
+        }
+        return next;
+      });
       setComposerNotice(null);
     },
-    []
+    [onPostsLoaded]
   );
 
   const handleComposerError = useCallback((message: string) => {
@@ -714,15 +828,6 @@ export default function CommunityFeedSection(): ReactElement | null {
     setPreviewPost(null);
   }, []);
 
-  const headingAccent = useMemo(
-    () => ({
-      background: 'linear-gradient(90deg, rgba(191,219,254,0.95) 0%, rgba(244,114,182,0.9) 100%)',
-      WebkitBackgroundClip: 'text',
-      color: 'transparent',
-    }),
-    []
-  );
-
   return (
     <Box
       component="section"
@@ -730,21 +835,34 @@ export default function CommunityFeedSection(): ReactElement | null {
         width: '100%',
         maxWidth: 'min(1120px, 100%)',
         mx: 'auto',
-        mt: { xs: 8, md: 12 },
+        mt: { xs: 0, md: 0.5 },
         mb: { xs: 6, md: 10 },
         px: { xs: 0, sm: 2 },
         color: '#f8fafc',
       }}
     >
       <Stack spacing={3}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700, letterSpacing: '-0.02em', ...headingAccent }}>
-            Community spotlight
-          </Typography>
-          <Typography variant="body1" color="rgba(226,232,240,0.75)" mt={1} maxWidth={520}>
-            Drop your latest creations and browse what the memeSRC community is remixing in real time.
-          </Typography>
-        </Box>
+        <FeedGrid
+          posts={posts}
+          loading={loading}
+          error={error}
+          onReload={loadFeed}
+          onSelectPost={handlePreviewPost}
+        />
+
+        {composerNotice && (
+          <Alert
+            severity="warning"
+            onClose={() => setComposerNotice(null)}
+            sx={{
+              borderRadius: 2,
+              backgroundColor: 'rgba(253,186,116,0.16)',
+              color: '#fed7aa',
+            }}
+          >
+            {composerNotice}
+          </Alert>
+        )}
 
         {user ? (
           <CommunityComposer user={user} onPostCreated={handlePostCreated} onError={handleComposerError} />
@@ -782,28 +900,6 @@ export default function CommunityFeedSection(): ReactElement | null {
             </Button>
           </Box>
         )}
-
-        {composerNotice && (
-          <Alert
-            severity="warning"
-            onClose={() => setComposerNotice(null)}
-            sx={{
-              borderRadius: 2,
-              backgroundColor: 'rgba(253,186,116,0.16)',
-              color: '#fed7aa',
-            }}
-          >
-            {composerNotice}
-          </Alert>
-        )}
-
-        <FeedGrid
-          posts={posts}
-          loading={loading}
-          error={error}
-          onReload={loadFeed}
-          onSelectPost={handlePreviewPost}
-        />
       </Stack>
 
       <Dialog

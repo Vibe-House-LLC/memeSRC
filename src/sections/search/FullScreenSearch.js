@@ -16,7 +16,6 @@ import FavoriteToggle from '../../components/FavoriteToggle';
 
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
-import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
 import {
   fetchLatestRelease,
@@ -50,17 +49,8 @@ const StyledGridContainer = styled(Grid)`
     min-height: 100dvh;
     background-color: #020617;
     background-image: radial-gradient(circle at top, rgba(96,165,250,0.12), transparent 55%);
-    padding-left: ${theme.spacing(3)};
-    padding-right: ${theme.spacing(3)};
-    ${theme.breakpoints.down('sm')} {
-      padding-left: ${theme.spacing(2)};
-      padding-right: ${theme.spacing(2)};
-    }
-    /* Reserve space so the logo is clear of the fixed navbar */
-    padding-top: ${NAVBAR_HEIGHT * 2}px;
-    /* Allow a little room at the bottom so floating buttons don't
-       overlap short pages without making the layout feel top heavy */
-    padding-bottom: ${NAVBAR_HEIGHT / 2}px;
+    padding: 0;
+    /* Edge-to-edge hero gradient lives inside the surface container */
     box-sizing: border-box;
   `}
 `;
@@ -389,20 +379,22 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const heroSurfaceSx = useMemo(
     () => ({
       width: '100%',
-      maxWidth: 'min(1040px, 100%)',
-      mx: 'auto',
-      borderRadius: { xs: 4, md: 6 },
-      overflow: 'hidden',
       position: 'relative',
-      boxShadow: '0 40px 90px rgba(2,6,23,0.55)',
-      border: '1px solid rgba(248, 250, 252, 0.18)',
-      minHeight: { xs: '78dvh', md: '80dvh' },
       display: 'flex',
       flexDirection: 'column',
+      justifyContent: 'space-between',
+      minHeight: '88vh',
+      minHeight: '88dvh',
+      paddingTop: { xs: `${NAVBAR_HEIGHT + 24}px`, md: `${NAVBAR_HEIGHT + 40}px` },
+      paddingBottom: { xs: 16, md: 24 },
       ...currentThemeBackground,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
+      borderRadius: 0,
+      border: 'none',
+      boxShadow: 'none',
       isolation: 'isolate',
+      overflow: 'hidden',
     }),
     [currentThemeBackground]
   );
@@ -410,13 +402,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const heroInnerSx = useMemo(
     () => ({
       position: 'relative',
-      zIndex: 1,
+      zIndex: 2,
+      width: '100%',
+      maxWidth: 'min(1040px, 100%)',
+      mx: 'auto',
       px: { xs: 3, sm: 6, md: 8 },
-      py: { xs: 4, sm: 6, md: 7 },
+      py: { xs: 0, sm: 0, md: 0 },
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
-      gap: { xs: 4, md: 5 },
+      gap: { xs: 4, md: 6 },
     }),
     []
   );
@@ -431,14 +426,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     []
   );
 
-  const heroFooterSx = useMemo(
-    () => ({
-      pt: { xs: 1, md: 2 },
-      pb: { xs: 1, md: 0 },
-    }),
-    []
-  );
-
   return (
     <>
       <StyledGridContainer container>
@@ -447,8 +434,21 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             sx={{
               position: 'absolute',
               inset: 0,
-              background: 'linear-gradient(180deg, rgba(15,23,42,0.05) 0%, rgba(2,6,23,0.25) 85%)',
-              zIndex: 0,
+              background: 'linear-gradient(180deg, rgba(15,23,42,0.12) 0%, rgba(15,23,42,0.22) 32%, rgba(2,6,23,0.65) 78%, rgba(2,6,23,0.95) 100%)',
+              zIndex: 1,
+              pointerEvents: 'none',
+            }}
+          />
+          <Box
+            sx={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: '42%',
+              background: 'linear-gradient(180deg, rgba(2,6,23,0) 0%, rgba(2,6,23,0.35) 45%, rgba(2,6,23,0.92) 100%)',
+              zIndex: 1,
+              pointerEvents: 'none',
             }}
           />
           <Box sx={heroInnerSx}>
@@ -618,12 +618,18 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 )}
               </Grid>
             </Box>
-            <Box sx={heroFooterSx}>
-              <FloatingActionButtons shows={show} showAd={showAd} variant="inline" />
-            </Box>
           </Box>
         </Box>
-        <CommunityFeedSection />
+        <Box
+          sx={{
+            width: '100%',
+            backgroundColor: '#020617',
+            px: { xs: 2, sm: 3, md: 6 },
+            pb: { xs: 8, md: 12 },
+          }}
+        >
+          <CommunityFeedSection />
+        </Box>
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>
