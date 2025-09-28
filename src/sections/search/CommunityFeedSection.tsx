@@ -28,6 +28,9 @@ import { LoadingButton } from '@mui/lab';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CloseIcon from '@mui/icons-material/Close';
+import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
+import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import { Link as RouterLink } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
 
@@ -552,12 +555,12 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
             sx={{
               width: '100%',
               borderRadius: { xs: 2.25, sm: 2.75, md: 3 },
-              border: '1px solid rgba(148,163,184,0.16)',
-              backgroundColor: 'rgba(13,16,24,0.9)',
-              backdropFilter: 'blur(26px) saturate(130%)',
-              WebkitBackdropFilter: 'blur(26px) saturate(130%)',
+              border: '1px solid rgba(148,163,184,0.24)',
+              backgroundColor: 'rgba(26,30,41,0.88)',
+              backdropFilter: 'blur(26px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(26px) saturate(160%)',
               overflow: 'hidden',
-              boxShadow: '0 24px 48px rgba(8,11,19,0.48)',
+              boxShadow: '0 24px 44px rgba(9,12,21,0.4)',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
@@ -636,73 +639,115 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                 />
               </ButtonBase>
 
-              <Stack
-                direction="row"
-                spacing={1.5}
+              <Box
                 sx={{
                   px: { xs: 2, md: 2.5 },
-                  py: { xs: 1.1, md: 1.3 },
+                  pt: { xs: 1.05, md: 1.2 },
+                  pb: { xs: 0.6, md: 0.75 },
                   borderTop: '1px solid rgba(148,163,184,0.14)',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 1.2,
+                }}
+              >
+                <Typography variant="caption" color="rgba(232,232,236,0.82)">
+                  {engagement.reactions.toLocaleString()} reactions · {engagement.comments.toLocaleString()} comments
+                </Typography>
+              </Box>
+
+              <Stack
+                direction="row"
+                sx={{
+                  px: { xs: 2, md: 2.5 },
+                  pb: { xs: 1, md: 1.2 },
+                  gap: 1,
+                  alignItems: 'stretch',
                 }}
               >
                 <ButtonBase
                   disableRipple
+                  aria-label="React to post"
                   sx={{
-                    display: 'inline-flex',
+                    flex: 1,
+                    display: 'flex',
                     alignItems: 'center',
-                    gap: 0.9,
-                    px: 1.4,
-                    py: 0.6,
-                    borderRadius: 999,
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    color: 'rgba(249,250,251,0.9)',
-                    transition: 'background-color 160ms ease',
+                    justifyContent: 'center',
+                    gap: 0.75,
+                    px: 1,
+                    py: 0.75,
+                    borderRadius: 1.75,
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    color: 'rgba(249,250,251,0.92)',
+                    transition: 'background-color 160ms ease, transform 160ms ease',
                     '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.18)',
+                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      transform: 'translateY(-1px)',
                     },
                   }}
                 >
-                <Box component="span" sx={{ fontSize: '1.1rem' }}>
-                  🔥
-                </Box>
-                <Typography variant="body2" color="rgba(249,250,251,0.88)">React</Typography>
-                <Typography variant="caption" color="rgba(227,227,227,0.82)">
-                  {engagement.reactions}
-                </Typography>
-              </ButtonBase>
-              <ButtonBase
-                disableRipple
-                sx={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 0.9,
-                  px: 1.4,
-                  py: 0.6,
-                  borderRadius: 999,
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  color: 'rgba(249,250,251,0.9)',
-                  transition: 'background-color 160ms ease',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.18)',
-                  },
-                }}
+                  <FavoriteBorderOutlinedIcon sx={{ fontSize: 20 }} />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    React
+                  </Typography>
+                </ButtonBase>
+                <ButtonBase
+                  disableRipple
+                  aria-label="Comment on post"
+                  sx={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 0.75,
+                    px: 1,
+                    py: 0.75,
+                    borderRadius: 1.75,
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    color: 'rgba(249,250,251,0.92)',
+                    transition: 'background-color 160ms ease, transform 160ms ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  <ChatBubbleOutlineOutlinedIcon sx={{ fontSize: 20 }} />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Comment
+                  </Typography>
+                </ButtonBase>
+                <ButtonBase
+                  disableRipple
+                  aria-label="Share post"
+                  sx={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 0.75,
+                    px: 1,
+                    py: 0.75,
+                    borderRadius: 1.75,
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    color: 'rgba(249,250,251,0.92)',
+                    transition: 'background-color 160ms ease, transform 160ms ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  <ShareOutlinedIcon sx={{ fontSize: 20 }} />
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Share
+                  </Typography>
+                </ButtonBase>
+              </Stack>
+
+              <Typography
+                variant="caption"
+                color="rgba(232,232,232,0.72)"
+                sx={{ px: { xs: 2, md: 2.5 }, pb: { xs: 1.2, md: 1.35 } }}
               >
-                <Box component="span" sx={{ fontSize: '1.1rem' }}>
-                  💬
-                </Box>
-                <Typography variant="body2" color="rgba(249,250,251,0.88)">Comment</Typography>
-                <Typography variant="caption" color="rgba(227,227,227,0.82)">
-                  {engagement.comments}
-                </Typography>
-              </ButtonBase>
-              <Typography variant="caption" color="rgba(232,232,232,0.75)">
                 Tap the image to zoom full screen
               </Typography>
-              </Stack>
             </Stack>
           </Box>
         );
