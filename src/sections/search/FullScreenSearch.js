@@ -73,7 +73,7 @@ const defaultBackground = `linear-gradient(45deg,
 
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata, persistSearchTerm }) {
   const { savedCids, cid, setCid, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
-  const { show, setShow, setSearchQuery } = useSearchDetails();
+  const { setShow, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
@@ -395,6 +395,17 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       boxShadow: 'none',
       isolation: 'isolate',
       overflow: 'hidden',
+      '&::after': {
+        content: '""',
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: { xs: '22dvh', md: '26dvh' },
+        background: 'linear-gradient(180deg, rgba(2, 6, 23, 0) 0%, rgba(2, 6, 23, 0.92) 75%, #020617 100%)',
+        pointerEvents: 'none',
+        zIndex: 1,
+      },
     }),
     [currentThemeBackground]
   );
@@ -430,15 +441,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     <>
       <StyledGridContainer container>
         <Box sx={heroSurfaceSx}>
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(180deg, rgba(15,23,42,0.12) 0%, rgba(15,23,42,0.22) 32%, rgba(2,6,23,0.65) 78%, rgba(2,6,23,0.95) 100%)',
-              zIndex: 1,
-              pointerEvents: 'none',
-            }}
-          />
           <Box sx={heroInnerSx}>
             <Box sx={heroContentSx}>
               <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 4}>
@@ -610,9 +612,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         </Box>
         <Box
           sx={{
-            width: '100%',
+            width: '100vw',
+            marginLeft: 'calc(50% - 50vw)',
+            marginRight: 'calc(50% - 50vw)',
             backgroundColor: '#020617',
-            px: { xs: 2, sm: 3, md: 6 },
             pb: { xs: 8, md: 12 },
           }}
         >

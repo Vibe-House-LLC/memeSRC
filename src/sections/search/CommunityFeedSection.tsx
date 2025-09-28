@@ -2,7 +2,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useState,
   type ChangeEvent,
   type ReactElement,
@@ -551,13 +550,14 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
             component="article"
             key={post.id}
             sx={{
-              borderRadius: { xs: 4, md: 5 },
-              border: '1px solid rgba(255,255,255,0.08)',
-              backgroundColor: 'rgba(12,12,12,0.72)',
-              backdropFilter: 'blur(26px) saturate(135%)',
-              WebkitBackdropFilter: 'blur(26px) saturate(135%)',
-              overflow: 'visible',
-              boxShadow: '0 42px 88px rgba(0,0,0,0.65)',
+              width: '100%',
+              borderRadius: { xs: 3, sm: 3.5, md: 4 },
+              border: '1px solid rgba(148,163,184,0.22)',
+              backgroundColor: 'rgba(15,17,25,0.92)',
+              backdropFilter: 'blur(30px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(30px) saturate(140%)',
+              overflow: 'hidden',
+              boxShadow: '0 36px 72px rgba(8,11,19,0.55)',
               position: 'relative',
             }}
           >
@@ -565,11 +565,11 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
               <Stack
                 spacing={post.caption ? 1.6 : 1.2}
                 sx={{
-                  px: { xs: 2.5, md: 3 },
-                  pt: { xs: 2.5, md: 3 },
-                  pb: { xs: 1.8, md: 2 },
-                }}
-              >
+                px: { xs: 2.5, md: 3 },
+                pt: { xs: 2.5, md: 3 },
+                pb: { xs: 1.8, md: 2 },
+              }}
+            >
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Avatar
                     src={post.authorAvatar}
@@ -606,12 +606,8 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                 width: '100%',
                 p: 0,
                 borderRadius: 0,
-                overflow: 'visible',
-                backgroundColor: 'rgba(8,8,8,0.75)',
-                transition: 'background-color 180ms ease',
-                '&:hover': {
-                  backgroundColor: 'rgba(32,32,32,0.75)',
-                },
+                overflow: 'hidden',
+                backgroundColor: 'transparent',
               }}
               aria-label="Open post preview"
             >
@@ -620,13 +616,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                   src={post.imageUrl}
                   alt={post.caption || 'Community meme'}
                   sx={{
-                    width: {
-                      xs: 'calc(100% + 28px)',
-                      md: 'calc(100% + 48px)',
-                    },
-                    maxWidth: 'none',
-                    ml: { xs: '-14px', md: '-24px' },
-                    mr: { xs: '-14px', md: '-24px' },
+                    width: '100%',
                     height: 'auto',
                     maxHeight: { xs: '75dvh', md: '90dvh' },
                     objectFit: 'contain',
@@ -642,7 +632,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
               sx={{
                 px: { xs: 2.5, md: 3 },
                 py: { xs: 1.6, md: 1.8 },
-                borderTop: '1px solid rgba(255,255,255,0.07)',
+                borderTop: '1px solid rgba(148,163,184,0.18)',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 flexWrap: 'wrap',
@@ -842,14 +832,14 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
       component="section"
       sx={{
         width: '100%',
-        maxWidth: 'min(1400px, 100%)',
         mx: 'auto',
         mt: { xs: -18, md: -22 },
         mb: { xs: 6, md: 10 },
-        px: { xs: 0.5, sm: 1, md: 1.5 },
+        px: { xs: 2, sm: 3, md: 6 },
         color: '#f8fafc',
         position: 'relative',
         zIndex: 2,
+        maxWidth: 'min(1120px, 100%)',
       }}
     >
       <Stack spacing={3}>
