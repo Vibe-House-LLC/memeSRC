@@ -552,10 +552,10 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
             key={post.id}
             sx={{
               borderRadius: { xs: 4, md: 5 },
-              border: '1px solid rgba(148,163,184,0.16)',
-              background: 'linear-gradient(155deg, rgba(8,12,28,0.96) 0%, rgba(2,6,23,0.98) 100%)',
-              overflow: 'hidden',
-              boxShadow: '0 36px 82px rgba(2,6,23,0.55)',
+              border: '1px solid rgba(120,120,120,0.38)',
+              background: 'linear-gradient(180deg, rgba(30,30,30,0.96) 0%, rgba(14,14,14,0.98) 100%)',
+              overflow: 'visible',
+              boxShadow: '0 32px 72px rgba(0,0,0,0.55)',
             }}
           >
             <Stack spacing={0}>
@@ -574,23 +574,23 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     sx={{
                       width: 44,
                       height: 44,
-                      backgroundColor: 'rgba(37,99,235,0.18)',
-                      color: 'rgba(191,219,254,0.92)',
+                      backgroundColor: 'rgba(120,120,120,0.32)',
+                      color: 'rgba(243,244,246,0.92)',
                     }}
                   >
                     {post.authorName?.charAt(0).toUpperCase()}
                   </Avatar>
                   <Box>
-                    <Typography variant="subtitle2" color="rgba(226,232,240,0.92)" sx={{ fontWeight: 600 }}>
+                    <Typography variant="subtitle2" color="rgba(229,229,229,0.92)" sx={{ fontWeight: 600 }}>
                       {post.authorName || 'Anonymous'}
                     </Typography>
-                    <Typography variant="caption" color="rgba(148,163,184,0.82)">
+                    <Typography variant="caption" color="rgba(163,163,163,0.78)">
                       {formatRelativeTime(post.createdAt)}
                     </Typography>
                   </Box>
                 </Stack>
                 {post.caption && (
-                  <Typography variant="body2" color="rgba(226,232,240,0.88)" sx={{ wordBreak: 'break-word' }}>
+                  <Typography variant="body2" color="rgba(235,235,235,0.88)" sx={{ wordBreak: 'break-word' }}>
                     {post.caption}
                   </Typography>
                 )}
@@ -603,11 +603,11 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                   width: '100%',
                   p: 0,
                   borderRadius: 0,
-                  overflow: 'hidden',
-                  backgroundColor: 'rgba(2,6,23,0.95)',
+                  overflow: 'visible',
+                  backgroundColor: '#101010',
                   transition: 'background-color 180ms ease',
                   '&:hover': {
-                    backgroundColor: 'rgba(15,23,42,0.78)',
+                    backgroundColor: '#1a1a1a',
                   },
                 }}
                 aria-label="Open post preview"
@@ -617,12 +617,18 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                   src={post.imageUrl}
                   alt={post.caption || 'Community meme'}
                   sx={{
-                    width: '100%',
+                    width: {
+                      xs: 'calc(100% + 40px)',
+                      md: 'calc(100% + 48px)',
+                    },
+                    maxWidth: 'none',
+                    ml: { xs: '-20px', md: '-24px' },
+                    mr: { xs: '-20px', md: '-24px' },
                     height: 'auto',
                     maxHeight: { xs: '75dvh', md: '90dvh' },
                     objectFit: 'contain',
                     display: 'block',
-                    backgroundColor: 'rgba(2,6,23,0.95)',
+                    backgroundColor: '#111111',
                   }}
                 />
               </ButtonBase>
@@ -633,7 +639,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                 sx={{
                   px: { xs: 2.5, md: 3 },
                   py: { xs: 1.6, md: 1.8 },
-                  borderTop: '1px solid rgba(148,163,184,0.12)',
+                  borderTop: '1px solid rgba(82,82,82,0.32)',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   flexWrap: 'wrap',
@@ -649,11 +655,11 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     px: 1.75,
                     py: 0.8,
                     borderRadius: 999,
-                    backgroundColor: 'rgba(30,64,175,0.12)',
-                    color: 'rgba(248,250,252,0.9)',
+                    backgroundColor: 'rgba(115,115,115,0.2)',
+                    color: 'rgba(244,244,244,0.9)',
                     transition: 'background-color 180ms ease',
                     '&:hover': {
-                      backgroundColor: 'rgba(59,130,246,0.18)',
+                      backgroundColor: 'rgba(163,163,163,0.24)',
                     },
                   }}
                 >
@@ -661,7 +667,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     🔥
                   </Box>
                   <Typography variant="body2">React</Typography>
-                  <Typography variant="caption" color="rgba(148,163,184,0.8)">
+                  <Typography variant="caption" color="rgba(163,163,163,0.8)">
                     {engagement.reactions}
                   </Typography>
                 </ButtonBase>
@@ -674,11 +680,11 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     px: 1.75,
                     py: 0.8,
                     borderRadius: 999,
-                    backgroundColor: 'rgba(30,64,175,0.12)',
-                    color: 'rgba(248,250,252,0.9)',
+                    backgroundColor: 'rgba(115,115,115,0.2)',
+                    color: 'rgba(244,244,244,0.9)',
                     transition: 'background-color 180ms ease',
                     '&:hover': {
-                      backgroundColor: 'rgba(59,130,246,0.18)',
+                      backgroundColor: 'rgba(163,163,163,0.24)',
                     },
                   }}
                 >
@@ -686,11 +692,11 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     💬
                   </Box>
                   <Typography variant="body2">Comment</Typography>
-                  <Typography variant="caption" color="rgba(148,163,184,0.8)">
+                  <Typography variant="caption" color="rgba(163,163,163,0.8)">
                     {engagement.comments}
                   </Typography>
                 </ButtonBase>
-                <Typography variant="body2" color="rgba(148,163,184,0.78)">
+                <Typography variant="body2" color="rgba(172,172,172,0.78)">
                   Tap the image to zoom full screen
                 </Typography>
               </Stack>
@@ -872,8 +878,8 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
           <Box
             sx={{
               borderRadius: 3,
-              border: '1px dashed rgba(255,255,255,0.18)',
-              backgroundColor: 'rgba(15,23,42,0.35)',
+              border: '1px dashed rgba(163,163,163,0.3)',
+              backgroundColor: 'rgba(18,18,18,0.6)',
               backdropFilter: 'blur(12px)',
               p: { xs: 3, md: 4 },
               textAlign: 'center',
@@ -882,7 +888,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
             <Typography variant="h6" color="rgba(226,232,240,0.88)">
               Sign in to share your memes
             </Typography>
-            <Typography variant="body2" color="rgba(226,232,240,0.65)" mt={1.5} mb={2.5}>
+            <Typography variant="body2" color="rgba(209,213,219,0.72)" mt={1.5} mb={2.5}>
               Upload originals, add captions, and see them land in the feed instantly.
             </Typography>
             <Button

@@ -47,8 +47,8 @@ const StyledGridContainer = styled(Grid)`
        Use min-height so content can extend when needed. */
     min-height: 100vh;
     min-height: 100dvh;
-    background-color: #020617;
-    background-image: radial-gradient(circle at top, rgba(96,165,250,0.12), transparent 55%);
+    background-color: #080808;
+    background-image: radial-gradient(circle at top, rgba(229,229,229,0.08), transparent 55%);
     padding: 0;
     /* Edge-to-edge hero gradient lives inside the surface container */
     box-sizing: border-box;
