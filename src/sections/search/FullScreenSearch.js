@@ -39,8 +39,8 @@ const NAVBAR_HEIGHT = 45;
 const AUTO_DISMISS_TOTAL_MS = 30 * 1000;
 const AUTO_DISMISS_MIN_VISIBLE_MS = 3 * 1000;
 const VISIBILITY_STORAGE_PREFIX = 'recentUpdateVisible:';
-const MOBILE_SECTION_GUTTER = 24;
-const DESKTOP_SECTION_GUTTER = 32;
+const MOBILE_SECTION_GUTTER = 6;
+const DESKTOP_SECTION_GUTTER = 16;
 const DESKTOP_STICKY_TOP_OFFSET = NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER;
 const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER * 2}px)`;
 const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER}px)`;
@@ -478,8 +478,14 @@ const heroSurfaceSx = useMemo(
             gap: { xs: 0.25, md: 4 },
             alignItems: 'stretch',
             px: { xs: 0, sm: 3, md: 4 },
-            paddingTop: { xs: `${NAVBAR_HEIGHT}px`, md: `${DESKTOP_STICKY_TOP_OFFSET}px` },
-            paddingBottom: { xs: `${MOBILE_SECTION_GUTTER}px`, md: `${DESKTOP_SECTION_GUTTER}px` },
+            paddingTop: {
+              xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
+              md: `${DESKTOP_STICKY_TOP_OFFSET}px`,
+            },
+            paddingBottom: {
+              xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
+              md: `${DESKTOP_SECTION_GUTTER}px`,
+            },
             backgroundColor: '#000',
           }}
         >
@@ -528,14 +534,14 @@ const heroSurfaceSx = useMemo(
                     gap: { xs: 3, md: 5 },
                   }}
                 >
-                  <Box
-                    sx={{
-                      ...heroInnerSx,
-                      maxWidth: 'min(960px, 100%)',
-                      px: { xs: 3, sm: 5, md: 6 },
-                      mt: 0,
-                    }}
-                  >
+                    <Box
+                      sx={{
+                        ...heroInnerSx,
+                        maxWidth: 'min(960px, 100%)',
+                        px: { xs: 3, sm: 5, md: 6 },
+                        mt: 0,
+                      }}
+                    >
                     <Box
                       sx={{
                         ...heroContentSx,

@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import { useState, useEffect, useContext } from 'react';
 // @mui
 import { styled } from '@mui/material/styles';
 import {
@@ -11,7 +11,6 @@ import {
   IconButton,
   Grid,
   Typography,
-  Slide,
   Chip,
   Popover,
   Button,
@@ -23,7 +22,6 @@ import {
 import { AutoFixHighRounded, Check, Close, LocalPoliceRounded } from '@mui/icons-material';
 // utils
 import { useLocation, useNavigate } from "react-router-dom";
-import { bgBlur } from '../../../utils/cssStyles';
 import { safeGetItem, safeSetItem } from '../../../utils/storage';
 // components
 import Iconify from '../../../components/iconify';
@@ -38,13 +36,17 @@ import { SnowEffect } from '../../../components/CountdownTimer';
 
 // ----------------------------------------------------------------------
 
-const StyledRoot = styled(AppBar)(({ theme }) => ({
-  ...bgBlur({ color: theme.palette.background.default }),
-  boxShadow: 'none',
-  overflow: 'hidden', // This line will hide the slide in/out animation outside the AppBar
+const StyledRoot = styled(AppBar)(() => ({
+  backgroundColor: '#000000',
+  borderBottom: '1px solid rgba(255,255,255,0.04)',
+  boxShadow: '0 2px 12px rgba(0, 0, 0, 0.65)',
+  color: '#fff',
+  position: 'static',
 }));
 
-const StyledToolbar = styled(Toolbar)({});
+const StyledToolbar = styled(Toolbar)(() => ({
+  backgroundColor: '#000000',
+}));
 
 // ----------------------------------------------------------------------
 
@@ -57,8 +59,6 @@ export default function Header({ onOpenNav }) {
   const { user } = useContext(UserContext);
   const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
   const location = useLocation();
-  const [showLogo, setShowLogo] = useState(false);
-  const containerRef = useRef(null);
   const [magicAlertOpen, setMagicAlertOpen] = useState(false);
   const { openSubscriptionDialog } = useContext(SubscribeDialogContext);
   const [proChipEl, setProChipEl] = useState(null);
@@ -94,30 +94,6 @@ export default function Header({ onOpenNav }) {
       </Link>
     </Grid>
   );
-
-  const handleScroll = useCallback(() => {
-    const currentScrollPos = window.pageYOffset;
-
-    // Show the logo if the user has scrolled down 1/3 of the view height, and it hasn't been shown yet
-    if (currentScrollPos > window.innerHeight / 3 && !showLogo) {
-      setShowLogo(true);
-    } else if (currentScrollPos <= window.innerHeight / 3 && showLogo) {
-      // Delay the hiding of the logo by 200 milliseconds
-      setTimeout(() => {
-        setShowLogo(false);
-      }, 200);
-    }
-  }, [showLogo]);
-
-  useEffect(() => {
-    if (location.pathname === '/') {
-      window.addEventListener('scroll', handleScroll);
-    }
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [location.pathname, handleScroll, user]);
 
   useEffect(() => {
     const hasDismissed = safeGetItem('earlyAccessInviteAlertDismissed')
@@ -157,7 +133,7 @@ export default function Header({ onOpenNav }) {
   return (
     <>
       <StyledRoot>
-      <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }} ref={containerRef}>
+        <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }}>
           <IconButton
             onClick={onOpenNav}
             aria-label="open navigation"
@@ -172,13 +148,7 @@ export default function Header({ onOpenNav }) {
 
           {/* <Searchbar /> */}
           <Box sx={{ flexGrow: 1 }} />
-          {location.pathname === '/' ? (
-            <Slide direction="up" container={containerRef.current} exit in={showLogo} mountOnEnter>
-              {renderLogo()}
-            </Slide>
-          ) : (
-            renderLogo()
-          )}
+          {renderLogo()}
 
           <Stack
             direction="row"
