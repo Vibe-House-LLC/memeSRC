@@ -43,6 +43,10 @@ const MOBILE_SECTION_GUTTER = 24;
 const DESKTOP_SECTION_GUTTER = 32;
 const DESKTOP_STICKY_TOP_OFFSET = NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER;
 const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${NAVBAR_HEIGHT + DESKTOP_SECTION_GUTTER * 2}px)`;
+const MOBILE_MAX_CARD_HEIGHT = `calc(100vh - ${NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER}px)`;
+const MOBILE_CARD_MIN_HEIGHT = 460;
+const MOBILE_CARD_PREFERRED_HEIGHT = 520;
+const MOBILE_CARD_HEIGHT = `min(${MOBILE_CARD_PREFERRED_HEIGHT}px, ${MOBILE_MAX_CARD_HEIGHT})`;
 
 // Simplified grid container
 const StyledGridContainer = styled(Grid)`
@@ -484,18 +488,19 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             elevation={0}
             sx={{
               borderRadius: { xs: '0px 0px 28px 28px', md: 4 },
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderTop: { xs: 'none', md: '1px solid rgba(255,255,255,0.06)' },
-              background: 'rgba(8,8,10,0.92)',
-              boxShadow: '0 30px 70px rgba(2,4,12,0.65)',
+              border: '1px solid rgba(70,70,70,0.22)',
+              borderTop: { xs: 'none', md: '1px solid rgba(70,70,70,0.22)' },
+              background: 'rgba(10,10,10,0.92)',
+              boxShadow: 'none',
               overflow: 'hidden',
-              minHeight: { xs: 'auto', md: DESKTOP_STICKY_HEIGHT },
-              height: { xs: 'auto', md: DESKTOP_STICKY_HEIGHT },
               display: 'flex',
               flexDirection: 'column',
               position: { xs: 'relative', md: 'sticky' },
               top: { md: DESKTOP_STICKY_TOP_OFFSET },
               alignSelf: { xs: 'stretch', md: 'start' },
+              maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+              minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+              height: { xs: MOBILE_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
             }}
           >
             <Box
@@ -520,9 +525,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   sx={{
                     ...heroSurfaceSx,
                     minHeight: '100%',
-                    paddingTop: { xs: 32, md: 40 },
-                    paddingBottom: { xs: 32, md: 40 },
-                    gap: { xs: 4, md: 5 },
+                    paddingTop: { xs: 24, md: 40 },
+                    paddingBottom: { xs: 24, md: 40 },
+                    gap: { xs: 3, md: 5 },
                   }}
                 >
                   <Box
@@ -533,8 +538,20 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       mt: 0,
                     }}
                   >
-                    <Box sx={heroContentSx}>
-                      <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 4}>
+                    <Box
+                      sx={{
+                        ...heroContentSx,
+                        justifyContent: 'flex-start',
+                        minHeight: { xs: MOBILE_CARD_MIN_HEIGHT - 140, md: 'auto' },
+                        pt: { xs: 1, md: 0 },
+                      }}
+                    >
+                      <Grid
+                        container
+                        justifyContent="center"
+                        pb={isMd ? 0 : 4}
+                        sx={{ flexGrow: 1, alignContent: 'center', rowGap: { xs: 2.4, md: 4 } }}
+                      >
                         <Grid container justifyContent="center">
                           <Grid item textAlign="center" marginBottom={1.5}>
                             <Box onClick={() => handleChangeSeries(safeGetItem(`defaultsearch${user?.sub}`) || '_universal')}>

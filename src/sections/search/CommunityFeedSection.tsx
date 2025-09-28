@@ -326,23 +326,23 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
     <Box
       sx={{
         borderRadius: { xs: 4, md: 5 },
-        border: '1px solid rgba(148,163,184,0.18)',
-        background: 'linear-gradient(160deg, rgba(15,23,42,0.88) 0%, rgba(2,6,23,0.96) 100%)',
+        border: '1px solid rgba(110,110,110,0.22)',
+        backgroundColor: 'rgba(22,22,22,0.94)',
         backdropFilter: 'blur(18px)',
         p: { xs: 3, md: 4 },
-        boxShadow: '0 32px 72px rgba(2,6,23,0.55)',
+        boxShadow: 'none',
       }}
     >
-                <Stack direction={isSmall ? 'column' : 'row'} spacing={{ xs: 3, md: 4 }} alignItems="flex-start">
+      <Stack direction={isSmall ? 'column' : 'row'} spacing={{ xs: 3, md: 4 }} alignItems="flex-start">
         <Avatar
           src={resolveAvatarUrl(user)}
           alt={resolveDisplayName(user)}
           sx={{
             width: 56,
             height: 56,
-            border: '2px solid rgba(191,219,254,0.45)',
-            backgroundColor: 'rgba(15,23,42,0.6)',
-            boxShadow: '0 22px 44px rgba(2,6,23,0.55)',
+            border: '2px solid rgba(140,140,140,0.4)',
+            backgroundColor: 'rgba(38,38,38,0.85)',
+            boxShadow: 'none',
           }}
         >
           {resolveDisplayName(user).charAt(0).toUpperCase()}
@@ -358,11 +358,11 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
             variant="outlined"
             InputProps={{
               sx: {
-                backgroundColor: 'rgba(15,23,42,0.72)',
+                backgroundColor: 'rgba(36,36,36,0.92)',
                 borderRadius: 3,
                 '& fieldset': { borderColor: 'transparent' },
-                '&:hover fieldset': { borderColor: 'rgba(148,163,184,0.35)' },
-                color: 'rgba(226,232,240,0.96)',
+                '&:hover fieldset': { borderColor: 'rgba(150,150,150,0.32)' },
+                color: 'rgba(236,236,236,0.94)',
               },
             }}
             sx={{ width: '100%' }}
@@ -374,8 +374,8 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
               startIcon={<AddPhotoAlternateIcon />}
               sx={{
                 borderRadius: 999,
-                borderColor: 'rgba(148,163,184,0.35)',
-                color: 'rgba(226,232,240,0.92)',
+                borderColor: 'rgba(150,150,150,0.35)',
+                color: 'rgba(236,236,236,0.9)',
                 textTransform: 'none',
                 fontWeight: 600,
                 px: 2.5,
@@ -388,26 +388,26 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
             <Box flex={1} minHeight={0}>
               {selectedFile ? (
                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
-                  <Typography variant="body2" color="rgba(226,232,240,0.85)" noWrap>
+                  <Typography variant="body2" color="rgba(238,238,238,0.86)" noWrap>
                     {selectedFile.name}
                   </Typography>
                   <IconButton
                     size="small"
                     onClick={() => setSelectedFile(null)}
-                    sx={{ color: 'rgba(226,232,240,0.65)' }}
+                    sx={{ color: 'rgba(210,210,210,0.72)' }}
                   >
                     <CloseIcon fontSize="small" />
                   </IconButton>
                 </Stack>
               ) : (
-                <Typography variant="body2" color="rgba(148,163,184,0.7)">
+                <Typography variant="body2" color="rgba(200,200,200,0.65)">
                   PNG, JPG, GIF, or WebP up to 10 MB.
                 </Typography>
               )}
             </Box>
             <LoadingButton
               variant="contained"
-              color="secondary"
+              color="inherit"
               onClick={handleSubmit}
               loading={progress.stage !== 'idle'}
               sx={{
@@ -416,7 +416,15 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
                 textTransform: 'none',
                 fontWeight: 600,
                 alignSelf: { xs: 'stretch', sm: 'center' },
-                boxShadow: '0 14px 34px rgba(2,6,23,0.45)',
+                boxShadow: 'none',
+                backgroundColor: '#3a3a3a',
+                color: '#f5f5f5',
+                '&:hover': {
+                  backgroundColor: '#4a4a4a',
+                },
+                '&:active': {
+                  backgroundColor: '#2f2f2f',
+                },
               }}
             >
               Share it
@@ -429,9 +437,9 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
               sx={{
                 borderRadius: 999,
                 height: 6,
-                backgroundColor: 'rgba(15,23,42,0.55)',
+                backgroundColor: 'rgba(48,48,48,0.7)',
                 '& .MuiLinearProgress-bar': {
-                  background: 'linear-gradient(90deg, #60a5fa 0%, #f472b6 100%)',
+                  background: 'linear-gradient(90deg, #d4d4d4 0%, #a3a3a3 100%)',
                 },
               }}
             />
@@ -439,7 +447,7 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
           {composerError && (
             <Alert
               severity="error"
-              sx={{ borderRadius: 3, backgroundColor: 'rgba(239,68,68,0.14)', color: '#fecaca' }}
+              sx={{ borderRadius: 3, backgroundColor: 'rgba(68,68,68,0.22)', color: '#fca5a5' }}
             >
               {composerError}
             </Alert>
@@ -450,11 +458,11 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
                 position: 'relative',
                 borderRadius: { xs: 3, md: 4 },
                 overflow: 'hidden',
-                border: '1px solid rgba(148,163,184,0.25)',
-                  maxHeight: 'min(60vh, 60svh)',
+                border: '1px solid rgba(110,110,110,0.32)',
+                maxHeight: 'min(60vh, 60svh)',
                 maxWidth: isSmall ? '100%' : 420,
-                boxShadow: '0 20px 48px rgba(2,6,23,0.55)',
-                backgroundColor: 'rgba(15,23,42,0.85)',
+                boxShadow: 'none',
+                backgroundColor: 'rgba(18,18,18,0.9)',
               }}
             >
               <Box
@@ -475,10 +483,10 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
                   position: 'absolute',
                   top: 8,
                   right: 8,
-                  backgroundColor: 'rgba(2,6,23,0.7)',
-                  color: 'rgba(226,232,240,0.92)',
+                  backgroundColor: 'rgba(28,28,28,0.78)',
+                  color: 'rgba(236,236,236,0.92)',
                   '&:hover': {
-                    backgroundColor: 'rgba(2,6,23,0.9)',
+                    backgroundColor: 'rgba(46,46,46,0.92)',
                   },
                 }}
               >
@@ -504,7 +512,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" py={6}>
-        <CircularProgress size={36} sx={{ color: 'rgba(226,232,240,0.85)' }} />
+        <CircularProgress size={36} sx={{ color: 'rgba(230,230,230,0.85)' }} />
       </Box>
     );
   }
@@ -519,7 +527,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
           variant="outlined"
           onClick={onReload}
           startIcon={<RefreshIcon />}
-          sx={{ borderRadius: 2, borderColor: 'rgba(255,255,255,0.24)', color: 'rgba(255,255,255,0.92)' }}
+          sx={{ borderRadius: 2, borderColor: 'rgba(200,200,200,0.28)', color: 'rgba(235,235,235,0.9)' }}
         >
           Retry loading
         </Button>
@@ -533,13 +541,13 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
         <Typography variant="h6" color="rgba(226,232,240,0.88)" textAlign="center">
           Be the first to share something epic.
         </Typography>
-        <Typography variant="body2" color="rgba(226,232,240,0.65)" textAlign="center">
+        <Typography variant="body2" color="rgba(210,210,210,0.7)" textAlign="center">
           Upload a meme below and it will appear here instantly.
         </Typography>
         <Button
           variant="outlined"
           onClick={onReload}
-          sx={{ borderRadius: 2, borderColor: 'rgba(255,255,255,0.24)', color: 'rgba(255,255,255,0.92)' }}
+          sx={{ borderRadius: 2, borderColor: 'rgba(200,200,200,0.28)', color: 'rgba(235,235,235,0.9)' }}
         >
           Refresh feed
         </Button>
@@ -565,12 +573,12 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
             sx={{
               width: '100%',
               borderRadius: { xs: 3, md: 3.5 },
-              border: '1px solid rgba(148,163,184,0.18)',
-              backgroundColor: 'rgba(26,30,41,0.9)',
-              backdropFilter: 'blur(26px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(26px) saturate(160%)',
+              border: '1px solid rgba(120,120,120,0.24)',
+              backgroundColor: 'rgba(24,24,24,0.92)',
+              backdropFilter: 'blur(22px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(22px) saturate(140%)',
               overflow: 'hidden',
-              boxShadow: '0 20px 42px rgba(9,12,21,0.38)',
+              boxShadow: 'none',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
@@ -592,8 +600,8 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     sx={{
                       width: 40,
                       height: 40,
-                      backgroundColor: 'rgba(242,242,242,0.08)',
-                      color: 'rgba(244,244,245,0.94)',
+                      backgroundColor: 'rgba(70,70,70,0.3)',
+                      color: 'rgba(240,240,240,0.94)',
                     }}
                   >
                     {post.authorName?.charAt(0).toUpperCase()}
@@ -601,12 +609,12 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                   <Box>
                     <Typography
                       variant="subtitle2"
-                      color="rgba(245,245,245,0.94)"
+                      color="rgba(240,240,240,0.94)"
                       sx={{ fontWeight: 600, lineHeight: 1.3 }}
                     >
                       {post.authorName || 'Anonymous'}
                     </Typography>
-                    <Typography variant="caption" color="rgba(212,212,212,0.74)">
+                    <Typography variant="caption" color="rgba(200,200,200,0.72)">
                       {formatRelativeTime(post.createdAt)}
                     </Typography>
                   </Box>
@@ -614,7 +622,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                 {post.caption && (
                   <Typography
                     variant="body2"
-                    color="rgba(244,244,245,0.9)"
+                    color="rgba(235,235,235,0.88)"
                     sx={{ wordBreak: 'break-word', lineHeight: 1.5 }}
                   >
                     {post.caption}
@@ -644,7 +652,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     maxHeight: { xs: 'min(68vh, 70svh)', md: 'min(72vh, 76svh)' },
                     objectFit: 'contain',
                     display: 'block',
-                    backgroundColor: '#050505',
+                    backgroundColor: '#0b0b0b',
                   }}
                 />
               </ButtonBase>
@@ -654,10 +662,10 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                   px: { xs: 2, md: 2.4 },
                   pt: { xs: 0.9, md: 1.05 },
                   pb: { xs: 0.55, md: 0.65 },
-                  borderTop: '1px solid rgba(148,163,184,0.14)',
+                  borderTop: '1px solid rgba(110,110,110,0.18)',
                 }}
               >
-                <Typography variant="caption" color="rgba(232,232,236,0.82)">
+                <Typography variant="caption" color="rgba(220,220,220,0.78)">
                   {engagement.reactions.toLocaleString()} reactions · {engagement.comments.toLocaleString()} comments
                 </Typography>
               </Box>
@@ -683,11 +691,11 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     px: 1,
                     py: 0.75,
                     borderRadius: 1.75,
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    color: 'rgba(249,250,251,0.92)',
+                    backgroundColor: 'rgba(80,80,80,0.22)',
+                    color: 'rgba(240,240,240,0.9)',
                     transition: 'background-color 160ms ease, transform 160ms ease',
                     '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      backgroundColor: 'rgba(100,100,100,0.28)',
                       transform: 'translateY(-1px)',
                     },
                   }}
@@ -709,11 +717,11 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     px: 1,
                     py: 0.75,
                     borderRadius: 1.75,
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    color: 'rgba(249,250,251,0.92)',
+                    backgroundColor: 'rgba(80,80,80,0.22)',
+                    color: 'rgba(240,240,240,0.9)',
                     transition: 'background-color 160ms ease, transform 160ms ease',
                     '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      backgroundColor: 'rgba(100,100,100,0.28)',
                       transform: 'translateY(-1px)',
                     },
                   }}
@@ -735,11 +743,11 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     px: 1,
                     py: 0.75,
                     borderRadius: 1.75,
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    color: 'rgba(249,250,251,0.92)',
+                    backgroundColor: 'rgba(80,80,80,0.22)',
+                    color: 'rgba(240,240,240,0.9)',
                     transition: 'background-color 160ms ease, transform 160ms ease',
                     '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      backgroundColor: 'rgba(100,100,100,0.28)',
                       transform: 'translateY(-1px)',
                     },
                   }}
@@ -753,7 +761,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
 
               <Typography
                 variant="caption"
-                color="rgba(232,232,232,0.72)"
+                color="rgba(215,215,215,0.7)"
                 sx={{ px: { xs: 2, md: 2.4 }, pb: { xs: 1.15, md: 1.2 } }}
               >
                 Tap the image to zoom full screen
@@ -898,9 +906,9 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
         elevation={0}
         sx={{
           borderRadius: { xs: 3.5, md: 4 },
-          border: '1px solid rgba(148,163,184,0.2)',
-          background: 'linear-gradient(170deg, rgba(15,23,42,0.96) 0%, rgba(2,6,23,0.98) 100%)',
-          boxShadow: '0 28px 66px rgba(8,12,26,0.5)',
+          border: '1px solid rgba(120,120,120,0.2)',
+          backgroundColor: 'rgba(18,18,18,0.95)',
+          boxShadow: 'none',
           display: 'flex',
           flexDirection: 'column',
           width: '100%',
@@ -922,11 +930,12 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
         >
           <Typography
             component="h2"
-            variant="subtitle1"
+            variant="h6"
             sx={{
-              fontWeight: 600,
-              letterSpacing: 0.18,
-              color: 'rgba(226,232,240,0.92)',
+              fontWeight: 700,
+              letterSpacing: 0.2,
+              color: 'rgba(235,235,235,0.94)',
+              fontSize: { xs: '1.15rem', md: '1.25rem' },
             }}
           >
             Community Feed
@@ -938,8 +947,8 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
               onClose={() => setComposerNotice(null)}
               sx={{
                 borderRadius: 2,
-                backgroundColor: 'rgba(253,186,116,0.16)',
-                color: '#fed7aa',
+                backgroundColor: 'rgba(120,120,120,0.18)',
+                color: '#f5f5f5',
               }}
             >
               {composerNotice}
@@ -970,17 +979,17 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
               <Box
                 sx={{
                   borderRadius: 3,
-                  border: '1px dashed rgba(163,163,163,0.3)',
-                  backgroundColor: 'rgba(18,18,18,0.6)',
+                  border: '1px dashed rgba(120,120,120,0.4)',
+                  backgroundColor: 'rgba(28,28,28,0.8)',
                   backdropFilter: 'blur(12px)',
                   p: { xs: 3, md: 3.5 },
                   textAlign: 'center',
                 }}
               >
-                <Typography variant="h6" color="rgba(226,232,240,0.9)">
+              <Typography variant="h6" color="rgba(232,232,232,0.92)">
                   Sign in to share your memes
                 </Typography>
-                <Typography variant="body2" color="rgba(209,213,219,0.72)" mt={1.5} mb={2.5}>
+              <Typography variant="body2" color="rgba(210,210,210,0.7)" mt={1.5} mb={2.5}>
                   Upload originals, add captions, and see them land in the feed instantly.
                 </Typography>
                 <Button
