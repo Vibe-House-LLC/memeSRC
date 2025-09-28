@@ -564,11 +564,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       <Grid
                         container
                         justifyContent="center"
-                        pb={isMd ? 0 : 4}
-                        sx={{ flexGrow: 1, alignContent: 'center', rowGap: { xs: 2.4, md: 4 } }}
+                        pb={isMd ? 0 : 1.4}
+                        sx={{ flexGrow: 1, alignContent: 'center', rowGap: { xs: 1.2, md: 2 } }}
                       >
                         <Grid container justifyContent="center">
-                          <Grid item textAlign="center" marginBottom={1.5}>
+                          <Grid item textAlign="center" marginBottom={0.6}>
                             <Box onClick={() => handleChangeSeries(safeGetItem(`defaultsearch${user?.sub}`) || '_universal')}>
                               <Logo
                                 color={currentThemeFontColor || 'white'}
@@ -711,7 +711,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                             />
                           </Grid>
                         </Grid>
-                        <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={1.6} marginTop={0.8}>
+                        <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={0.8} marginTop={0.4}>
                           <Typography component="h2" variant="h4" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' }, fontWeight: 500 }}>
                             {currentThemeBragText}
                           </Typography>
