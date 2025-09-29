@@ -531,20 +531,25 @@ function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
         boxShadow: '0 34px 68px rgba(18,7,36,0.6)',
         display: 'flex',
         flexDirection: 'column',
-        px: { xs: 3.4, md: 3 },
-        py: { xs: 3.6, md: 3 },
-        gap: 2.4,
+        px: { xs: 3.1, sm: 3.8, md: 4.6, lg: 5.4 },
+        py: { xs: 3.6, sm: 4.2, md: 5, lg: 5.4 },
+        gap: { xs: 1.6, sm: 1.9, md: 2.3 },
+        maxWidth: { xs: '100%', sm: 640, md: 780 },
+        mx: { xs: 0, sm: 'auto' },
       }}
     >
       <IconButton
         aria-label="Dismiss intro"
         onClick={onDismiss}
+        size="medium"
         sx={{
           position: 'absolute',
           top: { xs: 12, md: 16 },
           right: { xs: 12, md: 16 },
           color: 'rgba(255,255,255,0.92)',
           backgroundColor: 'rgba(0,0,0,0.26)',
+          width: { xs: 36, sm: 38, md: 40 },
+          height: { xs: 36, sm: 38, md: 40 },
           '&:hover': {
             backgroundColor: 'rgba(0,0,0,0.4)',
           },
@@ -553,31 +558,44 @@ function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
         <CloseIcon fontSize="small" />
       </IconButton>
 
-      <Stack spacing={1.5} sx={{ maxWidth: 560 }}>
+      <Stack
+        spacing={{ xs: 1.6, sm: 2.1, md: 2.6 }}
+        sx={{
+          width: '100%',
+          maxWidth: { xs: '100%', sm: 560, md: 660 },
+          textAlign: { xs: 'center', sm: 'left' },
+          alignItems: { xs: 'center', sm: 'flex-start' },
+        }}
+      >
         <Typography
           component="h3"
           variant="h3"
           sx={{
             fontWeight: 800,
-            letterSpacing: -0.2,
             color: '#fff',
             textShadow: '0 22px 55px rgba(38,7,32,0.7)',
+            fontSize: { xs: '2.24rem', sm: '2.62rem', md: '3.12rem', lg: '3.32rem' },
+            lineHeight: { xs: 1.08, md: 1.1 },
+            letterSpacing: { xs: -0.22, md: -0.3 },
+            textAlign: 'inherit',
           }}
         >
-          Welcome to the feed.
+          Welcome home.
         </Typography>
         <Typography
-          variant="h6"
+          component="p"
+          variant="body1"
           sx={{
-            color: 'rgba(255,255,255,0.92)',
-            fontWeight: 700,
-            letterSpacing: 0.3,
+            color: 'rgba(255,255,255,0.93)',
+            fontWeight: 600,
+            letterSpacing: { xs: 0.1, md: 0.14 },
+            fontSize: { xs: '1.08rem', sm: '1.16rem', md: '1.24rem' },
+            lineHeight: { xs: 1.6, md: 1.68 },
+            maxWidth: { xs: '100%', sm: 540 },
+            textAlign: 'inherit',
           }}
         >
-          Share your work. Get inspired.
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.84)', fontWeight: 600 }}>
-          Tap any meme to zoom. Upload yours under 10MB and it drops in instantly.
+          You can now browse, react, and share your OC memes directly with the memeSRC community.
         </Typography>
       </Stack>
     </Box>
@@ -1087,7 +1105,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
                   textAlign: { xs: 'center', md: 'left' },
                 }}
               >
-                Community Feed
+                Community
               </Typography>
             </Box>
           </Box>
