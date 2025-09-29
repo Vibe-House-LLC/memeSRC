@@ -32,7 +32,6 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
-import Diversity3RoundedIcon from '@mui/icons-material/Diversity3Rounded';
 import { Link as RouterLink } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
 
@@ -94,7 +93,6 @@ const FEED_ACTION_BG_HOVER = 'rgba(84, 97, 200, 0.3)';
 const DEFAULT_ERROR_MESSAGE = 'Unable to load the community feed right now. Please try again shortly.';
 const COMMUNITY_FEED_CACHE_KEY = 'community-feed-cache:v1';
 const COMMUNITY_FEED_CACHE_TTL_MS = 5 * 60 * 1000;
-const COMMUNITY_FEED_INTRO_DISMISSED_KEY = 'community-feed-intro-dismissed:v1';
 
 function pseudoRandomFromString(source: string, min: number, max: number): number {
   if (max <= min) return min;
@@ -507,17 +505,19 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
   );
 }
 
-interface FeedGridProps {
+interface CommunityIntroCardProps {
+  onCreatePost: () => void;
+}
+
+type FeedGridProps = {
   posts: CommunityPost[];
   loading: boolean;
   onReload: () => void;
   error: string | null;
   onSelectPost: (post: CommunityPost) => void;
-  showIntroCard: boolean;
-  onDismissIntro: () => void;
-}
+};
 
-function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
+function CommunityIntroCard({ onCreatePost }: CommunityIntroCardProps) {
   return (
     <Box
       component="article"
@@ -538,26 +538,6 @@ function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
         mx: { xs: 0, sm: 'auto' },
       }}
     >
-      <IconButton
-        aria-label="Dismiss intro"
-        onClick={onDismiss}
-        size="medium"
-        sx={{
-          position: 'absolute',
-          top: { xs: 12, md: 16 },
-          right: { xs: 12, md: 16 },
-          color: 'rgba(255,255,255,0.92)',
-          backgroundColor: 'rgba(0,0,0,0.26)',
-          width: { xs: 36, sm: 38, md: 40 },
-          height: { xs: 36, sm: 38, md: 40 },
-          '&:hover': {
-            backgroundColor: 'rgba(0,0,0,0.4)',
-          },
-        }}
-      >
-        <CloseIcon fontSize="small" />
-      </IconButton>
-
       <Stack
         spacing={{ xs: 2.4, sm: 2.3, md: 2.6 }}
         sx={{
@@ -602,7 +582,7 @@ function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
         <Button
           variant="contained"
           color="inherit"
-          onClick={onDismiss}
+          onClick={onCreatePost}
           startIcon={<CheckCircleRoundedIcon sx={{ fontSize: 20, color: 'rgba(18,7,36,0.82)' }} />}
           sx={{
             alignSelf: 'stretch',
@@ -624,14 +604,14 @@ function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
             },
           }}
         >
-          Dismiss
+          Create Post
         </Button>
       </Stack>
     </Box>
   );
 }
 
-function FeedGrid({ posts, loading, onReload, error, onSelectPost, showIntroCard, onDismissIntro }: FeedGridProps) {
+function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridProps) {
   return (
     <Stack
       spacing={{ xs: 2.6, md: 2.8 }}
@@ -698,8 +678,6 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost, showIntroCard
           </Button>
         </Stack>
       ) : null}
-
-      {showIntroCard && <CommunityIntroCard onDismiss={onDismissIntro} />}
 
       {posts.map((post) => {
         const engagement = getSimulatedEngagement(post.id);
@@ -930,10 +908,6 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
   const [{ loading, error }, setFeedState] = useState<FeedState>({ loading: true, error: null });
   const [composerNotice, setComposerNotice] = useState<string | null>(null);
   const [previewPost, setPreviewPost] = useState<CommunityPost | null>(null);
-  const [introDismissed, setIntroDismissed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem(COMMUNITY_FEED_INTRO_DISMISSED_KEY) === '1';
-  });
 
   const readCache = useCallback((): { posts: CommunityPost[]; timestamp: number } | null => {
     if (typeof window === 'undefined') return null;
@@ -1085,60 +1059,33 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
     setPreviewPost(null);
   }, []);
 
-  const handleDismissIntro = useCallback(() => {
-    setIntroDismissed(true);
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(COMMUNITY_FEED_INTRO_DISMISSED_KEY, '1');
-    } catch {
-      // no-op
+  const handleCreatePostRequest = useCallback(() => {
+    if (user) {
+      const target = document.getElementById('community-composer');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
     }
-  }, []);
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  }, [user]);
 
   return (
     <>
-      <Stack spacing={{ xs: 0.7, md: 1.4 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 0.6, md: 0 } }}>
+      <Stack spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 } }}>
         <Box
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.4,
-            justifyContent: { xs: 'center', md: 'flex-start' },
             px: { xs: 0, md: 0 },
             mx: { xs: -3, md: 0 },
-            flexWrap: 'wrap',
-            rowGap: 1,
-            py: { xs: 1.5, md: 1.5 },
+            pt: { xs: 0, md: 0 },
+            pb: { xs: 0, md: 0 },
           }}
         >
-          <Box sx={{ px: { xs: 3, md: 0 } }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: { xs: 'center', md: 'flex-start' },
-                gap: { xs: 1.1, md: 1.4 },
-              }}
-            >
-              <Diversity3RoundedIcon sx={{ fontSize: { xs: 28, sm: 30 }, color: 'rgba(235,235,235,0.95)' }} />
-              <Typography
-                component="h2"
-                variant="h6"
-                sx={{
-                  fontWeight: 700,
-                  letterSpacing: 0.2,
-                  color: 'rgba(235,235,235,0.95)',
-                  fontSize: { xs: '1.2rem', md: '1.28rem' },
-                  textShadow: '1px 1px 3px rgba(0, 0, 0, 0.28)',
-                  textAlign: { xs: 'center', md: 'left' },
-                }}
-              >
-                Community
-              </Typography>
-            </Box>
-          </Box>
+          <CommunityIntroCard onCreatePost={handleCreatePostRequest} />
         </Box>
-        <Stack spacing={{ xs: 1.8, md: 2.8 }} sx={{ width: '100%' }}>
+        <Stack spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%' }}>
           {composerNotice && (
             <Alert
               severity="warning"
@@ -1171,8 +1118,6 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
                 error={error}
                 onReload={loadFeed}
                 onSelectPost={handlePreviewPost}
-                showIntroCard={!introDismissed}
-                onDismissIntro={handleDismissIntro}
               />
             </Box>
           </Box>
@@ -1180,7 +1125,9 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
           <Box sx={{ flexShrink: 0, px: { xs: 0, md: 0 }, mx: { xs: -3, md: 0 } }}>
             <Box sx={{ px: { xs: 3, md: 0 } }}>
               {user ? (
-                <CommunityComposer user={user} onPostCreated={handlePostCreated} onError={handleComposerError} />
+                <Box id="community-composer">
+                  <CommunityComposer user={user} onPostCreated={handlePostCreated} onError={handleComposerError} />
+                </Box>
               ) : (
                 <Box
                   sx={{
