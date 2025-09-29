@@ -83,12 +83,18 @@ const COMMUNITY_PREFIX = 'community/posts/';
 const METADATA_SUFFIX = '.json';
 const MAX_CAPTION_LENGTH = 140;
 const FEED_PAGE_SIZE = 12;
-const FEED_SURFACE_COLOR = '#1f1f1f';
-const FEED_BORDER_COLOR = 'rgba(255, 255, 255, 0.06)';
+const FEED_SURFACE_COLOR = '#101c38';
+const FEED_BORDER_COLOR = 'rgba(84, 97, 200, 0.32)';
+const FEED_INTRO_SURFACE_COLOR = '#c724b1';
+const FEED_ACCENT_COLOR = '#5461c8';
+const FEED_ACCENT_SECONDARY = '#00a3e0';
+const FEED_ACTION_BG = 'rgba(84, 97, 200, 0.18)';
+const FEED_ACTION_BG_HOVER = 'rgba(84, 97, 200, 0.3)';
 
 const DEFAULT_ERROR_MESSAGE = 'Unable to load the community feed right now. Please try again shortly.';
 const COMMUNITY_FEED_CACHE_KEY = 'community-feed-cache:v1';
 const COMMUNITY_FEED_CACHE_TTL_MS = 5 * 60 * 1000;
+const COMMUNITY_FEED_INTRO_DISMISSED_KEY = 'community-feed-intro-dismissed:v1';
 
 function pseudoRandomFromString(source: string, min: number, max: number): number {
   if (max <= min) return min;
@@ -359,10 +365,10 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
             variant="outlined"
             InputProps={{
               sx: {
-                backgroundColor: 'rgba(36,36,36,0.92)',
+                backgroundColor: 'rgba(12,17,34,0.92)',
                 borderRadius: 3,
-                '& fieldset': { borderColor: 'transparent' },
-                '&:hover fieldset': { borderColor: 'rgba(150,150,150,0.32)' },
+                '& fieldset': { borderColor: 'rgba(84,97,200,0.4)' },
+                '&:hover fieldset': { borderColor: FEED_ACCENT_SECONDARY },
                 color: 'rgba(236,236,236,0.94)',
               },
             }}
@@ -376,7 +382,7 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
               sx={{
                 borderRadius: 999,
                 borderColor: 'rgba(150,150,150,0.35)',
-                color: 'rgba(236,236,236,0.9)',
+                color: 'rgba(226,237,255,0.94)',
                 textTransform: 'none',
                 fontWeight: 600,
                 px: 2.5,
@@ -507,9 +513,78 @@ interface FeedGridProps {
   onReload: () => void;
   error: string | null;
   onSelectPost: (post: CommunityPost) => void;
+  showIntroCard: boolean;
+  onDismissIntro: () => void;
 }
 
-function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridProps) {
+function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <Box
+      component="article"
+      sx={{
+        width: '100%',
+        borderRadius: { xs: '28px', md: 3.5 },
+        border: '1px solid rgba(255,255,255,0.28)',
+        background: `linear-gradient(135deg, ${FEED_INTRO_SURFACE_COLOR} 0%, #ff6900 100%)`,
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: '0 34px 68px rgba(18,7,36,0.6)',
+        display: 'flex',
+        flexDirection: 'column',
+        px: { xs: 3.4, md: 3 },
+        py: { xs: 3.6, md: 3 },
+        gap: 2.4,
+      }}
+    >
+      <IconButton
+        aria-label="Dismiss intro"
+        onClick={onDismiss}
+        sx={{
+          position: 'absolute',
+          top: { xs: 12, md: 16 },
+          right: { xs: 12, md: 16 },
+          color: 'rgba(255,255,255,0.92)',
+          backgroundColor: 'rgba(0,0,0,0.26)',
+          '&:hover': {
+            backgroundColor: 'rgba(0,0,0,0.4)',
+          },
+        }}
+      >
+        <CloseIcon fontSize="small" />
+      </IconButton>
+
+      <Stack spacing={1.5} sx={{ maxWidth: 560 }}>
+        <Typography
+          component="h3"
+          variant="h3"
+          sx={{
+            fontWeight: 800,
+            letterSpacing: -0.2,
+            color: '#fff',
+            textShadow: '0 22px 55px rgba(38,7,32,0.7)',
+          }}
+        >
+          Welcome to the feed.
+        </Typography>
+        <Typography
+          variant="h6"
+          sx={{
+            color: 'rgba(255,255,255,0.92)',
+            fontWeight: 700,
+            letterSpacing: 0.3,
+          }}
+        >
+          Share your work. Get inspired.
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.84)', fontWeight: 600 }}>
+          Tap any meme to zoom. Upload yours under 10MB and it drops in instantly.
+        </Typography>
+      </Stack>
+    </Box>
+  );
+}
+
+function FeedGrid({ posts, loading, onReload, error, onSelectPost, showIntroCard, onDismissIntro }: FeedGridProps) {
   return (
     <Stack
       spacing={{ xs: 2.6, md: 2.8 }}
@@ -523,20 +598,28 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
     >
       {loading && (
         <Box display="flex" justifyContent="center" py={6}>
-          <CircularProgress size={36} sx={{ color: 'rgba(230,230,230,0.85)' }} />
+          <CircularProgress size={36} sx={{ color: FEED_ACCENT_SECONDARY }} />
         </Box>
       )}
 
       {!loading && error && (
         <Stack spacing={2} alignItems="center" py={6}>
-          <Alert severity="error" sx={{ borderRadius: 2, backgroundColor: 'rgba(239,68,68,0.12)', color: '#fecaca' }}>
+          <Alert severity="error" sx={{ borderRadius: 2, backgroundColor: 'rgba(84,97,200,0.22)', color: '#fca5a5' }}>
             {error}
           </Alert>
           <Button
             variant="outlined"
             onClick={onReload}
             startIcon={<RefreshIcon />}
-            sx={{ borderRadius: 2, borderColor: 'rgba(200,200,200,0.28)', color: 'rgba(235,235,235,0.9)' }}
+            sx={{
+              borderRadius: 2,
+              borderColor: FEED_BORDER_COLOR,
+              color: 'rgba(226, 237, 255, 0.92)',
+              '&:hover': {
+                borderColor: FEED_ACCENT_SECONDARY,
+                backgroundColor: FEED_ACTION_BG,
+              },
+            }}
           >
             Retry loading
           </Button>
@@ -554,12 +637,22 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
           <Button
             variant="outlined"
             onClick={onReload}
-            sx={{ borderRadius: 2, borderColor: 'rgba(200,200,200,0.28)', color: 'rgba(235,235,235,0.9)' }}
+            sx={{
+              borderRadius: 2,
+              borderColor: FEED_BORDER_COLOR,
+              color: 'rgba(226, 237, 255, 0.92)',
+              '&:hover': {
+                borderColor: FEED_ACCENT_SECONDARY,
+                backgroundColor: FEED_ACTION_BG,
+              },
+            }}
           >
             Refresh feed
           </Button>
         </Stack>
       ) : null}
+
+      {showIntroCard && <CommunityIntroCard onDismiss={onDismissIntro} />}
 
       {posts.map((post) => {
         const engagement = getSimulatedEngagement(post.id);
@@ -574,7 +667,7 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
               backgroundColor: FEED_SURFACE_COLOR,
               position: 'relative',
               overflow: 'hidden',
-              boxShadow: '0 24px 48px rgba(0,0,0,0.32)',
+              boxShadow: '0 28px 64px rgba(15,19,40,0.52)',
               display: 'flex',
               flexDirection: 'column',
             }}
@@ -686,12 +779,14 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     px: 1,
                     py: 0.75,
                     borderRadius: 1.75,
-                    backgroundColor: 'rgba(54,54,54,0.42)',
-                    color: 'rgba(240,240,240,0.92)',
-                    transition: 'background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease',
+                    backgroundColor: FEED_ACTION_BG,
+                    color: 'rgba(229,235,255,0.92)',
+                    border: `1px solid ${FEED_BORDER_COLOR}`,
+                    transition: 'background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                     '&:hover': {
-                      backgroundColor: 'rgba(74,74,74,0.52)',
-                      boxShadow: '0 10px 24px rgba(6,6,6,0.38)',
+                      backgroundColor: FEED_ACTION_BG_HOVER,
+                      boxShadow: '0 18px 36px rgba(12,18,50,0.42)',
+                      borderColor: FEED_ACCENT_SECONDARY,
                       transform: 'translateY(-1px)',
                     },
                   }}
@@ -713,12 +808,14 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     px: 1,
                     py: 0.75,
                     borderRadius: 1.75,
-                    backgroundColor: 'rgba(54,54,54,0.42)',
-                    color: 'rgba(240,240,240,0.92)',
-                    transition: 'background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease',
+                    backgroundColor: FEED_ACTION_BG,
+                    color: 'rgba(229,235,255,0.92)',
+                    border: `1px solid ${FEED_BORDER_COLOR}`,
+                    transition: 'background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                     '&:hover': {
-                      backgroundColor: 'rgba(74,74,74,0.52)',
-                      boxShadow: '0 10px 24px rgba(6,6,6,0.38)',
+                      backgroundColor: FEED_ACTION_BG_HOVER,
+                      boxShadow: '0 18px 36px rgba(12,18,50,0.42)',
+                      borderColor: FEED_ACCENT_SECONDARY,
                       transform: 'translateY(-1px)',
                     },
                   }}
@@ -740,12 +837,14 @@ function FeedGrid({ posts, loading, onReload, error, onSelectPost }: FeedGridPro
                     px: 1,
                     py: 0.75,
                     borderRadius: 1.75,
-                    backgroundColor: 'rgba(54,54,54,0.42)',
-                    color: 'rgba(240,240,240,0.92)',
-                    transition: 'background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease',
+                    backgroundColor: FEED_ACTION_BG,
+                    color: 'rgba(229,235,255,0.92)',
+                    border: `1px solid ${FEED_BORDER_COLOR}`,
+                    transition: 'background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                     '&:hover': {
-                      backgroundColor: 'rgba(74,74,74,0.52)',
-                      boxShadow: '0 10px 24px rgba(6,6,6,0.38)',
+                      backgroundColor: FEED_ACTION_BG_HOVER,
+                      boxShadow: '0 18px 36px rgba(12,18,50,0.42)',
+                      borderColor: FEED_ACCENT_SECONDARY,
                       transform: 'translateY(-1px)',
                     },
                   }}
@@ -784,6 +883,10 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
   const [{ loading, error }, setFeedState] = useState<FeedState>({ loading: true, error: null });
   const [composerNotice, setComposerNotice] = useState<string | null>(null);
   const [previewPost, setPreviewPost] = useState<CommunityPost | null>(null);
+  const [introDismissed, setIntroDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(COMMUNITY_FEED_INTRO_DISMISSED_KEY) === '1';
+  });
 
   const readCache = useCallback((): { posts: CommunityPost[]; timestamp: number } | null => {
     if (typeof window === 'undefined') return null;
@@ -935,6 +1038,16 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
     setPreviewPost(null);
   }, []);
 
+  const handleDismissIntro = useCallback(() => {
+    setIntroDismissed(true);
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(COMMUNITY_FEED_INTRO_DISMISSED_KEY, '1');
+    } catch {
+      // no-op
+    }
+  }, []);
+
   return (
     <>
         <Stack spacing={{ xs: 1.8, md: 2.8 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 2, md: 0 } }}>
@@ -1012,6 +1125,8 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
               error={error}
               onReload={loadFeed}
               onSelectPost={handlePreviewPost}
+              showIntroCard={!introDismissed}
+              onDismissIntro={handleDismissIntro}
             />
           </Box>
         </Box>
