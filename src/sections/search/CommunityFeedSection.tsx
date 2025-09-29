@@ -937,20 +937,30 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
 
   return (
     <>
-        <Stack spacing={{ xs: 2.6, md: 2.8 }} sx={{ width: '100%', color: '#f8fafc' }}>
+        <Stack spacing={{ xs: 1.8, md: 2.8 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 2, md: 0 } }}>
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
             gap: 1.4,
+            justifyContent: { xs: 'center', md: 'flex-start' },
             px: { xs: 0, md: 0 },
             mx: { xs: -3, md: 0 },
             flexWrap: 'wrap',
             rowGap: 1,
+            pt: { xs: 1, md: 0 },
+            pb: { xs: 1.2, md: 0 },
           }}
         >
           <Box sx={{ px: { xs: 3, md: 0 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.4 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: { xs: 'center', md: 'flex-start' },
+                gap: { xs: 1.1, md: 1.4 },
+              }}
+            >
               <Diversity3RoundedIcon sx={{ fontSize: { xs: 28, sm: 30 }, color: 'rgba(148,163,184,0.92)' }} />
               <Typography
                 component="h2"
@@ -961,6 +971,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
                   color: 'rgba(235,235,235,0.95)',
                   fontSize: { xs: '1.2rem', md: '1.28rem' },
                   textShadow: '1px 1px 3px rgba(0, 0, 0, 0.28)',
+                  textAlign: { xs: 'center', md: 'left' },
                 }}
               >
                 Community Feed
@@ -979,6 +990,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
               color: '#f5f5f5',
               mx: { xs: -3, md: 0 },
               px: { xs: 3, md: 0 },
+              mt: { xs: 1.8, md: 0 },
             }}
           >
             {composerNotice}
