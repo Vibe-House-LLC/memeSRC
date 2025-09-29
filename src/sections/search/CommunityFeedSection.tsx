@@ -28,6 +28,7 @@ import { LoadingButton } from '@mui/lab';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
@@ -86,7 +87,6 @@ const FEED_PAGE_SIZE = 12;
 const FEED_SURFACE_COLOR = '#101c38';
 const FEED_BORDER_COLOR = 'rgba(84, 97, 200, 0.32)';
 const FEED_INTRO_SURFACE_COLOR = '#c724b1';
-const FEED_ACCENT_COLOR = '#5461c8';
 const FEED_ACCENT_SECONDARY = '#00a3e0';
 const FEED_ACTION_BG = 'rgba(84, 97, 200, 0.18)';
 const FEED_ACTION_BG_HOVER = 'rgba(84, 97, 200, 0.3)';
@@ -531,9 +531,9 @@ function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
         boxShadow: '0 34px 68px rgba(18,7,36,0.6)',
         display: 'flex',
         flexDirection: 'column',
-        px: { xs: 3.1, sm: 3.8, md: 4.6, lg: 5.4 },
-        py: { xs: 3.6, sm: 4.2, md: 5, lg: 5.4 },
-        gap: { xs: 1.6, sm: 1.9, md: 2.3 },
+        px: { xs: 3.6, sm: 4.1, md: 5, lg: 5.8 },
+        py: { xs: 5.4, sm: 5.4, md: 5.9, lg: 6.4 },
+        gap: { xs: 2.2, sm: 2.3, md: 2.5 },
         maxWidth: { xs: '100%', sm: 640, md: 780 },
         mx: { xs: 0, sm: 'auto' },
       }}
@@ -559,12 +559,12 @@ function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
       </IconButton>
 
       <Stack
-        spacing={{ xs: 1.6, sm: 2.1, md: 2.6 }}
+        spacing={{ xs: 2.4, sm: 2.3, md: 2.6 }}
         sx={{
           width: '100%',
           maxWidth: { xs: '100%', sm: 560, md: 660 },
-          textAlign: { xs: 'center', sm: 'left' },
-          alignItems: { xs: 'center', sm: 'flex-start' },
+          textAlign: 'left',
+          alignItems: 'stretch',
         }}
       >
         <Typography
@@ -574,10 +574,11 @@ function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
             fontWeight: 800,
             color: '#fff',
             textShadow: '0 22px 55px rgba(38,7,32,0.7)',
-            fontSize: { xs: '2.24rem', sm: '2.62rem', md: '3.12rem', lg: '3.32rem' },
-            lineHeight: { xs: 1.08, md: 1.1 },
+            fontSize: { xs: '1.8rem', sm: '2.4rem', md: '3.12rem', lg: '3.32rem' },
+            lineHeight: { xs: 1.14, md: 1.1 },
             letterSpacing: { xs: -0.22, md: -0.3 },
-            textAlign: 'inherit',
+            textAlign: 'left',
+            width: '100%',
           }}
         >
           Welcome home.
@@ -592,11 +593,39 @@ function CommunityIntroCard({ onDismiss }: { onDismiss: () => void }) {
             fontSize: { xs: '1.08rem', sm: '1.16rem', md: '1.24rem' },
             lineHeight: { xs: 1.6, md: 1.68 },
             maxWidth: { xs: '100%', sm: 540 },
-            textAlign: 'inherit',
+            textAlign: 'left',
+            width: '100%',
           }}
         >
-          You can now browse, react, and share your OC memes directly with the memeSRC community.
+          You can now post, browse, and react to memes directly on the memeSRC Community.
         </Typography>
+        <Button
+          variant="contained"
+          color="inherit"
+          onClick={onDismiss}
+          startIcon={<CheckCircleRoundedIcon sx={{ fontSize: 20, color: 'rgba(18,7,36,0.82)' }} />}
+          sx={{
+            alignSelf: 'stretch',
+            width: '100%',
+            mt: { xs: 2.3, sm: 1.6 },
+            borderRadius: 999,
+            px: { xs: 2.4, sm: 3.4 },
+            py: { xs: 1.1, sm: 1.05 },
+            textTransform: 'none',
+            fontWeight: 700,
+            color: 'rgba(18,7,36,0.9)',
+            backgroundColor: 'rgba(255,255,255,0.95)',
+            boxShadow: '0 16px 32px rgba(18,7,36,0.28)',
+            justifyContent: 'center',
+            textAlign: 'center',
+            gap: 1,
+            '&:hover': {
+              backgroundColor: 'rgba(255,255,255,1)',
+            },
+          }}
+        >
+          Dismiss
+        </Button>
       </Stack>
     </Box>
   );
@@ -1068,7 +1097,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
 
   return (
     <>
-        <Stack spacing={{ xs: 1.8, md: 2.8 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 2, md: 0 } }}>
+      <Stack spacing={{ xs: 0.7, md: 1.4 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 0.6, md: 0 } }}>
         <Box
           sx={{
             display: 'flex',
@@ -1079,8 +1108,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
             mx: { xs: -3, md: 0 },
             flexWrap: 'wrap',
             rowGap: 1,
-            pt: { xs: 1, md: 0 },
-            pb: { xs: 1.2, md: 0 },
+            py: { xs: 1.5, md: 1.5 },
           }}
         >
           <Box sx={{ px: { xs: 3, md: 0 } }}>
@@ -1092,7 +1120,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
                 gap: { xs: 1.1, md: 1.4 },
               }}
             >
-              <Diversity3RoundedIcon sx={{ fontSize: { xs: 28, sm: 30 }, color: 'rgba(148,163,184,0.92)' }} />
+              <Diversity3RoundedIcon sx={{ fontSize: { xs: 28, sm: 30 }, color: 'rgba(235,235,235,0.95)' }} />
               <Typography
                 component="h2"
                 variant="h6"
@@ -1110,84 +1138,85 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
             </Box>
           </Box>
         </Box>
+        <Stack spacing={{ xs: 1.8, md: 2.8 }} sx={{ width: '100%' }}>
+          {composerNotice && (
+            <Alert
+              severity="warning"
+              onClose={() => setComposerNotice(null)}
+              sx={{
+                borderRadius: 2,
+                backgroundColor: 'rgba(120,120,120,0.18)',
+                color: '#f5f5f5',
+                mx: { xs: -3, md: 0 },
+                px: { xs: 3, md: 0 },
+                mt: { xs: 1.8, md: 0 },
+              }}
+            >
+              {composerNotice}
+            </Alert>
+          )}
 
-        {composerNotice && (
-          <Alert
-            severity="warning"
-            onClose={() => setComposerNotice(null)}
+          <Box
             sx={{
-              borderRadius: 2,
-              backgroundColor: 'rgba(120,120,120,0.18)',
-              color: '#f5f5f5',
+              flex: 1,
+              minHeight: 0,
+              px: { xs: 0, md: 0 },
               mx: { xs: -3, md: 0 },
-              px: { xs: 3, md: 0 },
-              mt: { xs: 1.8, md: 0 },
             }}
           >
-            {composerNotice}
-          </Alert>
-        )}
-
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            px: { xs: 0, md: 0 },
-            mx: { xs: -3, md: 0 },
-          }}
-        >
-          <Box sx={{ px: { xs: 3, md: 0 } }}>
-            <FeedGrid
-              posts={posts}
-              loading={loading}
-              error={error}
-              onReload={loadFeed}
-              onSelectPost={handlePreviewPost}
-              showIntroCard={!introDismissed}
-              onDismissIntro={handleDismissIntro}
-            />
+            <Box sx={{ px: { xs: 3, md: 0 } }}>
+              <FeedGrid
+                posts={posts}
+                loading={loading}
+                error={error}
+                onReload={loadFeed}
+                onSelectPost={handlePreviewPost}
+                showIntroCard={!introDismissed}
+                onDismissIntro={handleDismissIntro}
+              />
+            </Box>
           </Box>
-        </Box>
 
-        <Box sx={{ flexShrink: 0, px: { xs: 0, md: 0 }, mx: { xs: -3, md: 0 } }}>
-          <Box sx={{ px: { xs: 3, md: 0 } }}>
-            {user ? (
-              <CommunityComposer user={user} onPostCreated={handlePostCreated} onError={handleComposerError} />
-            ) : (
-              <Box
-                sx={{
-                  borderRadius: { xs: '28px', md: 3.5 },
-                  border: '1px dashed rgba(255,255,255,0.08)',
-                  backgroundColor: FEED_SURFACE_COLOR,
-                  p: { xs: 3.6, md: 3.5 },
-                  textAlign: 'center',
-                }}
-              >
-                <Typography variant="h6" color="rgba(232,232,232,0.92)">
-                  Sign in to share your memes
-                </Typography>
-                <Typography variant="body2" color="rgba(210,210,210,0.7)" mt={1.5} mb={2.5}>
-                  Upload originals, add captions, and see them land in the feed instantly.
-                </Typography>
-                <Button
-                  component={RouterLink}
-                  to="/login"
-                  variant="contained"
-                  color="secondary"
+          <Box sx={{ flexShrink: 0, px: { xs: 0, md: 0 }, mx: { xs: -3, md: 0 } }}>
+            <Box sx={{ px: { xs: 3, md: 0 } }}>
+              {user ? (
+                <CommunityComposer user={user} onPostCreated={handlePostCreated} onError={handleComposerError} />
+              ) : (
+                <Box
                   sx={{
-                    borderRadius: 999,
-                    px: 3.5,
-                    py: 1,
-                    textTransform: 'none',
-                    fontWeight: 600,
+                    borderRadius: { xs: '28px', md: 3.5 },
+                    border: '1px dashed rgba(255,255,255,0.08)',
+                    backgroundColor: FEED_SURFACE_COLOR,
+                    p: { xs: 3.6, md: 3.5 },
+                    textAlign: 'center',
                   }}
                 >
-                  Sign in to post
-                </Button>
-              </Box>
-            )}
+                  <Typography variant="h6" color="rgba(232,232,232,0.92)">
+                    Sign in to share your memes
+                  </Typography>
+                  <Typography variant="body2" color="rgba(210,210,210,0.7)" mt={1.5} mb={2.5}>
+                    Upload originals, add captions, and see them land in the feed instantly.
+                  </Typography>
+                  <Button
+                    component={RouterLink}
+                    to="/login"
+                    variant="contained"
+                    color="secondary"
+                    sx={{
+                      borderRadius: 999,
+                      px: 3.5,
+                      py: 1,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Sign in to post
+                  </Button>
+                </Box>
+              )}
+            </Box>
           </Box>
-        </Box>
+        </Stack>
       </Stack>
 
       <Dialog
