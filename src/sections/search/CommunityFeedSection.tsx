@@ -2,6 +2,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ChangeEvent,
   type ReactElement,
@@ -14,6 +15,7 @@ import {
   Button,
   ButtonBase,
   CircularProgress,
+  Collapse,
   Dialog,
   DialogContent,
   IconButton,
@@ -21,8 +23,6 @@ import {
   Stack,
   TextField,
   Typography,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
@@ -258,20 +258,34 @@ async function uploadCommunityPost(
   };
 }
 
-interface CommunityComposerProps {
+interface CommunityComposerCardProps {
   user: AppUser;
+  expanded: boolean;
+  onExpandedChange: (next: boolean) => void;
   onPostCreated: (post: CommunityPost) => void;
   onError: (message: string) => void;
 }
 
-function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerProps) {
-  const theme = useTheme();
-  const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
+function CommunityComposerCard({
+  user,
+  expanded,
+  onExpandedChange,
+  onPostCreated,
+  onError,
+}: CommunityComposerCardProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [caption, setCaption] = useState('');
   const [progress, setProgress] = useState<UploadProgress>({ stage: 'idle', value: 0 });
   const [composerError, setComposerError] = useState<string | null>(null);
+  const captionInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (expanded && captionInputRef.current) {
+      captionInputRef.current.focus();
+    }
+  }, [expanded]);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -283,31 +297,45 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
     return () => URL.revokeObjectURL(nextPreviewUrl);
   }, [selectedFile]);
 
-  const handleFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      const message = 'Please choose an image file (jpeg, png, gif, or webp).';
-      setComposerError(message);
-      event.target.value = '';
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      const message = 'Please choose an image smaller than 10 MB.';
-      setComposerError(message);
-      event.target.value = '';
-      return;
-    }
-    setComposerError(null);
-    setSelectedFile(file);
-  }, []);
-
   const resetComposer = useCallback(() => {
     setSelectedFile(null);
     setCaption('');
     setProgress({ stage: 'idle', value: 0 });
     setComposerError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   }, []);
+
+  const handleFileChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        const message = 'Please choose an image file (jpeg, png, gif, or webp).';
+        setComposerError(message);
+        event.target.value = '';
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        const message = 'Please choose an image smaller than 10 MB.';
+        setComposerError(message);
+        event.target.value = '';
+        return;
+      }
+      setComposerError(null);
+      setSelectedFile(file);
+      if (!expanded) {
+        onExpandedChange(true);
+      }
+    },
+    [expanded, onExpandedChange],
+  );
+
+  const handleCancel = useCallback(() => {
+    resetComposer();
+    onExpandedChange(false);
+  }, [onExpandedChange, resetComposer]);
 
   const handleSubmit = useCallback(async () => {
     if (!selectedFile) {
@@ -319,6 +347,7 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
       const post = await uploadCommunityPost(selectedFile, caption, user, setProgress);
       onPostCreated(post);
       resetComposer();
+      onExpandedChange(false);
     } catch (error) {
       console.error('Failed to publish community post', error);
       const message = 'We could not publish your image. Please try again in a bit.';
@@ -326,180 +355,239 @@ function CommunityComposer({ user, onPostCreated, onError }: CommunityComposerPr
       onError(message);
       setProgress({ stage: 'idle', value: 0 });
     }
-  }, [caption, onError, onPostCreated, resetComposer, selectedFile, user]);
+  }, [caption, onError, onPostCreated, onExpandedChange, resetComposer, selectedFile, user]);
+
+  const showPreview = Boolean(previewUrl);
 
   return (
     <Box
       sx={{
-        borderRadius: { xs: '28px', md: 5 },
+        borderRadius: { xs: '28px', md: 3.5 },
         border: `1px solid ${FEED_BORDER_COLOR}`,
-        backgroundColor: FEED_SURFACE_COLOR,
-        p: { xs: 3.6, md: 4 },
-        boxShadow: 'none',
+        background: 'linear-gradient(180deg, rgba(10,16,36,0.92) 0%, rgba(12,17,34,0.94) 100%)',
+        px: { xs: 3.4, md: 4 },
+        py: { xs: 3.2, md: 3.8 },
+        boxShadow: '0 28px 64px rgba(10,16,32,0.45)',
       }}
     >
-      <Stack direction={isSmall ? 'column' : 'row'} spacing={{ xs: 3, md: 4 }} alignItems="flex-start">
-        <Avatar
-          src={resolveAvatarUrl(user)}
-          alt={resolveDisplayName(user)}
-          sx={{
-            width: 56,
-            height: 56,
-            border: '2px solid rgba(140,140,140,0.4)',
-            backgroundColor: 'rgba(38,38,38,0.85)',
-            boxShadow: 'none',
-          }}
-        >
-          {resolveDisplayName(user).charAt(0).toUpperCase()}
-        </Avatar>
-        <Stack spacing={2.5} flex={1} width="100%">
-          <TextField
-            value={caption}
-            onChange={(event) => setCaption(event.target.value.slice(0, MAX_CAPTION_LENGTH))}
-            placeholder="Add a quick caption (optional)"
-            multiline
-            minRows={2}
-            maxRows={4}
-            variant="outlined"
-            InputProps={{
-              sx: {
-                backgroundColor: 'rgba(12,17,34,0.92)',
-                borderRadius: 3,
-                '& fieldset': { borderColor: 'rgba(84,97,200,0.4)' },
-                '&:hover fieldset': { borderColor: FEED_ACCENT_SECONDARY },
-                color: 'rgba(236,236,236,0.94)',
-              },
-            }}
-            sx={{ width: '100%' }}
-          />
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+      <Stack spacing={{ xs: 2.4, md: 2.6 }}>
+        <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
+          <Stack direction="row" spacing={1.8} alignItems="center">
+            <Avatar
+              src={resolveAvatarUrl(user)}
+              alt={resolveDisplayName(user)}
+              sx={{
+                width: 52,
+                height: 52,
+                border: '2px solid rgba(148, 163, 234, 0.25)',
+                backgroundColor: 'rgba(39,54,112,0.45)',
+                color: 'rgba(235,240,255,0.92)',
+              }}
+            >
+              {resolveDisplayName(user).charAt(0).toUpperCase()}
+            </Avatar>
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'rgba(235,240,255,0.94)' }}>
+                Share something with the community
+              </Typography>
+              <Typography variant="body2" color="rgba(203,213,225,0.74)">
+                Drop a meme, add a caption, let Welcome Home know what you're feeling.
+              </Typography>
+            </Box>
+          </Stack>
+          {!expanded && (
             <Button
-              variant="outlined"
-              component="label"
+              variant="contained"
+              color="inherit"
+              onClick={() => onExpandedChange(true)}
               startIcon={<AddPhotoAlternateIcon />}
               sx={{
                 borderRadius: 999,
-                borderColor: 'rgba(150,150,150,0.35)',
-                color: 'rgba(226,237,255,0.94)',
                 textTransform: 'none',
                 fontWeight: 600,
-                px: 2.5,
-                flexShrink: 0,
-              }}
-            >
-              {selectedFile ? 'Change image' : 'Add image'}
-              <input hidden accept="image/*" type="file" onChange={handleFileChange} />
-            </Button>
-            <Box flex={1} minHeight={0}>
-              {selectedFile ? (
-                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
-                  <Typography variant="body2" color="rgba(238,238,238,0.86)" noWrap>
-                    {selectedFile.name}
-                  </Typography>
-                  <IconButton
-                    size="small"
-                    onClick={() => setSelectedFile(null)}
-                    sx={{ color: 'rgba(210,210,210,0.72)' }}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </Stack>
-              ) : (
-                <Typography variant="body2" color="rgba(200,200,200,0.65)">
-                  PNG, JPG, GIF, or WebP up to 10 MB.
-                </Typography>
-              )}
-            </Box>
-            <LoadingButton
-              variant="contained"
-              color="inherit"
-              onClick={handleSubmit}
-              loading={progress.stage !== 'idle'}
-              sx={{
-                borderRadius: 3,
-                px: 3,
-                textTransform: 'none',
-                fontWeight: 600,
-                alignSelf: { xs: 'stretch', sm: 'center' },
-                boxShadow: 'none',
-                backgroundColor: '#3a3a3a',
-                color: '#f5f5f5',
+                px: { xs: 2.6, md: 3 },
+                backgroundColor: 'rgba(226,232,240,0.98)',
+                color: 'rgba(19,28,55,0.92)',
+                boxShadow: '0 18px 42px rgba(11,19,44,0.55)',
                 '&:hover': {
-                  backgroundColor: '#4a4a4a',
-                },
-                '&:active': {
-                  backgroundColor: '#2f2f2f',
+                  backgroundColor: '#fff',
                 },
               }}
             >
-              Share it
-            </LoadingButton>
-          </Stack>
-          {progress.stage !== 'idle' && (
-            <LinearProgress
-              variant="determinate"
-              value={progress.value}
-              sx={{
-                borderRadius: 999,
-                height: 6,
-                backgroundColor: 'rgba(48,48,48,0.7)',
-                '& .MuiLinearProgress-bar': {
-                  background: 'linear-gradient(90deg, #d4d4d4 0%, #a3a3a3 100%)',
+              Share a meme
+            </Button>
+          )}
+        </Stack>
+
+        <Collapse in={expanded} unmountOnExit>
+          <Stack spacing={{ xs: 2.4, md: 2.6 }}>
+            <TextField
+              value={caption}
+              onChange={(event) => setCaption(event.target.value.slice(0, MAX_CAPTION_LENGTH))}
+              placeholder="Add a caption (optional)"
+              multiline
+              minRows={2}
+              maxRows={4}
+              inputRef={captionInputRef}
+              variant="outlined"
+              InputProps={{
+                sx: {
+                  backgroundColor: 'rgba(6,10,22,0.92)',
+                  borderRadius: 3,
+                  '& fieldset': { borderColor: 'rgba(148,163,234,0.32)' },
+                  '&:hover fieldset': { borderColor: FEED_ACCENT_SECONDARY },
+                  color: 'rgba(236,244,255,0.96)',
                 },
               }}
+              sx={{ width: '100%' }}
             />
-          )}
-          {composerError && (
-            <Alert
-              severity="error"
-              sx={{ borderRadius: 3, backgroundColor: 'rgba(68,68,68,0.22)', color: '#fca5a5' }}
-            >
-              {composerError}
-            </Alert>
-          )}
-          {previewUrl && (
+
             <Box
               sx={{
-                position: 'relative',
-                borderRadius: { xs: 3, md: 4 },
-                overflow: 'hidden',
-                border: `1px solid ${FEED_BORDER_COLOR}`,
-                maxHeight: 'min(60vh, 60svh)',
-                maxWidth: isSmall ? '100%' : 420,
-                boxShadow: 'none',
-                backgroundColor: FEED_SURFACE_COLOR,
+                borderRadius: { xs: 3, md: 3 },
+                border: selectedFile
+                  ? '1px solid rgba(148,163,234,0.42)'
+                  : '1px dashed rgba(148,163,234,0.32)',
+                backgroundColor: 'rgba(8,12,26,0.85)',
+                px: { xs: 3, md: 3.2 },
+                py: { xs: 2.6, md: 2.8 },
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
               }}
             >
-              <Box
-                component="img"
-                src={previewUrl}
-                alt="Selected preview"
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1.6, sm: 2.2 }} alignItems="center">
+                <Button
+                  variant={selectedFile ? 'outlined' : 'contained'}
+                  color="inherit"
+                  component="label"
+                  startIcon={<AddPhotoAlternateIcon />}
+                  sx={{
+                    borderRadius: 999,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: { xs: 2.6, sm: 3 },
+                    backgroundColor: selectedFile ? 'transparent' : 'rgba(226,232,240,0.98)',
+                    color: selectedFile ? 'rgba(222,230,255,0.92)' : 'rgba(19,28,55,0.92)',
+                    boxShadow: selectedFile ? 'none' : '0 16px 36px rgba(11,19,44,0.45)',
+                    borderColor: selectedFile ? 'rgba(148,163,234,0.38)' : undefined,
+                  }}
+                >
+                  {selectedFile ? 'Change image' : 'Upload image'}
+                  <input
+                    hidden
+                    accept="image/*"
+                    type="file"
+                    onChange={handleFileChange}
+                    ref={fileInputRef}
+                  />
+                </Button>
+
+                <Typography
+                  variant="body2"
+                  color="rgba(192,204,222,0.72)"
+                  sx={{ textAlign: { xs: 'center', sm: 'left' }, flex: 1 }}
+                >
+                  {selectedFile ? selectedFile.name : 'PNG, JPG, GIF, or WebP up to 10 MB.'}
+                </Typography>
+
+                {selectedFile && (
+                  <IconButton
+                    aria-label="Remove image"
+                    onClick={() => setSelectedFile(null)}
+                    sx={{ color: 'rgba(222,230,255,0.78)' }}
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                )}
+              </Stack>
+
+              {showPreview && (
+                <Box
+                  sx={{
+                    borderRadius: { xs: 2.6, md: 3 },
+                    overflow: 'hidden',
+                    border: `1px solid ${FEED_BORDER_COLOR}`,
+                    backgroundColor: '#050505',
+                    maxHeight: 'min(58vh, 58svh)',
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={previewUrl}
+                    alt="Selected preview"
+                    sx={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                  />
+                </Box>
+              )}
+            </Box>
+
+            {progress.stage !== 'idle' && (
+              <LinearProgress
+                variant="determinate"
+                value={progress.value}
                 sx={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  display: 'block',
+                  borderRadius: 999,
+                  height: 6,
+                  backgroundColor: 'rgba(28,36,62,0.72)',
+                  '& .MuiLinearProgress-bar': {
+                    background: 'linear-gradient(90deg, rgba(226,232,240,0.95) 0%, rgba(148,163,234,0.85) 100%)',
+                  },
                 }}
               />
-              <IconButton
-                size="small"
-                onClick={() => setSelectedFile(null)}
+            )}
+
+            {composerError && (
+              <Alert
+                severity="error"
                 sx={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  backgroundColor: 'rgba(28,28,28,0.78)',
-                  color: 'rgba(236,236,236,0.92)',
+                  borderRadius: 2.6,
+                  backgroundColor: 'rgba(239,68,68,0.12)',
+                  border: '1px solid rgba(239,68,68,0.24)',
+                  color: '#fecaca',
+                }}
+              >
+                {composerError}
+              </Alert>
+            )}
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.6} justifyContent="flex-end">
+              <Button
+                variant="text"
+                onClick={handleCancel}
+                sx={{
+                  color: 'rgba(203,213,225,0.76)',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  px: 2,
+                }}
+              >
+                Cancel
+              </Button>
+              <LoadingButton
+                variant="contained"
+                color="inherit"
+                onClick={handleSubmit}
+                loading={progress.stage !== 'idle'}
+                disabled={!selectedFile || progress.stage !== 'idle'}
+                sx={{
+                  borderRadius: 2.6,
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  px: { xs: 3, sm: 3.4 },
+                  backgroundColor: selectedFile ? 'rgba(226,232,240,0.98)' : 'rgba(148,163,234,0.22)',
+                  color: selectedFile ? 'rgba(19,28,55,0.92)' : 'rgba(202,213,234,0.55)',
+                  boxShadow: selectedFile ? '0 16px 36px rgba(11,19,44,0.45)' : 'none',
                   '&:hover': {
-                    backgroundColor: 'rgba(46,46,46,0.92)',
+                    backgroundColor: selectedFile ? '#fff' : 'rgba(148,163,234,0.22)',
                   },
                 }}
               >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Box>
-          )}
-        </Stack>
+                Publish post
+              </LoadingButton>
+            </Stack>
+          </Stack>
+        </Collapse>
       </Stack>
     </Box>
   );
@@ -908,6 +996,8 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
   const [{ loading, error }, setFeedState] = useState<FeedState>({ loading: true, error: null });
   const [composerNotice, setComposerNotice] = useState<string | null>(null);
   const [previewPost, setPreviewPost] = useState<CommunityPost | null>(null);
+  const [composerExpanded, setComposerExpanded] = useState(false);
+  const composerCardRef = useRef<HTMLDivElement | null>(null);
 
   const readCache = useCallback((): { posts: CommunityPost[]; timestamp: number } | null => {
     if (typeof window === 'undefined') return null;
@@ -1049,6 +1139,7 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
 
   const handleComposerError = useCallback((message: string) => {
     setComposerNotice(message);
+    setComposerExpanded(true);
   }, []);
 
   const handlePreviewPost = useCallback((post: CommunityPost) => {
@@ -1061,9 +1152,9 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
 
   const handleCreatePostRequest = useCallback(() => {
     if (user) {
-      const target = document.getElementById('community-composer');
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setComposerExpanded(true);
+      if (composerCardRef.current) {
+        composerCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
       return;
     }
@@ -1125,8 +1216,14 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
           <Box sx={{ flexShrink: 0, px: { xs: 0, md: 0 }, mx: { xs: -3, md: 0 } }}>
             <Box sx={{ px: { xs: 3, md: 0 } }}>
               {user ? (
-                <Box id="community-composer">
-                  <CommunityComposer user={user} onPostCreated={handlePostCreated} onError={handleComposerError} />
+                <Box id="community-composer" ref={composerCardRef}>
+                  <CommunityComposerCard
+                    user={user}
+                    expanded={composerExpanded}
+                    onExpandedChange={setComposerExpanded}
+                    onPostCreated={handlePostCreated}
+                    onError={handleComposerError}
+                  />
                 </Box>
               ) : (
                 <Box
