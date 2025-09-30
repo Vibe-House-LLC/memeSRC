@@ -281,7 +281,7 @@ export default function AdminReviewUpload({
 
     // Check if alias has changed from saved value
     const hasAliasChanged = pendingAlias !== savedAlias;
-    const isAliasSaved = pendingAlias?.trim() !== '';
+    const isAliasSaved = !!savedAlias?.trim();
     const isNewAlias = pendingAlias?.trim() !== '' && !aliases?.includes(pendingAlias);
     
     // Check if any file has extracting or extracted status (should disable alias field)
