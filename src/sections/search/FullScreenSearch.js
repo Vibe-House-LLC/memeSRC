@@ -166,24 +166,22 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   const updateBannerSx = useMemo(
     () => ({
-      maxWidth: { xs: 'min(420px, calc(100% - 32px))', sm: 340 },
-      width: { xs: '100%', sm: 'auto' },
-      display: 'grid',
-      gridTemplateColumns: { xs: '1fr auto auto', sm: '1fr auto auto' },
+      width: '100%',
+      maxWidth: { xs: 'min(440px, 100%)', sm: 'min(520px, 100%)' },
+      display: 'flex',
       alignItems: 'center',
-      gap: { xs: 1.1, sm: 1.25 },
-      position: 'fixed',
-      top: { xs: `${NAVBAR_HEIGHT + 8}px`, sm: `${NAVBAR_HEIGHT + 12}px` },
-      right: { xs: 16, sm: 20 },
-      zIndex: (theme) => (theme?.zIndex?.appBar || 1100) + 1,
-      px: { xs: 1.6, sm: 1.75 },
-      py: { xs: 1.1, sm: 1.2 },
+      justifyContent: 'space-between',
+      gap: { xs: 1, sm: 1.25 },
+      flexWrap: 'wrap',
+      px: { xs: 1.6, sm: 2.1 },
+      py: { xs: 1.05, sm: 1.15 },
       borderRadius: '16px',
       backgroundColor: 'rgba(15,23,42,0.74)',
       backdropFilter: 'blur(18px) saturate(140%)',
       color: '#e2e8f0',
       border: '1px solid rgba(148,163,184,0.18)',
-      boxShadow: '0 18px 36px rgba(15,23,42,0.28)'
+      boxShadow: '0 18px 36px rgba(15,23,42,0.28)',
+      pointerEvents: 'auto',
     }),
     []
   );
@@ -545,27 +543,129 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                     gap: { xs: 3, md: 4 },
                   }}
                 >
-                    <Box
-                      sx={{
-                        ...heroInnerSx,
-                        maxWidth: 'min(960px, 100%)',
-                        px: { xs: 3, sm: 5, md: 6 },
-                        mt: 0,
-                      }}
+                  {latestRelease?.tag_name && (
+                    <Slide
+                      in={hasRecentUndismissedUpdate}
+                      direction={isMobile ? 'down' : 'left'}
+                      mountOnEnter
+                      unmountOnExit
+                      timeout={{ appear: 420, enter: 420, exit: 360 }}
                     >
-                    <Box
-                      sx={{
-                        ...heroContentSx,
-                        justifyContent: 'flex-start',
-                        minHeight: { xs: MOBILE_CARD_CONTENT_MIN_HEIGHT, md: 'auto' },
-                        pt: { xs: 1, md: 0 },
-                      }}
-                    >
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: { xs: 12, sm: 16 },
+                          left: 0,
+                          right: 0,
+                          display: 'flex',
+                          justifyContent: 'center',
+                          px: { xs: 1.5, sm: 3 },
+                          zIndex: 3,
+                        }}
+                      >
+                        <Box sx={updateBannerSx}>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: { xs: 1.05, sm: 1.15 },
+                              minWidth: 0,
+                              flex: '1 1 auto',
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: '50%',
+                                backgroundColor: statusDotColor,
+                                boxShadow: '0 0 0 3px rgba(148,163,184,0.2)',
+                              }}
+                            />
+                            <Typography
+                              variant="subtitle2"
+                              component="span"
+                              noWrap={!isMobile}
+                              sx={{
+                                fontSize: { xs: '0.95rem', sm: '0.98rem' },
+                                fontWeight: 600,
+                                color: '#f8fafc',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              Updated to{' '}
+                              <Link to="/releases" style={releaseLinkStyle}>
+                                {formatReleaseDisplay(latestRelease?.tag_name)}
+                              </Link>
+                            </Typography>
+                          </Box>
+                          <Box
+                            component="span"
+                            sx={{
+                              px: 1,
+                              py: 0.28,
+                              borderRadius: '999px',
+                              backgroundColor: 'rgba(148,163,184,0.16)',
+                              color: 'rgba(226,232,240,0.88)',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              letterSpacing: 0.5,
+                              textTransform: 'uppercase',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {formatRelativeTimeCompact(latestRelease?.published_at)}
+                          </Box>
+                          <IconButton
+                            aria-label="Dismiss update"
+                            size="small"
+                            onClick={handleDismissUpdateBanner}
+                            sx={{
+                              color: 'rgba(226,232,240,0.72)',
+                              backgroundColor: 'transparent',
+                              p: 0.4,
+                              transition: 'color 160ms ease, background-color 160ms ease',
+                              flexShrink: 0,
+                              '&:hover': {
+                                color: '#f8fafc',
+                                backgroundColor: 'rgba(148,163,184,0.16)',
+                              },
+                            }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </Box>
+                    </Slide>
+                  )}
+                  <Box
+                    sx={{
+                      ...heroInnerSx,
+                      maxWidth: 'min(960px, 100%)',
+                      px: { xs: 3, sm: 5, md: 6 },
+                      mt: 0,
+                    }}
+                  >
+                      <Box
+                        sx={{
+                          ...heroContentSx,
+                          justifyContent: 'flex-start',
+                          minHeight: { xs: MOBILE_CARD_CONTENT_MIN_HEIGHT, md: 'auto' },
+                          pt: { xs: 1, md: 0 },
+                        }}
+                      >
                       <Grid
                         container
                         justifyContent="center"
                         pb={isMd ? 0 : 1.4}
-                        sx={{ flexGrow: 1, alignContent: 'center', rowGap: { xs: 1.2, md: 2 } }}
+                        sx={{
+                          flexGrow: 1,
+                          alignContent: 'center',
+                          rowGap: { xs: 1.2, md: 2 },
+                          position: 'relative',
+                        }}
                       >
                         <Grid container justifyContent="center">
                           <Grid item textAlign="center" marginBottom={0.6}>
@@ -609,88 +709,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                               {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
                               <span />
                             </Typography>
-                            {latestRelease?.tag_name && (
-                              <Slide
-                                in={hasRecentUndismissedUpdate}
-                                direction={isMobile ? 'down' : 'left'}
-                                mountOnEnter
-                                unmountOnExit
-                                timeout={{ appear: 420, enter: 420, exit: 360 }}
-                              >
-                                <Box sx={updateBannerSx}>
-                                  <Box
-                                    sx={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: { xs: 1.05, sm: 1.15 },
-                                      minWidth: 0,
-                                    }}
-                                  >
-                                    <Box
-                                      sx={{
-                                        width: 10,
-                                        height: 10,
-                                        borderRadius: '50%',
-                                        backgroundColor: statusDotColor,
-                                        boxShadow: '0 0 0 3px rgba(148,163,184,0.2)',
-                                      }}
-                                    />
-                                    <Typography
-                                      variant="subtitle2"
-                                      component="span"
-                                      noWrap={!isMobile}
-                                      sx={{
-                                        fontSize: { xs: '0.95rem', sm: '0.98rem' },
-                                        fontWeight: 600,
-                                        color: '#f8fafc',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                      }}
-                                    >
-                                      Updated to{' '}
-                                      <Link to="/releases" style={releaseLinkStyle}>
-                                        {formatReleaseDisplay(latestRelease?.tag_name)}
-                                      </Link>
-                                    </Typography>
-                                  </Box>
-                                  <Box
-                                    component="span"
-                                    sx={{
-                                      justifySelf: 'flex-end',
-                                      px: 1,
-                                      py: 0.28,
-                                      borderRadius: '999px',
-                                      backgroundColor: 'rgba(148,163,184,0.16)',
-                                      color: 'rgba(226,232,240,0.88)',
-                                      fontSize: '0.72rem',
-                                      fontWeight: 700,
-                                      letterSpacing: 0.5,
-                                      textTransform: 'uppercase',
-                                      whiteSpace: 'nowrap',
-                                    }}
-                                  >
-                                    {formatRelativeTimeCompact(latestRelease?.published_at)}
-                                  </Box>
-                                  <IconButton
-                                    aria-label="Dismiss update"
-                                    size="small"
-                                    onClick={handleDismissUpdateBanner}
-                                    sx={{
-                                      color: 'rgba(226,232,240,0.72)',
-                                      backgroundColor: 'transparent',
-                                      p: 0.4,
-                                      transition: 'color 160ms ease, background-color 160ms ease',
-                                      '&:hover': {
-                                        color: '#f8fafc',
-                                        backgroundColor: 'rgba(148,163,184,0.16)',
-                                      },
-                                    }}
-                                  >
-                                    <CloseIcon fontSize="small" />
-                                  </IconButton>
-                                </Box>
-                              </Slide>
-                            )}
                           </Grid>
                         </Grid>
                         <Grid container justifyContent="center">
