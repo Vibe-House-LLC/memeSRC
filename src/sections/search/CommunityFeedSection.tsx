@@ -749,12 +749,12 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
   const releaseTitle = (release.name && release.name.trim()) || release.tag_name || 'Latest update';
   const summary = extractReleaseSummary(release.body) ?? 'See the highlights from this fresh update.';
   const publishedLabel = formatRelativeTimeCompact(release.published_at);
-  const primaryLink = release.html_url || '/releases';
-  const versionLabel = release.tag_name ?? null;
   const secondaryHeading =
     release.name && !releaseTagMatchesName(release.tag_name, release.name)
       ? release.name.trim()
       : null;
+  const secondaryHeadingDisplay =
+    secondaryHeading && !/^what[’']?s changed$/i.test(secondaryHeading.trim()) ? secondaryHeading : null;
   const headline = release.tag_name ? `Updated to ${release.tag_name}` : releaseTitle;
 
   return (
@@ -795,7 +795,7 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
                 color: 'rgba(240,244,255,0.86)',
               }}
             >
-              Latest update | {publishedLabel}
+              {publishedLabel}
             </Typography>
             <Typography
               component="h3"
@@ -811,7 +811,7 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
             >
               {headline}
             </Typography>
-            {secondaryHeading && (
+            {secondaryHeadingDisplay && (
               <Typography
                 variant="subtitle1"
                 sx={{
@@ -821,7 +821,7 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
                   lineHeight: { xs: 1.4, md: 1.45 },
                 }}
               >
-                {secondaryHeading}
+                {secondaryHeadingDisplay}
               </Typography>
             )}
           </Stack>
@@ -856,42 +856,18 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
           {summary}
         </Typography>
 
-        {versionLabel && (
-          <Box
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              px: { xs: 1.9, sm: 2.1 },
-              py: { xs: 0.8, sm: 0.82 },
-              borderRadius: 999,
-              backgroundColor: 'rgba(19,24,56,0.55)',
-              border: '1px solid rgba(245,245,255,0.22)',
-              color: 'rgba(235,240,255,0.9)',
-              fontSize: { xs: '0.88rem', sm: '0.94rem' },
-              fontWeight: 700,
-              letterSpacing: 0.8,
-              textTransform: 'uppercase',
-              width: 'fit-content',
-            }}
-          >
-            {versionLabel}
-          </Box>
-        )}
-
         <Stack
-          direction={{ xs: 'column', sm: 'row' }}
           spacing={{ xs: 1.2, sm: 1.6 }}
           sx={{
             mt: { xs: 1.4, sm: 1.6 },
-            alignItems: { xs: 'stretch', sm: 'center' },
+            alignItems: { xs: 'stretch', sm: 'flex-start' },
           }}
         >
           <Button
+            component={RouterLink}
+            to="/releases"
             variant="contained"
             color="inherit"
-            href={primaryLink}
-            target="_blank"
-            rel="noopener noreferrer"
             sx={{
               borderRadius: 999,
               px: { xs: 2.6, sm: 3.4 },
@@ -905,31 +881,10 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
               '&:hover': {
                 backgroundColor: '#fff',
               },
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
-            See what is new
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/releases"
-            variant="outlined"
-            color="inherit"
-            sx={{
-              borderRadius: 999,
-              px: { xs: 2.6, sm: 3.4 },
-              py: { xs: 1.05, sm: 1.08 },
-              textTransform: 'none',
-              fontWeight: 700,
-              fontSize: { xs: '0.98rem', sm: '1rem' },
-              borderColor: 'rgba(236,240,255,0.6)',
-              color: 'rgba(238,241,255,0.9)',
-              '&:hover': {
-                borderColor: '#fff',
-                backgroundColor: 'rgba(255,255,255,0.1)',
-              },
-            }}
-          >
-            Browse all releases
+            Learn more
           </Button>
         </Stack>
       </Stack>
