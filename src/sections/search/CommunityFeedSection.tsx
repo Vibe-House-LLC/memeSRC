@@ -2,6 +2,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -28,12 +29,17 @@ import { LoadingButton } from '@mui/lab';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CloseIcon from '@mui/icons-material/Close';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import { Link as RouterLink } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
+import {
+  fetchLatestRelease,
+  formatRelativeTimeCompact,
+  type GitHubRelease,
+} from '../../utils/githubReleases';
+import { safeGetItem, safeSetItem } from '../../utils/storage';
 
 type UserDetails = {
   username?: string;
@@ -89,6 +95,14 @@ const FEED_INTRO_SURFACE_COLOR = '#c724b1';
 const FEED_ACCENT_SECONDARY = '#00a3e0';
 const FEED_ACTION_BG = 'rgba(84, 97, 200, 0.18)';
 const FEED_ACTION_BG_HOVER = 'rgba(84, 97, 200, 0.3)';
+const FEED_CARD_WRAPPER_SX = {
+  px: { xs: 0, md: 0 },
+  mx: { xs: -3, md: 0 },
+  pt: { xs: 0, md: 0 },
+  pb: { xs: 0, md: 0 },
+} as const;
+const FEED_UPDATE_DISMISS_PREFIX = 'community-feed-release-dismissed:';
+const FEED_UPDATE_RECENCY_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 
 const DEFAULT_ERROR_MESSAGE = 'Unable to load the community feed right now. Please try again shortly.';
 const COMMUNITY_FEED_CACHE_KEY = 'community-feed-cache:v1';
@@ -136,6 +150,34 @@ function resolveAvatarUrl(user: MaybeAppUser): string | undefined {
   const details = user.userDetails ?? {};
   const candidates = [details.avatarUrl, details.picture, (details as Record<string, unknown>).avatar];
   return candidates.find((value): value is string => typeof value === 'string' && value.length > 3);
+}
+
+function buildReleaseDismissKey(tagName?: string | null): string | null {
+  if (!tagName) return null;
+  return `${FEED_UPDATE_DISMISS_PREFIX}${tagName}`;
+}
+
+function isReleaseRecent(publishedAt?: string | null): boolean {
+  if (!publishedAt) return false;
+  const publishedTime = new Date(publishedAt).getTime();
+  if (Number.isNaN(publishedTime)) return false;
+  return Date.now() - publishedTime <= FEED_UPDATE_RECENCY_WINDOW_MS;
+}
+
+function extractReleaseSummary(body?: string | null): string | null {
+  if (!body) return null;
+  const summaryLine = body
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*#]+\s*/, ''))
+    .find(Boolean);
+  return summaryLine ?? null;
+}
+
+function releaseTagMatchesName(tagName?: string | null, name?: string | null): boolean {
+  if (!tagName || !name) return false;
+  return tagName.trim().toLowerCase() === name.trim().toLowerCase();
 }
 
 async function toBlob(result: unknown): Promise<Blob | null> {
@@ -649,7 +691,7 @@ function CommunityIntroCard({ onCreatePost }: CommunityIntroCardProps) {
             width: '100%',
           }}
         >
-          Welcome home.
+          Say hello 👋
         </Typography>
         <Typography
           component="p"
@@ -671,7 +713,6 @@ function CommunityIntroCard({ onCreatePost }: CommunityIntroCardProps) {
           variant="contained"
           color="inherit"
           onClick={onCreatePost}
-          startIcon={<CheckCircleRoundedIcon sx={{ fontSize: 20, color: 'rgba(18,7,36,0.82)' }} />}
           sx={{
             alignSelf: 'stretch',
             width: '100%',
@@ -696,6 +737,224 @@ function CommunityIntroCard({ onCreatePost }: CommunityIntroCardProps) {
         </Button>
       </Stack>
     </Box>
+  );
+}
+
+interface LatestReleaseCardProps {
+  release: GitHubRelease;
+  onDismiss: () => void;
+}
+
+function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
+  const releaseTitle = (release.name && release.name.trim()) || release.tag_name || 'Latest update';
+  const summary = extractReleaseSummary(release.body) ?? 'See the highlights from this fresh update.';
+  const publishedLabel = formatRelativeTimeCompact(release.published_at);
+  const primaryLink = release.html_url || '/releases';
+  const versionLabel = release.tag_name ?? null;
+  const secondaryHeading =
+    release.name && !releaseTagMatchesName(release.tag_name, release.name)
+      ? release.name.trim()
+      : null;
+  const headline = release.tag_name ? `Updated to ${release.tag_name}` : releaseTitle;
+
+  return (
+    <Box
+      component="article"
+      sx={{
+        width: '100%',
+        borderRadius: { xs: '28px', md: 3.5 },
+        border: '1px solid rgba(255,255,255,0.18)',
+        background: 'linear-gradient(135deg, rgba(23,16,52,0.96) 0%, rgba(91,33,182,0.88) 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: '0 30px 66px rgba(10,16,38,0.55)',
+        display: 'flex',
+        flexDirection: 'column',
+        px: { xs: 3.6, sm: 4.2, md: 4.8, lg: 5.2 },
+        py: { xs: 4.8, sm: 5, md: 5.4, lg: 5.6 },
+        gap: { xs: 2.2, sm: 2.4 },
+        maxWidth: { xs: '100%', sm: 640, md: 780 },
+        mx: { xs: 0, sm: 'auto' },
+      }}
+    >
+      <Stack spacing={{ xs: 2.4, sm: 2.6 }} sx={{ width: '100%' }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          spacing={{ xs: 1.6, sm: 2 }}
+        >
+          <Stack spacing={{ xs: 1.2, sm: 1.4 }} sx={{ pr: { xs: 0, sm: 1.8 } }}>
+            <Typography
+              variant="body2"
+              sx={{
+                textTransform: 'uppercase',
+                letterSpacing: 1.1,
+                fontWeight: 700,
+                fontSize: { xs: '0.88rem', sm: '0.94rem' },
+                color: 'rgba(240,244,255,0.86)',
+              }}
+            >
+              Latest update | {publishedLabel}
+            </Typography>
+            <Typography
+              component="h3"
+              variant="h3"
+              sx={{
+                fontWeight: 800,
+                color: '#fff',
+                textShadow: '0 22px 54px rgba(9,12,28,0.58)',
+                fontSize: { xs: '1.9rem', sm: '2.3rem', md: '2.7rem' },
+                lineHeight: { xs: 1.15, md: 1.12 },
+                letterSpacing: { xs: -0.22, md: -0.3 },
+              }}
+            >
+              {headline}
+            </Typography>
+            {secondaryHeading && (
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  color: 'rgba(230,235,255,0.88)',
+                  fontWeight: 600,
+                  fontSize: { xs: '1.05rem', sm: '1.12rem' },
+                  lineHeight: { xs: 1.4, md: 1.45 },
+                }}
+              >
+                {secondaryHeading}
+              </Typography>
+            )}
+          </Stack>
+          <IconButton
+            aria-label="Dismiss latest update card"
+            onClick={onDismiss}
+            size="medium"
+            sx={{
+              backgroundColor: 'rgba(15,18,44,0.35)',
+              color: 'rgba(236,240,255,0.88)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              boxShadow: '0 12px 24px rgba(7,10,28,0.4)',
+              '&:hover': {
+                backgroundColor: 'rgba(17,20,48,0.48)',
+              },
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+
+        <Typography
+          variant="body1"
+          sx={{
+            color: 'rgba(236,240,255,0.9)',
+            fontWeight: 500,
+            lineHeight: { xs: 1.62, md: 1.68 },
+            letterSpacing: 0.12,
+            maxWidth: { xs: '100%', md: 560 },
+          }}
+        >
+          {summary}
+        </Typography>
+
+        {versionLabel && (
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              px: { xs: 1.9, sm: 2.1 },
+              py: { xs: 0.8, sm: 0.82 },
+              borderRadius: 999,
+              backgroundColor: 'rgba(19,24,56,0.55)',
+              border: '1px solid rgba(245,245,255,0.22)',
+              color: 'rgba(235,240,255,0.9)',
+              fontSize: { xs: '0.88rem', sm: '0.94rem' },
+              fontWeight: 700,
+              letterSpacing: 0.8,
+              textTransform: 'uppercase',
+              width: 'fit-content',
+            }}
+          >
+            {versionLabel}
+          </Box>
+        )}
+
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={{ xs: 1.2, sm: 1.6 }}
+          sx={{
+            mt: { xs: 1.4, sm: 1.6 },
+            alignItems: { xs: 'stretch', sm: 'center' },
+          }}
+        >
+          <Button
+            variant="contained"
+            color="inherit"
+            href={primaryLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              borderRadius: 999,
+              px: { xs: 2.6, sm: 3.4 },
+              py: { xs: 1.05, sm: 1.08 },
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: { xs: '0.98rem', sm: '1rem' },
+              color: '#17092f',
+              backgroundColor: 'rgba(255,255,255,0.94)',
+              boxShadow: '0 20px 42px rgba(7,12,32,0.48)',
+              '&:hover': {
+                backgroundColor: '#fff',
+              },
+            }}
+          >
+            See what is new
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/releases"
+            variant="outlined"
+            color="inherit"
+            sx={{
+              borderRadius: 999,
+              px: { xs: 2.6, sm: 3.4 },
+              py: { xs: 1.05, sm: 1.08 },
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: { xs: '0.98rem', sm: '1rem' },
+              borderColor: 'rgba(236,240,255,0.6)',
+              color: 'rgba(238,241,255,0.9)',
+              '&:hover': {
+                borderColor: '#fff',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+              },
+            }}
+          >
+            Browse all releases
+          </Button>
+        </Stack>
+      </Stack>
+    </Box>
+  );
+}
+
+type FeedCardItem = {
+  id: string;
+  element: ReactElement;
+};
+
+function FeedCardsArea({ cards }: { cards: FeedCardItem[] }) {
+  if (!cards.length) {
+    return null;
+  }
+
+  return (
+    <Stack spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%' }}>
+      {cards.map((card) => (
+        <Box key={card.id} sx={FEED_CARD_WRAPPER_SX}>
+          {card.element}
+        </Box>
+      ))}
+    </Stack>
   );
 }
 
@@ -998,6 +1257,8 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
   const [previewPost, setPreviewPost] = useState<CommunityPost | null>(null);
   const [composerExpanded, setComposerExpanded] = useState(false);
   const composerCardRef = useRef<HTMLDivElement | null>(null);
+  const [latestRelease, setLatestRelease] = useState<GitHubRelease | null>(null);
+  const [dismissedReleaseTag, setDismissedReleaseTag] = useState<string | null>(null);
 
   const readCache = useCallback((): { posts: CommunityPost[]; timestamp: number } | null => {
     if (typeof window === 'undefined') return null;
@@ -1033,6 +1294,43 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
       onPostsLoaded(cached.posts);
     }
   }, [onPostsLoaded, readCache]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLatestRelease = async () => {
+      try {
+        const release = await fetchLatestRelease();
+        if (isMounted) {
+          setLatestRelease(release);
+        }
+      } catch {
+        if (isMounted) {
+          setLatestRelease(null);
+        }
+      }
+    };
+
+    loadLatestRelease();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!latestRelease?.tag_name) {
+      setDismissedReleaseTag(null);
+      return;
+    }
+    const key = buildReleaseDismissKey(latestRelease.tag_name);
+    if (!key) {
+      setDismissedReleaseTag(null);
+      return;
+    }
+    const stored = safeGetItem(key);
+    setDismissedReleaseTag(stored ? latestRelease.tag_name : null);
+  }, [latestRelease?.tag_name]);
 
   const loadFeed = useCallback(async () => {
     if (typeof window === 'undefined') return;
@@ -1163,19 +1461,46 @@ export default function CommunityFeedSection(props: CommunityFeedSectionProps = 
     }
   }, [user]);
 
+  const handleDismissLatestReleaseCard = useCallback(() => {
+    if (!latestRelease?.tag_name) {
+      return;
+    }
+    const key = buildReleaseDismissKey(latestRelease.tag_name);
+    if (!key) {
+      return;
+    }
+    safeSetItem(key, 'true');
+    setDismissedReleaseTag(latestRelease.tag_name);
+  }, [latestRelease?.tag_name]);
+
+  const shouldShowLatestReleaseCard = useMemo(() => {
+    if (!latestRelease) return false;
+    if (latestRelease.draft) return false;
+    if (!latestRelease.published_at) return false;
+    if (!latestRelease.tag_name) return false;
+    if (!isReleaseRecent(latestRelease.published_at)) return false;
+    return dismissedReleaseTag !== latestRelease.tag_name;
+  }, [dismissedReleaseTag, latestRelease]);
+
+  const feedCards = useMemo<FeedCardItem[]>(() => {
+    const cards: FeedCardItem[] = [];
+    if (shouldShowLatestReleaseCard && latestRelease) {
+      cards.push({
+        id: `latest-release-${latestRelease.id ?? latestRelease.tag_name}`,
+        element: <LatestReleaseCard release={latestRelease} onDismiss={handleDismissLatestReleaseCard} />,
+      });
+    }
+    cards.push({
+      id: 'intro-card',
+      element: <CommunityIntroCard onCreatePost={handleCreatePostRequest} />,
+    });
+    return cards;
+  }, [handleCreatePostRequest, handleDismissLatestReleaseCard, latestRelease, shouldShowLatestReleaseCard]);
+
   return (
     <>
       <Stack spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 } }}>
-        <Box
-          sx={{
-            px: { xs: 0, md: 0 },
-            mx: { xs: -3, md: 0 },
-            pt: { xs: 0, md: 0 },
-            pb: { xs: 0, md: 0 },
-          }}
-        >
-          <CommunityIntroCard onCreatePost={handleCreatePostRequest} />
-        </Box>
+        <FeedCardsArea cards={feedCards} />
         <Stack spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%' }}>
           {composerNotice && (
             <Alert
