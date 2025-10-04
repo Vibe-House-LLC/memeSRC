@@ -34,12 +34,9 @@ import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutline
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import { Link as RouterLink } from 'react-router-dom';
 import { UserContext } from '../../UserContext';
-import {
-  fetchLatestRelease,
-  formatRelativeTimeCompact,
-  type GitHubRelease,
-} from '../../utils/githubReleases';
+import { fetchLatestRelease, type GitHubRelease } from '../../utils/githubReleases';
 import { safeGetItem, safeSetItem } from '../../utils/storage';
+import { FeedCardSurface } from './cards/CardSurface';
 
 type UserDetails = {
   username?: string;
@@ -162,17 +159,6 @@ function isReleaseRecent(publishedAt?: string | null): boolean {
   const publishedTime = new Date(publishedAt).getTime();
   if (Number.isNaN(publishedTime)) return false;
   return Date.now() - publishedTime <= FEED_UPDATE_RECENCY_WINDOW_MS;
-}
-
-function extractReleaseSummary(body?: string | null): string | null {
-  if (!body) return null;
-  const summaryLine = body
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => line.replace(/^[-*#]+\s*/, ''))
-    .find(Boolean);
-  return summaryLine ?? null;
 }
 
 function releaseTagMatchesName(tagName?: string | null, name?: string | null): boolean {
@@ -649,23 +635,15 @@ type FeedGridProps = {
 
 function CommunityIntroCard({ onCreatePost }: CommunityIntroCardProps) {
   return (
-    <Box
-      component="article"
+    <FeedCardSurface
+      tone="neutral"
+      gradient={`linear-gradient(135deg, ${FEED_INTRO_SURFACE_COLOR} 0%, #ff6900 100%)`}
       sx={{
-        width: '100%',
-        borderRadius: { xs: '28px', md: 3.5 },
         border: '1px solid rgba(255,255,255,0.28)',
-        background: `linear-gradient(135deg, ${FEED_INTRO_SURFACE_COLOR} 0%, #ff6900 100%)`,
-        position: 'relative',
-        overflow: 'hidden',
         boxShadow: '0 34px 68px rgba(18,7,36,0.6)',
-        display: 'flex',
-        flexDirection: 'column',
         px: { xs: 3.6, sm: 4.1, md: 5, lg: 5.8 },
         py: { xs: 5.4, sm: 5.4, md: 5.9, lg: 6.4 },
         gap: { xs: 2.2, sm: 2.3, md: 2.5 },
-        maxWidth: { xs: '100%', sm: 640, md: 780 },
-        mx: { xs: 0, sm: 'auto' },
       }}
     >
       <Stack
@@ -736,7 +714,7 @@ function CommunityIntroCard({ onCreatePost }: CommunityIntroCardProps) {
           Create Post
         </Button>
       </Stack>
-    </Box>
+    </FeedCardSurface>
   );
 }
 
@@ -747,8 +725,6 @@ interface LatestReleaseCardProps {
 
 function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
   const releaseTitle = (release.name && release.name.trim()) || release.tag_name || 'Latest update';
-  const summary = extractReleaseSummary(release.body) ?? 'See the highlights from this fresh update.';
-  const publishedLabel = formatRelativeTimeCompact(release.published_at);
   const secondaryHeading =
     release.name && !releaseTagMatchesName(release.tag_name, release.name)
       ? release.name.trim()
@@ -758,23 +734,12 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
   const headline = release.tag_name ? `Updated to ${release.tag_name}` : releaseTitle;
 
   return (
-    <Box
-      component="article"
+    <FeedCardSurface
+      tone="neutral"
+      gradient="linear-gradient(135deg, rgba(23,16,52,0.96) 0%, rgba(91,33,182,0.88) 100%)"
       sx={{
-        width: '100%',
-        borderRadius: { xs: '28px', md: 3.5 },
         border: '1px solid rgba(255,255,255,0.18)',
-        background: 'linear-gradient(135deg, rgba(23,16,52,0.96) 0%, rgba(91,33,182,0.88) 100%)',
-        position: 'relative',
-        overflow: 'hidden',
         boxShadow: '0 30px 66px rgba(10,16,38,0.55)',
-        display: 'flex',
-        flexDirection: 'column',
-        px: { xs: 3.6, sm: 4.2, md: 4.8, lg: 5.2 },
-        py: { xs: 4.8, sm: 5, md: 5.4, lg: 5.6 },
-        gap: { xs: 2.2, sm: 2.4 },
-        maxWidth: { xs: '100%', sm: 640, md: 780 },
-        mx: { xs: 0, sm: 'auto' },
       }}
     >
       <Stack spacing={{ xs: 2.4, sm: 2.6 }} sx={{ width: '100%' }}>
@@ -785,18 +750,6 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
           spacing={{ xs: 1.6, sm: 2 }}
         >
           <Stack spacing={{ xs: 1.2, sm: 1.4 }} sx={{ pr: { xs: 0, sm: 1.8 } }}>
-            <Typography
-              variant="body2"
-              sx={{
-                textTransform: 'uppercase',
-                letterSpacing: 1.1,
-                fontWeight: 700,
-                fontSize: { xs: '0.88rem', sm: '0.94rem' },
-                color: 'rgba(240,244,255,0.86)',
-              }}
-            >
-              {publishedLabel}
-            </Typography>
             <Typography
               component="h3"
               variant="h3"
@@ -843,19 +796,6 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
           </IconButton>
         </Stack>
 
-        <Typography
-          variant="body1"
-          sx={{
-            color: 'rgba(236,240,255,0.9)',
-            fontWeight: 500,
-            lineHeight: { xs: 1.62, md: 1.68 },
-            letterSpacing: 0.12,
-            maxWidth: { xs: '100%', md: 560 },
-          }}
-        >
-          {summary}
-        </Typography>
-
         <Stack
           spacing={{ xs: 1.2, sm: 1.6 }}
           sx={{
@@ -888,7 +828,7 @@ function LatestReleaseCard({ release, onDismiss }: LatestReleaseCardProps) {
           </Button>
         </Stack>
       </Stack>
-    </Box>
+    </FeedCardSurface>
   );
 }
 
