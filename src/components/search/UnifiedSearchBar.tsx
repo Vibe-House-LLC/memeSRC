@@ -566,8 +566,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
   const [showRandomLabel, setShowRandomLabel] = useState(true);
   const [isFadingOutLabel, setIsFadingOutLabel] = useState(false);
-  const [showSearchLabel, setShowSearchLabel] = useState(true);
-  const [isFadingOutSearchLabel, setIsFadingOutSearchLabel] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shouldRestoreFocusRef = useRef(false);
   // railId and scopeButtonSx removed with inline expansion approach
@@ -592,34 +590,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       clearTimeout(hideTimer);
     };
   }, []);
-
-  // Show "Search" label for 1 second when expanded, then fade it out
-  useEffect(() => {
-    const hasInput = value.trim().length > 0;
-    if (hasInput) {
-      // Reset to show label when expanded
-      setShowSearchLabel(true);
-      setIsFadingOutSearchLabel(false);
-
-      const fadeTimer = setTimeout(() => {
-        setIsFadingOutSearchLabel(true);
-      }, 1000);
-      
-      const hideTimer = setTimeout(() => {
-        setShowSearchLabel(false);
-        setIsFadingOutSearchLabel(false);
-      }, 1400);
-      
-      return () => {
-        clearTimeout(fadeTimer);
-        clearTimeout(hideTimer);
-      };
-    } else {
-      // Reset states when collapsed
-      setShowSearchLabel(true);
-      setIsFadingOutSearchLabel(false);
-    }
-  }, [value]);
 
   const currentLabel = useMemo(
     () => buildCurrentLabel(currentValueId, currentSeries),
@@ -860,28 +830,20 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               <ArrowDropDownIcon fontSize="small" />
             </ScopeSelectorButton>
             <RailRight>
-              {hasInput && (showSearchLabel || isFadingOutSearchLabel) ? (
+              {hasInput ? (
                 <LabeledSubmitButton
                   type="submit"
                   aria-label="Search"
                   disabled={!hasInput}
                   className="railButton"
                   data-appearance={appearance}
-                  data-collapsing={isFadingOutSearchLabel ? 'true' : 'false'}
+                  sx={(theme) => ({
+                    padding: theme.spacing(0.66, 1.0, 0.66, 1.2),
+                    gap: theme.spacing(0.5),
+                  })}
                 >
-                  <span
-                    className="actionLabel"
-                    style={
-                      isFadingOutSearchLabel
-                        ? {
-                            animation: `${labelFadeOut} 300ms cubic-bezier(0.4, 0, 0.6, 1) both`,
-                          }
-                        : undefined
-                    }
-                  >
-                    Search
-                  </span>
-                  <ArrowForwardRoundedIcon fontSize="small" />
+                  <span className="actionLabel">Search</span>
+                  <ArrowForwardRoundedIcon sx={{ fontSize: '18px' }} aria-hidden="true" />
                 </LabeledSubmitButton>
               ) : (
                 <SubmitButton
@@ -892,7 +854,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   title="Search"
                   data-appearance={appearance}
                 >
-                  <ArrowForwardRoundedIcon fontSize="small" />
+                  <ArrowForwardRoundedIcon sx={{ fontSize: '18px' }} aria-hidden="true" />
                 </SubmitButton>
               )}
             </RailRight>
