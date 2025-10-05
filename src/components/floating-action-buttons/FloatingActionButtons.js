@@ -150,7 +150,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             disabled={loadingRandom}
             startIcon={
                 loadingRandom ? (
-                    <CircularProgress size={18} sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                    <CircularProgress size={22} thickness={4} sx={{ color: 'rgba(255,255,255,0.7)' }} />
                 ) : (
                     <ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                 )
@@ -175,6 +175,9 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 zIndex: 1300,
                 '& .MuiButton-startIcon': {
                     marginRight: variant === 'inline' ? '6px' : undefined,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                 },
             }}
         >
