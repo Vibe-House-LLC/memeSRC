@@ -590,29 +590,13 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       <Dialog
         open={open}
         onClose={onClose}
-        fullWidth
-        maxWidth="sm"
-        scroll="paper"
-        sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' } }}
+        fullScreen
         PaperProps={{
           sx: (theme) => ({
-            width: 'calc(100vw - 28px)',
-            maxWidth: 420,
-            height: 'min(85vh, 640px)',
-            mt: 2,
-            borderRadius: theme.spacing(2.75),
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            border: '1px solid',
-            borderColor: theme.palette.mode === 'light'
-              ? alpha(theme.palette.common.black, 0.1)
-              : alpha(theme.palette.common.white, 0.24),
-            backgroundImage: theme.palette.mode === 'light'
-              ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.98)} 0%, ${alpha(theme.palette.background.paper, 0.94)} 100%)`
-              : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.94)} 0%, ${alpha(theme.palette.background.default, 0.86)} 100%)`,
-            boxShadow: theme.shadows[18],
-            backdropFilter: 'blur(16px)',
+            bgcolor: 'background.default',
           }),
         }}
       >
@@ -703,26 +687,30 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       anchorEl={anchorEl}
       anchorOrigin={popoverAnchorOrigin}
       transformOrigin={popoverTransformOrigin}
-      PaperProps={{
-        sx: (theme) => ({
-          mt: isMobile ? 0.9 : 1,
-          width: isMobile ? 'min(360px, calc(100vw - 32px))' : 420,
-          maxWidth: isMobile ? 'min(360px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 32px))',
-          maxHeight: isMobile ? mobileMaxHeight : desktopMaxHeight,
-          display: 'flex',
-          flexDirection: 'column',
-          borderRadius: isMobile ? theme.spacing(2) : theme.spacing(1.5),
-          overflow: 'hidden',
-          border: '1px solid',
-          borderColor: theme.palette.mode === 'light'
-            ? alpha(theme.palette.common.black, 0.12)
-            : alpha(theme.palette.common.white, 0.26),
-          backgroundImage: theme.palette.mode === 'light'
-            ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
-            : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.96)} 0%, ${alpha(theme.palette.background.default, 0.88)} 100%)`,
-          boxShadow: isMobile ? theme.shadows[16] : theme.shadows[18],
-          backdropFilter: 'blur(18px)',
-        }),
+      slotProps={{
+        paper: {
+          sx: (theme) => ({
+            mt: isMobile ? 0.9 : 1,
+            width: isMobile ? 'min(360px, calc(100vw - 32px))' : 420,
+            maxWidth: isMobile ? 'min(360px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 32px))',
+            // On mobile, make it tall enough to be useful but leave room for keyboard
+            height: isMobile ? 'min(70vh, 500px)' : 'auto',
+            maxHeight: isMobile ? 'min(70vh, 500px)' : desktopMaxHeight,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: isMobile ? theme.spacing(2) : theme.spacing(1.5),
+            overflow: 'hidden',
+            border: '1px solid',
+            borderColor: theme.palette.mode === 'light'
+              ? alpha(theme.palette.common.black, 0.12)
+              : alpha(theme.palette.common.white, 0.26),
+            backgroundImage: theme.palette.mode === 'light'
+              ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
+              : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.96)} 0%, ${alpha(theme.palette.background.default, 0.88)} 100%)`,
+            boxShadow: isMobile ? theme.shadows[16] : theme.shadows[18],
+            backdropFilter: 'blur(18px)',
+          }),
+        },
       }}
     >
       <Box
