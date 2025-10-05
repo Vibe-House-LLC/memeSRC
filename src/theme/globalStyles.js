@@ -14,19 +14,19 @@ export default function GlobalStyles() {
           margin: 0,
           padding: 0,
           width: '100%',
-          height: '100%',
+          minHeight: '100%',
           WebkitOverflowScrolling: 'touch',
         },
         body: {
           margin: 0,
           padding: 0,
           width: '100%',
-          height: '100%',
+          minHeight: '100%',
           backgroundColor: '#000000',
         },
         '#root': {
           width: '100%',
-          height: '100%',
+          minHeight: '100%',
         },
         input: {
           '&[type=number]': {

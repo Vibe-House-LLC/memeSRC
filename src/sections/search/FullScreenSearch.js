@@ -471,7 +471,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     return {
       ...base,
       justifyContent: 'center',
-      minHeight: { xs: STANDALONE_SURFACE_MIN_HEIGHT_XS, md: STANDALONE_SURFACE_MIN_HEIGHT_MD },
       paddingTop: { xs: STANDALONE_HERO_PADDING_TOP_XS, md: STANDALONE_HERO_PADDING_TOP_MD },
       paddingBottom: { xs: STANDALONE_HERO_PADDING_BOTTOM_XS, md: STANDALONE_HERO_PADDING_BOTTOM_MD },
     };
@@ -508,11 +507,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       position: 'relative',
       top: 0,
       alignSelf: 'stretch',
-      height: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
       minHeight: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
-      maxHeight: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
       boxSizing: 'border-box',
-      overflow: 'hidden',
     };
   }, [showCommunityFeed]);
 
@@ -555,13 +551,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           minHeight: showCommunityFeed
             ? undefined
             : { xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS, md: STANDALONE_CONTAINER_MIN_HEIGHT_MD },
-          maxHeight: showCommunityFeed
-            ? undefined
-            : { xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS, md: STANDALONE_CONTAINER_MIN_HEIGHT_MD },
-          height: showCommunityFeed
-            ? undefined
-            : { xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS, md: STANDALONE_CONTAINER_MIN_HEIGHT_MD },
-          overflow: showCommunityFeed ? undefined : 'hidden',
         }}
       >
         <Box
@@ -595,18 +584,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
                   md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
                 },
-            maxHeight: showCommunityFeed
-              ? undefined
-              : {
-                  xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
-                  md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
-                },
-            height: showCommunityFeed
-              ? undefined
-              : {
-                  xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
-                  md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
-                },
             backgroundColor: '#000',
           }}
         >
@@ -626,7 +603,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: 0,
-                overflow: 'hidden',
+                overflow: showCommunityFeed ? 'hidden' : 'visible',
               }}
             >
               <Box
@@ -635,9 +612,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   display: 'flex',
                   flexDirection: 'column',
                   minHeight: 0,
-                  overflowY: showCommunityFeed ? 'hidden' : 'auto',
+                  overflowY: showCommunityFeed ? 'hidden' : 'visible',
                   WebkitOverflowScrolling: 'touch',
-                  overscrollBehaviorY: 'contain',
                 }}
               >
                 <Box sx={heroSurfaceSx}>
