@@ -4,6 +4,7 @@ import type { Theme } from '@mui/material/styles';
 import { keyframes } from '@mui/system';
 import { ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
@@ -817,8 +818,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   className="railButton"
                   data-appearance={appearance}
                 >
+                  <SearchRoundedIcon fontSize="small" />
                   <span className="actionLabel">Search</span>
-                  <ArrowForwardRoundedIcon fontSize="small" />
                 </LabeledSubmitButton>
               ) : (
                 <SubmitButton
@@ -829,7 +830,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   title="Search"
                   data-appearance={appearance}
                 >
-                  <ArrowForwardRoundedIcon fontSize="small" />
+                  <SearchRoundedIcon fontSize="small" />
                 </SubmitButton>
               )}
             </RailRight>
