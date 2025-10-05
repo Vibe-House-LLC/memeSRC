@@ -399,7 +399,9 @@ const RailRight = styled('div')(({ theme }) => ({
 
 const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
   height: 'var(--scope-button-size)',
-  borderRadius: 999,
+  minWidth: 'var(--scope-button-size)',
+  width: 'auto',
+  borderRadius: '999px',
   padding: theme.spacing(0.66, 1.15),
   display: 'inline-flex',
   alignItems: 'center',
@@ -409,10 +411,11 @@ const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
   color: theme.palette.common.white,
   boxShadow: 'none',
   overflow: 'hidden',
-  transition: 'padding 300ms cubic-bezier(0.4, 0, 0.2, 1), gap 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'padding 300ms cubic-bezier(0.4, 0, 0.2, 1), gap 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1)',
   '&[data-collapsing="true"]': {
     padding: theme.spacing(0.66, 1),
     gap: 0,
+    minWidth: 'var(--scope-button-size)',
   },
   '& .actionLabel': {
     fontFamily: FONT_FAMILY,
@@ -778,7 +781,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     style={
                       isFadingOutLabel
                         ? {
-                            animation: `${labelFadeOut} 300ms cubic-bezier(0.4, 0, 0.2, 1) both`,
+                            animation: `${labelFadeOut} 300ms cubic-bezier(0.4, 0, 0.6, 1) both`,
                           }
                         : undefined
                     }
