@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { API, Auth } from 'aws-amplify';
 import { PropTypes } from "prop-types";
 import { UserContext } from '../../../UserContext';
-import { readJSON, safeGetItem, safeRemoveItem, writeJSON } from '../../../utils/storage';
+import { readJSON, safeGetItem, safeRemoveItem, safeSetItem, writeJSON } from '../../../utils/storage';
 
 CheckAuth.propTypes = {
   children: PropTypes.object
@@ -13,6 +13,13 @@ export default function CheckAuth(props) {
   const navigate = useNavigate();
   const [content, setContent] = useState(null);
   const [user, setUser] = useState(null);
+  const [showFeed, setShowFeed] = useState(() => {
+    const storedPreference = safeGetItem('memeSRCShowFeed');
+    if (storedPreference === null) {
+      return true;
+    }
+    return storedPreference !== 'false';
+  });
   const location = useLocation();
 
   useEffect(() => {
@@ -67,8 +74,12 @@ export default function CheckAuth(props) {
     }
   }, [user, navigate, props.children, location.pathname])
 
+  useEffect(() => {
+    safeSetItem('memeSRCShowFeed', showFeed ? 'true' : 'false');
+  }, [showFeed]);
+
   return (
-    <UserContext.Provider value={{ user, setUser }}>
+    <UserContext.Provider value={{ user, setUser, showFeed, setShowFeed }}>
       {content}
     </UserContext.Provider>
   )

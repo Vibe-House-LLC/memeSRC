@@ -90,7 +90,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { setShow, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
-  const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
+  const { user, shows, defaultShow, handleUpdateDefaultShow, showFeed = true } = useContext(UserContext);
+  const showCommunityFeed = Boolean(showFeed);
   const { pathname } = useLocation();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
@@ -420,14 +421,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     window.dispatchEvent(new CustomEvent('community-feed-loaded'));
   }, []);
 
-  const heroSurfaceSx = useMemo(
-    () => ({
+  const heroSurfaceSx = useMemo(() => {
+    const base = {
       width: '100%',
       position: 'relative',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: { xs: 'center', md: 'flex-start' },
-      minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '100%' },
       paddingTop: { xs: `${NAVBAR_HEIGHT + 12}px`, md: DESKTOP_CARD_PADDING },
       paddingBottom: { xs: 28, md: DESKTOP_CARD_PADDING },
       gap: { xs: 3.5, md: 4 },
@@ -437,9 +436,75 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       borderRadius: 'inherit',
       border: 'none',
       boxShadow: 'none',
-    }),
-    [currentThemeBackground]
-  );
+      boxSizing: 'border-box',
+      flex: 1,
+    };
+
+    if (showCommunityFeed) {
+      return {
+        ...base,
+        justifyContent: { xs: 'center', md: 'flex-start' },
+        minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '100%' },
+      };
+    }
+
+    const standaloneHeight = {
+      xs: `calc(100svh - ${NAVBAR_HEIGHT}px)`,
+      md: DESKTOP_STICKY_HEIGHT,
+    };
+
+    return {
+      ...base,
+      justifyContent: 'center',
+      minHeight: standaloneHeight,
+      height: standaloneHeight,
+      maxHeight: standaloneHeight,
+    };
+  }, [currentThemeBackground, showCommunityFeed]);
+
+  const heroPaperSx = useMemo(() => {
+    const sharedBorderRadius = showCommunityFeed ? { xs: '28px', md: 4 } : 0;
+
+    const shared = {
+      borderRadius: sharedBorderRadius,
+      border: '1px solid rgba(70,70,70,0.22)',
+      background: 'rgba(10,10,10,0.92)',
+      boxShadow: 'none',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+    };
+
+    if (showCommunityFeed) {
+      return {
+        ...shared,
+        position: { xs: 'relative', md: 'sticky' },
+        top: { md: DESKTOP_STICKY_TOP_OFFSET },
+        alignSelf: { xs: 'stretch', md: 'start' },
+        maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+        minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+        height: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+        boxSizing: 'border-box',
+      };
+    }
+
+    const standaloneHeight = {
+      xs: `calc(100svh - ${NAVBAR_HEIGHT}px)`,
+      md: DESKTOP_STICKY_HEIGHT,
+    };
+
+    return {
+      ...shared,
+      position: 'relative',
+      top: 0,
+      alignSelf: 'stretch',
+      maxHeight: standaloneHeight,
+      minHeight: standaloneHeight,
+      height: standaloneHeight,
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+    };
+  }, [showCommunityFeed]);
 
   const heroInnerSx = useMemo(
     () => ({
@@ -479,42 +544,37 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           sx={{
             width: '100%',
             display: 'grid',
-            gridTemplateColumns: {
-              xs: '1fr',
-              md: 'minmax(0, 3fr) minmax(0, 1fr)',
-            },
-            gap: { xs: 0.25, md: 3 },
+            gridTemplateColumns: showCommunityFeed
+              ? {
+                  xs: '1fr',
+                  md: 'minmax(0, 3fr) minmax(0, 1fr)',
+                }
+              : { xs: '1fr' },
+            gap: showCommunityFeed ? { xs: 0.25, md: 3 } : 0,
             alignItems: 'stretch',
             px: { xs: 0, sm: 2, md: 3 },
-            paddingTop: {
-              xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
-              md: `${DESKTOP_CARD_PADDING}px`,
-            },
-            paddingBottom: {
-              xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
-              md: 0,
-            },
+            paddingTop: showCommunityFeed
+              ? {
+                  xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
+                  md: `${DESKTOP_CARD_PADDING}px`,
+                }
+              : 0,
+            paddingBottom: showCommunityFeed
+              ? {
+                  xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
+                  md: 0,
+                }
+              : 0,
+            minHeight: showCommunityFeed
+              ? undefined
+              : {
+                  xs: `calc(100svh - ${NAVBAR_HEIGHT}px)`,
+                  md: DESKTOP_STICKY_HEIGHT,
+                },
             backgroundColor: '#000',
           }}
         >
-          <Paper
-            elevation={0}
-            sx={{
-              borderRadius: { xs: '28px', md: 4 },
-              border: '1px solid rgba(70,70,70,0.22)',
-              background: 'rgba(10,10,10,0.92)',
-              boxShadow: 'none',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              position: { xs: 'relative', md: 'sticky' },
-              top: { md: DESKTOP_STICKY_TOP_OFFSET },
-              alignSelf: { xs: 'stretch', md: 'start' },
-              maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
-              minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
-              height: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
-            }}
-          >
+          <Paper elevation={0} sx={heroPaperSx}>
             <Box
               sx={{
                 position: 'absolute',
@@ -529,14 +589,24 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
+                minHeight: 0,
                 overflow: 'hidden',
               }}
             >
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 0,
+                  overflowY: showCommunityFeed ? 'hidden' : 'auto',
+                  WebkitOverflowScrolling: 'touch',
+                  overscrollBehaviorY: showCommunityFeed ? 'auto' : 'contain',
+                }}
+              >
                 <Box
                   sx={{
                     ...heroSurfaceSx,
-                    minHeight: '100%',
                     justifyContent: { xs: 'center', md: 'flex-start' },
                     paddingTop: { xs: 24, md: 32 },
                     paddingBottom: { xs: 24, md: 24 },
@@ -756,9 +826,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Box>
           </Paper>
 
-          <CommunityFeedSection
-            onPostsLoaded={handleCommunityPostsLoaded}
-          />
+          {showCommunityFeed && (
+            <CommunityFeedSection
+              onPostsLoaded={handleCommunityPostsLoaded}
+            />
+          )}
         </Box>
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />

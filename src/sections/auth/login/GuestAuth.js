@@ -16,6 +16,13 @@ export default function GuestAuth(props) {
   const [user, setUser] = useState(null);
   const [shows, setShows] = useState(() => readJSON('memeSRCShows') || []);
   const [defaultShow, setDefaultShow] = useState();
+  const [showFeed, setShowFeed] = useState(() => {
+    const storedPreference = safeGetItem('memeSRCShowFeed');
+    if (storedPreference === null) {
+      return true;
+    }
+    return storedPreference !== 'false';
+  });
   const location = useLocation();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -136,8 +143,12 @@ export default function GuestAuth(props) {
     }
   }, [location.pathname])
 
+  useEffect(() => {
+    safeSetItem('memeSRCShowFeed', showFeed ? 'true' : 'false');
+  }, [showFeed]);
+
   return (
-    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails }}>
+    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed, setShowFeed }}>
       {props.children}
     </UserContext.Provider>
   )
