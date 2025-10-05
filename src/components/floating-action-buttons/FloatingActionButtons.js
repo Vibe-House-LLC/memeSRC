@@ -83,9 +83,12 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             startIcon={<Dashboard />}
             variant="contained"
             sx={{
-                backgroundColor: variant === 'inline' ? 'rgba(15,23,42,0.85)' : 'black',
-                boxShadow: variant === 'inline' ? '0 18px 36px rgba(2,6,23,0.45)' : undefined,
-                borderRadius: variant === 'inline' ? 3 : undefined,
+                backgroundColor: 'black',
+                '&:hover': {
+                    backgroundColor: 'black',
+                },
+                boxShadow: variant === 'inline' ? '0 8px 16px rgba(0,0,0,0.3)' : undefined,
+                borderRadius: variant === 'inline' ? 2 : undefined,
                 px: variant === 'inline' ? 2.5 : undefined,
                 py: variant === 'inline' ? 1 : undefined,
                 zIndex: 1300,
@@ -103,10 +106,13 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     aria-label="feedback"
                     size="medium"
                     sx={{
-                        mr: variant === 'inline' ? 1.5 : 1.25,
-                        backgroundColor: variant === 'inline' ? 'rgba(15,23,42,0.85)' : 'black',
+                        mr: variant === 'inline' ? 0.5 : 1.25,
+                        backgroundColor: 'black',
+                        '&:hover': {
+                            backgroundColor: 'black',
+                        },
                         zIndex: 1300,
-                        boxShadow: variant === 'inline' ? '0 16px 32px rgba(2,6,23,0.45)' : undefined,
+                        boxShadow: variant === 'inline' ? '0 8px 16px rgba(0,0,0,0.3)' : undefined,
                     }}
                 >
                     <MapsUgc color="white" />
@@ -118,9 +124,12 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     aria-label="donate"
                     size="medium"
                     sx={{
-                        backgroundColor: variant === 'inline' ? 'rgba(15,23,42,0.85)' : 'black',
+                        backgroundColor: 'black',
+                        '&:hover': {
+                            backgroundColor: 'black',
+                        },
                         zIndex: 1300,
-                        boxShadow: variant === 'inline' ? '0 16px 32px rgba(2,6,23,0.45)' : undefined,
+                        boxShadow: variant === 'inline' ? '0 8px 16px rgba(0,0,0,0.3)' : undefined,
                     }}
                 >
                     <Favorite />
@@ -136,12 +145,15 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             startIcon={<ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />}
             variant="contained"
             sx={{
-                backgroundColor: variant === 'inline' ? 'rgba(15,23,42,0.85)' : 'black',
+                backgroundColor: 'black',
+                '&:hover': {
+                    backgroundColor: 'black',
+                },
                 ml: variant === 'inline' ? 0 : 'auto',
-                borderRadius: variant === 'inline' ? 3 : undefined,
+                borderRadius: variant === 'inline' ? 2 : undefined,
                 px: variant === 'inline' ? 2.75 : undefined,
                 py: variant === 'inline' ? 1 : undefined,
-                boxShadow: variant === 'inline' ? '0 18px 36px rgba(2,6,23,0.45)' : undefined,
+                boxShadow: variant === 'inline' ? '0 8px 16px rgba(0,0,0,0.3)' : undefined,
                 zIndex: 1300,
             }}
         >

@@ -17,6 +17,7 @@ import FavoriteToggle from '../../components/FavoriteToggle';
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
+import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 import {
   fetchLatestRelease,
   getReleaseType,
@@ -824,6 +825,27 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   </Box>
                 </Box>
               </Box>
+            </Box>
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 3,
+                px: { xs: 3, md: 6 },
+                pb: { xs: 2.5, md: 3.5 },
+                pointerEvents: 'none',
+                '& *': {
+                  pointerEvents: 'auto',
+                },
+              }}
+            >
+              <FloatingActionButtons
+                shows={currentValueId || '_universal'}
+                showAd={showAd}
+                variant="inline"
+              />
             </Box>
           </Paper>
 
