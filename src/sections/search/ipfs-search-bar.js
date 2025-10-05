@@ -11,6 +11,7 @@ import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
+import useLoadRandomFrame from '../../utils/loadRandomFrame';
 
 const sanitizeSearchValue = (value) => {
   if (value === undefined || value === null) {
@@ -43,6 +44,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
   const [search, setSearch] = useState(() => sanitizeSearchValue(searchTerm));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
+  const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
   const encodedSearchQuery = useMemo(
     () => (searchQuery ? encodeURIComponent(searchQuery) : ''),
     [searchQuery],
@@ -136,6 +138,16 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
     [navigate, resolvedCid, search, setSearchQuery, shows],
   );
 
+  const handleRandomSearch = useCallback(() => {
+    const scope = resolvedCid || '_universal';
+    trackUsageEvent('random_frame', {
+      source: 'UnifiedSearchBar',
+      scope,
+      showCount: Array.isArray(shows) ? shows.length : 0,
+    });
+    loadRandomFrame(scope);
+  }, [resolvedCid, loadRandomFrame, shows]);
+
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
 
   return (
@@ -158,6 +170,8 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
               onValueChange={handleSearchChange}
               onSubmit={handleSubmit}
               onClear={handleClearSearch}
+              onRandom={handleRandomSearch}
+              isRandomLoading={loadingRandom}
               shows={shows}
               savedCids={savedSeries}
               currentValueId={resolvedCid}
