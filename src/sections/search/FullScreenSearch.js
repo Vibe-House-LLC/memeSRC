@@ -50,6 +50,26 @@ const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${MOBILE_CARD_OFFSET}px)`;
 const MOBILE_CARD_TARGET_HEIGHT = `calc(90svh - ${MOBILE_CARD_OFFSET}px)`;
 const MOBILE_CARD_MIN_HEIGHT = `clamp(460px, ${MOBILE_CARD_TARGET_HEIGHT}, ${MOBILE_MAX_CARD_HEIGHT})`;
 const MOBILE_CARD_CONTENT_MIN_HEIGHT = `clamp(280px, calc(90svh - ${MOBILE_CARD_CONTENT_OFFSET}px), calc(100svh - ${MOBILE_CARD_CONTENT_OFFSET}px))`;
+// Standalone mode: vertical padding inside the hero surface box
+const STANDALONE_HERO_PADDING_TOP_XS = 24;
+const STANDALONE_HERO_PADDING_BOTTOM_XS = 24;
+const STANDALONE_HERO_PADDING_TOP_MD = 32;
+const STANDALONE_HERO_PADDING_BOTTOM_MD = 24;
+const STANDALONE_TOTAL_VERTICAL_PADDING_XS = STANDALONE_HERO_PADDING_TOP_XS + STANDALONE_HERO_PADDING_BOTTOM_XS;
+const STANDALONE_TOTAL_VERTICAL_PADDING_MD = STANDALONE_HERO_PADDING_TOP_MD + STANDALONE_HERO_PADDING_BOTTOM_MD;
+// Container heights account for navbar only
+// Use svh (small viewport height) on mobile - represents viewport when browser UI is fully visible (smallest size)
+// This prevents content overflow when address bar shows/hides on mobile browsers
+const STANDALONE_CONTAINER_HEIGHT_XS = `100svh`;
+const STANDALONE_CONTAINER_MIN_HEIGHT_XS = `calc(${STANDALONE_CONTAINER_HEIGHT_XS} - ${NAVBAR_HEIGHT}px)`;
+const STANDALONE_CONTAINER_MIN_HEIGHT_MD = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT}px)`;
+// Paper heights match container (no extra padding at this level)
+const STANDALONE_PAPER_HEIGHT_XS = STANDALONE_CONTAINER_MIN_HEIGHT_XS;
+const STANDALONE_PAPER_MIN_HEIGHT_XS = STANDALONE_PAPER_HEIGHT_XS;
+const STANDALONE_PAPER_MIN_HEIGHT_MD = STANDALONE_CONTAINER_MIN_HEIGHT_MD;
+// Surface heights account for internal padding to prevent overflow
+const STANDALONE_SURFACE_MIN_HEIGHT_XS = `calc(${STANDALONE_CONTAINER_HEIGHT_XS} - ${NAVBAR_HEIGHT + STANDALONE_TOTAL_VERTICAL_PADDING_XS}px)`;
+const STANDALONE_SURFACE_MIN_HEIGHT_MD = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT + STANDALONE_TOTAL_VERTICAL_PADDING_MD}px)`;
 
 // Simplified grid container
 const StyledGridContainer = styled(Grid)`
@@ -427,8 +447,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       position: 'relative',
       display: 'flex',
       flexDirection: 'column',
-      paddingTop: { xs: `${NAVBAR_HEIGHT + 12}px`, md: DESKTOP_CARD_PADDING },
-      paddingBottom: { xs: 28, md: DESKTOP_CARD_PADDING },
       gap: { xs: 3.5, md: 4 },
       ...currentThemeBackground,
       backgroundSize: 'cover',
@@ -443,27 +461,24 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     if (showCommunityFeed) {
       return {
         ...base,
-        justifyContent: { xs: 'center', md: 'flex-start' },
+        justifyContent: 'center',
         minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '100%' },
+        paddingTop: { xs: 20, md: DESKTOP_CARD_PADDING },
+        paddingBottom: { xs: 20, md: DESKTOP_CARD_PADDING },
       };
     }
-
-    const standaloneHeight = {
-      xs: `calc(100svh - ${NAVBAR_HEIGHT}px)`,
-      md: DESKTOP_STICKY_HEIGHT,
-    };
 
     return {
       ...base,
       justifyContent: 'center',
-      minHeight: standaloneHeight,
-      height: standaloneHeight,
-      maxHeight: standaloneHeight,
+      minHeight: { xs: STANDALONE_SURFACE_MIN_HEIGHT_XS, md: STANDALONE_SURFACE_MIN_HEIGHT_MD },
+      paddingTop: { xs: STANDALONE_HERO_PADDING_TOP_XS, md: STANDALONE_HERO_PADDING_TOP_MD },
+      paddingBottom: { xs: STANDALONE_HERO_PADDING_BOTTOM_XS, md: STANDALONE_HERO_PADDING_BOTTOM_MD },
     };
   }, [currentThemeBackground, showCommunityFeed]);
 
   const heroPaperSx = useMemo(() => {
-    const sharedBorderRadius = showCommunityFeed ? { xs: '28px', md: 4 } : 0;
+    const sharedBorderRadius = { xs: '28px', md: 4 };
 
     const shared = {
       borderRadius: sharedBorderRadius,
@@ -488,19 +503,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       };
     }
 
-    const standaloneHeight = {
-      xs: `calc(100svh - ${NAVBAR_HEIGHT}px)`,
-      md: DESKTOP_STICKY_HEIGHT,
-    };
-
     return {
       ...shared,
       position: 'relative',
       top: 0,
       alignSelf: 'stretch',
-      maxHeight: standaloneHeight,
-      minHeight: standaloneHeight,
-      height: standaloneHeight,
+      height: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
+      minHeight: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
+      maxHeight: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
       boxSizing: 'border-box',
       overflow: 'hidden',
     };
@@ -539,7 +549,21 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   return (
     <>
-      <StyledGridContainer container>
+      <StyledGridContainer
+        container
+        sx={{
+          minHeight: showCommunityFeed
+            ? undefined
+            : { xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS, md: STANDALONE_CONTAINER_MIN_HEIGHT_MD },
+          maxHeight: showCommunityFeed
+            ? undefined
+            : { xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS, md: STANDALONE_CONTAINER_MIN_HEIGHT_MD },
+          height: showCommunityFeed
+            ? undefined
+            : { xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS, md: STANDALONE_CONTAINER_MIN_HEIGHT_MD },
+          overflow: showCommunityFeed ? undefined : 'hidden',
+        }}
+      >
         <Box
           sx={{
             width: '100%',
@@ -568,8 +592,20 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             minHeight: showCommunityFeed
               ? undefined
               : {
-                  xs: `calc(100svh - ${NAVBAR_HEIGHT}px)`,
-                  md: DESKTOP_STICKY_HEIGHT,
+                  xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
+                  md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
+                },
+            maxHeight: showCommunityFeed
+              ? undefined
+              : {
+                  xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
+                  md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
+                },
+            height: showCommunityFeed
+              ? undefined
+              : {
+                  xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
+                  md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
                 },
             backgroundColor: '#000',
           }}
@@ -601,18 +637,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   minHeight: 0,
                   overflowY: showCommunityFeed ? 'hidden' : 'auto',
                   WebkitOverflowScrolling: 'touch',
-                  overscrollBehaviorY: showCommunityFeed ? 'auto' : 'contain',
+                  overscrollBehaviorY: 'contain',
                 }}
               >
-                <Box
-                  sx={{
-                    ...heroSurfaceSx,
-                    justifyContent: { xs: 'center', md: 'flex-start' },
-                    paddingTop: { xs: 24, md: 32 },
-                    paddingBottom: { xs: 24, md: 24 },
-                    gap: { xs: 3, md: 4 },
-                  }}
-                >
+                <Box sx={heroSurfaceSx}>
                   {latestRelease?.tag_name && (
                     <Slide
                       in={hasRecentUndismissedUpdate}
@@ -721,9 +749,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       <Box
                         sx={{
                           ...heroContentSx,
-                          justifyContent: 'flex-start',
-                          minHeight: { xs: MOBILE_CARD_CONTENT_MIN_HEIGHT, md: 'auto' },
-                          pt: { xs: 1, md: 0 },
                         }}
                       >
                       <Grid
