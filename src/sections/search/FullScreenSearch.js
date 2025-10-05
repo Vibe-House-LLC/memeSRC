@@ -110,7 +110,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { setShow, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
-  const { user, shows, defaultShow, handleUpdateDefaultShow, showFeed = true } = useContext(UserContext);
+  const { user, shows, defaultShow, handleUpdateDefaultShow, showFeed = false } = useContext(UserContext);
   const showCommunityFeed = Boolean(showFeed);
   const { pathname } = useLocation();
 

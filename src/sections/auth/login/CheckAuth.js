@@ -16,7 +16,7 @@ export default function CheckAuth(props) {
   const [showFeed, setShowFeed] = useState(() => {
     const storedPreference = safeGetItem('memeSRCShowFeed');
     if (storedPreference === null) {
-      return true;
+      return false;
     }
     return storedPreference !== 'false';
   });

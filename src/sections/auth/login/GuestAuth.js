@@ -19,7 +19,7 @@ export default function GuestAuth(props) {
   const [showFeed, setShowFeed] = useState(() => {
     const storedPreference = safeGetItem('memeSRCShowFeed');
     if (storedPreference === null) {
-      return true;
+      return false;
     }
     return storedPreference !== 'false';
   });
