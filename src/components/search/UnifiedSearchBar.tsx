@@ -413,7 +413,7 @@ const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
     fontSize: '0.94rem',
     color: theme.palette.common.white,
     whiteSpace: 'nowrap',
-    paddingLeft: theme.spacing(0.5),
+    paddingRight: theme.spacing(0.5),
     animation: `${labelSwitchIn} 180ms ease both`,
     willChange: 'opacity, transform',
     '@media (prefers-reduced-motion: reduce)': {
@@ -765,8 +765,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                       : undefined
                   }
                 >
-                  <span className="actionLabel">Random</span>
                   <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                  <span className="actionLabel">Random</span>
                 </LabeledSubmitButton>
               ) : (
                 <SubmitButton
