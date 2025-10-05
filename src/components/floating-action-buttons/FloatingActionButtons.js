@@ -89,12 +89,16 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 },
                 boxShadow: variant === 'inline' ? '0 8px 16px rgba(0,0,0,0.3)' : undefined,
                 borderRadius: variant === 'inline' ? 2 : undefined,
-                px: variant === 'inline' ? 2.5 : undefined,
+                border: variant === 'inline' ? '1px solid rgba(255,255,255,0.15)' : undefined,
+                px: variant === 'inline' ? 1.75 : undefined,
                 py: variant === 'inline' ? 1 : undefined,
                 zIndex: 1300,
+                '& .MuiButton-startIcon': {
+                    marginRight: variant === 'inline' ? '6px' : undefined,
+                },
             }}
         >
-            Projects
+            Collage
         </StyledButton>
     );
 
@@ -111,6 +115,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                         '&:hover': {
                             backgroundColor: 'black',
                         },
+                        border: variant === 'inline' ? '1px solid rgba(255,255,255,0.15)' : undefined,
                         zIndex: 1300,
                         boxShadow: variant === 'inline' ? '0 8px 16px rgba(0,0,0,0.3)' : undefined,
                     }}
@@ -128,6 +133,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                         '&:hover': {
                             backgroundColor: 'black',
                         },
+                        border: variant === 'inline' ? '1px solid rgba(255,255,255,0.15)' : undefined,
                         zIndex: 1300,
                         boxShadow: variant === 'inline' ? '0 8px 16px rgba(0,0,0,0.3)' : undefined,
                     }}
@@ -151,10 +157,14 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 },
                 ml: variant === 'inline' ? 0 : 'auto',
                 borderRadius: variant === 'inline' ? 2 : undefined,
-                px: variant === 'inline' ? 2.75 : undefined,
+                border: variant === 'inline' ? '1px solid rgba(255,255,255,0.15)' : undefined,
+                px: variant === 'inline' ? 1.75 : undefined,
                 py: variant === 'inline' ? 1 : undefined,
                 boxShadow: variant === 'inline' ? '0 8px 16px rgba(0,0,0,0.3)' : undefined,
                 zIndex: 1300,
+                '& .MuiButton-startIcon': {
+                    marginRight: variant === 'inline' ? '6px' : undefined,
+                },
             }}
         >
             Random
@@ -174,7 +184,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 }}
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    {hasCollageAccess ? projectsButton : supportButtons}
+                    {projectsButton}
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     {randomButton}
