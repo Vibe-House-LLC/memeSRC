@@ -838,8 +838,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   className="railButton"
                   data-appearance={appearance}
                 >
-                  <SearchRoundedIcon fontSize="small" />
                   <span className="actionLabel">Search</span>
+                  <ArrowForwardRoundedIcon fontSize="small" />
                 </LabeledSubmitButton>
               ) : (
                 <SubmitButton
@@ -850,7 +850,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   title="Search"
                   data-appearance={appearance}
                 >
-                  <SearchRoundedIcon fontSize="small" />
+                  <ArrowForwardRoundedIcon fontSize="small" />
                 </SubmitButton>
               )}
             </RailRight>
