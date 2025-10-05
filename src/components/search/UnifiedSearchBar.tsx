@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { keyframes } from '@mui/system';
@@ -188,6 +188,17 @@ const labelSwitchIn = keyframes`
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+`;
+
+const labelFadeOut = keyframes`
+  from {
+    opacity: 1;
+    max-width: 200px;
+  }
+  to {
+    opacity: 0;
+    max-width: 0px;
   }
 `;
 
@@ -535,14 +546,32 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
+  const [showRandomLabel, setShowRandomLabel] = useState(true);
+  const [isFadingOutLabel, setIsFadingOutLabel] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shouldRestoreFocusRef = useRef(false);
   // railId and scopeButtonSx removed with inline expansion approach
-  const showRandomButton = false;
   const currentSeries = useMemo(
     () => findSeriesItem(currentValueId, shows, savedCids),
     [currentValueId, savedCids, shows],
   );
+
+  // Show "Random" label for 1 second on mount, then fade it out
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => {
+      setIsFadingOutLabel(true);
+    }, 1000);
+    
+    const hideTimer = setTimeout(() => {
+      setShowRandomLabel(false);
+      setIsFadingOutLabel(false);
+    }, 1300); // 1000ms display + 300ms fade animation
+    
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
 
   const currentLabel = useMemo(
     () => buildCurrentLabel(currentValueId, currentSeries),
@@ -707,8 +736,40 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           )}
           {!scopeExpanded && (
             <>
-              {showRandomButton && (
-                <RandomButton
+              {hasInput ? (
+                <SubmitButton
+                  type="submit"
+                  aria-label="Search"
+                  disabled={!hasInput}
+                  title="Search"
+                  data-appearance={appearance}
+                >
+                  <ArrowForwardRoundedIcon fontSize="small" />
+                </SubmitButton>
+              ) : showRandomLabel && !randomLoading ? (
+                <LabeledSubmitButton
+                  type="button"
+                  aria-label="Show something random"
+                  onClick={handleRandomClick}
+                  onPointerDown={handleRandomPointerDown}
+                  disabled={randomLoading}
+                  aria-busy={randomLoading}
+                  data-appearance={appearance}
+                  sx={
+                    isFadingOutLabel
+                      ? {
+                          '& .actionLabel': {
+                            animation: `${labelFadeOut} 300ms ease both`,
+                          },
+                        }
+                      : undefined
+                  }
+                >
+                  <span className="actionLabel">Random</span>
+                  <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                </LabeledSubmitButton>
+              ) : (
+                <SubmitButton
                   type="button"
                   aria-label="Show something random"
                   onClick={handleRandomClick}
@@ -723,17 +784,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   ) : (
                     <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                   )}
-                </RandomButton>
+                </SubmitButton>
               )}
-              <SubmitButton
-                type="submit"
-                aria-label="Search"
-                disabled={!hasInput}
-                title="Search"
-                data-appearance={appearance}
-              >
-                <ArrowForwardRoundedIcon fontSize="small" />
-              </SubmitButton>
             </>
           )}
         </FieldRow>
