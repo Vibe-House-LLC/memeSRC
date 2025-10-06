@@ -17,58 +17,60 @@ const BUTTON_RIPPLE_COLOR = 'rgba(12, 12, 12, 0.72)';
 const FONT_FAMILY = 'Roboto, sans-serif';
 
 // Create a button component
-const StyledButton = styled(LoadingButton)`
-    font-family: ${FONT_FAMILY};
-    font-size: 18px;
-    color: #fff;
-    background-color: ${BUTTON_BASE_COLOR};
-    border-radius: 8px;
-    padding: 8px 16px;
-    cursor: pointer;
-    transition: background-color 0.3s;
+const StyledButton = styled(LoadingButton)(() => ({
+    fontFamily: FONT_FAMILY,
+    fontSize: '18px',
+    color: '#fff',
+    backgroundColor: BUTTON_BASE_COLOR,
+    borderRadius: 8,
+    padding: '8px 16px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s',
+    '&:hover': {
+        backgroundColor: BUTTON_HOVER_COLOR,
+    },
+    '&:active': {
+        backgroundColor: BUTTON_ACTIVE_COLOR,
+    },
+    '&.Mui-focusVisible': {
+        backgroundColor: BUTTON_HOVER_COLOR,
+    },
+    '& .MuiTouchRipple-root .MuiTouchRipple-child': {
+        backgroundColor: BUTTON_RIPPLE_COLOR,
+    },
+}));
 
-    &:hover {
-      background-color: ${BUTTON_HOVER_COLOR};
-    }
+const StyledLeftFooter = styled('footer')(({ theme, hasAd }) => ({
+    bottom: hasAd ? '50px' : '0',
+    left: theme.spacing(3),
+    lineHeight: 0,
+    position: 'fixed',
+    padding: theme.spacing(1.25, 0),
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    zIndex: 1300,
+    [theme.breakpoints.up('md')]: {
+        left: theme.spacing(6),
+    },
+}));
 
-    &:active {
-      background-color: ${BUTTON_ACTIVE_COLOR};
-    }
-
-    &.Mui-focusVisible {
-      background-color: ${BUTTON_HOVER_COLOR};
-    }
-
-    & .MuiTouchRipple-root .MuiTouchRipple-child {
-      background-color: ${BUTTON_RIPPLE_COLOR};
-    }
-`;
-
-const StyledLeftFooter = styled('footer')`
-    bottom: ${props => props.hasAd ? '50px' : '0'};
-    left: 0;
-    line-height: 0;
-    position: fixed;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: transparent;
-    z-index: 1300;
-`;
-
-const StyledRightFooter = styled('footer')`
-    bottom: ${props => props.hasAd ? '50px' : '0'};
-    right: 0;
-    line-height: 0;
-    position: fixed;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: transparent;
-    z-index: 1300;
-`;
+const StyledRightFooter = styled('footer')(({ theme, hasAd }) => ({
+    bottom: hasAd ? '50px' : '0',
+    right: theme.spacing(3),
+    lineHeight: 0,
+    position: 'fixed',
+    padding: theme.spacing(1.25, 0),
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    zIndex: 1300,
+    [theme.breakpoints.up('md')]: {
+        right: theme.spacing(6),
+    },
+}));
 
 function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
