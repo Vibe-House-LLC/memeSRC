@@ -718,35 +718,6 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
         }}
       >
         <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            px: isMobile ? 1.5 : 2,
-            pt: isMobile ? 1.25 : 1.5,
-            pb: isMobile ? 0.75 : 1,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Typography variant="subtitle1" sx={{ flex: 1, fontWeight: 700 }}>
-            Select show or movie
-          </Typography>
-          <IconButton aria-label="Close" size="small" onClick={onClose}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Box>
-        <Box
-          sx={{
-              px: isMobile ? 1.4 : 1.85,
-              py: isMobile ? 0.65 : 0.9,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          {renderFilterInput()}
-        </Box>
-        <Box
           ref={contentRef}
           sx={{
             flex: 1,
