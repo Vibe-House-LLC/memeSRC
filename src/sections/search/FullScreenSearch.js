@@ -30,7 +30,7 @@ import { safeGetItem, safeSetItem } from '../../utils/storage';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import { isColorNearBlack } from '../../utils/colors';
-import CommunityFeedSection from './CommunityFeedSection';
+import FeedSection from './FeedSection';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -112,7 +112,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, shows, defaultShow, handleUpdateDefaultShow, showFeed = false } = useContext(UserContext);
-  const showCommunityFeed = Boolean(showFeed);
+  const isFeedEnabled = Boolean(showFeed);
   const { pathname } = useLocation();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
@@ -435,13 +435,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     [setSearchTerm],
   );
 
-  const handleCommunityPostsLoaded = useCallback((loadedPosts) => {
-    if (!loadedPosts.length || typeof window === 'undefined') {
-      return;
-    }
-    window.dispatchEvent(new CustomEvent('community-feed-loaded'));
-  }, []);
-
   const heroSurfaceSx = useMemo(() => {
     const base = {
       width: '100%',
@@ -459,7 +452,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       flex: 1,
     };
 
-    if (showCommunityFeed) {
+    if (isFeedEnabled) {
       return {
         ...base,
         justifyContent: 'center',
@@ -475,7 +468,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       paddingTop: { xs: STANDALONE_HERO_PADDING_TOP_XS, md: STANDALONE_HERO_PADDING_TOP_MD },
       paddingBottom: { xs: STANDALONE_HERO_PADDING_BOTTOM_XS, md: STANDALONE_HERO_PADDING_BOTTOM_MD },
     };
-  }, [currentThemeBackground, showCommunityFeed]);
+  }, [currentThemeBackground, isFeedEnabled]);
 
   const heroPaperSx = useMemo(() => {
     const sharedBorderRadius = { xs: '28px', md: 4 };
@@ -490,7 +483,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       flexDirection: 'column',
     };
 
-    if (showCommunityFeed) {
+    if (isFeedEnabled) {
       return {
         ...shared,
         position: { xs: 'relative', md: 'sticky' },
@@ -511,7 +504,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       minHeight: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
       boxSizing: 'border-box',
     };
-  }, [showCommunityFeed]);
+  }, [isFeedEnabled]);
 
   const heroInnerSx = useMemo(
     () => ({
@@ -549,7 +542,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       <StyledGridContainer
         container
         sx={{
-          minHeight: showCommunityFeed
+          minHeight: isFeedEnabled
             ? undefined
             : { xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS, md: STANDALONE_CONTAINER_MIN_HEIGHT_MD },
         }}
@@ -558,28 +551,28 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           sx={{
             width: '100%',
             display: 'grid',
-            gridTemplateColumns: showCommunityFeed
+            gridTemplateColumns: isFeedEnabled
               ? {
                   xs: '1fr',
                   md: 'minmax(0, 3fr) minmax(0, 1fr)',
                 }
               : { xs: '1fr' },
-            gap: showCommunityFeed ? { xs: 0.25, md: 3 } : 0,
+            gap: isFeedEnabled ? { xs: 0.25, md: 3 } : 0,
             alignItems: 'stretch',
             px: { xs: 0, sm: 2, md: 3 },
-            paddingTop: showCommunityFeed
+            paddingTop: isFeedEnabled
               ? {
                   xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
                   md: `${DESKTOP_CARD_PADDING}px`,
                 }
               : 0,
-            paddingBottom: showCommunityFeed
+            paddingBottom: isFeedEnabled
               ? {
                   xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
                   md: 0,
                 }
               : 0,
-            minHeight: showCommunityFeed
+            minHeight: isFeedEnabled
               ? undefined
               : {
                   xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
@@ -604,7 +597,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: 0,
-                overflow: showCommunityFeed ? 'hidden' : 'visible',
+                overflow: isFeedEnabled ? 'hidden' : 'visible',
               }}
             >
               <Box
@@ -613,7 +606,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                   display: 'flex',
                   flexDirection: 'column',
                   minHeight: 0,
-                  overflowY: showCommunityFeed ? 'hidden' : 'visible',
+                  overflowY: isFeedEnabled ? 'hidden' : 'visible',
                   WebkitOverflowScrolling: 'touch',
                 }}
               >
@@ -849,10 +842,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Box>
           </Paper>
 
-          {showCommunityFeed && (
-            <CommunityFeedSection
-              onPostsLoaded={handleCommunityPostsLoaded}
-            />
+          {isFeedEnabled && (
+            <FeedSection />
           )}
         </Box>
       </StyledGridContainer>

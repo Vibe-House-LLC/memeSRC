@@ -54,7 +54,7 @@ export default function AccountPopover() {
             size="small"
             checked={isFeedVisible}
             onChange={handleShowFeedToggle}
-            inputProps={{ 'aria-label': 'toggle community feed visibility' }}
+            inputProps={{ 'aria-label': 'toggle feed visibility' }}
           />
         </Stack>
       </MenuItem>

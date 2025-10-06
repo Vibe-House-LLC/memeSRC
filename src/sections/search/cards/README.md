@@ -1,6 +1,6 @@
-# Community feed cards
+# Feed cards
 
-This area collects light documentation for the hero cards rendered inside `CommunityFeedSection`. Keep card implementations colocated with the feed when it keeps things simple, but lean on these notes so future cards read consistently.
+This area collects light documentation for the hero cards rendered inside `FeedSection`. Keep card implementations colocated with the feed when it keeps things simple, but lean on these notes so future cards read consistently.
 
 ## Layout
 - Target the same max width as the intro card (about 760px desktop) and keep generous padding (roughly 3.5rem horizontal, 5rem vertical).
