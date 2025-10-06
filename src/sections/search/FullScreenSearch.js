@@ -46,16 +46,15 @@ const DESKTOP_NAVBAR_HEIGHT = NAVBAR_HEIGHT;
 const DESKTOP_STICKY_TOP_OFFSET = DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING;
 const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING * 2}px)`;
 const MOBILE_CARD_OFFSET = NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER;
-const MOBILE_CARD_CONTENT_OFFSET = MOBILE_CARD_OFFSET + 140;
 const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${MOBILE_CARD_OFFSET}px)`;
 const MOBILE_CARD_TARGET_HEIGHT = `calc(90svh - ${MOBILE_CARD_OFFSET}px)`;
-const MOBILE_CARD_MIN_HEIGHT = `clamp(460px, ${MOBILE_CARD_TARGET_HEIGHT}, ${MOBILE_MAX_CARD_HEIGHT})`;
-const MOBILE_CARD_CONTENT_MIN_HEIGHT = `clamp(280px, calc(90svh - ${MOBILE_CARD_CONTENT_OFFSET}px), calc(100svh - ${MOBILE_CARD_CONTENT_OFFSET}px))`;
+const MOBILE_CARD_MIN_HEIGHT = `clamp(280px, ${MOBILE_CARD_TARGET_HEIGHT}, ${MOBILE_MAX_CARD_HEIGHT})`;
+const SHORT_VIEWPORT_MEDIA_QUERY = '@media (max-height: 720px)';
 // Standalone mode: vertical padding inside the hero surface box
-const STANDALONE_HERO_PADDING_TOP_XS = 24;
-const STANDALONE_HERO_PADDING_BOTTOM_XS = 24;
-const STANDALONE_HERO_PADDING_TOP_MD = 32;
-const STANDALONE_HERO_PADDING_BOTTOM_MD = 24;
+const STANDALONE_HERO_PADDING_TOP_XS = 12;
+const STANDALONE_HERO_PADDING_BOTTOM_XS = 14;
+const STANDALONE_HERO_PADDING_TOP_MD = 14;
+const STANDALONE_HERO_PADDING_BOTTOM_MD = 16;
 const STANDALONE_TOTAL_VERTICAL_PADDING_XS = STANDALONE_HERO_PADDING_TOP_XS + STANDALONE_HERO_PADDING_BOTTOM_XS;
 const STANDALONE_TOTAL_VERTICAL_PADDING_MD = STANDALONE_HERO_PADDING_TOP_MD + STANDALONE_HERO_PADDING_BOTTOM_MD;
 // Container heights account for navbar only
@@ -441,7 +440,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       position: 'relative',
       display: 'flex',
       flexDirection: 'column',
-      gap: { xs: 3.5, md: 4 },
+      gap: { xs: 1.4, md: 1.8 },
       ...currentThemeBackground,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
@@ -457,8 +456,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         ...base,
         justifyContent: 'center',
         minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '100%' },
-        paddingTop: { xs: 20, md: DESKTOP_CARD_PADDING },
-        paddingBottom: { xs: 20, md: DESKTOP_CARD_PADDING },
+        paddingTop: { xs: 12, md: 16 },
+        paddingBottom: { xs: 12, md: 16 },
       };
     }
 
@@ -491,8 +490,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         alignSelf: { xs: 'stretch', md: 'start' },
         maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
         minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
-        height: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+        height: { xs: 'auto', md: DESKTOP_STICKY_HEIGHT },
         boxSizing: 'border-box',
+        [SHORT_VIEWPORT_MEDIA_QUERY]: {
+          minHeight: 'auto',
+          height: 'auto',
+        },
       };
     }
 
@@ -503,6 +506,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       alignSelf: 'stretch',
       minHeight: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
       boxSizing: 'border-box',
+      borderBottomLeftRadius: { xs: '28px', sm: 0 },
+      borderBottomRightRadius: { xs: '28px', sm: 0 },
+      [SHORT_VIEWPORT_MEDIA_QUERY]: {
+        minHeight: 'auto',
+      },
     };
   }, [isFeedEnabled]);
 
@@ -513,14 +521,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       width: '100%',
       maxWidth: 'min(1040px, 100%)',
       mx: 'auto',
-      px: { xs: 3, sm: 5, md: 7 },
+      px: { xs: 1.4, sm: 2.2, md: 2.6 },
       py: { xs: 0, sm: 0, md: 0 },
       mt: { xs: 1, md: 0 },
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
       justifyContent: 'center',
-      gap: { xs: 2.5, md: 4 },
+      gap: { xs: 1.2, md: 1.8 },
     }),
     []
   );
@@ -531,7 +539,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
-      gap: { xs: 3, md: 4 },
+      gap: { xs: 1.4, md: 2 },
     }),
     []
   );
@@ -559,7 +567,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               : { xs: '1fr' },
             gap: isFeedEnabled ? { xs: 0.25, md: 3 } : 0,
             alignItems: 'stretch',
-            px: { xs: 0, sm: 2, md: 3 },
+            px: isFeedEnabled
+              ? { xs: 0, sm: 2, md: 3 }
+              : { xs: 0, sm: 0 },
             paddingTop: isFeedEnabled
               ? {
                   xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
@@ -588,6 +598,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 inset: 0,
                 background: 'radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 55%)',
                 pointerEvents: 'none',
+                display: { xs: 'block', md: 'none' },
               }}
             />
             <Box
