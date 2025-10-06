@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Box, styled, CircularProgress } from '@mui/material';
 import { Dashboard } from '@mui/icons-material';
@@ -59,20 +59,58 @@ const StyledRightFooter = styled('footer')`
 function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const navigate = useNavigate();
-    const { user } = useContext(UserContext);
+    const { user, shows: availableShows = [] } = useContext(UserContext);
 
     // Check if user is an admin
     const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
 
+    const showCount = useMemo(() => {
+        if (Array.isArray(shows)) {
+            return shows.length;
+        }
+
+        if (shows === '_favorites') {
+            return availableShows.filter(singleShow => singleShow?.isFavorite).length;
+        }
+
+        if (!shows || shows === '_universal') {
+            return availableShows.length;
+        }
+
+        return availableShows.some(singleShow => singleShow?.id === shows) ? 1 : 0;
+    }, [shows, availableShows]);
+
+    const targetShow = useMemo(() => {
+        if (Array.isArray(shows)) {
+            const [firstShow] = shows;
+
+            if (!firstShow) {
+                return undefined;
+            }
+
+            if (typeof firstShow === 'string') {
+                return firstShow;
+            }
+
+            if (typeof firstShow === 'object' && 'id' in firstShow) {
+                return firstShow.id;
+            }
+
+            return undefined;
+        }
+
+        return shows;
+    }, [shows]);
+
     const handleRandomClick = () => {
         const payload = {
             source: 'FloatingActionButtons',
-            showCount: Array.isArray(shows) ? shows.length : 0,
+            showCount,
             hasAd: showAd,
         };
 
         trackUsageEvent('random_frame', payload);
-        loadRandomFrame(shows);
+        loadRandomFrame(targetShow);
     };
 
     const handleCollageClick = () => {
@@ -179,7 +217,15 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
 }
 
 FloatingActionButtons.propTypes = {
-    shows: PropTypes.oneOfType([PropTypes.array, PropTypes.string]).isRequired,
+    shows: PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.arrayOf(
+            PropTypes.oneOfType([
+                PropTypes.string,
+                PropTypes.shape({ id: PropTypes.string }),
+            ]),
+        ),
+    ]).isRequired,
     showAd: PropTypes.bool,
     variant: PropTypes.oneOf(['fixed', 'inline']),
 };
