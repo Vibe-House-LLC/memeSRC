@@ -50,7 +50,7 @@ const FieldShell = styled('div')(({ theme }) => ({
   borderRadius: 14,
   border: '1px solid rgba(30, 30, 30, 0.08)',
   background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 242, 242, 0.94))',
-  boxShadow: '0 10px 24px rgba(0, 0, 0, 0.14)',
+  boxShadow: 'none',
   padding: theme.spacing(1.05, 1.26),
   display: 'flex',
   flexDirection: 'column',
@@ -72,7 +72,7 @@ const FieldShell = styled('div')(({ theme }) => ({
     border: '1px solid rgba(255, 255, 255, 0.16)',
     background: 'linear-gradient(180deg, rgba(32, 32, 34, 0.96), rgba(20, 20, 22, 0.98))',
     color: 'rgba(245, 245, 245, 0.95)',
-    boxShadow: '0 18px 44px rgba(0, 0, 0, 0.55)',
+    boxShadow: 'none',
   },
   '&[data-appearance="dark"][data-expanded="false"]': {
     background: 'linear-gradient(180deg, rgba(28, 28, 30, 0.94), rgba(18, 18, 20, 0.98))',
@@ -85,6 +85,7 @@ const FieldShell = styled('div')(({ theme }) => ({
     '--scope-gap': theme.spacing(0.74),
     padding: theme.spacing(0.86, 1.06),
     borderRadius: 12,
+    boxShadow: '0 10px 24px rgba(0, 0, 0, 0.14)',
     transition: 'padding 240ms cubic-bezier(0.4, 0, 0.2, 1), gap 200ms cubic-bezier(0.4, 0, 0.2, 1)',
     '&[data-expanded="false"]': {
       padding: theme.spacing(0.68, 0.92),

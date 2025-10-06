@@ -39,9 +39,12 @@ import { SnowEffect } from '../../../components/CountdownTimer';
 const StyledRoot = styled(AppBar)(({ theme }) => ({
   backgroundColor: '#000000',
   borderBottom: '1px solid rgba(255,255,255,0.04)',
-  boxShadow: '0 2px 12px rgba(0, 0, 0, 0.65)',
+  boxShadow: 'none',
   color: '#fff',
   position: 'static',
+  [theme.breakpoints.down('sm')]: {
+    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.65)',
+  },
   [theme.breakpoints.up('md')]: {
     position: 'sticky',
     top: -1,

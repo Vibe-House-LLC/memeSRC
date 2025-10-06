@@ -598,6 +598,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 inset: 0,
                 background: 'radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 55%)',
                 pointerEvents: 'none',
+                display: { xs: 'block', md: 'none' },
               }}
             />
             <Box
