@@ -53,8 +53,8 @@ const SHORT_VIEWPORT_MEDIA_QUERY = '@media (max-height: 720px)';
 // Standalone mode: vertical padding inside the hero surface box
 const STANDALONE_HERO_PADDING_TOP_XS = 12;
 const STANDALONE_HERO_PADDING_BOTTOM_XS = 14;
-const STANDALONE_HERO_PADDING_TOP_MD = 18;
-const STANDALONE_HERO_PADDING_BOTTOM_MD = 20;
+const STANDALONE_HERO_PADDING_TOP_MD = 14;
+const STANDALONE_HERO_PADDING_BOTTOM_MD = 16;
 const STANDALONE_TOTAL_VERTICAL_PADDING_XS = STANDALONE_HERO_PADDING_TOP_XS + STANDALONE_HERO_PADDING_BOTTOM_XS;
 const STANDALONE_TOTAL_VERTICAL_PADDING_MD = STANDALONE_HERO_PADDING_TOP_MD + STANDALONE_HERO_PADDING_BOTTOM_MD;
 // Container heights account for navbar only
@@ -440,7 +440,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       position: 'relative',
       display: 'flex',
       flexDirection: 'column',
-      gap: { xs: 1.6, md: 2.2 },
+      gap: { xs: 1.4, md: 1.8 },
       ...currentThemeBackground,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
@@ -456,8 +456,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         ...base,
         justifyContent: 'center',
         minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '100%' },
-        paddingTop: { xs: 14, md: 24 },
-        paddingBottom: { xs: 14, md: 24 },
+        paddingTop: { xs: 12, md: 16 },
+        paddingBottom: { xs: 12, md: 16 },
       };
     }
 
@@ -521,14 +521,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       width: '100%',
       maxWidth: 'min(1040px, 100%)',
       mx: 'auto',
-      px: { xs: 1.6, sm: 3, md: 3.6 },
+      px: { xs: 1.4, sm: 2.2, md: 2.6 },
       py: { xs: 0, sm: 0, md: 0 },
       mt: { xs: 1, md: 0 },
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
       justifyContent: 'center',
-      gap: { xs: 1.4, md: 2.2 },
+      gap: { xs: 1.2, md: 1.8 },
     }),
     []
   );
@@ -539,7 +539,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
-      gap: { xs: 1.6, md: 2.4 },
+      gap: { xs: 1.4, md: 2 },
     }),
     []
   );
