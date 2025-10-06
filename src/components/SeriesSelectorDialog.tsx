@@ -9,9 +9,10 @@ import {
   InputAdornment,
   IconButton,
   List,
-  ListSubheader,
+  ListItem,
   ListItemButton,
   ListItemText,
+  ListSubheader,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -92,6 +93,15 @@ const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
   };
 };
 
+const LAYOUT_SPACING = {
+  listPadding: 1.25,
+  rowGap: 0.75,
+  labelPadding: {
+    regular: 1.15,
+    tight: 0.9,
+  },
+} as const;
+
 const quickActionButtonSx = (theme: Theme) => {
   const isLight = theme.palette.mode === 'light';
   const borderTone = alpha(theme.palette.grey[700], isLight ? 0.85 : 0.55);
@@ -105,7 +115,6 @@ const quickActionButtonSx = (theme: Theme) => {
     border: '1px solid',
     borderColor: borderTone,
     borderRadius: theme.spacing(1.5),
-    marginBottom: theme.spacing(0.45),
     paddingTop: theme.spacing(1.05),
     paddingBottom: theme.spacing(1),
     paddingLeft: theme.spacing(0.92),
@@ -149,7 +158,6 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
     border: '1px solid',
     borderColor: baseBorder,
     borderRadius: 1.5,
-    marginBottom: theme.spacing(0.4),
     paddingTop: theme.spacing(0.38),
     paddingBottom: theme.spacing(0.38),
     paddingLeft: theme.spacing(0.54),
@@ -182,16 +190,20 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
   };
 };
 
-const sectionHeaderSx = (theme: Theme, options?: { topSpacing?: 'tight' | 'regular' }) => {
-  const topSpacing = options?.topSpacing === 'tight' ? 0.18 : 0.28;
+const sectionHeaderSx = (theme: Theme, options?: { density?: 'tight' | 'regular' }) => {
+  const density = options?.density ?? 'regular';
+  const paddingBase = LAYOUT_SPACING.labelPadding[density];
+  const paddingY = paddingBase / 2;
 
   return {
     bgcolor: 'transparent',
     px: 0,
-    pt: theme.spacing(topSpacing),
-    pb: theme.spacing(0.04),
-    fontSize: '0.8rem',
+    margin: 0,
+    paddingTop: theme.spacing(paddingY),
+    paddingBottom: theme.spacing(paddingY),
+    fontSize: density === 'tight' ? '0.74rem' : '0.76rem',
     fontWeight: 600,
+    lineHeight: 1.28,
     color: theme.palette.text.secondary,
   };
 };
@@ -350,6 +362,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const renderFilterInput = () => (
     <TextField
       inputRef={inputRef}
+      size="small"
       variant="outlined"
       fullWidth
       placeholder="Type to filter (titles)..."
@@ -382,17 +395,29 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
         '& .MuiOutlinedInput-root': {
           borderRadius: isMobile ? 1 : 1.5,
           bgcolor: 'background.paper',
-          minHeight: 52,
+          minHeight: 44,
           '& fieldset': { borderColor: 'divider' },
           '&:hover fieldset': { borderColor: 'text.primary' },
           '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 1 },
         },
         '& .MuiOutlinedInput-input': {
-          fontSize: '1rem',
-          py: 1.25,
+          fontSize: '0.95rem',
+          py: 1,
         },
       }}
     />
+  );
+
+  const filterInputListItem = (
+    <ListItem
+      disablePadding
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Box sx={{ display: 'flex', width: '100%' }}>{renderFilterInput()}</Box>
+    </ListItem>
   );
 
   const listContent = (
@@ -401,25 +426,29 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       sx={{
         bgcolor: 'transparent',
         px: { xs: 1.25, sm: 1.75 },
-        pt: showQuickPicks ? (isMobile ? 0.6 : 0.85) : isMobile ? 0.35 : 0.55,
-        pb: { xs: 1, sm: 1.25 },
+        pt: (theme) => theme.spacing(LAYOUT_SPACING.listPadding),
+        pb: (theme) => theme.spacing(LAYOUT_SPACING.rowGap),
+        display: 'flex',
+        flexDirection: 'column',
+        gap: (theme) => theme.spacing(LAYOUT_SPACING.rowGap),
       }}
     >
 
-      {/* Unified content: quick picks when no filter; results/full list below */}
+      {filterInputListItem}
+      {/* Quick picks when not filtering */}
+      {showQuickPicks && (
+        <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}>
+          Quick Filters
+        </ListSubheader>
+      )}
       {/* No results state */}
       {isFiltering && filteredAllSeries.length === 0 && (
         <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
           <Typography variant="body2">No results</Typography>
         </Box>
       )}
-
-      {/* Quick picks when not filtering */}
       {showQuickPicks && (
         <>
-          <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { topSpacing: 'tight' })}>
-            Quick Filters
-          </ListSubheader>
           <ListItemButton
             selected={currentValueId === '_universal'}
             onClick={() => handleSelect('_universal')}
@@ -440,10 +469,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <ListItemButton
               selected={currentValueId === '_favorites'}
               onClick={() => handleSelect('_favorites')}
-              sx={(theme) => ({
-                ...quickActionButtonSx(theme),
-                marginBottom: theme.spacing(0.5),
-              })}
+                sx={(theme) => quickActionButtonSx(theme)}
             >
               <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
                 {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
@@ -462,7 +488,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               <ListSubheader
                 disableSticky
                 component="div"
-                sx={(theme) => sectionHeaderSx(theme, { topSpacing: showQuickPicks ? 'regular' : 'tight' })}
+                sx={(theme) => sectionHeaderSx(theme, { density: showQuickPicks ? 'regular' : 'tight' })}
               >
                 Favorites
               </ListSubheader>
@@ -512,9 +538,9 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <ListSubheader
               disableSticky
               component="div"
-              sx={(theme) => sectionHeaderSx(
+                sx={(theme) => sectionHeaderSx(
                 theme,
-                { topSpacing: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
+                { density: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
               )}
             >
               Everything
