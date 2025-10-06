@@ -54,8 +54,8 @@ const MOBILE_CARD_CONTENT_MIN_HEIGHT = `clamp(280px, calc(90svh - ${MOBILE_CARD_
 // Standalone mode: vertical padding inside the hero surface box
 const STANDALONE_HERO_PADDING_TOP_XS = 24;
 const STANDALONE_HERO_PADDING_BOTTOM_XS = 24;
-const STANDALONE_HERO_PADDING_TOP_MD = 32;
-const STANDALONE_HERO_PADDING_BOTTOM_MD = 24;
+const STANDALONE_HERO_PADDING_TOP_MD = 28;
+const STANDALONE_HERO_PADDING_BOTTOM_MD = 28;
 const STANDALONE_TOTAL_VERTICAL_PADDING_XS = STANDALONE_HERO_PADDING_TOP_XS + STANDALONE_HERO_PADDING_BOTTOM_XS;
 const STANDALONE_TOTAL_VERTICAL_PADDING_MD = STANDALONE_HERO_PADDING_TOP_MD + STANDALONE_HERO_PADDING_BOTTOM_MD;
 // Container heights account for navbar only
@@ -503,6 +503,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       alignSelf: 'stretch',
       minHeight: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
       boxSizing: 'border-box',
+      borderBottomLeftRadius: { xs: '28px', sm: 0 },
+      borderBottomRightRadius: { xs: '28px', sm: 0 },
     };
   }, [isFeedEnabled]);
 
@@ -559,7 +561,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               : { xs: '1fr' },
             gap: isFeedEnabled ? { xs: 0.25, md: 3 } : 0,
             alignItems: 'stretch',
-            px: { xs: 0, sm: 2, md: 3 },
+            px: isFeedEnabled
+              ? { xs: 0, sm: 2, md: 3 }
+              : { xs: 0, sm: 0 },
             paddingTop: isFeedEnabled
               ? {
                   xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
