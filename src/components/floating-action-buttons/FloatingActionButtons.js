@@ -10,8 +10,10 @@ import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 
 // Define constants for colors and fonts
-const PRIMARY_COLOR = '#4285F4';
-const SECONDARY_COLOR = '#0F9D58';
+const BUTTON_BASE_COLOR = '#0f0f0f';
+const BUTTON_HOVER_COLOR = '#1b1b1b';
+const BUTTON_ACTIVE_COLOR = '#080808';
+const BUTTON_RIPPLE_COLOR = 'rgba(12, 12, 12, 0.72)';
 const FONT_FAMILY = 'Roboto, sans-serif';
 
 // Create a button component
@@ -19,14 +21,26 @@ const StyledButton = styled(LoadingButton)`
     font-family: ${FONT_FAMILY};
     font-size: 18px;
     color: #fff;
-    background-color: ${SECONDARY_COLOR};
+    background-color: ${BUTTON_BASE_COLOR};
     border-radius: 8px;
     padding: 8px 16px;
     cursor: pointer;
     transition: background-color 0.3s;
 
     &:hover {
-      background-color: ${PRIMARY_COLOR};
+      background-color: ${BUTTON_HOVER_COLOR};
+    }
+
+    &:active {
+      background-color: ${BUTTON_ACTIVE_COLOR};
+    }
+
+    &.Mui-focusVisible {
+      background-color: ${BUTTON_HOVER_COLOR};
+    }
+
+    & .MuiTouchRipple-root .MuiTouchRipple-child {
+      background-color: ${BUTTON_RIPPLE_COLOR};
     }
 `;
 
@@ -124,13 +138,25 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     };
 
     const sharedButtonSx = {
-        backgroundColor: 'black',
+        backgroundColor: BUTTON_BASE_COLOR,
         borderRadius: 2,
         border: '1px solid rgba(255,255,255,0.15)',
         px: { xs: 1.75, sm: 2.15 },
         py: { xs: 1, sm: 1.12 },
         boxShadow: 'none',
         zIndex: 1300,
+        '&:hover': {
+            backgroundColor: BUTTON_HOVER_COLOR,
+        },
+        '&:active': {
+            backgroundColor: BUTTON_ACTIVE_COLOR,
+        },
+        '&.Mui-focusVisible': {
+            backgroundColor: BUTTON_HOVER_COLOR,
+        },
+        '& .MuiTouchRipple-root .MuiTouchRipple-child': {
+            backgroundColor: BUTTON_RIPPLE_COLOR,
+        },
         '& .MuiButton-startIcon': {
             marginRight: '6px',
             display: 'flex',
@@ -167,7 +193,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             sx={{
                 ...sharedButtonSx,
                 '&.Mui-disabled': {
-                    backgroundColor: 'black',
+                    backgroundColor: BUTTON_BASE_COLOR,
                     color: 'rgba(255,255,255,0.7)',
                 },
             }}
