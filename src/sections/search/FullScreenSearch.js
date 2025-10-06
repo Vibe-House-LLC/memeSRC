@@ -795,7 +795,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                           </Grid>
                         </Grid>
                         <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={0.8} marginTop={0.4}>
-                          <Typography component="h2" variant="h4" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' }, fontWeight: 500 }}>
+                          <Typography component="h2" variant="h4" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' }, fontWeight: 700 }}>
                             {currentThemeBragText}
                           </Typography>
                         </Grid>
