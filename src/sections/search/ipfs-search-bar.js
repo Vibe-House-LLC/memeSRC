@@ -12,6 +12,7 @@ import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
+import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 
 const sanitizeSearchValue = (value) => {
   if (value === undefined || value === null) {
@@ -252,13 +253,20 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
       {Children.map(children, (child) => cloneElement(child, { shows }))}
 
+      <FloatingActionButtons shows={resolvedCid} showAd={showAd} />
+
       {showAd && (
         <Box
           sx={{
-            mt: 4,
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: 'black',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
+            zIndex: 1299,
           }}
         >
           <FixedMobileBannerAd />
