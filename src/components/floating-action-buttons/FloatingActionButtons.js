@@ -10,74 +10,57 @@ import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 
 // Define constants for colors and fonts
+const PRIMARY_COLOR = '#4285F4';
+const SECONDARY_COLOR = '#0F9D58';
 const FONT_FAMILY = 'Roboto, sans-serif';
 
 // Create a button component
-const StyledButton = styled(LoadingButton)(({ theme }) => ({
-    fontFamily: FONT_FAMILY,
-    fontSize: '1rem',
-    fontWeight: 600,
-    lineHeight: 1.25,
-    textTransform: 'none',
-    borderRadius: theme.spacing(1.6),
-    padding: theme.spacing(1.32, 3.1),
-    color: '#f8fafc',
-    backgroundColor: '#050505',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    boxShadow: 'none',
-    letterSpacing: '0.01em',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
-    transition: 'background-color 140ms ease, transform 140ms ease',
-    '&:hover': {
-        backgroundColor: '#0f0f0f',
-        transform: 'translateY(-1px)',
-    },
-    '&:active': {
-        backgroundColor: '#090909',
-        transform: 'translateY(0)',
-    },
-    '&.Mui-disabled': {
-        backgroundColor: '#1f1f1f',
-        color: 'rgba(248, 250, 252, 0.58)',
-    },
-    '& .MuiButton-startIcon': {
-        marginRight: theme.spacing(1),
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    [theme.breakpoints.down('sm')]: {
-        fontSize: '0.94rem',
-        padding: theme.spacing(1, 2.5),
-        borderRadius: theme.spacing(1.2),
-        '& .MuiButton-startIcon': {
-            marginRight: theme.spacing(0.7),
-        },
-    },
-}));
+const StyledButton = styled(LoadingButton)`
+    font-family: ${FONT_FAMILY};
+    font-size: 18px;
+    color: #fff;
+    background-color: ${SECONDARY_COLOR};
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
 
-const FixedActionSlot = styled('footer', {
-    shouldForwardProp: (prop) => prop !== 'hasAd' && prop !== 'side',
-})(({ theme, hasAd, side }) => ({
-    position: 'fixed',
-    bottom: hasAd ? '50px' : theme.spacing(1.5),
-    left: side === 'left' ? theme.spacing(1.5) : 'auto',
-    right: side === 'right' ? theme.spacing(1.5) : 'auto',
-    display: 'flex',
-    alignItems: 'center',
-    pointerEvents: 'auto',
-    zIndex: 1300,
-}));
+    &:hover {
+      background-color: ${PRIMARY_COLOR};
+    }
+`;
 
-// Removed image drawer/collector UI and helpers
+const StyledLeftFooter = styled('footer')`
+    bottom: ${props => props.hasAd ? '50px' : '0'};
+    left: 0;
+    line-height: 0;
+    position: fixed;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+    z-index: 1300;
+`;
+
+const StyledRightFooter = styled('footer')`
+    bottom: ${props => props.hasAd ? '50px' : '0'};
+    right: 0;
+    line-height: 0;
+    position: fixed;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+    z-index: 1300;
+`;
 
 function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const navigate = useNavigate();
     const { user } = useContext(UserContext);
-    
+
     // Check if user is an admin
     const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
 
@@ -92,24 +75,30 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         loadRandomFrame(shows);
     };
 
-    const buttonSizing = variant === 'inline'
-        ? {
-            minWidth: { xs: 156, sm: 188 },
-            boxShadow: '0 24px 48px rgba(0, 0, 0, 0.46)',
-        }
-        : {
-            minWidth: { xs: 148, sm: 176 },
-            boxShadow: 'none',
-        };
-
     const handleCollageClick = () => {
-        const payload = {
+        const destination = hasCollageAccess ? '/projects' : '/pro';
+        trackUsageEvent('collage_entry', {
             source: 'FloatingActionButtons',
-            destination: hasCollageAccess ? '/projects' : '/pro',
+            destination,
             hasAccess: hasCollageAccess,
-        };
-        trackUsageEvent('collage_entry', payload);
-        navigate(hasCollageAccess ? '/projects' : '/pro');
+        });
+        navigate(destination);
+    };
+
+    const sharedButtonSx = {
+        backgroundColor: 'black',
+        borderRadius: 2,
+        border: '1px solid rgba(255,255,255,0.15)',
+        px: { xs: 1.75, sm: 2.15 },
+        py: { xs: 1, sm: 1.12 },
+        boxShadow: 'none',
+        zIndex: 1300,
+        '& .MuiButton-startIcon': {
+            marginRight: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
     };
 
     const collageButton = (
@@ -118,9 +107,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             startIcon={<Dashboard />}
             variant="contained"
             sx={{
-                ...buttonSizing,
-                px: variant === 'inline' ? { xs: 2.6, sm: 3.3 } : { xs: 2.2, sm: 2.8 },
-                py: variant === 'inline' ? { xs: 1.18, sm: 1.32 } : { xs: 1, sm: 1.08 },
+                ...sharedButtonSx,
             }}
         >
             Collage
@@ -133,18 +120,17 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             disabled={loadingRandom}
             startIcon={
                 loadingRandom ? (
-                    <CircularProgress size={22} thickness={4} sx={{ color: 'rgba(248,248,248,0.8)' }} />
+                    <CircularProgress size={22} thickness={4} sx={{ color: 'rgba(255,255,255,0.7)' }} />
                 ) : (
-                    <ShuffleIcon size={22} strokeWidth={2.4} color="#f8fafc" aria-hidden="true" focusable="false" />
+                    <ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                 )
             }
             variant="contained"
             sx={{
-                ...buttonSizing,
-                px: variant === 'inline' ? { xs: 2.7, sm: 3.4 } : { xs: 2.3, sm: 2.9 },
-                py: variant === 'inline' ? { xs: 1.18, sm: 1.32 } : { xs: 1, sm: 1.08 },
+                ...sharedButtonSx,
                 '&.Mui-disabled': {
-                    color: 'rgba(248,250,252,0.58)',
+                    backgroundColor: 'black',
+                    color: 'rgba(255,255,255,0.7)',
                 },
             }}
         >
@@ -152,15 +138,11 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         </StyledButton>
     );
 
-    const primaryActions = collageButton;
-    const buildInlineGroupStyles = (justifyContent) => ({
+    const inlineGroupStyles = {
         display: 'flex',
         alignItems: 'center',
-        justifyContent,
-        flex: '1 1 0',
-        minWidth: 0,
-        gap: 1.4,
-    });
+        gap: 1.5,
+    };
 
     if (variant === 'inline') {
         return (
@@ -174,10 +156,10 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     gap: 2,
                 }}
             >
-                <Box sx={buildInlineGroupStyles('flex-start')}>
-                    {primaryActions}
+                <Box sx={inlineGroupStyles}>
+                    {collageButton}
                 </Box>
-                <Box sx={buildInlineGroupStyles('flex-end')}>
+                <Box sx={inlineGroupStyles}>
                     {randomButton}
                 </Box>
             </Box>
@@ -186,12 +168,12 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
 
     return (
         <>
-            <FixedActionSlot side="left" hasAd={showAd}>
-                {primaryActions}
-            </FixedActionSlot>
-            <FixedActionSlot side="right" hasAd={showAd}>
+            <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
+                {collageButton}
+            </StyledLeftFooter>
+            <StyledRightFooter className="bottomBtn" hasAd={showAd}>
                 {randomButton}
-            </FixedActionSlot>
+            </StyledRightFooter>
         </>
     );
 }
@@ -200,7 +182,7 @@ FloatingActionButtons.propTypes = {
     shows: PropTypes.oneOfType([PropTypes.array, PropTypes.string]).isRequired,
     showAd: PropTypes.bool,
     variant: PropTypes.oneOf(['fixed', 'inline']),
-}
+};
 
 FloatingActionButtons.defaultProps = {
     showAd: false,
