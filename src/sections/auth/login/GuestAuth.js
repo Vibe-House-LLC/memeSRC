@@ -16,7 +16,17 @@ export default function GuestAuth(props) {
   const [user, setUser] = useState(null);
   const [shows, setShows] = useState(() => readJSON('memeSRCShows') || []);
   const [defaultShow, setDefaultShow] = useState();
+  const [showFeed, setShowFeed] = useState(() => {
+    const storedPreference = safeGetItem('memeSRCShowFeed');
+    if (storedPreference === null) {
+      return false;
+    }
+    return storedPreference !== 'false';
+  });
   const location = useLocation();
+  const userGroups = user?.['cognito:groups'];
+  const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
+  const effectiveShowFeed = isAdmin && showFeed;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -136,8 +146,12 @@ export default function GuestAuth(props) {
     }
   }, [location.pathname])
 
+  useEffect(() => {
+    safeSetItem('memeSRCShowFeed', showFeed ? 'true' : 'false');
+  }, [showFeed]);
+
   return (
-    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails }}>
+    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed: effectiveShowFeed, setShowFeed }}>
       {props.children}
     </UserContext.Provider>
   )

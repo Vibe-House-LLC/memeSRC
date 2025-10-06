@@ -9,9 +9,10 @@ import {
   InputAdornment,
   IconButton,
   List,
-  ListSubheader,
+  ListItem,
   ListItemButton,
   ListItemText,
+  ListSubheader,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -87,11 +88,19 @@ const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
       backgroundColor: highlightColor,
       backgroundImage: 'none',
       borderColor: whiteBorder,
-      boxShadow: `${theme.shadows[10]}, 0 0 0 1px ${alpha(highlightColor, theme.palette.mode === 'light' ? 0.5 : 0.65)}`,
-      transform: 'translate3d(0,-2px,0)',
+      boxShadow: `${theme.shadows[8]}, 0 0 0 1px ${alpha(highlightColor, theme.palette.mode === 'light' ? 0.45 : 0.6)}`,
     },
   };
 };
+
+const LAYOUT_SPACING = {
+  listPadding: 1.25,
+  rowGap: 0.75,
+  labelPadding: {
+    regular: 1.15,
+    tight: 0.9,
+  },
+} as const;
 
 const quickActionButtonSx = (theme: Theme) => {
   const isLight = theme.palette.mode === 'light';
@@ -106,15 +115,15 @@ const quickActionButtonSx = (theme: Theme) => {
     border: '1px solid',
     borderColor: borderTone,
     borderRadius: theme.spacing(1.5),
-    marginBottom: theme.spacing(0.6),
-    paddingTop: theme.spacing(1.35),
-    paddingBottom: theme.spacing(1.25),
-    paddingLeft: theme.spacing(1.1),
-    paddingRight: theme.spacing(1.1),
+    paddingTop: theme.spacing(1.05),
+    paddingBottom: theme.spacing(1),
+    paddingLeft: theme.spacing(0.92),
+    paddingRight: theme.spacing(0.92),
+    minHeight: theme.spacing(5.75),
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1.15),
-    boxShadow: theme.shadows[4],
+    gap: theme.spacing(0.6),
+    boxShadow: theme.shadows[3],
     backgroundColor,
     backgroundImage: backgroundGradient,
     color: textColor,
@@ -123,19 +132,15 @@ const quickActionButtonSx = (theme: Theme) => {
     }),
     '&:hover:not(.Mui-selected)': {
       borderColor: hoverBorderTone,
-      boxShadow: theme.shadows[7],
+      boxShadow: theme.shadows[4],
     },
     '& .MuiListItemText-primary': {
       color: textColor,
       fontWeight: 700,
-      fontSize: '1.02rem',
-      lineHeight: 1.2,
+      fontSize: '0.98rem',
+      lineHeight: 1.12,
     },
-    '& .MuiListItemText-secondary': {
-      color: subTextColor,
-      fontSize: '0.82rem',
-      fontWeight: 500,
-    },
+    '& .MuiListItemText-secondary': undefined,
     ...getSelectedListItemStyles(theme),
   };
 };
@@ -153,14 +158,14 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
     border: '1px solid',
     borderColor: baseBorder,
     borderRadius: 1.5,
-    marginBottom: theme.spacing(1),
-    paddingTop: theme.spacing(1),
-    paddingBottom: theme.spacing(1),
-    paddingLeft: theme.spacing(1),
-    paddingRight: theme.spacing(1),
+    paddingTop: theme.spacing(0.38),
+    paddingBottom: theme.spacing(0.38),
+    paddingLeft: theme.spacing(0.54),
+    paddingRight: theme.spacing(0.54),
+    minHeight: theme.spacing(3.8),
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1.25),
+    gap: theme.spacing(0.55),
     backgroundColor: baseBg,
     color: primaryText,
     boxShadow: theme.shadows[2],
@@ -170,6 +175,8 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
     '& .MuiListItemText-primary': {
       color: primaryText,
       fontWeight: 600,
+      fontSize: '0.92rem',
+      lineHeight: 1.08,
     },
     '& .MuiListItemText-secondary': {
       color: secondaryText,
@@ -183,16 +190,20 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
   };
 };
 
-const sectionHeaderSx = (theme: Theme, options?: { topSpacing?: 'tight' | 'regular' }) => {
-  const topSpacing = options?.topSpacing === 'tight' ? 0.75 : 1;
+const sectionHeaderSx = (theme: Theme, options?: { density?: 'tight' | 'regular' }) => {
+  const density = options?.density ?? 'regular';
+  const paddingBase = LAYOUT_SPACING.labelPadding[density];
+  const paddingY = paddingBase / 2;
 
   return {
     bgcolor: 'transparent',
     px: 0,
-    pt: theme.spacing(topSpacing),
-    pb: theme.spacing(0.5),
-    fontSize: '0.95rem',
-    fontWeight: 700,
+    margin: 0,
+    paddingTop: theme.spacing(paddingY),
+    paddingBottom: theme.spacing(paddingY),
+    fontSize: density === 'tight' ? '0.74rem' : '0.76rem',
+    fontWeight: 600,
+    lineHeight: 1.28,
     color: theme.palette.text.secondary,
   };
 };
@@ -208,7 +219,7 @@ const radioIconSx = (theme: Theme, selected: boolean, options?: { inverted?: boo
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 28,
+    minWidth: 18,
     color: selected ? selectedColor : baseColor,
     transition: theme.transitions.create('color', {
       duration: theme.transitions.duration.shorter,
@@ -351,6 +362,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const renderFilterInput = () => (
     <TextField
       inputRef={inputRef}
+      size="small"
       variant="outlined"
       fullWidth
       placeholder="Type to filter (titles)..."
@@ -383,17 +395,29 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
         '& .MuiOutlinedInput-root': {
           borderRadius: isMobile ? 1 : 1.5,
           bgcolor: 'background.paper',
-          minHeight: 52,
+          minHeight: 44,
           '& fieldset': { borderColor: 'divider' },
           '&:hover fieldset': { borderColor: 'text.primary' },
           '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 1 },
         },
         '& .MuiOutlinedInput-input': {
           fontSize: '1rem',
-          py: 1.25,
+          py: 1,
         },
       }}
     />
+  );
+
+  const filterInputListItem = (
+    <ListItem
+      disablePadding
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Box sx={{ display: 'flex', width: '100%' }}>{renderFilterInput()}</Box>
+    </ListItem>
   );
 
   const listContent = (
@@ -401,26 +425,30 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       disablePadding
       sx={{
         bgcolor: 'transparent',
-        px: { xs: 1.5, sm: 2 },
-        pt: showQuickPicks ? (isMobile ? 1 : 1.25) : isMobile ? 0.6 : 0.75,
-        pb: { xs: 1.5, sm: 2 },
+        px: { xs: 1.25, sm: 1.75 },
+        pt: (theme) => theme.spacing(LAYOUT_SPACING.listPadding),
+        pb: (theme) => theme.spacing(LAYOUT_SPACING.rowGap),
+        display: 'flex',
+        flexDirection: 'column',
+        gap: (theme) => theme.spacing(LAYOUT_SPACING.rowGap),
       }}
     >
 
-      {/* Unified content: quick picks when no filter; results/full list below */}
+      {filterInputListItem}
+      {/* Quick picks when not filtering */}
+      {showQuickPicks && (
+        <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}>
+          Quick Filters
+        </ListSubheader>
+      )}
       {/* No results state */}
       {isFiltering && filteredAllSeries.length === 0 && (
         <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
           <Typography variant="body2">No results</Typography>
         </Box>
       )}
-
-      {/* Quick picks when not filtering */}
       {showQuickPicks && (
         <>
-          <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { topSpacing: 'tight' })}>
-            Quick Filters
-          </ListSubheader>
           <ListItemButton
             selected={currentValueId === '_universal'}
             onClick={() => handleSelect('_universal')}
@@ -429,13 +457,11 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
               {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
             </Box>
-            <Box component="span" sx={{ fontSize: 22, lineHeight: 1, mr: 1 }}>🌈</Box>
+              <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>🌈</Box>
             <ListItemText
               sx={{ ml: 0, flex: 1 }}
               primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
               primary="All Shows & Movies"
-              secondary="Every quote in the library"
-              secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
             />
           </ListItemButton>
 
@@ -443,10 +469,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <ListItemButton
               selected={currentValueId === '_favorites'}
               onClick={() => handleSelect('_favorites')}
-              sx={(theme) => ({
-                ...quickActionButtonSx(theme),
-                marginBottom: theme.spacing(1.2),
-              })}
+                sx={(theme) => quickActionButtonSx(theme)}
             >
               <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
                 {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
@@ -455,9 +478,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               <ListItemText
                 sx={{ ml: 0, flex: 1 }}
                 primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
-                primary="All Favorites"
-                secondary="Only your saved favorites"
-                secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
+              primary="All Favorites"
               />
             </ListItemButton>
           )}
@@ -467,7 +488,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               <ListSubheader
                 disableSticky
                 component="div"
-                sx={(theme) => sectionHeaderSx(theme, { topSpacing: showQuickPicks ? 'regular' : 'tight' })}
+                sx={(theme) => sectionHeaderSx(theme, { density: showQuickPicks ? 'regular' : 'tight' })}
               >
                 Favorites
               </ListSubheader>
@@ -483,12 +504,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                     <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
                       {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
                     </Box>
-                    <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
+                    <Box component="span" sx={{ fontSize: 17, lineHeight: 1, mr: 1 }}>
                       {s.emoji ? s.emoji : '⭐'}
                     </Box>
                     <ListItemText
                       sx={{ ml: 0, flex: 1 }}
-                      primaryTypographyProps={{ sx: { fontWeight: 600, color: 'inherit' } }}
+                      primaryTypographyProps={{ sx: { fontWeight: 600, fontSize: '0.94rem', lineHeight: 1.05, color: 'inherit' } }}
                       primary={s.title}
                     />
                     <Box
@@ -517,9 +538,9 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <ListSubheader
               disableSticky
               component="div"
-              sx={(theme) => sectionHeaderSx(
+                sx={(theme) => sectionHeaderSx(
                 theme,
-                { topSpacing: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
+                { density: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
               )}
             >
               Everything
@@ -543,12 +564,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                 <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
                   {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
                 </Box>
-                <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
+                <Box component="span" sx={{ fontSize: 17, lineHeight: 1, mr: 1 }}>
                   {s.emoji ? s.emoji : s.isFavorite ? '⭐' : '🎬'}
                 </Box>
                 <ListItemText
                   sx={{ ml: 0, flex: 1 }}
-                  primaryTypographyProps={{ sx: { fontWeight: 600, color: 'inherit' } }}
+                  primaryTypographyProps={{ sx: { fontWeight: 600, fontSize: '0.94rem', lineHeight: 1.05, color: 'inherit' } }}
                   primary={s.title}
                 />
                 <Box
@@ -590,29 +611,13 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       <Dialog
         open={open}
         onClose={onClose}
-        fullWidth
-        maxWidth="sm"
-        scroll="paper"
-        sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' } }}
+        fullScreen
         PaperProps={{
           sx: (theme) => ({
-            width: 'calc(100vw - 28px)',
-            maxWidth: 420,
-            height: 'min(85vh, 640px)',
-            mt: 2,
-            borderRadius: theme.spacing(2.75),
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            border: '1px solid',
-            borderColor: theme.palette.mode === 'light'
-              ? alpha(theme.palette.common.black, 0.1)
-              : alpha(theme.palette.common.white, 0.24),
-            backgroundImage: theme.palette.mode === 'light'
-              ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.98)} 0%, ${alpha(theme.palette.background.paper, 0.94)} 100%)`
-              : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.94)} 0%, ${alpha(theme.palette.background.default, 0.86)} 100%)`,
-            boxShadow: theme.shadows[18],
-            backdropFilter: 'blur(16px)',
+            bgcolor: 'background.default',
           }),
         }}
       >
@@ -703,26 +708,30 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       anchorEl={anchorEl}
       anchorOrigin={popoverAnchorOrigin}
       transformOrigin={popoverTransformOrigin}
-      PaperProps={{
-        sx: (theme) => ({
-          mt: isMobile ? 0.9 : 1,
-          width: isMobile ? 'min(360px, calc(100vw - 32px))' : 420,
-          maxWidth: isMobile ? 'min(360px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 32px))',
-          maxHeight: isMobile ? mobileMaxHeight : desktopMaxHeight,
-          display: 'flex',
-          flexDirection: 'column',
-          borderRadius: isMobile ? theme.spacing(2) : theme.spacing(1.5),
-          overflow: 'hidden',
-          border: '1px solid',
-          borderColor: theme.palette.mode === 'light'
-            ? alpha(theme.palette.common.black, 0.12)
-            : alpha(theme.palette.common.white, 0.26),
-          backgroundImage: theme.palette.mode === 'light'
-            ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
-            : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.96)} 0%, ${alpha(theme.palette.background.default, 0.88)} 100%)`,
-          boxShadow: isMobile ? theme.shadows[16] : theme.shadows[18],
-          backdropFilter: 'blur(18px)',
-        }),
+      slotProps={{
+        paper: {
+          sx: (theme) => ({
+            mt: isMobile ? 0.9 : 1,
+            width: isMobile ? 'min(360px, calc(100vw - 32px))' : 420,
+            maxWidth: isMobile ? 'min(360px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 32px))',
+            // On mobile, make it tall enough to be useful but leave room for keyboard
+            height: isMobile ? 'min(70vh, 500px)' : 'auto',
+            maxHeight: isMobile ? 'min(70vh, 500px)' : desktopMaxHeight,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: isMobile ? theme.spacing(2) : theme.spacing(1.5),
+            overflow: 'hidden',
+            border: '1px solid',
+            borderColor: theme.palette.mode === 'light'
+              ? alpha(theme.palette.common.black, 0.12)
+              : alpha(theme.palette.common.white, 0.26),
+            backgroundImage: theme.palette.mode === 'light'
+              ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
+              : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.96)} 0%, ${alpha(theme.palette.background.default, 0.88)} 100%)`,
+            boxShadow: isMobile ? theme.shadows[16] : theme.shadows[18],
+            backdropFilter: 'blur(18px)',
+          }),
+        },
       }}
     >
       <Box
@@ -734,35 +743,6 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           bgcolor: 'background.paper',
         }}
       >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            px: isMobile ? 1.5 : 2,
-            pt: isMobile ? 1.25 : 1.5,
-            pb: isMobile ? 0.75 : 1,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Typography variant="subtitle1" sx={{ flex: 1, fontWeight: 700 }}>
-            Select show or movie
-          </Typography>
-          <IconButton aria-label="Close" size="small" onClick={onClose}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Box>
-        <Box
-          sx={{
-            px: isMobile ? 1.5 : 2,
-            py: isMobile ? 0.75 : 1,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          {renderFilterInput()}
-        </Box>
         <Box
           ref={contentRef}
           sx={{

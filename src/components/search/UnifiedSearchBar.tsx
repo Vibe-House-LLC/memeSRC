@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { keyframes } from '@mui/system';
 import { ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
@@ -188,6 +189,17 @@ const labelSwitchIn = keyframes`
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+`;
+
+const labelFadeOut = keyframes`
+  from {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  to {
+    opacity: 0;
+    transform: scaleX(0);
   }
 `;
 
@@ -387,7 +399,9 @@ const RailRight = styled('div')(({ theme }) => ({
 
 const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
   height: 'var(--scope-button-size)',
-  borderRadius: 999,
+  minWidth: 'var(--scope-button-size)',
+  width: 'auto',
+  borderRadius: '999px',
   padding: theme.spacing(0.66, 1.15),
   display: 'inline-flex',
   alignItems: 'center',
@@ -396,18 +410,32 @@ const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
   background: '#000',
   color: theme.palette.common.white,
   boxShadow: 'none',
+  overflow: 'hidden',
+  transition: 'padding 300ms cubic-bezier(0.4, 0, 0.2, 1), gap 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+  '&[data-collapsing="true"]': {
+    padding: theme.spacing(0.66, 1),
+    gap: 0,
+    minWidth: 'var(--scope-button-size)',
+  },
   '& .actionLabel': {
     fontFamily: FONT_FAMILY,
     fontWeight: 700,
     fontSize: '0.94rem',
     color: theme.palette.common.white,
     whiteSpace: 'nowrap',
-    paddingLeft: theme.spacing(0.5),
+    transformOrigin: 'left center',
+    display: 'inline-block',
+    maxWidth: '200px',
+    overflow: 'hidden',
+    transition: 'max-width 300ms cubic-bezier(0.4, 0, 0.2, 1)',
     animation: `${labelSwitchIn} 180ms ease both`,
     willChange: 'opacity, transform',
     '@media (prefers-reduced-motion: reduce)': {
       animation: 'none',
     },
+  },
+  '&[data-collapsing="true"] .actionLabel': {
+    maxWidth: 0,
   },
   '&.Mui-disabled': {
     background: '#3f3f3f',
@@ -432,6 +460,7 @@ const LabeledSubmitButton = styled(ButtonBase)(({ theme }) => ({
 const SubmitButton = styled(IconButton)(({ theme }) => ({
   width: 'var(--scope-button-size)',
   height: 'var(--scope-button-size)',
+  padding: theme.spacing(0.66, 1),
   borderRadius: '999px',
   border: '1px solid transparent',
   background: '#000',
@@ -535,14 +564,32 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
+  const [showRandomLabel, setShowRandomLabel] = useState(true);
+  const [isFadingOutLabel, setIsFadingOutLabel] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shouldRestoreFocusRef = useRef(false);
   // railId and scopeButtonSx removed with inline expansion approach
-  const showRandomButton = false;
   const currentSeries = useMemo(
     () => findSeriesItem(currentValueId, shows, savedCids),
     [currentValueId, savedCids, shows],
   );
+
+  // Show "Random" label for 1 second on mount, then fade it out
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => {
+      setIsFadingOutLabel(true);
+    }, 1000);
+    
+    const hideTimer = setTimeout(() => {
+      setShowRandomLabel(false);
+      setIsFadingOutLabel(false);
+    }, 1400); // 1000ms display + 300ms fade animation + 100ms buffer
+    
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
 
   const currentLabel = useMemo(
     () => buildCurrentLabel(currentValueId, currentSeries),
@@ -707,8 +754,43 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           )}
           {!scopeExpanded && (
             <>
-              {showRandomButton && (
-                <RandomButton
+              {hasInput ? (
+                <SubmitButton
+                  type="submit"
+                  aria-label="Search"
+                  disabled={!hasInput}
+                  title="Search"
+                  data-appearance={appearance}
+                >
+                  <ArrowForwardRoundedIcon fontSize="small" />
+                </SubmitButton>
+              ) : (showRandomLabel || isFadingOutLabel) && !randomLoading ? (
+                <LabeledSubmitButton
+                  type="button"
+                  aria-label="Show something random"
+                  onClick={handleRandomClick}
+                  onPointerDown={handleRandomPointerDown}
+                  disabled={randomLoading}
+                  aria-busy={randomLoading}
+                  data-appearance={appearance}
+                  data-collapsing={isFadingOutLabel ? 'true' : 'false'}
+                >
+                  <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                  <span
+                    className="actionLabel"
+                    style={
+                      isFadingOutLabel
+                        ? {
+                            animation: `${labelFadeOut} 300ms cubic-bezier(0.4, 0, 0.6, 1) both`,
+                          }
+                        : undefined
+                    }
+                  >
+                    Random
+                  </span>
+                </LabeledSubmitButton>
+              ) : (
+                <SubmitButton
                   type="button"
                   aria-label="Show something random"
                   onClick={handleRandomClick}
@@ -723,17 +805,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   ) : (
                     <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                   )}
-                </RandomButton>
+                </SubmitButton>
               )}
-              <SubmitButton
-                type="submit"
-                aria-label="Search"
-                disabled={!hasInput}
-                title="Search"
-                data-appearance={appearance}
-              >
-                <ArrowForwardRoundedIcon fontSize="small" />
-              </SubmitButton>
             </>
           )}
         </FieldRow>
@@ -764,9 +837,13 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   disabled={!hasInput}
                   className="railButton"
                   data-appearance={appearance}
+                  sx={(theme) => ({
+                    padding: theme.spacing(0.66, 1.0, 0.66, 1.2),
+                    gap: theme.spacing(0.5),
+                  })}
                 >
                   <span className="actionLabel">Search</span>
-                  <ArrowForwardRoundedIcon fontSize="small" />
+                  <ArrowForwardRoundedIcon sx={{ fontSize: '18px' }} aria-hidden="true" />
                 </LabeledSubmitButton>
               ) : (
                 <SubmitButton
@@ -777,7 +854,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   title="Search"
                   data-appearance={appearance}
                 >
-                  <ArrowForwardRoundedIcon fontSize="small" />
+                  <ArrowForwardRoundedIcon sx={{ fontSize: '18px' }} aria-hidden="true" />
                 </SubmitButton>
               )}
             </RailRight>

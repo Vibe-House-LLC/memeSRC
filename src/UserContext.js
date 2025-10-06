@@ -8,5 +8,7 @@ export const UserContext = createContext({
     defaultShow: false,
     handleUpdateDefaultShow: () => {},
     setDefaultShow: () => {},
-    handleUpdateUserDetails: () => {}
+    handleUpdateUserDetails: () => {},
+    showFeed: false,
+    setShowFeed: () => {}
 });

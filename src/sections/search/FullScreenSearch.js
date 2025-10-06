@@ -1,7 +1,7 @@
 // FullScreenSearch.js
 
 import styled from '@emotion/styled';
-import { Grid, Typography, useMediaQuery, useTheme, IconButton, Slide } from '@mui/material';
+import { Grid, Typography, useMediaQuery, useTheme, IconButton, Slide, Paper } from '@mui/material';
 import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
@@ -16,8 +16,8 @@ import FavoriteToggle from '../../components/FavoriteToggle';
 
 import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
-import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
+import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 import {
   fetchLatestRelease,
   getReleaseType,
@@ -29,6 +29,8 @@ import {
 import { safeGetItem, safeSetItem } from '../../utils/storage';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
+import { isColorNearBlack } from '../../utils/colors';
+import FeedSection from './FeedSection';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -38,6 +40,37 @@ const NAVBAR_HEIGHT = 45;
 const AUTO_DISMISS_TOTAL_MS = 30 * 1000;
 const AUTO_DISMISS_MIN_VISIBLE_MS = 3 * 1000;
 const VISIBILITY_STORAGE_PREFIX = 'recentUpdateVisible:';
+const MOBILE_SECTION_GUTTER = 6;
+const DESKTOP_CARD_PADDING = 32;
+const DESKTOP_NAVBAR_HEIGHT = NAVBAR_HEIGHT;
+const DESKTOP_STICKY_TOP_OFFSET = DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING;
+const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING * 2}px)`;
+const MOBILE_CARD_OFFSET = NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER;
+const MOBILE_CARD_CONTENT_OFFSET = MOBILE_CARD_OFFSET + 140;
+const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${MOBILE_CARD_OFFSET}px)`;
+const MOBILE_CARD_TARGET_HEIGHT = `calc(90svh - ${MOBILE_CARD_OFFSET}px)`;
+const MOBILE_CARD_MIN_HEIGHT = `clamp(460px, ${MOBILE_CARD_TARGET_HEIGHT}, ${MOBILE_MAX_CARD_HEIGHT})`;
+const MOBILE_CARD_CONTENT_MIN_HEIGHT = `clamp(280px, calc(90svh - ${MOBILE_CARD_CONTENT_OFFSET}px), calc(100svh - ${MOBILE_CARD_CONTENT_OFFSET}px))`;
+// Standalone mode: vertical padding inside the hero surface box
+const STANDALONE_HERO_PADDING_TOP_XS = 24;
+const STANDALONE_HERO_PADDING_BOTTOM_XS = 24;
+const STANDALONE_HERO_PADDING_TOP_MD = 32;
+const STANDALONE_HERO_PADDING_BOTTOM_MD = 24;
+const STANDALONE_TOTAL_VERTICAL_PADDING_XS = STANDALONE_HERO_PADDING_TOP_XS + STANDALONE_HERO_PADDING_BOTTOM_XS;
+const STANDALONE_TOTAL_VERTICAL_PADDING_MD = STANDALONE_HERO_PADDING_TOP_MD + STANDALONE_HERO_PADDING_BOTTOM_MD;
+// Container heights account for navbar only
+// Use svh (small viewport height) on mobile - represents viewport when browser UI is fully visible (smallest size)
+// This prevents content overflow when address bar shows/hides on mobile browsers
+const STANDALONE_CONTAINER_HEIGHT_XS = `100svh`;
+const STANDALONE_CONTAINER_MIN_HEIGHT_XS = `calc(${STANDALONE_CONTAINER_HEIGHT_XS} - ${NAVBAR_HEIGHT}px)`;
+const STANDALONE_CONTAINER_MIN_HEIGHT_MD = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT}px)`;
+// Paper heights match container (no extra padding at this level)
+const STANDALONE_PAPER_HEIGHT_XS = STANDALONE_CONTAINER_MIN_HEIGHT_XS;
+const STANDALONE_PAPER_MIN_HEIGHT_XS = STANDALONE_PAPER_HEIGHT_XS;
+const STANDALONE_PAPER_MIN_HEIGHT_MD = STANDALONE_CONTAINER_MIN_HEIGHT_MD;
+// Surface heights account for internal padding to prevent overflow
+const STANDALONE_SURFACE_MIN_HEIGHT_XS = `calc(${STANDALONE_CONTAINER_HEIGHT_XS} - ${NAVBAR_HEIGHT + STANDALONE_TOTAL_VERTICAL_PADDING_XS}px)`;
+const STANDALONE_SURFACE_MIN_HEIGHT_MD = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT + STANDALONE_TOTAL_VERTICAL_PADDING_MD}px)`;
 
 // Simplified grid container
 const StyledGridContainer = styled(Grid)`
@@ -46,18 +79,12 @@ const StyledGridContainer = styled(Grid)`
        extra scroll space caused by mobile browser chrome.
        Use min-height so content can extend when needed. */
     min-height: 100vh;
-    min-height: 100dvh;
-    padding-left: ${theme.spacing(3)};
-    padding-right: ${theme.spacing(3)};
-    ${theme.breakpoints.down('sm')} {
-      padding-left: ${theme.spacing(2)};
-      padding-right: ${theme.spacing(2)};
-    }
-    /* Reserve space so the logo is clear of the fixed navbar */
-    padding-top: ${NAVBAR_HEIGHT * 2}px;
-    /* Allow a little room at the bottom so floating buttons don't
-       overlap short pages without making the layout feel top heavy */
-    padding-bottom: ${NAVBAR_HEIGHT / 2}px;
+    min-height: 100svh;
+    background-color: #080808;
+    padding: 0;
+    margin: 0 !important;
+    width: 100%;
+    /* Edge-to-edge hero gradient lives inside the surface container */
     box-sizing: border-box;
   `}
 `;
@@ -69,21 +96,23 @@ const defaultTitleText = 'memeSRC';
 const defaultBragText = 'Search 85 million+ templates';
 const defaultFontColor = '#FFFFFF';
 const defaultBackground = `linear-gradient(45deg,
-  #5461c8 12.5% /* 1*12.5% */,
-  #c724b1 0, #c724b1 25%   /* 2*12.5% */,
-  #e4002b 0, #e4002b 37.5% /* 3*12.5% */,
-  #ff6900 0, #ff6900 50%   /* 4*12.5% */,
-  #f6be00 0, #f6be00 62.5% /* 5*12.5% */,
-  #97d700 0, #97d700 75%   /* 6*12.5% */,
-  #00ab84 0, #00ab84 87.5% /* 7*12.5% */,
+  #5461c8 12.5%,
+  #c724b1 0, #c724b1 25%,
+  #e4002b 0, #e4002b 37.5%,
+  #ff6900 0, #ff6900 50%,
+  #f6be00 0, #f6be00 62.5%,
+  #97d700 0, #97d700 75%,
+  #00ab84 0, #00ab84 87.5%,
   #00a3e0 0)`;
+const defaultBackgroundColor = '#080808';
 
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata, persistSearchTerm }) {
   const { savedCids, cid, setCid, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
-  const { show, setShow, setSearchQuery } = useSearchDetails();
+  const { setShow, setSearchQuery } = useSearchDetails();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
-  const { user, shows, defaultShow, handleUpdateDefaultShow } = useContext(UserContext);
+  const { user, shows, defaultShow, handleUpdateDefaultShow, showFeed = false } = useContext(UserContext);
+  const isFeedEnabled = Boolean(showFeed);
   const { pathname } = useLocation();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
@@ -159,24 +188,22 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
 
   const updateBannerSx = useMemo(
     () => ({
-      maxWidth: { xs: 'min(420px, calc(100% - 32px))', sm: 340 },
-      width: { xs: '100%', sm: 'auto' },
-      display: 'grid',
-      gridTemplateColumns: { xs: '1fr auto auto', sm: '1fr auto auto' },
+      width: '100%',
+      maxWidth: { xs: 'min(440px, 100%)', sm: 'min(520px, 100%)' },
+      display: 'flex',
       alignItems: 'center',
-      gap: { xs: 1.1, sm: 1.25 },
-      position: 'fixed',
-      top: { xs: `${NAVBAR_HEIGHT + 8}px`, sm: `${NAVBAR_HEIGHT + 12}px` },
-      right: { xs: 16, sm: 20 },
-      zIndex: (theme) => (theme?.zIndex?.appBar || 1100) + 1,
-      px: { xs: 1.6, sm: 1.75 },
-      py: { xs: 1.1, sm: 1.2 },
+      justifyContent: 'space-between',
+      gap: { xs: 1, sm: 1.25 },
+      flexWrap: 'wrap',
+      px: { xs: 1.6, sm: 2.1 },
+      py: { xs: 1.05, sm: 1.15 },
       borderRadius: '16px',
       backgroundColor: 'rgba(15,23,42,0.74)',
       backdropFilter: 'blur(18px) saturate(140%)',
       color: '#e2e8f0',
       border: '1px solid rgba(148,163,184,0.18)',
-      boxShadow: '0 18px 36px rgba(15,23,42,0.28)'
+      boxShadow: '0 18px 36px rgba(15,23,42,0.28)',
+      pointerEvents: 'auto',
     }),
     []
   );
@@ -269,11 +296,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
   const [currentThemeFontFamily, setCurrentThemeFontFamily] = useState(metadata?.fontFamily || theme?.typography?.fontFamily);
   const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
-  const [currentThemeBackground, setCurrentThemeBackground] = useState(metadata?.colorMain ? { backgroundColor: `${metadata?.colorMain}` }
-    :
-    {
-      backgroundImage: defaultBackground,
-    }
+  const [currentThemeBackground, setCurrentThemeBackground] = useState(
+    metadata?.colorMain
+      ? { backgroundColor: `${metadata?.colorMain}` }
+      : { backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor },
   );
 
   const { seriesId } = useParams();
@@ -281,12 +307,16 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const navigate = useNavigate();
 
   // The handleChangeSeries function now only handles theme updates
-  const handleChangeSeries = useCallback((newSeriesTitle) => {
-    const selectedSeriesProperties = shows.find((object) => object.id === newSeriesTitle) || savedCids.find((object) => object.id === newSeriesTitle);
-    if (!selectedSeriesProperties) {
-      navigate('/')
-    }
-  }, [shows, savedCids, navigate]);
+  const handleChangeSeries = useCallback(
+    (newSeriesTitle) => {
+      const selectedSeriesProperties =
+        shows.find((object) => object.id === newSeriesTitle) || savedCids?.find((object) => object.id === newSeriesTitle);
+      if (!selectedSeriesProperties) {
+        navigate('/');
+      }
+    },
+    [shows, savedCids, navigate]
+  );
 
   // This useEffect ensures the theme is applied based on the seriesId once the data is loaded
   useEffect(() => {
@@ -314,6 +344,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       setCurrentThemeFontFamily(theme?.typography?.fontFamily)
       setCurrentThemeBackground({
         backgroundImage: defaultBackground,
+        backgroundColor: defaultBackgroundColor,
       })
     }
   }, [pathname, theme?.typography?.fontFamily])
@@ -339,6 +370,28 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }, [cid, seriesTitle, hasFavoriteShows, defaultShow]);
 
   const includeAllFavorites = hasFavoriteShows;
+
+  const currentSeries = useMemo(() => {
+    if (!currentValueId || currentValueId.startsWith('_')) {
+      return undefined;
+    }
+    const fromShows = Array.isArray(shows) ? shows.find((item) => item.id === currentValueId) : undefined;
+    if (fromShows) {
+      return fromShows;
+    }
+    if (Array.isArray(savedCids)) {
+      return savedCids.find((item) => item.id === currentValueId);
+    }
+    return undefined;
+  }, [currentValueId, shows, savedCids]);
+
+  const unifiedSearchAppearance = useMemo(() => {
+    const candidateColor = currentSeries?.colorSecondary || currentThemeFontColor;
+    if (!candidateColor) {
+      return 'light';
+    }
+    return isColorNearBlack(candidateColor) ? 'dark' : 'light';
+  }, [currentSeries, currentThemeFontColor]);
 
   const handleRandomSearch = useCallback(() => {
     const scope = currentValueId || '_universal';
@@ -382,175 +435,417 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     [setSearchTerm],
   );
 
-  
+  const heroSurfaceSx = useMemo(() => {
+    const base = {
+      width: '100%',
+      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: { xs: 3.5, md: 4 },
+      ...currentThemeBackground,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      borderRadius: 'inherit',
+      border: 'none',
+      boxShadow: 'none',
+      boxSizing: 'border-box',
+      flex: 1,
+    };
+
+    if (isFeedEnabled) {
+      return {
+        ...base,
+        justifyContent: 'center',
+        minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '100%' },
+        paddingTop: { xs: 20, md: DESKTOP_CARD_PADDING },
+        paddingBottom: { xs: 20, md: DESKTOP_CARD_PADDING },
+      };
+    }
+
+    return {
+      ...base,
+      justifyContent: 'center',
+      paddingTop: { xs: STANDALONE_HERO_PADDING_TOP_XS, md: STANDALONE_HERO_PADDING_TOP_MD },
+      paddingBottom: { xs: STANDALONE_HERO_PADDING_BOTTOM_XS, md: STANDALONE_HERO_PADDING_BOTTOM_MD },
+    };
+  }, [currentThemeBackground, isFeedEnabled]);
+
+  const heroPaperSx = useMemo(() => {
+    const sharedBorderRadius = { xs: '28px', md: 4 };
+
+    const shared = {
+      borderRadius: sharedBorderRadius,
+      border: '1px solid rgba(70,70,70,0.22)',
+      background: 'rgba(10,10,10,0.92)',
+      boxShadow: 'none',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+    };
+
+    if (isFeedEnabled) {
+      return {
+        ...shared,
+        position: { xs: 'relative', md: 'sticky' },
+        top: { md: DESKTOP_STICKY_TOP_OFFSET },
+        alignSelf: { xs: 'stretch', md: 'start' },
+        maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+        minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+        height: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+        boxSizing: 'border-box',
+      };
+    }
+
+    return {
+      ...shared,
+      position: 'relative',
+      top: 0,
+      alignSelf: 'stretch',
+      minHeight: { xs: STANDALONE_PAPER_MIN_HEIGHT_XS, md: STANDALONE_PAPER_MIN_HEIGHT_MD },
+      boxSizing: 'border-box',
+    };
+  }, [isFeedEnabled]);
+
+  const heroInnerSx = useMemo(
+    () => ({
+      position: 'relative',
+      zIndex: 2,
+      width: '100%',
+      maxWidth: 'min(1040px, 100%)',
+      mx: 'auto',
+      px: { xs: 3, sm: 5, md: 7 },
+      py: { xs: 0, sm: 0, md: 0 },
+      mt: { xs: 1, md: 0 },
+      display: 'flex',
+      flexDirection: 'column',
+      flex: 1,
+      justifyContent: 'center',
+      gap: { xs: 2.5, md: 4 },
+    }),
+    []
+  );
+
+  const heroContentSx = useMemo(
+    () => ({
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      gap: { xs: 3, md: 4 },
+    }),
+    []
+  );
+
+
   return (
     <>
-      <StyledGridContainer container sx={currentThemeBackground}>
-        <Grid container marginY="auto" justifyContent="center" pb={isMd ? 0 : 8}>
-          <Grid container justifyContent="center">
-            <Grid item textAlign="center" marginBottom={2}>
-              <Box onClick={() => handleChangeSeries(safeGetItem(`defaultsearch${user?.sub}`) || '_universal')}>
-                <Logo
-                  color={currentThemeFontColor || 'white'}
-                  sx={{
-                    objectFit: 'contain',
-                    cursor: 'pointer',
-                    display: 'block',
-                    width: '130px',
-                    height: 'auto',
-                    margin: '0 auto',
-                    color: 'yellow'
-                  }}
-                />
-              </Box>
-              <Typography
-                component="h1"
-                variant="h1"
-                fontSize={34}
-                fontFamily={currentThemeFontFamily}
-                sx={{ 
-                  color: currentThemeFontColor, 
-                  textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20)',
-                  display: 'grid',
-                  gridTemplateColumns: '36px 1fr 36px',
-                  alignItems: 'center',
-                  gap: 1
+      <StyledGridContainer
+        container
+        sx={{
+          minHeight: isFeedEnabled
+            ? undefined
+            : { xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS, md: STANDALONE_CONTAINER_MIN_HEIGHT_MD },
+        }}
+      >
+        <Box
+          sx={{
+            width: '100%',
+            display: 'grid',
+            gridTemplateColumns: isFeedEnabled
+              ? {
+                  xs: '1fr',
+                  md: 'minmax(0, 3fr) minmax(0, 1fr)',
+                }
+              : { xs: '1fr' },
+            gap: isFeedEnabled ? { xs: 0.25, md: 3 } : 0,
+            alignItems: 'stretch',
+            px: { xs: 0, sm: 2, md: 3 },
+            paddingTop: isFeedEnabled
+              ? {
+                  xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
+                  md: `${DESKTOP_CARD_PADDING}px`,
+                }
+              : 0,
+            paddingBottom: isFeedEnabled
+              ? {
+                  xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
+                  md: 0,
+                }
+              : 0,
+            minHeight: isFeedEnabled
+              ? undefined
+              : {
+                  xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
+                  md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
+                },
+            backgroundColor: '#000',
+          }}
+        >
+          <Paper elevation={0} sx={heroPaperSx}>
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                background: 'radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 55%)',
+                pointerEvents: 'none',
+              }}
+            />
+            <Box
+              sx={{
+                position: 'relative',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 0,
+                overflow: isFeedEnabled ? 'hidden' : 'visible',
+              }}
+            >
+              <Box
+                sx={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 0,
+                  overflowY: isFeedEnabled ? 'hidden' : 'visible',
+                  WebkitOverflowScrolling: 'touch',
                 }}
               >
-                {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
-                  <FavoriteToggle
-                    indexId={cid}
-                    initialIsFavorite={shows.find(show => show.id === cid)?.isFavorite || false}
-                  />
-                ) : (
-                  <span />
-                )}
-                {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
-                <span />
-              </Typography>
-              {latestRelease?.tag_name && (
-                <Slide
-                  in={hasRecentUndismissedUpdate}
-                  direction={isMobile ? 'down' : 'left'}
-                  mountOnEnter
-                  unmountOnExit
-                  timeout={{ appear: 420, enter: 420, exit: 360 }}
-                >
-                  <Box sx={updateBannerSx}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: { xs: 1.05, sm: 1.15 },
-                        minWidth: 0
-                      }}
+                <Box sx={heroSurfaceSx}>
+                  {latestRelease?.tag_name && (
+                    <Slide
+                      in={hasRecentUndismissedUpdate}
+                      direction={isMobile ? 'down' : 'left'}
+                      mountOnEnter
+                      unmountOnExit
+                      timeout={{ appear: 420, enter: 420, exit: 360 }}
                     >
                       <Box
                         sx={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: '50%',
-                          backgroundColor: statusDotColor,
-                          boxShadow: '0 0 0 3px rgba(148,163,184,0.2)'
-                        }}
-                      />
-                      <Typography
-                        variant="subtitle2"
-                        component="span"
-                        noWrap={!isMobile}
-                        sx={{
-                          fontSize: { xs: '0.95rem', sm: '0.98rem' },
-                          fontWeight: 600,
-                          color: '#f8fafc',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
+                          position: 'absolute',
+                          top: { xs: 12, sm: 16 },
+                          left: 0,
+                          right: 0,
+                          display: 'flex',
+                          justifyContent: 'center',
+                          px: { xs: 1.5, sm: 3 },
+                          zIndex: 3,
                         }}
                       >
-                        Updated to{' '}
-                        <Link to="/releases" style={releaseLinkStyle}>
-                          {formatReleaseDisplay(latestRelease?.tag_name)}
-                        </Link>
-                      </Typography>
+                        <Box sx={updateBannerSx}>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: { xs: 1.05, sm: 1.15 },
+                              minWidth: 0,
+                              flex: '1 1 auto',
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: '50%',
+                                backgroundColor: statusDotColor,
+                                boxShadow: '0 0 0 3px rgba(148,163,184,0.2)',
+                              }}
+                            />
+                            <Typography
+                              variant="subtitle2"
+                              component="span"
+                              noWrap={!isMobile}
+                              sx={{
+                                fontSize: { xs: '0.95rem', sm: '0.98rem' },
+                                fontWeight: 600,
+                                color: '#f8fafc',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              Updated to{' '}
+                              <Link to="/releases" style={releaseLinkStyle}>
+                                {formatReleaseDisplay(latestRelease?.tag_name)}
+                              </Link>
+                            </Typography>
+                          </Box>
+                          <Box
+                            component="span"
+                            sx={{
+                              px: 1,
+                              py: 0.28,
+                              borderRadius: '999px',
+                              backgroundColor: 'rgba(148,163,184,0.16)',
+                              color: 'rgba(226,232,240,0.88)',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              letterSpacing: 0.5,
+                              textTransform: 'uppercase',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {formatRelativeTimeCompact(latestRelease?.published_at)}
+                          </Box>
+                          <IconButton
+                            aria-label="Dismiss update"
+                            size="small"
+                            onClick={handleDismissUpdateBanner}
+                            sx={{
+                              color: 'rgba(226,232,240,0.72)',
+                              backgroundColor: 'transparent',
+                              p: 0.4,
+                              transition: 'color 160ms ease, background-color 160ms ease',
+                              flexShrink: 0,
+                              '&:hover': {
+                                color: '#f8fafc',
+                                backgroundColor: 'rgba(148,163,184,0.16)',
+                              },
+                            }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </Box>
+                    </Slide>
+                  )}
+                  <Box
+                    sx={{
+                      ...heroInnerSx,
+                      maxWidth: 'min(960px, 100%)',
+                      px: { xs: 3, sm: 5, md: 6 },
+                      mt: 0,
+                    }}
+                  >
+                      <Box
+                        sx={{
+                          ...heroContentSx,
+                        }}
+                      >
+                      <Grid
+                        container
+                        justifyContent="center"
+                        pb={isMd ? 0 : 1.4}
+                        sx={{
+                          flexGrow: 1,
+                          alignContent: 'center',
+                          rowGap: { xs: 1.2, md: 2 },
+                          position: 'relative',
+                        }}
+                      >
+                        <Grid container justifyContent="center">
+                          <Grid item textAlign="center" marginBottom={0.6}>
+                            <Box onClick={() => handleChangeSeries(safeGetItem(`defaultsearch${user?.sub}`) || '_universal')}>
+                              <Logo
+                                color={currentThemeFontColor || 'white'}
+                                sx={{
+                                  objectFit: 'contain',
+                                  cursor: 'pointer',
+                                  display: 'block',
+                                  width: { xs: '92px', sm: '110px' },
+                                  height: 'auto',
+                                  margin: '0 auto',
+                                  color: 'yellow',
+                                }}
+                              />
+                            </Box>
+                            <Typography
+                              component="h1"
+                              variant="h1"
+                              fontSize={{ xs: 26, sm: 30, md: 32 }}
+                              fontFamily={currentThemeFontFamily}
+                              sx={{
+                                color: currentThemeFontColor,
+                                textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20)',
+                                display: 'grid',
+                                gridTemplateColumns: { xs: '26px 1fr 26px', sm: '30px 1fr 30px' },
+                                alignItems: 'center',
+                                gap: 0.75,
+                                lineHeight: 1.1,
+                              }}
+                            >
+                              {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
+                                <FavoriteToggle
+                                  indexId={cid}
+                                  initialIsFavorite={shows.find((singleShow) => singleShow.id === cid)?.isFavorite || false}
+                                />
+                              ) : (
+                                <span />
+                              )}
+                              {`${currentThemeTitleText} ${currentThemeTitleText === 'memeSRC' ? (user?.userDetails?.magicSubscription === 'true' ? 'Pro' : '') : ''}`}
+                              <span />
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                        <Grid container justifyContent="center">
+                          <Grid item xs={12}>
+                            <UnifiedSearchBar
+                              value={searchTerm}
+                              onValueChange={handleSearchTermChange}
+                              onSubmit={(event) => searchFunction(event)}
+                              onClear={handleClearSearch}
+                              onRandom={handleRandomSearch}
+                              isRandomLoading={loadingRandom}
+                              shows={shows}
+                              savedCids={savedCids}
+                              currentValueId={currentValueId}
+                              includeAllFavorites={includeAllFavorites}
+                              onSelectSeries={handleSelect}
+                              appearance={unifiedSearchAppearance}
+                            />
+                          </Grid>
+                        </Grid>
+                        <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={0.8} marginTop={0.4}>
+                          <Typography component="h2" variant="h4" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' }, fontWeight: 700 }}>
+                            {currentThemeBragText}
+                          </Typography>
+                        </Grid>
+                        {showAd && (
+                          <Grid item xs={12} mt={1}>
+                            <center>
+                              <Box>
+                                {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+                                <Link to="/pro" style={{ textDecoration: 'none' }}>
+                                  <Typography variant="body2" textAlign="center" sx={{ marginTop: 1, color: currentThemeFontColor }}>
+                                    ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+                                  </Typography>
+                                </Link>
+                              </Box>
+                            </center>
+                          </Grid>
+                        )}
+                      </Grid>
                     </Box>
-                    <Box
-                      component="span"
-                      sx={{
-                        justifySelf: 'flex-end',
-                        px: 1,
-                        py: 0.28,
-                        borderRadius: '999px',
-                        backgroundColor: 'rgba(148,163,184,0.16)',
-                        color: 'rgba(226,232,240,0.88)',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        letterSpacing: 0.5,
-                        textTransform: 'uppercase',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {formatRelativeTimeCompact(latestRelease?.published_at)}
-                    </Box>
-                    <IconButton
-                      aria-label="Dismiss update"
-                      size="small"
-                      onClick={handleDismissUpdateBanner}
-                      sx={{
-                        color: 'rgba(226,232,240,0.72)',
-                        backgroundColor: 'transparent',
-                        p: 0.4,
-                        transition: 'color 160ms ease, background-color 160ms ease',
-                        '&:hover': {
-                          color: '#f8fafc',
-                          backgroundColor: 'rgba(148,163,184,0.16)'
-                        }
-                      }}
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
                   </Box>
-                </Slide>
-              )}
-            </Grid>
-          </Grid>
-          <Grid container justifyContent="center">
-            <Grid item xs={12}>
-              <UnifiedSearchBar
-                value={searchTerm}
-                onValueChange={handleSearchTermChange}
-                onSubmit={(event) => searchFunction(event)}
-                onClear={handleClearSearch}
-                onRandom={handleRandomSearch}
-                isRandomLoading={loadingRandom}
-                shows={shows}
-                savedCids={savedCids}
-                currentValueId={currentValueId}
-                includeAllFavorites={includeAllFavorites}
-                onSelectSeries={handleSelect}
-                appearance="light"
-              />
-            </Grid>
-          </Grid>
-          <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={2} marginTop={1}>
-            <Typography component="h2" variant="h4">
-              {currentThemeBragText}
-            </Typography>
-          </Grid>
-          {showAd &&
-            <Grid item xs={12} mt={1}>
-              <center>
-                <Box >
-                  {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-                  <Link to="/pro" style={{ textDecoration: 'none' }}>
-                    <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                      ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                    </Typography>
-                  </Link>
                 </Box>
-              </center>
-            </Grid>
-          }
-        </Grid>
-        <FloatingActionButtons shows={show} />
+              </Box>
+            </Box>
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 3,
+                px: { xs: 3, md: 6 },
+                pb: { xs: 2.5, md: 3.5 },
+                pointerEvents: 'none',
+                '& *': {
+                  pointerEvents: 'auto',
+                },
+              }}
+            >
+              <FloatingActionButtons
+                shows={currentValueId || '_universal'}
+                showAd={showAd}
+                variant="inline"
+              />
+            </Box>
+          </Paper>
+
+          {isFeedEnabled && (
+            <FeedSection />
+          )}
+        </Box>
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>

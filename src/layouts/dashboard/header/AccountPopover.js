@@ -1,7 +1,7 @@
 import { useState, useContext } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
-import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover } from '@mui/material';
+import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover, Switch } from '@mui/material';
 import { AutoFixHigh, Person } from '@mui/icons-material';
 // mocks_
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +31,37 @@ export default function AccountPopover() {
   const handleClose = () => {
     setOpen(null);
   };
+
+  const userGroups = userDetails?.user?.['cognito:groups'];
+  const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
+  const isFeedVisible = userDetails?.showFeed !== false;
+
+  const handleShowFeedToggle = (event, checked) => {
+    event.stopPropagation();
+    if (typeof userDetails?.setShowFeed === 'function') {
+      userDetails.setShowFeed(checked);
+    }
+  };
+
+  const showFeedToggle = !isAdmin ? null : (
+    <>
+      <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
+      <MenuItem disableRipple sx={{ cursor: 'default' }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: '100%' }}>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            Show feed
+          </Typography>
+          <Switch
+            edge="end"
+            size="small"
+            checked={isFeedVisible}
+            onChange={handleShowFeedToggle}
+            inputProps={{ 'aria-label': 'toggle feed visibility' }}
+          />
+        </Stack>
+      </MenuItem>
+    </>
+  );
 
 
   const logout = () => {
@@ -174,8 +205,9 @@ export default function AccountPopover() {
                 <MenuItem onClick={() => { navigate('/account'); handleClose(); }}>
                   Manage Account
                 </MenuItem>
+                {isAdmin && showFeedToggle}
               </>
-            )}      
+            )}
 
             <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
             <MenuItem onClick={logout}>
@@ -192,6 +224,7 @@ export default function AccountPopover() {
                 Create Account
               </MenuItem>
             </Stack>
+            {isAdmin && showFeedToggle}
           </>
         }
       </Popover>

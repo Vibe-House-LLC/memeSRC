@@ -5,7 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
   CardContent,
   Chip,
   Container,
@@ -34,6 +33,7 @@ import {
   processGitHubLinks,
   formatReleaseDisplay,
 } from '../utils/githubReleases';
+import { ReleaseCardSurface } from '../sections/search/cards/CardSurface';
  
 
 const GITHUB_OWNER = DEFAULT_GITHUB_OWNER;
@@ -319,6 +319,8 @@ export default function ReleasesPage(): React.ReactElement {
                 const isPrerelease = Boolean(release.prerelease);
                 const releaseType = getReleaseType(release.tag_name);
                 const isLatest = index === 0;
+                const releaseColorKey = getReleaseColor(releaseType, isPrerelease, isDraft);
+                const releasePalette = theme.palette[releaseColorKey] || theme.palette.info;
 
                 const processedBody = processGitHubLinks(release.body);
 
@@ -380,26 +382,27 @@ export default function ReleasesPage(): React.ReactElement {
                         </Typography>
                       </Box>
                     )}
-                    <Card
-                      elevation={0}
+                    <ReleaseCardSurface
                       role="article"
                       aria-labelledby={`release-title-${release.id}`}
+                      tone={releaseColorKey}
+                      highlighted={isLatest}
                       sx={{
-                        background: isLatest 
-                          ? `linear-gradient(135deg, 
-                              ${alpha(theme.palette.background.paper, 0.95)} 0%, 
+                        background: isLatest
+                          ? `linear-gradient(135deg,
+                              ${alpha(theme.palette.background.paper, 0.95)} 0%,
                               ${alpha(theme.palette.background.paper, 0.9)} 100%
                             )`
                           : alpha(theme.palette.background.paper, 0.85),
                         backdropFilter: 'blur(10px)',
-                        border: isLatest 
-                          ? `2px solid ${alpha(theme.palette.primary.main, 0.3)}` 
+                        border: isLatest
+                          ? `2px solid ${alpha(theme.palette.primary.main, 0.3)}`
                           : `1px solid ${alpha(theme.palette.divider, 0.12)}`,
                         borderRadius: { xs: 2, sm: 3 },
                         boxShadow: isLatest
                           ? `0 4px 20px ${alpha(theme.palette.primary.main, 0.15)}`
                           : `0 2px 12px ${alpha('#000', 0.06)}`,
-                        transition: 'box-shadow 0.3s ease'
+                        transition: 'box-shadow 0.3s ease',
                       }}
                     >
                       <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
@@ -448,9 +451,9 @@ export default function ReleasesPage(): React.ReactElement {
                                 fontSize: { xs: '0.62rem', sm: '0.68rem' },
                                 fontWeight: 700,
                                 letterSpacing: '0.4px',
-                                bgcolor: alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.12),
-                                color: theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main,
-                                border: `1px solid ${alpha(theme.palette[getReleaseColor(releaseType, isPrerelease, isDraft)].main, 0.25)}`,
+                                bgcolor: alpha(releasePalette.main, 0.12),
+                                color: releasePalette.main,
+                                border: `1px solid ${alpha(releasePalette.main, 0.25)}`,
                                 '& .MuiChip-label': {
                                   px: { xs: 0.75, sm: 1 }
                                 }
@@ -789,7 +792,7 @@ export default function ReleasesPage(): React.ReactElement {
                           </Stack>
                         </Box>
                       </CardContent>
-                    </Card>
+                    </ReleaseCardSurface>
                   </Box>
                 );
               })}
@@ -831,5 +834,3 @@ export default function ReleasesPage(): React.ReactElement {
     </>
   );
 }
-
-
