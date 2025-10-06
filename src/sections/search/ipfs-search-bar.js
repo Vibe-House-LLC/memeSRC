@@ -139,17 +139,18 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
     [navigate, resolvedCid, search, setSearchQuery, shows],
   );
 
+  const showAd = user?.userDetails?.subscriptionStatus !== 'active';
+
   const handleRandomSearch = useCallback(() => {
     const scope = resolvedCid || '_universal';
     trackUsageEvent('random_frame', {
       source: 'UnifiedSearchBar',
       scope,
       showCount: Array.isArray(shows) ? shows.length : 0,
+      hasAd: showAd,
     });
     loadRandomFrame(scope);
-  }, [resolvedCid, loadRandomFrame, shows]);
-
-  const showAd = user?.userDetails?.subscriptionStatus !== 'active';
+  }, [resolvedCid, loadRandomFrame, shows, showAd]);
 
   return (
     <>
