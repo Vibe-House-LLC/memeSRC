@@ -21,6 +21,9 @@ export default function CheckAuth(props) {
     return storedPreference !== 'false';
   });
   const location = useLocation();
+  const userGroups = user?.['cognito:groups'];
+  const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
+  const effectiveShowFeed = isAdmin && showFeed;
 
   useEffect(() => {
     const userDetails = safeGetItem('memeSRCUserDetails')
@@ -79,7 +82,7 @@ export default function CheckAuth(props) {
   }, [showFeed]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, showFeed, setShowFeed }}>
+    <UserContext.Provider value={{ user, setUser, showFeed: effectiveShowFeed, setShowFeed }}>
       {content}
     </UserContext.Provider>
   )

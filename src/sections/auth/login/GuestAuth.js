@@ -24,6 +24,9 @@ export default function GuestAuth(props) {
     return storedPreference !== 'false';
   });
   const location = useLocation();
+  const userGroups = user?.['cognito:groups'];
+  const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
+  const effectiveShowFeed = isAdmin && showFeed;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -148,7 +151,7 @@ export default function GuestAuth(props) {
   }, [showFeed]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed, setShowFeed }}>
+    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed: effectiveShowFeed, setShowFeed }}>
       {props.children}
     </UserContext.Provider>
   )

@@ -32,6 +32,8 @@ export default function AccountPopover() {
     setOpen(null);
   };
 
+  const userGroups = userDetails?.user?.['cognito:groups'];
+  const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
   const isFeedVisible = userDetails?.showFeed !== false;
 
   const handleShowFeedToggle = (event, checked) => {
@@ -41,7 +43,7 @@ export default function AccountPopover() {
     }
   };
 
-  const showFeedToggle = (
+  const showFeedToggle = !isAdmin ? null : (
     <>
       <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
       <MenuItem disableRipple sx={{ cursor: 'default' }}>
@@ -203,9 +205,9 @@ export default function AccountPopover() {
                 <MenuItem onClick={() => { navigate('/account'); handleClose(); }}>
                   Manage Account
                 </MenuItem>
-                {showFeedToggle}
+                {isAdmin && showFeedToggle}
               </>
-            )}      
+            )}
 
             <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
             <MenuItem onClick={logout}>
@@ -222,7 +224,7 @@ export default function AccountPopover() {
                 Create Account
               </MenuItem>
             </Stack>
-            {showFeedToggle}
+            {isAdmin && showFeedToggle}
           </>
         }
       </Popover>
