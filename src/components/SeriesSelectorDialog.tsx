@@ -87,8 +87,7 @@ const getSelectedListItemStyles = (theme: Theme, series?: SeriesItem) => {
       backgroundColor: highlightColor,
       backgroundImage: 'none',
       borderColor: whiteBorder,
-      boxShadow: `${theme.shadows[10]}, 0 0 0 1px ${alpha(highlightColor, theme.palette.mode === 'light' ? 0.5 : 0.65)}`,
-      transform: 'translate3d(0,-2px,0)',
+      boxShadow: `${theme.shadows[8]}, 0 0 0 1px ${alpha(highlightColor, theme.palette.mode === 'light' ? 0.45 : 0.6)}`,
     },
   };
 };
@@ -106,15 +105,16 @@ const quickActionButtonSx = (theme: Theme) => {
     border: '1px solid',
     borderColor: borderTone,
     borderRadius: theme.spacing(1.5),
-    marginBottom: theme.spacing(0.6),
-    paddingTop: theme.spacing(1.35),
-    paddingBottom: theme.spacing(1.25),
-    paddingLeft: theme.spacing(1.1),
-    paddingRight: theme.spacing(1.1),
+    marginBottom: theme.spacing(0.45),
+    paddingTop: theme.spacing(1.05),
+    paddingBottom: theme.spacing(1),
+    paddingLeft: theme.spacing(0.92),
+    paddingRight: theme.spacing(0.92),
+    minHeight: theme.spacing(5.75),
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1.15),
-    boxShadow: theme.shadows[4],
+    gap: theme.spacing(0.6),
+    boxShadow: theme.shadows[3],
     backgroundColor,
     backgroundImage: backgroundGradient,
     color: textColor,
@@ -123,19 +123,15 @@ const quickActionButtonSx = (theme: Theme) => {
     }),
     '&:hover:not(.Mui-selected)': {
       borderColor: hoverBorderTone,
-      boxShadow: theme.shadows[7],
+      boxShadow: theme.shadows[4],
     },
     '& .MuiListItemText-primary': {
       color: textColor,
       fontWeight: 700,
-      fontSize: '1.02rem',
-      lineHeight: 1.2,
+      fontSize: '0.98rem',
+      lineHeight: 1.12,
     },
-    '& .MuiListItemText-secondary': {
-      color: subTextColor,
-      fontSize: '0.82rem',
-      fontWeight: 500,
-    },
+    '& .MuiListItemText-secondary': undefined,
     ...getSelectedListItemStyles(theme),
   };
 };
@@ -153,14 +149,15 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
     border: '1px solid',
     borderColor: baseBorder,
     borderRadius: 1.5,
-    marginBottom: theme.spacing(1),
-    paddingTop: theme.spacing(1),
-    paddingBottom: theme.spacing(1),
-    paddingLeft: theme.spacing(1),
-    paddingRight: theme.spacing(1),
+    marginBottom: theme.spacing(0.4),
+    paddingTop: theme.spacing(0.38),
+    paddingBottom: theme.spacing(0.38),
+    paddingLeft: theme.spacing(0.54),
+    paddingRight: theme.spacing(0.54),
+    minHeight: theme.spacing(3.8),
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1.25),
+    gap: theme.spacing(0.55),
     backgroundColor: baseBg,
     color: primaryText,
     boxShadow: theme.shadows[2],
@@ -170,6 +167,8 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
     '& .MuiListItemText-primary': {
       color: primaryText,
       fontWeight: 600,
+      fontSize: '0.92rem',
+      lineHeight: 1.08,
     },
     '& .MuiListItemText-secondary': {
       color: secondaryText,
@@ -184,15 +183,15 @@ const listCardButtonSx = (theme: Theme, series?: SeriesItem) => {
 };
 
 const sectionHeaderSx = (theme: Theme, options?: { topSpacing?: 'tight' | 'regular' }) => {
-  const topSpacing = options?.topSpacing === 'tight' ? 0.75 : 1;
+  const topSpacing = options?.topSpacing === 'tight' ? 0.18 : 0.28;
 
   return {
     bgcolor: 'transparent',
     px: 0,
     pt: theme.spacing(topSpacing),
-    pb: theme.spacing(0.5),
-    fontSize: '0.95rem',
-    fontWeight: 700,
+    pb: theme.spacing(0.04),
+    fontSize: '0.8rem',
+    fontWeight: 600,
     color: theme.palette.text.secondary,
   };
 };
@@ -208,7 +207,7 @@ const radioIconSx = (theme: Theme, selected: boolean, options?: { inverted?: boo
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 28,
+    minWidth: 18,
     color: selected ? selectedColor : baseColor,
     transition: theme.transitions.create('color', {
       duration: theme.transitions.duration.shorter,
@@ -401,9 +400,9 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       disablePadding
       sx={{
         bgcolor: 'transparent',
-        px: { xs: 1.5, sm: 2 },
-        pt: showQuickPicks ? (isMobile ? 1 : 1.25) : isMobile ? 0.6 : 0.75,
-        pb: { xs: 1.5, sm: 2 },
+        px: { xs: 1.25, sm: 1.75 },
+        pt: showQuickPicks ? (isMobile ? 0.6 : 0.85) : isMobile ? 0.35 : 0.55,
+        pb: { xs: 1, sm: 1.25 },
       }}
     >
 
@@ -429,13 +428,11 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
               {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
             </Box>
-            <Box component="span" sx={{ fontSize: 22, lineHeight: 1, mr: 1 }}>🌈</Box>
+              <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>🌈</Box>
             <ListItemText
               sx={{ ml: 0, flex: 1 }}
               primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
               primary="All Shows & Movies"
-              secondary="Every quote in the library"
-              secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
             />
           </ListItemButton>
 
@@ -445,7 +442,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               onClick={() => handleSelect('_favorites')}
               sx={(theme) => ({
                 ...quickActionButtonSx(theme),
-                marginBottom: theme.spacing(1.2),
+                marginBottom: theme.spacing(0.5),
               })}
             >
               <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
@@ -455,9 +452,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               <ListItemText
                 sx={{ ml: 0, flex: 1 }}
                 primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
-                primary="All Favorites"
-                secondary="Only your saved favorites"
-                secondaryTypographyProps={{ sx: { color: 'inherit', opacity: 0.8 } }}
+              primary="All Favorites"
               />
             </ListItemButton>
           )}
@@ -483,12 +478,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                     <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
                       {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
                     </Box>
-                    <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
+                    <Box component="span" sx={{ fontSize: 17, lineHeight: 1, mr: 1 }}>
                       {s.emoji ? s.emoji : '⭐'}
                     </Box>
                     <ListItemText
                       sx={{ ml: 0, flex: 1 }}
-                      primaryTypographyProps={{ sx: { fontWeight: 600, color: 'inherit' } }}
+                      primaryTypographyProps={{ sx: { fontWeight: 600, fontSize: '0.94rem', lineHeight: 1.05, color: 'inherit' } }}
                       primary={s.title}
                     />
                     <Box
@@ -543,12 +538,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                 <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
                   {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
                 </Box>
-                <Box component="span" sx={{ fontSize: 18, lineHeight: 1, mr: 1.25 }}>
+                <Box component="span" sx={{ fontSize: 17, lineHeight: 1, mr: 1 }}>
                   {s.emoji ? s.emoji : s.isFavorite ? '⭐' : '🎬'}
                 </Box>
                 <ListItemText
                   sx={{ ml: 0, flex: 1 }}
-                  primaryTypographyProps={{ sx: { fontWeight: 600, color: 'inherit' } }}
+                  primaryTypographyProps={{ sx: { fontWeight: 600, fontSize: '0.94rem', lineHeight: 1.05, color: 'inherit' } }}
                   primary={s.title}
                 />
                 <Box
@@ -743,8 +738,8 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
         </Box>
         <Box
           sx={{
-            px: isMobile ? 1.5 : 2,
-            py: isMobile ? 0.75 : 1,
+              px: isMobile ? 1.4 : 1.85,
+              py: isMobile ? 0.65 : 0.9,
             borderBottom: '1px solid',
             borderColor: 'divider',
           }}
