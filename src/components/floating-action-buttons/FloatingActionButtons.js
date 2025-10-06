@@ -1,7 +1,7 @@
 import React, { useContext, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Box, styled, CircularProgress, useTheme } from '@mui/material';
-import { Dashboard } from '@mui/icons-material';
+import { Favorite, Dashboard } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
@@ -77,9 +77,9 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const navigate = useNavigate();
     const { user, shows: availableShows = [] } = useContext(UserContext);
     const theme = useTheme();
-
-    // Check if user is an admin
-    const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
+    const isAdmin = user?.['cognito:groups']?.includes('admins');
+    const isPro = user?.userDetails?.magicSubscription === 'true';
+    const hasCollageAccess = Boolean(isAdmin || isPro);
 
     const showCount = useMemo(() => {
         if (Array.isArray(shows)) {
@@ -130,14 +130,20 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         loadRandomFrame(targetShow);
     };
 
+    const handleDonateClick = () => {
+        trackUsageEvent('donate_entry', {
+            source: 'FloatingActionButtons',
+        });
+        window.open('/donate', '_blank', 'noopener,noreferrer');
+    };
+
     const handleCollageClick = () => {
-        const destination = hasCollageAccess ? '/projects' : '/pro';
         trackUsageEvent('collage_entry', {
             source: 'FloatingActionButtons',
-            destination,
+            destination: '/collage',
             hasAccess: hasCollageAccess,
         });
-        navigate(destination);
+        navigate('/collage');
     };
 
     const sharedButtonSx = {
@@ -168,6 +174,19 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         },
     };
 
+    const donateButton = (
+        <StyledButton
+            onClick={handleDonateClick}
+            startIcon={<Favorite sx={{ fontSize: 28 }} />}
+            variant="contained"
+            sx={{
+                ...sharedButtonSx,
+            }}
+        >
+            Donate
+        </StyledButton>
+    );
+
     const collageButton = (
         <StyledButton
             onClick={handleCollageClick}
@@ -180,6 +199,8 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             Collage
         </StyledButton>
     );
+
+    const primaryButton = hasCollageAccess ? collageButton : donateButton;
 
     const randomButton = (
         <StyledButton
@@ -253,7 +274,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 }}
             >
                 <Box sx={inlineGroupStyles}>
-                    {collageButton}
+                    {primaryButton}
                 </Box>
                 <Box sx={inlineGroupStyles}>
                     {randomButton}
@@ -266,7 +287,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         <>
             <Box aria-hidden sx={safeAreaSpacerSx} />
             <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
-                {collageButton}
+                {primaryButton}
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn" hasAd={showAd}>
                 {randomButton}
