@@ -46,16 +46,15 @@ const DESKTOP_NAVBAR_HEIGHT = NAVBAR_HEIGHT;
 const DESKTOP_STICKY_TOP_OFFSET = DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING;
 const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING * 2}px)`;
 const MOBILE_CARD_OFFSET = NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER;
-const MOBILE_CARD_CONTENT_OFFSET = MOBILE_CARD_OFFSET + 140;
 const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${MOBILE_CARD_OFFSET}px)`;
 const MOBILE_CARD_TARGET_HEIGHT = `calc(90svh - ${MOBILE_CARD_OFFSET}px)`;
-const MOBILE_CARD_MIN_HEIGHT = `clamp(460px, ${MOBILE_CARD_TARGET_HEIGHT}, ${MOBILE_MAX_CARD_HEIGHT})`;
-const MOBILE_CARD_CONTENT_MIN_HEIGHT = `clamp(280px, calc(90svh - ${MOBILE_CARD_CONTENT_OFFSET}px), calc(100svh - ${MOBILE_CARD_CONTENT_OFFSET}px))`;
+const MOBILE_CARD_MIN_HEIGHT = `clamp(280px, ${MOBILE_CARD_TARGET_HEIGHT}, ${MOBILE_MAX_CARD_HEIGHT})`;
+const SHORT_VIEWPORT_MEDIA_QUERY = '@media (max-height: 720px)';
 // Standalone mode: vertical padding inside the hero surface box
-const STANDALONE_HERO_PADDING_TOP_XS = 24;
-const STANDALONE_HERO_PADDING_BOTTOM_XS = 24;
-const STANDALONE_HERO_PADDING_TOP_MD = 28;
-const STANDALONE_HERO_PADDING_BOTTOM_MD = 28;
+const STANDALONE_HERO_PADDING_TOP_XS = 12;
+const STANDALONE_HERO_PADDING_BOTTOM_XS = 14;
+const STANDALONE_HERO_PADDING_TOP_MD = 18;
+const STANDALONE_HERO_PADDING_BOTTOM_MD = 20;
 const STANDALONE_TOTAL_VERTICAL_PADDING_XS = STANDALONE_HERO_PADDING_TOP_XS + STANDALONE_HERO_PADDING_BOTTOM_XS;
 const STANDALONE_TOTAL_VERTICAL_PADDING_MD = STANDALONE_HERO_PADDING_TOP_MD + STANDALONE_HERO_PADDING_BOTTOM_MD;
 // Container heights account for navbar only
@@ -66,7 +65,7 @@ const STANDALONE_CONTAINER_MIN_HEIGHT_XS = `calc(${STANDALONE_CONTAINER_HEIGHT_X
 const STANDALONE_CONTAINER_MIN_HEIGHT_MD = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT}px)`;
 // Paper heights match container (no extra padding at this level)
 const STANDALONE_PAPER_HEIGHT_XS = STANDALONE_CONTAINER_MIN_HEIGHT_XS;
-const STANDALONE_PAPER_MIN_HEIGHT_XS = STANDALONE_PAPER_HEIGHT_XS;
+const STANDALONE_PAPER_MIN_HEIGHT_XS = MOBILE_CARD_MIN_HEIGHT;
 const STANDALONE_PAPER_MIN_HEIGHT_MD = STANDALONE_CONTAINER_MIN_HEIGHT_MD;
 // Surface heights account for internal padding to prevent overflow
 const STANDALONE_SURFACE_MIN_HEIGHT_XS = `calc(${STANDALONE_CONTAINER_HEIGHT_XS} - ${NAVBAR_HEIGHT + STANDALONE_TOTAL_VERTICAL_PADDING_XS}px)`;
@@ -441,7 +440,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       position: 'relative',
       display: 'flex',
       flexDirection: 'column',
-      gap: { xs: 3.5, md: 4 },
+      gap: { xs: 1.6, md: 2.2 },
       ...currentThemeBackground,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
@@ -457,8 +456,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         ...base,
         justifyContent: 'center',
         minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: '100%' },
-        paddingTop: { xs: 20, md: DESKTOP_CARD_PADDING },
-        paddingBottom: { xs: 20, md: DESKTOP_CARD_PADDING },
+        paddingTop: { xs: 14, md: 24 },
+        paddingBottom: { xs: 14, md: 24 },
       };
     }
 
@@ -491,8 +490,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         alignSelf: { xs: 'stretch', md: 'start' },
         maxHeight: { xs: MOBILE_MAX_CARD_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
         minHeight: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
-        height: { xs: MOBILE_CARD_MIN_HEIGHT, md: DESKTOP_STICKY_HEIGHT },
+        height: { xs: 'auto', md: DESKTOP_STICKY_HEIGHT },
         boxSizing: 'border-box',
+        [SHORT_VIEWPORT_MEDIA_QUERY]: {
+          minHeight: 'auto',
+          height: 'auto',
+        },
       };
     }
 
@@ -505,6 +508,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       boxSizing: 'border-box',
       borderBottomLeftRadius: { xs: '28px', sm: 0 },
       borderBottomRightRadius: { xs: '28px', sm: 0 },
+      [SHORT_VIEWPORT_MEDIA_QUERY]: {
+        minHeight: 'auto',
+      },
     };
   }, [isFeedEnabled]);
 
@@ -515,14 +521,14 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       width: '100%',
       maxWidth: 'min(1040px, 100%)',
       mx: 'auto',
-      px: { xs: 3, sm: 5, md: 7 },
+      px: { xs: 1.6, sm: 3, md: 3.6 },
       py: { xs: 0, sm: 0, md: 0 },
       mt: { xs: 1, md: 0 },
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
       justifyContent: 'center',
-      gap: { xs: 2.5, md: 4 },
+      gap: { xs: 1.4, md: 2.2 },
     }),
     []
   );
@@ -533,7 +539,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
-      gap: { xs: 3, md: 4 },
+      gap: { xs: 1.6, md: 2.4 },
     }),
     []
   );
