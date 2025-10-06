@@ -281,7 +281,7 @@ export default function AdminReviewUpload({
 
     // Check if alias has changed from saved value
     const hasAliasChanged = pendingAlias !== savedAlias;
-    const isAliasSaved = pendingAlias?.trim() !== '';
+    const isAliasSaved = !!savedAlias?.trim();
     const isNewAlias = pendingAlias?.trim() !== '' && !aliases?.includes(pendingAlias);
     
     // Check if any file has extracting or extracted status (should disable alias field)
@@ -291,7 +291,7 @@ export default function AdminReviewUpload({
     const isAliasDisabled = hasExtractingOrExtractedFiles;
 
     // Check if approve button should be enabled
-    const hasExtractedFiles = Object.values(fileStatuses).some(status => status === 'extracted');
+    const hasExtractedFiles = Object.values(fileStatuses).some(status => status?.toLowerCase?.() === 'extracted');
     const isSourceMediaUploaded = sourceMediaStatus.toLowerCase() === 'uploaded';
     const canApprove = isSourceMediaUploaded && hasExtractedFiles && isAliasSaved && !approvingUpload;
 
@@ -393,12 +393,25 @@ export default function AdminReviewUpload({
 
 
     const handleFileStatusUpdate = (fileId: string, newStatus: string) => {
-        setFileStatuses(prev => ({
-            ...prev,
-            [fileId]: newStatus
-        }));
-        // Trigger a FileBrowser refresh whenever any file status changes
-        setFileBrowserRefreshKey(prev => prev + 1);
+        let shouldRefresh = false;
+
+        setFileStatuses(prev => {
+            const previousStatus = prev[fileId];
+            const normalizedNewStatus = newStatus?.toLowerCase?.() || '';
+            const normalizedPreviousStatus = previousStatus?.toLowerCase?.() || '';
+
+            shouldRefresh = normalizedNewStatus === 'extracted' && normalizedPreviousStatus !== 'extracted';
+
+            return {
+                ...prev,
+                [fileId]: newStatus
+            };
+        });
+
+        if (shouldRefresh) {
+            // Refresh file browser when a file transitions into the extracted state
+            setFileBrowserRefreshKey(prev => prev + 1);
+        }
     };
 
     const handleEpisodeSelectionChange = (episodes: { season: number; episode: number }[]) => {
@@ -628,7 +641,7 @@ export default function AdminReviewUpload({
                 {/* FileBrowser automatically uses alias-based path: existing alias -> srcPending/, new alias -> src/ */}
                 {/* Currently the file browser does not allow for editing, but will once it's setup properly with extractions. */}
                 {/* Generally, this component will be very reusable and I plan to give it an "edit" flag so it can be used as a safe file browser or a browser/editor. */}
-                {filePathPrefix && isSourceMediaUploaded ? (
+                {filePathPrefix && isSourceMediaUploaded && hasExtractedFiles ? (
                     <FileBrowser 
                         pathPrefix={filePathPrefix} 
                         id={savedAlias} 
