@@ -1,6 +1,6 @@
 import React, { useContext, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Box, styled, CircularProgress } from '@mui/material';
+import { Box, styled, CircularProgress, useTheme } from '@mui/material';
 import { Dashboard } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
@@ -76,6 +76,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const navigate = useNavigate();
     const { user, shows: availableShows = [] } = useContext(UserContext);
+    const theme = useTheme();
 
     // Check if user is an admin
     const hasCollageAccess = user?.['cognito:groups']?.includes('admins');
@@ -210,6 +211,35 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         gap: 1.5,
     };
 
+    const safeAreaSpacerSx = useMemo(() => {
+        const baseHeights = {
+            xs: 120,
+            sm: 120,
+            md: 112,
+        };
+        const adExtraHeights = {
+            xs: 72,
+            sm: 64,
+            md: 56,
+        };
+
+        const resolveHeight = (key) => baseHeights[key] + (showAd ? adExtraHeights[key] : 0);
+
+        return {
+            width: '100%',
+            flexShrink: 0,
+            pointerEvents: 'none',
+            height: `${resolveHeight('xs')}px`,
+            marginBottom: 'env(safe-area-inset-bottom)',
+            [theme.breakpoints.up('sm')]: {
+                height: `${resolveHeight('sm')}px`,
+            },
+            [theme.breakpoints.up('md')]: {
+                height: `${resolveHeight('md')}px`,
+            },
+        };
+    }, [showAd, theme]);
+
     if (variant === 'inline') {
         return (
             <Box
@@ -234,6 +264,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
 
     return (
         <>
+            <Box aria-hidden sx={safeAreaSpacerSx} />
             <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
                 {collageButton}
             </StyledLeftFooter>
