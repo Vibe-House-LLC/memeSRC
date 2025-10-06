@@ -401,7 +401,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 1 },
         },
         '& .MuiOutlinedInput-input': {
-          fontSize: '0.95rem',
+          fontSize: '1rem',
           py: 1,
         },
       }}
