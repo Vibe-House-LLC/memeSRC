@@ -1924,6 +1924,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcc3c71449PreTokenGeneration_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcc3c71449PreTokenGeneration"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcc3c71449PreTokenGeneration_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcc3c71449PreTokenGeneration"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcinpainter_deploymentBucketName": {
       "usedBy": [
         {

@@ -117,6 +117,7 @@ export default function GuestAuth(props) {
       // Set up the user context
       // console.log(user)
       Auth.currentAuthenticatedUser().then((x) => {
+        console.log(x)
         API.get('publicapi', '/user/get').then(userDetails => {
           getShowsWithFavorites(userDetails?.data?.getUserDetails?.favorites ? JSON.parse(userDetails?.data?.getUserDetails?.favorites) : []).then(loadedShows => {
             if (!shows?.some(show => show.isFavorite)) {

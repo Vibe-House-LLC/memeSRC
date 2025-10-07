@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Lambda resource stack creation using Amplify CLI",
+  "Description": "{\"createdOn\":\"Mac\",\"createdBy\":\"Amplify\",\"createdWith\":\"14.0.0\",\"stackType\":\"function-Lambda\",\"metadata\":{\"whyContinueWithGen1\":\"\"}}",
   "Parameters": {
     "modules": {
       "Type": "String",
@@ -57,6 +57,12 @@
     "storagememesrcGeneratedImagesBucketName": {
       "Type": "String",
       "Default": "storagememesrcGeneratedImagesBucketName"
+    },
+    "deploymentBucketName": {
+      "Type": "String"
+    },
+    "s3Key": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -136,7 +142,15 @@
           {
             "Ref": "functionmemesrcS3LayerArn"
           }
-        ]
+        ],
+        "Code": {
+          "S3Bucket": {
+            "Ref": "deploymentBucketName"
+          },
+          "S3Key": {
+            "Ref": "s3Key"
+          }
+        }
       }
     },
     "LambdaExecutionRole": {

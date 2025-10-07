@@ -16,7 +16,7 @@ Amplify Params - DO NOT EDIT *//**
  * The names of modules to load are stored as a comma-delimited string in the
  * `MODULES` env var.
  */
-const moduleNames = process.env.MODULES.split(',');
+const moduleNames = [];
 /**
  * The array of imported modules.
  */
@@ -86,6 +86,7 @@ exports.handler = async (event, context) => {
         claimsOverrideDetails: {
           claimsToAddOrOverride: {
             ...userDetails.body.data.getUserDetails,
+            ...(userDetails.body.data.getUserDetails && { userNotifications: JSON.stringify(userDetails?.body?.data?.getUserDetails?.userNotifications) })
           }
         },
       };
