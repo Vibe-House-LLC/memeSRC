@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Auth, Hub } from 'aws-amplify';
 import { PropTypes } from "prop-types";
@@ -25,6 +25,14 @@ export default function CheckAuth(props) {
   const userGroups = user?.['cognito:groups'];
   const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
   const effectiveShowFeed = isAdmin && showFeed;
+  const profilePhotoRef = useRef(null);
+  const userRef = useRef(null);
+  const paymentRefreshTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    profilePhotoRef.current = user?.profilePhoto ?? null;
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     const userDetails = safeGetItem('memeSRCUserDetails')
@@ -43,10 +51,13 @@ export default function CheckAuth(props) {
   }, [user])
 
   const handleTokenRefreshed = useCallback((authData) => {
-    const refreshedUser = authData?.data;
+    const refreshedUser = authData?.data ?? authData;
     if (!refreshedUser) {
       return;
     }
+
+    const existingUser = userRef.current || {};
+    const existingUserDetails = existingUser.userDetails || {};
 
     const tokenPayload = refreshedUser?.signInUserSession?.idToken?.payload || refreshedUser?.signInUserSession?.accessToken?.payload || {};
 
@@ -64,6 +75,7 @@ export default function CheckAuth(props) {
     };
 
     const userDetailsFromToken = {
+      ...existingUserDetails,
       ...tokenPayload,
       ...(tokenPayload?.userNotifications && {
         userNotifications: parseUserNotifications(tokenPayload.userNotifications),
@@ -71,15 +83,29 @@ export default function CheckAuth(props) {
     };
 
     const updatedUser = {
+      ...existingUser,
       ...refreshedUser,
       ...tokenPayload,
       userDetails: userDetailsFromToken,
-      profilePhoto: user?.profilePhoto,
+      profilePhoto: profilePhotoRef.current ?? existingUser.profilePhoto ?? null,
     };
+
+    if (!updatedUser.username) {
+      updatedUser.username = existingUser.username || refreshedUser.username;
+    }
 
     setUser(updatedUser);
     writeJSON('memeSRCUserDetails', updatedUser);
-  }, [setUser, user]);
+  }, [setUser]);
+
+  const forceTokenRefresh = useCallback(async () => {
+    try {
+      const refreshedUser = await Auth.currentAuthenticatedUser({ bypassCache: true });
+      handleTokenRefreshed(refreshedUser);
+    } catch (error) {
+      console.log('Failed to force token refresh after payment completion:', error);
+    }
+  }, [handleTokenRefreshed]);
 
   useEffect(() => {
     const listener = (capsule) => {
@@ -96,6 +122,20 @@ export default function CheckAuth(props) {
   }, [handleTokenRefreshed]);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const paymentComplete = params.get('paymentComplete') === 'Subscription was successful!';
+
+    if (paymentComplete && !paymentRefreshTriggeredRef.current) {
+      paymentRefreshTriggeredRef.current = true;
+      forceTokenRefresh();
+    }
+
+    if (!paymentComplete) {
+      paymentRefreshTriggeredRef.current = false;
+    }
+  }, [location.search, forceTokenRefresh]);
+
+  useEffect(() => {
     console.log(location.pathname)
     if (user) {  // we only want this logic to occur after user context is prepped
       if (user.username || location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/verify' || location.pathname === '/forgotpassword' || location.pathname === '/forgotusername') {
@@ -107,6 +147,7 @@ export default function CheckAuth(props) {
       const localStorageUser = readJSON('memeSRCUserDetails')
       if (localStorageUser) {
         setUser(localStorageUser)
+        userRef.current = localStorageUser;
       }
       // Set up the user context
       Auth.currentAuthenticatedUser().then((x) => {
@@ -146,11 +187,13 @@ export default function CheckAuth(props) {
           const userWithPhoto = buildUserState(profilePhotoUrl);
 
           setUser(userWithPhoto);
+          userRef.current = userWithPhoto;
           writeJSON('memeSRCUserDetails', userWithPhoto);
         }).catch(error => {
           console.log('Error fetching profile photo:', error);
           const userWithoutPhoto = buildUserState(undefined);
           setUser(userWithoutPhoto);
+          userRef.current = userWithoutPhoto;
           writeJSON('memeSRCUserDetails', userWithoutPhoto);
         });
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Auth, Hub } from 'aws-amplify';
 import PropTypes from "prop-types";
@@ -28,6 +28,14 @@ export default function GuestAuth(props) {
   const userGroups = user?.['cognito:groups'];
   const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
   const effectiveShowFeed = isAdmin && showFeed;
+  const profilePhotoRef = useRef(null);
+  const userRef = useRef(null);
+  const paymentRefreshTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    profilePhotoRef.current = user?.profilePhoto ?? null;
+    userRef.current = user;
+  }, [user]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -38,7 +46,7 @@ export default function GuestAuth(props) {
       // console.log(userDetails)
 
       if (user && (user.userDetails !== userObject.userDetails)) {
-        writeJSON('memeSRCUserDetails', { ...user?.signInUserSession?.accessToken?.payload, userDetails: { ...user.userDetails } })
+        writeJSON('memeSRCUserDetails', user)
       }
 
       if (user) {
@@ -52,10 +60,13 @@ export default function GuestAuth(props) {
   }, [user])
 
   const handleTokenRefreshed = useCallback((authData) => {
-    const refreshedUser = authData?.data;
+    const refreshedUser = authData?.data ?? authData;
     if (!refreshedUser) {
       return;
     }
+
+    const existingUser = userRef.current || {};
+    const existingUserDetails = existingUser.userDetails || {};
 
     const tokenPayload = refreshedUser?.signInUserSession?.idToken?.payload || refreshedUser?.signInUserSession?.accessToken?.payload || {};
     const favoritesRaw = tokenPayload?.favorites;
@@ -69,6 +80,18 @@ export default function GuestAuth(props) {
       } catch (error) {
         console.log('Failed to parse favorites from refreshed token payload:', error);
         favoriteIds = [];
+      }
+    } else {
+      const previousFavorites = existingUserDetails?.favorites;
+      if (Array.isArray(previousFavorites)) {
+        favoriteIds = previousFavorites;
+      } else if (typeof previousFavorites === 'string') {
+        try {
+          favoriteIds = JSON.parse(previousFavorites) || [];
+        } catch (error) {
+          console.log('Failed to parse favorites from existing user details:', error);
+          favoriteIds = [];
+        }
       }
     }
 
@@ -86,18 +109,27 @@ export default function GuestAuth(props) {
     };
 
     const userDetailsFromToken = {
+      ...existingUserDetails,
       ...tokenPayload,
-      ...(tokenPayload?.userNotifications && {
-        userNotifications: parseUserNotifications(tokenPayload.userNotifications),
-      }),
     };
 
+    if (tokenPayload?.userNotifications) {
+      userDetailsFromToken.userNotifications = parseUserNotifications(tokenPayload.userNotifications);
+    } else if (typeof existingUserDetails.userNotifications === 'string') {
+      userDetailsFromToken.userNotifications = parseUserNotifications(existingUserDetails.userNotifications);
+    }
+
     const updatedUser = {
+      ...existingUser,
       ...refreshedUser,
       ...tokenPayload,
       userDetails: userDetailsFromToken,
-      profilePhoto: user?.profilePhoto,
+      profilePhoto: profilePhotoRef.current ?? existingUser.profilePhoto ?? null,
     };
+
+    if (!updatedUser.username) {
+      updatedUser.username = existingUser.username || refreshedUser.username;
+    }
 
     getShowsWithFavorites(favoriteIds)
       .then((loadedShows) => {
@@ -105,6 +137,7 @@ export default function GuestAuth(props) {
           setDefaultShow('_universal');
         }
 
+        profilePhotoRef.current = updatedUser.profilePhoto ?? null;
         setUser(updatedUser);
         writeJSON('memeSRCUserDetails', updatedUser);
         writeJSON('memeSRCShows', loadedShows);
@@ -112,10 +145,20 @@ export default function GuestAuth(props) {
       })
       .catch((error) => {
         console.log('Failed to refresh shows after token refresh:', error);
+        profilePhotoRef.current = updatedUser.profilePhoto ?? null;
         setUser(updatedUser);
         writeJSON('memeSRCUserDetails', updatedUser);
       });
-  }, [setUser, setShows, setDefaultShow, user]);
+  }, [setUser, setShows, setDefaultShow]);
+
+  const forceTokenRefresh = useCallback(async () => {
+    try {
+      const refreshedUser = await Auth.currentAuthenticatedUser({ bypassCache: true });
+      handleTokenRefreshed(refreshedUser);
+    } catch (error) {
+      console.log('Failed to force token refresh after payment completion:', error);
+    }
+  }, [handleTokenRefreshed]);
 
   useEffect(() => {
     const listener = (capsule) => {
@@ -131,6 +174,20 @@ export default function GuestAuth(props) {
     };
   }, [handleTokenRefreshed]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const paymentComplete = params.get('paymentComplete') === 'Subscription was successful!';
+
+    if (paymentComplete && !paymentRefreshTriggeredRef.current) {
+      paymentRefreshTriggeredRef.current = true;
+      forceTokenRefresh();
+    }
+
+    if (!paymentComplete) {
+      paymentRefreshTriggeredRef.current = false;
+    }
+  }, [location.search, forceTokenRefresh]);
+
   const handleUpdateDefaultShow = (show) => {
     if (user) {
       safeSetItem('memeSRCDefaultIndex', show)
@@ -145,16 +202,15 @@ export default function GuestAuth(props) {
           if (!shows?.some((show) => show.isFavorite)) {
             setDefaultShow('_universal');
           }
-          setUser({
+          const updatedUser = {
             ...user,
             userDetails: { ...newUserDetails },
-            profilePhoto: user?.profilePhoto, // Preserve profile photo
-          });
-          writeJSON('memeSRCUserDetails', {
-            ...user,
-            userDetails: { ...newUserDetails },
-            profilePhoto: user?.profilePhoto, // Preserve profile photo
-          });
+            profilePhoto: profilePhotoRef.current,
+          };
+
+          profilePhotoRef.current = updatedUser.profilePhoto ?? null;
+          setUser(updatedUser);
+          writeJSON('memeSRCUserDetails', updatedUser);
           writeJSON('memeSRCShows', loadedShows);
           setShows(loadedShows);
           resolve();
@@ -185,8 +241,10 @@ export default function GuestAuth(props) {
           setDefaultShow(localStorageShows?.some(show => show.isFavorite) ? localStorageDefaultShow || '_universal' : '_universal')
         }
         setUser(localStorageUser)
+        userRef.current = localStorageUser;
       } else {
         setUser(false)
+        userRef.current = null;
         setDefaultShow('_universal')
       }
 
@@ -252,11 +310,15 @@ export default function GuestAuth(props) {
           fetchProfilePhoto().then(profilePhotoUrl => {
             const userWithPhoto = buildUserState(profilePhotoUrl);
 
+            profilePhotoRef.current = profilePhotoUrl;
+            userRef.current = userWithPhoto;
             setUser(userWithPhoto);
             writeJSON('memeSRCUserDetails', userWithPhoto);
           }).catch(error => {
             console.log('Error fetching profile photo:', error);
+            profilePhotoRef.current = null;
             const userWithoutPhoto = buildUserState(undefined);
+            userRef.current = userWithoutPhoto;
             setUser(userWithoutPhoto);
             writeJSON('memeSRCUserDetails', userWithoutPhoto);
           });
