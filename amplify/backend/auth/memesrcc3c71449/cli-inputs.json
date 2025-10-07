@@ -74,6 +74,15 @@
     "dependsOn": [
       {
         "category": "function",
+        "resourceName": "memesrcc3c71449PostConfirmation",
+        "triggerProvider": "Cognito",
+        "attributes": [
+          "Arn",
+          "Name"
+        ]
+      },
+      {
+        "category": "function",
         "resourceName": "memesrcc3c71449PreSignup",
         "triggerProvider": "Cognito",
         "attributes": [
@@ -83,7 +92,7 @@
       },
       {
         "category": "function",
-        "resourceName": "memesrcc3c71449PostConfirmation",
+        "resourceName": "memesrcc3c71449PreTokenGeneration",
         "triggerProvider": "Cognito",
         "attributes": [
           "Arn",
@@ -102,13 +111,16 @@
       ],
       "PreSignup": [
         "custom"
+      ],
+      "PreTokenGeneration": [
+        "alter-claims"
       ]
     },
     "hostedUI": false,
     "parentStack": {
       "Ref": "AWS::StackId"
     },
-    "authTriggerConnections": "[\n  {\n    \"triggerType\": \"PostConfirmation\",\n    \"lambdaFunctionName\": \"memesrcc3c71449PostConfirmation\"\n  },\n  {\n    \"triggerType\": \"PreSignUp\",\n    \"lambdaFunctionName\": \"memesrcc3c71449PreSignup\"\n  }\n]",
+    "authTriggerConnections": "[\n  {\n    \"triggerType\": \"PostConfirmation\",\n    \"lambdaFunctionName\": \"memesrcc3c71449PostConfirmation\"\n  },\n  {\n    \"triggerType\": \"PreSignUp\",\n    \"lambdaFunctionName\": \"memesrcc3c71449PreSignup\"\n  },\n  {\n    \"triggerType\": \"PreTokenGeneration\",\n    \"lambdaFunctionName\": \"memesrcc3c71449PreTokenGeneration\"\n  }\n]",
     "permissions": []
   }
 }

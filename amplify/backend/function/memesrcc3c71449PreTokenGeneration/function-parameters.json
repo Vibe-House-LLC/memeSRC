@@ -1,0 +1,45 @@
+{
+  "trigger": true,
+  "modules": [
+    "alter-claims"
+  ],
+  "parentResource": "memesrcc3c71449",
+  "functionName": "memesrcc3c71449PreTokenGeneration",
+  "resourceName": "memesrcc3c71449PreTokenGeneration",
+  "parentStack": "auth",
+  "triggerEnvs": "[]",
+  "triggerDir": "/snapshot/amplify-cli/build/node_modules/@aws-amplify/amplify-category-auth/provider-utils/awscloudformation/triggers/PreTokenGeneration",
+  "triggerTemplate": "PreTokenGeneration.json.ejs",
+  "triggerEventPath": "PreTokenGeneration.event.json",
+  "roleName": "memesrcc3c71449PreTokenGeneration",
+  "skipEdit": true,
+  "lambdaLayers": [
+    {
+      "type": "ProjectLayer",
+      "resourceName": "memesrcGraphQlLayer",
+      "env": "dev",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
+    },
+    {
+      "type": "ProjectLayer",
+      "resourceName": "memesrcS3Layer",
+      "env": "dev",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
+    }
+  ],
+  "permissions": {
+    "api": {
+      "memesrc": [
+        "Query",
+        "Mutation"
+      ]
+    },
+    "storage": {
+      "memesrcGeneratedImages": [
+        "read"
+      ]
+    }
+  }
+}

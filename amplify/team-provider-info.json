@@ -217,7 +217,8 @@
         "memesrcStartIndexingAndPublishing": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcStartIndexingAndPublishing-68307565715679385a57-build.zip"
-        }
+        },
+        "memesrcc3c71449PreTokenGeneration": {}
       },
       "storage": {
         "memesrcGeneratedImages": {}
