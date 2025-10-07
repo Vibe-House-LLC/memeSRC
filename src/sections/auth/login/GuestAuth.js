@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Auth, Hub } from 'aws-amplify';
 import PropTypes from "prop-types";
@@ -31,6 +31,7 @@ export default function GuestAuth(props) {
   const profilePhotoRef = useRef(null);
   const userRef = useRef(null);
   const paymentRefreshTriggeredRef = useRef(false);
+  const forceTokenRefreshRef = useRef(async () => {});
 
   useEffect(() => {
     profilePhotoRef.current = user?.profilePhoto ?? null;
@@ -159,6 +160,10 @@ export default function GuestAuth(props) {
       console.log('Failed to force token refresh after payment completion:', error);
     }
   }, [handleTokenRefreshed]);
+
+  useEffect(() => {
+    forceTokenRefreshRef.current = forceTokenRefresh;
+  }, [forceTokenRefresh]);
 
   useEffect(() => {
     const listener = (capsule) => {
@@ -354,10 +359,17 @@ export default function GuestAuth(props) {
   }, [showFeed]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed: effectiveShowFeed, setShowFeed }}>
+    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh }}>
       {props.children}
     </UserContext.Provider>
   )
 }
 
 /* eslint-enable react-hooks/exhaustive-deps */
+export const useForceTokenRefresh = () => {
+  const context = useContext(UserContext);
+  if (!context?.forceTokenRefresh) {
+    throw new Error('forceTokenRefresh is not available in UserContext');
+  }
+  return context.forceTokenRefresh;
+};

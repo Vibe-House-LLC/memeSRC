@@ -246,7 +246,7 @@ export default function VotingPage() {
 
   const theme = useTheme();
 
-  const { user, setUser } = useContext(UserContext);
+  const { user, setUser, forceTokenRefresh } = useContext(UserContext);
 
   const [hasSeenMagicVotes, setHasSeenMagicVotes] = useState(() => {
     if (user && user.username) {
@@ -854,6 +854,7 @@ export default function VotingPage() {
       if (creditCost > 0) {
         const newCreditAmount = user?.userDetails.credits - creditCost;
         setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+        forceTokenRefresh();
       }
 
       // Update voteData in state

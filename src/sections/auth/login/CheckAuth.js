@@ -219,7 +219,7 @@ export default function CheckAuth(props) {
   }, [showFeed]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, showFeed: effectiveShowFeed, setShowFeed }}>
+    <UserContext.Provider value={{ user, setUser, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh }}>
       {content}
     </UserContext.Provider>
   )

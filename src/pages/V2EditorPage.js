@@ -237,7 +237,7 @@ const EditorPage = ({ shows }) => {
 
   // Get everything ready
   const { fid, editorProjectId, fineTuningIndex, searchTerms } = useParams();
-  const { user, setUser } = useContext(UserContext);
+  const { user, setUser, forceTokenRefresh } = useContext(UserContext);
   const [defaultFrame, setDefaultFrame] = useState(null);
   const [pickingColor, setPickingColor] = useState(false);
   const [imageScale, setImageScale] = useState();
@@ -1084,6 +1084,7 @@ const EditorPage = ({ shows }) => {
               setOpenSelectResult(true);
               const newCreditAmount = user?.userDetails.credits - 1;
               setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+              forceTokenRefresh();
             } else {
               console.error("Timeout reached without fetching magic results.");
               alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout

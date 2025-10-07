@@ -10,5 +10,6 @@ export const UserContext = createContext({
     setDefaultShow: () => {},
     handleUpdateUserDetails: () => {},
     showFeed: false,
-    setShowFeed: () => {}
+    setShowFeed: () => {},
+    forceTokenRefresh: async () => {}
 });
