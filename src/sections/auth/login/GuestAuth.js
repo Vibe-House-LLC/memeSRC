@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify';
 import PropTypes from "prop-types";
 import { UserContext } from '../../../UserContext';
 import { getShowsWithFavorites } from "../../../utils/fetchShowsRevised";
@@ -118,40 +118,78 @@ export default function GuestAuth(props) {
       // console.log(user)
       Auth.currentAuthenticatedUser().then((x) => {
         console.log(x)
-        API.get('publicapi', '/user/get').then(userDetails => {
-          getShowsWithFavorites(userDetails?.data?.getUserDetails?.favorites ? JSON.parse(userDetails?.data?.getUserDetails?.favorites) : []).then(loadedShows => {
-            if (!shows?.some(show => show.isFavorite)) {
-              setDefaultShow('_universal')
-            }
-            
-            // Fetch profile photo from S3 and store in context
-            fetchProfilePhoto().then(profilePhotoUrl => {
-              const userWithPhoto = { 
-                ...x, 
-                ...x.signInUserSession.accessToken.payload, 
-                userDetails: userDetails?.data?.getUserDetails,
-                profilePhoto: profilePhotoUrl
-              };
-              
-              setUser(userWithPhoto);
-              writeJSON('memeSRCUserDetails', userWithPhoto);
-            }).catch(error => {
-              console.log('Error fetching profile photo:', error);
-              const userWithoutPhoto = { ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails };
-              setUser(userWithoutPhoto);
-              writeJSON('memeSRCUserDetails', userWithoutPhoto);
-            });
-            
-            writeJSON('memeSRCShows', loadedShows)
-            setShows(loadedShows)
-            // console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
-            // Amplify.configure({
-            //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
-            // });
+        // All details that were coming from the below api should now be in x?.signInUserSession.idToken.payload
+        const tokenPayload = x?.signInUserSession?.idToken?.payload || x?.signInUserSession?.accessToken?.payload || {};
+        const favoritesRaw = tokenPayload?.favorites;
+
+        let favoriteIds = [];
+        if (Array.isArray(favoritesRaw)) {
+          favoriteIds = favoritesRaw;
+        } else if (typeof favoritesRaw === 'string') {
+          try {
+            favoriteIds = JSON.parse(favoritesRaw) || [];
+          } catch (error) {
+            console.log('Failed to parse favorites from token payload:', error);
+            favoriteIds = [];
+          }
+        }
+
+        const parseUserNotifications = (notifications) => {
+          if (typeof notifications !== 'string') {
+            return notifications;
+          }
+
+          try {
+            return JSON.parse(notifications);
+          } catch (error) {
+            console.log('Failed to parse user notifications from token payload:', error);
+            return notifications;
+          }
+        };
+
+        const buildUserState = (profilePhoto) => {
+          const userDetailsFromToken = {
+            ...tokenPayload,
+            ...(tokenPayload?.userNotifications && {
+              userNotifications: parseUserNotifications(tokenPayload.userNotifications),
+            }),
+          };
+
+          return {
+            ...x,
+            ...tokenPayload,
+            userDetails: userDetailsFromToken,
+            profilePhoto,
+          };
+        };
+
+        getShowsWithFavorites(favoriteIds).then(loadedShows => {
+          if (!loadedShows?.some(show => show.isFavorite)) {
+            setDefaultShow('_universal')
+          }
+
+          // Fetch profile photo from S3 and store in context
+          fetchProfilePhoto().then(profilePhotoUrl => {
+            const userWithPhoto = buildUserState(profilePhotoUrl);
+
+            setUser(userWithPhoto);
+            writeJSON('memeSRCUserDetails', userWithPhoto);
           }).catch(error => {
-            console.log(error)
-          })
-        }).catch(err => console.log(err))
+            console.log('Error fetching profile photo:', error);
+            const userWithoutPhoto = buildUserState(undefined);
+            setUser(userWithoutPhoto);
+            writeJSON('memeSRCUserDetails', userWithoutPhoto);
+          });
+
+          writeJSON('memeSRCShows', loadedShows)
+          setShows(loadedShows)
+          // console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
+          // Amplify.configure({
+          //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
+          // });
+        }).catch(error => {
+          console.log(error)
+        })
       }).catch(() => {
         getShowsWithFavorites().then(loadedShows => {
           if (!shows?.some(show => show.isFavorite)) {

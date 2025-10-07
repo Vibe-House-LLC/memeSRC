@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { API, Auth } from 'aws-amplify';
+import { Auth } from 'aws-amplify';
 import { PropTypes } from "prop-types";
 import { UserContext } from '../../../UserContext';
 import { readJSON, safeGetItem, safeRemoveItem, safeSetItem, writeJSON } from '../../../utils/storage';
@@ -33,7 +33,7 @@ export default function CheckAuth(props) {
     if (user && (user.userDetails !== userObject.userDetails)) {
       console.log('writing user')
       console.log(user)
-      writeJSON('memeSRCUserDetails', { ...user?.signInUserSession?.accessToken?.payload, userDetails: { ...user.userDetails } })
+      writeJSON('memeSRCUserDetails', user)
       console.log('New User Details')
       console.log({ ...user?.signInUserSession?.accessToken?.payload, ...user.userDetails })
       console.log('Full User Details');
@@ -57,31 +57,55 @@ export default function CheckAuth(props) {
       }
       // Set up the user context
       Auth.currentAuthenticatedUser().then((x) => {
-        API.get('publicapi', '/user/get').then(userDetails => {
-          // Fetch profile photo from S3 and store in context
-          fetchProfilePhoto().then(profilePhotoUrl => {
-            const userWithPhoto = {
-              ...x,
-              ...x.signInUserSession.accessToken.payload,
-              userDetails: userDetails?.data?.getUserDetails,
-              profilePhoto: profilePhotoUrl
-            };
-            
-            setUser(userWithPhoto);
-            writeJSON('memeSRCUserDetails', userWithPhoto);
-          }).catch(error => {
-            console.log('Error fetching profile photo:', error);
-            const userWithoutPhoto = { ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails };
-            setUser(userWithoutPhoto);
-            writeJSON('memeSRCUserDetails', userWithoutPhoto);
-          });
-          
-          console.log(x)
-          console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
-          // Amplify.configure({
-          //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
-          // });
-        }).catch(err => console.log(err))
+        const tokenPayload = x?.signInUserSession?.idToken?.payload || x?.signInUserSession?.accessToken?.payload || {};
+
+        const parseUserNotifications = (notifications) => {
+          if (typeof notifications !== 'string') {
+            return notifications;
+          }
+
+          try {
+            return JSON.parse(notifications);
+          } catch (error) {
+            console.log('Failed to parse user notifications from token payload:', error);
+            return notifications;
+          }
+        };
+
+        const buildUserState = (profilePhoto) => {
+          const userDetailsFromToken = {
+            ...tokenPayload,
+            ...(tokenPayload?.userNotifications && {
+              userNotifications: parseUserNotifications(tokenPayload.userNotifications),
+            }),
+          };
+
+          return {
+            ...x,
+            ...tokenPayload,
+            userDetails: userDetailsFromToken,
+            profilePhoto,
+          };
+        };
+
+        // Fetch profile photo from S3 and store in context
+        fetchProfilePhoto().then(profilePhotoUrl => {
+          const userWithPhoto = buildUserState(profilePhotoUrl);
+
+          setUser(userWithPhoto);
+          writeJSON('memeSRCUserDetails', userWithPhoto);
+        }).catch(error => {
+          console.log('Error fetching profile photo:', error);
+          const userWithoutPhoto = buildUserState(undefined);
+          setUser(userWithoutPhoto);
+          writeJSON('memeSRCUserDetails', userWithoutPhoto);
+        });
+
+        console.log(x)
+        console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
+        // Amplify.configure({
+        //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
+        // });
       }).catch(() => {
         setUser({ username: false })  // indicate the context is ready but user is not auth'd
         safeRemoveItem('memeSRCUserInfo')
