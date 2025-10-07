@@ -309,6 +309,15 @@
             "Name"
           ],
           "category": "function",
+          "resourceName": "memesrcc3c71449PostConfirmation",
+          "triggerProvider": "Cognito"
+        },
+        {
+          "attributes": [
+            "Arn",
+            "Name"
+          ],
+          "category": "function",
           "resourceName": "memesrcc3c71449PreSignup",
           "triggerProvider": "Cognito"
         },
@@ -318,7 +327,7 @@
             "Name"
           ],
           "category": "function",
-          "resourceName": "memesrcc3c71449PostConfirmation",
+          "resourceName": "memesrcc3c71449PreTokenGeneration",
           "triggerProvider": "Cognito"
         }
       ],
@@ -1040,6 +1049,43 @@
     },
     "memesrcc3c71449PreSignup": {
       "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcc3c71449PreTokenGeneration": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGraphQlLayer"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
@@ -1875,6 +1921,22 @@
         {
           "category": "function",
           "resourceName": "memesrcc3c71449PreSignup"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcc3c71449PreTokenGeneration_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcc3c71449PreTokenGeneration"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcc3c71449PreTokenGeneration_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcc3c71449PreTokenGeneration"
         }
       ]
     },

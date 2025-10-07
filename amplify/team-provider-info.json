@@ -171,15 +171,15 @@
         },
         "memesrcGraphQlLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcGraphQlLayer-LambdaLayerVersioncd450513-build.zip"
+          "s3Key": "amplify-builds/memesrcGraphQlLayer-LambdaLayerVersion8eb6c4bf-build.zip"
         },
         "memesrcS3Layer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcS3Layer-LambdaLayerVersion9afbba33-build.zip"
+          "s3Key": "amplify-builds/memesrcS3Layer-LambdaLayerVersion17c66d2f-build.zip"
         },
         "memesrcSesLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcSesLayer-LambdaLayerVersion41c6ebc9-build.zip"
+          "s3Key": "amplify-builds/memesrcSesLayer-LambdaLayerVersionaf688481-build.zip"
         },
         "memesrcUpdateMedia": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -191,7 +191,7 @@
         },
         "memesrcDynamoDBLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcDynamoDBLayer-LambdaLayerVersion4f2a75b2-build.zip"
+          "s3Key": "amplify-builds/memesrcDynamoDBLayer-LambdaLayerVersion4575fa91-build.zip"
         },
         "memesrcIndexAndPublish": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -200,11 +200,11 @@
         },
         "memesrcAxiosLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAxiosLayer-LambdaLayerVersion9dfb25e3-build.zip"
+          "s3Key": "amplify-builds/memesrcAxiosLayer-LambdaLayerVersion9915f36a-build.zip"
         },
         "memesrcOpenSearchLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcOpenSearchLayer-LambdaLayerVersion16c55b05-build.zip"
+          "s3Key": "amplify-builds/memesrcOpenSearchLayer-LambdaLayerVersionf39880a2-build.zip"
         },
         "memesrcApproveMedia": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -217,6 +217,10 @@
         "memesrcStartIndexingAndPublishing": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
           "s3Key": "amplify-builds/memesrcStartIndexingAndPublishing-68307565715679385a57-build.zip"
+        },
+        "memesrcc3c71449PreTokenGeneration": {
+          "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
+          "s3Key": "amplify-builds/memesrcc3c71449PreTokenGeneration-58517567506853497a52-build.zip"
         }
       },
       "storage": {

@@ -6,6 +6,7 @@ import { Receipt } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
+import { formatInvoiceCoveragePeriod } from '../utils/invoicePeriod';
 
 const InvoiceListPage = () => {
   const userDetails = useContext(UserContext);
@@ -69,10 +70,7 @@ const InvoiceListPage = () => {
       width: 300,
       headerClassName: 'header',
       cellClassName: 'cell',
-      valueGetter: (params) =>
-        `${new Date(params.row.period_start * 1000).toLocaleDateString()} - ${new Date(
-          params.row.period_end * 1000
-        ).toLocaleDateString()}`,
+      valueGetter: (params) => formatInvoiceCoveragePeriod(params.row, undefined, undefined, ''),
     },
     {
       field: 'status',
