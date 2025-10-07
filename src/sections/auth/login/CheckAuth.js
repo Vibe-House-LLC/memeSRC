@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Auth } from 'aws-amplify';
+import { Auth, Hub } from 'aws-amplify';
 import { PropTypes } from "prop-types";
 import { UserContext } from '../../../UserContext';
 import { readJSON, safeGetItem, safeRemoveItem, safeSetItem, writeJSON } from '../../../utils/storage';
@@ -41,6 +41,59 @@ export default function CheckAuth(props) {
 
     }
   }, [user])
+
+  const handleTokenRefreshed = useCallback((authData) => {
+    const refreshedUser = authData?.data;
+    if (!refreshedUser) {
+      return;
+    }
+
+    const tokenPayload = refreshedUser?.signInUserSession?.idToken?.payload || refreshedUser?.signInUserSession?.accessToken?.payload || {};
+
+    const parseUserNotifications = (notifications) => {
+      if (typeof notifications !== 'string') {
+        return notifications;
+      }
+
+      try {
+        return JSON.parse(notifications);
+      } catch (error) {
+        console.log('Failed to parse user notifications from refreshed token payload:', error);
+        return notifications;
+      }
+    };
+
+    const userDetailsFromToken = {
+      ...tokenPayload,
+      ...(tokenPayload?.userNotifications && {
+        userNotifications: parseUserNotifications(tokenPayload.userNotifications),
+      }),
+    };
+
+    const updatedUser = {
+      ...refreshedUser,
+      ...tokenPayload,
+      userDetails: userDetailsFromToken,
+      profilePhoto: user?.profilePhoto,
+    };
+
+    setUser(updatedUser);
+    writeJSON('memeSRCUserDetails', updatedUser);
+  }, [setUser, user]);
+
+  useEffect(() => {
+    const listener = (capsule) => {
+      if (capsule?.payload?.event === 'tokenRefresh') {
+        handleTokenRefreshed(capsule.payload);
+      }
+    };
+
+    Hub.listen('auth', listener);
+
+    return () => {
+      Hub.remove('auth', listener);
+    };
+  }, [handleTokenRefreshed]);
 
   useEffect(() => {
     console.log(location.pathname)

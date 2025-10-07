@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Auth } from 'aws-amplify';
+import { Auth, Hub } from 'aws-amplify';
 import PropTypes from "prop-types";
 import { UserContext } from '../../../UserContext';
 import { getShowsWithFavorites } from "../../../utils/fetchShowsRevised";
@@ -50,6 +50,86 @@ export default function GuestAuth(props) {
       }
     }
   }, [user])
+
+  const handleTokenRefreshed = useCallback((authData) => {
+    const refreshedUser = authData?.data;
+    if (!refreshedUser) {
+      return;
+    }
+
+    const tokenPayload = refreshedUser?.signInUserSession?.idToken?.payload || refreshedUser?.signInUserSession?.accessToken?.payload || {};
+    const favoritesRaw = tokenPayload?.favorites;
+
+    let favoriteIds = [];
+    if (Array.isArray(favoritesRaw)) {
+      favoriteIds = favoritesRaw;
+    } else if (typeof favoritesRaw === 'string') {
+      try {
+        favoriteIds = JSON.parse(favoritesRaw) || [];
+      } catch (error) {
+        console.log('Failed to parse favorites from refreshed token payload:', error);
+        favoriteIds = [];
+      }
+    }
+
+    const parseUserNotifications = (notifications) => {
+      if (typeof notifications !== 'string') {
+        return notifications;
+      }
+
+      try {
+        return JSON.parse(notifications);
+      } catch (error) {
+        console.log('Failed to parse user notifications from refreshed token payload:', error);
+        return notifications;
+      }
+    };
+
+    const userDetailsFromToken = {
+      ...tokenPayload,
+      ...(tokenPayload?.userNotifications && {
+        userNotifications: parseUserNotifications(tokenPayload.userNotifications),
+      }),
+    };
+
+    const updatedUser = {
+      ...refreshedUser,
+      ...tokenPayload,
+      userDetails: userDetailsFromToken,
+      profilePhoto: user?.profilePhoto,
+    };
+
+    getShowsWithFavorites(favoriteIds)
+      .then((loadedShows) => {
+        if (!loadedShows?.some((show) => show.isFavorite)) {
+          setDefaultShow('_universal');
+        }
+
+        setUser(updatedUser);
+        writeJSON('memeSRCUserDetails', updatedUser);
+        writeJSON('memeSRCShows', loadedShows);
+        setShows(loadedShows);
+      })
+      .catch((error) => {
+        console.log('Failed to refresh shows after token refresh:', error);
+        setUser(updatedUser);
+        writeJSON('memeSRCUserDetails', updatedUser);
+      });
+  }, [setUser, setShows, setDefaultShow, user]);
+
+  useEffect(() => {
+    const listener = (capsule) => {
+      if (capsule?.payload?.event === 'tokenRefresh') {
+        handleTokenRefreshed(capsule.payload);
+      }
+    };
+
+    Hub.listen('auth', listener);
+
+    return () => {
+      Hub.remove('auth', listener);
+    };
+  }, [handleTokenRefreshed]);
 
   const handleUpdateDefaultShow = (show) => {
     if (user) {
