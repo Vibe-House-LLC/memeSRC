@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -11,6 +11,9 @@ import {
   Divider,
   Skeleton,
   alpha,
+  Avatar,
+  IconButton,
+  CircularProgress,
 } from '@mui/material';
 import { Navigate, useNavigate } from 'react-router-dom';
 import ReceiptIcon from '@mui/icons-material/Receipt';
@@ -18,7 +21,9 @@ import CreditCardIcon from '@mui/icons-material/CreditCard';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StarIcon from '@mui/icons-material/Star';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { API, Auth } from 'aws-amplify';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import PersonIcon from '@mui/icons-material/Person';
+import { API, Auth, Storage } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
@@ -32,10 +37,15 @@ const AccountPage = () => {
   const [hasMore, setHasMore] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [loadingPortalUrl, setLoadingPortalUrl] = useState(false);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [loadingPhoto, setLoadingPhoto] = useState(true);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchInvoices();
+    fetchProfilePhoto();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -64,6 +74,61 @@ const AccountPage = () => {
       link.click();
       document.body.removeChild(link);
     }
+  };
+
+  const fetchProfilePhoto = async () => {
+    try {
+      setLoadingPhoto(true);
+      const photoKey = 'profile-photo';
+      const url = await Storage.get(photoKey, { level: 'private' });
+      setProfilePhotoUrl(url);
+    } catch (error) {
+      // No profile photo exists yet, or error fetching
+      console.log('No profile photo found or error:', error);
+    } finally {
+      setLoadingPhoto(false);
+    }
+  };
+
+  const handlePhotoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploadingPhoto(true);
+      
+      // Upload to S3 with private access level
+      const photoKey = 'profile-photo';
+      await Storage.put(photoKey, file, {
+        level: 'private',
+        contentType: file.type,
+      });
+
+      // Fetch the new URL
+      const url = await Storage.get(photoKey, { level: 'private' });
+      setProfilePhotoUrl(url);
+    } catch (error) {
+      console.error('Error uploading profile photo:', error);
+      alert('Failed to upload profile photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
   };
 
   const openCustomerPortal = () => {
@@ -141,44 +206,128 @@ const AccountPage = () => {
         }}
       >
         <Stack spacing={{ xs: 4, sm: 5 }}>
-          {/* Header with gradient backdrop */}
-          <Box>
-            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2}>
-              <Box>
-                <Typography 
-                  variant="h3" 
-                  sx={{ 
-                    fontWeight: 700, 
-                    mb: 1.5,
-                    fontSize: { xs: '2rem', sm: '2.5rem' },
-                    background: (theme) => `linear-gradient(135deg, ${theme.palette.text.primary} 0%, ${alpha(theme.palette.primary.light, 0.9)} 100%)`,
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}
-                >
-                  Account
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    fontWeight: 500,
-                    mb: 0.5,
-                    fontSize: { xs: '1rem', sm: '1.125rem' },
-                  }}
-                >
-                  {accountUsername}
-                </Typography>
-                <Typography 
-                  variant="body1" 
-                  color="text.secondary"
-                  sx={{ fontSize: { xs: '0.875rem', sm: '0.9375rem' } }}
-                >
-                  {accountEmail}
-                </Typography>
-              </Box>
-            </Stack>
-          </Box>
+          {/* Profile Details Section */}
+          <Card
+            sx={{
+              borderRadius: 4,
+              background: (theme) => `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.4)} 100%)`,
+              border: (theme) => `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
+            }}
+          >
+            <Box sx={{ p: { xs: 3, sm: 4 } }}>
+              <Typography 
+                variant="h3" 
+                sx={{ 
+                  fontWeight: 700, 
+                  mb: 3,
+                  fontSize: { xs: '2rem', sm: '2.5rem' },
+                  background: (theme) => `linear-gradient(135deg, ${theme.palette.text.primary} 0%, ${alpha(theme.palette.primary.light, 0.9)} 100%)`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                Account
+              </Typography>
+              
+              <Stack 
+                direction={{ xs: 'column', sm: 'row' }} 
+                spacing={3} 
+                alignItems={{ xs: 'center', sm: 'flex-start' }}
+              >
+                {/* Profile Photo */}
+                <Box sx={{ position: 'relative' }}>
+                  {loadingPhoto ? (
+                    <Skeleton variant="circular" width={120} height={120} />
+                  ) : (
+                    <>
+                      <Avatar
+                        src={profilePhotoUrl}
+                        sx={{
+                          width: 120,
+                          height: 120,
+                          bgcolor: 'primary.main',
+                          fontSize: '3rem',
+                          border: (theme) => `4px solid ${alpha(theme.palette.common.white, 0.1)}`,
+                        }}
+                      >
+                        {!profilePhotoUrl && <PersonIcon sx={{ fontSize: '3rem' }} />}
+                      </Avatar>
+                      <IconButton
+                        onClick={handlePhotoClick}
+                        disabled={uploadingPhoto}
+                        sx={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          bgcolor: 'primary.main',
+                          width: 40,
+                          height: 40,
+                          '&:hover': {
+                            bgcolor: 'primary.dark',
+                          },
+                          border: (theme) => `3px solid ${theme.palette.background.default}`,
+                        }}
+                      >
+                        {uploadingPhoto ? (
+                          <CircularProgress size={20} sx={{ color: 'common.white' }} />
+                        ) : (
+                          <CameraAltIcon sx={{ fontSize: 20 }} />
+                        )}
+                      </IconButton>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        style={{ display: 'none' }}
+                      />
+                    </>
+                  )}
+                </Box>
+
+                {/* User Details */}
+                <Box flex={1} sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                  <Typography 
+                    variant="h4" 
+                    sx={{ 
+                      fontWeight: 600,
+                      mb: 0.5,
+                      fontSize: { xs: '1.5rem', sm: '1.75rem' },
+                    }}
+                  >
+                    {accountUsername}
+                  </Typography>
+                  <Typography 
+                    variant="body1" 
+                    color="text.secondary"
+                    sx={{ 
+                      fontSize: { xs: '0.9375rem', sm: '1rem' },
+                      mb: 1.5,
+                    }}
+                  >
+                    {accountEmail}
+                  </Typography>
+                  <Stack 
+                    direction="row" 
+                    spacing={1} 
+                    flexWrap="wrap"
+                    justifyContent={{ xs: 'center', sm: 'flex-start' }}
+                  >
+                    <Chip
+                      icon={isPro ? <StarIcon sx={{ fontSize: 16 }} /> : undefined}
+                      label={isPro ? 'Pro Member' : 'Free Account'}
+                      color={isPro ? 'primary' : 'default'}
+                      sx={{ 
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </Stack>
+                </Box>
+              </Stack>
+            </Box>
+          </Card>
 
           {/* Payment Issue Alert */}
           {hasPaymentIssue && (
