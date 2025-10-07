@@ -29,6 +29,7 @@ import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
 import { safeRemoveItem, writeJSON } from '../utils/storage';
+import ProfilePhotoCropper from '../components/ProfilePhotoCropper';
 
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
@@ -40,6 +41,8 @@ const AccountPage = () => {
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loadingPhoto, setLoadingPhoto] = useState(true);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -100,20 +103,27 @@ const AccountPage = () => {
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB');
+    // Validate file size (max 20MB for original - will be resized to 500x500)
+    if (file.size > 20 * 1024 * 1024) {
+      alert('Image size must be less than 20MB');
       return;
     }
 
+    // Open cropper dialog
+    setSelectedImageFile(file);
+    setCropperOpen(true);
+  };
+
+  const handleCroppedPhoto = async (croppedBlob) => {
     try {
       setUploadingPhoto(true);
+      setCropperOpen(false);
       
       // Upload to S3 with private access level
       const photoKey = 'profile-photo';
-      await Storage.put(photoKey, file, {
+      await Storage.put(photoKey, croppedBlob, {
         level: 'private',
-        contentType: file.type,
+        contentType: 'image/jpeg',
       });
 
       // Fetch the new URL
@@ -124,6 +134,16 @@ const AccountPage = () => {
       alert('Failed to upload profile photo. Please try again.');
     } finally {
       setUploadingPhoto(false);
+      setSelectedImageFile(null);
+    }
+  };
+
+  const handleCropperClose = () => {
+    setCropperOpen(false);
+    setSelectedImageFile(null);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -706,6 +726,14 @@ const AccountPage = () => {
           </Box>
         </Stack>
       </Container>
+
+      {/* Profile Photo Cropper Dialog */}
+      <ProfilePhotoCropper
+        open={cropperOpen}
+        imageFile={selectedImageFile}
+        onClose={handleCropperClose}
+        onCrop={handleCroppedPhoto}
+      />
     </Box>
   );
 };
