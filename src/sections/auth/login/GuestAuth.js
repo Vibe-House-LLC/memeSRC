@@ -246,10 +246,8 @@ export default function GuestAuth(props) {
           setDefaultShow(localStorageShows?.some(show => show.isFavorite) ? localStorageDefaultShow || '_universal' : '_universal')
         }
         setUser(localStorageUser)
-        userRef.current = localStorageUser;
       } else {
         setUser(false)
-        userRef.current = null;
         setDefaultShow('_universal')
       }
 

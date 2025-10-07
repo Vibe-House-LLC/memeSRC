@@ -147,7 +147,6 @@ export default function CheckAuth(props) {
       const localStorageUser = readJSON('memeSRCUserDetails')
       if (localStorageUser) {
         setUser(localStorageUser)
-        userRef.current = localStorageUser;
       }
       // Set up the user context
       Auth.currentAuthenticatedUser().then((x) => {
