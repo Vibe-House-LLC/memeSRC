@@ -31,7 +31,7 @@ const IconContainer = styled('div')({
 });
 
 const FavoriteToggle = ({ indexId, initialIsFavorite, onToggle }) => {
-  const { user, handleUpdateUserDetails } = useContext(UserContext);
+  const { user, handleUpdateUserDetails, forceTokenRefresh } = useContext(UserContext);
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
   const [isSaving, setIsSaving] = useState(false);
   const navigate = useNavigate();
@@ -63,6 +63,7 @@ const FavoriteToggle = ({ indexId, initialIsFavorite, onToggle }) => {
           removeFavorite: isFavorite
         }
       });
+      await forceTokenRefresh();
       handleUpdateUserDetails(result?.updatedUserDetails);
       setIsFavorite(nextIsFavorite);
       emitToggle(nextIsFavorite);
