@@ -120,7 +120,7 @@ export default function LoginForm() {
       const storedDefaultShow = safeGetItem('memeSRCDefaultIndex');
       const hasFavorite = loadedShows.some((show) => show.isFavorite);
       const nextDefaultShow = hasFavorite
-        ? storedDefaultShow || favorites[0] || '_universal'
+        ? storedDefaultShow || favorites?.[0] || '_universal'
         : '_universal';
 
       handleUpdateDefaultShow(nextDefaultShow);
