@@ -35,6 +35,7 @@ export default function AccountPopover() {
   const userGroups = userDetails?.user?.['cognito:groups'];
   const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
   const isFeedVisible = userDetails?.showFeed !== false;
+  const isPro = userDetails?.user?.userDetails?.magicSubscription === 'true';
 
   const handleShowFeedToggle = (event, checked) => {
     event.stopPropagation();
@@ -110,7 +111,10 @@ export default function AccountPopover() {
             alt="photoURL"
             sx={{ 
               width: 36, 
-              height: 36 
+              height: 36,
+              border: (theme) => isPro
+                ? `2px solid ${theme.palette.primary.main}`
+                : `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
             }} 
           />
         </IconButton>
@@ -137,7 +141,14 @@ export default function AccountPopover() {
             }),
           }}
         >
-          <Avatar alt="photoURL" sx={{ width: 35, height: 35 }} />
+          <Avatar 
+            alt="photoURL" 
+            sx={{ 
+              width: 36, 
+              height: 36,
+              border: (theme) => `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
+            }} 
+          />
         </IconButton>
       }
 

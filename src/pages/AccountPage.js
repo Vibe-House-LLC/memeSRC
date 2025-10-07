@@ -129,6 +129,16 @@ const AccountPage = () => {
       // Fetch the new URL
       const url = await Storage.get(photoKey, { level: 'private' });
       setProfilePhotoUrl(url);
+      
+      // Update user context with new profile photo
+      if (userDetails?.setUser && userDetails?.user) {
+        const updatedUser = { ...userDetails.user, profilePhoto: url };
+        userDetails.setUser(updatedUser);
+        
+        // Update localStorage as well
+        const storedUser = JSON.parse(localStorage.getItem('memeSRCUserDetails') || '{}');
+        localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...storedUser, profilePhoto: url }));
+      }
     } catch (error) {
       console.error('Error uploading profile photo:', error);
       alert('Failed to upload profile photo. Please try again.');

@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import { UserContext } from '../../../UserContext';
 import { getShowsWithFavorites } from "../../../utils/fetchShowsRevised";
 import { readJSON, safeGetItem, safeRemoveItem, safeSetItem, writeJSON } from '../../../utils/storage';
+import { fetchProfilePhoto } from '../../../utils/profilePhoto';
 
 /* eslint-disable react-hooks/exhaustive-deps */
 
@@ -67,10 +68,12 @@ export default function GuestAuth(props) {
           setUser({
             ...user,
             userDetails: { ...newUserDetails },
+            profilePhoto: user?.profilePhoto, // Preserve profile photo
           });
           writeJSON('memeSRCUserDetails', {
             ...user,
             userDetails: { ...newUserDetails },
+            profilePhoto: user?.profilePhoto, // Preserve profile photo
           });
           writeJSON('memeSRCShows', loadedShows);
           setShows(loadedShows);
@@ -116,9 +119,29 @@ export default function GuestAuth(props) {
             if (!shows?.some(show => show.isFavorite)) {
               setDefaultShow('_universal')
             }
-            setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })  // if an authenticated user is found, set it into the context
             
-            writeJSON('memeSRCUserDetails', { ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails })
+            // Fetch profile photo
+            fetchProfilePhoto().then(profilePhotoUrl => {
+              const userWithPhoto = { 
+                ...x, 
+                ...x.signInUserSession.accessToken.payload, 
+                userDetails: userDetails?.data?.getUserDetails,
+                profilePhoto: profilePhotoUrl
+              };
+              
+              setUser(userWithPhoto);  // if an authenticated user is found, set it into the context
+              writeJSON('memeSRCUserDetails', { 
+                ...x.signInUserSession.accessToken.payload, 
+                userDetails: userDetails?.data?.getUserDetails,
+                profilePhoto: profilePhotoUrl
+              });
+            }).catch(error => {
+              console.log('Error fetching profile photo:', error);
+              // Set user without photo if there's an error
+              setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails });
+              writeJSON('memeSRCUserDetails', { ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails });
+            });
+            
             writeJSON('memeSRCShows', loadedShows)
             setShows(loadedShows)
             // console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
