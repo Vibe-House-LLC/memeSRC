@@ -88,6 +88,11 @@ export default function GuestAuth(props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (location.pathname !== 'login') {
+      // If we already have a user in state, don't re-fetch on every navigation
+      if (user && user.username) {
+        return;
+      }
+
       const localStorageUser = readJSON('memeSRCUserDetails')
       const localStorageShows = readJSON('memeSRCShows')
       const localStorageDefaultShow = safeGetItem('memeSRCDefaultIndex')
@@ -109,8 +114,6 @@ export default function GuestAuth(props) {
         setShows(localStorageShows)
       }
 
-
-
       // Set up the user context
       // console.log(user)
       Auth.currentAuthenticatedUser().then((x) => {
@@ -120,7 +123,7 @@ export default function GuestAuth(props) {
               setDefaultShow('_universal')
             }
             
-            // Fetch profile photo
+            // Fetch profile photo from S3 and store in context
             fetchProfilePhoto().then(profilePhotoUrl => {
               const userWithPhoto = { 
                 ...x, 
@@ -129,17 +132,13 @@ export default function GuestAuth(props) {
                 profilePhoto: profilePhotoUrl
               };
               
-              setUser(userWithPhoto);  // if an authenticated user is found, set it into the context
-              writeJSON('memeSRCUserDetails', { 
-                ...x.signInUserSession.accessToken.payload, 
-                userDetails: userDetails?.data?.getUserDetails,
-                profilePhoto: profilePhotoUrl
-              });
+              setUser(userWithPhoto);
+              writeJSON('memeSRCUserDetails', userWithPhoto);
             }).catch(error => {
               console.log('Error fetching profile photo:', error);
-              // Set user without photo if there's an error
-              setUser({ ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails });
-              writeJSON('memeSRCUserDetails', { ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails });
+              const userWithoutPhoto = { ...x, ...x.signInUserSession.accessToken.payload, userDetails: userDetails?.data?.getUserDetails };
+              setUser(userWithoutPhoto);
+              writeJSON('memeSRCUserDetails', userWithoutPhoto);
             });
             
             writeJSON('memeSRCShows', loadedShows)

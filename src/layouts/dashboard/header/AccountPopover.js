@@ -36,6 +36,8 @@ export default function AccountPopover() {
   const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
   const isFeedVisible = userDetails?.showFeed !== false;
   const isPro = userDetails?.user?.userDetails?.magicSubscription === 'true';
+  const username = userDetails?.user?.userDetails?.username || userDetails?.user?.userDetails?.email || userDetails?.user?.username || 'U';
+  const avatarLetter = username.charAt(0).toUpperCase();
 
   const handleShowFeedToggle = (event, checked) => {
     event.stopPropagation();
@@ -107,16 +109,21 @@ export default function AccountPopover() {
           }}
         >
           <Avatar
-            src={userDetails?.user?.profilePhoto || '/assets/images/avatars/avatar_default.jpg'}
-            alt="photoURL"
+            src={userDetails?.user?.profilePhoto}
+            alt={username}
             sx={{ 
               width: 36, 
               height: 36,
+              bgcolor: 'primary.main',
+              fontSize: '1rem',
+              fontWeight: 600,
               border: (theme) => isPro
                 ? `2px solid ${theme.palette.primary.main}`
                 : `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
             }} 
-          />
+          >
+            {avatarLetter}
+          </Avatar>
         </IconButton>
       }
 
@@ -142,13 +149,18 @@ export default function AccountPopover() {
           }}
         >
           <Avatar 
-            alt="photoURL" 
+            alt="Guest" 
             sx={{ 
               width: 36, 
               height: 36,
+              bgcolor: 'grey.600',
+              fontSize: '1rem',
+              fontWeight: 600,
               border: (theme) => `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
             }} 
-          />
+          >
+            ?
+          </Avatar>
         </IconButton>
       }
 

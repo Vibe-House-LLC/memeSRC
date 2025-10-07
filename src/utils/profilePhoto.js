@@ -1,7 +1,7 @@
 import { Storage } from 'aws-amplify';
 
 /**
- * Fetches the user's profile photo from S3 Storage
+ * Fetches the user's profile photo signed URL from S3 Storage
  * @returns {Promise<string|null>} The profile photo URL or null if not found
  */
 export const fetchProfilePhoto = async () => {

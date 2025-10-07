@@ -22,7 +22,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StarIcon from '@mui/icons-material/Star';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
-import PersonIcon from '@mui/icons-material/Person';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { API, Auth, Storage } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
@@ -30,6 +30,7 @@ import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
 import { safeRemoveItem, writeJSON } from '../utils/storage';
 import ProfilePhotoCropper from '../components/ProfilePhotoCropper';
+import { fetchProfilePhoto as fetchProfilePhotoUtil } from '../utils/profilePhoto';
 
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
@@ -41,6 +42,7 @@ const AccountPage = () => {
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loadingPhoto, setLoadingPhoto] = useState(true);
+  const [deletingPhoto, setDeletingPhoto] = useState(false);
   const [cropperOpen, setCropperOpen] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const fileInputRef = useRef(null);
@@ -82,8 +84,8 @@ const AccountPage = () => {
   const fetchProfilePhoto = async () => {
     try {
       setLoadingPhoto(true);
-      const photoKey = 'profile-photo';
-      const url = await Storage.get(photoKey, { level: 'private' });
+      // Use the utility function which handles session storage caching
+      const url = await fetchProfilePhotoUtil();
       setProfilePhotoUrl(url);
     } catch (error) {
       // No profile photo exists yet, or error fetching
@@ -134,10 +136,7 @@ const AccountPage = () => {
       if (userDetails?.setUser && userDetails?.user) {
         const updatedUser = { ...userDetails.user, profilePhoto: url };
         userDetails.setUser(updatedUser);
-        
-        // Update localStorage as well
-        const storedUser = JSON.parse(localStorage.getItem('memeSRCUserDetails') || '{}');
-        localStorage.setItem('memeSRCUserDetails', JSON.stringify({ ...storedUser, profilePhoto: url }));
+        writeJSON('memeSRCUserDetails', updatedUser);
       }
     } catch (error) {
       console.error('Error uploading profile photo:', error);
@@ -159,6 +158,36 @@ const AccountPage = () => {
 
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!window.confirm('Are you sure you want to remove your profile photo?')) {
+      return;
+    }
+
+    try {
+      setDeletingPhoto(true);
+      const photoKey = 'profile-photo';
+      
+      // Delete from S3
+      await Storage.remove(photoKey, { level: 'private' });
+      
+      // Update local state
+      setProfilePhotoUrl(null);
+      
+      // Update user context
+      if (userDetails?.setUser && userDetails?.user) {
+        const updatedUser = { ...userDetails.user };
+        delete updatedUser.profilePhoto;
+        userDetails.setUser(updatedUser);
+        writeJSON('memeSRCUserDetails', updatedUser);
+      }
+    } catch (error) {
+      console.error('Error deleting profile photo:', error);
+      alert('Failed to delete profile photo. Please try again.');
+    } finally {
+      setDeletingPhoto(false);
+    }
   };
 
   const openCustomerPortal = () => {
@@ -273,19 +302,21 @@ const AccountPage = () => {
                     <>
                       <Avatar
                         src={profilePhotoUrl}
+                        alt={accountUsername}
                         sx={{
                           width: 120,
                           height: 120,
                           bgcolor: 'primary.main',
                           fontSize: '3rem',
+                          fontWeight: 600,
                           border: (theme) => `4px solid ${alpha(theme.palette.common.white, 0.1)}`,
                         }}
                       >
-                        {!profilePhotoUrl && <PersonIcon sx={{ fontSize: '3rem' }} />}
+                        {accountUsername.charAt(0).toUpperCase()}
                       </Avatar>
                       <IconButton
                         onClick={handlePhotoClick}
-                        disabled={uploadingPhoto}
+                        disabled={uploadingPhoto || deletingPhoto}
                         sx={{
                           position: 'absolute',
                           bottom: 0,
@@ -305,6 +336,30 @@ const AccountPage = () => {
                           <CameraAltIcon sx={{ fontSize: 20 }} />
                         )}
                       </IconButton>
+                      {profilePhotoUrl && (
+                        <IconButton
+                          onClick={handleDeletePhoto}
+                          disabled={uploadingPhoto || deletingPhoto}
+                          sx={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            bgcolor: 'error.main',
+                            width: 40,
+                            height: 40,
+                            '&:hover': {
+                              bgcolor: 'error.dark',
+                            },
+                            border: (theme) => `3px solid ${theme.palette.background.default}`,
+                          }}
+                        >
+                          {deletingPhoto ? (
+                            <CircularProgress size={20} sx={{ color: 'common.white' }} />
+                          ) : (
+                            <DeleteIcon sx={{ fontSize: 20 }} />
+                          )}
+                        </IconButton>
+                      )}
                       <input
                         ref={fileInputRef}
                         type="file"
