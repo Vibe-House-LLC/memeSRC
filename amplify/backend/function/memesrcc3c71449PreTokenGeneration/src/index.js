@@ -86,7 +86,7 @@ exports.handler = async (event, context) => {
         claimsOverrideDetails: {
           claimsToAddOrOverride: {
             ...userDetails.body.data.getUserDetails,
-            ...(userDetails.body.data.getUserDetails && { userNotifications: JSON.stringify(userDetails?.body?.data?.getUserDetails?.userNotifications) })
+            ...((userDetails.body.data.getUserDetails?.userNotifications && typeof userDetails.body.data.getUserDetails?.userNotifications === 'object') && { userNotifications: JSON.stringify(userDetails?.body?.data?.getUserDetails?.userNotifications) })
           }
         },
       };
