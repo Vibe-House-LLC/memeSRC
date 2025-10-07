@@ -119,12 +119,12 @@ const ProfilePhotoCropper: React.FC<ProfilePhotoCropperProps> = ({
   }, [drawCanvas]);
 
   // Helper function to get distance between two touch points
-  const getTouchDistance = (touches: React.TouchList | TouchList) => {
+  const getTouchDistance = useCallback((touches: React.TouchList | TouchList) => {
     if (touches.length < 2) return 0;
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
     return Math.sqrt(dx * dx + dy * dy);
-  };
+  }, []);
 
   // Handle zoom
   const handleZoom = (delta: number) => {
@@ -347,4 +347,3 @@ const ProfilePhotoCropper: React.FC<ProfilePhotoCropperProps> = ({
 };
 
 export default ProfilePhotoCropper;
-
