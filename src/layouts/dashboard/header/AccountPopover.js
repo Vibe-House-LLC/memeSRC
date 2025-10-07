@@ -1,10 +1,10 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
 import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover, Switch } from '@mui/material';
 import { AutoFixHigh, Person } from '@mui/icons-material';
 // mocks_
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Auth } from 'aws-amplify';
 import { UserContext } from '../../../UserContext';
 import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
@@ -23,6 +23,15 @@ export default function AccountPopover() {
 
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    setOpen(null);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    console.log('OPEN STATE', open);
+  }, [open]);
 
   const handleOpen = (event) => {
     setOpen(event.currentTarget);
@@ -111,8 +120,8 @@ export default function AccountPopover() {
           <Avatar
             src={userDetails?.user?.profilePhoto}
             alt={username}
-            sx={{ 
-              width: 36, 
+            sx={{
+              width: 36,
               height: 36,
               bgcolor: 'primary.main',
               fontSize: '1rem',
@@ -120,7 +129,7 @@ export default function AccountPopover() {
               border: (theme) => isPro
                 ? `2px solid ${theme.palette.primary.main}`
                 : `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
-            }} 
+            }}
           >
             {avatarLetter}
           </Avatar>
@@ -148,109 +157,111 @@ export default function AccountPopover() {
             }),
           }}
         >
-          <Avatar 
-            alt="Guest" 
-            sx={{ 
-              width: 36, 
+          <Avatar
+            alt="Guest"
+            sx={{
+              width: 36,
               height: 36,
               bgcolor: 'grey.600',
               fontSize: '1rem',
               fontWeight: 600,
               border: (theme) => `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
-            }} 
+            }}
           >
             ?
           </Avatar>
         </IconButton>
       }
 
-      <Popover
-        open={Boolean(open)}
-        anchorEl={open}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{
-          sx: {
-            p: 0,
-            mt: 1.5,
-            ml: 0.75,
-            width: 220,
-            '& .MuiMenuItem-root': {
-              typography: 'body2',
-              borderRadius: 0.75,
-              py: 1,
-              px: 2,
+      {open &&
+        <Popover
+          open={Boolean(open)}
+          anchorEl={open}
+          onClose={handleClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          PaperProps={{
+            sx: {
+              p: 0,
+              mt: 1.5,
+              ml: 0.75,
+              width: 220,
+              '& .MuiMenuItem-root': {
+                typography: 'body2',
+                borderRadius: 0.75,
+                py: 1,
+                px: 2,
+              },
             },
-          },
-        }}
-      >
-        {userDetails?.user ?
-          <>
-            <Box sx={{ py: 2, px: 2.5 }}>
-              <Typography 
-                variant="subtitle1" 
-                sx={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  fontWeight: 'medium'
-                }} 
-                noWrap
-              >
-                <Person sx={{ fontSize: 20 }} />
-                {userDetails?.user?.username}
-              </Typography>
-            </Box>
+          }}
+        >
+          {userDetails?.user ?
+            <>
+              <Box sx={{ py: 2, px: 2.5 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    fontWeight: 'medium'
+                  }}
+                  noWrap
+                >
+                  <Person sx={{ fontSize: 20 }} />
+                  {userDetails?.user?.username}
+                </Typography>
+              </Box>
 
-            <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
-            
-            <MenuItem>
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  color: 'success.main',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  fontWeight: 'bold',
-                  width: '100%'
-                }} 
-              >
-                <AutoFixHigh sx={{ fontSize: 20 }} />
-                <span style={{ fontSize: '1.1em' }}>{userDetails?.user?.userDetails?.credits || 0}</span> credits
-              </Typography>
-            </MenuItem>
+              <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
 
-            {userDetails?.user && (
-              <>
-                <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
-                <MenuItem onClick={() => { navigate('/account'); handleClose(); }}>
-                  Manage Account
+              <MenuItem>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'success.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    fontWeight: 'bold',
+                    width: '100%'
+                  }}
+                >
+                  <AutoFixHigh sx={{ fontSize: 20 }} />
+                  <span style={{ fontSize: '1.1em' }}>{userDetails?.user?.userDetails?.credits || 0}</span> credits
+                </Typography>
+              </MenuItem>
+
+              {userDetails?.user && (
+                <>
+                  <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
+                  <MenuItem onClick={() => { handleClose(); navigate('/account'); }}>
+                    Manage Account
+                  </MenuItem>
+                  {isAdmin && showFeedToggle}
+                </>
+              )}
+
+              <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
+              <MenuItem onClick={logout}>
+                Logout
+              </MenuItem>
+            </>
+            :
+            <>
+              <Stack sx={{ py: 1 }}>
+                <MenuItem onClick={() => navigate('/login')}>
+                  Log In
                 </MenuItem>
-                {isAdmin && showFeedToggle}
-              </>
-            )}
-
-            <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
-            <MenuItem onClick={logout}>
-              Logout
-            </MenuItem>
-          </>
-          :
-          <>
-            <Stack sx={{ py: 1 }}>
-              <MenuItem onClick={() => navigate('/login')}>
-                Log In
-              </MenuItem>
-              <MenuItem onClick={() => navigate('/signup')}>
-                Create Account
-              </MenuItem>
-            </Stack>
-            {isAdmin && showFeedToggle}
-          </>
-        }
-      </Popover>
+                <MenuItem onClick={() => navigate('/signup')}>
+                  Create Account
+                </MenuItem>
+              </Stack>
+              {isAdmin && showFeedToggle}
+            </>
+          }
+        </Popover>
+      }
     </>
   );
 }
