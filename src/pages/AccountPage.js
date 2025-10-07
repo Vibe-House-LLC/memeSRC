@@ -16,6 +16,7 @@ import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
 import { safeRemoveItem, writeJSON } from '../utils/storage';
+import { formatInvoiceCoveragePeriod } from '../utils/invoicePeriod';
 
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
@@ -394,9 +395,7 @@ const AccountPage = () => {
                   </ListItemIcon>
                   <ListItemText
                     primary={`Invoice #${invoice.number}`}
-                    secondary={`Period: ${new Date(invoice.period_start * 1000).toLocaleDateString()} - ${new Date(
-                      invoice.period_end * 1000
-                    ).toLocaleDateString()}`}
+                    secondary={formatInvoiceCoveragePeriod(invoice)}
                   />
                   <IconButton
                     onClick={(e) => {
