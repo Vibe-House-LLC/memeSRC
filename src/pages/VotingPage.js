@@ -854,7 +854,7 @@ export default function VotingPage() {
       if (creditCost > 0) {
         const newCreditAmount = user?.userDetails.credits - creditCost;
         setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
-        forceTokenRefresh();
+        await forceTokenRefresh();
       }
 
       // Update voteData in state

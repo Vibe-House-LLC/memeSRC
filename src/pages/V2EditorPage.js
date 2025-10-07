@@ -1084,7 +1084,7 @@ const EditorPage = ({ shows }) => {
               setOpenSelectResult(true);
               const newCreditAmount = user?.userDetails.credits - 1;
               setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
-              forceTokenRefresh();
+              await forceTokenRefresh();
             } else {
               console.error("Timeout reached without fetching magic results.");
               alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
