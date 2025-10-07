@@ -10,6 +10,7 @@ import Iconify from '../../../components/iconify';
 import { UserContext } from '../../../UserContext';
 import { SnackbarContext } from '../../../SnackbarContext';
 import { getShowsWithFavorites } from '../../../utils/fetchShowsRevised';
+import { fetchProfilePhoto } from '../../../utils/profilePhoto';
 import { safeGetItem, writeJSON } from '../../../utils/storage';
 
 
@@ -52,7 +53,7 @@ export default function LoginForm() {
   const queryString = location.search;
   const queryParams = new URLSearchParams(queryString);
   const dest = queryParams.get('dest');
-  const handleClick = () => {
+  const handleClick = async () => {
     setLoading(true);
 
     // TODO: Get the session/local storage thing figured out. Currently if it's set to session, if you manually go to another page on the site it logs you out.
@@ -65,58 +66,96 @@ export default function LoginForm() {
     // }
 
 
-    if (username && password) {
-      Auth.signIn(username, password).then((x) => {
-        API.post('publicapi', '/user/update/status').then(() => {
-          getShowsWithFavorites().then(loadedShows => {
-            setShows(loadedShows)
-            writeJSON('memeSRCShows', loadedShows)
-            setUser(x)
-            handleUpdateDefaultShow(safeGetItem('memeSRCDefaultIndex'))
-            navigate(dest ? decodeURIComponent(dest) : '/', { replace: true })
-          })
-        })
-      }).catch((error) => {
-        console.log(error.name)
-
-        switch (error.name) {
-          case 'UserNotConfirmedException':
-            setUser({
-              userConfirmed: false,
-              username
-            });
-            setOpen(true);
-            setMessage('Please verify your account.');
-            setSeverity('error');
-            navigate('/verify');
-            setLoading(false)
-            break;
-          case 'UserNotFoundException':
-            setOpen(true);
-            setMessage('Account not found. Please try again.');
-            setSeverity('error')
-            setFormErrors({
-              ...formErrors,
-              username: true
-            })
-            setLoading(false)
-            break;
-          default:
-            setOpen(true);
-            setMessage(`Error: ${error.message}`);
-            setSeverity('error')
-            setLoading(false)
-        }
-      })
-    } else {
+    if (!username || !password) {
       setFormErrors({
-        username: (!username),
-        password: (!password)
-      })
+        username: !username,
+        password: !password
+      });
       setOpen(true);
       setMessage(`${username ? '' : 'Username'}${(!username && !password) ? ' & ' : ''}${password ? '' : 'Password'} required.`);
-      setSeverity('error')
-      setLoading(false)
+      setSeverity('error');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const signedInUser = await Auth.signIn(username, password);
+      await API.post('publicapi', '/user/update/status');
+
+      const [userDetailsResponse, profilePhoto] = await Promise.all([
+        API.get('publicapi', '/user/get').catch((error) => {
+          console.log('Error fetching user details:', error);
+          return null;
+        }),
+        fetchProfilePhoto().catch((error) => {
+          console.log('Error fetching profile photo:', error);
+          return null;
+        })
+      ]);
+
+      const userDetails = userDetailsResponse?.data?.getUserDetails;
+      let favorites = [];
+      if (userDetails?.favorites) {
+        try {
+          favorites = JSON.parse(userDetails.favorites) || [];
+        } catch (parseError) {
+          console.log('Error parsing favorites:', parseError);
+        }
+      }
+
+      const loadedShows = await getShowsWithFavorites(favorites);
+      setShows(loadedShows);
+      writeJSON('memeSRCShows', loadedShows);
+
+      const userWithDetails = {
+        ...signedInUser,
+        ...signedInUser?.signInUserSession?.accessToken?.payload,
+        userDetails,
+        profilePhoto
+      };
+
+      setUser(userWithDetails);
+      writeJSON('memeSRCUserDetails', userWithDetails);
+
+      const storedDefaultShow = safeGetItem('memeSRCDefaultIndex');
+      const hasFavorite = loadedShows.some((show) => show.isFavorite);
+      const nextDefaultShow = hasFavorite
+        ? storedDefaultShow || favorites[0] || '_universal'
+        : '_universal';
+
+      handleUpdateDefaultShow(nextDefaultShow);
+
+      navigate(dest ? decodeURIComponent(dest) : '/', { replace: true });
+    } catch (error) {
+      console.log(error.name);
+
+      switch (error.name) {
+        case 'UserNotConfirmedException':
+          setUser({
+            userConfirmed: false,
+            username
+          });
+          setOpen(true);
+          setMessage('Please verify your account.');
+          setSeverity('error');
+          navigate('/verify');
+          break;
+        case 'UserNotFoundException':
+          setOpen(true);
+          setMessage('Account not found. Please try again.');
+          setSeverity('error');
+          setFormErrors({
+            ...formErrors,
+            username: true
+          });
+          break;
+        default:
+          setOpen(true);
+          setMessage(`Error: ${error.message}`);
+          setSeverity('error');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
