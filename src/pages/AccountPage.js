@@ -1,22 +1,29 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Box, Typography, Button, Container, Grid, Card, List, ListItem, ListItemIcon, ListItemText, IconButton, Chip, Skeleton, CircularProgress } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Button,
+  Container,
+  Stack,
+  Chip,
+  Alert,
+  Card,
+  Divider,
+  Skeleton,
+  alpha,
+} from '@mui/material';
 import { Navigate, useNavigate } from 'react-router-dom';
 import ReceiptIcon from '@mui/icons-material/Receipt';
-import DownloadIcon from '@mui/icons-material/Download';
-import BlockIcon from '@mui/icons-material/Block';
-import SupportAgentIcon from '@mui/icons-material/SupportAgent';
-import BoltIcon from '@mui/icons-material/Bolt';
-import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import StarIcon from '@mui/icons-material/Star';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { API, Auth } from 'aws-amplify';
+import { LoadingButton } from '@mui/lab';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
 import { safeRemoveItem, writeJSON } from '../utils/storage';
-import { formatInvoiceCoveragePeriod } from '../utils/invoicePeriod';
 
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
@@ -25,29 +32,22 @@ const AccountPage = () => {
   const [hasMore, setHasMore] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [loadingPortalUrl, setLoadingPortalUrl] = useState(false);
-  const [page, setPage] = useState(1);
-  const [loadingSubscription, setLoadingSubscription] = useState(true);
-  const [loadingCancelUrl, setLoadingCancelUrl] = useState(false);
-  const [showCopySuccess, setShowCopySuccess] = useState(false);
   const navigate = useNavigate();
-
-  console.log('User Details:', userDetails?.user);
 
   useEffect(() => {
     fetchInvoices();
-    fetchSubscription();
-  }, [page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchInvoices = async () => {
     try {
       setLoadingInvoices(true);
       const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1].id : null;
       const response = await API.get('publicapi', '/user/update/listInvoices', {
-        ...(hasMore && { body: { lastInvoice: lastInvoiceId } }),
+        ...(lastInvoiceId && hasMore && { body: { lastInvoice: lastInvoiceId } }),
       });
-      console.log(response);
-      setInvoices((prevInvoices) => [...prevInvoices, ...response.data]);
-      setHasMore(response.data.has_more);
+      setInvoices((prev) => [...prev, ...(response.data || [])]);
+      setHasMore(response.has_more || false);
       setLoadingInvoices(false);
     } catch (error) {
       console.error('Error fetching invoices:', error);
@@ -55,30 +55,7 @@ const AccountPage = () => {
     }
   };
 
-  const fetchSubscription = async () => {
-    try {
-      setLoadingSubscription(true);
-      // Add your API call to fetch the current subscription
-      // Example: const response = await API.get('publicapi', '/user/update/getSubscription');
-      // Set the current subscription data based on the response
-      setLoadingSubscription(false);
-    } catch (error) {
-      console.error('Error fetching subscription:', error);
-      setLoadingSubscription(false);
-    }
-  };
-
-  const handleLoadMore = () => {
-    setPage((prevPage) => prevPage + 1);
-  };
-
-  const openInvoicePDF = (url) => {
-    if (url) {
-      window.open(url, '_blank');
-    }
-  };
-
-  const downloadInvoicePDF = (url) => {
+  const downloadInvoice = (url) => {
     if (url) {
       const link = document.createElement('a');
       link.href = url;
@@ -89,344 +66,498 @@ const AccountPage = () => {
     }
   };
 
-  const openCustomerPortal = (isCancel = false) => {
-    if (isCancel) {
-      setLoadingCancelUrl(true);
-    } else {
-      setLoadingPortalUrl(true);
-    }
-
+  const openCustomerPortal = () => {
+    setLoadingPortalUrl(true);
     API.post('publicapi', '/user/update/getPortalLink', {
-      body: {
-        currentUrl: window.location.href
-      }
-    }).then(results => {
-      console.log(results);
-      if (isCancel) {
-        setLoadingCancelUrl(false);
-      } else {
+      body: { currentUrl: window.location.href },
+    })
+      .then((results) => {
+        window.location.href = results;
+      })
+      .catch(() => {
         setLoadingPortalUrl(false);
-      }
-      window.location.href = results;
-    }).catch(error => {
-      console.log(error.response);
-      if (isCancel) {
-        setLoadingCancelUrl(false);
-      } else {
-        setLoadingPortalUrl(false);
-      }
-    });
+      });
   };
 
   const handleLogout = () => {
-    Auth.signOut().then(() => {
-      userDetails?.setUser(null);
-      safeRemoveItem('memeSRCUserDetails')
-      userDetails?.setDefaultShow('_universal')
-      getShowsWithFavorites().then(loadedShows => {
-        writeJSON('memeSRCShows', loadedShows)
-        userDetails?.setShows(loadedShows)
+    Auth.signOut()
+      .then(() => {
+        userDetails?.setUser(null);
+        safeRemoveItem('memeSRCUserDetails');
+        userDetails?.setDefaultShow('_universal');
+        getShowsWithFavorites().then((loadedShows) => {
+          writeJSON('memeSRCShows', loadedShows);
+          userDetails?.setShows(loadedShows);
+        });
       })
-    }).catch((err) => {
-      alert(err)
-    }).finally(() => {
-      navigate('/')
-    })
+      .catch((err) => {
+        alert(err);
+      })
+      .finally(() => {
+        navigate('/');
+      });
   };
 
-  const isLoading = loadingInvoices || loadingSubscription;
-  const recentPaidInvoice = invoices.find((invoice) => invoice.paid);
-  console.log(recentPaidInvoice?.lines?.data?.[0])
-  // Check if user is logged in
   if (!userDetails?.user?.userDetails) {
     return <Navigate to="/login" replace />;
   }
 
-  const formatAmount = (amount, currency) => new Intl.NumberFormat('en-US', {
+  const accountDetails = userDetails.user.userDetails;
+  const accountEmail = accountDetails.email || 'N/A';
+  const accountUsername = accountDetails.username || accountEmail;
+  const isPro = accountDetails.magicSubscription === 'true';
+  const hasPaymentIssue = accountDetails.subscriptionStatus === 'failedPayment';
+
+  const formatAmount = (invoice) => {
+    const amount = invoice.amount_paid || invoice.total || 0;
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency || 'usd',
-      minimumFractionDigits: 2,
+      currency: invoice.currency || 'usd',
     }).format(amount / 100);
+  };
+
+  const formatInvoiceDate = (invoice) => {
+    const timestamp = invoice.created || invoice.period_start;
+    if (!timestamp) return 'N/A';
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(timestamp * 1000));
+  };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 2 }}>
-      <Grid container spacing={3} alignItems="flex-start">
-        <Grid item xs={12} md={6}>
-          <Card sx={{ 
-            p: 3, 
-            backgroundColor: 'background.paper',
-            borderRadius: 3,
-          }}>
-            <Box sx={{ mb: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  Account Details
+    <Box 
+      sx={{ 
+        minHeight: '100vh',
+        bgcolor: 'common.black',
+      }}
+    >
+      <Container 
+        maxWidth="md" 
+        sx={{ 
+          px: { xs: 2, sm: 3 },
+          py: { xs: 4, sm: 6 },
+        }}
+      >
+        <Stack spacing={{ xs: 4, sm: 5 }}>
+          {/* Header with gradient backdrop */}
+          <Box>
+            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2}>
+              <Box>
+                <Typography 
+                  variant="h3" 
+                  sx={{ 
+                    fontWeight: 700, 
+                    mb: 1.5,
+                    fontSize: { xs: '2rem', sm: '2.5rem' },
+                    background: (theme) => `linear-gradient(135deg, ${theme.palette.text.primary} 0%, ${alpha(theme.palette.primary.light, 0.9)} 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
+                  Account
                 </Typography>
                 <Typography 
-                  variant="body2" 
-                  onClick={handleLogout}
+                  variant="h6" 
                   sx={{ 
-                    color: 'error.main',
-                    cursor: 'pointer',
-                    '&:hover': { textDecoration: 'underline' }
+                    fontWeight: 500,
+                    mb: 0.5,
+                    fontSize: { xs: '1rem', sm: '1.125rem' },
                   }}
                 >
-                  Sign Out
+                  {accountUsername}
+                </Typography>
+                <Typography 
+                  variant="body1" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.875rem', sm: '0.9375rem' } }}
+                >
+                  {accountEmail}
                 </Typography>
               </Box>
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: 1,
-                p: 2,
-                backgroundColor: 'action.hover',
-                borderRadius: 2,
-              }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Username</Typography>
-                  <Typography variant="body2">{userDetails?.user?.userDetails?.username || 'N/A'}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Email</Typography>
-                  <Typography variant="body2">{userDetails?.user?.userDetails?.email || 'N/A'}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Customer ID</Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
-                    onClick={async () => {
-                      if (userDetails?.user?.sub) {
-                        try {
-                          await navigator.clipboard.writeText(userDetails.user.sub);
-                          setShowCopySuccess(true);
-                          setTimeout(() => setShowCopySuccess(false), 2000);
-                          console.log('Copied:', userDetails.user.sub);
-                        } catch (err) {
-                          console.error('Failed to copy:', err);
-                        }
-                      }
-                    }}
-                  >
-                    {showCopySuccess ? (
-                      <CheckCircleIcon sx={{ fontSize: 16, opacity: 0.7, color: 'success.main' }} />
-                    ) : (
-                      <ContentCopyIcon sx={{ fontSize: 16, opacity: 0.7 }} />
-                    )}
-                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                      {userDetails?.user?.sub 
-                        ? `${userDetails?.user?.sub.slice(0, 4)}...${userDetails?.user?.sub.slice(-4)}`
-                        : 'N/A'}
+            </Stack>
+          </Box>
+
+          {/* Payment Issue Alert */}
+          {hasPaymentIssue && (
+            <Alert 
+              severity="error" 
+              variant="filled"
+              icon={<CreditCardIcon />}
+              sx={{ 
+                borderRadius: 3,
+                fontWeight: 500,
+              }}
+            >
+              Payment failed. Update your payment method to maintain Pro access.
+            </Alert>
+          )}
+
+          {/* Plan Card - Premium Design */}
+          <Card 
+            sx={{ 
+              borderRadius: 4,
+              background: (theme) => isPro
+                ? `linear-gradient(135deg, ${alpha(theme.palette.primary.dark, 0.2)} 0%, ${alpha(theme.palette.secondary.dark, 0.4)} 100%)`
+                : theme.palette.background.paper,
+              border: (theme) => isPro ? `1px solid ${alpha(theme.palette.primary.main, 0.3)}` : undefined,
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': isPro ? {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
+              } : {},
+            }}
+          >
+            <Box sx={{ p: { xs: 3, sm: 5 } }}>
+              <Stack spacing={3}>
+                {/* Plan Header */}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+                  <Box>
+                    <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
+                      {isPro && (
+                        <Box
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 2,
+                            bgcolor: 'success.main',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <StarIcon sx={{ fontSize: 20, color: 'common.black' }} />
+                        </Box>
+                      )}
+                      <Typography 
+                        variant="h4" 
+                        sx={{ 
+                          fontWeight: 700,
+                          fontSize: { xs: '1.5rem', sm: '1.75rem' },
+                        }}
+                      >
+                        {isPro ? 'Pro' : 'Free'}
+                      </Typography>
+                      <Chip
+                        icon={isPro && !hasPaymentIssue ? <CheckCircleIcon /> : undefined}
+                        label={isPro ? (hasPaymentIssue ? 'Payment Issue' : 'Active') : 'Free'}
+                        color={isPro ? (hasPaymentIssue ? 'error' : 'success') : 'default'}
+                        sx={{ 
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          height: 28,
+                        }}
+                      />
+                    </Stack>
+                    <Typography 
+                      variant="body1" 
+                      color="text.secondary"
+                      sx={{ 
+                        fontSize: { xs: '0.9375rem', sm: '1rem' },
+                        lineHeight: 1.6,
+                        maxWidth: '500px',
+                      }}
+                    >
+                      {isPro
+                        ? 'Unlock the full power of memeSRC with ad-free browsing, priority support, and magic credits'
+                        : 'Upgrade to Pro and unlock premium features, magic credits, and an ad-free experience'}
                     </Typography>
                   </Box>
-                </Box>
-              </Box>
-            </Box>
-            {isLoading ? (
-              <Box sx={{ width: '100%', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  width: '100%',
-                  backgroundColor: 'background.default',
-                  borderRadius: 2,
-                  p: 3,
-                  mb: 3,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'memeSRC Pro' : 'Free'}
-                  </Typography>
-                  {userDetails?.user?.userDetails?.magicSubscription === 'true' && (
-                    <Chip
-                      label={userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment' ? 'Payment Failed' : 'Active'}
-                      size="small"
-                      color={userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment' ? 'error' : 'success'}
-                      sx={{ fontWeight: 600 }}
-                    />
+                </Stack>
+
+                {/* Features List for Pro */}
+                {isPro && (
+                  <Stack 
+                    direction={{ xs: 'column', sm: 'row' }} 
+                    spacing={2}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 2,
+                      bgcolor: (theme) => alpha(theme.palette.background.paper, 0.4),
+                    }}
+                  >
+                    {[
+                      'Ad-free experience',
+                      'Magic credits',
+                      'Priority support',
+                    ].map((feature, idx) => (
+                      <Stack key={idx} direction="row" alignItems="center" spacing={1} flex={1}>
+                        <CheckCircleIcon sx={{ fontSize: 18, color: 'success.main' }} />
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                          {feature}
+                        </Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                )}
+
+                {/* Action Button */}
+                <Box>
+                  {isPro ? (
+                    <LoadingButton
+                      variant="outlined"
+                      loading={loadingPortalUrl}
+                      onClick={openCustomerPortal}
+                      size="large"
+                      fullWidth
+                      sx={{ 
+                        py: 1.75,
+                        fontSize: '0.9375rem',
+                        fontWeight: 600,
+                        borderRadius: 2,
+                        borderWidth: 2,
+                        '&:hover': {
+                          borderWidth: 2,
+                        }
+                      }}
+                    >
+                      Manage Subscription
+                    </LoadingButton>
+                  ) : (
+                    <Button 
+                      variant="contained" 
+                      onClick={openSubscriptionDialog}
+                      size="large"
+                      fullWidth
+                      sx={{ 
+                        py: 1.75,
+                        fontSize: '0.9375rem',
+                        fontWeight: 600,
+                        borderRadius: 2,
+                        background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                        '&:hover': {
+                          background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.darker} 100%)`,
+                        }
+                      }}
+                    >
+                      Upgrade to Pro
+                    </Button>
                   )}
                 </Box>
-
-                {userDetails?.user?.userDetails?.subscriptionStatus === 'failedPayment' && (
-                  <Box sx={{ backgroundColor: 'error.light', borderRadius: 2, p: 2, mb: 2 }}>
-                    <Typography sx={{ color: 'error.contrastText', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CreditCardIcon sx={{ fontSize: 20 }} />
-                      Your last payment failed. Please update your payment method to continue using Pro features.
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="error"
-                      onClick={() => openCustomerPortal()}
-                      sx={{ mt: 2 }}
-                    >
-                      Update Payment Method
-                    </Button>
-                  </Box>
-                )}
-
-                {userDetails?.user?.userDetails?.magicSubscription === 'true' && recentPaidInvoice && (
-                  <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Typography sx={{ fontSize: '0.875rem', letterSpacing: '0.01em', opacity: 0.85, textTransform: 'uppercase' }}>
-                        Last Payment
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5 }}>
-                        <CheckCircleIcon sx={{ color: 'success.main', fontSize: 20 }} />
-                        <Typography sx={{ fontWeight: 600, fontSize: '1.25rem' }}>
-                          {formatAmount(
-                            recentPaidInvoice.lines.data[0].amount_excluding_tax -
-                              (recentPaidInvoice.lines.data[0].discount_amounts?.[0]?.amount || 0),
-                            recentPaidInvoice.currency
-                          )}
-                        </Typography>
-                        <Typography sx={{ fontSize: '0.75rem', opacity: 0.85 }}>
-                          {new Date(recentPaidInvoice.created * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-                )}
-
-                {userDetails?.user?.userDetails?.magicSubscription !== 'true' && (
-                  <Button variant="contained" size="large" onClick={openSubscriptionDialog} sx={{ mt: 2 }}>
-                    Upgrade to Pro
-                  </Button>
-                )}
-
-                <Box sx={{ mt: 2 }}>
-                  {[
-                    { icon: <BlockIcon />, text: 'Ad-Free Experience' },
-                    { icon: <SupportAgentIcon />, text: 'Priority Support' },
-                    { icon: <BoltIcon />, text: 'Early Access to New Features' },
-                    { icon: <AutoFixHighRoundedIcon />, text: 'Monthly Magic Credits' },
-                  ].map(({ icon, text }) => (
-                    <Box key={text} sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                      <Box sx={{
-                        backgroundColor: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'primary.main' : 'grey.700',
-                        borderRadius: '50%',
-                        width: 32,
-                        height: 32,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                      }}>
-                        {React.cloneElement(icon, { sx: { color: 'common.white' } })}
-                      </Box>
-                      <Typography variant="body1" sx={{ fontWeight: 500, textDecoration: userDetails?.user?.userDetails?.magicSubscription === 'true' ? 'none' : 'line-through' }}>
-                        {text}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-
-                {userDetails?.user?.userDetails?.magicSubscription !== 'true' && (
-                  <Box onClick={openSubscriptionDialog} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>
-                    <LockOpenIcon sx={{ fontSize: 20 }} />
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                      Unlock these features
-                    </Typography>
-                  </Box>
-                )}
-
-                {userDetails?.user?.userDetails?.magicSubscription === 'true' && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2 }}>
-                    <Typography onClick={() => openCustomerPortal(true)} sx={{ color: 'error.main', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1, '&:hover': { textDecoration: 'underline' } }}>
-                      {loadingCancelUrl ? <CircularProgress size={16} color="error" /> : 'Cancel Subscription'}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            )}
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 3, backgroundColor: 'background.paper', borderRadius: 3, mb: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', m: 3 }}>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-                Billing Settings
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 3, opacity: 0.8 }}>
-                Update payment methods or cancel your subscription
-              </Typography>
-              <Button 
-                variant="outlined" 
-                size="large" 
-                onClick={() => openCustomerPortal()}
-                disabled={loadingPortalUrl}
-                sx={{ minWidth: '200px' }}
-              >
-                {loadingPortalUrl ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  'Open Settings'
-                )}
-              </Button>
+              </Stack>
             </Box>
           </Card>
 
-          <Card sx={{ p: 3, backgroundColor: 'background.paper', borderRadius: 3 }}>
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
-              Invoices
-            </Typography>
-            <List>
-              {invoices.map((invoice) => (
-                <ListItem
-                  key={invoice.id}
-                  sx={{
-                    mb: 1.5,
-                    borderRadius: 2,
-                    cursor: invoice.invoice_pdf ? 'pointer' : 'default',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      backgroundColor: invoice.invoice_pdf ? 'action.hover' : 'transparent',
-                      transform: invoice.invoice_pdf ? 'translateY(-1px)' : 'none',
-                    },
+          {/* Billing History */}
+          {isPro && (
+            <Box>
+              <Stack 
+                direction="row" 
+                alignItems="center" 
+                justifyContent="space-between" 
+                sx={{ mb: 3 }}
+              >
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontWeight: 700,
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' },
                   }}
-                  onClick={() => openInvoicePDF(invoice.hosted_invoice_url)}
                 >
-                  <ListItemIcon>
-                    <ReceiptIcon />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={`Invoice #${invoice.number}`}
-                    secondary={formatInvoiceCoveragePeriod(invoice)}
+                  Billing History
+                </Typography>
+                {invoices.length > 0 && (
+                  <Chip 
+                    label={`${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}`}
+                    size="small"
+                    sx={{ fontWeight: 600 }}
                   />
-                  <IconButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      downloadInvoicePDF(invoice.invoice_pdf);
+                )}
+              </Stack>
+
+              <Stack spacing={2}>
+                {loadingInvoices && invoices.length === 0 ? (
+                  <>
+                    {[1, 2, 3].map((i) => (
+                      <Card 
+                        key={i}
+                        sx={{ borderRadius: 3 }}
+                      >
+                        <Box sx={{ p: 3 }}>
+                          <Stack direction="row" spacing={2} alignItems="center">
+                            <Skeleton variant="circular" width={48} height={48} />
+                            <Box flex={1}>
+                              <Skeleton width="60%" height={28} />
+                              <Skeleton width="40%" height={20} sx={{ mt: 0.5 }} />
+                            </Box>
+                          </Stack>
+                        </Box>
+                      </Card>
+                    ))}
+                  </>
+                ) : invoices.length > 0 ? (
+                  <>
+                    {invoices.map((invoice) => {
+                      const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf;
+                      const handleClick = () => {
+                        if (invoice.hosted_invoice_url) {
+                          window.open(invoice.hosted_invoice_url, '_blank');
+                        } else if (invoice.invoice_pdf) {
+                          downloadInvoice(invoice.invoice_pdf);
+                        }
+                      };
+
+                      return (
+                        <Box 
+                          key={invoice.id}
+                          onClick={invoiceUrl ? handleClick : undefined}
+                          sx={{ 
+                            px: 2.5,
+                            py: 1.75,
+                            borderRadius: 2,
+                            border: (theme) => `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
+                            bgcolor: (theme) => alpha(theme.palette.common.white, 0.05),
+                            cursor: invoiceUrl ? 'pointer' : 'default',
+                            transition: 'all 0.2s ease-in-out',
+                            '&:hover': invoiceUrl ? {
+                              bgcolor: (theme) => alpha(theme.palette.common.white, 0.1),
+                              borderColor: (theme) => alpha(theme.palette.primary.main, 0.4),
+                              transform: 'translateY(-1px)',
+                            } : {},
+                          }}
+                        >
+                          <Stack 
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            spacing={2}
+                          >
+                            {/* Left: Date and Amount */}
+                            <Box flex={1} minWidth={0}>
+                              <Typography 
+                                variant="body1" 
+                                sx={{ 
+                                  fontWeight: 600,
+                                  fontSize: '0.9375rem',
+                                  mb: 0.25,
+                                }}
+                                noWrap
+                              >
+                                {formatInvoiceDate(invoice)}
+                              </Typography>
+                              <Typography 
+                                variant="body2" 
+                                color="text.secondary"
+                                sx={{ fontSize: '0.875rem' }}
+                              >
+                                {formatAmount(invoice)}
+                              </Typography>
+                            </Box>
+
+                            {/* Right: Status and Arrow */}
+                            <Stack direction="row" alignItems="center" spacing={1.5}>
+                              <Chip
+                                icon={invoice.status === 'paid' ? <CheckCircleIcon sx={{ fontSize: 14 }} /> : undefined}
+                                label={invoice.status === 'paid' ? 'Paid' : invoice.status}
+                                color={invoice.status === 'paid' ? 'success' : 'default'}
+                                size="small"
+                                sx={{ 
+                                  height: 22,
+                                  fontWeight: 600,
+                                  fontSize: '0.6875rem',
+                                }}
+                              />
+                              {invoiceUrl && (
+                                <ChevronRightIcon 
+                                  sx={{ 
+                                    fontSize: 20,
+                                    color: 'text.secondary',
+                                  }} 
+                                />
+                              )}
+                            </Stack>
+                          </Stack>
+                        </Box>
+                      );
+                    })}
+                    {hasMore && (
+                      <Button
+                        variant="outlined"
+                        onClick={fetchInvoices}
+                        disabled={loadingInvoices}
+                        fullWidth
+                        size="large"
+                        sx={{ 
+                          py: 1.5,
+                          borderRadius: 2,
+                          fontSize: '0.9375rem',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {loadingInvoices ? 'Loading...' : 'Load More Invoices'}
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <Card 
+                    sx={{ 
+                      borderRadius: 3,
+                      border: (theme) => `2px dashed ${alpha(theme.palette.divider, 0.3)}`,
+                      bgcolor: 'transparent',
                     }}
-                    disabled={!invoice.invoice_pdf}
                   >
-                    <DownloadIcon />
-                  </IconButton>
-                </ListItem>
-              ))}
-            </List>
-            {hasMore && !loadingInvoices && (
-              <Button variant="outlined" onClick={handleLoadMore} sx={{ mt: 2 }}>
-                Load More
-              </Button>
-            )}
-            {loadingInvoices ? (
-              <> 
-                {[...Array(3)].map((_, index) => (
-                  <Skeleton key={index} variant="rectangular" height={60} sx={{ borderRadius: 1, mb: 1 }} />
-                ))}
-              </>
-            ) : (
-              invoices.length === 0 && <Typography variant="body1">No invoices found.</Typography>
-            )}
-          </Card>
-        </Grid>
-      </Grid>
-    </Container>
+                    <Box sx={{ p: 6, textAlign: 'center' }}>
+                      <Box
+                        sx={{
+                          width: 64,
+                          height: 64,
+                          borderRadius: 3,
+                          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          mb: 2,
+                        }}
+                      >
+                        <ReceiptIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+                      </Box>
+                      <Typography 
+                        variant="h6" 
+                        sx={{ mb: 0.5, fontWeight: 600 }}
+                      >
+                        No invoices yet
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                      >
+                        Your billing history will appear here
+                      </Typography>
+                    </Box>
+                  </Card>
+                )}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Sign Out */}
+          <Box sx={{ pt: 2 }}>
+            <Divider sx={{ mb: 3 }} />
+            <Button 
+              variant="text" 
+              color="error" 
+              onClick={handleLogout}
+              sx={{ 
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                py: 1.25,
+                px: 3,
+              }}
+            >
+              Sign Out
+            </Button>
+          </Box>
+        </Stack>
+      </Container>
+    </Box>
   );
 };
 
