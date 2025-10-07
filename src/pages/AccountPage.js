@@ -59,7 +59,7 @@ const AccountPage = () => {
       setLoadingInvoices(true);
       const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1].id : null;
       const response = await API.get('publicapi', '/user/update/listInvoices', {
-        ...(lastInvoiceId && hasMore && { body: { lastInvoice: lastInvoiceId } }),
+        ...(lastInvoiceId ? { body: { lastInvoice: lastInvoiceId } } : {}),
       });
       setInvoices((prev) => [...prev, ...(response.data || [])]);
       setHasMore(response.has_more || false);
