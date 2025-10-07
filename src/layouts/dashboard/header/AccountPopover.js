@@ -163,9 +163,7 @@ export default function AccountPopover() {
               fontWeight: 600,
               border: (theme) => `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
             }}
-          >
-            ?
-          </Avatar>
+          />
         </IconButton>
       }
 
