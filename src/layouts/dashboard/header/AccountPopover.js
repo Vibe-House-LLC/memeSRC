@@ -29,10 +29,6 @@ export default function AccountPopover() {
     setOpen(null);
   }, [location.pathname]);
 
-  useEffect(() => {
-    console.log('OPEN STATE', open);
-  }, [open]);
-
   const handleOpen = (event) => {
     setOpen(event.currentTarget);
   };
