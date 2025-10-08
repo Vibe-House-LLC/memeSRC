@@ -155,6 +155,7 @@ const getSourceMediaQuery = `
         getSourceMedia(id: $id) {
             id
             pendingAlias
+            identityId
             series {
                 id
                 tvdbid
@@ -419,9 +420,9 @@ const getSeriesCsv = async (newSeries = false, alias) => {
     }
 }
 
-const getSeriesMetadata = async (newSeries = false, alias) => {
+const getSeriesMetadata = async (newSeries = false, alias, path) => {
     try {
-        const metadataPath = newSeries ? `protected/src/${alias}/00_metadata.json` : `protected/srcPending/${alias}/00_metadata.json`;
+        const metadataPath = newSeries ? `protected/src/${alias}/00_metadata.json` : `${path}/00_metadata.json`;
 
         const params = {
             Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
@@ -520,11 +521,19 @@ const createSeriesContributors = async (data) => {
     }
 }
 
-const moveEpisodeFilesFromPendingToSrc = async (alias, episodes) => {
+const moveEpisodeFilesFromPendingToSrc = async (alias, episodes, path) => {
     try {
         console.log(`Moving episode files for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
 
         const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+
+        // copy 00_metadata.json
+        const copyParams = {
+            Bucket: bucketName,
+            CopySource: `${bucketName}/${path}/00_metadata.json`,
+            Key: `protected/src/${alias}/00_metadata.json`
+        };
+        await s3.copyObject(copyParams).promise();
 
         // Process each episode
         for (const episode of episodes) {
@@ -534,7 +543,7 @@ const moveEpisodeFilesFromPendingToSrc = async (alias, episodes) => {
             // List all files in the pending episode folder
             const listParams = {
                 Bucket: bucketName,
-                Prefix: `protected/srcPending/${alias}/${season}/${episodeNumber}/`
+                Prefix: `${path}/${season}/${episodeNumber}/`
             };
 
             const listedObjects = await s3.listObjectsV2(listParams).promise();
@@ -547,7 +556,7 @@ const moveEpisodeFilesFromPendingToSrc = async (alias, episodes) => {
             // Copy each file to the src folder
             for (const object of listedObjects.Contents) {
                 const sourceKey = object.Key;
-                const destinationKey = sourceKey.replace(`protected/srcPending/${alias}/${season}/${episodeNumber}/`, `protected/src/${alias}/${season}/${episodeNumber}/`);
+                const destinationKey = sourceKey.replace(`${path}/${season}/${episodeNumber}/`, `protected/src/${alias}/${season}/${episodeNumber}/`);
 
                 console.log(`Copying ${sourceKey} to ${destinationKey}`);
 
@@ -578,14 +587,14 @@ const moveEpisodeFilesFromPendingToSrc = async (alias, episodes) => {
     }
 }
 
-const updateEpisodeDocsFromPending = async (alias, season, episodeNumber) => {
+const updateEpisodeDocsFromPending = async (alias, season, episodeNumber, path) => {
     try {
         console.log(`Updating episode docs for alias: ${alias}, season: ${season}, episode: ${episodeNumber}`);
 
         const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
 
         // Get docs from the pending episode folder
-        const pendingEpisodeDocsPath = `protected/srcPending/${alias}/${season}/${episodeNumber}/_docs.csv`;
+        const pendingEpisodeDocsPath = `${path}/${season}/${episodeNumber}/_docs.csv`;
         const srcEpisodeDocsPath = `protected/src/${alias}/${season}/${episodeNumber}/_docs.csv`;
 
         try {
@@ -821,13 +830,13 @@ const regenerateRootDocsFromSeasons = async (alias) => {
     }
 }
 
-const updateSeriesDocsWithNewEpisodes = async (alias, episodes) => {
+const updateSeriesDocsWithNewEpisodes = async (alias, episodes, path) => {
     try {
         console.log(`Updating series docs for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
 
         // Step 1: Update episode-level _docs.csv files (episode → src)
         for (const { season, episode } of episodes) {
-            await updateEpisodeDocsFromPending(alias, season, episode);
+            await updateEpisodeDocsFromPending(alias, season, episode, path);
         }
 
         // Step 2: Group episodes by season and regenerate season docs from episodes
@@ -968,8 +977,12 @@ const processNewSeries = async (data) => {
     }
 }
 
-const processExistingSeries = async (data) => {
-    const { sourceMediaId, episodes } = data;
+const processSeries = async (data) => {
+    const { sourceMediaId, episodes, identityId } = data;
+    if (!identityId) {
+        throw new Error('Identity ID is required');
+    }
+    const path = `protected/${identityId}/${sourceMediaId}`;
     try {
         const updateSourceMediaToPending = await updateSourceMedia({
             id: sourceMediaId,
@@ -981,7 +994,7 @@ const processExistingSeries = async (data) => {
         const userData = sourceMedia?.user;
         const alias = sourceMedia?.pendingAlias;
         // const docs = await getSeriesCsv(alias, true); // Not needed since we handle docs in updateSeriesDocsWithNewEpisodes
-        const metadata = await getSeriesMetadata(false, alias);
+        const metadata = await getSeriesMetadata(false, alias, path);
         // Check to see if the v2 content metadata exists
         const v2ContentMetadata = await getV2ContentMetadata(alias);
         if (v2ContentMetadata?.id) {
@@ -1021,10 +1034,10 @@ const processExistingSeries = async (data) => {
         }
 
         // Move episode files from pending to src folder for approved episodes
-        await moveEpisodeFilesFromPendingToSrc(alias, episodes);
+        await moveEpisodeFilesFromPendingToSrc(alias, episodes, path);
 
         // Update the series docs CSV by removing existing episode rows and adding new ones
-        await updateSeriesDocsWithNewEpisodes(alias, episodes);
+        await updateSeriesDocsWithNewEpisodes(alias, episodes, path);
 
         const updateSourceMediaToAwaitingIndexing = await updateSourceMedia({
             id: sourceMediaId,
@@ -1069,6 +1082,7 @@ exports.handler = async (event) => {
         const sourceMediaResponse = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id: sourceMediaId } });
         console.log('SOURCE MEDIA RESPONSE: ', JSON.stringify(sourceMediaResponse));
         const sourceMediaData = sourceMediaResponse?.body?.data?.getSourceMedia;
+        const identityId = sourceMediaData?.identityId;
         const alias = sourceMediaData?.pendingAlias;
         console.log('SOURCE MEDIA DATA: ', JSON.stringify(sourceMediaData));
         console.log('ALIAS: ', JSON.stringify(alias));
@@ -1077,22 +1091,13 @@ exports.handler = async (event) => {
         const aliasData = aliasResponse?.body?.data?.getAlias;
         console.log('ALIAS DATA: ', JSON.stringify(aliasData));
 
-        if (aliasData?.id) {
-            console.log('PROCESSING EXISTING SERIES');
-            statusCode = 200;
-            await processExistingSeries({
-                sourceMediaId,
-                episodes,
-            });
-            body = 'Indexing has been triggered';
-        } else {
-            console.log('PROCESSING NEW SERIES');
-            statusCode = 200;
-            await processNewSeries({
-                sourceMediaId
-            });
-            body = 'Indexing has been triggered';
-        }
+        statusCode = 200;
+        await processSeries({
+            sourceMediaId,
+            episodes,
+            identityId
+        });
+        body = 'Indexing has been triggered';
     } catch (error) {
         console.error('Error:', error);
         statusCode = 500;

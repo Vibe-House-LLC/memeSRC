@@ -129,6 +129,7 @@ export const getSourceMedia = /* GraphQL */ `
         userDetailsStripeCustomerInfoId
         __typename
       }
+      identityId
       pendingAlias
       createdAt
       updatedAt
@@ -148,6 +149,7 @@ export const listSourceMedias = /* GraphQL */ `
       items {
         id
         status
+        identityId
         pendingAlias
         createdAt
         updatedAt
@@ -167,6 +169,7 @@ export const getFile = /* GraphQL */ `
       sourceMedia {
         id
         status
+        identityId
         pendingAlias
         createdAt
         updatedAt

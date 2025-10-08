@@ -183,7 +183,7 @@
         },
         "memesrcUpdateMedia": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcUpdateMedia-575a736c58704c303973-build.zip"
+          "s3Key": "amplify-builds/memesrcUpdateMedia-572b3568705a31763354-build.zip"
         },
         "memesrcUpdateSubtitles": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -220,7 +220,7 @@
         },
         "memesrcc3c71449PreTokenGeneration": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcc3c71449PreTokenGeneration-58517567506853497a52-build.zip"
+          "s3Key": "amplify-builds/memesrcc3c71449PreTokenGeneration-72353567686c61797948-build.zip"
         }
       },
       "storage": {

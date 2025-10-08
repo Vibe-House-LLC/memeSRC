@@ -4,7 +4,6 @@ import {
     Box,
     Card,
     CardContent,
-    List,
     CircularProgress,
     Alert,
     Autocomplete,
@@ -18,13 +17,11 @@ import {
     CheckCircle as ApproveIcon,
     PublishedWithChanges as ReindexIcon
 } from "@mui/icons-material";
-import { Storage, API } from "aws-amplify";
-import { SourceMediaFile } from "./types";
-import { FileBrowser, FileCard } from "../../@components";
-import type { FileCardData } from "../../@components";
+import { API } from "aws-amplify";
+import { FileBrowser } from "../../@components";
 import listAliases from "./functions/list-aliases";
 import updateSourceMedia from "./functions/update-source-media";
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useMemo, type Dispatch, type SetStateAction } from "react";
 import { SnackbarContext } from "../../../../SnackbarContext";
 
 // Custom subscription that only requests non-nullable fields to avoid GraphQL errors
@@ -40,19 +37,30 @@ const onUpdateSourceMedia = /* GraphQL */ `
 `;
 
 // Placeholder component that mimics FileBrowser appearance
-const FileBrowserPlaceholder = ({ sourceMediaStatus, filePathPrefix }: { sourceMediaStatus?: string, filePathPrefix?: string }) => {
-    // Determine the message based on the state
+const FileBrowserPlaceholder = ({
+    sourceMediaStatus,
+    identityId,
+    sourceMediaId,
+    hasFiles
+}: {
+    sourceMediaStatus?: string;
+    identityId?: string | null;
+    sourceMediaId?: string | null;
+    hasFiles: boolean;
+}) => {
     let title = "File Browser";
-    let message = "No uploaded files unzipped.";
-    let subtitle = "Files will appear here once an alias is saved and files are unzipped";
-    
+    let message = "No files available for this source media.";
+    let subtitle = "Files will appear here once the upload finishes processing.";
+
     if (sourceMediaStatus && sourceMediaStatus.toLowerCase() !== 'uploaded') {
         title = "File Browser: Disabled";
         message = `File browser is disabled when source media status is "${sourceMediaStatus}".`;
         subtitle = "File browser will be available once the source media status is 'uploaded'.";
-    } else if (!filePathPrefix) {
-        message = "No uploaded files unzipped.";
-        subtitle = "Files will appear here once an alias is saved";
+    } else if (!identityId || !sourceMediaId) {
+        message = "Missing identity information for this source media.";
+        subtitle = "Ensure the upload completed successfully.";
+    } else if (!hasFiles) {
+        subtitle = "Files have not been linked to this upload yet.";
     }
 
     return (
@@ -109,33 +117,28 @@ const FileBrowserPlaceholder = ({ sourceMediaStatus, filePathPrefix }: { sourceM
 };
 
 interface AdminReviewUploadProps {
-    files: SourceMediaFile[];
     loading: boolean;
     error: string | null;
-    downloadingFiles: Set<string>;
-    extractingFiles: Set<string>;
-    setDownloadingFiles: React.Dispatch<React.SetStateAction<Set<string>>>;
-    setExtractingFiles: React.Dispatch<React.SetStateAction<Set<string>>>;
-    setError: React.Dispatch<React.SetStateAction<string | null>>;
+    setError: Dispatch<SetStateAction<string | null>>;
     sourceMediaId?: string;
     initialAlias?: string;
     initialStatus?: string;
-    filePathPrefix?: string;
+    identityId?: string | null;
+    fileStatuses?: string[];
+    hasFiles?: boolean;
     onStatusUpdate?: (status: string) => void;
 }
 
 export default function AdminReviewUpload({
-    files,
     loading,
     error,
-    downloadingFiles,
-    extractingFiles,
-    setDownloadingFiles,
-    setExtractingFiles,
     setError,
     sourceMediaId,
     initialAlias = '',
     initialStatus = '',
+    identityId = null,
+    fileStatuses: initialFileStatuses = [],
+    hasFiles: hasFilesProp = false,
     onStatusUpdate,
 }: AdminReviewUploadProps) {
     const [aliases, setAliases] = useState<string[]>([]);
@@ -143,13 +146,10 @@ export default function AdminReviewUpload({
     const [pendingAlias, setPendingAlias] = useState<string>(initialAlias);
     const [savingAlias, setSavingAlias] = useState(false);
     const [savedAlias, setSavedAlias] = useState<string>(initialAlias);
-    const [filePathPrefix, setFilePathPrefix] = useState<string>('');
-    const [fileStatuses, setFileStatuses] = useState<Record<string, string>>({});
     const [sourceMediaStatus, setSourceMediaStatus] = useState<string>(initialStatus);
     const [approvingUpload, setApprovingUpload] = useState(false);
     const [indexing, setIndexing] = useState(false);
     const [selectedEpisodes, setSelectedEpisodes] = useState<{ season: number; episode: number }[]>([]);
-    const [fileBrowserRefreshKey, setFileBrowserRefreshKey] = useState<number>(0);
     
     // Snackbar context for success messages
     const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -166,29 +166,6 @@ export default function AdminReviewUpload({
             setSourceMediaStatus(initialStatus);
         }
     }, [initialStatus]);
-
-    // Initialize file statuses when files change
-    useEffect(() => {
-        const initialStatuses: Record<string, string> = {};
-        files.forEach(file => {
-            initialStatuses[file.id] = file.status;
-        });
-        setFileStatuses(initialStatuses);
-    }, [files]);
-
-    // Set file path prefix based on alias status
-    useEffect(() => {
-        if (savedAlias?.trim()) {
-            // If savedAlias exists in the aliases list, it's an existing alias -> use srcPending
-            // If savedAlias doesn't exist in the aliases list, it's a new alias -> use src
-            const isExistingAlias = aliases.includes(savedAlias);
-            const pathPrefix = isExistingAlias ? 'protected/srcPending' : 'protected/src';
-            setFilePathPrefix(pathPrefix);
-        } else {
-            // Clear filePathPrefix if no alias is saved
-            setFilePathPrefix('');
-        }
-    }, [savedAlias, aliases]);
 
     // Load aliases on mount
     useEffect(() => {
@@ -280,27 +257,38 @@ export default function AdminReviewUpload({
     }, [sourceMediaStatus]);
 
     // Check if alias has changed from saved value
+    const normalizedPendingAlias = pendingAlias?.trim() || '';
+    const normalizedSavedAlias = savedAlias?.trim() || '';
     const hasAliasChanged = pendingAlias !== savedAlias;
-    const isAliasSaved = !!savedAlias?.trim();
-    const isNewAlias = pendingAlias?.trim() !== '' && !aliases?.includes(pendingAlias);
-    
+    const isAliasSaved = normalizedSavedAlias !== '';
+    const isNewAlias = normalizedPendingAlias !== '' && !aliases.includes(normalizedPendingAlias);
+    const aliasNameForBrowser = normalizedPendingAlias || normalizedSavedAlias;
+    const isExistingAliasForBrowser = aliasNameForBrowser !== '' && aliases.includes(aliasNameForBrowser);
+
+    const fileStatuses = useMemo(() => initialFileStatuses.filter(Boolean), [initialFileStatuses]);
+
     // Check if any file has extracting or extracted status (should disable alias field)
-    const hasExtractingOrExtractedFiles = Object.values(fileStatuses).some(status => 
+    const hasExtractingOrExtractedFiles = fileStatuses.some(status =>
         status === 'extracting' || status === 'extracted'
     );
     const isAliasDisabled = hasExtractingOrExtractedFiles;
 
     // Check if approve button should be enabled
-    const hasExtractedFiles = Object.values(fileStatuses).some(status => status?.toLowerCase?.() === 'extracted');
-    const isSourceMediaUploaded = sourceMediaStatus.toLowerCase() === 'uploaded';
-    const canApprove = isSourceMediaUploaded && hasExtractedFiles && isAliasSaved && !approvingUpload;
+    const resolvedIdentityId = identityId ?? '';
+    const hasFiles = hasFilesProp;
+    const normalizedStatus = sourceMediaStatus.toLowerCase();
+    const isSourceMediaReady = normalizedStatus === 'uploaded' || normalizedStatus === 'failed';
+    const hasSelectedEpisodes = selectedEpisodes.length > 0;
+    const canApprove = isSourceMediaReady && hasFiles && isAliasSaved && hasSelectedEpisodes && !approvingUpload;
+    const fileBrowserAvailable = Boolean(resolvedIdentityId && sourceMediaId && isSourceMediaReady && hasFiles);
 
     // Debug: Log the enabling conditions
     console.log('Approve button conditions:', {
         sourceMediaStatus,
-        isSourceMediaUploaded,
+        isSourceMediaReady,
         fileStatuses,
-        hasExtractedFiles,
+        hasFiles,
+        hasSelectedEpisodes,
         pendingAlias,
         isAliasSaved,
         approvingUpload,
@@ -331,89 +319,6 @@ export default function AdminReviewUpload({
         }
     };
 
-    const handleDownloadFile = async (fileKey: string, fileId: string) => {
-        try {
-            setDownloadingFiles(prev => new Set([...prev, fileId]));
-
-            // Get the signed URL from Amplify Storage
-            // The key contains the full S3 path, so we need to extract the actual file path
-            // Format: "protected/us-east-1:USER_ID/protected/us-east-1:OWNER_ID/UUID/filename"
-            const pathParts = fileKey.split('/');
-            console.log('File key parts:', pathParts); // Debug log
-
-            // Based on your example: "protected/us-east-1:589ad1a3.../56e331b8.../IMG_5785.zip"
-            // Index 0: "protected"
-            // Index 1: "us-east-1:589ad1a3..."
-            // Index 2: "56e331b8..."
-            // Index 3: "IMG_5785.zip"
-            const originalIdentityId = pathParts[1]; // Extract identity ID
-            const actualKey = pathParts.slice(2).join('/'); // Get the file path (UUID/filename)
-
-            console.log('Identity ID:', originalIdentityId);
-            console.log('Actual key:', actualKey);
-
-            const url = await Storage.get(actualKey, {
-                level: 'protected',
-                expires: 300, // 5 minutes
-                identityId: originalIdentityId
-            });
-
-            // Create a temporary link and trigger download
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = fileKey.split('/').pop() || fileKey; // Use filename from key
-            link.target = '_blank';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-        } catch (err) {
-            console.error('Error downloading file:', err);
-            setError(`Failed to download file: ${fileKey}`);
-        } finally {
-            setDownloadingFiles(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(fileId);
-                return newSet;
-            });
-        }
-    };
-
-    const handleExtractToStaging = async (fileKey: string, fileId: string) => {
-       setSeverity('info');
-       setMessage('Extracting to staging...');
-       setOpen(true);
-    };
-
-    const handleError = (error: any) => {
-        setSeverity('error');
-        setMessage('Error starting extraction function.');
-        setOpen(true);
-    };
-
-
-    const handleFileStatusUpdate = (fileId: string, newStatus: string) => {
-        let shouldRefresh = false;
-
-        setFileStatuses(prev => {
-            const previousStatus = prev[fileId];
-            const normalizedNewStatus = newStatus?.toLowerCase?.() || '';
-            const normalizedPreviousStatus = previousStatus?.toLowerCase?.() || '';
-
-            shouldRefresh = normalizedNewStatus === 'extracted' && normalizedPreviousStatus !== 'extracted';
-
-            return {
-                ...prev,
-                [fileId]: newStatus
-            };
-        });
-
-        if (shouldRefresh) {
-            // Refresh file browser when a file transitions into the extracted state
-            setFileBrowserRefreshKey(prev => prev + 1);
-        }
-    };
-
     const handleEpisodeSelectionChange = (episodes: { season: number; episode: number }[]) => {
         setSelectedEpisodes(episodes);
         console.log('Selected episodes updated:', episodes);
@@ -424,19 +329,13 @@ export default function AdminReviewUpload({
 
         setApprovingUpload(true);
         try {
-            // Check if alias already exists and we have episode selection
-            const isExistingAlias = aliases.includes(savedAlias);
-            
-            // Prepare the request body
+            // Prepare the request body with the selected episodes
             const requestBody: any = {
-                sourceMediaId
+                sourceMediaId,
+                episodes: selectedEpisodes
             };
-            
-            // If the alias already exists and we have selected episodes, include them
-            if (isExistingAlias && selectedEpisodes.length > 0) {
-                requestBody.episodes = selectedEpisodes;
-                console.log('Sending selected episodes to backend:', selectedEpisodes);
-            }
+
+            console.log('Sending selected episodes to backend:', selectedEpisodes);
             
             // Call the backend function to approve and start processing
             // This would typically trigger the indexing process
@@ -445,7 +344,7 @@ export default function AdminReviewUpload({
             });
             
             setSeverity('success');
-            setMessage(`Upload approved! Processing will begin shortly${isExistingAlias && selectedEpisodes.length > 0 ? ` for ${selectedEpisodes.length} selected episode${selectedEpisodes.length !== 1 ? 's' : ''}.` : '.'}`);
+            setMessage(`Upload approved! Processing will begin shortly${selectedEpisodes.length > 0 ? ` for ${selectedEpisodes.length} selected episode${selectedEpisodes.length !== 1 ? 's' : ''}.` : '.'}`);
             setOpen(true);
         } catch (err) {
             console.error('Failed to approve upload:', err);
@@ -486,7 +385,7 @@ export default function AdminReviewUpload({
                 <Box display="flex" justifyContent="center" alignItems="center" py={4}>
                     <CircularProgress />
                     <Typography variant="body1" sx={{ ml: 2 }}>
-                        Loading files...
+                        Loading details...
                     </Typography>
                 </Box>
             )}
@@ -497,7 +396,7 @@ export default function AdminReviewUpload({
                 </Alert>
             )}
 
-            {!loading && files.length > 0 && (
+            {!loading && hasFiles && (
                 <>
                     {/* Approve Upload Button */}
                     <Box sx={{ mb: 3, display: 'flex', justifyContent: 'left' }}>
@@ -517,6 +416,11 @@ export default function AdminReviewUpload({
                         >
                             {approvingUpload ? 'Approving...' : 'Approve Upload'}
                         </Button>
+                        {!hasSelectedEpisodes && isSourceMediaReady && (
+                            <Typography variant="body2" color="warning.main" sx={{ ml: 2, alignSelf: 'center' }}>
+                                Choose seasons or episodes to approve
+                            </Typography>
+                        )}
                         {showIndexButton && (
                             <Button
                                 variant="contained"
@@ -549,7 +453,7 @@ export default function AdminReviewUpload({
                                     fullWidth
                                     options={aliases}
                                     value={pendingAlias}
-                                    disabled={isAliasDisabled}
+                                    disabled={isAliasDisabled || !isSourceMediaReady}
                                     onChange={(event, newValue) => {
                                         setPendingAlias(typeof newValue === 'string' ? newValue : newValue || '');
                                     }}
@@ -586,80 +490,46 @@ export default function AdminReviewUpload({
                             </Box>
                             {!isAliasSaved && (
                                 <Alert severity="info" sx={{ mt: 2 }}>
-                                    Please save an alias to enable file extraction.
+                                    Please save an alias before approving the upload.
                                 </Alert>
                             )}
-                            {isAliasDisabled && (
+                            {(isAliasDisabled || !isSourceMediaReady) && (
                                 <Alert severity="info" sx={{ mt: 2 }}>
-                                    Alias field is disabled because some files are currently being extracted or have been extracted.
+                                    Alias field is disabled after approval has been initiated.
                                 </Alert>
                             )}
                             {pendingAlias && !isAliasDisabled && isNewAlias && (
                                 <Alert severity="warning" sx={{ mt: 2 }}>
-                                    This alias does not exist. If you proceed, this alias will be created and linked after approval.
+                                    This alias does not exist. If you proceed, this alias will be created and linked after approval and indexing..
                                 </Alert>
                             )}
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                                Uploaded Files ({files.length})
-                            </Typography>
-                            <List>
-                                {files.map((file, index) => {
-                                    const isDownloading = downloadingFiles.has(file.id);
-                                    const isExtracting = extractingFiles.has(file.id);
-                                    
-                                    // Cast file to FileCardData to include unzippedPath
-                                    const fileCardData: FileCardData = {
-                                        ...file,
-                                        unzippedPath: (file as any).unzippedPath || null
-                                    };
-
-                                    return (
-                                        <FileCard
-                                            key={file.id}
-                                            file={fileCardData}
-                                            isDownloading={isDownloading}
-                                            isExtracting={isExtracting}
-                                            isAliasSaved={isAliasSaved}
-                                            onDownload={handleDownloadFile}
-                                            onExtract={handleExtractToStaging}
-                                            onError={handleError}
-                                            onStatusUpdate={handleFileStatusUpdate}
-                                            showDivider={index < files.length - 1}
-                                        />
-                                    );
-                                })}
-                            </List>
                         </CardContent>
                     </Card>
                 </>
             )}
             <Box sx={{ my: 2 }}>
-                {/* FileBrowser automatically uses alias-based path: existing alias -> srcPending/, new alias -> src/ */}
-                {/* Currently the file browser does not allow for editing, but will once it's setup properly with extractions. */}
-                {/* Generally, this component will be very reusable and I plan to give it an "edit" flag so it can be used as a safe file browser or a browser/editor. */}
-                {filePathPrefix && isSourceMediaUploaded && hasExtractedFiles ? (
-                    <FileBrowser 
-                        pathPrefix={filePathPrefix} 
-                        id={savedAlias} 
-                        base64Columns={['subtitle_text']} 
-                        srcEditor 
-                        refreshKey={fileBrowserRefreshKey}
+                {fileBrowserAvailable ? (
+                    <FileBrowser
+                        pathPrefix={`protected/${resolvedIdentityId}`}
+                        id={sourceMediaId || ''}
+                        base64Columns={['subtitle_text']}
+                        srcEditor
+                        aliasName={aliasNameForBrowser}
+                        isExistingAlias={isExistingAliasForBrowser}
                         onEpisodeSelectionChange={handleEpisodeSelectionChange}
                     />
                 ) : (
-                    <FileBrowserPlaceholder 
-                        sourceMediaStatus={sourceMediaStatus} 
-                        filePathPrefix={filePathPrefix} 
+                    <FileBrowserPlaceholder
+                        sourceMediaStatus={sourceMediaStatus}
+                        identityId={resolvedIdentityId}
+                        sourceMediaId={sourceMediaId}
+                        hasFiles={hasFiles}
                     />
                 )}
             </Box>
 
 
-            {!loading && files.length === 0 && !error && (
+            {!loading && !hasFiles && !error && (
                 <Card>
                     <CardContent>
                         <Typography variant="body1" color="text.secondary" textAlign="center" py={4}>

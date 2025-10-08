@@ -142,6 +142,8 @@ interface FileBrowserProps {
     srcEditor?: boolean; // Optional: if true, show the src editor options
     onEpisodeSelectionChange?: (selectedEpisodes: { season: number; episode: number }[]) => void; // Optional: callback for episode selection
     refreshKey?: number; // Optional: when changed, triggers a refresh of the file list
+    aliasName?: string; // Optional: current alias selection (if any)
+    isExistingAlias?: boolean; // Optional: indicates the alias already exists in src/
 }
 
 // Custom TreeNode component
@@ -451,7 +453,21 @@ const JsonFileViewer: React.FC<{
     selectedEpisodes?: { season: number; episode: number }[];
     pathPrefix?: string;
     seriesId?: string;
-}> = ({ content, filename, onSave, srcEditor = false, selectedFile = null, onUnsavedChanges, selectedEpisodes = [], pathPrefix = '', seriesId = '' }) => {
+    aliasName?: string;
+    isExistingAlias?: boolean;
+}> = ({
+    content,
+    filename,
+    onSave,
+    srcEditor = false,
+    selectedFile = null,
+    onUnsavedChanges,
+    selectedEpisodes = [],
+    pathPrefix = '',
+    seriesId = '',
+    aliasName = '',
+    isExistingAlias: isExistingAliasProp = false
+}) => {
     const [formattedJson, setFormattedJson] = useState<string>('');
     const [editedJson, setEditedJson] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
@@ -487,10 +503,12 @@ const JsonFileViewer: React.FC<{
 
     const hasColorProperties = Object.keys(colorProperties).length > 0;
 
-    // Check if this is an existing alias (srcPending path)
+    const normalizedAlias = useMemo(() => (aliasName || seriesId || '').trim(), [aliasName, seriesId]);
+
+    // Check if this is an existing alias (explicit flag)
     const isExistingAlias = useMemo(() => {
-        return pathPrefix.includes('protected/srcPending') && seriesId.trim() !== '';
-    }, [pathPrefix, seriesId]);
+        return Boolean(isExistingAliasProp && normalizedAlias);
+    }, [isExistingAliasProp, normalizedAlias]);
 
     
 
@@ -529,12 +547,12 @@ const JsonFileViewer: React.FC<{
 
     // Function to copy existing data from protected/src
     const copyExistingData = useCallback(async () => {
-        if (!isExistingAlias || !selectedFile || !seriesId) return;
-        
+        if (!isExistingAlias || !selectedFile || !normalizedAlias) return;
+
         setIsCopyingExistingData(true);
         try {
             // Construct the path to the existing metadata in protected/src
-            const existingSrcPath = `protected/src/${seriesId}/${filename}`;
+            const existingSrcPath = `protected/src/${normalizedAlias}/${filename}`;
             
             console.log('🔄 Copying existing data from:', existingSrcPath);
             
@@ -569,14 +587,14 @@ const JsonFileViewer: React.FC<{
         } catch (error) {
             console.error('Error copying existing data:', error);
             if (error instanceof Error && error.message.includes('NoSuchKey')) {
-                setEditError(`No existing metadata found at protected/src/${seriesId}/${filename}`);
+                setEditError(`No existing metadata found at protected/src/${normalizedAlias}/${filename}`);
             } else {
                 setEditError('Failed to copy existing data');
             }
         } finally {
             setIsCopyingExistingData(false);
         }
-    }, [isExistingAlias, selectedFile, seriesId, filename, onUnsavedChanges]);
+    }, [isExistingAlias, selectedFile, normalizedAlias, filename, onUnsavedChanges]);
 
     // Color picker handlers
     const handleColorPickerOpen = useCallback((colorProperty: string, event: React.MouseEvent<HTMLElement>) => {
@@ -1553,7 +1571,17 @@ const CsvViewer: React.FC<{
     );
 };
 
-const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: providedFiles, base64Columns = [], srcEditor = false, onEpisodeSelectionChange, refreshKey }) => {
+const FileBrowser: React.FC<FileBrowserProps> = ({
+    pathPrefix,
+    id,
+    files: providedFiles,
+    base64Columns = [],
+    srcEditor = false,
+    onEpisodeSelectionChange,
+    refreshKey,
+    aliasName = '',
+    isExistingAlias = false
+}) => {
     const [files, setFiles] = useState<FileItem[]>([]);
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
     const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
@@ -1579,6 +1607,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
     const [manualSearchResults, setManualSearchResults] = useState<SpotCheckData | null>(null);
     const [loadingManualSearch, setLoadingManualSearch] = useState<boolean>(false);
     const [episodeSelectionDialogOpen, setEpisodeSelectionDialogOpen] = useState<boolean>(false);
+    const [hasPromptedEpisodeSelection, setHasPromptedEpisodeSelection] = useState<boolean>(false);
     const [selectedEpisodes, setSelectedEpisodes] = useState<{ season: number; episode: number }[]>([]);
     const [availableSeasons, setAvailableSeasons] = useState<{ [season: number]: number[] }>({});
 
@@ -1819,6 +1848,28 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
         setPendingFileSelection(null);
     };
 
+    const allEpisodes = useMemo(() => {
+        const episodes: { season: number; episode: number }[] = [];
+        const sortedSeasons = Object.keys(availableSeasons)
+            .map(seasonKey => Number(seasonKey))
+            .sort((a, b) => a - b);
+
+        sortedSeasons.forEach(seasonNumber => {
+            const episodeList = [...(availableSeasons[seasonNumber] || [])].sort((a, b) => a - b);
+            episodeList.forEach(episodeNumber => {
+                episodes.push({ season: seasonNumber, episode: episodeNumber });
+            });
+        });
+
+        return episodes;
+    }, [availableSeasons]);
+
+    useEffect(() => {
+        if (!hasPromptedEpisodeSelection && allEpisodes.length > 0 && selectedEpisodes.length > 0) {
+            setHasPromptedEpisodeSelection(true);
+        }
+    }, [allEpisodes, selectedEpisodes, hasPromptedEpisodeSelection]);
+
     // Episode selection handlers
     const handleOpenEpisodeSelection = () => {
         setEpisodeSelectionDialogOpen(true);
@@ -1872,6 +1923,19 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
         setSelectedEpisodes(newSelection);
         if (onEpisodeSelectionChange) {
             onEpisodeSelectionChange(newSelection);
+        }
+    };
+
+    const isAllSelected = selectedEpisodes.length > 0 && selectedEpisodes.length === allEpisodes.length && allEpisodes.length > 0;
+    const isPartialSelection = selectedEpisodes.length > 0 && selectedEpisodes.length < allEpisodes.length;
+
+    const handleSelectAllEpisodes = () => {
+        if (isAllSelected) {
+            setSelectedEpisodes([]);
+            onEpisodeSelectionChange?.([]);
+        } else {
+            setSelectedEpisodes(allEpisodes);
+            onEpisodeSelectionChange?.(allEpisodes);
         }
     };
 
@@ -2744,6 +2808,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     selectedEpisodes={selectedEpisodes}
                     pathPrefix={pathPrefix}
                     seriesId={id}
+                    aliasName={aliasName}
+                    isExistingAlias={isExistingAlias}
                 />;
             case 'csv':
                 return <CsvViewer 
@@ -3240,6 +3306,21 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ pathPrefix, id, files: provid
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                         Choose which episodes you want to include in the approval process. Season-level checkboxes will select/deselect all episodes in that season.
                     </Typography>
+
+                    {allEpisodes.length > 0 && (
+                        <FormGroup sx={{ mb: 2 }}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={isAllSelected}
+                                        indeterminate={isPartialSelection}
+                                        onChange={handleSelectAllEpisodes}
+                                    />
+                                }
+                                label="Select all seasons and episodes"
+                            />
+                        </FormGroup>
+                    )}
                     
                     {Object.keys(availableSeasons).length === 0 ? (
                         <Box sx={{ textAlign: 'center', py: 4 }}>
