@@ -122,6 +122,12 @@ const extractZipToS3 = async (sourceBucket, sourceKey, destinationBucket, destin
         
         console.log(`Zip file opened successfully. Entry count: ${zipfile.entryCount}`);
         
+        // Delete the zip file from disk now that it's open - yauzl keeps a file descriptor
+        // This frees up ephemeral storage space for extraction
+        console.log(`Deleting zip file from disk to free up space: ${zipFilePath}`);
+        fs.unlinkSync(zipFilePath);
+        console.log(`Freed up ${downloadedSize} bytes of ephemeral storage`);
+        
         const uploadedFiles = [];
         const skippedFiles = [];
         let processedEntries = 0;

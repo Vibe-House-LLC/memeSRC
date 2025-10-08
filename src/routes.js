@@ -62,6 +62,7 @@ const UserListPage = lazy(() => import('./pages/UserPage-Refactor'));
 const SubtitleViewerPage = lazy(() => import('./pages/SubtitleViewerPage'));
 const CollageAnimatedIconDemoPage = lazy(() => import('./pages/CollageAnimatedIconDemoPage'));
 const ServerPage = lazy(() => import('./pages/ServerPage'));
+const DesktopProcessingPage = lazy(() => import('./pages/DesktopProcessingPage'));
 const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
 const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
 const AdminFileReview = lazy(() => import('./pages/AdminFileReview'));
@@ -118,6 +119,7 @@ export default function Router() {
         { path: '/pricing', element: <SiteWideMaintenance><PricingPage /></SiteWideMaintenance> },
         { path: '/:seriesId', element: <SiteWideMaintenance><DynamicRouteHandler /></SiteWideMaintenance> },
         { path: '/server', element: <SiteWideMaintenance><ServerPage /></SiteWideMaintenance> },
+        { path: '/desktop/process', element: <SiteWideMaintenance><DesktopProcessingPage /></SiteWideMaintenance> },
         { path: '/facebook', element: <SiteWideMaintenance><FacebookAuthDemo /></SiteWideMaintenance> },
         { path: '/demo/collage-animated-icon', element: <SiteWideMaintenance><CollageAnimatedIconDemoPage /></SiteWideMaintenance> },
         { path: '/demo/rainbow-icon', element: <SiteWideMaintenance><CollageAnimatedIconDemoPage /></SiteWideMaintenance> },
