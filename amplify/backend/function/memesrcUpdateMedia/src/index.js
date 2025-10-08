@@ -155,6 +155,7 @@ const getSourceMediaQuery = `
         getSourceMedia(id: $id) {
             id
             pendingAlias
+            identityId
             series {
                 id
                 tvdbid
