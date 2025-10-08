@@ -1607,6 +1607,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
     const [manualSearchResults, setManualSearchResults] = useState<SpotCheckData | null>(null);
     const [loadingManualSearch, setLoadingManualSearch] = useState<boolean>(false);
     const [episodeSelectionDialogOpen, setEpisodeSelectionDialogOpen] = useState<boolean>(false);
+    const [hasPromptedEpisodeSelection, setHasPromptedEpisodeSelection] = useState<boolean>(false);
     const [selectedEpisodes, setSelectedEpisodes] = useState<{ season: number; episode: number }[]>([]);
     const [availableSeasons, setAvailableSeasons] = useState<{ [season: number]: number[] }>({});
 
@@ -1847,6 +1848,28 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
         setPendingFileSelection(null);
     };
 
+    const allEpisodes = useMemo(() => {
+        const episodes: { season: number; episode: number }[] = [];
+        const sortedSeasons = Object.keys(availableSeasons)
+            .map(seasonKey => Number(seasonKey))
+            .sort((a, b) => a - b);
+
+        sortedSeasons.forEach(seasonNumber => {
+            const episodeList = [...(availableSeasons[seasonNumber] || [])].sort((a, b) => a - b);
+            episodeList.forEach(episodeNumber => {
+                episodes.push({ season: seasonNumber, episode: episodeNumber });
+            });
+        });
+
+        return episodes;
+    }, [availableSeasons]);
+
+    useEffect(() => {
+        if (!hasPromptedEpisodeSelection && allEpisodes.length > 0 && selectedEpisodes.length > 0) {
+            setHasPromptedEpisodeSelection(true);
+        }
+    }, [allEpisodes, selectedEpisodes, hasPromptedEpisodeSelection]);
+
     // Episode selection handlers
     const handleOpenEpisodeSelection = () => {
         setEpisodeSelectionDialogOpen(true);
@@ -1900,6 +1923,19 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
         setSelectedEpisodes(newSelection);
         if (onEpisodeSelectionChange) {
             onEpisodeSelectionChange(newSelection);
+        }
+    };
+
+    const isAllSelected = selectedEpisodes.length > 0 && selectedEpisodes.length === allEpisodes.length && allEpisodes.length > 0;
+    const isPartialSelection = selectedEpisodes.length > 0 && selectedEpisodes.length < allEpisodes.length;
+
+    const handleSelectAllEpisodes = () => {
+        if (isAllSelected) {
+            setSelectedEpisodes([]);
+            onEpisodeSelectionChange?.([]);
+        } else {
+            setSelectedEpisodes(allEpisodes);
+            onEpisodeSelectionChange?.(allEpisodes);
         }
     };
 
@@ -3270,6 +3306,21 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                         Choose which episodes you want to include in the approval process. Season-level checkboxes will select/deselect all episodes in that season.
                     </Typography>
+
+                    {allEpisodes.length > 0 && (
+                        <FormGroup sx={{ mb: 2 }}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={isAllSelected}
+                                        indeterminate={isPartialSelection}
+                                        onChange={handleSelectAllEpisodes}
+                                    />
+                                }
+                                label="Select all seasons and episodes"
+                            />
+                        </FormGroup>
+                    )}
                     
                     {Object.keys(availableSeasons).length === 0 ? (
                         <Box sx={{ textAlign: 'center', py: 4 }}>

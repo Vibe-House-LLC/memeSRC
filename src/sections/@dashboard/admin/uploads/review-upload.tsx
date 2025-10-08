@@ -276,16 +276,19 @@ export default function AdminReviewUpload({
     // Check if approve button should be enabled
     const resolvedIdentityId = identityId ?? '';
     const hasFiles = hasFilesProp;
-    const isSourceMediaUploaded = sourceMediaStatus.toLowerCase() === 'uploaded';
-    const canApprove = isSourceMediaUploaded && hasFiles && isAliasSaved && !approvingUpload;
-    const fileBrowserAvailable = Boolean(resolvedIdentityId && sourceMediaId && isSourceMediaUploaded && hasFiles);
+    const normalizedStatus = sourceMediaStatus.toLowerCase();
+    const isSourceMediaReady = normalizedStatus === 'uploaded' || normalizedStatus === 'failed';
+    const hasSelectedEpisodes = selectedEpisodes.length > 0;
+    const canApprove = isSourceMediaReady && hasFiles && isAliasSaved && hasSelectedEpisodes && !approvingUpload;
+    const fileBrowserAvailable = Boolean(resolvedIdentityId && sourceMediaId && isSourceMediaReady && hasFiles);
 
     // Debug: Log the enabling conditions
     console.log('Approve button conditions:', {
         sourceMediaStatus,
-        isSourceMediaUploaded,
+        isSourceMediaReady,
         fileStatuses,
         hasFiles,
+        hasSelectedEpisodes,
         pendingAlias,
         isAliasSaved,
         approvingUpload,
@@ -326,19 +329,13 @@ export default function AdminReviewUpload({
 
         setApprovingUpload(true);
         try {
-            // Check if alias already exists and we have episode selection
-            const isExistingAlias = aliases.includes(savedAlias);
-            
-            // Prepare the request body
+            // Prepare the request body with the selected episodes
             const requestBody: any = {
-                sourceMediaId
+                sourceMediaId,
+                episodes: selectedEpisodes
             };
-            
-            // If the alias already exists and we have selected episodes, include them
-            if (isExistingAlias && selectedEpisodes.length > 0) {
-                requestBody.episodes = selectedEpisodes;
-                console.log('Sending selected episodes to backend:', selectedEpisodes);
-            }
+
+            console.log('Sending selected episodes to backend:', selectedEpisodes);
             
             // Call the backend function to approve and start processing
             // This would typically trigger the indexing process
@@ -347,7 +344,7 @@ export default function AdminReviewUpload({
             });
             
             setSeverity('success');
-            setMessage(`Upload approved! Processing will begin shortly${isExistingAlias && selectedEpisodes.length > 0 ? ` for ${selectedEpisodes.length} selected episode${selectedEpisodes.length !== 1 ? 's' : ''}.` : '.'}`);
+            setMessage(`Upload approved! Processing will begin shortly${selectedEpisodes.length > 0 ? ` for ${selectedEpisodes.length} selected episode${selectedEpisodes.length !== 1 ? 's' : ''}.` : '.'}`);
             setOpen(true);
         } catch (err) {
             console.error('Failed to approve upload:', err);
@@ -419,6 +416,11 @@ export default function AdminReviewUpload({
                         >
                             {approvingUpload ? 'Approving...' : 'Approve Upload'}
                         </Button>
+                        {!hasSelectedEpisodes && isSourceMediaReady && (
+                            <Typography variant="body2" color="warning.main" sx={{ ml: 2, alignSelf: 'center' }}>
+                                Choose seasons or episodes to approve
+                            </Typography>
+                        )}
                         {showIndexButton && (
                             <Button
                                 variant="contained"
