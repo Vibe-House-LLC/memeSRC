@@ -527,6 +527,14 @@ const moveEpisodeFilesFromPendingToSrc = async (alias, episodes, path) => {
 
         const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
 
+        // copy 00_metadata.json
+        const copyParams = {
+            Bucket: bucketName,
+            CopySource: `${bucketName}/${path}/00_metadata.json`,
+            Key: `protected/src/${alias}/00_metadata.json`
+        };
+        await s3.copyObject(copyParams).promise();
+
         // Process each episode
         for (const episode of episodes) {
             const { season, episode: episodeNumber } = episode;
