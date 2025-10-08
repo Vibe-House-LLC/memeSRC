@@ -247,7 +247,6 @@ export default function GuestAuth(props) {
         }
         setUser(localStorageUser)
       } else {
-        setUser(false)
         setDefaultShow('_universal')
       }
 

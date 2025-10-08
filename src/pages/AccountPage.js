@@ -34,6 +34,7 @@ import { fetchProfilePhoto as fetchProfilePhotoUtil } from '../utils/profilePhot
 
 const AccountPage = () => {
   const userDetails = useContext(UserContext);
+  const authUser = userDetails?.user;
   const { openSubscriptionDialog } = useSubscribeDialog();
   const [invoices, setInvoices] = useState([]);
   const [hasMore, setHasMore] = useState(false);
@@ -222,11 +223,27 @@ const AccountPage = () => {
       });
   };
 
-  if (!userDetails?.user?.userDetails) {
+  if (authUser === null) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'common.black',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!authUser || authUser === false || authUser?.username === false || !authUser?.userDetails) {
     return <Navigate to="/login" replace />;
   }
 
-  const accountDetails = userDetails.user.userDetails;
+  const accountDetails = authUser.userDetails;
   const accountEmail = accountDetails.email || 'N/A';
   const accountUsername = accountDetails.username || accountEmail;
   const isPro = accountDetails.magicSubscription === 'true';
