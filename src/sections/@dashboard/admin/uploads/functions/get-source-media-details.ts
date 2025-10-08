@@ -5,6 +5,7 @@ const getSourceMediaDetailsQuery = /* GraphQL */ `
   query GetSourceMedia($id: ID!) {
     getSourceMedia(id: $id) {
       id
+      identityId
       series {
         id
         tvdbid

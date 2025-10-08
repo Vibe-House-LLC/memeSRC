@@ -88,6 +88,7 @@ export interface ModelAliasConnection {
 
 export interface DetailedSourceMedia {
   id: string;
+  identityId: string | null;
   series: DetailedSeries;
   files: ModelSourceMediaFilesConnection;
   status: string;

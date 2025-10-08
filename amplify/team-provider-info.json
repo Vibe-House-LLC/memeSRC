@@ -220,7 +220,7 @@
         },
         "memesrcc3c71449PreTokenGeneration": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcc3c71449PreTokenGeneration-58517567506853497a52-build.zip"
+          "s3Key": "amplify-builds/memesrcc3c71449PreTokenGeneration-72353567686c61797948-build.zip"
         }
       },
       "storage": {
