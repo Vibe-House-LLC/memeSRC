@@ -453,7 +453,7 @@ export default function AdminReviewUpload({
                                     fullWidth
                                     options={aliases}
                                     value={pendingAlias}
-                                    disabled={isAliasDisabled}
+                                    disabled={isAliasDisabled || !isSourceMediaReady}
                                     onChange={(event, newValue) => {
                                         setPendingAlias(typeof newValue === 'string' ? newValue : newValue || '');
                                     }}
@@ -493,14 +493,14 @@ export default function AdminReviewUpload({
                                     Please save an alias before approving the upload.
                                 </Alert>
                             )}
-                            {isAliasDisabled && (
+                            {(isAliasDisabled || !isSourceMediaReady) && (
                                 <Alert severity="info" sx={{ mt: 2 }}>
-                                    Alias field is disabled while files are processing.
+                                    Alias field is disabled after approval has been initiated.
                                 </Alert>
                             )}
                             {pendingAlias && !isAliasDisabled && isNewAlias && (
                                 <Alert severity="warning" sx={{ mt: 2 }}>
-                                    This alias does not exist. If you proceed, this alias will be created and linked after approval.
+                                    This alias does not exist. If you proceed, this alias will be created and linked after approval and indexing..
                                 </Alert>
                             )}
                         </CardContent>
