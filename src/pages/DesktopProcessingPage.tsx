@@ -176,6 +176,84 @@ const summarizeStatusData = (statusData: unknown): ProcessingStatusSummary => {
   return summary;
 };
 
+const deriveProcessingProgressFromSummary = (
+  summary?: ProcessingStatusSummary | null
+): number | undefined => {
+  if (!summary || summary.total <= 0) {
+    return undefined;
+  }
+  const weightedDone = summary.done + summary.indexing * 0.5;
+  const normalizedRatio = Math.max(0, Math.min(1, weightedDone / summary.total));
+  return Math.round(normalizedRatio * 100);
+};
+
+const isProcessingSummaryComplete = (summary?: ProcessingStatusSummary | null): boolean => {
+  return Boolean(summary && summary.total > 0 && summary.done >= summary.total);
+};
+
+const isProcessingSummaryInProgress = (summary?: ProcessingStatusSummary | null): boolean => {
+  return Boolean(summary && summary.total > 0 && summary.done < summary.total);
+};
+
+const PROCESSABLE_STATUS_SET = new Set<SubmissionStatus>(['created', 'processing', 'processed']);
+
+interface NormalizedSubmissionResult {
+  submission: Submission;
+  statusChanged: boolean;
+  progressChanged: boolean;
+}
+
+const normalizeSubmissionFromSummary = (submission: Submission): NormalizedSubmissionResult => {
+  const summary = submission.statusSummary ?? null;
+  let nextStatus = submission.status;
+  let nextProcessingProgress = submission.processingProgress;
+  let statusChanged = false;
+  let progressChanged = false;
+
+  const derivedProgress = deriveProcessingProgressFromSummary(summary);
+
+  if (typeof derivedProgress === 'number' && derivedProgress !== nextProcessingProgress) {
+    nextProcessingProgress = derivedProgress;
+    progressChanged = true;
+  }
+
+  if (PROCESSABLE_STATUS_SET.has(nextStatus)) {
+    if (isProcessingSummaryComplete(summary)) {
+      if (nextStatus !== 'processed') {
+        nextStatus = 'processed';
+        nextProcessingProgress = 100;
+        statusChanged = true;
+      }
+    } else if (isProcessingSummaryInProgress(summary)) {
+      if (nextStatus !== 'processing') {
+        nextStatus = 'processing';
+        statusChanged = true;
+      }
+    }
+  }
+
+  if (!statusChanged && !progressChanged) {
+    return {
+      submission,
+      statusChanged: false,
+      progressChanged: false,
+    };
+  }
+
+  const normalizedSubmission: Submission = {
+    ...submission,
+    status: nextStatus,
+    processingProgress: nextProcessingProgress,
+    ...(statusChanged ? { updatedAt: new Date().toISOString() } : {}),
+  };
+
+  return {
+    submission: normalizedSubmission,
+    statusChanged,
+    progressChanged,
+  };
+};
+
 const ensureResumeState = (input: UploadResumeState | null, processingId: string): UploadResumeState => {
   const normalizedCompleted = Array.from(new Set(input?.completedFiles ?? []));
   return {
@@ -397,16 +475,25 @@ const DesktopProcessingPage = () => {
         }
       }
 
-      loadedSubmissions.sort((a, b) => 
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      const normalizedResults = loadedSubmissions.map(normalizeSubmissionFromSummary);
+      normalizedResults.forEach(({ submission, statusChanged }) => {
+        if (statusChanged) {
+          saveSubmission(submission);
+        }
+      });
+
+      const normalizedSubmissions = normalizedResults.map(({ submission }) => submission);
+      normalizedSubmissions.sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
-      setSubmissions(loadedSubmissions);
+
+      setSubmissions(normalizedSubmissions);
     } catch (error) {
       console.error('Failed to load submissions', error);
     } finally {
       setLoadingSubmissions(false);
     }
-  }, [isElectron, loadSubmission]);
+  }, [isElectron, loadSubmission, saveSubmission]);
 
   const loadSeries = useCallback(async () => {
     setSeriesLoading(true);
@@ -1159,8 +1246,43 @@ const DesktopProcessingPage = () => {
     }
   };
 
+  const isSubmissionProcessingIncomplete = (submission: Submission) => {
+    if (isProcessingSummaryInProgress(submission.statusSummary)) {
+      return true;
+    }
+    return typeof submission.processingProgress === 'number' && submission.processingProgress < 100;
+  };
+
   const canStartProcessing = (submission: Submission) => {
-    return submission.status === 'created' && !isProcessing;
+    if (isProcessing) {
+      return false;
+    }
+    if (submission.status === 'created') {
+      return true;
+    }
+    if (submission.status === 'processing') {
+      return isSubmissionProcessingIncomplete(submission);
+    }
+    if (submission.status === 'error') {
+      return true;
+    }
+    if (submission.status === 'processed' && isSubmissionProcessingIncomplete(submission)) {
+      return true;
+    }
+    return false;
+  };
+
+  const getProcessingButtonLabel = (submission: Submission): string => {
+    if (submission.status === 'processing' && isSubmissionProcessingIncomplete(submission)) {
+      return 'Resume Processing';
+    }
+    if (submission.status === 'error') {
+      return 'Retry Processing';
+    }
+    if (submission.status === 'processed' && isSubmissionProcessingIncomplete(submission)) {
+      return 'Resume Processing';
+    }
+    return 'Start Processing';
   };
 
   const canStartUpload = (submission: Submission) => {
@@ -1313,7 +1435,7 @@ const DesktopProcessingPage = () => {
                               onClick={() => handleStartProcessing(submission)}
                               loading={isProcessing && selectedSubmission?.id === submission.id}
                             >
-                              Start Processing
+                              {getProcessingButtonLabel(submission)}
                             </LoadingButton>
                           )}
                           {canStartUpload(submission) && (
