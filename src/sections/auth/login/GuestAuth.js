@@ -14,7 +14,7 @@ GuestAuth.propTypes = {
 }
 
 export default function GuestAuth(props) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => readJSON('memeSRCUserDetails') || null);
   const [shows, setShows] = useState(() => readJSON('memeSRCShows') || []);
   const [defaultShow, setDefaultShow] = useState();
   const [showFeed, setShowFeed] = useState(() => {
@@ -32,6 +32,7 @@ export default function GuestAuth(props) {
   const userRef = useRef(null);
   const paymentRefreshTriggeredRef = useRef(false);
   const forceTokenRefreshRef = useRef(async () => {});
+  const hasInitializedAuthRef = useRef(false);
 
   useEffect(() => {
     profilePhotoRef.current = user?.profilePhoto ?? null;
@@ -228,128 +229,119 @@ export default function GuestAuth(props) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (location.pathname !== 'login') {
-      // If we already have a user in state, don't re-fetch on every navigation
-      if (user && user.username) {
-        return;
-      }
-
-      const localStorageUser = readJSON('memeSRCUserDetails')
-      const localStorageShows = readJSON('memeSRCShows')
-      const localStorageDefaultShow = safeGetItem('memeSRCDefaultIndex')
-
-      // console.log(localStorageUser)
-
-      if (localStorageUser) {
-        if (localStorageShows) {
-          // console.log(localStorageShows?.some(show => show.isFavorite))
-          setDefaultShow(localStorageShows?.some(show => show.isFavorite) ? localStorageDefaultShow || '_universal' : '_universal')
-        }
-        setUser(localStorageUser)
-      } else {
-        setDefaultShow('_universal')
-      }
-
-      if (localStorageShows) {
-        setShows(localStorageShows)
-      }
-
-      // Set up the user context
-      // console.log(user)
-      Auth.currentAuthenticatedUser().then((x) => {
-        console.log(x)
-        // All details that were coming from the below api should now be in x?.signInUserSession.idToken.payload
-        const tokenPayload = x?.signInUserSession?.idToken?.payload || x?.signInUserSession?.accessToken?.payload || {};
-        const favoritesRaw = tokenPayload?.favorites;
-
-        let favoriteIds = [];
-        if (Array.isArray(favoritesRaw)) {
-          favoriteIds = favoritesRaw;
-        } else if (typeof favoritesRaw === 'string') {
-          try {
-            favoriteIds = JSON.parse(favoritesRaw) || [];
-          } catch (error) {
-            console.log('Failed to parse favorites from token payload:', error);
-            favoriteIds = [];
-          }
-        }
-
-        const parseUserNotifications = (notifications) => {
-          if (typeof notifications !== 'string') {
-            return notifications;
-          }
-
-          try {
-            return JSON.parse(notifications);
-          } catch (error) {
-            console.log('Failed to parse user notifications from token payload:', error);
-            return notifications;
-          }
-        };
-
-        const buildUserState = (profilePhoto) => {
-          const userDetailsFromToken = {
-            ...tokenPayload,
-            ...(tokenPayload?.userNotifications && {
-              userNotifications: parseUserNotifications(tokenPayload.userNotifications),
-            }),
-          };
-
-          return {
-            ...x,
-            ...tokenPayload,
-            userDetails: userDetailsFromToken,
-            profilePhoto,
-          };
-        };
-
-        getShowsWithFavorites(favoriteIds).then(loadedShows => {
-          if (!loadedShows?.some(show => show.isFavorite)) {
-            setDefaultShow('_universal')
-          }
-
-          // Fetch profile photo from S3 and store in context
-          fetchProfilePhoto().then(profilePhotoUrl => {
-            const userWithPhoto = buildUserState(profilePhotoUrl);
-
-            profilePhotoRef.current = profilePhotoUrl;
-            userRef.current = userWithPhoto;
-            setUser(userWithPhoto);
-            writeJSON('memeSRCUserDetails', userWithPhoto);
-          }).catch(error => {
-            console.log('Error fetching profile photo:', error);
-            profilePhotoRef.current = null;
-            const userWithoutPhoto = buildUserState(undefined);
-            userRef.current = userWithoutPhoto;
-            setUser(userWithoutPhoto);
-            writeJSON('memeSRCUserDetails', userWithoutPhoto);
-          });
-
-          writeJSON('memeSRCShows', loadedShows)
-          setShows(loadedShows)
-          // console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
-          // Amplify.configure({
-          //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
-          // });
-        }).catch(error => {
-          console.log(error)
-        })
-      }).catch(() => {
-        getShowsWithFavorites().then(loadedShows => {
-          if (!shows?.some(show => show.isFavorite)) {
-            setDefaultShow('_universal')
-          }
-          setUser(false)  // indicate the context is ready but user is not auth'd
-          safeRemoveItem('memeSRCUserInfo')
-          writeJSON('memeSRCShows', loadedShows)
-          setShows(loadedShows)
-          setDefaultShow('_universal')
-        }).catch(error => {
-          console.log(error)
-        })
-      });
+    if (location.pathname === '/login') {
+      hasInitializedAuthRef.current = false;
+      return;
     }
-  }, [location.pathname])
+
+    if (hasInitializedAuthRef.current) {
+      return;
+    }
+    hasInitializedAuthRef.current = true;
+
+    const localStorageUser = readJSON('memeSRCUserDetails');
+    const localStorageShows = readJSON('memeSRCShows');
+    const localStorageDefaultShow = safeGetItem('memeSRCDefaultIndex');
+
+    if (!user && localStorageUser) {
+      setUser(localStorageUser);
+    } else if (!localStorageUser) {
+      setDefaultShow('_universal');
+    }
+
+    if (localStorageShows) {
+      setShows(localStorageShows);
+      const hasFavorites = localStorageShows.some((show) => show.isFavorite);
+      setDefaultShow(hasFavorites ? localStorageDefaultShow || '_universal' : '_universal');
+    }
+
+    Auth.currentAuthenticatedUser().then((x) => {
+      console.log(x)
+      const tokenPayload = x?.signInUserSession?.idToken?.payload || x?.signInUserSession?.accessToken?.payload || {};
+      const favoritesRaw = tokenPayload?.favorites;
+
+      let favoriteIds = [];
+      if (Array.isArray(favoritesRaw)) {
+        favoriteIds = favoritesRaw;
+      } else if (typeof favoritesRaw === 'string') {
+        try {
+          favoriteIds = JSON.parse(favoritesRaw) || [];
+        } catch (error) {
+          console.log('Failed to parse favorites from token payload:', error);
+          favoriteIds = [];
+        }
+      }
+
+      const parseUserNotifications = (notifications) => {
+        if (typeof notifications !== 'string') {
+          return notifications;
+        }
+
+        try {
+          return JSON.parse(notifications);
+        } catch (error) {
+          console.log('Failed to parse user notifications from token payload:', error);
+          return notifications;
+        }
+      };
+
+      const buildUserState = (profilePhoto) => {
+        const userDetailsFromToken = {
+          ...tokenPayload,
+          ...(tokenPayload?.userNotifications && {
+            userNotifications: parseUserNotifications(tokenPayload.userNotifications),
+          }),
+        };
+
+        return {
+          ...x,
+          ...tokenPayload,
+          userDetails: userDetailsFromToken,
+          profilePhoto,
+        };
+      };
+
+      getShowsWithFavorites(favoriteIds).then(loadedShows => {
+        if (!loadedShows?.some(show => show.isFavorite)) {
+          setDefaultShow('_universal')
+        }
+
+        fetchProfilePhoto().then(profilePhotoUrl => {
+          const userWithPhoto = buildUserState(profilePhotoUrl);
+
+          profilePhotoRef.current = profilePhotoUrl;
+          userRef.current = userWithPhoto;
+          setUser(userWithPhoto);
+          writeJSON('memeSRCUserDetails', userWithPhoto);
+        }).catch(error => {
+          console.log('Error fetching profile photo:', error);
+          profilePhotoRef.current = null;
+          const userWithoutPhoto = buildUserState(undefined);
+          userRef.current = userWithoutPhoto;
+          setUser(userWithoutPhoto);
+          writeJSON('memeSRCUserDetails', userWithoutPhoto);
+        });
+
+        writeJSON('memeSRCShows', loadedShows)
+        setShows(loadedShows)
+      }).catch(error => {
+        console.log(error)
+      })
+    }).catch(() => {
+      getShowsWithFavorites().then(loadedShows => {
+        if (!shows?.some(show => show.isFavorite)) {
+          setDefaultShow('_universal')
+        }
+        setUser(false)  // indicate the context is ready but user is not auth'd
+        safeRemoveItem('memeSRCUserInfo')
+        writeJSON('memeSRCShows', loadedShows)
+        setShows(loadedShows)
+        setDefaultShow('_universal')
+      }).catch(error => {
+        console.log(error)
+      })
+    });
+  }, [location.pathname, user])
 
   useEffect(() => {
     safeSetItem('memeSRCShowFeed', showFeed ? 'true' : 'false');
