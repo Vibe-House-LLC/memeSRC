@@ -1,5 +1,27 @@
 // component
-import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections, NewReleases } from '@mui/icons-material';
+import { 
+  Article, 
+  Ballot, 
+  Edit, 
+  Favorite, 
+  MapsUgc, 
+  PhotoLibrary, 
+  QuestionAnswer, 
+  Search, 
+  Settings, 
+  Shield, 
+  Star, 
+  SupportAgent, 
+  Upload, 
+  Collections, 
+  NewReleases,
+  Dashboard,
+  Movie,
+  Description,
+  Group,
+  Home,
+  ManageAccounts,
+} from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -134,7 +156,7 @@ const navConfig = [
         title: 'dashboard',
         path: '/dashboard/app',
         externalLink: false,
-        icon: icon('ic_analytics'),
+        icon: <Dashboard />,
       },
       {
         title: 'Usage Events',
@@ -154,53 +176,47 @@ const navConfig = [
         externalLink: false,
         icon: <SupportAgent />,
       },
-      // {
-      //   title: 'Source Media',
-      //   path: '/dashboard/sourcemedia',
-      //   externalLink: false,
-      //   icon: icon('ic_analytics'),
-      // },
       {
         title: 'Source Media',
         path: '/dashboard/sourcemedia',
         externalLink: false,
-        icon: icon('ic_analytics'),
+        icon: <Movie />,
       },
       {
         title: 'editor',
         path: '/editor/projects',
         externalLink: false,
-        icon: icon('ic_file'),
+        icon: <Edit />,
       },
       {
         title: 'Content Manager',
         path: '/dashboard/series',
         externalLink: false,
-        icon: icon('ic_booking')
+        icon: <Collections />
       },
       {
         title: 'Alias Management',
         path: '/dashboard/aliasmanagement',
         externalLink: false,
-        icon: icon('ic_booking')
+        icon: <ManageAccounts />
       },
       {
         title: 'metadata',
         path: '/dashboard/metadata',
         externalLink: false,
-        icon: icon('ic_booking')
+        icon: <Description />
       },
       {
         title: 'user',
         path: '/dashboard/user',
         externalLink: false,
-        icon: icon('ic_user'),
+        icon: <Group />,
       },
       {
         title: 'homepage sections',
         path: '/dashboard/homepagesections',
         externalLink: false,
-        icon: icon('ic_file')
+        icon: <Home />
       },
     ]
   },

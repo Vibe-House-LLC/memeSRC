@@ -69,3 +69,15 @@
     src: url('./fonts/zuume.ttf') format('truetype');
     font-display: swap;
 }
+
+/* Desktop App - Solid background and prevent transparency */
+body, #root {
+    background-color: #000000;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+body {
+    overflow-x: hidden;
+}
