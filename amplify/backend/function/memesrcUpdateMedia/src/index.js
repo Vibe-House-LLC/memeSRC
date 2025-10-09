@@ -1354,12 +1354,32 @@ const processSeries = async (data) => {
         });
         console.log('UPDATE SOURCE MEDIA TO FAILED: ', JSON.stringify(updateSourceMediaToFailed));
 
+        // Populate any missing context so failure notifications have useful data.
+        if (!alias || !seriesData || !metadata || !userData) {
+            try {
+                const fallbackSourceMedia = await getSourceMedia(sourceMediaId);
+                seriesData = seriesData || fallbackSourceMedia?.series;
+                userData = userData || fallbackSourceMedia?.user;
+                alias = alias || fallbackSourceMedia?.pendingAlias;
+            } catch (fallbackSourceError) {
+                console.error('Failed to fetch source media for failure notification:', fallbackSourceError);
+            }
+            if (!metadata && alias) {
+                try {
+                    metadata = await getSeriesMetadata(false, alias, path);
+                } catch (fallbackMetadataError) {
+                    console.error('Failed to fetch series metadata for failure notification:', fallbackMetadataError);
+                }
+            }
+        }
+        const failureSeriesTitle = metadata?.title || seriesData?.name || alias || 'Unknown Series';
+
         await sendUpdateEmailNotification({
             emailAddresses,
             type: 'failure',
             sourceMediaId,
-            alias,
-            seriesTitle: metadata?.title || seriesData?.name,
+            alias: alias || 'unknown-alias',
+            seriesTitle: failureSeriesTitle,
             episodes,
             error
         });
