@@ -10,14 +10,22 @@ import {
     TextField,
     Grid,
     Paper,
-    Button
+    Button,
+    LinearProgress,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    FormControlLabel,
+    Checkbox,
+    Stack
 } from "@mui/material";
 import {
     Save as SaveIcon,
     CheckCircle as ApproveIcon,
     PublishedWithChanges as ReindexIcon
 } from "@mui/icons-material";
-import { API } from "aws-amplify";
+import { API, Auth } from "aws-amplify";
 import { FileBrowser } from "../../@components";
 import listAliases from "./functions/list-aliases";
 import updateSourceMedia from "./functions/update-source-media";
@@ -150,6 +158,9 @@ export default function AdminReviewUpload({
     const [approvingUpload, setApprovingUpload] = useState(false);
     const [indexing, setIndexing] = useState(false);
     const [selectedEpisodes, setSelectedEpisodes] = useState<{ season: number; episode: number }[]>([]);
+    const [openApproveDialog, setOpenApproveDialog] = useState(false);
+    const [useEmailNotifications, setUseEmailNotifications] = useState(false);
+    const [emailAddresses, setEmailAddresses] = useState<string[]>([]);
     
     // Snackbar context for success messages
     const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -256,6 +267,29 @@ export default function AdminReviewUpload({
         console.log('sourceMediaStatus state changed to:', sourceMediaStatus);
     }, [sourceMediaStatus]);
 
+    useEffect(() => {
+        let isMounted = true;
+
+        Auth.currentUserInfo()
+            .then((user) => {
+                if (!isMounted) {
+                    return;
+                }
+
+                const userEmail = user?.attributes?.email;
+                if (userEmail) {
+                    setEmailAddresses([userEmail]);
+                }
+            })
+            .catch((authError) => {
+                console.error('Failed to load current user email:', authError);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
     // Check if alias has changed from saved value
     const normalizedPendingAlias = pendingAlias?.trim() || '';
     const normalizedSavedAlias = savedAlias?.trim() || '';
@@ -281,6 +315,7 @@ export default function AdminReviewUpload({
     const hasSelectedEpisodes = selectedEpisodes.length > 0;
     const canApprove = isSourceMediaReady && hasFiles && isAliasSaved && hasSelectedEpisodes && !approvingUpload;
     const fileBrowserAvailable = Boolean(resolvedIdentityId && sourceMediaId && isSourceMediaReady && hasFiles);
+    const isProcessingState = ['indexing', 'pending', 'processing'].includes(normalizedStatus);
 
     // Debug: Log the enabling conditions
     console.log('Approve button conditions:', {
@@ -319,21 +354,47 @@ export default function AdminReviewUpload({
         }
     };
 
+    const handleOpenApproveDialog = () => {
+        if (!canApprove) {
+            return;
+        }
+        setOpenApproveDialog(true);
+    };
+
+    const handleCancelApproveDialog = () => {
+        setOpenApproveDialog(false);
+        setUseEmailNotifications(false);
+    };
+
+    const handleConfirmApprove = async () => {
+        const emailsToSend = useEmailNotifications && emailAddresses.length > 0 ? emailAddresses : [];
+        await handleApproveUpload(emailsToSend);
+    };
+
     const handleEpisodeSelectionChange = (episodes: { season: number; episode: number }[]) => {
         setSelectedEpisodes(episodes);
         console.log('Selected episodes updated:', episodes);
     };
 
-    const handleApproveUpload = async () => {
+    const handleApproveUpload = async (emails: string[] = []) => {
         if (!sourceMediaId || !canApprove) return;
 
         setApprovingUpload(true);
+        setOpenApproveDialog(false);
         try {
             // Prepare the request body with the selected episodes
-            const requestBody: any = {
+            const requestBody: {
+                sourceMediaId: string;
+                episodes: { season: number; episode: number }[];
+                emailAddresses?: string[];
+            } = {
                 sourceMediaId,
                 episodes: selectedEpisodes
             };
+
+            if (emails.length > 0) {
+                requestBody.emailAddresses = emails;
+            }
 
             console.log('Sending selected episodes to backend:', selectedEpisodes);
             
@@ -353,6 +414,7 @@ export default function AdminReviewUpload({
             setOpen(true);
         } finally {
             setApprovingUpload(false);
+            setUseEmailNotifications(false);
         }
     };
 
@@ -396,6 +458,15 @@ export default function AdminReviewUpload({
                 </Alert>
             )}
 
+            {isProcessingState && (
+                <Box sx={{ mb: 3 }}>
+                    <LinearProgress color="primary" sx={{ borderRadius: 1 }} />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        This process may take a few minutes...
+                    </Typography>
+                </Box>
+            )}
+
             {!loading && hasFiles && (
                 <>
                     {/* Approve Upload Button */}
@@ -410,7 +481,7 @@ export default function AdminReviewUpload({
                                     <ApproveIcon />
                                 )
                             }
-                            onClick={handleApproveUpload}
+                            onClick={handleOpenApproveDialog}
                             disabled={!canApprove}
                             color="success"
                         >
@@ -538,6 +609,46 @@ export default function AdminReviewUpload({
                     </CardContent>
                 </Card>
             )}
+
+            <Dialog open={openApproveDialog} onClose={handleCancelApproveDialog} maxWidth="sm" fullWidth>
+                <DialogTitle>Send update notifications?</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <Typography variant="body1">
+                            Approving this upload will begin processing the selected episodes. Would you like to receive email updates while it runs?
+                        </Typography>
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={useEmailNotifications}
+                                    onChange={() => setUseEmailNotifications((prev) => !prev)}
+                                    color="primary"
+                                    disabled={emailAddresses.length === 0}
+                                />
+                            }
+                            label={
+                                emailAddresses.length > 0
+                                    ? `Send updates to ${emailAddresses.join(', ')}`
+                                    : 'No email available for notifications'
+                            }
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={handleCancelApproveDialog} color="inherit" variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleConfirmApprove}
+                        variant="contained"
+                        color="success"
+                        startIcon={approvingUpload ? <CircularProgress size={16} color="inherit" /> : <ApproveIcon />}
+                        disabled={approvingUpload}
+                    >
+                        {approvingUpload ? 'Approving...' : 'Approve Upload'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 }
