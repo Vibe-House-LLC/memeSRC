@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {
   Alert,
@@ -20,9 +20,6 @@ import {
   TextField,
   Typography,
   Button,
-  List,
-  ListItem,
-  ListItemText,
   Paper,
   Grid,
 } from '@mui/material';
@@ -80,6 +77,12 @@ interface ProcessedSummary {
   files: ProcessedFileInfo[];
   countsByExtension: Record<string, number>;
   totalSize: number;
+}
+
+interface UploadSnapshot {
+  fileSizes: Record<string, number>;
+  totalBytes: number;
+  totalFiles: number;
 }
 
 type SubmissionStatus = 'created' | 'processing' | 'processed' | 'uploading' | 'uploaded' | 'completed' | 'error';
@@ -147,6 +150,14 @@ const normalizeRelativePath = (rawPath: string): string => {
     .split('/')
     .filter((segment) => segment && segment !== '.' && segment !== '..');
   return safeSegments.join('/');
+};
+
+const getExtension = (filePath: string): string => {
+  const segments = filePath.split('.');
+  if (segments.length <= 1) {
+    return 'unknown';
+  }
+  return segments.pop()?.toLowerCase() ?? 'unknown';
 };
 
 const summarizeStatusData = (statusData: unknown): ProcessingStatusSummary => {
@@ -256,6 +267,39 @@ const normalizeSubmissionFromSummary = (submission: Submission): NormalizedSubmi
 
 const ensureResumeState = (input: UploadResumeState | null, processingId: string): UploadResumeState => {
   const normalizedCompleted = Array.from(new Set(input?.completedFiles ?? []));
+  const normalizedFileRecords =
+    input?.fileRecords && typeof input.fileRecords === 'object' ? input.fileRecords : {};
+  const normalizedFileSizes =
+    input?.fileSizes && typeof input.fileSizes === 'object'
+      ? Object.entries(input.fileSizes).reduce<Record<string, number>>((acc, [key, value]) => {
+          if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+            acc[key] = value;
+          }
+          return acc;
+        }, {})
+      : {};
+
+  const derivedTotalBytes =
+    typeof input?.totalBytes === 'number' && Number.isFinite(input.totalBytes) && input.totalBytes >= 0
+      ? input.totalBytes
+      : Object.values(normalizedFileSizes).reduce((acc, size) => acc + size, 0);
+  const totalBytes = derivedTotalBytes > 0 ? derivedTotalBytes : undefined;
+
+  const derivedTotalFiles =
+    typeof input?.totalFiles === 'number' && Number.isFinite(input.totalFiles) && input.totalFiles >= 0
+      ? Math.floor(input.totalFiles)
+      : Object.keys(normalizedFileSizes).length;
+  const totalFiles = derivedTotalFiles > 0 ? derivedTotalFiles : undefined;
+
+  const uploadedBytesCandidate =
+    typeof input?.uploadedBytes === 'number' && Number.isFinite(input.uploadedBytes) && input.uploadedBytes >= 0
+      ? input.uploadedBytes
+      : undefined;
+  const normalizedUploadedBytes =
+    typeof totalBytes === 'number' && typeof uploadedBytesCandidate === 'number'
+      ? Math.min(totalBytes, uploadedBytesCandidate)
+      : uploadedBytesCandidate;
+
   return {
     version: input?.version ?? DESKTOP_RESUME_VERSION,
     processingId,
@@ -268,7 +312,11 @@ const ensureResumeState = (input: UploadResumeState | null, processingId: string
     textColor: input?.textColor,
     folderPath: input?.folderPath,
     completedFiles: normalizedCompleted,
-    fileRecords: input?.fileRecords ?? {},
+    fileRecords: normalizedFileRecords,
+    fileSizes: normalizedFileSizes,
+    totalBytes,
+    totalFiles,
+    uploadedBytes: normalizedUploadedBytes,
     lastUploadedAt: input?.lastUploadedAt,
     lastError: input?.lastError ?? null,
   };
@@ -292,8 +340,32 @@ const parseStoredResume = (processingId: string): UploadResumeState | null => {
       legacy.fileRecords && typeof legacy.fileRecords === 'object'
         ? (legacy.fileRecords as Record<string, string>)
         : {};
+    const fileSizes =
+      legacy.fileSizes && typeof legacy.fileSizes === 'object'
+        ? Object.entries(legacy.fileSizes as Record<string, unknown>).reduce<Record<string, number>>(
+            (acc, [key, value]) => {
+              if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+                acc[key] = value;
+              }
+              return acc;
+            },
+            {}
+          )
+        : {};
+    const totalBytes =
+      typeof legacy.totalBytes === 'number' && Number.isFinite(legacy.totalBytes) && legacy.totalBytes >= 0
+        ? legacy.totalBytes
+        : undefined;
+    const totalFiles =
+      typeof legacy.totalFiles === 'number' && Number.isFinite(legacy.totalFiles) && legacy.totalFiles >= 0
+        ? Math.floor(legacy.totalFiles)
+        : undefined;
+    const uploadedBytes =
+      typeof legacy.uploadedBytes === 'number' && Number.isFinite(legacy.uploadedBytes) && legacy.uploadedBytes >= 0
+        ? legacy.uploadedBytes
+        : undefined;
 
-    if (completedFiles.length || Object.keys(fileRecords).length) {
+    if (completedFiles.length || Object.keys(fileRecords).length || Object.keys(fileSizes).length) {
       return ensureResumeState(
         {
           version: typeof legacy.version === 'number' ? legacy.version : 0,
@@ -303,6 +375,10 @@ const parseStoredResume = (processingId: string): UploadResumeState | null => {
           identityId: typeof legacy.identityId === 'string' ? legacy.identityId : undefined,
           completedFiles,
           fileRecords,
+          fileSizes,
+          totalBytes,
+          totalFiles,
+          uploadedBytes,
         },
         processingId
       );
@@ -323,6 +399,139 @@ const persistResumeState = (processingId: string, next: UploadResumeState): Uplo
   );
   writeJSON(buildResumeKey(processingId), normalized);
   return normalized;
+};
+
+const sanitizeCompletedFiles = (completedFiles: string[], fileSizes: Record<string, number>) => {
+  const seen = new Set<string>();
+  return completedFiles.filter((file) => {
+    if (!fileSizes[file]) {
+      return false;
+    }
+    if (seen.has(file)) {
+      return false;
+    }
+    seen.add(file);
+    return true;
+  });
+};
+
+const sumCompletedBytes = (completedFiles: string[], fileSizes: Record<string, number>) => {
+  return completedFiles.reduce((acc, file) => acc + (fileSizes[file] ?? 0), 0);
+};
+
+interface ResumeUploadStats {
+  completedFiles: string[];
+  totalFiles: number;
+  totalBytes: number;
+  uploadedBytes: number;
+  progress: number;
+}
+
+const deriveResumeUploadStats = (resumeState: UploadResumeState | null): ResumeUploadStats | null => {
+  if (!resumeState) {
+    return null;
+  }
+
+  const fileSizes = resumeState.fileSizes ?? {};
+  const normalizedCompleted = sanitizeCompletedFiles(resumeState.completedFiles ?? [], fileSizes);
+  const sizeEntries = Object.entries(fileSizes);
+
+  const derivedTotalFiles =
+    typeof resumeState.totalFiles === 'number' && resumeState.totalFiles > 0
+      ? Math.floor(resumeState.totalFiles)
+      : sizeEntries.length;
+  const totalFiles = Math.max(derivedTotalFiles, normalizedCompleted.length);
+
+  const derivedTotalBytes =
+    typeof resumeState.totalBytes === 'number' && resumeState.totalBytes > 0
+      ? resumeState.totalBytes
+      : sizeEntries.reduce((acc, [, size]) => acc + size, 0);
+  const totalBytes = Math.max(derivedTotalBytes, sumCompletedBytes(normalizedCompleted, fileSizes));
+
+  const computedUploadedBytes = sumCompletedBytes(normalizedCompleted, fileSizes);
+  const uploadedBytes =
+    typeof resumeState.uploadedBytes === 'number' && resumeState.uploadedBytes >= 0
+      ? Math.min(Math.max(resumeState.uploadedBytes, computedUploadedBytes), totalBytes || Number.MAX_SAFE_INTEGER)
+      : computedUploadedBytes;
+
+  let progress = 0;
+  if (totalBytes > 0) {
+    progress = Math.min(100, Math.round((uploadedBytes / totalBytes) * 100));
+  } else if (totalFiles > 0) {
+    progress = Math.min(100, Math.round((normalizedCompleted.length / totalFiles) * 100));
+  }
+
+  return {
+    completedFiles: normalizedCompleted,
+    totalFiles,
+    totalBytes,
+    uploadedBytes,
+    progress,
+  };
+};
+
+const collectUploadSnapshot = async (
+  fs: typeof import('fs'),
+  pathModule: typeof import('path'),
+  root: string
+): Promise<UploadSnapshot> => {
+  const fileSizes: Record<string, number> = {};
+
+  const walk = async (directory: string) => {
+    const entries = await fs.promises.readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      const entryPath = pathModule.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+      } else {
+        const stats = await fs.promises.stat(entryPath);
+        const relativePath = pathModule.relative(root, entryPath).split(pathModule.sep).join('/');
+        const normalizedPath = normalizeRelativePath(relativePath);
+        const extension = `.${getExtension(normalizedPath)}`;
+        if (SUPPORTED_UPLOAD_EXTENSIONS.has(extension)) {
+          fileSizes[normalizedPath] = stats.size;
+        }
+      }
+    }
+  };
+
+  const directoryExists = await fs.promises
+    .access(root)
+    .then(() => true)
+    .catch(() => false);
+  if (!directoryExists) {
+    return {
+      fileSizes: {},
+      totalBytes: 0,
+      totalFiles: 0,
+    };
+  }
+
+  await walk(root);
+  const totalFiles = Object.keys(fileSizes).length;
+  const totalBytes = Object.values(fileSizes).reduce((acc, size) => acc + size, 0);
+  return {
+    fileSizes,
+    totalBytes,
+    totalFiles,
+  };
+};
+
+const buildEligibleSnapshotFromSummary = (summary: ProcessedSummary): UploadSnapshot => {
+  const fileSizes = summary.files.reduce<Record<string, number>>((acc, file) => {
+    const extension = `.${getExtension(file.normalizedPath)}`;
+    if (SUPPORTED_UPLOAD_EXTENSIONS.has(extension)) {
+      acc[file.normalizedPath] = file.size;
+    }
+    return acc;
+  }, {});
+  const totalFiles = Object.keys(fileSizes).length;
+  const totalBytes = Object.values(fileSizes).reduce((acc, size) => acc + size, 0);
+  return {
+    fileSizes,
+    totalBytes,
+    totalFiles,
+  };
 };
 
 const clearResumeState = (processingId?: string) => {
@@ -379,6 +588,7 @@ const DesktopProcessingPage = () => {
   // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
   const processingStatusInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCredentialsRefreshRef = useRef<number>(0);
 
@@ -440,14 +650,13 @@ const DesktopProcessingPage = () => {
         const stored = loadSubmission(jobId);
         
         if (stored) {
-          // Load latest status and metadata
           const jobDir = path.join(baseDir, jobId);
           const metadataPath = path.join(jobDir, '00_metadata.json');
           const statusPath = path.join(jobDir, 'status.json');
-          
+
           let metadata: ProcessingMetadata | null = null;
           let statusSummary: ProcessingStatusSummary | null = null;
-          
+
           try {
             const metadataExists = await fs.promises.access(metadataPath).then(() => true).catch(() => false);
             if (metadataExists) {
@@ -455,7 +664,7 @@ const DesktopProcessingPage = () => {
               metadata = JSON.parse(rawMetadata);
             }
           } catch {}
-          
+
           try {
             const statusExists = await fs.promises.access(statusPath).then(() => true).catch(() => false);
             if (statusExists) {
@@ -463,15 +672,105 @@ const DesktopProcessingPage = () => {
               statusSummary = summarizeStatusData(JSON.parse(rawStatus));
             }
           } catch {}
-          
-          const resumeState = parseStoredResume(jobId);
-          
-          loadedSubmissions.push({
+
+          let resumeState = parseStoredResume(jobId);
+          let workingResume = resumeState ? ensureResumeState(resumeState, jobId) : null;
+          let uploadProgress = typeof stored.uploadProgress === 'number' ? stored.uploadProgress : undefined;
+          let status = stored.status;
+          let resumeMutated = false;
+
+          if (workingResume) {
+            if (!workingResume.fileSizes || Object.keys(workingResume.fileSizes).length === 0) {
+              try {
+                const snapshot = await collectUploadSnapshot(fs, path, jobDir);
+                if (snapshot.totalFiles > 0) {
+                  workingResume = ensureResumeState(
+                    {
+                      ...workingResume,
+                      fileSizes: snapshot.fileSizes,
+                      totalBytes: snapshot.totalBytes,
+                      totalFiles: snapshot.totalFiles,
+                    },
+                    jobId
+                  );
+                  resumeMutated = true;
+                }
+              } catch (snapshotError) {
+                console.warn('Unable to hydrate resume snapshot', snapshotError);
+              }
+            }
+
+            let stats = deriveResumeUploadStats(workingResume);
+
+            if (stats) {
+              const shouldUpdateResume =
+                stats.totalBytes !== (workingResume.totalBytes ?? 0) ||
+                stats.totalFiles !== (workingResume.totalFiles ?? 0) ||
+                stats.uploadedBytes !== (workingResume.uploadedBytes ?? 0) ||
+                stats.completedFiles.length !== workingResume.completedFiles.length;
+
+              if (shouldUpdateResume) {
+                workingResume = ensureResumeState(
+                  {
+                    ...workingResume,
+                    completedFiles: stats.completedFiles,
+                    totalBytes: stats.totalBytes,
+                    totalFiles: stats.totalFiles,
+                    uploadedBytes: stats.uploadedBytes,
+                  },
+                  jobId
+                );
+                resumeMutated = true;
+                stats = deriveResumeUploadStats(workingResume);
+              }
+
+              if (stats) {
+                if (stats.progress > 0) {
+                  uploadProgress = stats.progress;
+                }
+                if (stats.progress > 0 && stats.progress < 100) {
+                  if (status !== 'completed' && status !== 'uploaded') {
+                    status = 'uploading';
+                  }
+                } else if (stats.progress >= 100) {
+                  uploadProgress = 100;
+                  if (status === 'uploading') {
+                    status = 'uploaded';
+                  }
+                }
+              }
+            }
+
+            if (resumeMutated) {
+              resumeState = persistResumeState(jobId, workingResume);
+            } else {
+              resumeState = workingResume;
+            }
+          }
+
+          const updatedSubmission: Submission = {
             ...stored,
+            status,
+            uploadProgress,
             metadata,
             statusSummary,
             resumeState,
-          });
+          };
+
+          const uploadProgressChanged =
+            typeof uploadProgress === 'number' && uploadProgress !== (stored.uploadProgress ?? undefined);
+          const statusChanged = status !== stored.status;
+          const resumeStateChanged =
+            (!!resumeState &&
+              JSON.stringify(resumeState.completedFiles) !==
+                JSON.stringify(stored.resumeState?.completedFiles ?? [])) ||
+            (!resumeState && !!stored.resumeState);
+
+          if (uploadProgressChanged || statusChanged || resumeMutated || resumeStateChanged) {
+            saveSubmission(updatedSubmission);
+          }
+
+          loadedSubmissions.push(updatedSubmission);
         }
       }
 
@@ -915,24 +1214,38 @@ const DesktopProcessingPage = () => {
       return;
     }
 
+    let workingResume: UploadResumeState | null = null;
+    let currentSubmission: Submission = submission;
+
+    const applySubmissionPatch = (patch: Partial<Submission>) => {
+      const nextSubmission: Submission = {
+        ...currentSubmission,
+        ...patch,
+      };
+      saveSubmission(nextSubmission);
+      setSubmissions((subs) => subs.map((s) => (s.id === submission.id ? nextSubmission : s)));
+      setSelectedSubmission((prev) => (prev?.id === submission.id ? nextSubmission : prev));
+      currentSubmission = nextSubmission;
+      return nextSubmission;
+    };
+
+    setActiveUploadId(submission.id);
     setIsUploading(true);
     try {
-      // Load processed files summary
       const summary = await loadProcessedSummary(submission.id);
+      const snapshot = buildEligibleSnapshotFromSummary(summary);
       const root = path.join(os.homedir(), '.memesrc', 'processing', submission.id);
 
-      // Update status
-      const uploading: Submission = {
-        ...submission,
-        status: 'uploading',
-        uploadProgress: 0,
-        updatedAt: new Date().toISOString(),
-      };
-      saveSubmission(uploading);
-      setSubmissions(subs => subs.map(s => s.id === submission.id ? uploading : s));
-      setSelectedSubmission(uploading);
+      const eligibleFiles = summary.files.filter((file) => snapshot.fileSizes[file.normalizedPath]);
+      if (!eligibleFiles.length) {
+        setMessage('No supported files were found to upload (.mp4, .json, .csv).');
+        setSeverity('warning');
+        setOpen(true);
+        setActiveUploadId(null);
+        setIsUploading(false);
+        return;
+      }
 
-      // Load or create resume state
       const storedResume = parseStoredResume(submission.id);
       let workingResume = ensureResumeState(
         storedResume ?? {
@@ -958,6 +1271,35 @@ const DesktopProcessingPage = () => {
         submission.id
       );
 
+      const normalizedCompleted = sanitizeCompletedFiles(
+        workingResume.completedFiles,
+        snapshot.fileSizes
+      );
+      let recordMap = Object.entries(workingResume.fileRecords ?? {}).reduce<Record<string, string>>(
+        (acc, [key, value]) => {
+          if (snapshot.fileSizes[key]) {
+            acc[key] = value;
+          }
+          return acc;
+        },
+        {}
+      );
+      let uploadedBytes = sumCompletedBytes(normalizedCompleted, snapshot.fileSizes);
+
+      workingResume = ensureResumeState(
+        {
+          ...workingResume,
+          fileSizes: snapshot.fileSizes,
+          totalBytes: snapshot.totalBytes,
+          totalFiles: snapshot.totalFiles,
+          completedFiles: normalizedCompleted,
+          fileRecords: recordMap,
+          uploadedBytes,
+        },
+        submission.id
+      );
+      workingResume = persistResumeState(submission.id, workingResume);
+
       const persistResume = (patch: Partial<UploadResumeState>) => {
         workingResume = ensureResumeState({ ...workingResume, ...patch }, submission.id);
         workingResume = persistResumeState(submission.id, workingResume);
@@ -982,38 +1324,69 @@ const DesktopProcessingPage = () => {
       let identityId = workingResume.identityId ?? null;
       identityId = await ensureFreshCredentials(!identityId);
 
-      const eligibleFiles = summary.files.filter((file) => {
-        const extension = `.${getExtension(file.normalizedPath)}`;
-        return SUPPORTED_UPLOAD_EXTENSIONS.has(extension);
-      });
+      const completedSet = new Set(workingResume.completedFiles);
+      let currentSubmission: Submission = submission;
 
-      if (!eligibleFiles.length) {
-        setMessage('No supported files were found to upload (.mp4, .json, .csv).');
-        setSeverity('warning');
+      const applySubmissionPatch = (patch: Partial<Submission>) => {
+        const nextSubmission: Submission = {
+          ...currentSubmission,
+          ...patch,
+        };
+        saveSubmission(nextSubmission);
+        setSubmissions((subs) => subs.map((s) => (s.id === submission.id ? nextSubmission : s)));
+        setSelectedSubmission((prev) => (prev?.id === submission.id ? nextSubmission : prev));
+        currentSubmission = nextSubmission;
+        return nextSubmission;
+      };
+
+      const syncSubmission = () => {
+        const stats = deriveResumeUploadStats(workingResume);
+        const progress = stats ? stats.progress : 0;
+        return applySubmissionPatch({
+          status: progress >= 100 ? 'completed' : 'uploading',
+          uploadProgress: progress,
+          resumeState: workingResume,
+          updatedAt: new Date().toISOString(),
+        });
+      };
+
+      currentSubmission = syncSubmission();
+
+      if ((currentSubmission.uploadProgress ?? 0) >= 100) {
+        clearResumeState(submission.id);
+        applySubmissionPatch({
+          status: 'completed',
+          uploadProgress: currentSubmission.uploadProgress ?? 100,
+          resumeState: undefined,
+          updatedAt: new Date().toISOString(),
+          error: undefined,
+        });
+        setMessage('Upload already completed.');
+        setSeverity('success');
         setOpen(true);
+        await loadAllSubmissions();
         setIsUploading(false);
         return;
       }
 
-      const completedSet = new Set(workingResume.completedFiles);
-      let recordMap = { ...workingResume.fileRecords };
-      const totalBytes = eligibleFiles.reduce((acc, file) => acc + file.size, 0);
-      let uploadedBytes = eligibleFiles.reduce(
-        (acc, file) => (completedSet.has(file.normalizedPath) ? acc + file.size : acc),
-        0
-      );
-
       const updateProgress = () => {
-        if (totalBytes > 0) {
-          const progress = Math.min(100, Math.round((uploadedBytes / totalBytes) * 100));
-          setSubmissions(subs => subs.map(s => 
-            s.id === submission.id ? { ...s, uploadProgress: progress } : s
-          ));
-          setSelectedSubmission(prev => prev?.id === submission.id ? { ...prev, uploadProgress: progress } : prev);
+        const stats = deriveResumeUploadStats(workingResume);
+        if (!stats) {
+          return;
+        }
+        const progress = stats.progress;
+        if (
+          progress !== (currentSubmission.uploadProgress ?? 0) ||
+          currentSubmission.resumeState !== workingResume
+        ) {
+          applySubmissionPatch({
+            status: 'uploading',
+            uploadProgress: progress,
+            resumeState: workingResume,
+            updatedAt: new Date().toISOString(),
+          });
         }
       };
-
-      updateProgress();
 
       const uploadWithRetry = async (
         storageKey: string,
@@ -1081,7 +1454,7 @@ const DesktopProcessingPage = () => {
                 ...recordMap,
                 [normalizedRelativePath]: fileRecordId,
               };
-              persistResume({ fileRecords: recordMap });
+              workingResume = persistResume({ fileRecords: recordMap });
             }
           } catch (createFileError) {
             console.warn('Unable to create file record', createFileError);
@@ -1107,15 +1480,17 @@ const DesktopProcessingPage = () => {
 
         completedSet.add(normalizedRelativePath);
         uploadedBytes += file.size;
-        updateProgress();
-        persistResume({
+
+        workingResume = persistResume({
           completedFiles: Array.from(completedSet),
           fileRecords: recordMap,
+          uploadedBytes,
           lastUploadedAt: new Date().toISOString(),
         });
+
+        updateProgress();
       }
 
-      // Update SourceMedia status
       try {
         await API.graphql(
           graphqlOperation(updateSourceMediaMutation, {
@@ -1127,17 +1502,15 @@ const DesktopProcessingPage = () => {
         );
       } catch {}
 
-      const completed: Submission = {
-        ...uploading,
+      clearResumeState(submission.id);
+
+      currentSubmission = applySubmissionPatch({
         status: 'completed',
         uploadProgress: 100,
+        resumeState: undefined,
         updatedAt: new Date().toISOString(),
-      };
-      saveSubmission(completed);
-      setSubmissions(subs => subs.map(s => s.id === submission.id ? completed : s));
-      setSelectedSubmission(completed);
-
-      clearResumeState(submission.id);
+        error: undefined,
+      });
 
       setMessage('Upload completed successfully!');
       setSeverity('success');
@@ -1147,21 +1520,19 @@ const DesktopProcessingPage = () => {
     } catch (error) {
       console.error('Failed to upload files', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-      
-      const failed: Submission = {
-        ...submission,
+
+      applySubmissionPatch({
         status: 'error',
         error: errorMessage,
+        resumeState: workingResume ?? currentSubmission.resumeState,
         updatedAt: new Date().toISOString(),
-      };
-      saveSubmission(failed);
-      setSubmissions(subs => subs.map(s => s.id === submission.id ? failed : s));
-      setSelectedSubmission(failed);
+      });
 
       setMessage(`Upload error: ${errorMessage}`);
       setSeverity('error');
       setOpen(true);
     } finally {
+      setActiveUploadId(null);
       setIsUploading(false);
     }
   }, [
@@ -1207,13 +1578,29 @@ const DesktopProcessingPage = () => {
     window.open(reviewUrl, '_blank', 'noopener,noreferrer');
   }, []);
 
-  const getStatusColor = (status: SubmissionStatus): 'default' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' => {
-    switch (status) {
+  const getUploadStatsForSubmission = (submission: Submission) =>
+    deriveResumeUploadStats(submission.resumeState ?? null);
+
+  const isUploadPaused = (submission: Submission) => {
+    if (submission.status !== 'uploading') {
+      return false;
+    }
+    const stats = getUploadStatsForSubmission(submission);
+    const progress = submission.uploadProgress ?? stats?.progress ?? 0;
+    const isActive = activeUploadId === submission.id;
+    return progress > 0 && progress < 100 && !isActive;
+  };
+
+  const getStatusColor = (submission: Submission): 'default' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' => {
+    if (isUploadPaused(submission)) {
+      return 'warning';
+    }
+    switch (submission.status) {
       case 'completed':
-        return 'success';
       case 'uploaded':
         return 'success';
       case 'processing':
+        return 'info';
       case 'uploading':
         return 'info';
       case 'processed':
@@ -1226,23 +1613,31 @@ const DesktopProcessingPage = () => {
     }
   };
 
-  const getStatusLabel = (status: SubmissionStatus): string => {
-    switch (status) {
+  const getStatusLabel = (submission: Submission): string => {
+    if (submission.status === 'uploading') {
+      if (isUploadPaused(submission)) {
+        return 'Upload Paused';
+      }
+      const progress = submission.uploadProgress ?? 0;
+      if (progress >= 100) {
+        return 'Upload Complete';
+      }
+      return 'Uploading';
+    }
+    switch (submission.status) {
       case 'created':
         return 'Ready';
       case 'processing':
         return 'Processing';
       case 'processed':
         return 'Ready to Upload';
-      case 'uploading':
-        return 'Uploading';
       case 'uploaded':
       case 'completed':
         return 'Completed';
       case 'error':
         return 'Error';
       default:
-        return status;
+        return submission.status;
     }
   };
 
@@ -1286,7 +1681,25 @@ const DesktopProcessingPage = () => {
   };
 
   const canStartUpload = (submission: Submission) => {
-    return (submission.status === 'processed' || submission.status === 'error') && !isUploading;
+    if (isUploading) {
+      return false;
+    }
+    if (submission.status === 'processed' || submission.status === 'error') {
+      return true;
+    }
+    if (submission.status === 'uploading') {
+      const stats = getUploadStatsForSubmission(submission);
+      const progress = submission.uploadProgress ?? stats?.progress ?? 0;
+      return progress < 100;
+    }
+    return false;
+  };
+
+  const getUploadButtonLabel = (submission: Submission) => {
+    if (isUploadPaused(submission) || (submission.uploadProgress ?? 0) > 0) {
+      return 'Resume Upload';
+    }
+    return 'Start Upload';
   };
 
   if (!isElectron) {
@@ -1387,8 +1800,8 @@ const DesktopProcessingPage = () => {
                           </Box>
                           <Chip 
                             size="small" 
-                            label={getStatusLabel(submission.status)} 
-                            color={getStatusColor(submission.status)}
+                            label={getStatusLabel(submission)} 
+                            color={getStatusColor(submission)}
                           />
                         </Stack>
 
@@ -1414,10 +1827,15 @@ const DesktopProcessingPage = () => {
                           {submission.uploadProgress !== undefined && submission.uploadProgress > 0 && (
                             <Box>
                               <Typography variant="caption" color="text.secondary">
-                                Upload: {submission.uploadProgress}%
+                                Upload: {submission.uploadProgress}%{isUploadPaused(submission) ? ' • Paused' : ''}
                               </Typography>
                               <LinearProgress variant="determinate" value={submission.uploadProgress} />
                             </Box>
+                          )}
+                          {isUploadPaused(submission) && (
+                            <Typography variant="caption" color="warning.main">
+                              Upload paused — resume to finish sending the remaining files.
+                            </Typography>
                           )}
                           {submission.error && (
                             <Alert severity="error" sx={{ mt: 1 }}>
@@ -1446,7 +1864,7 @@ const DesktopProcessingPage = () => {
                               onClick={() => handleStartUpload(submission)}
                               loading={isUploading && selectedSubmission?.id === submission.id}
                             >
-                              {submission.resumeState?.completedFiles?.length ? 'Resume Upload' : 'Start Upload'}
+                              {getUploadButtonLabel(submission)}
                             </LoadingButton>
                           )}
                           {(submission.status === 'completed' || submission.status === 'uploaded') && (
@@ -1599,24 +2017,6 @@ const DesktopProcessingPage = () => {
 };
 
 // Helper functions
-const formatBytes = (value: number): string => {
-  if (value === 0) {
-    return '0 B';
-  }
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const exponent = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
-  const quotient = value / 1024 ** exponent;
-  return `${quotient.toFixed(2)} ${units[exponent]}`;
-};
-
-const getExtension = (filePath: string): string => {
-  const segments = filePath.split('.');
-  if (segments.length <= 1) {
-    return 'unknown';
-  }
-  return segments.pop()?.toLowerCase() ?? 'unknown';
-};
-
 const formatDateTime = (value?: string | number | null) => {
   if (!value) {
     return '';

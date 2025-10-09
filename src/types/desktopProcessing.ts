@@ -1,4 +1,4 @@
-export const DESKTOP_RESUME_VERSION = 1;
+export const DESKTOP_RESUME_VERSION = 2;
 
 export const RESUME_STORAGE_PREFIX = 'memesrcDesktopResume:';
 export const CURRENT_PROCESSING_STORAGE_KEY = 'memesrcDesktopCurrentJob';
@@ -32,6 +32,10 @@ export interface UploadResumeState {
   folderPath?: string;
   completedFiles: string[];
   fileRecords: Record<string, string>;
+  fileSizes?: Record<string, number>;
+  totalBytes?: number;
+  totalFiles?: number;
+  uploadedBytes?: number;
   lastUploadedAt?: string;
   lastError?: string | null;
 }
