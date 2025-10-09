@@ -1511,6 +1511,22 @@
         }
       ]
     },
+    "AMPLIFY_function_memesrcMoveApprovedMedia_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcMoveApprovedMedia"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcMoveApprovedMedia_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcMoveApprovedMedia"
+        }
+      ]
+    },
     "AMPLIFY_function_memesrcOpenAI_deploymentBucketName": {
       "usedBy": [
         {
