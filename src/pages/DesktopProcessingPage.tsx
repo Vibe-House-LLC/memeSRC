@@ -1325,19 +1325,6 @@ const DesktopProcessingPage = () => {
       identityId = await ensureFreshCredentials(!identityId);
 
       const completedSet = new Set(workingResume.completedFiles);
-      let currentSubmission: Submission = submission;
-
-      const applySubmissionPatch = (patch: Partial<Submission>) => {
-        const nextSubmission: Submission = {
-          ...currentSubmission,
-          ...patch,
-        };
-        saveSubmission(nextSubmission);
-        setSubmissions((subs) => subs.map((s) => (s.id === submission.id ? nextSubmission : s)));
-        setSelectedSubmission((prev) => (prev?.id === submission.id ? nextSubmission : prev));
-        currentSubmission = nextSubmission;
-        return nextSubmission;
-      };
 
       const syncSubmission = () => {
         const stats = deriveResumeUploadStats(workingResume);
