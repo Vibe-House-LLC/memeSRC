@@ -29,6 +29,7 @@ Amplify Params - DO NOT EDIT */
  */
 
 const { makeGraphQLRequest } = require('/opt/graphql-handler');
+const { sendEmail } = require('/opt/email-function');
 
 const AWS = require('aws-sdk');
 
@@ -37,6 +38,10 @@ const s3 = new AWS.S3();
 
 // Initialize Lambda client
 const lambda = new AWS.Lambda();
+
+const reviewUrl = process.env.ENV === 'beta'
+    ? 'https://memesrc.com/dashboard/review-upload?sourceMediaId='
+    : 'https://dev.memesrc.com/dashboard/review-upload?sourceMediaId=';
 
 const getSeriesQuery = `
     query GetSeries($id: ID!) {
@@ -529,6 +534,219 @@ const createSeriesContributors = async (data) => {
         throw error;
     }
 }
+
+const extractEmailAddresses = (payload = {}) => {
+    if (!payload || typeof payload !== 'object') {
+        return [];
+    }
+
+    const { emailAddresses } = payload;
+
+    if (!emailAddresses) {
+        return [];
+    }
+
+    if (Array.isArray(emailAddresses)) {
+        return emailAddresses
+            .filter((value) => typeof value === 'string')
+            .map((value) => value.trim())
+            .filter(Boolean);
+    }
+
+    if (typeof emailAddresses === 'string') {
+        return emailAddresses
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean);
+    }
+
+    return [];
+};
+
+const formatEpisodeSummary = (episodes = []) => {
+    if (!Array.isArray(episodes) || episodes.length === 0) {
+        return 'None specified';
+    }
+
+    return episodes
+        .map(({ season, episode }) => {
+            const seasonLabel = season !== undefined && season !== null ? `S${String(season).padStart(2, '0')}` : 'S??';
+            const episodeLabel = episode !== undefined && episode !== null ? `E${String(episode).padStart(2, '0')}` : 'E??';
+            return `${seasonLabel}${episodeLabel}`;
+        })
+        .join(', ');
+};
+
+const escapeHtml = (value = '') =>
+    String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+const sendUpdateEmailNotification = async ({
+    emailAddresses,
+    type,
+    sourceMediaId,
+    alias,
+    seriesTitle,
+    episodes = [],
+    error
+}) => {
+    if (!Array.isArray(emailAddresses) || emailAddresses.length === 0) {
+        return;
+    }
+
+    try {
+        const totalEpisodes = episodes.length;
+        const episodeSummary = formatEpisodeSummary(episodes);
+        const friendlySeriesTitle = seriesTitle || alias || 'memeSRC Series';
+        const now = new Date();
+        const timestamp = now.toLocaleString();
+        const encodedSourceMediaId = sourceMediaId ? encodeURIComponent(sourceMediaId) : '';
+        const reviewLink = encodedSourceMediaId ? `${reviewUrl}${encodedSourceMediaId}` : reviewUrl;
+        const metaSpan = `<span style="font-size: 0; color: transparent;">SourceMedia:${escapeHtml(sourceMediaId || 'unknown')}|Alias:${escapeHtml(alias || 'n/a')}|${Date.now()}</span>`;
+        const baseLines = [
+            `Series: ${friendlySeriesTitle}`,
+            `Source Media ID: ${sourceMediaId || 'unknown'}`,
+            alias ? `Alias: ${alias}` : null,
+            totalEpisodes ? `Episodes (${totalEpisodes}): ${episodeSummary}` : 'Episodes: None specified'
+        ].filter(Boolean);
+
+        let subject;
+        let htmlBody;
+        let textBody;
+
+        switch (type) {
+            case 'start': {
+                subject = 'memeSRC: Series Update Started';
+                htmlBody = `
+                    <html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <h1 style="color: #2c3e50;">Series Update Started</h1>
+                            <p>We're preparing your updates for <strong>${escapeHtml(friendlySeriesTitle)}</strong>.</p>
+                            <p><strong>Source Media ID:</strong> ${escapeHtml(sourceMediaId || 'unknown')}</p>
+                            ${alias ? `<p><strong>Alias:</strong> ${escapeHtml(alias)}</p>` : ''}
+                            <p><strong>Episodes queued:</strong> ${totalEpisodes} (${escapeHtml(episodeSummary)})</p>
+                            <p>Process started at: <strong>${escapeHtml(timestamp)}</strong></p>
+                            <p>We'll let you know when everything is finished. You can review progress any time:</p>
+                            <p><a href="${reviewLink}" style="background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Review Upload</a></p>
+                            <p>— The memeSRC Team</p>
+                            ${metaSpan}
+                        </body>
+                    </html>
+                `;
+
+                const textBodyLines = [
+                    'Series Update Started',
+                    '',
+                    ...baseLines,
+                    `Started at: ${timestamp}`,
+                    '',
+                    'Review progress:',
+                    reviewLink,
+                    '',
+                    '— The memeSRC Team'
+                ];
+                textBody = textBodyLines.join('\n');
+                break;
+            }
+            case 'success': {
+                subject = 'memeSRC: Series Update Complete';
+                htmlBody = `
+                    <html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <h1 style="color: #27ae60;">Series Update Complete</h1>
+                            <p>Your updates for <strong>${escapeHtml(friendlySeriesTitle)}</strong> are finished.</p>
+                            <p><strong>Source Media ID:</strong> ${escapeHtml(sourceMediaId || 'unknown')}</p>
+                            ${alias ? `<p><strong>Alias:</strong> ${escapeHtml(alias)}</p>` : ''}
+                            <p><strong>Episodes processed:</strong> ${totalEpisodes} (${escapeHtml(episodeSummary)})</p>
+                            <p>Completed at: <strong>${escapeHtml(timestamp)}</strong></p>
+                            <p>You can review the refreshed content and continue your workflow:</p>
+                            <p><a href="${reviewLink}" style="background-color: #27ae60; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Review Updated Content</a></p>
+                            <p>— The memeSRC Team</p>
+                            ${metaSpan}
+                        </body>
+                    </html>
+                `;
+
+                const textBodyLines = [
+                    'Series Update Complete',
+                    '',
+                    ...baseLines,
+                    `Completed at: ${timestamp}`,
+                    '',
+                    'Review the updated content:',
+                    reviewLink,
+                    '',
+                    '— The memeSRC Team'
+                ];
+                textBody = textBodyLines.join('\n');
+                break;
+            }
+            case 'failure': {
+                const errorMessage = error?.message || 'Unknown error occurred';
+                const safeErrorMessage = escapeHtml(errorMessage);
+                subject = 'memeSRC: Series Update Failed';
+                htmlBody = `
+                    <html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <h1 style="color: #e74c3c;">Series Update Failed</h1>
+                            <p>We couldn't complete the update for <strong>${escapeHtml(friendlySeriesTitle)}</strong>.</p>
+                            <p><strong>Source Media ID:</strong> ${escapeHtml(sourceMediaId || 'unknown')}</p>
+                            ${alias ? `<p><strong>Alias:</strong> ${escapeHtml(alias)}</p>` : ''}
+                            <p><strong>Episodes attempted:</strong> ${totalEpisodes} (${escapeHtml(episodeSummary)})</p>
+                            <p><strong>Failed at:</strong> ${escapeHtml(timestamp)}</p>
+                            <p><strong>Error:</strong> ${safeErrorMessage}</p>
+                            <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #e74c3c; margin: 20px 0;">
+                                <h3 style="margin-top: 0; color: #e74c3c;">What you can try:</h3>
+                                <ul>
+                                    <li>Retry the update from your dashboard</li>
+                                    <li>Confirm the episodes you selected are available</li>
+                                    <li>Contact support if the issue continues</li>
+                                </ul>
+                            </div>
+                            <p>Review details or retry when you're ready:</p>
+                            <p><a href="${reviewLink}" style="background-color: #e74c3c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Review Upload</a></p>
+                            <p>— The memeSRC Team</p>
+                            ${metaSpan}
+                        </body>
+                    </html>
+                `;
+
+                const textBodyLines = [
+                    'Series Update Failed',
+                    '',
+                    ...baseLines,
+                    `Failed at: ${timestamp}`,
+                    `Error: ${errorMessage}`,
+                    '',
+                    'Review details or retry when you are ready:',
+                    reviewLink,
+                    '',
+                    'If the issue continues, please contact support.',
+                    '',
+                    '— The memeSRC Team'
+                ];
+                textBody = textBodyLines.join('\n');
+                break;
+            }
+            default:
+                return;
+        }
+
+        await sendEmail({
+            toAddresses: emailAddresses,
+            subject,
+            htmlBody,
+            textBody
+        });
+        console.log(`Sent ${type} update notification email to ${emailAddresses.join(', ')}`);
+    } catch (emailError) {
+        console.error(`Failed to send ${type} update notification email:`, emailError);
+    }
+};
 
 const chunkArray = (items, size) => {
     if (!Array.isArray(items) || size <= 0) {
@@ -1026,11 +1244,15 @@ const processNewSeries = async (data) => {
 }
 
 const processSeries = async (data) => {
-    const { sourceMediaId, episodes, identityId } = data;
+    const { sourceMediaId, episodes, identityId, emailAddresses } = data;
     if (!identityId) {
         throw new Error('Identity ID is required');
     }
     const path = `protected/${identityId}/${sourceMediaId}`;
+    let alias;
+    let seriesData;
+    let metadata;
+    let userData;
     try {
         const updateSourceMediaToPending = await updateSourceMedia({
             id: sourceMediaId,
@@ -1038,11 +1260,20 @@ const processSeries = async (data) => {
         });
         console.log('UPDATE SOURCE MEDIA TO PENDING: ', JSON.stringify(updateSourceMediaToPending));
         const sourceMedia = await getSourceMedia(sourceMediaId);
-        const seriesData = sourceMedia?.series;
-        const userData = sourceMedia?.user;
-        const alias = sourceMedia?.pendingAlias;
+        seriesData = sourceMedia?.series;
+        userData = sourceMedia?.user;
+        alias = sourceMedia?.pendingAlias;
         // const docs = await getSeriesCsv(alias, true); // Not needed since we handle docs in updateSeriesDocsWithNewEpisodes
-        const metadata = await getSeriesMetadata(false, alias, path);
+        metadata = await getSeriesMetadata(false, alias, path);
+
+        await sendUpdateEmailNotification({
+            emailAddresses,
+            type: 'start',
+            sourceMediaId,
+            alias,
+            seriesTitle: metadata?.title || seriesData?.name,
+            episodes
+        });
         // Check to see if the v2 content metadata exists
         const v2ContentMetadata = await getV2ContentMetadata(alias);
         if (v2ContentMetadata?.id) {
@@ -1101,6 +1332,15 @@ const processSeries = async (data) => {
             userDetailsId: userData?.id
         });
         console.log('SERIES CONTRIBUTORS DATA: ', JSON.stringify(seriesContributorsResponse));
+
+        await sendUpdateEmailNotification({
+            emailAddresses,
+            type: 'success',
+            sourceMediaId,
+            alias,
+            seriesTitle: metadata?.title || seriesData?.name,
+            episodes
+        });
         return 'Indexing has been triggered';
 
         // THIS WOULD BE THE CALL TO REINDEX ON OPENSEARCH
@@ -1113,6 +1353,16 @@ const processSeries = async (data) => {
             status: 'failed'
         });
         console.log('UPDATE SOURCE MEDIA TO FAILED: ', JSON.stringify(updateSourceMediaToFailed));
+
+        await sendUpdateEmailNotification({
+            emailAddresses,
+            type: 'failure',
+            sourceMediaId,
+            alias,
+            seriesTitle: metadata?.title || seriesData?.name,
+            episodes,
+            error
+        });
         throw error;
     }
 }
@@ -1120,9 +1370,19 @@ const processSeries = async (data) => {
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
 
-    const { sourceMediaId, episodes = [] } = JSON.parse(event?.body);
+    let payload = {};
+    try {
+        payload = typeof event?.body === 'string' ? JSON.parse(event.body) : (event?.body || {});
+    } catch (parseError) {
+        console.error('Failed to parse event body:', parseError);
+        throw parseError;
+    }
+
+    const { sourceMediaId, episodes = [] } = payload;
+    const emailAddresses = extractEmailAddresses(payload);
     console.log('SOURCE MEDIA ID: ', sourceMediaId);
     console.log('EPISODES: ', episodes);
+    console.log('EMAIL ADDRESSES: ', emailAddresses);
     let statusCode = 500;
     let body;
 
@@ -1143,7 +1403,8 @@ exports.handler = async (event) => {
         await processSeries({
             sourceMediaId,
             episodes,
-            identityId
+            identityId,
+            emailAddresses
         });
         body = 'Indexing has been triggered';
     } catch (error) {
