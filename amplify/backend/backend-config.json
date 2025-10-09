@@ -674,6 +674,27 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcMoveApprovedMedia": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcOpenAI": {
       "build": true,
       "dependsOn": [
@@ -864,26 +885,10 @@
       "dependsOn": [
         {
           "attributes": [
-            "GraphQLAPIIdOutput",
-            "GraphQLAPIEndpointOutput",
-            "GraphQLAPIKeyOutput"
-          ],
-          "category": "api",
-          "resourceName": "memesrc"
-        },
-        {
-          "attributes": [
-            "Name"
+            "Arn"
           ],
           "category": "function",
-          "resourceName": "memesrcIndexAndPublish"
-        },
-        {
-          "attributes": [
-            "BucketName"
-          ],
-          "category": "storage",
-          "resourceName": "memesrcGeneratedImages"
+          "resourceName": "memesrcDynamoDBLayer"
         },
         {
           "attributes": [
@@ -904,7 +909,37 @@
             "Arn"
           ],
           "category": "function",
-          "resourceName": "memesrcDynamoDBLayer"
+          "resourceName": "memesrcSesLayer"
+        },
+        {
+          "attributes": [
+            "GraphQLAPIIdOutput",
+            "GraphQLAPIEndpointOutput",
+            "GraphQLAPIKeyOutput"
+          ],
+          "category": "api",
+          "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcIndexAndPublish"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcMoveApprovedMedia"
+        },
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
         }
       ],
       "providerPlugin": "awscloudformation",

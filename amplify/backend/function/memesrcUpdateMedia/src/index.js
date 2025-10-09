@@ -1,4 +1,13 @@
 /* Amplify Params - DO NOT EDIT
+	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+	API_MEMESRC_GRAPHQLAPIIDOUTPUT
+	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+	ENV
+	FUNCTION_MEMESRCINDEXANDPUBLISH_NAME
+	FUNCTION_MEMESRCMOVEAPPROVEDMEDIA_NAME
+	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+Amplify Params - DO NOT EDIT *//* Amplify Params - DO NOT EDIT
     API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
     API_MEMESRC_GRAPHQLAPIIDOUTPUT
     API_MEMESRC_GRAPHQLAPIKEYOUTPUT
@@ -521,68 +530,107 @@ const createSeriesContributors = async (data) => {
     }
 }
 
-const moveEpisodeFilesFromPendingToSrc = async (alias, episodes, path) => {
+const chunkArray = (items, size) => {
+    if (!Array.isArray(items) || size <= 0) {
+        return [];
+    }
+
+    const chunks = [];
+    for (let index = 0; index < items.length; index += size) {
+        chunks.push(items.slice(index, index + size));
+    }
+
+    return chunks;
+};
+
+const invokeMoveApprovedMedia = async ({ alias, episodes, path }) => {
+    const payload = JSON.stringify({ alias, episodes, path });
+    const params = {
+        FunctionName: process.env.FUNCTION_MEMESRCMOVEAPPROVEDMEDIA_NAME,
+        InvocationType: 'RequestResponse',
+        Payload: payload
+    };
+
+    const response = await lambda.invoke(params).promise();
+
+    if (response.FunctionError) {
+        throw new Error(`MoveApprovedMedia lambda returned an error: ${response.FunctionError}`);
+    }
+
+    let payloadBuffer;
+    if (!response.Payload) {
+        payloadBuffer = Buffer.from('');
+    } else if (Buffer.isBuffer(response.Payload)) {
+        payloadBuffer = response.Payload;
+    } else if (response.Payload instanceof Uint8Array) {
+        payloadBuffer = Buffer.from(response.Payload);
+    } else if (typeof response.Payload === 'string') {
+        payloadBuffer = Buffer.from(response.Payload, 'utf-8');
+    } else {
+        payloadBuffer = Buffer.from(JSON.stringify(response.Payload));
+    }
+    const responsePayloadString = payloadBuffer.toString('utf-8');
+
+    let responsePayload;
     try {
-        console.log(`Moving episode files for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
+        responsePayload = responsePayloadString ? JSON.parse(responsePayloadString) : {};
+    } catch (parseError) {
+        throw new Error(`Failed to parse MoveApprovedMedia response: ${parseError.message}`);
+    }
 
-        const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+    const { statusCode = response.StatusCode, body } = responsePayload;
 
-        // copy 00_metadata.json
-        const copyParams = {
-            Bucket: bucketName,
-            CopySource: `${bucketName}/${path}/00_metadata.json`,
-            Key: `protected/src/${alias}/00_metadata.json`
-        };
-        await s3.copyObject(copyParams).promise();
+    if (statusCode !== 200) {
+        throw new Error(`MoveApprovedMedia lambda responded with status ${statusCode}: ${body}`);
+    }
 
-        // Process each episode
-        for (const episode of episodes) {
-            const { season, episode: episodeNumber } = episode;
-            console.log(`Processing season ${season}, episode ${episodeNumber} for alias ${alias}`);
+    if (!body) {
+        return {};
+    }
 
-            // List all files in the pending episode folder
-            const listParams = {
-                Bucket: bucketName,
-                Prefix: `${path}/${season}/${episodeNumber}/`
-            };
+    try {
+        return typeof body === 'string' ? JSON.parse(body) : body;
+    } catch (parseBodyError) {
+        console.warn('Failed to parse body from MoveApprovedMedia response, returning raw body');
+        return body;
+    }
+};
 
-            const listedObjects = await s3.listObjectsV2(listParams).promise();
+const copyMetadataToSrc = async (alias, path) => {
+    const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+    console.log(`Copying metadata for alias ${alias} from ${path}`);
+    const params = {
+        Bucket: bucketName,
+        CopySource: `${bucketName}/${path}/00_metadata.json`,
+        Key: `protected/src/${alias}/00_metadata.json`
+    };
 
-            if (!listedObjects.Contents || listedObjects.Contents.length === 0) {
-                console.log(`No files found for season ${season}, episode ${episodeNumber} in pending folder`);
-                continue;
-            }
+    await s3.copyObject(params).promise();
+};
 
-            // Copy each file to the src folder
-            for (const object of listedObjects.Contents) {
-                const sourceKey = object.Key;
-                const destinationKey = sourceKey.replace(`${path}/${season}/${episodeNumber}/`, `protected/src/${alias}/${season}/${episodeNumber}/`);
+const moveEpisodeFilesFromPendingToSrc = async (alias, episodes, path) => {
+    if (!Array.isArray(episodes) || episodes.length === 0) {
+        console.log('No episodes to move from pending to src');
+        return;
+    }
 
-                console.log(`Copying ${sourceKey} to ${destinationKey}`);
+    try {
+        console.log(`Triggering MoveApprovedMedia lambda for alias ${alias} with ${episodes.length} episodes`);
+        const episodeChunks = chunkArray(episodes, 5);
 
-                // Copy the file
-                const copyParams = {
-                    Bucket: bucketName,
-                    CopySource: `${bucketName}/${sourceKey}`,
-                    Key: destinationKey
-                };
+        const invocationPromises = episodeChunks.map((chunk) =>
+            invokeMoveApprovedMedia({
+                alias,
+                episodes: chunk,
+                path
+            })
+        );
 
-                await s3.copyObject(copyParams).promise();
-
-                // Delete the original file from pending
-                // const deleteParams = {
-                //     Bucket: bucketName,
-                //     Key: sourceKey
-                // };
-
-                // await s3.deleteObject(deleteParams).promise();
-                // console.log(`Moved ${sourceKey} to ${destinationKey}`);
-            }
-        }
-
-        console.log(`Successfully moved all files for episodes: ${JSON.stringify(episodes)}`);
+        await Promise.all(invocationPromises);
+        await copyMetadataToSrc(alias, path);
+        console.log(`Successfully triggered MoveApprovedMedia for ${episodeChunks.length} chunk(s)`);
     } catch (error) {
-        console.error('Error moving episode files:', error);
+        console.error('Error invoking MoveApprovedMedia lambda:', error);
         throw error;
     }
 }
