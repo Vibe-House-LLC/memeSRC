@@ -48,11 +48,26 @@ const AccountPage = () => {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
+  const authUser = userDetails?.user;
+  const hasUserDetails = Boolean(authUser && authUser !== false && authUser.userDetails);
+  const isAuthLoading = authUser === null || typeof authUser === 'undefined';
+
+  const hasInitializedDataRef = useRef(false);
+
   useEffect(() => {
+    if (hasInitializedDataRef.current) {
+      return;
+    }
+
+    if (isAuthLoading || !hasUserDetails) {
+      return;
+    }
+
+    hasInitializedDataRef.current = true;
     fetchInvoices();
     fetchProfilePhoto();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthLoading, hasUserDetails]);
 
   const fetchInvoices = async () => {
     try {
@@ -222,11 +237,27 @@ const AccountPage = () => {
       });
   };
 
-  if (!userDetails?.user?.userDetails) {
+  if (isAuthLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          bgcolor: 'common.black',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <CircularProgress color="inherit" />
+      </Box>
+    );
+  }
+
+  if (!hasUserDetails) {
     return <Navigate to="/login" replace />;
   }
 
-  const accountDetails = userDetails.user.userDetails;
+  const accountDetails = authUser.userDetails;
   const accountEmail = accountDetails.email || 'N/A';
   const accountUsername = accountDetails.username || accountEmail;
   const isPro = accountDetails.magicSubscription === 'true';

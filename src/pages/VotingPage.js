@@ -645,6 +645,10 @@ export default function VotingPage() {
       return;
     }
 
+    if (user === null || typeof user === 'undefined') {
+      return;
+    }
+
     if (debouncedSearchText) {
       const fetchSearchResults = async () => {
         try {
@@ -731,7 +735,7 @@ export default function VotingPage() {
         setIsSearching(false);
       });
     }
-  }, [debouncedSearchText, rankMethod]);
+  }, [debouncedSearchText, rankMethod, fetchVoteData, user]);
 
   useEffect(() => {
     if (!loading && seriesMetadata.length > 0) {

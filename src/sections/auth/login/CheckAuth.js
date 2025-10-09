@@ -13,7 +13,7 @@ CheckAuth.propTypes = {
 export default function CheckAuth(props) {
   const navigate = useNavigate();
   const [content, setContent] = useState(null);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => readJSON('memeSRCUserDetails') || null);
   const [showFeed, setShowFeed] = useState(() => {
     const storedPreference = safeGetItem('memeSRCShowFeed');
     if (storedPreference === null) {
@@ -28,6 +28,7 @@ export default function CheckAuth(props) {
   const profilePhotoRef = useRef(null);
   const userRef = useRef(null);
   const paymentRefreshTriggeredRef = useRef(false);
+  const hasAttemptedAuthRef = useRef(false);
 
   useEffect(() => {
     profilePhotoRef.current = user?.profilePhoto ?? null;
@@ -148,70 +149,81 @@ export default function CheckAuth(props) {
       if (localStorageUser) {
         setUser(localStorageUser)
       }
-      // Set up the user context
-      Auth.currentAuthenticatedUser().then((x) => {
-        const tokenPayload = x?.signInUserSession?.idToken?.payload || x?.signInUserSession?.accessToken?.payload || {};
-
-        const parseUserNotifications = (notifications) => {
-          if (typeof notifications !== 'string') {
-            return notifications;
-          }
-
-          try {
-            return JSON.parse(notifications);
-          } catch (error) {
-            console.log('Failed to parse user notifications from token payload:', error);
-            return notifications;
-          }
-        };
-
-        const buildUserState = (profilePhoto) => {
-          const userDetailsFromToken = {
-            ...tokenPayload,
-            ...(tokenPayload?.userNotifications && {
-              userNotifications: parseUserNotifications(tokenPayload.userNotifications),
-            }),
-          };
-
-          return {
-            ...x,
-            ...tokenPayload,
-            userDetails: userDetailsFromToken,
-            profilePhoto,
-          };
-        };
-
-        // Fetch profile photo from S3 and store in context
-        fetchProfilePhoto().then(profilePhotoUrl => {
-          const userWithPhoto = buildUserState(profilePhotoUrl);
-
-          setUser(userWithPhoto);
-          userRef.current = userWithPhoto;
-          writeJSON('memeSRCUserDetails', userWithPhoto);
-        }).catch(error => {
-          console.log('Error fetching profile photo:', error);
-          const userWithoutPhoto = buildUserState(undefined);
-          setUser(userWithoutPhoto);
-          userRef.current = userWithoutPhoto;
-          writeJSON('memeSRCUserDetails', userWithoutPhoto);
-        });
-
-        console.log(x)
-        console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
-        // Amplify.configure({
-        //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
-        // });
-      }).catch(() => {
-        setUser({ username: false })  // indicate the context is ready but user is not auth'd
-        safeRemoveItem('memeSRCUserInfo')
-        console.log("There wasn't an authenticated user found")
-        console.log("Updating Amplify config to use API_KEY")
-        // Amplify.configure({
-        //     "aws_appsync_authenticationType": "API_KEY",
-        // });
-      });
     }
   }, [user, navigate, props.children, location.pathname])
+
+  useEffect(() => {
+    if (hasAttemptedAuthRef.current) {
+      return;
+    }
+    hasAttemptedAuthRef.current = true;
+
+    const localStorageUser = readJSON('memeSRCUserDetails');
+    if (!user && localStorageUser) {
+      setUser(localStorageUser);
+    }
+
+    Auth.currentAuthenticatedUser().then((x) => {
+      const tokenPayload = x?.signInUserSession?.idToken?.payload || x?.signInUserSession?.accessToken?.payload || {};
+
+      const parseUserNotifications = (notifications) => {
+        if (typeof notifications !== 'string') {
+          return notifications;
+        }
+
+        try {
+          return JSON.parse(notifications);
+        } catch (error) {
+          console.log('Failed to parse user notifications from token payload:', error);
+          return notifications;
+        }
+      };
+
+      const buildUserState = (profilePhoto) => {
+        const userDetailsFromToken = {
+          ...tokenPayload,
+          ...(tokenPayload?.userNotifications && {
+            userNotifications: parseUserNotifications(tokenPayload.userNotifications),
+          }),
+        };
+
+        return {
+          ...x,
+          ...tokenPayload,
+          userDetails: userDetailsFromToken,
+          profilePhoto,
+        };
+      };
+
+      fetchProfilePhoto().then(profilePhotoUrl => {
+        const userWithPhoto = buildUserState(profilePhotoUrl);
+
+        setUser(userWithPhoto);
+        userRef.current = userWithPhoto;
+        writeJSON('memeSRCUserDetails', userWithPhoto);
+      }).catch(error => {
+        console.log('Error fetching profile photo:', error);
+        const userWithoutPhoto = buildUserState(undefined);
+        setUser(userWithoutPhoto);
+        userRef.current = userWithoutPhoto;
+        writeJSON('memeSRCUserDetails', userWithoutPhoto);
+      });
+
+      console.log(x)
+      console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
+      // Amplify.configure({
+      //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
+      // });
+    }).catch(() => {
+      setUser({ username: false })  // indicate the context is ready but user is not auth'd
+      safeRemoveItem('memeSRCUserInfo')
+      console.log("There wasn't an authenticated user found")
+      console.log("Updating Amplify config to use API_KEY")
+      // Amplify.configure({
+      //     "aws_appsync_authenticationType": "API_KEY",
+      // });
+    });
+  }, [user]);
 
   useEffect(() => {
     safeSetItem('memeSRCShowFeed', showFeed ? 'true' : 'false');

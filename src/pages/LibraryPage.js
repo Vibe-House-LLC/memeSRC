@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Box, Container, Typography } from '@mui/material';
+import { Box, Container, Typography, CircularProgress } from '@mui/material';
 import { Helmet } from 'react-helmet-async';
 import { get as getFromLibrary } from '../utils/library/storage';
 import LibraryBrowser from '../components/library/LibraryBrowser';
@@ -8,13 +8,34 @@ import { UserContext } from '../UserContext';
 
 export default function LibraryPage() {
   const { user } = useContext(UserContext);
-  const isAdmin = user?.['cognito:groups']?.includes('admins');
-  const isPro = user?.userDetails?.magicSubscription === 'true';
+  const isAuthLoading = typeof user === 'undefined' || user === null;
+  const isAuthenticated = Boolean(user && user !== false);
+  const isAdmin = isAuthenticated && user?.['cognito:groups']?.includes('admins');
+  const isPro = isAuthenticated && user?.userDetails?.magicSubscription === 'true';
   const navigate = useNavigate();
+
+  if (isAuthLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   // Allow admins and Pro users; if logged in but non-Pro, forward to /pro
   if (!isAdmin && !isPro) {
-    return user ? <Navigate to="/pro" replace /> : <Navigate to="/404" replace />;
+    return <Navigate to="/pro" replace />;
   }
 
   return (
