@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Box, Button, Container, Typography, Chip, Alert } from "@mui/material";
 import { ArrowBack as ArrowBackIcon } from "@mui/icons-material";
 import AdminReviewUpload from "src/sections/@dashboard/admin/uploads/review-upload";
-import { SourceMediaFile, DetailedSourceMedia } from "src/sections/@dashboard/admin/uploads/types";
-import { getAllSourceMediaFiles } from "src/sections/@dashboard/admin/uploads/functions/get-source-media-files";
+import { DetailedSourceMedia } from "src/sections/@dashboard/admin/uploads/types";
 import getSourceMediaDetails from "src/sections/@dashboard/admin/uploads/functions/get-source-media-details";
 
 const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
@@ -35,14 +34,10 @@ export default function AdminFileReview() {
     const navigate = useNavigate();
     const sourceMediaId = searchParams.get('sourceMediaId');
     
-    const [files, setFiles] = useState<SourceMediaFile[]>([]);
     const [sourceMedia, setSourceMedia] = useState<DetailedSourceMedia | null>(null);
     const [currentStatus, setCurrentStatus] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
-    const [extractingFiles, setExtractingFiles] = useState<Set<string>>(new Set());
-
     useEffect(() => {
         if (!sourceMediaId) {
             setError('No source media ID provided');
@@ -52,19 +47,14 @@ export default function AdminFileReview() {
         setLoading(true);
         setError(null);
 
-        Promise.all([
-            getAllSourceMediaFiles(sourceMediaId),
-            getSourceMediaDetails(sourceMediaId)
-        ])
-            .then(([filesData, sourceMediaData]) => {
-                setFiles(filesData);
+        getSourceMediaDetails(sourceMediaId)
+            .then((sourceMediaData) => {
                 setSourceMedia(sourceMediaData);
                 setCurrentStatus(sourceMediaData?.status || '');
-                console.log(sourceMediaData);
             })
             .catch((err) => {
                 console.error('Error fetching data:', err);
-                setError('Failed to load source media files');
+                setError('Failed to load source media details');
             })
             .finally(() => {
                 setLoading(false);
@@ -79,6 +69,13 @@ export default function AdminFileReview() {
         console.log('Parent received status update:', newStatus);
         setCurrentStatus(newStatus);
     };
+
+    const fileStatuses = useMemo(
+        () => sourceMedia?.files?.items?.map(file => file?.status ?? '').filter(Boolean) ?? [],
+        [sourceMedia]
+    );
+
+    const hasFiles = fileStatuses.length > 0;
 
     if (!sourceMediaId) {
         return (
@@ -122,17 +119,15 @@ export default function AdminFileReview() {
             </Box>
             
             <AdminReviewUpload 
-                files={files}
                 loading={loading}
                 error={error}
-                downloadingFiles={downloadingFiles}
-                extractingFiles={extractingFiles}
-                setDownloadingFiles={setDownloadingFiles}
-                setExtractingFiles={setExtractingFiles}
                 setError={setError}
                 sourceMediaId={sourceMediaId}
                 initialAlias={sourceMedia?.pendingAlias}
                 initialStatus={sourceMedia?.status}
+                identityId={sourceMedia?.identityId}
+                fileStatuses={fileStatuses}
+                hasFiles={hasFiles}
                 onStatusUpdate={handleStatusUpdate}
             />
         </Container>

@@ -20,6 +20,13 @@
       "env": "dev",
       "version": "Always choose latest version",
       "isLatestVersionSelected": true
+    },
+    {
+      "type": "ProjectLayer",
+      "resourceName": "memesrcSesLayer",
+      "env": "dev",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
     }
   ],
   "permissions": {
@@ -36,6 +43,11 @@
         "read",
         "update",
         "delete"
+      ],
+      "memesrcMoveApprovedMedia": [
+        "create",
+        "read",
+        "update"
       ]
     },
     "storage": {

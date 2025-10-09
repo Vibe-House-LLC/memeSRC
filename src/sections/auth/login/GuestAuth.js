@@ -41,13 +41,10 @@ export default function GuestAuth(props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (location.pathname !== 'login') {
-      // console.log(user)
-      const userDetails = safeGetItem('memeSRCUserDetails')
-      const userObject = { ...userDetails }
-      // console.log(userDetails)
+      const userDetails = readJSON('memeSRCUserDetails') || {};
 
-      if (user && (user.userDetails !== userObject.userDetails)) {
-        writeJSON('memeSRCUserDetails', user)
+      if (user && (user.userDetails !== userDetails.userDetails)) {
+        writeJSON('memeSRCUserDetails', user);
       }
 
       if (user) {

@@ -1,12 +1,34 @@
 // component
-import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections, NewReleases } from '@mui/icons-material';
+import { 
+  Article, 
+  Ballot, 
+  Edit, 
+  Favorite, 
+  MapsUgc, 
+  PhotoLibrary, 
+  QuestionAnswer, 
+  Search, 
+  Settings, 
+  Shield, 
+  Star, 
+  SupportAgent, 
+  Upload, 
+  Collections, 
+  NewReleases,
+  Dashboard,
+  Movie,
+  Description,
+  Group,
+  Home,
+  ManageAccounts,
+} from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
 
 const icon = (name) => <SvgColor src={`/assets/icons/navbar/${name}.svg`} sx={{ width: 1, height: 1 }} />;
 
-const isElectron = () => window && window.process && window.process.type;
+const isElectron = () => typeof window !== 'undefined' && window.process && window.process.type;
 
 const navConfig = [
   {
@@ -33,12 +55,22 @@ const navConfig = [
         externalLink: false,
         icon: <Edit />,
       },
-      ...(isElectron() ? [{
-        title: 'Server',
-        path: '/server',
-        externalLink: false,
-        icon: <Settings />
-      }] : [])
+      ...(isElectron()
+        ? [
+          {
+            title: 'Server',
+            path: '/server',
+            externalLink: false,
+            icon: <Settings />,
+          },
+          {
+            title: 'Desktop Processing',
+            path: '/desktop/process',
+            externalLink: false,
+            icon: <Shield />,
+          },
+        ]
+        : [])
     ]
   },
   {
@@ -124,7 +156,7 @@ const navConfig = [
         title: 'dashboard',
         path: '/dashboard/app',
         externalLink: false,
-        icon: icon('ic_analytics'),
+        icon: <Dashboard />,
       },
       {
         title: 'Usage Events',
@@ -144,53 +176,47 @@ const navConfig = [
         externalLink: false,
         icon: <SupportAgent />,
       },
-      // {
-      //   title: 'Source Media',
-      //   path: '/dashboard/sourcemedia',
-      //   externalLink: false,
-      //   icon: icon('ic_analytics'),
-      // },
       {
         title: 'Source Media',
         path: '/dashboard/sourcemedia',
         externalLink: false,
-        icon: icon('ic_analytics'),
+        icon: <Movie />,
       },
       {
         title: 'editor',
         path: '/editor/projects',
         externalLink: false,
-        icon: icon('ic_file'),
+        icon: <Edit />,
       },
       {
         title: 'Content Manager',
         path: '/dashboard/series',
         externalLink: false,
-        icon: icon('ic_booking')
+        icon: <Collections />
       },
       {
         title: 'Alias Management',
         path: '/dashboard/aliasmanagement',
         externalLink: false,
-        icon: icon('ic_booking')
+        icon: <ManageAccounts />
       },
       {
         title: 'metadata',
         path: '/dashboard/metadata',
         externalLink: false,
-        icon: icon('ic_booking')
+        icon: <Description />
       },
       {
         title: 'user',
         path: '/dashboard/user',
         externalLink: false,
-        icon: icon('ic_user'),
+        icon: <Group />,
       },
       {
         title: 'homepage sections',
         path: '/dashboard/homepagesections',
         externalLink: false,
-        icon: icon('ic_file')
+        icon: <Home />
       },
     ]
   },

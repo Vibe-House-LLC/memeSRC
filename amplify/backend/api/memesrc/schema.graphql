@@ -32,6 +32,7 @@ type SourceMedia @model @auth(
   files: [File] @hasMany,
   status: String,
   user: UserDetails @belongsTo
+  identityId: String
   pendingAlias: String
 }
 

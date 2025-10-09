@@ -47,6 +47,14 @@
     "functionmemesrcIndexAndPublishName": {
       "Type": "String",
       "Default": "functionmemesrcIndexAndPublishName"
+    },
+    "functionmemesrcMoveApprovedMediaName": {
+      "Type": "String",
+      "Default": "functionmemesrcMoveApprovedMediaName"
+    },
+    "functionmemesrcSesLayerArn": {
+      "Type": "String",
+      "Default": "functionmemesrcSesLayerArn"
     }
   },
   "Conditions": {
@@ -116,6 +124,9 @@
             },
             "FUNCTION_MEMESRCINDEXANDPUBLISH_NAME": {
               "Ref": "functionmemesrcIndexAndPublishName"
+            },
+            "FUNCTION_MEMESRCMOVEAPPROVEDMEDIA_NAME": {
+              "Ref": "functionmemesrcMoveApprovedMediaName"
             }
           }
         },
@@ -135,6 +146,9 @@
           },
           {
             "Ref": "functionmemesrcDynamoDBLayerArn"
+          },
+          {
+            "Ref": "functionmemesrcSesLayerArn"
           }
         ],
         "Timeout": 900,
@@ -343,6 +357,39 @@
             },
             {
               "Effect": "Allow",
+              "Action": [
+                "lambda:Create*",
+                "lambda:Put*",
+                "lambda:Add*",
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:lambda:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":function:",
+                      {
+                        "Ref": "functionmemesrcMoveApprovedMediaName"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
               "Action": "s3:ListBucket",
               "Resource": [
                 {
@@ -382,6 +429,33 @@
           ]
         }
       }
+    },
+    "CustomLambdaExecutionPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "custom-lambda-execution-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "ses:SendEmail",
+                "ses:SendRawEmail"
+              ],
+              "Resource": [
+                "arn:aws:ses:us-east-1:458585755494:identity/no-reply@memesrc.com"
+              ],
+              "Effect": "Allow"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ]
+      },
+      "DependsOn": "LambdaExecutionRole"
     }
   },
   "Outputs": {

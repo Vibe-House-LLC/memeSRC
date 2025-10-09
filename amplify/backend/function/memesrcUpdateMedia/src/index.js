@@ -1,4 +1,13 @@
 /* Amplify Params - DO NOT EDIT
+	API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
+	API_MEMESRC_GRAPHQLAPIIDOUTPUT
+	API_MEMESRC_GRAPHQLAPIKEYOUTPUT
+	ENV
+	FUNCTION_MEMESRCINDEXANDPUBLISH_NAME
+	FUNCTION_MEMESRCMOVEAPPROVEDMEDIA_NAME
+	REGION
+	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
+Amplify Params - DO NOT EDIT *//* Amplify Params - DO NOT EDIT
     API_MEMESRC_GRAPHQLAPIENDPOINTOUTPUT
     API_MEMESRC_GRAPHQLAPIIDOUTPUT
     API_MEMESRC_GRAPHQLAPIKEYOUTPUT
@@ -20,6 +29,7 @@ Amplify Params - DO NOT EDIT */
  */
 
 const { makeGraphQLRequest } = require('/opt/graphql-handler');
+const { sendEmail } = require('/opt/email-function');
 
 const AWS = require('aws-sdk');
 
@@ -28,6 +38,10 @@ const s3 = new AWS.S3();
 
 // Initialize Lambda client
 const lambda = new AWS.Lambda();
+
+const reviewUrl = process.env.ENV === 'beta'
+    ? 'https://memesrc.com/dashboard/review-upload?sourceMediaId='
+    : 'https://dev.memesrc.com/dashboard/review-upload?sourceMediaId=';
 
 const getSeriesQuery = `
     query GetSeries($id: ID!) {
@@ -155,6 +169,7 @@ const getSourceMediaQuery = `
         getSourceMedia(id: $id) {
             id
             pendingAlias
+            identityId
             series {
                 id
                 tvdbid
@@ -419,9 +434,9 @@ const getSeriesCsv = async (newSeries = false, alias) => {
     }
 }
 
-const getSeriesMetadata = async (newSeries = false, alias) => {
+const getSeriesMetadata = async (newSeries = false, alias, path) => {
     try {
-        const metadataPath = newSeries ? `protected/src/${alias}/00_metadata.json` : `protected/srcPending/${alias}/00_metadata.json`;
+        const metadataPath = newSeries ? `protected/src/${alias}/00_metadata.json` : `${path}/00_metadata.json`;
 
         const params = {
             Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
@@ -520,72 +535,332 @@ const createSeriesContributors = async (data) => {
     }
 }
 
-const moveEpisodeFilesFromPendingToSrc = async (alias, episodes) => {
+const extractEmailAddresses = (payload = {}) => {
+    if (!payload || typeof payload !== 'object') {
+        return [];
+    }
+
+    const { emailAddresses } = payload;
+
+    if (!emailAddresses) {
+        return [];
+    }
+
+    if (Array.isArray(emailAddresses)) {
+        return emailAddresses
+            .filter((value) => typeof value === 'string')
+            .map((value) => value.trim())
+            .filter(Boolean);
+    }
+
+    if (typeof emailAddresses === 'string') {
+        return emailAddresses
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean);
+    }
+
+    return [];
+};
+
+const formatEpisodeSummary = (episodes = []) => {
+    if (!Array.isArray(episodes) || episodes.length === 0) {
+        return 'None specified';
+    }
+
+    return episodes
+        .map(({ season, episode }) => {
+            const seasonLabel = season !== undefined && season !== null ? `S${String(season).padStart(2, '0')}` : 'S??';
+            const episodeLabel = episode !== undefined && episode !== null ? `E${String(episode).padStart(2, '0')}` : 'E??';
+            return `${seasonLabel}${episodeLabel}`;
+        })
+        .join(', ');
+};
+
+const escapeHtml = (value = '') =>
+    String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+const sendUpdateEmailNotification = async ({
+    emailAddresses,
+    type,
+    sourceMediaId,
+    alias,
+    seriesTitle,
+    episodes = [],
+    error
+}) => {
+    if (!Array.isArray(emailAddresses) || emailAddresses.length === 0) {
+        return;
+    }
+
     try {
-        console.log(`Moving episode files for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
+        const totalEpisodes = episodes.length;
+        const episodeSummary = formatEpisodeSummary(episodes);
+        const friendlySeriesTitle = seriesTitle || alias || 'memeSRC Series';
+        const now = new Date();
+        const timestamp = now.toLocaleString();
+        const encodedSourceMediaId = sourceMediaId ? encodeURIComponent(sourceMediaId) : '';
+        const reviewLink = encodedSourceMediaId ? `${reviewUrl}${encodedSourceMediaId}` : reviewUrl;
+        const metaSpan = `<span style="font-size: 0; color: transparent;">SourceMedia:${escapeHtml(sourceMediaId || 'unknown')}|Alias:${escapeHtml(alias || 'n/a')}|${Date.now()}</span>`;
+        const baseLines = [
+            `Series: ${friendlySeriesTitle}`,
+            `Source Media ID: ${sourceMediaId || 'unknown'}`,
+            alias ? `Alias: ${alias}` : null,
+            totalEpisodes ? `Episodes (${totalEpisodes}): ${episodeSummary}` : 'Episodes: None specified'
+        ].filter(Boolean);
 
-        const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+        let subject;
+        let htmlBody;
+        let textBody;
 
-        // Process each episode
-        for (const episode of episodes) {
-            const { season, episode: episodeNumber } = episode;
-            console.log(`Processing season ${season}, episode ${episodeNumber} for alias ${alias}`);
+        switch (type) {
+            case 'start': {
+                subject = 'memeSRC: Series Update Started';
+                htmlBody = `
+                    <html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <h1 style="color: #2c3e50;">Series Update Started</h1>
+                            <p>We're preparing your updates for <strong>${escapeHtml(friendlySeriesTitle)}</strong>.</p>
+                            <p><strong>Source Media ID:</strong> ${escapeHtml(sourceMediaId || 'unknown')}</p>
+                            ${alias ? `<p><strong>Alias:</strong> ${escapeHtml(alias)}</p>` : ''}
+                            <p><strong>Episodes queued:</strong> ${totalEpisodes} (${escapeHtml(episodeSummary)})</p>
+                            <p>Process started at: <strong>${escapeHtml(timestamp)}</strong></p>
+                            <p>We'll let you know when everything is finished. You can review progress any time:</p>
+                            <p><a href="${reviewLink}" style="background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Review Upload</a></p>
+                            <p>— The memeSRC Team</p>
+                            ${metaSpan}
+                        </body>
+                    </html>
+                `;
 
-            // List all files in the pending episode folder
-            const listParams = {
-                Bucket: bucketName,
-                Prefix: `protected/srcPending/${alias}/${season}/${episodeNumber}/`
-            };
-
-            const listedObjects = await s3.listObjectsV2(listParams).promise();
-
-            if (!listedObjects.Contents || listedObjects.Contents.length === 0) {
-                console.log(`No files found for season ${season}, episode ${episodeNumber} in pending folder`);
-                continue;
+                const textBodyLines = [
+                    'Series Update Started',
+                    '',
+                    ...baseLines,
+                    `Started at: ${timestamp}`,
+                    '',
+                    'Review progress:',
+                    reviewLink,
+                    '',
+                    '— The memeSRC Team'
+                ];
+                textBody = textBodyLines.join('\n');
+                break;
             }
+            case 'success': {
+                subject = 'memeSRC: Series Update Complete';
+                htmlBody = `
+                    <html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <h1 style="color: #27ae60;">Series Update Complete</h1>
+                            <p>Your updates for <strong>${escapeHtml(friendlySeriesTitle)}</strong> are finished.</p>
+                            <p><strong>Source Media ID:</strong> ${escapeHtml(sourceMediaId || 'unknown')}</p>
+                            ${alias ? `<p><strong>Alias:</strong> ${escapeHtml(alias)}</p>` : ''}
+                            <p><strong>Episodes processed:</strong> ${totalEpisodes} (${escapeHtml(episodeSummary)})</p>
+                            <p>Completed at: <strong>${escapeHtml(timestamp)}</strong></p>
+                            <p>You can review the refreshed content and continue your workflow:</p>
+                            <p><a href="${reviewLink}" style="background-color: #27ae60; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Review Updated Content</a></p>
+                            <p>— The memeSRC Team</p>
+                            ${metaSpan}
+                        </body>
+                    </html>
+                `;
 
-            // Copy each file to the src folder
-            for (const object of listedObjects.Contents) {
-                const sourceKey = object.Key;
-                const destinationKey = sourceKey.replace(`protected/srcPending/${alias}/${season}/${episodeNumber}/`, `protected/src/${alias}/${season}/${episodeNumber}/`);
-
-                console.log(`Copying ${sourceKey} to ${destinationKey}`);
-
-                // Copy the file
-                const copyParams = {
-                    Bucket: bucketName,
-                    CopySource: `${bucketName}/${sourceKey}`,
-                    Key: destinationKey
-                };
-
-                await s3.copyObject(copyParams).promise();
-
-                // Delete the original file from pending
-                // const deleteParams = {
-                //     Bucket: bucketName,
-                //     Key: sourceKey
-                // };
-
-                // await s3.deleteObject(deleteParams).promise();
-                // console.log(`Moved ${sourceKey} to ${destinationKey}`);
+                const textBodyLines = [
+                    'Series Update Complete',
+                    '',
+                    ...baseLines,
+                    `Completed at: ${timestamp}`,
+                    '',
+                    'Review the updated content:',
+                    reviewLink,
+                    '',
+                    '— The memeSRC Team'
+                ];
+                textBody = textBodyLines.join('\n');
+                break;
             }
+            case 'failure': {
+                const errorMessage = error?.message || 'Unknown error occurred';
+                const safeErrorMessage = escapeHtml(errorMessage);
+                subject = 'memeSRC: Series Update Failed';
+                htmlBody = `
+                    <html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <h1 style="color: #e74c3c;">Series Update Failed</h1>
+                            <p>We couldn't complete the update for <strong>${escapeHtml(friendlySeriesTitle)}</strong>.</p>
+                            <p><strong>Source Media ID:</strong> ${escapeHtml(sourceMediaId || 'unknown')}</p>
+                            ${alias ? `<p><strong>Alias:</strong> ${escapeHtml(alias)}</p>` : ''}
+                            <p><strong>Episodes attempted:</strong> ${totalEpisodes} (${escapeHtml(episodeSummary)})</p>
+                            <p><strong>Failed at:</strong> ${escapeHtml(timestamp)}</p>
+                            <p><strong>Error:</strong> ${safeErrorMessage}</p>
+                            <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #e74c3c; margin: 20px 0;">
+                                <h3 style="margin-top: 0; color: #e74c3c;">What you can try:</h3>
+                                <ul>
+                                    <li>Retry the update from your dashboard</li>
+                                    <li>Confirm the episodes you selected are available</li>
+                                    <li>Contact support if the issue continues</li>
+                                </ul>
+                            </div>
+                            <p>Review details or retry when you're ready:</p>
+                            <p><a href="${reviewLink}" style="background-color: #e74c3c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Review Upload</a></p>
+                            <p>— The memeSRC Team</p>
+                            ${metaSpan}
+                        </body>
+                    </html>
+                `;
+
+                const textBodyLines = [
+                    'Series Update Failed',
+                    '',
+                    ...baseLines,
+                    `Failed at: ${timestamp}`,
+                    `Error: ${errorMessage}`,
+                    '',
+                    'Review details or retry when you are ready:',
+                    reviewLink,
+                    '',
+                    'If the issue continues, please contact support.',
+                    '',
+                    '— The memeSRC Team'
+                ];
+                textBody = textBodyLines.join('\n');
+                break;
+            }
+            default:
+                return;
         }
 
-        console.log(`Successfully moved all files for episodes: ${JSON.stringify(episodes)}`);
+        await sendEmail({
+            toAddresses: emailAddresses,
+            subject,
+            htmlBody,
+            textBody
+        });
+        console.log(`Sent ${type} update notification email to ${emailAddresses.join(', ')}`);
+    } catch (emailError) {
+        console.error(`Failed to send ${type} update notification email:`, emailError);
+    }
+};
+
+const chunkArray = (items, size) => {
+    if (!Array.isArray(items) || size <= 0) {
+        return [];
+    }
+
+    const chunks = [];
+    for (let index = 0; index < items.length; index += size) {
+        chunks.push(items.slice(index, index + size));
+    }
+
+    return chunks;
+};
+
+const invokeMoveApprovedMedia = async ({ alias, episodes, path }) => {
+    const payload = JSON.stringify({ alias, episodes, path });
+    const params = {
+        FunctionName: process.env.FUNCTION_MEMESRCMOVEAPPROVEDMEDIA_NAME,
+        InvocationType: 'RequestResponse',
+        Payload: payload
+    };
+
+    const response = await lambda.invoke(params).promise();
+
+    if (response.FunctionError) {
+        throw new Error(`MoveApprovedMedia lambda returned an error: ${response.FunctionError}`);
+    }
+
+    let payloadBuffer;
+    if (!response.Payload) {
+        payloadBuffer = Buffer.from('');
+    } else if (Buffer.isBuffer(response.Payload)) {
+        payloadBuffer = response.Payload;
+    } else if (response.Payload instanceof Uint8Array) {
+        payloadBuffer = Buffer.from(response.Payload);
+    } else if (typeof response.Payload === 'string') {
+        payloadBuffer = Buffer.from(response.Payload, 'utf-8');
+    } else {
+        payloadBuffer = Buffer.from(JSON.stringify(response.Payload));
+    }
+    const responsePayloadString = payloadBuffer.toString('utf-8');
+
+    let responsePayload;
+    try {
+        responsePayload = responsePayloadString ? JSON.parse(responsePayloadString) : {};
+    } catch (parseError) {
+        throw new Error(`Failed to parse MoveApprovedMedia response: ${parseError.message}`);
+    }
+
+    const { statusCode = response.StatusCode, body } = responsePayload;
+
+    if (statusCode !== 200) {
+        throw new Error(`MoveApprovedMedia lambda responded with status ${statusCode}: ${body}`);
+    }
+
+    if (!body) {
+        return {};
+    }
+
+    try {
+        return typeof body === 'string' ? JSON.parse(body) : body;
+    } catch (parseBodyError) {
+        console.warn('Failed to parse body from MoveApprovedMedia response, returning raw body');
+        return body;
+    }
+};
+
+const copyMetadataToSrc = async (alias, path) => {
+    const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
+    console.log(`Copying metadata for alias ${alias} from ${path}`);
+    const params = {
+        Bucket: bucketName,
+        CopySource: `${bucketName}/${path}/00_metadata.json`,
+        Key: `protected/src/${alias}/00_metadata.json`
+    };
+
+    await s3.copyObject(params).promise();
+};
+
+const moveEpisodeFilesFromPendingToSrc = async (alias, episodes, path) => {
+    if (!Array.isArray(episodes) || episodes.length === 0) {
+        console.log('No episodes to move from pending to src');
+        return;
+    }
+
+    try {
+        console.log(`Triggering MoveApprovedMedia lambda for alias ${alias} with ${episodes.length} episodes`);
+        const episodeChunks = chunkArray(episodes, 5);
+
+        const invocationPromises = episodeChunks.map((chunk) =>
+            invokeMoveApprovedMedia({
+                alias,
+                episodes: chunk,
+                path
+            })
+        );
+
+        await Promise.all(invocationPromises);
+        await copyMetadataToSrc(alias, path);
+        console.log(`Successfully triggered MoveApprovedMedia for ${episodeChunks.length} chunk(s)`);
     } catch (error) {
-        console.error('Error moving episode files:', error);
+        console.error('Error invoking MoveApprovedMedia lambda:', error);
         throw error;
     }
 }
 
-const updateEpisodeDocsFromPending = async (alias, season, episodeNumber) => {
+const updateEpisodeDocsFromPending = async (alias, season, episodeNumber, path) => {
     try {
         console.log(`Updating episode docs for alias: ${alias}, season: ${season}, episode: ${episodeNumber}`);
 
         const bucketName = process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME;
 
         // Get docs from the pending episode folder
-        const pendingEpisodeDocsPath = `protected/srcPending/${alias}/${season}/${episodeNumber}/_docs.csv`;
+        const pendingEpisodeDocsPath = `${path}/${season}/${episodeNumber}/_docs.csv`;
         const srcEpisodeDocsPath = `protected/src/${alias}/${season}/${episodeNumber}/_docs.csv`;
 
         try {
@@ -821,13 +1096,13 @@ const regenerateRootDocsFromSeasons = async (alias) => {
     }
 }
 
-const updateSeriesDocsWithNewEpisodes = async (alias, episodes) => {
+const updateSeriesDocsWithNewEpisodes = async (alias, episodes, path) => {
     try {
         console.log(`Updating series docs for alias: ${alias}, episodes: ${JSON.stringify(episodes)}`);
 
         // Step 1: Update episode-level _docs.csv files (episode → src)
         for (const { season, episode } of episodes) {
-            await updateEpisodeDocsFromPending(alias, season, episode);
+            await updateEpisodeDocsFromPending(alias, season, episode, path);
         }
 
         // Step 2: Group episodes by season and regenerate season docs from episodes
@@ -968,8 +1243,16 @@ const processNewSeries = async (data) => {
     }
 }
 
-const processExistingSeries = async (data) => {
-    const { sourceMediaId, episodes } = data;
+const processSeries = async (data) => {
+    const { sourceMediaId, episodes, identityId, emailAddresses } = data;
+    if (!identityId) {
+        throw new Error('Identity ID is required');
+    }
+    const path = `protected/${identityId}/${sourceMediaId}`;
+    let alias;
+    let seriesData;
+    let metadata;
+    let userData;
     try {
         const updateSourceMediaToPending = await updateSourceMedia({
             id: sourceMediaId,
@@ -977,11 +1260,20 @@ const processExistingSeries = async (data) => {
         });
         console.log('UPDATE SOURCE MEDIA TO PENDING: ', JSON.stringify(updateSourceMediaToPending));
         const sourceMedia = await getSourceMedia(sourceMediaId);
-        const seriesData = sourceMedia?.series;
-        const userData = sourceMedia?.user;
-        const alias = sourceMedia?.pendingAlias;
+        seriesData = sourceMedia?.series;
+        userData = sourceMedia?.user;
+        alias = sourceMedia?.pendingAlias;
         // const docs = await getSeriesCsv(alias, true); // Not needed since we handle docs in updateSeriesDocsWithNewEpisodes
-        const metadata = await getSeriesMetadata(false, alias);
+        metadata = await getSeriesMetadata(false, alias, path);
+
+        await sendUpdateEmailNotification({
+            emailAddresses,
+            type: 'start',
+            sourceMediaId,
+            alias,
+            seriesTitle: metadata?.title || seriesData?.name,
+            episodes
+        });
         // Check to see if the v2 content metadata exists
         const v2ContentMetadata = await getV2ContentMetadata(alias);
         if (v2ContentMetadata?.id) {
@@ -1021,10 +1313,10 @@ const processExistingSeries = async (data) => {
         }
 
         // Move episode files from pending to src folder for approved episodes
-        await moveEpisodeFilesFromPendingToSrc(alias, episodes);
+        await moveEpisodeFilesFromPendingToSrc(alias, episodes, path);
 
         // Update the series docs CSV by removing existing episode rows and adding new ones
-        await updateSeriesDocsWithNewEpisodes(alias, episodes);
+        await updateSeriesDocsWithNewEpisodes(alias, episodes, path);
 
         const updateSourceMediaToAwaitingIndexing = await updateSourceMedia({
             id: sourceMediaId,
@@ -1040,6 +1332,15 @@ const processExistingSeries = async (data) => {
             userDetailsId: userData?.id
         });
         console.log('SERIES CONTRIBUTORS DATA: ', JSON.stringify(seriesContributorsResponse));
+
+        await sendUpdateEmailNotification({
+            emailAddresses,
+            type: 'success',
+            sourceMediaId,
+            alias,
+            seriesTitle: metadata?.title || seriesData?.name,
+            episodes
+        });
         return 'Indexing has been triggered';
 
         // THIS WOULD BE THE CALL TO REINDEX ON OPENSEARCH
@@ -1052,6 +1353,36 @@ const processExistingSeries = async (data) => {
             status: 'failed'
         });
         console.log('UPDATE SOURCE MEDIA TO FAILED: ', JSON.stringify(updateSourceMediaToFailed));
+
+        // Populate any missing context so failure notifications have useful data.
+        if (!alias || !seriesData || !metadata || !userData) {
+            try {
+                const fallbackSourceMedia = await getSourceMedia(sourceMediaId);
+                seriesData = seriesData || fallbackSourceMedia?.series;
+                userData = userData || fallbackSourceMedia?.user;
+                alias = alias || fallbackSourceMedia?.pendingAlias;
+            } catch (fallbackSourceError) {
+                console.error('Failed to fetch source media for failure notification:', fallbackSourceError);
+            }
+            if (!metadata && alias) {
+                try {
+                    metadata = await getSeriesMetadata(false, alias, path);
+                } catch (fallbackMetadataError) {
+                    console.error('Failed to fetch series metadata for failure notification:', fallbackMetadataError);
+                }
+            }
+        }
+        const failureSeriesTitle = metadata?.title || seriesData?.name || alias || 'Unknown Series';
+
+        await sendUpdateEmailNotification({
+            emailAddresses,
+            type: 'failure',
+            sourceMediaId,
+            alias: alias || 'unknown-alias',
+            seriesTitle: failureSeriesTitle,
+            episodes,
+            error
+        });
         throw error;
     }
 }
@@ -1059,9 +1390,19 @@ const processExistingSeries = async (data) => {
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
 
-    const { sourceMediaId, episodes = [] } = JSON.parse(event?.body);
+    let payload = {};
+    try {
+        payload = typeof event?.body === 'string' ? JSON.parse(event.body) : (event?.body || {});
+    } catch (parseError) {
+        console.error('Failed to parse event body:', parseError);
+        throw parseError;
+    }
+
+    const { sourceMediaId, episodes = [] } = payload;
+    const emailAddresses = extractEmailAddresses(payload);
     console.log('SOURCE MEDIA ID: ', sourceMediaId);
     console.log('EPISODES: ', episodes);
+    console.log('EMAIL ADDRESSES: ', emailAddresses);
     let statusCode = 500;
     let body;
 
@@ -1069,6 +1410,7 @@ exports.handler = async (event) => {
         const sourceMediaResponse = await makeGraphQLRequest({ query: getSourceMediaQuery, variables: { id: sourceMediaId } });
         console.log('SOURCE MEDIA RESPONSE: ', JSON.stringify(sourceMediaResponse));
         const sourceMediaData = sourceMediaResponse?.body?.data?.getSourceMedia;
+        const identityId = sourceMediaData?.identityId;
         const alias = sourceMediaData?.pendingAlias;
         console.log('SOURCE MEDIA DATA: ', JSON.stringify(sourceMediaData));
         console.log('ALIAS: ', JSON.stringify(alias));
@@ -1077,22 +1419,14 @@ exports.handler = async (event) => {
         const aliasData = aliasResponse?.body?.data?.getAlias;
         console.log('ALIAS DATA: ', JSON.stringify(aliasData));
 
-        if (aliasData?.id) {
-            console.log('PROCESSING EXISTING SERIES');
-            statusCode = 200;
-            await processExistingSeries({
-                sourceMediaId,
-                episodes,
-            });
-            body = 'Indexing has been triggered';
-        } else {
-            console.log('PROCESSING NEW SERIES');
-            statusCode = 200;
-            await processNewSeries({
-                sourceMediaId
-            });
-            body = 'Indexing has been triggered';
-        }
+        statusCode = 200;
+        await processSeries({
+            sourceMediaId,
+            episodes,
+            identityId,
+            emailAddresses
+        });
+        body = 'Indexing has been triggered';
     } catch (error) {
         console.error('Error:', error);
         statusCode = 500;

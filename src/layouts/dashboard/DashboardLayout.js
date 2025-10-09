@@ -7,18 +7,22 @@ import Nav from './nav';
 
 
 export default function DashboardLayout() {
-  const [open, setOpen] = useState(false);
+  const [navAnchorEl, setNavAnchorEl] = useState(null);
   const location = useLocation();
 
   useEffect(() => {
-    // Close navigation bar whenever the route changes
-    setOpen(false);
-  }, [location]);
+    // Close navigation menu whenever the route changes
+    setNavAnchorEl(null);
+  }, [location.pathname]); // Use pathname specifically for more reliable tracking
+
+  const handleCloseNav = () => {
+    setNavAnchorEl(null);
+  };
 
   return (
     <>
-      <Header onOpenNav={() => setOpen(true)} />
-      <Nav openNav={open} onCloseNav={() => setOpen(false)} />
+      <Header onOpenNav={(event) => setNavAnchorEl(event.currentTarget)} />
+      <Nav anchorEl={navAnchorEl} onClose={handleCloseNav} />
       <Box component="main" sx={{ width: '100%' }}>
         <Outlet />
       </Box>

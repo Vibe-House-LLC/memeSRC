@@ -15,7 +15,7 @@ import { SnackbarContext } from '../../../SnackbarContext';
 
 
 export default function UploadToSeriesPage({ seriesId }) {
-  const { user } = useContext(UserContext)
+  const { user, forceTokenRefresh } = useContext(UserContext)
   const { setOpen, setSeverity, setMessage } = useContext(SnackbarContext)
   const dropContainer = useRef();
   const [files, setFiles] = useState();
@@ -26,27 +26,83 @@ export default function UploadToSeriesPage({ seriesId }) {
   const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
   const [disableButton, setDisableButton] = useState(false);
 
-  function filterFiles(files) {
-    return files.filter(file => {
-      const filename = file.path.split('/').pop().toLowerCase();
-      // Check if the file extension is .zip
-      return filename.endsWith('.zip');
+  const SUPPORTED_EXTENSIONS = ['.mp4', '.json', '.csv'];
+
+  const getRelativePath = file => {
+    const rawPath = file?.webkitRelativePath || file?.path || file?.name || '';
+    return rawPath.replace(/\\/g, '/');
+  };
+
+  const normalizeRelativePath = rawPath => {
+    if (!rawPath) {
+      return '';
+    }
+
+    const trimmedPath = rawPath.replace(/^\/+/, '');
+    const safeSegments = trimmedPath
+      .split('/')
+      .filter(segment => segment && segment !== '.' && segment !== '..');
+
+    return safeSegments.join('/');
+  };
+
+  const filterFiles = incomingFiles => {
+    const accepted = [];
+    const rejected = [];
+
+    incomingFiles.forEach(file => {
+      const rawPath = getRelativePath(file);
+      const normalizedPath = normalizeRelativePath(rawPath);
+      const pathForExtension = (normalizedPath || rawPath || '').toLowerCase();
+      const extensionIndex = pathForExtension.lastIndexOf('.');
+      const extension = extensionIndex !== -1 ? pathForExtension.substring(extensionIndex) : '';
+
+      if (SUPPORTED_EXTENSIONS.includes(extension)) {
+        accepted.push(file);
+      } else {
+        rejected.push(file);
+      }
     });
-  }
+
+    if (rejected.length) {
+      setSeverity('error');
+      setMessage('Only .mp4, .json, and .csv files are supported.');
+      setOpen(true);
+    }
+
+    return accepted;
+  };
 
   const handleAddFiles = files => {
     console.log(files)
-    setFiles(filterFiles(files))
+    const filteredFiles = filterFiles(files);
+    setFiles(filteredFiles.length ? filteredFiles : undefined);
+    setDisableButton(false);
   }
 
   const handleUpload = async () => {
     setUploading(true);
+    if (!files || !files.length) {
+      setUploading(false);
+      return;
+    }
     if (user?.['cognito:groups']?.some((element) => element === 'admins' || element === 'mods' || element === 'contributors')) {
       try {
+        // Force a new token so that ours doesn't expire during upload
+        await forceTokenRefresh();
+        // Resolve the current user's Cognito Identity ID for building the full S3 key
+        let identityId;
+        try {
+          const credentials = await Auth.currentCredentials();
+          identityId = credentials?.identityId;
+        } catch (credentialsError) {
+          console.log('Unable to resolve identity id', credentialsError);
+        }
         const sourceMediaInput = {
           sourceMediaSeriesId: seriesId,
           status: 'uploaded',
           userDetailsSourceMediaId: user.sub,
+          identityId: identityId,
         };
         const createSourceMedia = `
           mutation CreateSourceMedia(
@@ -83,17 +139,6 @@ export default function UploadToSeriesPage({ seriesId }) {
         const sourceMedia = await API.graphql(graphqlOperation(createSourceMedia, { input: sourceMediaInput }));
         const sourceMediaId = sourceMedia.data.createSourceMedia.id;
 
-
-
-        // Resolve the current user's Cognito Identity ID for building the full S3 key
-        let identityId;
-        try {
-          const credentials = await Auth.currentCredentials();
-          identityId = credentials?.identityId;
-        } catch (credentialsError) {
-          console.log('Unable to resolve identity id', credentialsError);
-        }
-
         if (!identityId) {
           setUploading(false);
           setDisableButton(true)
@@ -112,8 +157,10 @@ export default function UploadToSeriesPage({ seriesId }) {
 
         const uploadProgresses = files.map(() => 0); // Initialize progress for each file
         const uploadPromises = files.map(async (file, index) => {
-          console.log(`Attempting to upload ${file.name}...`);
-          const s3Key = `${sourceMediaId}/${file.name}`
+          const relativePath = getRelativePath(file) || file.name;
+          const normalizedRelativePath = normalizeRelativePath(relativePath) || file.name;
+          console.log(`Attempting to upload ${normalizedRelativePath}...`);
+          const s3Key = `${sourceMediaId}/${normalizedRelativePath}`;
           let fileId;
 
           // Log the full S3 key including the protected identity prefix
@@ -139,12 +186,12 @@ export default function UploadToSeriesPage({ seriesId }) {
           };
 
           const uploadedFile = await Storage.put(s3Key, file, {
-            contentType: file.type,
+            contentType: file.type || undefined,
             level: 'protected',
             progressCallback,
           });
           console.log(uploadedFile)
-          console.log(`${file.name} uploaded!`);
+          console.log(`${normalizedRelativePath} uploaded!`);
 
           if (fileId) {
             const updateFileInput = {
@@ -206,7 +253,22 @@ export default function UploadToSeriesPage({ seriesId }) {
   return (
     <>
       <Container disableGutters>
-        <Dropzone onDrop={acceptedFiles => { handleAddFiles(acceptedFiles) }}>
+        <Dropzone
+          useFsAccessApi={false}
+          accept={{
+            'video/mp4': ['.mp4'],
+            'application/json': ['.json'],
+            'text/csv': ['.csv'],
+          }}
+          onDrop={(acceptedFiles, fileRejections) => {
+            if (fileRejections?.length) {
+              setSeverity('error');
+              setMessage('Only .mp4, .json, and .csv files are supported.');
+              setOpen(true);
+            }
+            handleAddFiles(acceptedFiles);
+          }}
+        >
           {({ getRootProps, getInputProps }) => (
             <Card
               {...getRootProps()}
@@ -221,7 +283,7 @@ export default function UploadToSeriesPage({ seriesId }) {
                 },
               }}
             >
-              <input {...getInputProps()} />
+              <input {...getInputProps({ webkitdirectory: true, directory: true })} />
               {files ?
                 <Grid container justifyContent='left' px={3}>
                   <Grid item xs={6} md={4}>
@@ -235,21 +297,26 @@ export default function UploadToSeriesPage({ seriesId }) {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} mt={1} mb={3}><Divider /></Grid>
-                  {files?.map((file, index) =>
-                    <Fragment key={index}>
-                      <Grid item xs={6} md={4}>
-                        <Typography variant='body1'>
-                          {file.name}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6} md={8}>
-                        <Typography variant='body1'>
-                          {convertBytesToSize(file.size)}
-                        </Typography>
-                      </Grid>
-                      {index < files.length - 1 && <Grid item xs={12} mt={1} mb={.7}><Divider /></Grid>}
-                    </Fragment>
-                  )}
+                  {files?.map((file, index) => {
+                    const relativePath = getRelativePath(file) || file.name;
+                    const displayPath = normalizeRelativePath(relativePath) || file.name;
+
+                    return (
+                      <Fragment key={displayPath || index}>
+                        <Grid item xs={6} md={4}>
+                          <Typography variant='body1'>
+                            {displayPath}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} md={8}>
+                          <Typography variant='body1'>
+                            {convertBytesToSize(file.size)}
+                          </Typography>
+                        </Grid>
+                        {index < files.length - 1 && <Grid item xs={12} mt={1} mb={.7}><Divider /></Grid>}
+                      </Fragment>
+                    );
+                  })}
                 </Grid>
                 :
                 <Stack alignItems='center' spacing={2} ref={dropContainer}>

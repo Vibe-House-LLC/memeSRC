@@ -36,24 +36,59 @@ import { SnowEffect } from '../../../components/CountdownTimer';
 
 // ----------------------------------------------------------------------
 
+// Detect if running in Electron
+const isElectron = () => typeof window !== 'undefined' && window.process && window.process.type;
+
 const StyledRoot = styled(AppBar)(({ theme }) => ({
   backgroundColor: '#000000',
   borderBottom: '1px solid rgba(255,255,255,0.04)',
   boxShadow: 'none',
   color: '#fff',
   position: 'static',
+  // Desktop App - Make header draggable and sticky (Electron only)
+  ...(isElectron() && {
+    WebkitAppRegion: 'drag',
+    position: 'sticky',
+    top: 0,
+    zIndex: theme.zIndex.appBar + 1,
+  }),
   [theme.breakpoints.down('sm')]: {
     boxShadow: '0 2px 12px rgba(0, 0, 0, 0.65)',
+    // Keep static on mobile for Electron
+    ...(isElectron() && {
+      position: 'static',
+    }),
   },
   [theme.breakpoints.up('md')]: {
-    position: 'sticky',
-    top: -1,
-    zIndex: theme.zIndex.appBar + 1,
+    // Only apply sticky on web, Electron handles it above
+    ...(!isElectron() && {
+      position: 'sticky',
+      top: -1,
+      zIndex: theme.zIndex.appBar + 1,
+    }),
   },
 }));
 
-const StyledToolbar = styled(Toolbar)(() => ({
+const StyledToolbar = styled(Toolbar)(({ theme }) => ({
   backgroundColor: '#000000',
+  // Default minimum height for web
+  minHeight: '45px !important',
+  [theme.breakpoints.up('md')]: {
+    minHeight: '45px !important',
+  },
+  // Desktop App - Add left padding to clear traffic light buttons (Electron only)
+  // Traffic lights are at y: 20, ~16px tall, center at ~28px
+  // Need 56px total height (28px * 2) to center content with traffic lights
+  ...(isElectron() && {
+    paddingLeft: '80px !important',
+    WebkitAppRegion: 'drag',
+    minHeight: '56px !important',
+    height: '56px',
+    display: 'flex',
+    alignItems: 'center',
+    paddingTop: '0 !important',
+    paddingBottom: '0 !important',
+  }),
 }));
 
 // ----------------------------------------------------------------------
@@ -71,6 +106,9 @@ export default function Header({ onOpenNav }) {
   const { openSubscriptionDialog } = useContext(SubscribeDialogContext);
   const [proChipEl, setProChipEl] = useState(null);
   const [showProTip, setShowProTip] = useState(false);
+  
+  // Electron-specific styles for making elements clickable (not draggable)
+  const electronNoDragStyle = isElectron() ? { WebkitAppRegion: 'no-drag' } : {};
 
   const renderLogo = () => (
     <Grid
@@ -90,6 +128,8 @@ export default function Header({ onOpenNav }) {
           textDecoration: 'none',
           cursor: 'pointer',
           color: 'inherit',
+          // Desktop App - Make logo clickable (not draggable)
+          ...electronNoDragStyle,
           '&:hover': {
             textDecoration: 'none',
           },
@@ -141,13 +181,15 @@ export default function Header({ onOpenNav }) {
   return (
     <>
       <StyledRoot>
-        <StyledToolbar sx={{ position: 'relative', minHeight: { xs: 45, md: '45px !important' } }}>
+        <StyledToolbar sx={{ position: 'relative' }}>
           <IconButton
-            onClick={onOpenNav}
+            onClick={(event) => onOpenNav(event)}
             aria-label="open navigation"
             sx={{
               color: 'text.primary',
               ml: -1,
+              // Desktop App - Make button clickable (not draggable)
+              ...electronNoDragStyle,
             }}
             size="large"
           >
@@ -163,6 +205,10 @@ export default function Header({ onOpenNav }) {
             alignItems="center"
             spacing={{
               xs: 2,
+            }}
+            sx={{
+              // Desktop App - Make all interactive elements in this stack clickable
+              ...electronNoDragStyle,
             }}
           >
             <>

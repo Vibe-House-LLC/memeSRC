@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "storage": {
+      "memesrcGeneratedImages": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  },
+  "lambdaLayers": [
+    {
+      "type": "ProjectLayer",
+      "resourceName": "memesrcS3Layer",
+      "env": "dev",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
+    }
+  ]
+}
