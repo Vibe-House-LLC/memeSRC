@@ -142,6 +142,25 @@ const MAX_UPLOAD_RETRIES = 3;
 const CREDENTIAL_REFRESH_INTERVAL_MS = 12 * 60 * 1000;
 const UPLOAD_RETRY_DELAY_MS = 2000;
 
+type ActiveUploadListener = (id: string | null) => void;
+
+let activeUploadJobId: string | null = null;
+const activeUploadListeners = new Set<ActiveUploadListener>();
+
+const getActiveUploadJobId = (): string | null => activeUploadJobId;
+
+const setActiveUploadJobId = (next: string | null) => {
+  activeUploadJobId = next;
+  activeUploadListeners.forEach((listener) => listener(next));
+};
+
+const subscribeToActiveUploadJobId = (listener: ActiveUploadListener) => {
+  activeUploadListeners.add(listener);
+  return () => {
+    activeUploadListeners.delete(listener);
+  };
+};
+
 const buildResumeKey = (id: string) => `${RESUME_STORAGE_PREFIX}${id}`;
 
 const normalizeRelativePath = (rawPath: string): string => {
@@ -587,10 +606,21 @@ const DesktopProcessingPage = () => {
 
   // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(() => getActiveUploadJobId() !== null);
+  const [activeUploadId, setActiveUploadIdState] = useState<string | null>(() => getActiveUploadJobId());
   const processingStatusInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCredentialsRefreshRef = useRef<number>(0);
+  const activeUploadRefreshInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => subscribeToActiveUploadJobId(setActiveUploadIdState), [setActiveUploadIdState]);
+
+  useEffect(() => {
+    setIsUploading(activeUploadId !== null);
+  }, [activeUploadId]);
+
+  const setActiveUploadId = useCallback((next: string | null) => {
+    setActiveUploadJobId(next);
+  }, []);
 
   const getElectronModule = useCallback((): ElectronModule | null => {
     if (!isElectron || !window.require) {
@@ -614,6 +644,76 @@ const DesktopProcessingPage = () => {
   const loadSubmission = useCallback((submissionId: string): Submission | null => {
     return readJSON<Submission>(getSubmissionStorageKey(submissionId));
   }, [getSubmissionStorageKey]);
+
+  useEffect(() => {
+    if (!activeUploadId) {
+      if (activeUploadRefreshInterval.current) {
+        clearInterval(activeUploadRefreshInterval.current);
+        activeUploadRefreshInterval.current = null;
+      }
+      return;
+    }
+
+    const refreshFromStorage = () => {
+      const stored = loadSubmission(activeUploadId);
+      if (!stored) {
+        return;
+      }
+
+      setSubmissions((subs) => {
+        const index = subs.findIndex((submission) => submission.id === stored.id);
+        if (index === -1) {
+          const nextSubs = [...subs, stored];
+          nextSubs.sort(
+            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          );
+          return nextSubs;
+        }
+
+        const existing = subs[index];
+        if (
+          existing.uploadProgress === stored.uploadProgress &&
+          existing.status === stored.status &&
+          existing.updatedAt === stored.updatedAt &&
+          (existing.resumeState?.uploadedBytes ?? null) === (stored.resumeState?.uploadedBytes ?? null) &&
+          (existing.resumeState?.completedFiles?.length ?? 0) ===
+            (stored.resumeState?.completedFiles?.length ?? 0)
+        ) {
+          return subs;
+        }
+
+        const nextSubs = subs.slice();
+        nextSubs[index] = {
+          ...existing,
+          ...stored,
+        };
+        nextSubs.sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+        return nextSubs;
+      });
+
+      setSelectedSubmission((prev) => {
+        if (!prev || prev.id !== stored.id) {
+          return prev;
+        }
+        return {
+          ...prev,
+          ...stored,
+        };
+      });
+    };
+
+    refreshFromStorage();
+    activeUploadRefreshInterval.current = setInterval(refreshFromStorage, 1500);
+
+    return () => {
+      if (activeUploadRefreshInterval.current) {
+        clearInterval(activeUploadRefreshInterval.current);
+        activeUploadRefreshInterval.current = null;
+      }
+    };
+  }, [activeUploadId, loadSubmission]);
 
   const deleteSubmission = useCallback((submissionId: string) => {
     safeRemoveItem(getSubmissionStorageKey(submissionId));
