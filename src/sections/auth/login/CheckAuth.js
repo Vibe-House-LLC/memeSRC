@@ -5,6 +5,7 @@ import { PropTypes } from "prop-types";
 import { UserContext } from '../../../UserContext';
 import { readJSON, safeGetItem, safeRemoveItem, safeSetItem, writeJSON } from '../../../utils/storage';
 import { fetchProfilePhoto } from '../../../utils/profilePhoto';
+import { normalizeOptionalString, pickFirstValidString, sanitizeStringRecord } from '../../../utils/authUserIdentity';
 
 CheckAuth.propTypes = {
   children: PropTypes.object
@@ -53,16 +54,27 @@ export default function CheckAuth(props) {
     }
   }, [user])
 
-  const handleTokenRefreshed = useCallback(async (authData, overrideUserDetails = null) => {
+  const handleTokenRefreshed = useCallback(async (authData, options = {}) => {
     const refreshedUser = authData?.data ?? authData;
     if (!refreshedUser) {
       return;
     }
 
+    const {
+      overrideUserDetails: overrideDetailsInput = null,
+      profilePhoto: explicitProfilePhoto,
+    } = options;
+
     const existingUser = userRef.current || {};
     const existingUserDetails = existingUser.userDetails || {};
 
-    const tokenPayload = refreshedUser?.signInUserSession?.idToken?.payload || refreshedUser?.signInUserSession?.accessToken?.payload || {};
+    const sanitizedExistingUserDetails = sanitizeStringRecord(existingUserDetails);
+    const rawTokenPayload =
+      refreshedUser?.signInUserSession?.idToken?.payload ||
+      refreshedUser?.signInUserSession?.accessToken?.payload ||
+      {};
+    const tokenPayload = sanitizeStringRecord(rawTokenPayload);
+    const overrideDetails = overrideDetailsInput ? sanitizeStringRecord(overrideDetailsInput) : null;
 
     const parseUserNotifications = (notifications) => {
       if (typeof notifications !== 'string') {
@@ -77,26 +89,103 @@ export default function CheckAuth(props) {
       }
     };
 
-    const userDetailsFromToken = {
-      ...existingUserDetails,
+    const baseUserDetails = {
+      ...sanitizedExistingUserDetails,
       ...tokenPayload,
-      ...(tokenPayload?.userNotifications && {
-        userNotifications: parseUserNotifications(tokenPayload.userNotifications),
-      }),
-      ...(overrideUserDetails || {}),
     };
+
+    if (tokenPayload?.userNotifications) {
+      baseUserDetails.userNotifications = parseUserNotifications(tokenPayload.userNotifications);
+    } else if (typeof sanitizedExistingUserDetails.userNotifications === 'string') {
+      baseUserDetails.userNotifications = parseUserNotifications(
+        sanitizedExistingUserDetails.userNotifications
+      );
+    }
+
+    const mergedUserDetails = overrideDetails
+      ? sanitizeStringRecord({
+          ...baseUserDetails,
+          ...overrideDetails,
+        })
+      : baseUserDetails;
+
+    const resolvedEmail = pickFirstValidString(
+      overrideDetails?.email,
+      mergedUserDetails?.email,
+      sanitizedExistingUserDetails?.email,
+      existingUser?.email,
+      tokenPayload?.email,
+      refreshedUser?.attributes?.email
+    );
+
+    if (resolvedEmail) {
+      mergedUserDetails.email = resolvedEmail;
+    } else if (mergedUserDetails.email && !normalizeOptionalString(mergedUserDetails.email)) {
+      delete mergedUserDetails.email;
+    }
+
+    const resolvedUsername = pickFirstValidString(
+      overrideDetails?.username,
+      mergedUserDetails?.username,
+      sanitizedExistingUserDetails?.username,
+      existingUser?.username,
+      refreshedUser?.username,
+      tokenPayload?.['cognito:username'],
+      tokenPayload?.preferred_username,
+      tokenPayload?.username,
+      resolvedEmail
+    );
+
+    if (resolvedUsername) {
+      mergedUserDetails.username = resolvedUsername;
+    } else if (
+      mergedUserDetails.username &&
+      !normalizeOptionalString(mergedUserDetails.username)
+    ) {
+      delete mergedUserDetails.username;
+    }
+
+    const resolvedProfilePhoto =
+      explicitProfilePhoto !== undefined
+        ? explicitProfilePhoto
+        : profilePhotoRef.current ?? existingUser.profilePhoto ?? null;
 
     const updatedUser = {
       ...existingUser,
       ...refreshedUser,
       ...tokenPayload,
-      userDetails: userDetailsFromToken,
-      profilePhoto: profilePhotoRef.current ?? existingUser.profilePhoto ?? null,
+      userDetails: mergedUserDetails,
+      profilePhoto: resolvedProfilePhoto,
     };
 
-    if (!updatedUser.username) {
-      updatedUser.username = existingUser.username || refreshedUser.username;
+    if (resolvedEmail) {
+      updatedUser.email = resolvedEmail;
+    } else if (updatedUser.email && !normalizeOptionalString(updatedUser.email)) {
+      delete updatedUser.email;
     }
+
+    const finalUsername = pickFirstValidString(
+      resolvedUsername,
+      existingUser?.username,
+      refreshedUser?.username,
+      tokenPayload?.['cognito:username'],
+      tokenPayload?.preferred_username,
+      tokenPayload?.username,
+      resolvedEmail
+    );
+
+    if (finalUsername) {
+      updatedUser.username = finalUsername;
+      updatedUser.userDetails.username = finalUsername;
+    } else if (updatedUser.username && !normalizeOptionalString(updatedUser.username)) {
+      delete updatedUser.username;
+      if (updatedUser.userDetails?.username && !normalizeOptionalString(updatedUser.userDetails.username)) {
+        delete updatedUser.userDetails.username;
+      }
+    }
+
+    profilePhotoRef.current = resolvedProfilePhoto ?? null;
+    userRef.current = updatedUser;
 
     const clensedUser = { ...updatedUser };
     delete clensedUser.storage;
@@ -105,10 +194,9 @@ export default function CheckAuth(props) {
   }, [setUser]);
 
   const forceTokenRefresh = useCallback(async (options = {}) => {
-    const { overrideUserDetails: overrideDetails = null } = options;
     try {
       const refreshedUser = await Auth.currentAuthenticatedUser({ bypassCache: true });
-      await handleTokenRefreshed(refreshedUser, overrideDetails);
+      await handleTokenRefreshed(refreshedUser, options);
     } catch (error) {
       console.log('Failed to force token refresh after payment completion:', error);
     }
@@ -169,70 +257,31 @@ export default function CheckAuth(props) {
       setUser(localStorageUser);
     }
 
-    Auth.currentAuthenticatedUser().then((x) => {
-      const tokenPayload = x?.signInUserSession?.idToken?.payload || x?.signInUserSession?.accessToken?.payload || {};
-
-      const parseUserNotifications = (notifications) => {
-        if (typeof notifications !== 'string') {
-          return notifications;
-        }
-
+    Auth.currentAuthenticatedUser()
+      .then(async (currentUser) => {
         try {
-          return JSON.parse(notifications);
+          const profilePhotoUrl = await fetchProfilePhoto();
+          await handleTokenRefreshed(currentUser, { profilePhoto: profilePhotoUrl ?? null });
         } catch (error) {
-          console.log('Failed to parse user notifications from token payload:', error);
-          return notifications;
+          console.log('Failed to initialise authenticated user state:', error);
+          await handleTokenRefreshed(currentUser, { profilePhoto: null });
         }
-      };
 
-      const buildUserState = (profilePhoto) => {
-        const userDetailsFromToken = {
-          ...tokenPayload,
-          ...(tokenPayload?.userNotifications && {
-            userNotifications: parseUserNotifications(tokenPayload.userNotifications),
-          }),
-        };
-
-        return {
-          ...x,
-          ...tokenPayload,
-          userDetails: userDetailsFromToken,
-          profilePhoto,
-        };
-      };
-
-      fetchProfilePhoto().then(profilePhotoUrl => {
-        const userWithPhoto = buildUserState(profilePhotoUrl);
-
-        setUser(userWithPhoto);
-        userRef.current = userWithPhoto;
-        const clensedUser = { ...userWithPhoto };
-        delete clensedUser.storage;
-        writeJSON('memeSRCUserDetails', clensedUser);
-      }).catch(error => {
-        console.log('Error fetching profile photo:', error);
-        const userWithoutPhoto = buildUserState(undefined);
-        setUser(userWithoutPhoto);
-        userRef.current = userWithoutPhoto;
-        const clensedUser = { ...userWithoutPhoto };
-        delete clensedUser.storage;
-        writeJSON('memeSRCUserDetails', clensedUser);
+        console.log(currentUser);
+        console.log('Updating Amplify config to use AMAZON_COGNITO_USER_POOLS');
+        // Amplify.configure({
+        //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
+        // });
+      })
+      .catch(() => {
+        setUser({ username: false }); // indicate the context is ready but user is not auth'd
+        safeRemoveItem('memeSRCUserInfo');
+        console.log("There wasn't an authenticated user found");
+        console.log('Updating Amplify config to use API_KEY');
+        // Amplify.configure({
+        //     "aws_appsync_authenticationType": "API_KEY",
+        // });
       });
-
-      console.log(x)
-      console.log("Updating Amplify config to use AMAZON_COGNITO_USER_POOLS")
-      // Amplify.configure({
-      //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
-      // });
-    }).catch(() => {
-      setUser({ username: false })  // indicate the context is ready but user is not auth'd
-      safeRemoveItem('memeSRCUserInfo')
-      console.log("There wasn't an authenticated user found")
-      console.log("Updating Amplify config to use API_KEY")
-      // Amplify.configure({
-      //     "aws_appsync_authenticationType": "API_KEY",
-      // });
-    });
   }, [user]);
 
   useEffect(() => {
