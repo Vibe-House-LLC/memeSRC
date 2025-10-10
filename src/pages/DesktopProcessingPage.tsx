@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Navigate } from 'react-router-dom';
 import {
   Alert,
+  AlertColor,
   Autocomplete,
   Box,
   Card,
@@ -136,6 +137,20 @@ type ElectronModule = {
   };
 };
 
+const isRecoverableProcessingError = (submission: Submission): boolean => {
+  if (submission.status !== 'error') {
+    return false;
+  }
+  const errorMessage = submission.error?.trim().toLowerCase();
+  if (!errorMessage) {
+    return false;
+  }
+  return (
+    errorMessage === PROCESSING_PAUSED_MESSAGE.toLowerCase() ||
+    errorMessage === DEFAULT_PROCESSING_ERROR_MESSAGE.toLowerCase()
+  );
+};
+
 declare global {
   interface Window {
     require?: (module: string) => unknown;
@@ -160,6 +175,9 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
 const MAX_UPLOAD_RETRIES = 3;
 const CREDENTIAL_REFRESH_INTERVAL_MS = 12 * 60 * 1000;
 const UPLOAD_RETRY_DELAY_MS = 2000;
+
+const DEFAULT_PROCESSING_ERROR_MESSAGE = 'Processing failed';
+const PROCESSING_PAUSED_MESSAGE = 'Processing paused. Resume to continue where you left off.';
 
 type ActiveUploadListener = (id: string | null) => void;
 
@@ -292,6 +310,35 @@ interface NormalizedSubmissionResult {
   progressChanged: boolean;
 }
 
+const normalizeSubmissionErrorField = (submission: Submission): Submission => {
+  if (submission.status === 'error') {
+    const normalizedError = (() => {
+      if (!submission.error) {
+        return submission.error;
+      }
+      const trimmed = submission.error.trim();
+      if (trimmed.toLowerCase() === DEFAULT_PROCESSING_ERROR_MESSAGE.toLowerCase()) {
+        return PROCESSING_PAUSED_MESSAGE;
+      }
+      return submission.error;
+    })();
+    if (normalizedError !== submission.error) {
+      return {
+        ...submission,
+        error: normalizedError,
+      };
+    }
+    return submission;
+  }
+  if (submission.error === undefined) {
+    return submission;
+  }
+  return {
+    ...submission,
+    error: undefined,
+  };
+};
+
 const normalizeSubmissionFromSummary = (submission: Submission): NormalizedSubmissionResult => {
   const summary = submission.statusSummary ?? null;
   let nextStatus = submission.status;
@@ -329,12 +376,12 @@ const normalizeSubmissionFromSummary = (submission: Submission): NormalizedSubmi
     };
   }
 
-  const normalizedSubmission: Submission = {
+  const normalizedSubmission = normalizeSubmissionErrorField({
     ...submission,
     status: nextStatus,
     processingProgress: nextProcessingProgress,
     ...(statusChanged ? { updatedAt: new Date().toISOString() } : {}),
-  };
+  });
 
   return {
     submission: normalizedSubmission,
@@ -714,9 +761,13 @@ const DesktopProcessingPage = () => {
     return `desktop-submission-${submissionId}`;
   }, []);
 
-  const saveSubmission = useCallback((submission: Submission) => {
-    writeJSON(getSubmissionStorageKey(submission.id), submission);
-  }, [getSubmissionStorageKey]);
+  const saveSubmission = useCallback(
+    (submission: Submission) => {
+      const normalizedSubmission = normalizeSubmissionErrorField(submission);
+      writeJSON(getSubmissionStorageKey(normalizedSubmission.id), normalizedSubmission);
+    },
+    [getSubmissionStorageKey]
+  );
 
   const loadSubmission = useCallback((submissionId: string): Submission | null => {
     return readJSON<Submission>(getSubmissionStorageKey(submissionId));
@@ -925,14 +976,14 @@ const DesktopProcessingPage = () => {
             }
           }
 
-          const updatedSubmission: Submission = {
+          const updatedSubmission = normalizeSubmissionErrorField({
             ...stored,
             status,
             uploadProgress,
             metadata,
             statusSummary,
             resumeState,
-          };
+          });
 
           const uploadProgressChanged =
             typeof uploadProgress === 'number' && uploadProgress !== (stored.uploadProgress ?? undefined);
@@ -1030,13 +1081,13 @@ const DesktopProcessingPage = () => {
                 return submission;
               }
               stateChanged = true;
-              return {
+              return normalizeSubmissionErrorField({
                 ...submission,
                 status: nextStatus,
                 processingProgress: progress,
                 statusSummary: summary,
                 updatedAt,
-              };
+              });
             });
             foundInState = found;
             if (!found || !stateChanged) {
@@ -1065,13 +1116,13 @@ const DesktopProcessingPage = () => {
             ) {
               return prev;
             }
-            return {
+            return normalizeSubmissionErrorField({
               ...prev,
               status: nextStatus,
               processingProgress: progress,
               statusSummary: summary,
               updatedAt,
-            };
+            });
           });
 
           const stored = loadSubmission(processingId);
@@ -1085,13 +1136,13 @@ const DesktopProcessingPage = () => {
             ) {
               // Already up to date in storage.
             } else {
-              const nextStored: Submission = {
+              const nextStored = normalizeSubmissionErrorField({
                 ...stored,
                 status: nextStatus,
                 processingProgress: progress,
                 statusSummary: summary,
                 updatedAt,
-              };
+              });
               saveSubmission(nextStored);
             }
           } else if (stateChanged || !foundInState) {
@@ -1363,27 +1414,27 @@ const DesktopProcessingPage = () => {
       });
 
       // Update submission status
-      const updated: Submission = {
+      const updated = normalizeSubmissionErrorField({
         ...submission,
         status: 'processing',
         processingProgress: 0,
         updatedAt: new Date().toISOString(),
-      };
+      });
       saveSubmission(updated);
-      setSubmissions(subs => subs.map(s => s.id === submission.id ? updated : s));
+      setSubmissions((subs) => subs.map((s) => (s.id === submission.id ? updated : s)));
       setSelectedSubmission(updated);
 
       setActiveProcessingId(submission.id);
 
       electronModule.ipcRenderer.once('javascript-processing-result', async (_event, response) => {
-        const finished: Submission = {
+        const finished = normalizeSubmissionErrorField({
           ...updated,
           status: 'processed',
           processingProgress: 100,
           updatedAt: new Date().toISOString(),
-        };
+        });
         saveSubmission(finished);
-        setSubmissions(subs => subs.map(s => s.id === submission.id ? finished : s));
+        setSubmissions((subs) => subs.map((s) => (s.id === submission.id ? finished : s)));
         setSelectedSubmission(finished);
         setIsProcessing(false);
         setActiveProcessingId(null);
@@ -1396,21 +1447,30 @@ const DesktopProcessingPage = () => {
       });
 
       electronModule.ipcRenderer.once('javascript-processing-error', (_event, error) => {
-        const errorMessage = typeof error === 'string' ? error : error?.message ?? 'Processing failed';
-        const failed: Submission = {
+        const rawErrorMessage =
+          typeof error === 'string' ? error : error?.message ?? DEFAULT_PROCESSING_ERROR_MESSAGE;
+        const isDefaultError =
+          rawErrorMessage.trim().toLowerCase() === DEFAULT_PROCESSING_ERROR_MESSAGE.toLowerCase();
+        const storedErrorMessage = isDefaultError ? PROCESSING_PAUSED_MESSAGE : rawErrorMessage;
+        const failed = normalizeSubmissionErrorField({
           ...updated,
           status: 'error',
-          error: errorMessage,
+          error: storedErrorMessage,
           updatedAt: new Date().toISOString(),
-        };
+        });
         saveSubmission(failed);
-        setSubmissions(subs => subs.map(s => s.id === submission.id ? failed : s));
+        setSubmissions((subs) => subs.map((s) => (s.id === submission.id ? failed : s)));
         setSelectedSubmission(failed);
         setIsProcessing(false);
         setActiveProcessingId(null);
 
-        setMessage(`Processing error: ${errorMessage}`);
-        setSeverity('error');
+        if (isDefaultError) {
+          setMessage(PROCESSING_PAUSED_MESSAGE);
+          setSeverity('info');
+        } else {
+          setMessage(`Processing error: ${rawErrorMessage}`);
+          setSeverity('error');
+        }
         setOpen(true);
       });
 
@@ -1522,10 +1582,10 @@ const DesktopProcessingPage = () => {
     let currentSubmission: Submission = submission;
 
     const applySubmissionPatch = (patch: Partial<Submission>) => {
-      const nextSubmission: Submission = {
+      const nextSubmission = normalizeSubmissionErrorField({
         ...currentSubmission,
         ...patch,
-      };
+      });
       saveSubmission(nextSubmission);
       setSubmissions((subs) => subs.map((s) => (s.id === submission.id ? nextSubmission : s)));
       setSelectedSubmission((prev) => (prev?.id === submission.id ? nextSubmission : prev));
@@ -1888,6 +1948,28 @@ const DesktopProcessingPage = () => {
     return progress > 0 && progress < 100 && !isActive;
   };
 
+  const getSubmissionStatusAlert = (
+    submission: Submission
+  ): { severity: AlertColor; message: string } | null => {
+    if (!submission.error) {
+      return null;
+    }
+    if (isRecoverableProcessingError(submission)) {
+      const normalizedMessage =
+        submission.error.trim().toLowerCase() === DEFAULT_PROCESSING_ERROR_MESSAGE.toLowerCase()
+          ? 'Processing was interrupted. Resume to continue where you left off.'
+          : submission.error;
+      return {
+        severity: 'info',
+        message: normalizedMessage,
+      };
+    }
+    return {
+      severity: 'error',
+      message: submission.error,
+    };
+  };
+
   const getStatusColor = (submission: Submission): 'default' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' => {
     if (isUploadPaused(submission)) {
       return 'warning';
@@ -1903,7 +1985,7 @@ const DesktopProcessingPage = () => {
       case 'processed':
         return 'primary';
       case 'error':
-        return 'error';
+        return isRecoverableProcessingError(submission) ? 'warning' : 'error';
       case 'created':
       default:
         return 'default';
@@ -1932,7 +2014,7 @@ const DesktopProcessingPage = () => {
       case 'completed':
         return 'Completed';
       case 'error':
-        return 'Error';
+        return isRecoverableProcessingError(submission) ? 'Processing Paused' : 'Error';
       default:
         return submission.status;
     }
@@ -2095,118 +2177,117 @@ const DesktopProcessingPage = () => {
 
           {submissions.length > 0 && (
             <Grid container spacing={3}>
-              {submissions.map((submission) => (
-                <Grid item xs={12} md={6} key={submission.id}>
-                  <Card 
-                    sx={{ 
-                      height: '100%',
-                      border: selectedSubmission?.id === submission.id ? 2 : 0,
-                      borderColor: 'primary.main',
-                    }}
-                  >
-                    <CardContent>
-                      <Stack spacing={2}>
-                        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-                          <Box flex={1}>
-                            <Typography variant="h6" gutterBottom>
-                              {submission.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {submission.seriesName} • {submission.indexName}
-                            </Typography>
-                          </Box>
-                          <Chip 
-                            size="small" 
-                            label={getStatusLabel(submission)} 
-                            color={getStatusColor(submission)}
-                          />
-                        </Stack>
+              {submissions.map((submission) => {
+                const statusAlert = getSubmissionStatusAlert(submission);
+                return (
+                  <Grid item xs={12} md={6} key={submission.id}>
+                    <Card
+                      sx={{
+                        height: '100%',
+                        border: selectedSubmission?.id === submission.id ? 2 : 0,
+                        borderColor: 'primary.main',
+                      }}
+                    >
+                      <CardContent>
+                        <Stack spacing={2}>
+                          <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+                            <Box flex={1}>
+                              <Typography variant="h6" gutterBottom>
+                                {submission.title}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {submission.seriesName} • {submission.indexName}
+                              </Typography>
+                            </Box>
+                            <Chip size="small" label={getStatusLabel(submission)} color={getStatusColor(submission)} />
+                          </Stack>
 
-                        <Divider />
+                          <Divider />
 
-                        <Stack spacing={1}>
-                          <Typography variant="caption" color="text.secondary">
-                            Created: {formatDateTime(submission.createdAt)}
-                          </Typography>
-                          {submission.statusSummary && submission.statusSummary.total > 0 && (
+                          <Stack spacing={1}>
                             <Typography variant="caption" color="text.secondary">
-                              Episodes: {submission.statusSummary.done}/{submission.statusSummary.total} processed
+                              Created: {formatDateTime(submission.createdAt)}
                             </Typography>
-                          )}
-                          {submission.processingProgress !== undefined && submission.processingProgress > 0 && (
-                            <Box>
+                            {submission.statusSummary && submission.statusSummary.total > 0 && (
                               <Typography variant="caption" color="text.secondary">
-                                Processing: {submission.processingProgress}%
+                                Episodes: {submission.statusSummary.done}/{submission.statusSummary.total} processed
                               </Typography>
-                              <LinearProgress variant="determinate" value={submission.processingProgress} />
-                            </Box>
-                          )}
-                          {submission.uploadProgress !== undefined && submission.uploadProgress > 0 && (
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">
-                                Upload: {submission.uploadProgress}%{isUploadPaused(submission) ? ' • Paused' : ''}
+                            )}
+                            {submission.processingProgress !== undefined && submission.processingProgress > 0 && (
+                              <Box>
+                                <Typography variant="caption" color="text.secondary">
+                                  Processing: {submission.processingProgress}%
+                                </Typography>
+                                <LinearProgress variant="determinate" value={submission.processingProgress} />
+                              </Box>
+                            )}
+                            {submission.uploadProgress !== undefined && submission.uploadProgress > 0 && (
+                              <Box>
+                                <Typography variant="caption" color="text.secondary">
+                                  Upload: {submission.uploadProgress}%{isUploadPaused(submission) ? ' • Paused' : ''}
+                                </Typography>
+                                <LinearProgress variant="determinate" value={submission.uploadProgress} />
+                              </Box>
+                            )}
+                            {isUploadPaused(submission) && (
+                              <Typography variant="caption" color="warning.main">
+                                Upload paused — resume to finish sending the remaining files.
                               </Typography>
-                              <LinearProgress variant="determinate" value={submission.uploadProgress} />
-                            </Box>
-                          )}
-                          {isUploadPaused(submission) && (
-                            <Typography variant="caption" color="warning.main">
-                              Upload paused — resume to finish sending the remaining files.
-                            </Typography>
-                          )}
-                          {submission.error && (
-                            <Alert severity="error" sx={{ mt: 1 }}>
-                              {submission.error}
-                            </Alert>
-                          )}
-                        </Stack>
+                            )}
+                            {statusAlert && (
+                              <Alert severity={statusAlert.severity} sx={{ mt: 1 }}>
+                                {statusAlert.message}
+                              </Alert>
+                            )}
+                          </Stack>
 
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                          {canStartProcessing(submission) && (
-                            <LoadingButton
+                          <Stack direction="row" spacing={1} flexWrap="wrap">
+                            {canStartProcessing(submission) && (
+                              <LoadingButton
+                                size="small"
+                                variant="contained"
+                                startIcon={<PlayArrowIcon />}
+                                onClick={() => handleStartProcessing(submission)}
+                                loading={isProcessing && selectedSubmission?.id === submission.id}
+                              >
+                                {getProcessingButtonLabel(submission)}
+                              </LoadingButton>
+                            )}
+                            {canStartUpload(submission) && (
+                              <LoadingButton
+                                size="small"
+                                variant="contained"
+                                startIcon={<CloudUploadIcon />}
+                                onClick={() => handleStartUpload(submission)}
+                                loading={isUploading && selectedSubmission?.id === submission.id}
+                              >
+                                {getUploadButtonLabel(submission)}
+                              </LoadingButton>
+                            )}
+                            {(submission.status === 'completed' || submission.status === 'uploaded') && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<CheckCircleIcon />}
+                                onClick={() => handleOpenReviewPage(submission.sourceMediaId)}
+                              >
+                                Review
+                              </Button>
+                            )}
+                            <IconButton
                               size="small"
-                              variant="contained"
-                              startIcon={<PlayArrowIcon />}
-                              onClick={() => handleStartProcessing(submission)}
-                              loading={isProcessing && selectedSubmission?.id === submission.id}
+                              onClick={() => handleDeleteSubmission(submission)}
+                              disabled={submission.status === 'processing' || submission.status === 'uploading'}
                             >
-                              {getProcessingButtonLabel(submission)}
-                            </LoadingButton>
-                          )}
-                          {canStartUpload(submission) && (
-                            <LoadingButton
-                              size="small"
-                              variant="contained"
-                              startIcon={<CloudUploadIcon />}
-                              onClick={() => handleStartUpload(submission)}
-                              loading={isUploading && selectedSubmission?.id === submission.id}
-                            >
-                              {getUploadButtonLabel(submission)}
-                            </LoadingButton>
-                          )}
-                          {(submission.status === 'completed' || submission.status === 'uploaded') && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<CheckCircleIcon />}
-                              onClick={() => handleOpenReviewPage(submission.sourceMediaId)}
-                            >
-                              Review
-                            </Button>
-                          )}
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDeleteSubmission(submission)}
-                            disabled={submission.status === 'processing' || submission.status === 'uploading'}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
                         </Stack>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
             </Grid>
           )}
         </Stack>
