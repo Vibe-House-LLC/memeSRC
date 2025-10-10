@@ -207,15 +207,20 @@ const AccountPage = () => {
 
   const openCustomerPortal = () => {
     setLoadingPortalUrl(true);
-    API.post('publicapi', '/user/update/getPortalLink', {
-      body: { currentUrl: window.location.href },
-    })
-      .then((results) => {
-        window.location.href = results;
-      })
-      .catch(() => {
-        setLoadingPortalUrl(false);
-      });
+    const currentUrl = window.location.href;
+    const portalUrl = new URL('/subscription-portal', window.location.origin);
+    portalUrl.searchParams.set('returnUrl', currentUrl);
+
+    const portalWindow = window.open(portalUrl.toString(), '_blank');
+
+    if (portalWindow) {
+      portalWindow.opener = null;
+      portalWindow.focus?.();
+    } else {
+      alert('Please allow pop-ups from memeSRC to manage your subscription.');
+    }
+
+    setLoadingPortalUrl(false);
   };
 
   const handleLogout = () => {

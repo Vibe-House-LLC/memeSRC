@@ -67,6 +67,7 @@ const ReleasesPage = lazy(() => import('./pages/ReleasesPage'));
 const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
 const AdminFileReview = lazy(() => import('./pages/AdminFileReview'));
 const MagicPage = lazy(() => import('./pages/MagicPage'));
+const SubscriptionPortalRedirect = lazy(() => import('./pages/SubscriptionPortalRedirect'));
 // Removed insecure HelloWorldPage route
 
 const DonationRedirect = () => {
@@ -95,6 +96,7 @@ export default function Router() {
         { path: 'projects/:projectId', element: <SiteWideMaintenance><CollagePage /></SiteWideMaintenance> },
         { path: 'manageSubscription', element: <SiteWideMaintenance><InvoiceListPage /></SiteWideMaintenance> },
         { path: 'account', element: <SiteWideMaintenance><AccountPage /></SiteWideMaintenance> },
+        { path: 'subscription-portal', element: <SiteWideMaintenance><SubscriptionPortalRedirect /></SiteWideMaintenance> },
         { path: 'editor/projects', element: <SiteWideMaintenance><EditorProjectsPage /></SiteWideMaintenance> },
         { path: 'editor/new', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
         { path: 'editor/project/:editorProjectId', element: <SiteWideMaintenance><V2EditorPage /></SiteWideMaintenance> },
