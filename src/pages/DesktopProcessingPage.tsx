@@ -665,7 +665,7 @@ const DesktopProcessingPage = () => {
       const os = window.require('os') as typeof import('os');
 
       const currentSubs = submissionsRef.current;
-      const updates: Array<{ index: number; submission: Submission }> = [];
+      const updates: Array<{ id: string; submission: Submission }> = [];
 
       for (let index = 0; index < currentSubs.length; index++) {
         const submission = currentSubs[index];
@@ -696,7 +696,7 @@ const DesktopProcessingPage = () => {
                   processingProgress: 100,
                   updatedAt: new Date().toISOString(),
                 };
-                updates.push({ index, submission: updated });
+                updates.push({ id: submission.id, submission: updated });
                 saveSubmission(updated);
                 
                 // Clear active processing flag
@@ -718,7 +718,7 @@ const DesktopProcessingPage = () => {
                   processingProgress,
                   updatedAt: new Date().toISOString(),
                 };
-                updates.push({ index, submission: updated });
+                updates.push({ id: submission.id, submission: updated });
                 saveSubmission(updated);
               }
             }
@@ -744,7 +744,7 @@ const DesktopProcessingPage = () => {
                   resumeState,
                   updatedAt: new Date().toISOString(),
                 };
-                updates.push({ index, submission: updated });
+                updates.push({ id: submission.id, submission: updated });
                 saveSubmission(updated);
                 clearResumeState(submission.id);
               } else if (
@@ -757,7 +757,7 @@ const DesktopProcessingPage = () => {
                   resumeState,
                   updatedAt: new Date().toISOString(),
                 };
-                updates.push({ index, submission: updated });
+                updates.push({ id: submission.id, submission: updated });
                 saveSubmission(updated);
               }
             }
@@ -765,23 +765,25 @@ const DesktopProcessingPage = () => {
         }
       }
 
-      // Apply all updates
+      // Apply all updates using submission IDs instead of stale indices
       if (updates.length > 0) {
         setSubmissions((subs) => {
-          const updatedSubs = [...subs];
-          updates.forEach(({ index, submission }) => {
-            if (index < updatedSubs.length) {
-              updatedSubs[index] = submission;
-            }
-          });
+          // Create a map of updates by ID for O(1) lookup
+          const updateMap = new Map(updates.map((u) => [u.id, u.submission]));
+          
+          // Apply updates by finding submissions by ID
+          const updatedSubs = subs.map((sub) => updateMap.get(sub.id) ?? sub);
+          
+          // Sort by updatedAt
           updatedSubs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          
           return updatedSubs;
         });
 
         // Also update selected submission if it was updated
         setSelectedSubmission((prev) => {
           if (!prev) return prev;
-          const updated = updates.find((u) => u.submission.id === prev.id);
+          const updated = updates.find((u) => u.id === prev.id);
           return updated ? updated.submission : prev;
         });
       }
