@@ -1948,9 +1948,21 @@ const DesktopProcessingPage = () => {
     return progress > 0 && progress < 100 && !isActive;
   };
 
-  const getSubmissionStatusAlert = (submission: Submission): { severity: AlertColor; message: string } | null => {
-    if (!submission.error || isRecoverableProcessingError(submission)) {
+  const getSubmissionStatusAlert = (
+    submission: Submission
+  ): { severity: AlertColor; message: string } | null => {
+    if (!submission.error) {
       return null;
+    }
+    if (isRecoverableProcessingError(submission)) {
+      const normalizedMessage =
+        submission.error.trim().toLowerCase() === DEFAULT_PROCESSING_ERROR_MESSAGE.toLowerCase()
+          ? 'Processing was interrupted. Resume to continue where you left off.'
+          : submission.error;
+      return {
+        severity: 'info',
+        message: normalizedMessage,
+      };
     }
     return {
       severity: 'error',
@@ -2051,7 +2063,7 @@ const DesktopProcessingPage = () => {
     if (isUploading) {
       return false;
     }
-    if (submission.status === 'processed') {
+    if (submission.status === 'processed' || submission.status === 'error') {
       return true;
     }
     if (submission.status === 'uploading') {
@@ -2167,7 +2179,6 @@ const DesktopProcessingPage = () => {
             <Grid container spacing={3}>
               {submissions.map((submission) => {
                 const statusAlert = getSubmissionStatusAlert(submission);
-                const isProcessingPaused = isRecoverableProcessingError(submission);
                 return (
                   <Grid item xs={12} md={6} key={submission.id}>
                     <Card
@@ -2221,11 +2232,6 @@ const DesktopProcessingPage = () => {
                             {isUploadPaused(submission) && (
                               <Typography variant="caption" color="warning.main">
                                 Upload paused — resume to finish sending the remaining files.
-                              </Typography>
-                            )}
-                            {isProcessingPaused && (
-                              <Typography variant="caption" color="warning.main">
-                                {PROCESSING_PAUSED_MESSAGE}
                               </Typography>
                             )}
                             {statusAlert && (
