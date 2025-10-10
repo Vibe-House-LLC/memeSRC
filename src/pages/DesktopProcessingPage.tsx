@@ -579,9 +579,19 @@ const DesktopProcessingPage = () => {
   const [activeUploadId, setActiveUploadIdState] = useState<string | null>(() => getActiveUploadJobId());
   
   // Track which job we started processing in THIS session
-  // This ref is NOT persisted - it resets on page refresh/app restart
-  // This allows us to show "Resume" instead of loading spinner for interrupted jobs
-  const activeProcessingIdRef = useRef<string | null>(null);
+  // Persisted to sessionStorage to survive page navigation but NOT app restart/quit
+  // sessionStorage is automatically cleared when the app closes
+  // This allows us to:
+  // - Show loading spinner while actively processing (even after navigation)
+  // - Show "Resume" button for jobs interrupted by app quit/restart
+  const getInitialActiveProcessingId = () => {
+    try {
+      return sessionStorage.getItem('desktop-processing-active-job-id');
+    } catch {
+      return null;
+    }
+  };
+  const activeProcessingIdRef = useRef<string | null>(getInitialActiveProcessingId());
   
   const lastCredentialsRefreshRef = useRef<number>(0);
   const statusPollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -664,6 +674,11 @@ const DesktopProcessingPage = () => {
                 // Clear active processing flag
                 if (activeProcessingIdRef.current === submission.id) {
                   activeProcessingIdRef.current = null;
+                  try {
+                    sessionStorage.removeItem('desktop-processing-active-job-id');
+                  } catch {
+                    // Ignore sessionStorage errors
+                  }
                 }
               } else if (
                 processingProgress !== submission.processingProgress ||
@@ -1148,6 +1163,11 @@ const DesktopProcessingPage = () => {
     try {
       // Mark as actively processing in this session
       activeProcessingIdRef.current = submission.id;
+      try {
+        sessionStorage.setItem('desktop-processing-active-job-id', submission.id);
+      } catch {
+        // Ignore sessionStorage errors
+      }
 
       // Update submission status to 'processing' immediately
       const updated: Submission = {
@@ -1184,6 +1204,11 @@ const DesktopProcessingPage = () => {
       setSeverity('error');
       setOpen(true);
       activeProcessingIdRef.current = null;
+      try {
+        sessionStorage.removeItem('desktop-processing-active-job-id');
+      } catch {
+        // Ignore sessionStorage errors
+      }
     }
   }, [getElectronModule, saveSubmission, setMessage, setSeverity, setOpen]);
 
