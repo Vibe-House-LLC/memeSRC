@@ -162,13 +162,35 @@ const UPLOAD_RETRY_DELAY_MS = 2000;
 
 type ActiveUploadListener = (id: string | null) => void;
 
+// Active upload tracking
+// Uses sessionStorage to survive navigation but NOT app restart
+// This allows uploads to auto-resume after navigation/refresh
+// but show as "paused" after app quit/restart
 let activeUploadJobId: string | null = null;
 const activeUploadListeners = new Set<ActiveUploadListener>();
 
-const getActiveUploadJobId = (): string | null => activeUploadJobId;
+const getActiveUploadJobId = (): string | null => {
+  if (activeUploadJobId) return activeUploadJobId;
+  // Try to restore from sessionStorage
+  try {
+    return sessionStorage.getItem('desktop-upload-active-job-id');
+  } catch {
+    return null;
+  }
+};
 
 const setActiveUploadJobId = (next: string | null) => {
   activeUploadJobId = next;
+  // Persist to sessionStorage
+  try {
+    if (next) {
+      sessionStorage.setItem('desktop-upload-active-job-id', next);
+    } else {
+      sessionStorage.removeItem('desktop-upload-active-job-id');
+    }
+  } catch {
+    // Ignore sessionStorage errors
+  }
   activeUploadListeners.forEach((listener) => listener(next));
 };
 
@@ -539,6 +561,12 @@ const DesktopProcessingPage = () => {
     forceTokenRefresh?: () => Promise<void>;
   };
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
+
+  // Debug: Check sessionStorage on mount
+  useEffect(() => {
+    console.log('[DesktopProcessingPage] Component mounted');
+    console.log('[DesktopProcessingPage] SessionStorage active upload:', getActiveUploadJobId());
+  }, []);
 
   const authUser = userContextValue;
   const typedAuthUser =
@@ -1277,8 +1305,11 @@ const DesktopProcessingPage = () => {
   );
 
   const handleStartUpload = useCallback(async (submission: Submission) => {
+    console.log('handleStartUpload called for', submission.id, 'current activeUploadId:', activeUploadId);
+    
     // Prevent multiple simultaneous uploads
     if (activeUploadId && activeUploadId !== submission.id) {
+      console.warn('Upload blocked: another upload already in progress');
       setMessage('Another upload is already in progress. Please wait for it to finish.');
       setSeverity('warning');
       setOpen(true);
@@ -1286,6 +1317,7 @@ const DesktopProcessingPage = () => {
     }
 
     if (!userSub) {
+      console.error('Upload blocked: user not signed in');
       setMessage('You must be signed in to upload.');
       setSeverity('error');
       setOpen(true);
@@ -1297,6 +1329,7 @@ const DesktopProcessingPage = () => {
     const os = window.require?.('os') as typeof import('os') | undefined;
 
     if (!fs || !path || !os) {
+      console.error('Upload blocked: file system APIs unavailable');
       setMessage('File system APIs are unavailable.');
       setSeverity('error');
       setOpen(true);
@@ -1305,6 +1338,8 @@ const DesktopProcessingPage = () => {
 
     let workingResume: UploadResumeState | null = null;
     let currentSubmission: Submission = submission;
+    
+    console.log('Starting upload process for', submission.id);
 
     const applySubmissionPatch = (patch: Partial<Submission>) => {
       const nextSubmission: Submission = {
@@ -1319,6 +1354,7 @@ const DesktopProcessingPage = () => {
     };
 
     // Mark this upload as active
+    console.log('Setting active upload ID to', submission.id);
     setActiveUploadId(submission.id);
 
     // Update submission to uploading status
@@ -1327,9 +1363,12 @@ const DesktopProcessingPage = () => {
       error: undefined,
       updatedAt: new Date().toISOString(),
     });
+    console.log('Updated submission status to uploading');
 
     try {
+      console.log('Loading processed summary...');
       const summary = await loadProcessedSummary(submission.id);
+      console.log('Processed summary loaded:', summary.files.length, 'files');
       const snapshot = buildEligibleSnapshotFromSummary(summary);
       const root = path.join(os.homedir(), '.memesrc', 'processing', submission.id);
 
@@ -1492,11 +1531,18 @@ const DesktopProcessingPage = () => {
         }
       };
 
+      // Upload each file that hasn't been completed yet
+      // Files are only marked as completed AFTER successful upload
+      // This ensures partial uploads are retried on resume
+      console.log('Starting upload loop:', eligibleFiles.length, 'total files,', completedSet.size, 'already completed');
+      
       for (const file of eligibleFiles) {
         const normalizedRelativePath = file.normalizedPath;
         if (completedSet.has(normalizedRelativePath)) {
           continue;
         }
+        
+        console.log('Uploading file:', normalizedRelativePath);
 
         if (Date.now() - lastCredentialsRefreshRef.current > CREDENTIAL_REFRESH_INTERVAL_MS) {
           identityId = await ensureFreshCredentials(true);
@@ -1543,6 +1589,7 @@ const DesktopProcessingPage = () => {
           }
         }
 
+        // Upload the file (will throw on failure, preventing it from being marked complete)
         await uploadWithRetry(storageKey, fileBuffer, contentType);
 
         if (fileRecordId) {
@@ -1560,6 +1607,7 @@ const DesktopProcessingPage = () => {
           }
         }
 
+        // Only mark as complete after successful upload
         completedSet.add(normalizedRelativePath);
         uploadedBytes += file.size;
 
@@ -1571,7 +1619,10 @@ const DesktopProcessingPage = () => {
         });
 
         updateProgress();
+        console.log('File uploaded successfully:', normalizedRelativePath, `(${completedSet.size}/${eligibleFiles.length})`);
       }
+      
+      console.log('Upload loop completed. All files uploaded.');
 
       try {
         await API.graphql(
@@ -1594,13 +1645,14 @@ const DesktopProcessingPage = () => {
         error: undefined,
       });
 
+      console.log('Upload completed successfully for', submission.id);
       setMessage('Upload completed successfully!');
       setSeverity('success');
       setOpen(true);
 
       await loadAllSubmissions();
     } catch (error) {
-      console.error('Failed to upload files', error);
+      console.error('Upload failed for', submission.id, ':', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
 
       applySubmissionPatch({
@@ -1615,6 +1667,7 @@ const DesktopProcessingPage = () => {
       setOpen(true);
     } finally {
       // Always clear the active upload ID when done (success, error, or interrupted)
+      console.log('Clearing active upload ID');
       setActiveUploadId(null);
     }
   }, [
@@ -1629,6 +1682,60 @@ const DesktopProcessingPage = () => {
     loadAllSubmissions,
     setActiveUploadId,
   ]);
+
+  // Auto-resume upload after navigation/refresh if there's an active upload in sessionStorage
+  const hasAttemptedAutoResumeRef = useRef(false);
+  
+  useEffect(() => {
+    // Don't try to auto-resume if we've already attempted (check FIRST to avoid log spam)
+    if (hasAttemptedAutoResumeRef.current) {
+      return;
+    }
+    
+    console.log('[Auto-resume] Effect triggered. Electron:', isElectron, 'User:', !!hasUserDetails, 'Submissions:', submissions.length);
+    
+    if (!isElectron || !hasUserDetails || submissions.length === 0) {
+      console.log('[Auto-resume] Early return - conditions not met');
+      return;
+    }
+
+    const storedActiveUploadId = getActiveUploadJobId();
+    console.log('[Auto-resume] Stored active upload ID from sessionStorage:', storedActiveUploadId);
+    
+    if (!storedActiveUploadId) {
+      console.log('[Auto-resume] No stored upload ID, nothing to resume');
+      return;
+    }
+
+    // Check if this upload is actually in progress (not completed)
+    const submission = submissions.find((s) => s.id === storedActiveUploadId);
+    if (!submission) {
+      // Submission not found, clear the stale reference
+      console.warn('[Auto-resume] Submission not found, clearing stale reference', storedActiveUploadId);
+      setActiveUploadJobId(null);
+      return;
+    }
+
+    console.log('[Auto-resume] Found submission:', submission.id, 'status:', submission.status, 'progress:', submission.uploadProgress);
+
+    // Only auto-resume if status is uploading and progress is incomplete
+    if (submission.status === 'uploading' && (submission.uploadProgress ?? 0) < 100) {
+      console.log('[Auto-resume] ✅ Triggering auto-resume for', submission.id, 'at', submission.uploadProgress, '%');
+      hasAttemptedAutoResumeRef.current = true;
+      
+      // Small delay to ensure all state is settled
+      setTimeout(() => {
+        console.log('[Auto-resume] Calling handleStartUpload now');
+        handleStartUpload(submission);
+      }, 100);
+    } else if (submission.status === 'completed' || (submission.uploadProgress ?? 0) >= 100) {
+      // Upload is complete, clear the active flag
+      console.log('[Auto-resume] Upload already complete, clearing active flag');
+      setActiveUploadJobId(null);
+    } else {
+      console.log('[Auto-resume] Status/progress does not qualify for auto-resume');
+    }
+  }, [isElectron, hasUserDetails, submissions, handleStartUpload]);
 
   const handleDeleteSubmission = useCallback(async (submission: Submission) => {
     if (!window.confirm(`Are you sure you want to delete "${submission.title}"? This will remove the local submission record but not the remote SourceMedia.`)) {
