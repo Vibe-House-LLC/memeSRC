@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Navigate } from 'react-router-dom';
 import {
   Alert,
   Autocomplete,
@@ -108,6 +109,23 @@ interface Submission {
   error?: string;
 }
 
+type AuthUserDetails = {
+  sub?: string | null;
+  username?: string | null;
+  email?: string | null;
+  [key: string]: unknown;
+};
+
+type AuthUser =
+  | null
+  | undefined
+  | false
+  | {
+      userDetails?: AuthUserDetails | null;
+      sub?: string | null;
+      [key: string]: unknown;
+    };
+
 type ElectronModule = {
   ipcRenderer: {
     invoke: (channel: string, ...args: unknown[]) => Promise<any>;
@@ -141,6 +159,47 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
 const MAX_UPLOAD_RETRIES = 3;
 const CREDENTIAL_REFRESH_INTERVAL_MS = 12 * 60 * 1000;
 const UPLOAD_RETRY_DELAY_MS = 2000;
+
+type ActiveUploadListener = (id: string | null) => void;
+
+// Active upload tracking
+// Uses sessionStorage to survive navigation but NOT app restart
+// This allows uploads to auto-resume after navigation/refresh
+// but show as "paused" after app quit/restart
+let activeUploadJobId: string | null = null;
+const activeUploadListeners = new Set<ActiveUploadListener>();
+
+const getActiveUploadJobId = (): string | null => {
+  if (activeUploadJobId) return activeUploadJobId;
+  // Try to restore from sessionStorage
+  try {
+    return sessionStorage.getItem('desktop-upload-active-job-id');
+  } catch {
+    return null;
+  }
+};
+
+const setActiveUploadJobId = (next: string | null) => {
+  activeUploadJobId = next;
+  // Persist to sessionStorage
+  try {
+    if (next) {
+      sessionStorage.setItem('desktop-upload-active-job-id', next);
+    } else {
+      sessionStorage.removeItem('desktop-upload-active-job-id');
+    }
+  } catch {
+    // Ignore sessionStorage errors
+  }
+  activeUploadListeners.forEach((listener) => listener(next));
+};
+
+const subscribeToActiveUploadJobId = (listener: ActiveUploadListener) => {
+  activeUploadListeners.add(listener);
+  return () => {
+    activeUploadListeners.delete(listener);
+  };
+};
 
 const buildResumeKey = (id: string) => `${RESUME_STORAGE_PREFIX}${id}`;
 
@@ -206,64 +265,6 @@ const isProcessingSummaryInProgress = (summary?: ProcessingStatusSummary | null)
   return Boolean(summary && summary.total > 0 && summary.done < summary.total);
 };
 
-const PROCESSABLE_STATUS_SET = new Set<SubmissionStatus>(['created', 'processing', 'processed']);
-
-interface NormalizedSubmissionResult {
-  submission: Submission;
-  statusChanged: boolean;
-  progressChanged: boolean;
-}
-
-const normalizeSubmissionFromSummary = (submission: Submission): NormalizedSubmissionResult => {
-  const summary = submission.statusSummary ?? null;
-  let nextStatus = submission.status;
-  let nextProcessingProgress = submission.processingProgress;
-  let statusChanged = false;
-  let progressChanged = false;
-
-  const derivedProgress = deriveProcessingProgressFromSummary(summary);
-
-  if (typeof derivedProgress === 'number' && derivedProgress !== nextProcessingProgress) {
-    nextProcessingProgress = derivedProgress;
-    progressChanged = true;
-  }
-
-  if (PROCESSABLE_STATUS_SET.has(nextStatus)) {
-    if (isProcessingSummaryComplete(summary)) {
-      if (nextStatus !== 'processed') {
-        nextStatus = 'processed';
-        nextProcessingProgress = 100;
-        statusChanged = true;
-      }
-    } else if (isProcessingSummaryInProgress(summary)) {
-      if (nextStatus !== 'processing') {
-        nextStatus = 'processing';
-        statusChanged = true;
-      }
-    }
-  }
-
-  if (!statusChanged && !progressChanged) {
-    return {
-      submission,
-      statusChanged: false,
-      progressChanged: false,
-    };
-  }
-
-  const normalizedSubmission: Submission = {
-    ...submission,
-    status: nextStatus,
-    processingProgress: nextProcessingProgress,
-    ...(statusChanged ? { updatedAt: new Date().toISOString() } : {}),
-  };
-
-  return {
-    submission: normalizedSubmission,
-    statusChanged,
-    progressChanged,
-  };
-};
 
 const ensureResumeState = (input: UploadResumeState | null, processingId: string): UploadResumeState => {
   const normalizedCompleted = Array.from(new Set(input?.completedFiles ?? []));
@@ -556,15 +557,26 @@ const isTokenExpiredError = (error: unknown): boolean => {
 const DesktopProcessingPage = () => {
   const isElectron = typeof window !== 'undefined' && Boolean(window.process?.type);
   const { user: userContextValue, forceTokenRefresh } = useContext(UserContext) as {
-    user: unknown;
+    user: AuthUser;
     forceTokenRefresh?: () => Promise<void>;
   };
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
-  const userSub =
-    userContextValue && typeof userContextValue === 'object'
-      ? (userContextValue as { sub?: string | null }).sub ?? null
+  // Debug: Check sessionStorage on mount
+  useEffect(() => {
+    console.log('[DesktopProcessingPage] Component mounted');
+    console.log('[DesktopProcessingPage] SessionStorage active upload:', getActiveUploadJobId());
+  }, []);
+
+  const authUser = userContextValue;
+  const typedAuthUser =
+    authUser !== null && authUser !== undefined && authUser !== false && typeof authUser === 'object'
+      ? (authUser as { userDetails?: AuthUserDetails | null; sub?: string | null })
       : null;
+  const authUserDetails = typedAuthUser?.userDetails ?? null;
+  const isAuthLoading = authUser === null || typeof authUser === 'undefined';
+  const hasUserDetails = Boolean(authUserDetails);
+  const userSub = typedAuthUser?.sub ?? authUserDetails?.sub ?? null;
 
   // Series data
   const [seriesOptions, setSeriesOptions] = useState<SeriesOption[]>([]);
@@ -572,8 +584,14 @@ const DesktopProcessingPage = () => {
 
   // Submissions
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const submissionsRef = useRef<Submission[]>([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    submissionsRef.current = submissions;
+  }, [submissions]);
 
   // Create dialog
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -586,11 +604,31 @@ const DesktopProcessingPage = () => {
   const [creating, setCreating] = useState(false);
 
   // Processing state
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
-  const processingStatusInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [activeUploadId, setActiveUploadIdState] = useState<string | null>(() => getActiveUploadJobId());
+  
+  // Track which job we started processing in THIS session
+  // Persisted to sessionStorage to survive page navigation but NOT app restart/quit
+  // sessionStorage is automatically cleared when the app closes
+  // This allows us to:
+  // - Show loading spinner while actively processing (even after navigation)
+  // - Show "Resume" button for jobs interrupted by app quit/restart
+  const getInitialActiveProcessingId = () => {
+    try {
+      return sessionStorage.getItem('desktop-processing-active-job-id');
+    } catch {
+      return null;
+    }
+  };
+  const activeProcessingIdRef = useRef<string | null>(getInitialActiveProcessingId());
+  
   const lastCredentialsRefreshRef = useRef<number>(0);
+  const statusPollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => subscribeToActiveUploadJobId(setActiveUploadIdState), [setActiveUploadIdState]);
+
+  const setActiveUploadId = useCallback((next: string | null) => {
+    setActiveUploadJobId(next);
+  }, []);
 
   const getElectronModule = useCallback((): ElectronModule | null => {
     if (!isElectron || !window.require) {
@@ -614,6 +652,156 @@ const DesktopProcessingPage = () => {
   const loadSubmission = useCallback((submissionId: string): Submission | null => {
     return readJSON<Submission>(getSubmissionStorageKey(submissionId));
   }, [getSubmissionStorageKey]);
+
+  // Unified status polling for all active jobs (processing or uploading)
+  useEffect(() => {
+    if (!isElectron || !window.require) {
+      return;
+    }
+
+    const pollActiveJobsStatus = async () => {
+      const fs = window.require('fs') as typeof import('fs');
+      const path = window.require('path') as typeof import('path');
+      const os = window.require('os') as typeof import('os');
+
+      const currentSubs = submissionsRef.current;
+      const updates: Array<{ id: string; submission: Submission }> = [];
+
+      for (let index = 0; index < currentSubs.length; index++) {
+        const submission = currentSubs[index];
+        
+        // Only poll jobs that are actively processing or uploading
+        if (submission.status !== 'processing' && submission.status !== 'uploading') {
+          continue;
+        }
+
+        const jobDir = path.join(os.homedir(), '.memesrc', 'processing', submission.id);
+
+        // Poll processing status
+        if (submission.status === 'processing') {
+          const statusPath = path.join(jobDir, 'status.json');
+          try {
+            const statusExists = await fs.promises.access(statusPath).then(() => true).catch(() => false);
+            if (statusExists) {
+              const rawStatus = await fs.promises.readFile(statusPath, 'utf-8');
+              const statusSummary = summarizeStatusData(JSON.parse(rawStatus));
+              const processingProgress = deriveProcessingProgressFromSummary(statusSummary);
+
+              // Check if processing completed
+              if (isProcessingSummaryComplete(statusSummary)) {
+                const updated = {
+                  ...submission,
+                  status: 'processed' as SubmissionStatus,
+                  statusSummary,
+                  processingProgress: 100,
+                  updatedAt: new Date().toISOString(),
+                };
+                updates.push({ id: submission.id, submission: updated });
+                saveSubmission(updated);
+                
+                // Clear active processing flag
+                if (activeProcessingIdRef.current === submission.id) {
+                  activeProcessingIdRef.current = null;
+                  try {
+                    sessionStorage.removeItem('desktop-processing-active-job-id');
+                  } catch {
+                    // Ignore sessionStorage errors
+                  }
+                }
+              } else if (
+                processingProgress !== submission.processingProgress ||
+                JSON.stringify(statusSummary) !== JSON.stringify(submission.statusSummary)
+              ) {
+                const updated = {
+                  ...submission,
+                  statusSummary,
+                  processingProgress,
+                  updatedAt: new Date().toISOString(),
+                };
+                updates.push({ id: submission.id, submission: updated });
+                saveSubmission(updated);
+              }
+            }
+          } catch (error) {
+            console.warn('Unable to poll processing status for', submission.id, error);
+          }
+        }
+
+        // Poll upload status from storage
+        if (submission.status === 'uploading') {
+          const stored = loadSubmission(submission.id);
+          if (stored && stored.status === 'uploading') {
+            const resumeState = parseStoredResume(submission.id);
+            const stats = deriveResumeUploadStats(resumeState);
+
+            if (stats) {
+              // Check if upload completed
+              if (stats.progress >= 100) {
+                const updated = {
+                  ...submission,
+                  status: 'completed' as SubmissionStatus,
+                  uploadProgress: 100,
+                  resumeState,
+                  updatedAt: new Date().toISOString(),
+                };
+                updates.push({ id: submission.id, submission: updated });
+                saveSubmission(updated);
+                clearResumeState(submission.id);
+              } else if (
+                stats.progress !== submission.uploadProgress ||
+                stats.uploadedBytes !== (submission.resumeState?.uploadedBytes ?? 0)
+              ) {
+                const updated = {
+                  ...submission,
+                  uploadProgress: stats.progress,
+                  resumeState,
+                  updatedAt: new Date().toISOString(),
+                };
+                updates.push({ id: submission.id, submission: updated });
+                saveSubmission(updated);
+              }
+            }
+          }
+        }
+      }
+
+      // Apply all updates using submission IDs instead of stale indices
+      if (updates.length > 0) {
+        setSubmissions((subs) => {
+          // Create a map of updates by ID for O(1) lookup
+          const updateMap = new Map(updates.map((u) => [u.id, u.submission]));
+          
+          // Apply updates by finding submissions by ID
+          const updatedSubs = subs.map((sub) => updateMap.get(sub.id) ?? sub);
+          
+          // Sort by updatedAt
+          updatedSubs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          
+          return updatedSubs;
+        });
+
+        // Also update selected submission if it was updated
+        setSelectedSubmission((prev) => {
+          if (!prev) return prev;
+          const updated = updates.find((u) => u.id === prev.id);
+          return updated ? updated.submission : prev;
+        });
+      }
+    };
+
+    // Initial poll
+    pollActiveJobsStatus();
+
+    // Poll every 2 seconds
+    statusPollingInterval.current = setInterval(pollActiveJobsStatus, 2000);
+
+    return () => {
+      if (statusPollingInterval.current) {
+        clearInterval(statusPollingInterval.current);
+        statusPollingInterval.current = null;
+      }
+    };
+  }, [isElectron, loadSubmission, saveSubmission]);
 
   const deleteSubmission = useCallback((submissionId: string) => {
     safeRemoveItem(getSubmissionStorageKey(submissionId));
@@ -774,19 +962,11 @@ const DesktopProcessingPage = () => {
         }
       }
 
-      const normalizedResults = loadedSubmissions.map(normalizeSubmissionFromSummary);
-      normalizedResults.forEach(({ submission, statusChanged }) => {
-        if (statusChanged) {
-          saveSubmission(submission);
-        }
-      });
-
-      const normalizedSubmissions = normalizedResults.map(({ submission }) => submission);
-      normalizedSubmissions.sort(
+      loadedSubmissions.sort(
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
 
-      setSubmissions(normalizedSubmissions);
+      setSubmissions(loadedSubmissions);
     } catch (error) {
       console.error('Failed to load submissions', error);
     } finally {
@@ -827,11 +1007,12 @@ const DesktopProcessingPage = () => {
   }, [setMessage, setOpen, setSeverity]);
 
   useEffect(() => {
-    if (isElectron) {
-      loadSeries();
-      loadAllSubmissions();
+    if (!isElectron || !hasUserDetails) {
+      return;
     }
-  }, [isElectron, loadSeries, loadAllSubmissions]);
+    loadSeries();
+    loadAllSubmissions();
+  }, [isElectron, hasUserDetails, loadSeries, loadAllSubmissions]);
 
   const handleSelectFolder = useCallback(async () => {
     const electronModule = getElectronModule();
@@ -1009,108 +1190,29 @@ const DesktopProcessingPage = () => {
       return;
     }
 
-    setIsProcessing(true);
     try {
-      // Save folder path for electron
-      await electronModule.ipcRenderer.invoke('save-job-folder-path', {
-        id: submission.id,
-        folderPath: submission.sourceFolderPath,
-      });
+      // Mark as actively processing in this session
+      activeProcessingIdRef.current = submission.id;
+      try {
+        sessionStorage.setItem('desktop-processing-active-job-id', submission.id);
+      } catch {
+        // Ignore sessionStorage errors
+      }
 
-      // Update submission status
+      // Update submission status to 'processing' immediately
       const updated: Submission = {
         ...submission,
         status: 'processing',
-        processingProgress: 0,
+        processingProgress: submission.processingProgress ?? 0,
+        error: undefined,
         updatedAt: new Date().toISOString(),
       };
       saveSubmission(updated);
       setSubmissions(subs => subs.map(s => s.id === submission.id ? updated : s));
-      setSelectedSubmission(updated);
+      setSelectedSubmission(prev => prev?.id === submission.id ? updated : prev);
 
-      // Setup progress polling
-      const updateProgress = async () => {
-        try {
-          const statusResponse = await electronModule.ipcRenderer.invoke(
-            'fetch-processing-status',
-            submission.id
-          );
-          if (statusResponse?.success && statusResponse.status) {
-            const seasons = Object.values(statusResponse.status) as Record<string, string>[];
-            let done = 0;
-            let total = 0;
-            seasons.forEach((episodes) => {
-              Object.values(episodes).forEach((status) => {
-                total += 1;
-                if (status === 'done') {
-                  done += 1;
-                } else if (status === 'indexing') {
-                  done += 0.5;
-                }
-              });
-            });
-            if (total > 0) {
-              const progress = Math.round((done / total) * 100);
-              setSubmissions(subs => subs.map(s => 
-                s.id === submission.id ? { ...s, processingProgress: progress } : s
-              ));
-              setSelectedSubmission(prev => prev?.id === submission.id ? { ...prev, processingProgress: progress } : prev);
-            }
-          }
-        } catch (error) {
-          console.warn('Unable to fetch processing status', error);
-        }
-      };
-
-      processingStatusInterval.current = setInterval(updateProgress, 5000);
-
-      electronModule.ipcRenderer.once('javascript-processing-result', async (_event, response) => {
-        if (processingStatusInterval.current) {
-          clearInterval(processingStatusInterval.current);
-          processingStatusInterval.current = null;
-        }
-
-        const finished: Submission = {
-          ...updated,
-          status: 'processed',
-          processingProgress: 100,
-          updatedAt: new Date().toISOString(),
-        };
-        saveSubmission(finished);
-        setSubmissions(subs => subs.map(s => s.id === submission.id ? finished : s));
-        setSelectedSubmission(finished);
-        setIsProcessing(false);
-
-        setMessage('Processing completed successfully!');
-        setSeverity('success');
-        setOpen(true);
-
-        await loadAllSubmissions();
-      });
-
-      electronModule.ipcRenderer.once('javascript-processing-error', (_event, error) => {
-        if (processingStatusInterval.current) {
-          clearInterval(processingStatusInterval.current);
-          processingStatusInterval.current = null;
-        }
-
-        const errorMessage = typeof error === 'string' ? error : error?.message ?? 'Processing failed';
-        const failed: Submission = {
-          ...updated,
-          status: 'error',
-          error: errorMessage,
-          updatedAt: new Date().toISOString(),
-        };
-        saveSubmission(failed);
-        setSubmissions(subs => subs.map(s => s.id === submission.id ? failed : s));
-        setSelectedSubmission(failed);
-        setIsProcessing(false);
-
-        setMessage(`Processing error: ${errorMessage}`);
-        setSeverity('error');
-        setOpen(true);
-      });
-
+      // Tell electron to start processing (fire and forget)
+      // The status polling will handle progress updates
       electronModule.ipcRenderer.send('test-javascript-processing', {
         inputPath: submission.sourceFolderPath,
         id: submission.id,
@@ -1122,14 +1224,23 @@ const DesktopProcessingPage = () => {
         emoji: '',
         fontFamily: '',
       });
+
+      setMessage('Processing started!');
+      setSeverity('info');
+      setOpen(true);
     } catch (error) {
       console.error('Failed to start processing', error);
       setMessage(error instanceof Error ? error.message : 'Failed to start processing.');
       setSeverity('error');
       setOpen(true);
-      setIsProcessing(false);
+      activeProcessingIdRef.current = null;
+      try {
+        sessionStorage.removeItem('desktop-processing-active-job-id');
+      } catch {
+        // Ignore sessionStorage errors
+      }
     }
-  }, [getElectronModule, saveSubmission, setMessage, setSeverity, setOpen, loadAllSubmissions]);
+  }, [getElectronModule, saveSubmission, setMessage, setSeverity, setOpen]);
 
   const loadProcessedSummary = useCallback(
     async (id: string): Promise<ProcessedSummary> => {
@@ -1196,7 +1307,19 @@ const DesktopProcessingPage = () => {
   );
 
   const handleStartUpload = useCallback(async (submission: Submission) => {
+    console.log('handleStartUpload called for', submission.id, 'current activeUploadId:', activeUploadId);
+    
+    // Prevent multiple simultaneous uploads
+    if (activeUploadId && activeUploadId !== submission.id) {
+      console.warn('Upload blocked: another upload already in progress');
+      setMessage('Another upload is already in progress. Please wait for it to finish.');
+      setSeverity('warning');
+      setOpen(true);
+      return;
+    }
+
     if (!userSub) {
+      console.error('Upload blocked: user not signed in');
       setMessage('You must be signed in to upload.');
       setSeverity('error');
       setOpen(true);
@@ -1208,6 +1331,7 @@ const DesktopProcessingPage = () => {
     const os = window.require?.('os') as typeof import('os') | undefined;
 
     if (!fs || !path || !os) {
+      console.error('Upload blocked: file system APIs unavailable');
       setMessage('File system APIs are unavailable.');
       setSeverity('error');
       setOpen(true);
@@ -1216,6 +1340,8 @@ const DesktopProcessingPage = () => {
 
     let workingResume: UploadResumeState | null = null;
     let currentSubmission: Submission = submission;
+    
+    console.log('Starting upload process for', submission.id);
 
     const applySubmissionPatch = (patch: Partial<Submission>) => {
       const nextSubmission: Submission = {
@@ -1229,10 +1355,22 @@ const DesktopProcessingPage = () => {
       return nextSubmission;
     };
 
+    // Mark this upload as active
+    console.log('Setting active upload ID to', submission.id);
     setActiveUploadId(submission.id);
-    setIsUploading(true);
+
+    // Update submission to uploading status
+    applySubmissionPatch({
+      status: 'uploading',
+      error: undefined,
+      updatedAt: new Date().toISOString(),
+    });
+    console.log('Updated submission status to uploading');
+
     try {
+      console.log('Loading processed summary...');
       const summary = await loadProcessedSummary(submission.id);
+      console.log('Processed summary loaded:', summary.files.length, 'files');
       const snapshot = buildEligibleSnapshotFromSummary(summary);
       const root = path.join(os.homedir(), '.memesrc', 'processing', submission.id);
 
@@ -1242,7 +1380,6 @@ const DesktopProcessingPage = () => {
         setSeverity('warning');
         setOpen(true);
         setActiveUploadId(null);
-        setIsUploading(false);
         return;
       }
 
@@ -1352,7 +1489,6 @@ const DesktopProcessingPage = () => {
         setSeverity('success');
         setOpen(true);
         await loadAllSubmissions();
-        setIsUploading(false);
         return;
       }
 
@@ -1397,11 +1533,18 @@ const DesktopProcessingPage = () => {
         }
       };
 
+      // Upload each file that hasn't been completed yet
+      // Files are only marked as completed AFTER successful upload
+      // This ensures partial uploads are retried on resume
+      console.log('Starting upload loop:', eligibleFiles.length, 'total files,', completedSet.size, 'already completed');
+      
       for (const file of eligibleFiles) {
         const normalizedRelativePath = file.normalizedPath;
         if (completedSet.has(normalizedRelativePath)) {
           continue;
         }
+        
+        console.log('Uploading file:', normalizedRelativePath);
 
         if (Date.now() - lastCredentialsRefreshRef.current > CREDENTIAL_REFRESH_INTERVAL_MS) {
           identityId = await ensureFreshCredentials(true);
@@ -1448,6 +1591,7 @@ const DesktopProcessingPage = () => {
           }
         }
 
+        // Upload the file (will throw on failure, preventing it from being marked complete)
         await uploadWithRetry(storageKey, fileBuffer, contentType);
 
         if (fileRecordId) {
@@ -1465,6 +1609,7 @@ const DesktopProcessingPage = () => {
           }
         }
 
+        // Only mark as complete after successful upload
         completedSet.add(normalizedRelativePath);
         uploadedBytes += file.size;
 
@@ -1476,7 +1621,10 @@ const DesktopProcessingPage = () => {
         });
 
         updateProgress();
+        console.log('File uploaded successfully:', normalizedRelativePath, `(${completedSet.size}/${eligibleFiles.length})`);
       }
+      
+      console.log('Upload loop completed. All files uploaded.');
 
       try {
         await API.graphql(
@@ -1499,13 +1647,14 @@ const DesktopProcessingPage = () => {
         error: undefined,
       });
 
+      console.log('Upload completed successfully for', submission.id);
       setMessage('Upload completed successfully!');
       setSeverity('success');
       setOpen(true);
 
       await loadAllSubmissions();
     } catch (error) {
-      console.error('Failed to upload files', error);
+      console.error('Upload failed for', submission.id, ':', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
 
       applySubmissionPatch({
@@ -1519,11 +1668,13 @@ const DesktopProcessingPage = () => {
       setSeverity('error');
       setOpen(true);
     } finally {
+      // Always clear the active upload ID when done (success, error, or interrupted)
+      console.log('Clearing active upload ID');
       setActiveUploadId(null);
-      setIsUploading(false);
     }
   }, [
     userSub,
+    activeUploadId,
     loadProcessedSummary,
     saveSubmission,
     forceTokenRefresh,
@@ -1531,7 +1682,62 @@ const DesktopProcessingPage = () => {
     setSeverity,
     setOpen,
     loadAllSubmissions,
+    setActiveUploadId,
   ]);
+
+  // Auto-resume upload after navigation/refresh if there's an active upload in sessionStorage
+  const hasAttemptedAutoResumeRef = useRef(false);
+  
+  useEffect(() => {
+    // Don't try to auto-resume if we've already attempted (check FIRST to avoid log spam)
+    if (hasAttemptedAutoResumeRef.current) {
+      return;
+    }
+    
+    console.log('[Auto-resume] Effect triggered. Electron:', isElectron, 'User:', !!hasUserDetails, 'Submissions:', submissions.length);
+    
+    if (!isElectron || !hasUserDetails || submissions.length === 0) {
+      console.log('[Auto-resume] Early return - conditions not met');
+      return;
+    }
+
+    const storedActiveUploadId = getActiveUploadJobId();
+    console.log('[Auto-resume] Stored active upload ID from sessionStorage:', storedActiveUploadId);
+    
+    if (!storedActiveUploadId) {
+      console.log('[Auto-resume] No stored upload ID, nothing to resume');
+      return;
+    }
+
+    // Check if this upload is actually in progress (not completed)
+    const submission = submissions.find((s) => s.id === storedActiveUploadId);
+    if (!submission) {
+      // Submission not found, clear the stale reference
+      console.warn('[Auto-resume] Submission not found, clearing stale reference', storedActiveUploadId);
+      setActiveUploadJobId(null);
+      return;
+    }
+
+    console.log('[Auto-resume] Found submission:', submission.id, 'status:', submission.status, 'progress:', submission.uploadProgress);
+
+    // Only auto-resume if status is uploading and progress is incomplete
+    if (submission.status === 'uploading' && (submission.uploadProgress ?? 0) < 100) {
+      console.log('[Auto-resume] ✅ Triggering auto-resume for', submission.id, 'at', submission.uploadProgress, '%');
+      hasAttemptedAutoResumeRef.current = true;
+      
+      // Small delay to ensure all state is settled
+      setTimeout(() => {
+        console.log('[Auto-resume] Calling handleStartUpload now');
+        handleStartUpload(submission);
+      }, 100);
+    } else if (submission.status === 'completed' || (submission.uploadProgress ?? 0) >= 100) {
+      // Upload is complete, clear the active flag
+      console.log('[Auto-resume] Upload already complete, clearing active flag');
+      setActiveUploadJobId(null);
+    } else {
+      console.log('[Auto-resume] Status/progress does not qualify for auto-resume');
+    }
+  }, [isElectron, hasUserDetails, submissions, handleStartUpload]);
 
   const handleDeleteSubmission = useCallback(async (submission: Submission) => {
     if (!window.confirm(`Are you sure you want to delete "${submission.title}"? This will remove the local submission record but not the remote SourceMedia.`)) {
@@ -1635,17 +1841,27 @@ const DesktopProcessingPage = () => {
     return typeof submission.processingProgress === 'number' && submission.processingProgress < 100;
   };
 
+  const isProcessingActive = (submission: Submission) => {
+    // Only consider it actively processing if we started it in THIS session
+    return submission.status === 'processing' && 
+           activeProcessingIdRef.current === submission.id &&
+           !isProcessingSummaryComplete(submission.statusSummary);
+  };
+
   const canStartProcessing = (submission: Submission) => {
-    if (isProcessing) {
+    // Can't start if already actively processing in this session
+    if (isProcessingActive(submission)) {
       return false;
     }
+    // Can start/resume if created, error, or incomplete processing
     if (submission.status === 'created') {
       return true;
     }
-    if (submission.status === 'processing') {
-      return isSubmissionProcessingIncomplete(submission);
-    }
     if (submission.status === 'error') {
+      return true;
+    }
+    // Can resume processing if it's marked as processing but not active (paused/interrupted)
+    if (submission.status === 'processing' && activeProcessingIdRef.current !== submission.id) {
       return true;
     }
     if (submission.status === 'processed' && isSubmissionProcessingIncomplete(submission)) {
@@ -1667,10 +1883,20 @@ const DesktopProcessingPage = () => {
     return 'Start Processing';
   };
 
+  const isUploadActive = (submission: Submission) => {
+    return activeUploadId === submission.id;
+  };
+
   const canStartUpload = (submission: Submission) => {
-    if (isUploading) {
+    // Can't start if another upload is active
+    if (activeUploadId && activeUploadId !== submission.id) {
       return false;
     }
+    // Can't start if this upload is already running
+    if (isUploadActive(submission)) {
+      return false;
+    }
+    // Can start if processed, error, or incomplete upload
     if (submission.status === 'processed' || submission.status === 'error') {
       return true;
     }
@@ -1688,6 +1914,26 @@ const DesktopProcessingPage = () => {
     }
     return 'Start Upload';
   };
+
+  if (isAuthLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          bgcolor: 'common.black',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <CircularProgress color="inherit" />
+      </Box>
+    );
+  }
+
+  if (!hasUserDetails) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (!isElectron) {
     return (
@@ -1838,7 +2084,7 @@ const DesktopProcessingPage = () => {
                               variant="contained"
                               startIcon={<PlayArrowIcon />}
                               onClick={() => handleStartProcessing(submission)}
-                              loading={isProcessing && selectedSubmission?.id === submission.id}
+                              loading={isProcessingActive(submission)}
                             >
                               {getProcessingButtonLabel(submission)}
                             </LoadingButton>
@@ -1849,7 +2095,7 @@ const DesktopProcessingPage = () => {
                               variant="contained"
                               startIcon={<CloudUploadIcon />}
                               onClick={() => handleStartUpload(submission)}
-                              loading={isUploading && selectedSubmission?.id === submission.id}
+                              loading={isUploadActive(submission)}
                             >
                               {getUploadButtonLabel(submission)}
                             </LoadingButton>
@@ -1867,7 +2113,7 @@ const DesktopProcessingPage = () => {
                           <IconButton
                             size="small"
                             onClick={() => handleDeleteSubmission(submission)}
-                            disabled={submission.status === 'processing' || submission.status === 'uploading'}
+                            disabled={isProcessingActive(submission) || isUploadActive(submission)}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
