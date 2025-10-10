@@ -53,10 +53,10 @@ export default function AccountPopover() {
 
   const showFeedToggle = !isAdmin ? null : (
     <>
-      <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
-      <MenuItem disableRipple sx={{ cursor: 'default' }}>
+      <Divider sx={{ borderStyle: 'dashed', borderColor: 'rgba(255, 255, 255, 0.08)', my: 0 }} />
+      <MenuItem disableRipple sx={{ cursor: 'default', '&:hover': { bgcolor: 'transparent !important' } }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: '100%' }}>
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+          <Typography variant="body2" sx={{ fontWeight: 500, color: 'rgba(255, 255, 255, 0.7)' }}>
             Show feed
           </Typography>
           <Switch
@@ -175,50 +175,65 @@ export default function AccountPopover() {
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
           PaperProps={{
-            sx: {
+            sx: (theme) => ({
               p: 0,
               mt: 1.5,
               ml: 0.75,
-              width: 220,
+              width: 240,
+              bgcolor: '#0a0a0a',
+              backgroundImage: 'none',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9)',
+              border: '1px solid',
+              borderColor: alpha(theme.palette.common.white, 0.26),
+              borderRadius: 3,
               '& .MuiMenuItem-root': {
                 typography: 'body2',
-                borderRadius: 0.75,
-                py: 1,
+                borderRadius: 2,
+                py: 1.25,
                 px: 2,
+                mx: 1,
+                my: 0.5,
+                color: 'rgba(255, 255, 255, 0.7)',
+                transition: 'background-color 0.2s, color 0.2s',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 0.04)',
+                  color: '#fff',
+                },
               },
-            },
+            }),
           }}
         >
           {userDetails?.user ?
             <>
-              <Box sx={{ py: 2, px: 2.5 }}>
+              <Box sx={{ py: 2, px: 3, bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
                 <Typography
                   variant="subtitle1"
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 1,
-                    fontWeight: 'medium'
+                    fontWeight: 600,
+                    color: '#fff',
                   }}
                   noWrap
                 >
-                  <Person sx={{ fontSize: 20 }} />
+                  <Person sx={{ fontSize: 20, color: 'rgba(255, 255, 255, 0.7)' }} />
                   {userDetails?.user?.username}
                 </Typography>
               </Box>
 
-              <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
+              <Divider sx={{ borderStyle: 'dashed', borderColor: 'rgba(255, 255, 255, 0.08)', my: 0 }} />
 
-              <MenuItem>
+              <MenuItem disableRipple sx={{ cursor: 'default', '&:hover': { bgcolor: 'transparent !important' } }}>
                 <Typography
                   variant="body2"
                   sx={{
-                    color: 'success.main',
+                    color: '#10b981',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 1,
-                    fontWeight: 'bold',
-                    width: '100%'
+                    fontWeight: 700,
+                    width: '100%',
                   }}
                 >
                   <AutoFixHigh sx={{ fontSize: 20 }} />
@@ -228,7 +243,7 @@ export default function AccountPopover() {
 
               {userDetails?.user && (
                 <>
-                  <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
+                  <Divider sx={{ borderStyle: 'dashed', borderColor: 'rgba(255, 255, 255, 0.08)', my: 0 }} />
                   <MenuItem onClick={() => { handleClose(); navigate('/account'); }}>
                     Manage Account
                   </MenuItem>
@@ -236,14 +251,14 @@ export default function AccountPopover() {
                 </>
               )}
 
-              <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />
+              <Divider sx={{ borderStyle: 'dashed', borderColor: 'rgba(255, 255, 255, 0.08)', my: 0 }} />
               <MenuItem onClick={logout}>
                 Logout
               </MenuItem>
             </>
             :
             <>
-              <Stack sx={{ py: 1 }}>
+              <Stack sx={{ py: 1.5, px: 0.5 }}>
                 <MenuItem onClick={() => navigate('/login')}>
                   Log In
                 </MenuItem>
