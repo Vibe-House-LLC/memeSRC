@@ -53,7 +53,7 @@ export default function CheckAuth(props) {
     }
   }, [user])
 
-  const handleTokenRefreshed = useCallback((authData) => {
+  const handleTokenRefreshed = useCallback(async (authData, overrideUserDetails = null) => {
     const refreshedUser = authData?.data ?? authData;
     if (!refreshedUser) {
       return;
@@ -83,6 +83,7 @@ export default function CheckAuth(props) {
       ...(tokenPayload?.userNotifications && {
         userNotifications: parseUserNotifications(tokenPayload.userNotifications),
       }),
+      ...(overrideUserDetails || {}),
     };
 
     const updatedUser = {
@@ -97,16 +98,17 @@ export default function CheckAuth(props) {
       updatedUser.username = existingUser.username || refreshedUser.username;
     }
 
-    setUser(updatedUser);
     const clensedUser = { ...updatedUser };
     delete clensedUser.storage;
+    setUser(clensedUser);
     writeJSON('memeSRCUserDetails', clensedUser);
   }, [setUser]);
 
-  const forceTokenRefresh = useCallback(async () => {
+  const forceTokenRefresh = useCallback(async (options = {}) => {
+    const { overrideUserDetails: overrideDetails = null } = options;
     try {
       const refreshedUser = await Auth.currentAuthenticatedUser({ bypassCache: true });
-      handleTokenRefreshed(refreshedUser);
+      await handleTokenRefreshed(refreshedUser, overrideDetails);
     } catch (error) {
       console.log('Failed to force token refresh after payment completion:', error);
     }

@@ -63,8 +63,10 @@ const FavoriteToggle = ({ indexId, initialIsFavorite, onToggle }) => {
           removeFavorite: isFavorite
         }
       });
-      await forceTokenRefresh();
-      handleUpdateUserDetails(result?.updatedUserDetails);
+      await forceTokenRefresh({ overrideUserDetails: result?.updatedUserDetails });
+      if (typeof handleUpdateUserDetails === 'function') {
+        await handleUpdateUserDetails(result?.updatedUserDetails);
+      }
       setIsFavorite(nextIsFavorite);
       emitToggle(nextIsFavorite);
 

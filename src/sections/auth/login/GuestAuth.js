@@ -60,7 +60,7 @@ export default function GuestAuth(props) {
     }
   }, [user])
 
-  const handleTokenRefreshed = useCallback((authData) => {
+  const handleTokenRefreshed = useCallback(async (authData, overrideUserDetails = null) => {
     const refreshedUser = authData?.data ?? authData;
     if (!refreshedUser) {
       return;
@@ -70,30 +70,34 @@ export default function GuestAuth(props) {
     const existingUserDetails = existingUser.userDetails || {};
 
     const tokenPayload = refreshedUser?.signInUserSession?.idToken?.payload || refreshedUser?.signInUserSession?.accessToken?.payload || {};
-    const favoritesRaw = tokenPayload?.favorites;
+    const overrideDetails = overrideUserDetails ? { ...overrideUserDetails } : null;
 
-    let favoriteIds = [];
-    if (Array.isArray(favoritesRaw)) {
-      favoriteIds = favoritesRaw;
-    } else if (typeof favoritesRaw === 'string') {
-      try {
-        favoriteIds = JSON.parse(favoritesRaw) || [];
-      } catch (error) {
-        console.log('Failed to parse favorites from refreshed token payload:', error);
-        favoriteIds = [];
-      }
-    } else {
-      const previousFavorites = existingUserDetails?.favorites;
-      if (Array.isArray(previousFavorites)) {
-        favoriteIds = previousFavorites;
-      } else if (typeof previousFavorites === 'string') {
+    const resolveFavoriteIds = (source) => {
+      if (source === undefined) return null;
+      if (Array.isArray(source)) return source;
+      if (typeof source === 'string') {
         try {
-          favoriteIds = JSON.parse(previousFavorites) || [];
+          return JSON.parse(source) || [];
         } catch (error) {
-          console.log('Failed to parse favorites from existing user details:', error);
-          favoriteIds = [];
+          console.log('Failed to parse favorites payload:', error);
+          return null;
         }
       }
+      return null;
+    };
+
+    let favoriteIds = null;
+    if (overrideDetails && Object.prototype.hasOwnProperty.call(overrideDetails, 'favorites')) {
+      favoriteIds = resolveFavoriteIds(overrideDetails.favorites);
+    }
+    if (favoriteIds === null && Object.prototype.hasOwnProperty.call(tokenPayload || {}, 'favorites')) {
+      favoriteIds = resolveFavoriteIds(tokenPayload?.favorites);
+    }
+    if (favoriteIds === null && Object.prototype.hasOwnProperty.call(existingUserDetails || {}, 'favorites')) {
+      favoriteIds = resolveFavoriteIds(existingUserDetails?.favorites);
+    }
+    if (favoriteIds === null) {
+      favoriteIds = [];
     }
 
     const parseUserNotifications = (notifications) => {
@@ -109,16 +113,23 @@ export default function GuestAuth(props) {
       }
     };
 
-    const userDetailsFromToken = {
+    const userDetailsFromTokenBase = {
       ...existingUserDetails,
       ...tokenPayload,
     };
 
     if (tokenPayload?.userNotifications) {
-      userDetailsFromToken.userNotifications = parseUserNotifications(tokenPayload.userNotifications);
+      userDetailsFromTokenBase.userNotifications = parseUserNotifications(tokenPayload.userNotifications);
     } else if (typeof existingUserDetails.userNotifications === 'string') {
-      userDetailsFromToken.userNotifications = parseUserNotifications(existingUserDetails.userNotifications);
+      userDetailsFromTokenBase.userNotifications = parseUserNotifications(existingUserDetails.userNotifications);
     }
+
+    const userDetailsFromToken = overrideDetails
+      ? {
+          ...userDetailsFromTokenBase,
+          ...overrideDetails,
+        }
+      : userDetailsFromTokenBase;
 
     const updatedUser = {
       ...existingUser,
@@ -132,32 +143,34 @@ export default function GuestAuth(props) {
       updatedUser.username = existingUser.username || refreshedUser.username;
     }
 
-    getShowsWithFavorites(favoriteIds)
-      .then((loadedShows) => {
-        if (!loadedShows?.some((show) => show.isFavorite)) {
-          setDefaultShow('_universal');
-        }
+    try {
+      const loadedShows = await getShowsWithFavorites(favoriteIds);
+      if (!loadedShows?.some((show) => show.isFavorite)) {
+        setDefaultShow('_universal');
+      }
 
-        profilePhotoRef.current = updatedUser.profilePhoto ?? null;
-        delete updatedUser.storage;
-        setUser(updatedUser);
-        writeJSON('memeSRCUserDetails', updatedUser);
-        writeJSON('memeSRCShows', loadedShows);
-        setShows(loadedShows);
-      })
-      .catch((error) => {
-        console.log('Failed to refresh shows after token refresh:', error);
-        profilePhotoRef.current = updatedUser.profilePhoto ?? null;
-        setUser(updatedUser);
-        delete updatedUser.storage;
-        writeJSON('memeSRCUserDetails', updatedUser);
-      });
+      profilePhotoRef.current = updatedUser.profilePhoto ?? null;
+      const cleanedUser = { ...updatedUser };
+      delete cleanedUser.storage;
+      setUser(cleanedUser);
+      writeJSON('memeSRCUserDetails', cleanedUser);
+      writeJSON('memeSRCShows', loadedShows);
+      setShows(loadedShows);
+    } catch (error) {
+      console.log('Failed to refresh shows after token refresh:', error);
+      profilePhotoRef.current = updatedUser.profilePhoto ?? null;
+      const cleanedUser = { ...updatedUser };
+      delete cleanedUser.storage;
+      setUser(cleanedUser);
+      writeJSON('memeSRCUserDetails', cleanedUser);
+    }
   }, [setUser, setShows, setDefaultShow]);
 
-  const forceTokenRefresh = useCallback(async () => {
+  const forceTokenRefresh = useCallback(async (options = {}) => {
+    const { overrideUserDetails: overrideDetails = null } = options;
     try {
       const refreshedUser = await Auth.currentAuthenticatedUser({ bypassCache: true });
-      handleTokenRefreshed(refreshedUser);
+      await handleTokenRefreshed(refreshedUser, overrideDetails);
     } catch (error) {
       console.log('Failed to force token refresh after payment completion:', error);
     }
