@@ -42,7 +42,9 @@ export default function CheckAuth(props) {
     if (user && (user.userDetails !== userObject.userDetails)) {
       console.log('writing user')
       console.log(user)
-      writeJSON('memeSRCUserDetails', user)
+      const clensedUser = { ...user };
+      delete clensedUser.storage;
+      writeJSON('memeSRCUserDetails', clensedUser);
       console.log('New User Details')
       console.log({ ...user?.signInUserSession?.accessToken?.payload, ...user.userDetails })
       console.log('Full User Details');
@@ -96,7 +98,9 @@ export default function CheckAuth(props) {
     }
 
     setUser(updatedUser);
-    writeJSON('memeSRCUserDetails', updatedUser);
+    const clensedUser = { ...updatedUser };
+    delete clensedUser.storage;
+    writeJSON('memeSRCUserDetails', clensedUser);
   }, [setUser]);
 
   const forceTokenRefresh = useCallback(async () => {
@@ -200,13 +204,17 @@ export default function CheckAuth(props) {
 
         setUser(userWithPhoto);
         userRef.current = userWithPhoto;
-        writeJSON('memeSRCUserDetails', userWithPhoto);
+        const clensedUser = { ...userWithPhoto };
+        delete clensedUser.storage;
+        writeJSON('memeSRCUserDetails', clensedUser);
       }).catch(error => {
         console.log('Error fetching profile photo:', error);
         const userWithoutPhoto = buildUserState(undefined);
         setUser(userWithoutPhoto);
         userRef.current = userWithoutPhoto;
-        writeJSON('memeSRCUserDetails', userWithoutPhoto);
+        const clensedUser = { ...userWithoutPhoto };
+        delete clensedUser.storage;
+        writeJSON('memeSRCUserDetails', clensedUser);
       });
 
       console.log(x)

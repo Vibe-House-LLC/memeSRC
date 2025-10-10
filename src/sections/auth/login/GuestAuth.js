@@ -45,7 +45,9 @@ export default function GuestAuth(props) {
       const userDetails = readJSON('memeSRCUserDetails') || {};
 
       if (user && (user.userDetails !== userDetails.userDetails)) {
-        writeJSON('memeSRCUserDetails', user);
+        const clensedUser = { ...user };
+        delete clensedUser.storage;
+        writeJSON('memeSRCUserDetails', clensedUser);
       }
 
       if (user) {
@@ -137,6 +139,7 @@ export default function GuestAuth(props) {
         }
 
         profilePhotoRef.current = updatedUser.profilePhoto ?? null;
+        delete updatedUser.storage;
         setUser(updatedUser);
         writeJSON('memeSRCUserDetails', updatedUser);
         writeJSON('memeSRCShows', loadedShows);
@@ -146,6 +149,7 @@ export default function GuestAuth(props) {
         console.log('Failed to refresh shows after token refresh:', error);
         profilePhotoRef.current = updatedUser.profilePhoto ?? null;
         setUser(updatedUser);
+        delete updatedUser.storage;
         writeJSON('memeSRCUserDetails', updatedUser);
       });
   }, [setUser, setShows, setDefaultShow]);
@@ -213,7 +217,9 @@ export default function GuestAuth(props) {
 
           profilePhotoRef.current = updatedUser.profilePhoto ?? null;
           setUser(updatedUser);
-          writeJSON('memeSRCUserDetails', updatedUser);
+          const clensedUser = { ...updatedUser };
+          delete clensedUser.storage;
+          writeJSON('memeSRCUserDetails', clensedUser);
           writeJSON('memeSRCShows', loadedShows);
           setShows(loadedShows);
           resolve();
@@ -309,14 +315,18 @@ export default function GuestAuth(props) {
           profilePhotoRef.current = profilePhotoUrl;
           userRef.current = userWithPhoto;
           setUser(userWithPhoto);
-          writeJSON('memeSRCUserDetails', userWithPhoto);
+          const clensedUser = { ...userWithPhoto };
+          delete clensedUser.storage;
+          writeJSON('memeSRCUserDetails', clensedUser);
         }).catch(error => {
           console.log('Error fetching profile photo:', error);
           profilePhotoRef.current = null;
           const userWithoutPhoto = buildUserState(undefined);
           userRef.current = userWithoutPhoto;
           setUser(userWithoutPhoto);
-          writeJSON('memeSRCUserDetails', userWithoutPhoto);
+          const clensedUser = { ...userWithoutPhoto };
+          delete clensedUser.storage;
+          writeJSON('memeSRCUserDetails', clensedUser);
         });
 
         writeJSON('memeSRCShows', loadedShows)
