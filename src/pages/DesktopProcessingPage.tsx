@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Navigate } from 'react-router-dom';
 import {
   Alert,
   Autocomplete,
@@ -107,6 +108,23 @@ interface Submission {
   updatedAt: string;
   error?: string;
 }
+
+type AuthUserDetails = {
+  sub?: string | null;
+  username?: string | null;
+  email?: string | null;
+  [key: string]: unknown;
+};
+
+type AuthUser =
+  | null
+  | undefined
+  | false
+  | {
+      userDetails?: AuthUserDetails | null;
+      sub?: string | null;
+      [key: string]: unknown;
+    };
 
 type ElectronModule = {
   ipcRenderer: {
@@ -575,15 +593,20 @@ const isTokenExpiredError = (error: unknown): boolean => {
 const DesktopProcessingPage = () => {
   const isElectron = typeof window !== 'undefined' && Boolean(window.process?.type);
   const { user: userContextValue, forceTokenRefresh } = useContext(UserContext) as {
-    user: unknown;
+    user: AuthUser;
     forceTokenRefresh?: () => Promise<void>;
   };
   const { setMessage, setOpen, setSeverity } = useContext(SnackbarContext);
 
-  const userSub =
-    userContextValue && typeof userContextValue === 'object'
-      ? (userContextValue as { sub?: string | null }).sub ?? null
+  const authUser = userContextValue;
+  const typedAuthUser =
+    authUser !== null && authUser !== undefined && authUser !== false && typeof authUser === 'object'
+      ? (authUser as { userDetails?: AuthUserDetails | null; sub?: string | null })
       : null;
+  const authUserDetails = typedAuthUser?.userDetails ?? null;
+  const isAuthLoading = authUser === null || typeof authUser === 'undefined';
+  const hasUserDetails = Boolean(authUserDetails);
+  const userSub = typedAuthUser?.sub ?? authUserDetails?.sub ?? null;
 
   // Series data
   const [seriesOptions, setSeriesOptions] = useState<SeriesOption[]>([]);
@@ -927,11 +950,12 @@ const DesktopProcessingPage = () => {
   }, [setMessage, setOpen, setSeverity]);
 
   useEffect(() => {
-    if (isElectron) {
-      loadSeries();
-      loadAllSubmissions();
+    if (!isElectron || !hasUserDetails) {
+      return;
     }
-  }, [isElectron, loadSeries, loadAllSubmissions]);
+    loadSeries();
+    loadAllSubmissions();
+  }, [isElectron, hasUserDetails, loadSeries, loadAllSubmissions]);
 
   const handleSelectFolder = useCallback(async () => {
     const electronModule = getElectronModule();
@@ -1788,6 +1812,26 @@ const DesktopProcessingPage = () => {
     }
     return 'Start Upload';
   };
+
+  if (isAuthLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          bgcolor: 'common.black',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <CircularProgress color="inherit" />
+      </Box>
+    );
+  }
+
+  if (!hasUserDetails) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (!isElectron) {
     return (
