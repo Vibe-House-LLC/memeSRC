@@ -18,6 +18,7 @@ function CreateIndex({ onProcessComplete }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [processingError, setProcessingError] = useState(null);
   const [previousJobs, setPreviousJobs] = useState([]);
 
   const selectDirectory = async () => {
@@ -32,6 +33,7 @@ function CreateIndex({ onProcessComplete }) {
     setIsProcessing(true);
     setIsDialogOpen(true);
     setProgress(0);
+    setProcessingError(null);
   
     const electron = window.require('electron');
     const {ipcRenderer} = electron;
@@ -56,6 +58,7 @@ function CreateIndex({ onProcessComplete }) {
       console.log('JavaScript processing result:', response);
       setIsProcessing(false);
       setProgress(100);
+      setProcessingError(null);
       if (onProcessComplete) {
         onProcessComplete(response);
       }
@@ -63,7 +66,10 @@ function CreateIndex({ onProcessComplete }) {
 
     ipcRenderer.once('javascript-processing-error', (event, error) => {
       console.error('JavaScript processing error:', error);
+      const message = (error && (error.error || error.message)) ? (error.error || error.message) : 'Processing failed.';
+      setProcessingError(message);
       setIsProcessing(false);
+      setProgress(0);
     });
   }, [folderPath, id, title, description, frameCount, colorMain, colorSecondary, emoji, fontFamily, onProcessComplete]);
 
@@ -103,24 +109,22 @@ function CreateIndex({ onProcessComplete }) {
         try {
           const response = await electron.ipcRenderer.invoke('fetch-processing-status', id);
           if (response.success && response.status) {
-            let totalPercent = 0;
-            let count = 0;
-            Object.keys(response.status).forEach(season => {
-              Object.values(response.status[season]).forEach(status => {
-                switch (status) {
-                  case 'done':
-                    totalPercent += 100;
-                    break;
-                  case 'indexing':
-                    totalPercent += 50;
-                    break;
-                  default:
-                    break;
+            let totalEpisodes = 0;
+            let completedEpisodes = 0;
+
+            Object.values(response.status).forEach((seasonEpisodes) => {
+              Object.values(seasonEpisodes).forEach((status) => {
+                totalEpisodes += 1;
+                if (status === 'done') {
+                  completedEpisodes += 1;
                 }
-                count += 1;
               });
             });
-            const percentComplete = count > 0 ? totalPercent / count : 0;
+
+            const percentComplete = totalEpisodes > 0
+              ? (completedEpisodes / totalEpisodes) * 100
+              : 0;
+
             setProgress(Math.round(percentComplete));
           }
         } catch (error) {
@@ -174,7 +178,11 @@ function CreateIndex({ onProcessComplete }) {
           isOpen={isDialogOpen}
           progress={progress}
           metadata={{ title, description }}
-          onDismiss={() => setIsDialogOpen(false)}
+          errorMessage={processingError}
+          onDismiss={() => {
+            setIsDialogOpen(false);
+            setProcessingError(null);
+          }}
         />
       </Box>
     </>
