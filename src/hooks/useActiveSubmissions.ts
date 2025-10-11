@@ -5,7 +5,7 @@ export interface ActiveSubmission {
   id: string;
   title: string;
   seriesName: string;
-  status: 'processing' | 'uploading' | 'uploaded' | 'processed' | 'error';
+  status: 'processing' | 'uploading' | 'uploaded' | 'processed' | 'completed' | 'error';
   progress?: number;
   error?: string;
 }
@@ -49,12 +49,13 @@ export const useActiveSubmissions = () => {
         if (!submission) continue;
 
         // Only include submissions that are actively processing or uploading
-        // Exclude 'completed' (fully done) but include 'error' so users can see failures
+        // Include completed for a short time so users can see success
         if (
           submission.status === 'processing' ||
           submission.status === 'uploading' ||
           submission.status === 'uploaded' || // upload finished, about to be completed
           submission.status === 'processed' || // processed but not yet uploaded
+          submission.status === 'completed' || // recently completed
           submission.status === 'error' // show errors so users know something failed
         ) {
           let progress: number | undefined;
@@ -63,6 +64,8 @@ export const useActiveSubmissions = () => {
             progress = submission.processingProgress;
           } else if (submission.status === 'uploading' || submission.status === 'uploaded') {
             progress = submission.uploadProgress;
+          } else if (submission.status === 'completed') {
+            progress = 100;
           }
 
           active.push({
