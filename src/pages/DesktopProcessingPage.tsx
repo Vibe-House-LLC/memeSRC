@@ -2548,7 +2548,7 @@ const DesktopProcessingPage = () => {
                                 handleSubmit(submission);
                               }
                             }}
-                            disabled={!isComplete && !isActive && !canSubmit(submission)}
+                            disabled={isComplete ? false : submission.status === 'completed' || submission.status === 'uploaded'}
                             title={
                               isComplete 
                                 ? 'Review Submission' 
