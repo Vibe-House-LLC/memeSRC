@@ -1754,7 +1754,8 @@ const DesktopProcessingPage = () => {
 
         // Only mark as complete after successful upload
         completedSet.add(normalizedRelativePath);
-        uploadedBytes += file.size;
+        // Use the size from snapshot.fileSizes to ensure consistency with progress calculations
+        uploadedBytes += snapshot.fileSizes[normalizedRelativePath] ?? 0;
 
         workingResume = persistResume({
           completedFiles: Array.from(completedSet),
