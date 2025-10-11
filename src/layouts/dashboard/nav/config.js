@@ -15,12 +15,13 @@ import {
   Upload, 
   Collections, 
   NewReleases,
+  TrendingUp,
   Dashboard,
   Movie,
   Description,
   Group,
   Home,
-  ManageAccounts,
+  ManageAccounts
 } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
@@ -163,6 +164,12 @@ const navConfig = [
         path: '/dashboard/usage-events',
         externalLink: false,
         icon: <Article />,
+      },
+      {
+        title: 'Popular Searches',
+        path: '/dashboard/popular-searches',
+        externalLink: false,
+        icon: <TrendingUp />,
       },
       {
         title: 'Website Settings',
