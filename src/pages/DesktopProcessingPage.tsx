@@ -563,6 +563,21 @@ const isTokenExpiredError = (error: unknown): boolean => {
   return message.toLowerCase().includes('token') && message.toLowerCase().includes('expir');
 };
 
+// Stable sorting function that doesn't cause items to jump around during progress updates
+// Always sorts by createdAt (newest first) to keep the list stable
+const sortSubmissions = (submissions: Submission[]): Submission[] => {
+  return [...submissions].sort((a, b) => {
+    // Sort by createdAt (newest first)
+    const timeA = new Date(a.createdAt).getTime();
+    const timeB = new Date(b.createdAt).getTime();
+    
+    if (timeB !== timeA) return timeB - timeA;
+    
+    // ID as tiebreaker for absolute stability
+    return a.id.localeCompare(b.id);
+  });
+};
+
 const DesktopProcessingPage = () => {
   const theme = useTheme();
   const isElectron = typeof window !== 'undefined' && Boolean(window.process?.type);
@@ -635,6 +650,9 @@ const DesktopProcessingPage = () => {
   
   const lastCredentialsRefreshRef = useRef<number>(0);
   const statusPollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Track if upload should continue (used to cancel upload loops)
+  const shouldContinueUploadRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => subscribeToActiveUploadJobId(setActiveUploadIdState), [setActiveUploadIdState]);
 
@@ -665,6 +683,42 @@ const DesktopProcessingPage = () => {
     return readJSON<Submission>(getSubmissionStorageKey(submissionId));
   }, [getSubmissionStorageKey]);
 
+  const cancelProcessingJob = useCallback((submissionId: string) => {
+    const electronModule = getElectronModule();
+    if (!electronModule) {
+      return;
+    }
+    
+    console.log('Cancelling processing job:', submissionId);
+    
+    // Send cancel signal to Electron
+    electronModule.ipcRenderer.send('cancel-processing-job', { id: submissionId });
+    
+    // Clear active processing state
+    if (activeProcessingIdRef.current === submissionId) {
+      activeProcessingIdRef.current = null;
+      setActiveProcessingId(null);
+      try {
+        sessionStorage.removeItem('desktop-processing-active-job-id');
+        sessionStorage.removeItem(`desktop-auto-upload-after-${submissionId}`);
+      } catch {
+        // Ignore sessionStorage errors
+      }
+    }
+  }, [getElectronModule]);
+
+  const cancelUploadJob = useCallback((submissionId: string) => {
+    console.log('Cancelling upload job:', submissionId);
+    
+    // Set flag to break upload loop
+    shouldContinueUploadRef.current[submissionId] = false;
+    
+    // Clear active upload state
+    if (activeUploadId === submissionId) {
+      setActiveUploadId(null);
+    }
+  }, [activeUploadId, setActiveUploadId]);
+
   // Unified status polling for all active jobs (processing or uploading)
   useEffect(() => {
     if (!isElectron || !window.require) {
@@ -676,11 +730,16 @@ const DesktopProcessingPage = () => {
       const path = window.require('path') as typeof import('path');
       const os = window.require('os') as typeof import('os');
 
+      // CRITICAL: Always read from current ref to avoid stale closures
       const currentSubs = submissionsRef.current;
       const updates: Array<{ id: string; submission: Submission }> = [];
 
-      for (let index = 0; index < currentSubs.length; index++) {
-        const submission = currentSubs[index];
+      // Use for...of instead of indexed loop to avoid index confusion
+      for (const submission of currentSubs) {
+        // Skip if this submission no longer exists (defensive check)
+        if (!submission || !submission.id) {
+          continue;
+        }
         
         // Only poll jobs that are actively processing or uploading
         if (submission.status !== 'processing' && submission.status !== 'uploading') {
@@ -761,8 +820,14 @@ const DesktopProcessingPage = () => {
 
         // Poll upload status from storage
         if (submission.status === 'uploading') {
+          // Re-verify submission still exists before loading
           const stored = loadSubmission(submission.id);
-          if (stored && stored.status === 'uploading') {
+          if (!stored) {
+            // Submission was deleted, skip it
+            continue;
+          }
+          
+          if (stored.status === 'uploading') {
             const resumeState = parseStoredResume(submission.id);
             const stats = deriveResumeUploadStats(resumeState);
 
@@ -797,19 +862,21 @@ const DesktopProcessingPage = () => {
         }
       }
 
-      // Apply all updates using submission IDs instead of stale indices
+      // Apply all updates using submission IDs (never indices)
       if (updates.length > 0) {
-        setSubmissions((subs) => {
+        setSubmissions((currentSubs) => {
           // Create a map of updates by ID for O(1) lookup
           const updateMap = new Map(updates.map((u) => [u.id, u.submission]));
           
-          // Apply updates by finding submissions by ID
-          const updatedSubs = subs.map((sub) => updateMap.get(sub.id) ?? sub);
+          // Apply updates by matching ID only
+          // This ensures we never use stale array positions
+          const updatedSubs = currentSubs.map((sub) => {
+            const update = updateMap.get(sub.id);
+            return update ?? sub;
+          });
           
-          // Sort by updatedAt
-          updatedSubs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-          
-          return updatedSubs;
+          // Use stable sort that won't cause items to jump around
+          return sortSubmissions(updatedSubs);
         });
 
         // Also update selected submission if it was updated
@@ -994,11 +1061,8 @@ const DesktopProcessingPage = () => {
         }
       }
 
-      loadedSubmissions.sort(
-        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      );
-
-      setSubmissions(loadedSubmissions);
+      // Use stable sort
+      setSubmissions(sortSubmissions(loadedSubmissions));
     } catch (error) {
       console.error('Failed to load submissions', error);
     } finally {
@@ -1223,6 +1287,16 @@ const DesktopProcessingPage = () => {
     }
 
     try {
+      // Pause any currently active submission first
+      if (activeProcessingId && activeProcessingId !== submission.id) {
+        console.log('Auto-pausing active processing job:', activeProcessingId);
+        cancelProcessingJob(activeProcessingId);
+      }
+      if (activeUploadId && activeUploadId !== submission.id) {
+        console.log('Auto-pausing active upload job:', activeUploadId);
+        cancelUploadJob(activeUploadId);
+      }
+
       // Mark as actively processing in this session
       activeProcessingIdRef.current = submission.id;
       setActiveProcessingId(submission.id);
@@ -1245,7 +1319,12 @@ const DesktopProcessingPage = () => {
         updatedAt: new Date().toISOString(),
       };
       saveSubmission(updated);
-      setSubmissions(subs => subs.map(s => s.id === submission.id ? updated : s));
+      
+      // Use functional updates to avoid stale state
+      setSubmissions(subs => {
+        const updatedSubs = subs.map(s => s.id === submission.id ? updated : s);
+        return sortSubmissions(updatedSubs);
+      });
       setSelectedSubmission(prev => prev?.id === submission.id ? updated : prev);
 
       // Tell electron to start processing (fire and forget)
@@ -1279,7 +1358,7 @@ const DesktopProcessingPage = () => {
         // Ignore sessionStorage errors
       }
     }
-  }, [getElectronModule, saveSubmission, setMessage, setSeverity, setOpen]);
+  }, [getElectronModule, saveSubmission, setMessage, setSeverity, setOpen, activeProcessingId, activeUploadId, cancelProcessingJob, cancelUploadJob]);
 
   const loadProcessedSummary = useCallback(
     async (id: string): Promise<ProcessedSummary> => {
@@ -1348,13 +1427,14 @@ const DesktopProcessingPage = () => {
   const handleStartUpload = useCallback(async (submission: Submission) => {
     console.log('handleStartUpload called for', submission.id, 'current activeUploadId:', activeUploadId);
     
-    // Prevent multiple simultaneous uploads
+    // Pause any currently active submission first
+    if (activeProcessingId && activeProcessingId !== submission.id) {
+      console.log('Auto-pausing active processing job:', activeProcessingId);
+      cancelProcessingJob(activeProcessingId);
+    }
     if (activeUploadId && activeUploadId !== submission.id) {
-      console.warn('Upload blocked: another upload already in progress');
-      setMessage('Another upload is already in progress. Please wait for it to finish.');
-      setSeverity('warning');
-      setOpen(true);
-      return;
+      console.log('Auto-pausing active upload job:', activeUploadId);
+      cancelUploadJob(activeUploadId);
     }
 
     if (!userSub) {
@@ -1381,14 +1461,32 @@ const DesktopProcessingPage = () => {
     let currentSubmission: Submission = submission;
     
     console.log('Starting upload process for', submission.id);
+    
+    // Set flag to allow upload to continue
+    shouldContinueUploadRef.current[submission.id] = true;
 
     const applySubmissionPatch = (patch: Partial<Submission>) => {
       const nextSubmission: Submission = {
         ...currentSubmission,
         ...patch,
+        updatedAt: new Date().toISOString(), // Always update timestamp
       };
       saveSubmission(nextSubmission);
-      setSubmissions((subs) => subs.map((s) => (s.id === submission.id ? nextSubmission : s)));
+      
+      // Use functional update with proper sorting
+      setSubmissions((subs) => {
+        // Check if submission still exists (could have been deleted)
+        if (!subs.find(s => s.id === submission.id)) {
+          console.warn('Submission', submission.id, 'no longer exists, skipping update');
+          return subs;
+        }
+        
+        const updatedSubs = subs.map((s) => (s.id === submission.id ? nextSubmission : s));
+        
+        // Use stable sort based on createdAt (won't cause items to jump around)
+        return sortSubmissions(updatedSubs);
+      });
+      
       setSelectedSubmission((prev) => (prev?.id === submission.id ? nextSubmission : prev));
       currentSubmission = nextSubmission;
       return nextSubmission;
@@ -1578,6 +1676,12 @@ const DesktopProcessingPage = () => {
       console.log('Starting upload loop:', eligibleFiles.length, 'total files,', completedSet.size, 'already completed');
       
       for (const file of eligibleFiles) {
+        // Check if upload was cancelled/paused
+        if (!shouldContinueUploadRef.current[submission.id]) {
+          console.log('Upload cancelled by user for', submission.id);
+          throw new Error('Upload paused');
+        }
+        
         const normalizedRelativePath = file.normalizedPath;
         if (completedSet.has(normalizedRelativePath)) {
           continue;
@@ -1695,6 +1799,13 @@ const DesktopProcessingPage = () => {
     } catch (error) {
       console.error('Upload failed for', submission.id, ':', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      
+      // Don't treat "Upload paused" as an error - it's intentional
+      if (errorMessage === 'Upload paused') {
+        console.log('Upload paused gracefully for', submission.id);
+        // Don't update status to error, leave it as 'uploading' so it can be resumed
+        return;
+      }
 
       applySubmissionPatch({
         status: 'error',
@@ -1710,10 +1821,15 @@ const DesktopProcessingPage = () => {
       // Always clear the active upload ID when done (success, error, or interrupted)
       console.log('Clearing active upload ID');
       setActiveUploadId(null);
+      // Clean up the continue flag
+      delete shouldContinueUploadRef.current[submission.id];
     }
   }, [
     userSub,
     activeUploadId,
+    activeProcessingId,
+    cancelProcessingJob,
+    cancelUploadJob,
     loadProcessedSummary,
     saveSubmission,
     forceTokenRefresh,
@@ -1788,30 +1904,20 @@ const DesktopProcessingPage = () => {
   }, [isElectron, hasUserDetails, submissions, handleStartUpload]);
 
   const handlePauseSubmission = useCallback((submission: Submission) => {
-    // If uploading, clear the active upload to pause it
     if (activeUploadId === submission.id) {
       console.log('Pausing upload for', submission.id);
-      setActiveUploadId(null);
+      cancelUploadJob(submission.id);
       setMessage('Upload paused. Click Resume to continue.');
       setSeverity('info');
       setOpen(true);
-    }
-    // If processing, clear the active processing flag
-    else if (activeProcessingId === submission.id) {
+    } else if (activeProcessingId === submission.id) {
       console.log('Pausing processing for', submission.id);
-      activeProcessingIdRef.current = null;
-      setActiveProcessingId(null);
-      try {
-        sessionStorage.removeItem('desktop-processing-active-job-id');
-        sessionStorage.removeItem(`desktop-auto-upload-after-${submission.id}`);
-      } catch {
-        // Ignore sessionStorage errors
-      }
-      setMessage('Processing paused. The operation will continue in the background. Click Resume to monitor progress.');
+      cancelProcessingJob(submission.id);
+      setMessage('Processing cancelled. Click Resume to restart from the last checkpoint.');
       setSeverity('info');
       setOpen(true);
     }
-  }, [activeUploadId, activeProcessingId, setMessage, setSeverity, setOpen, setActiveUploadId]);
+  }, [activeUploadId, activeProcessingId, cancelUploadJob, cancelProcessingJob, setMessage, setSeverity, setOpen]);
 
   const handleDeleteSubmission = useCallback(async (submission: Submission) => {
     if (!window.confirm(`Are you sure you want to delete "${submission.title}"? This will remove the local submission record but not the remote SourceMedia.`)) {
@@ -1819,11 +1925,31 @@ const DesktopProcessingPage = () => {
     }
 
     try {
-      deleteSubmission(submission.id);
-      setSubmissions(subs => subs.filter(s => s.id !== submission.id));
-      if (selectedSubmission?.id === submission.id) {
-        setSelectedSubmission(null);
+      const submissionId = submission.id;
+      
+      // Cancel any active operations first
+      if (activeUploadId === submissionId) {
+        cancelUploadJob(submissionId);
       }
+      if (activeProcessingIdRef.current === submissionId) {
+        cancelProcessingJob(submissionId);
+      }
+      
+      // Clean up the continue flag
+      delete shouldContinueUploadRef.current[submissionId];
+      
+      // Delete from localStorage
+      deleteSubmission(submissionId);
+      
+      // Update state with functional update to ensure we filter by ID
+      setSubmissions(subs => {
+        const filtered = subs.filter(s => s.id !== submissionId);
+        console.log('[Delete] Removed submission', submissionId, 'from state. Remaining:', filtered.length);
+        return filtered;
+      });
+      
+      // Clear selected submission if it was the deleted one
+      setSelectedSubmission(prev => prev?.id === submissionId ? null : prev);
 
       setMessage('Submission deleted successfully.');
       setSeverity('success');
@@ -1834,7 +1960,7 @@ const DesktopProcessingPage = () => {
       setSeverity('error');
       setOpen(true);
     }
-  }, [deleteSubmission, selectedSubmission, setMessage, setSeverity, setOpen]);
+  }, [deleteSubmission, activeUploadId, cancelUploadJob, cancelProcessingJob, setMessage, setSeverity, setOpen]);
 
   const handleRefresh = useCallback(() => {
     loadAllSubmissions();
@@ -2334,11 +2460,12 @@ const DesktopProcessingPage = () => {
                             Review
                           </Button>
                         )}
+                        {/* Show pause for active processing or uploads */}
                         {isActive && (
                           <IconButton
                             onClick={() => handlePauseSubmission(submission)}
                             color="warning"
-                            title="Pause"
+                            title={isUploadActive(submission) ? 'Pause Upload' : 'Cancel Processing'}
                           >
                             <PauseIcon />
                           </IconButton>
