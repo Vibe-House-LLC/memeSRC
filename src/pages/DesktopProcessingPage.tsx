@@ -23,6 +23,11 @@ import {
   Button,
   Paper,
   Grid,
+  Stepper,
+  Step,
+  StepLabel,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import AddIcon from '@mui/icons-material/Add';
@@ -32,6 +37,10 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
+import PauseIcon from '@mui/icons-material/Pause';
+import FolderIcon from '@mui/icons-material/Folder';
+import MovieIcon from '@mui/icons-material/Movie';
 import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
 import { nanoid } from 'nanoid';
 import { paramCase } from 'change-case';
@@ -555,6 +564,7 @@ const isTokenExpiredError = (error: unknown): boolean => {
 };
 
 const DesktopProcessingPage = () => {
+  const theme = useTheme();
   const isElectron = typeof window !== 'undefined' && Boolean(window.process?.type);
   const { user: userContextValue, forceTokenRefresh } = useContext(UserContext) as {
     user: AuthUser;
@@ -605,6 +615,7 @@ const DesktopProcessingPage = () => {
 
   // Processing state
   const [activeUploadId, setActiveUploadIdState] = useState<string | null>(() => getActiveUploadJobId());
+  const [pendingAutoUpload, setPendingAutoUpload] = useState<Submission | null>(null);
   
   // Track which job we started processing in THIS session
   // Persisted to sessionStorage to survive page navigation but NOT app restart/quit
@@ -620,6 +631,7 @@ const DesktopProcessingPage = () => {
     }
   };
   const activeProcessingIdRef = useRef<string | null>(getInitialActiveProcessingId());
+  const [activeProcessingId, setActiveProcessingId] = useState<string | null>(() => getInitialActiveProcessingId());
   
   const lastCredentialsRefreshRef = useRef<number>(0);
   const statusPollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -699,14 +711,34 @@ const DesktopProcessingPage = () => {
                 updates.push({ id: submission.id, submission: updated });
                 saveSubmission(updated);
                 
+                // Check if we should auto-upload after processing
+                let shouldAutoUpload = false;
+                try {
+                  shouldAutoUpload = sessionStorage.getItem(`desktop-auto-upload-after-${submission.id}`) === 'true';
+                } catch {
+                  // Ignore sessionStorage errors
+                }
+                
                 // Clear active processing flag
                 if (activeProcessingIdRef.current === submission.id) {
                   activeProcessingIdRef.current = null;
+                  setActiveProcessingId(null);
                   try {
                     sessionStorage.removeItem('desktop-processing-active-job-id');
+                    if (shouldAutoUpload) {
+                      sessionStorage.removeItem(`desktop-auto-upload-after-${submission.id}`);
+                    }
                   } catch {
                     // Ignore sessionStorage errors
                   }
+                }
+                
+                // Schedule auto-upload if requested
+                if (shouldAutoUpload) {
+                  console.log('[Auto-upload] Processing complete, scheduling auto-upload for', submission.id);
+                  setTimeout(() => {
+                    setPendingAutoUpload(updated);
+                  }, 500);
                 }
               } else if (
                 processingProgress !== submission.processingProgress ||
@@ -1181,7 +1213,7 @@ const DesktopProcessingPage = () => {
     loadAllSubmissions,
   ]);
 
-  const handleStartProcessing = useCallback(async (submission: Submission) => {
+  const handleStartProcessing = useCallback(async (submission: Submission, autoUploadAfter = false) => {
     const electronModule = getElectronModule();
     if (!electronModule) {
       setMessage('Processing is only available in the desktop app.');
@@ -1193,8 +1225,13 @@ const DesktopProcessingPage = () => {
     try {
       // Mark as actively processing in this session
       activeProcessingIdRef.current = submission.id;
+      setActiveProcessingId(submission.id);
       try {
         sessionStorage.setItem('desktop-processing-active-job-id', submission.id);
+        // Store auto-upload flag if needed
+        if (autoUploadAfter) {
+          sessionStorage.setItem(`desktop-auto-upload-after-${submission.id}`, 'true');
+        }
       } catch {
         // Ignore sessionStorage errors
       }
@@ -1225,7 +1262,7 @@ const DesktopProcessingPage = () => {
         fontFamily: '',
       });
 
-      setMessage('Processing started!');
+      setMessage(autoUploadAfter ? 'Submission started!' : 'Processing started!');
       setSeverity('info');
       setOpen(true);
     } catch (error) {
@@ -1234,8 +1271,10 @@ const DesktopProcessingPage = () => {
       setSeverity('error');
       setOpen(true);
       activeProcessingIdRef.current = null;
+      setActiveProcessingId(null);
       try {
         sessionStorage.removeItem('desktop-processing-active-job-id');
+        sessionStorage.removeItem(`desktop-auto-upload-after-${submission.id}`);
       } catch {
         // Ignore sessionStorage errors
       }
@@ -1685,6 +1724,15 @@ const DesktopProcessingPage = () => {
     setActiveUploadId,
   ]);
 
+  // Effect to trigger auto-upload when pendingAutoUpload is set
+  useEffect(() => {
+    if (pendingAutoUpload) {
+      console.log('[Auto-upload] Triggering upload for', pendingAutoUpload.id);
+      handleStartUpload(pendingAutoUpload);
+      setPendingAutoUpload(null);
+    }
+  }, [pendingAutoUpload, handleStartUpload]);
+
   // Auto-resume upload after navigation/refresh if there's an active upload in sessionStorage
   const hasAttemptedAutoResumeRef = useRef(false);
   
@@ -1738,6 +1786,32 @@ const DesktopProcessingPage = () => {
       console.log('[Auto-resume] Status/progress does not qualify for auto-resume');
     }
   }, [isElectron, hasUserDetails, submissions, handleStartUpload]);
+
+  const handlePauseSubmission = useCallback((submission: Submission) => {
+    // If uploading, clear the active upload to pause it
+    if (activeUploadId === submission.id) {
+      console.log('Pausing upload for', submission.id);
+      setActiveUploadId(null);
+      setMessage('Upload paused. Click Resume to continue.');
+      setSeverity('info');
+      setOpen(true);
+    }
+    // If processing, clear the active processing flag
+    else if (activeProcessingId === submission.id) {
+      console.log('Pausing processing for', submission.id);
+      activeProcessingIdRef.current = null;
+      setActiveProcessingId(null);
+      try {
+        sessionStorage.removeItem('desktop-processing-active-job-id');
+        sessionStorage.removeItem(`desktop-auto-upload-after-${submission.id}`);
+      } catch {
+        // Ignore sessionStorage errors
+      }
+      setMessage('Processing paused. The operation will continue in the background. Click Resume to monitor progress.');
+      setSeverity('info');
+      setOpen(true);
+    }
+  }, [activeUploadId, activeProcessingId, setMessage, setSeverity, setOpen, setActiveUploadId]);
 
   const handleDeleteSubmission = useCallback(async (submission: Submission) => {
     if (!window.confirm(`Are you sure you want to delete "${submission.title}"? This will remove the local submission record but not the remote SourceMedia.`)) {
@@ -1844,7 +1918,7 @@ const DesktopProcessingPage = () => {
   const isProcessingActive = (submission: Submission) => {
     // Only consider it actively processing if we started it in THIS session
     return submission.status === 'processing' && 
-           activeProcessingIdRef.current === submission.id &&
+           activeProcessingId === submission.id &&
            !isProcessingSummaryComplete(submission.statusSummary);
   };
 
@@ -1861,7 +1935,7 @@ const DesktopProcessingPage = () => {
       return true;
     }
     // Can resume processing if it's marked as processing but not active (paused/interrupted)
-    if (submission.status === 'processing' && activeProcessingIdRef.current !== submission.id) {
+    if (submission.status === 'processing' && activeProcessingId !== submission.id) {
       return true;
     }
     if (submission.status === 'processed' && isSubmissionProcessingIncomplete(submission)) {
@@ -1915,6 +1989,108 @@ const DesktopProcessingPage = () => {
     return 'Start Upload';
   };
 
+  // Unified submission flow
+  const handleSubmit = useCallback((submission: Submission) => {
+    // If not yet processed, start processing with auto-upload
+    if (submission.status === 'created' || submission.status === 'error') {
+      handleStartProcessing(submission, true);
+    }
+    // If processing incomplete, resume processing with auto-upload
+    else if (submission.status === 'processing' || (submission.status === 'processed' && isSubmissionProcessingIncomplete(submission))) {
+      handleStartProcessing(submission, true);
+    }
+    // If processed, start upload directly
+    else if (submission.status === 'processed' || submission.status === 'uploading') {
+      handleStartUpload(submission);
+    }
+  }, [handleStartProcessing, handleStartUpload]);
+
+  const canSubmit = (submission: Submission) => {
+    // Can't submit if upload is already active
+    if (isUploadActive(submission)) {
+      return false;
+    }
+    // Can't submit if another upload is active
+    if (activeUploadId && activeUploadId !== submission.id) {
+      return false;
+    }
+    // Can't submit if already completed
+    if (submission.status === 'completed' || submission.status === 'uploaded') {
+      return false;
+    }
+    return true;
+  };
+
+  const getSubmitButtonLabel = (submission: Submission): string => {
+    const processingIncomplete = isSubmissionProcessingIncomplete(submission);
+    const uploadIncomplete = submission.status === 'uploading' && (submission.uploadProgress ?? 0) < 100;
+    
+    if (submission.status === 'created') {
+      return 'Submit';
+    }
+    if (submission.status === 'error') {
+      return 'Retry Submission';
+    }
+    if (submission.status === 'processing' && processingIncomplete) {
+      return 'Resume Submission';
+    }
+    if (submission.status === 'processed' && processingIncomplete) {
+      return 'Resume Submission';
+    }
+    if (submission.status === 'processed' && !processingIncomplete) {
+      return 'Submit (Start Upload)';
+    }
+    if (uploadIncomplete || isUploadPaused(submission)) {
+      return 'Resume Submission';
+    }
+    return 'Submit';
+  };
+
+  const getSubmissionPhase = (submission: Submission): { activeStep: number; steps: string[] } => {
+    const steps = ['Processing', 'Uploading'];
+    let activeStep = 0;
+    
+    if (submission.status === 'created') {
+      activeStep = 0;
+    } else if (submission.status === 'processing' || submission.status === 'processed') {
+      activeStep = 0;
+    } else if (submission.status === 'uploading' || submission.status === 'uploaded') {
+      activeStep = 1;
+    } else if (submission.status === 'completed') {
+      activeStep = 2;
+    }
+    
+    return { activeStep, steps };
+  };
+
+  const getSubmissionProgress = (submission: Submission): { phase: string; progress: number; label: string } | null => {
+    if (submission.status === 'processing' || (submission.status === 'processed' && isSubmissionProcessingIncomplete(submission))) {
+      const progress = submission.processingProgress ?? 0;
+      return {
+        phase: 'Processing',
+        progress,
+        label: `Processing: ${progress}%`,
+      };
+    }
+    if (submission.status === 'uploading' || isUploadPaused(submission)) {
+      const progress = submission.uploadProgress ?? 0;
+      const paused = isUploadPaused(submission);
+      return {
+        phase: 'Uploading',
+        progress,
+        label: paused ? `Upload paused at ${progress}%` : `Uploading: ${progress}%`,
+      };
+    }
+    if (submission.status === 'completed' || submission.status === 'uploaded') {
+      return {
+        phase: 'Completed',
+        progress: 100,
+        label: 'Submission complete',
+      };
+    }
+    return null;
+  };
+
   if (isAuthLoading) {
     return (
       <Box
@@ -1954,17 +2130,32 @@ const DesktopProcessingPage = () => {
       <Helmet>
         <title>Desktop Processing - memeSRC Dashboard</title>
       </Helmet>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 5 }}>
         <Stack spacing={4}>
           {/* Header */}
           <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack 
+              direction={{ xs: 'column', sm: 'row' }} 
+              alignItems={{ xs: 'flex-start', sm: 'center' }} 
+              justifyContent="space-between"
+              spacing={3}
+            >
               <Box>
-                <Typography variant="h4" gutterBottom>
-                  Desktop Submissions
+                <Typography 
+                  variant="h3" 
+                  sx={{ 
+                    fontWeight: 700,
+                    mb: 1,
+                    background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  Submissions
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Manage your local processing and upload workflow
+                <Typography variant="body1" color="text.secondary">
+                  Process and upload your content in a unified workflow
                 </Typography>
               </Box>
               <Stack direction="row" spacing={2}>
@@ -1980,6 +2171,7 @@ const DesktopProcessingPage = () => {
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => setCreateDialogOpen(true)}
+                  size="large"
                 >
                   New Submission
                 </Button>
@@ -1991,139 +2183,180 @@ const DesktopProcessingPage = () => {
           {loadingSubmissions && <LinearProgress />}
           
           {!loadingSubmissions && submissions.length === 0 && (
-            <Paper sx={{ p: 6, textAlign: 'center' }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper 
+              elevation={0}
+              sx={{ 
+                p: 8, 
+                textAlign: 'center',
+                borderRadius: 3,
+                border: 2,
+                borderStyle: 'dashed',
+                borderColor: 'divider',
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
+              }}
+            >
+              <CloudUploadIcon sx={{ fontSize: 80, color: 'text.disabled', mb: 3 }} />
+              <Typography variant="h5" fontWeight={600} gutterBottom>
                 No submissions yet
               </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Create your first submission to get started
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
+                Create your first submission to start processing and uploading content. The unified workflow will handle both phases automatically.
               </Typography>
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={() => setCreateDialogOpen(true)}
-                sx={{ mt: 2 }}
+                size="large"
+                sx={{ 
+                  fontWeight: 600,
+                  px: 4,
+                  py: 1.5,
+                }}
               >
-                Create Submission
+                Create Your First Submission
               </Button>
             </Paper>
           )}
 
           {submissions.length > 0 && (
-            <Grid container spacing={3}>
-              {submissions.map((submission) => (
-                <Grid item xs={12} md={6} key={submission.id}>
-                  <Card 
+            <Stack spacing={2}>
+              {submissions.map((submission) => {
+                const progressInfo = getSubmissionProgress(submission);
+                const isActive = isProcessingActive(submission) || isUploadActive(submission);
+                const isComplete = submission.status === 'completed' || submission.status === 'uploaded';
+                const isPaused = isUploadPaused(submission);
+
+                return (
+                  <Box
+                    key={submission.id}
                     sx={{ 
-                      height: '100%',
-                      border: selectedSubmission?.id === submission.id ? 2 : 0,
-                      borderColor: 'primary.main',
+                      p: 3,
+                      borderRadius: 2,
+                      bgcolor: 'background.paper',
+                      border: 1,
+                      borderColor: isComplete ? 'success.main' : isActive ? 'primary.main' : 'divider',
                     }}
                   >
-                    <CardContent>
-                      <Stack spacing={2}>
-                        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-                          <Box flex={1}>
-                            <Typography variant="h6" gutterBottom>
-                              {submission.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {submission.seriesName} • {submission.indexName}
-                            </Typography>
-                          </Box>
-                          <Chip 
-                            size="small" 
-                            label={getStatusLabel(submission)} 
-                            color={getStatusColor(submission)}
-                          />
-                        </Stack>
-
-                        <Divider />
-
-                        <Stack spacing={1}>
-                          <Typography variant="caption" color="text.secondary">
-                            Created: {formatDateTime(submission.createdAt)}
-                          </Typography>
-                          {submission.statusSummary && submission.statusSummary.total > 0 && (
-                            <Typography variant="caption" color="text.secondary">
-                              Episodes: {submission.statusSummary.done}/{submission.statusSummary.total} processed
-                            </Typography>
-                          )}
-                          {submission.processingProgress !== undefined && submission.processingProgress > 0 && (
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">
-                                Processing: {submission.processingProgress}%
-                              </Typography>
-                              <LinearProgress variant="determinate" value={submission.processingProgress} />
-                            </Box>
-                          )}
-                          {submission.uploadProgress !== undefined && submission.uploadProgress > 0 && (
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">
-                                Upload: {submission.uploadProgress}%{isUploadPaused(submission) ? ' • Paused' : ''}
-                              </Typography>
-                              <LinearProgress variant="determinate" value={submission.uploadProgress} />
-                            </Box>
-                          )}
-                          {isUploadPaused(submission) && (
-                            <Typography variant="caption" color="warning.main">
-                              Upload paused — resume to finish sending the remaining files.
-                            </Typography>
-                          )}
-                          {submission.error && (
-                            <Alert severity="error" sx={{ mt: 1 }}>
-                              {submission.error}
-                            </Alert>
-                          )}
-                        </Stack>
-
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                          {canStartProcessing(submission) && (
-                            <LoadingButton
-                              size="small"
-                              variant="contained"
-                              startIcon={<PlayArrowIcon />}
-                              onClick={() => handleStartProcessing(submission)}
-                              loading={isProcessingActive(submission)}
-                            >
-                              {getProcessingButtonLabel(submission)}
-                            </LoadingButton>
-                          )}
-                          {canStartUpload(submission) && (
-                            <LoadingButton
-                              size="small"
-                              variant="contained"
-                              startIcon={<CloudUploadIcon />}
-                              onClick={() => handleStartUpload(submission)}
-                              loading={isUploadActive(submission)}
-                            >
-                              {getUploadButtonLabel(submission)}
-                            </LoadingButton>
-                          )}
-                          {(submission.status === 'completed' || submission.status === 'uploaded') && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<CheckCircleIcon />}
-                              onClick={() => handleOpenReviewPage(submission.sourceMediaId)}
-                            >
-                              Review
-                            </Button>
-                          )}
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDeleteSubmission(submission)}
-                            disabled={isProcessingActive(submission) || isUploadActive(submission)}
+                    <Stack direction="row" spacing={3} alignItems="center">
+                      {/* Left: Status Icon */}
+                      <Box sx={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {isComplete ? (
+                          <CheckCircleIcon sx={{ fontSize: 48, color: 'success.main' }} />
+                        ) : isActive ? (
+                          <CircularProgress size={40} thickness={4} />
+                        ) : isPaused ? (
+                          <PauseCircleOutlineIcon sx={{ fontSize: 48, color: 'warning.main' }} />
+                        ) : (
+                          <Box 
+                            sx={{ 
+                              width: 48, 
+                              height: 48, 
+                              borderRadius: '50%', 
+                              border: 2, 
+                              borderColor: 'divider',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
                           >
-                            <DeleteIcon fontSize="small" />
+                            <PlayArrowIcon sx={{ color: 'text.disabled', fontSize: 28 }} />
+                          </Box>
+                        )}
+                      </Box>
+
+                      {/* Middle: Info & Progress */}
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" fontWeight={600} noWrap sx={{ mb: 0.5 }}>
+                          {submission.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 2 }}>
+                          {submission.seriesName} • {submission.indexName}
+                        </Typography>
+                        
+                        {progressInfo && !isComplete && (
+                          <Box>
+                            <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+                              <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                {progressInfo.phase}
+                              </Typography>
+                              <Typography variant="caption" fontWeight={600} color="primary">
+                                {progressInfo.progress}%
+                              </Typography>
+                            </Stack>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={progressInfo.progress}
+                              sx={{ 
+                                height: 4, 
+                                borderRadius: 1,
+                                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                              }}
+                            />
+                          </Box>
+                        )}
+
+                        {isComplete && (
+                          <Chip 
+                            label="Completed" 
+                            color="success" 
+                            size="small"
+                            icon={<CheckCircleIcon />}
+                          />
+                        )}
+
+                        {submission.error && (
+                          <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+                            {submission.error}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      {/* Right: Actions */}
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+                        {canSubmit(submission) && (
+                          <LoadingButton
+                            variant="contained"
+                            startIcon={isActive ? undefined : <PlayArrowIcon />}
+                            onClick={() => handleSubmit(submission)}
+                            loading={isActive}
+                            loadingPosition="center"
+                            sx={{ minWidth: 140 }}
+                          >
+                            {getSubmitButtonLabel(submission)}
+                          </LoadingButton>
+                        )}
+                        {isComplete && (
+                          <Button
+                            variant="outlined"
+                            startIcon={<CheckCircleIcon />}
+                            onClick={() => handleOpenReviewPage(submission.sourceMediaId)}
+                          >
+                            Review
+                          </Button>
+                        )}
+                        {isActive && (
+                          <IconButton
+                            onClick={() => handlePauseSubmission(submission)}
+                            color="warning"
+                            title="Pause"
+                          >
+                            <PauseIcon />
                           </IconButton>
-                        </Stack>
+                        )}
+                        <IconButton
+                          onClick={() => handleDeleteSubmission(submission)}
+                          disabled={isActive}
+                          color="error"
+                          title="Delete"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
                       </Stack>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                    </Stack>
+                  </Box>
+                );
+              })}
+            </Stack>
           )}
         </Stack>
       </Container>
@@ -2132,19 +2365,35 @@ const DesktopProcessingPage = () => {
       <Dialog 
         open={createDialogOpen} 
         onClose={() => !creating && setCreateDialogOpen(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+          },
+        }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ pb: 2 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography variant="h6">Create New Submission</Typography>
-            <IconButton onClick={() => setCreateDialogOpen(false)} disabled={creating}>
+            <Box>
+              <Typography variant="h5" fontWeight={700}>
+                Create New Submission
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Set up a new content submission for processing and upload
+              </Typography>
+            </Box>
+            <IconButton 
+              onClick={() => setCreateDialogOpen(false)} 
+              disabled={creating}
+              sx={{ ml: 2 }}
+            >
               <CloseIcon />
             </IconButton>
           </Stack>
         </DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
+        <DialogContent sx={{ px: 3, pb: 2 }}>
+          <Stack spacing={3} sx={{ mt: 2 }}>
             <Autocomplete
               options={seriesOptions}
               loading={seriesLoading}
@@ -2190,58 +2439,84 @@ const DesktopProcessingPage = () => {
               helperText="This will be the pending alias for the SourceMedia"
             />
 
-            <Stack spacing={1}>
-              <Typography variant="subtitle2">Source Folder</Typography>
-              <TextField
-                value={newSourceFolder}
-                placeholder="No folder selected"
-                InputProps={{
-                  readOnly: true,
-                }}
-                fullWidth
-              />
-              <Button
-                variant="outlined"
-                onClick={handleBrowseSourceFolder}
-                disabled={creating}
-              >
-                Browse...
-              </Button>
-              <Typography variant="caption" color="text.secondary">
-                Select the folder containing episodes to process
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Source Folder
               </Typography>
-            </Stack>
+              <Stack spacing={2}>
+                <TextField
+                  value={newSourceFolder}
+                  placeholder="No folder selected"
+                  InputProps={{
+                    readOnly: true,
+                    startAdornment: <FolderIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                  }}
+                  fullWidth
+                  sx={{ 
+                    '& .MuiInputBase-root': {
+                      bgcolor: (theme) => alpha(theme.palette.background.default, 0.5),
+                    },
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  startIcon={<FolderIcon />}
+                  onClick={handleBrowseSourceFolder}
+                  disabled={creating}
+                  fullWidth
+                  sx={{ fontWeight: 600 }}
+                >
+                  Browse for Source Folder
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  Select the folder containing episodes to process
+                </Typography>
+              </Stack>
+            </Box>
 
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Background Color"
-                type="color"
-                value={newBackgroundColor}
-                onChange={(e) => setNewBackgroundColor(e.target.value)}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                label="Text Color"
-                type="color"
-                value={newTextColor}
-                onChange={(e) => setNewTextColor(e.target.value)}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-              />
-            </Stack>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Theme Colors
+              </Typography>
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="Background Color"
+                  type="color"
+                  value={newBackgroundColor}
+                  onChange={(e) => setNewBackgroundColor(e.target.value)}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  label="Text Color"
+                  type="color"
+                  value={newTextColor}
+                  onChange={(e) => setNewTextColor(e.target.value)}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Stack>
+            </Box>
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)} disabled={creating}>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button 
+            onClick={() => setCreateDialogOpen(false)} 
+            disabled={creating}
+            size="large"
+            sx={{ fontWeight: 600 }}
+          >
             Cancel
           </Button>
           <LoadingButton
             variant="contained"
             onClick={handleCreateSubmission}
             loading={creating}
+            size="large"
+            startIcon={<AddIcon />}
+            sx={{ fontWeight: 600, px: 3 }}
           >
-            Create
+            Create Submission
           </LoadingButton>
         </DialogActions>
       </Dialog>
