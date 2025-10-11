@@ -49,6 +49,11 @@ import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 import { readJSON, safeRemoveItem, writeJSON } from '../utils/storage';
 import {
+  deriveProcessingProgressFromSummary,
+  isProcessingSummaryComplete,
+  summarizeProcessingStatus,
+} from '../utils/processingStatus';
+import {
   DESKTOP_RESUME_VERSION,
   ProcessingMetadata,
   ProcessingStatusSummary,
@@ -226,48 +231,6 @@ const getExtension = (filePath: string): string => {
     return 'unknown';
   }
   return segments.pop()?.toLowerCase() ?? 'unknown';
-};
-
-const summarizeStatusData = (statusData: unknown): ProcessingStatusSummary => {
-  const summary: ProcessingStatusSummary = {
-    done: 0,
-    indexing: 0,
-    pending: 0,
-    total: 0,
-  };
-  if (!statusData || typeof statusData !== 'object') {
-    return summary;
-  }
-  Object.values(statusData as Record<string, unknown>).forEach((seasonValue) => {
-    if (seasonValue && typeof seasonValue === 'object') {
-      Object.values(seasonValue as Record<string, unknown>).forEach((statusValue) => {
-        summary.total += 1;
-        if (statusValue === 'done') {
-          summary.done += 1;
-        } else if (statusValue === 'indexing') {
-          summary.indexing += 1;
-        } else {
-          summary.pending += 1;
-        }
-      });
-    }
-  });
-  return summary;
-};
-
-const deriveProcessingProgressFromSummary = (
-  summary?: ProcessingStatusSummary | null
-): number | undefined => {
-  if (!summary || summary.total <= 0) {
-    return undefined;
-  }
-  const weightedDone = summary.done + summary.indexing * 0.5;
-  const normalizedRatio = Math.max(0, Math.min(1, weightedDone / summary.total));
-  return Math.round(normalizedRatio * 100);
-};
-
-const isProcessingSummaryComplete = (summary?: ProcessingStatusSummary | null): boolean => {
-  return Boolean(summary && summary.total > 0 && summary.done >= summary.total);
 };
 
 const isProcessingSummaryInProgress = (summary?: ProcessingStatusSummary | null): boolean => {
@@ -755,7 +718,7 @@ const DesktopProcessingPage = () => {
             const statusExists = await fs.promises.access(statusPath).then(() => true).catch(() => false);
             if (statusExists) {
               const rawStatus = await fs.promises.readFile(statusPath, 'utf-8');
-              const statusSummary = summarizeStatusData(JSON.parse(rawStatus));
+              const statusSummary = summarizeProcessingStatus(JSON.parse(rawStatus));
               const processingProgress = deriveProcessingProgressFromSummary(statusSummary);
 
               // Check if processing completed
@@ -956,7 +919,7 @@ const DesktopProcessingPage = () => {
             const statusExists = await fs.promises.access(statusPath).then(() => true).catch(() => false);
             if (statusExists) {
               const rawStatus = await fs.promises.readFile(statusPath, 'utf-8');
-              statusSummary = summarizeStatusData(JSON.parse(rawStatus));
+              statusSummary = summarizeProcessingStatus(JSON.parse(rawStatus));
             }
           } catch {}
 
