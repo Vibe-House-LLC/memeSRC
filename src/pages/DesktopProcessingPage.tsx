@@ -2281,7 +2281,7 @@ const DesktopProcessingPage = () => {
                 >
                   Submissions
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
+                <Typography variant="body1" color="text.secondary" fontWeight={500}>
                   Process and upload your content in a unified workflow
                 </Typography>
               </Box>
@@ -2291,6 +2291,11 @@ const DesktopProcessingPage = () => {
                   startIcon={<RefreshIcon />}
                   onClick={handleRefresh}
                   disabled={loadingSubmissions}
+                  size="large"
+                  sx={{ 
+                    fontWeight: 600,
+                    minWidth: 120,
+                  }}
                 >
                   Refresh
                 </Button>
@@ -2299,6 +2304,10 @@ const DesktopProcessingPage = () => {
                   startIcon={<AddIcon />}
                   onClick={() => setCreateDialogOpen(true)}
                   size="large"
+                  sx={{ 
+                    fontWeight: 600,
+                    minWidth: 180,
+                  }}
                 >
                   New Submission
                 </Button>
@@ -2322,11 +2331,25 @@ const DesktopProcessingPage = () => {
                 bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
               }}
             >
-              <CloudUploadIcon sx={{ fontSize: 80, color: 'text.disabled', mb: 3 }} />
-              <Typography variant="h5" fontWeight={600} gutterBottom>
+              <Box
+                sx={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: '50%',
+                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mx: 'auto',
+                  mb: 3,
+                }}
+              >
+                <CloudUploadIcon sx={{ fontSize: 60, color: 'primary.main', opacity: 0.6 }} />
+              </Box>
+              <Typography variant="h5" fontWeight={700} gutterBottom>
                 No submissions yet
               </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
+              <Typography variant="body1" color="text.secondary" fontWeight={500} sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
                 Create your first submission to start processing and uploading content. The unified workflow will handle both phases automatically.
               </Typography>
               <Button
@@ -2338,6 +2361,7 @@ const DesktopProcessingPage = () => {
                   fontWeight: 600,
                   px: 4,
                   py: 1.5,
+                  minWidth: 240,
                 }}
               >
                 Create Your First Submission
@@ -2346,7 +2370,7 @@ const DesktopProcessingPage = () => {
           )}
 
           {submissions.length > 0 && (
-            <Stack spacing={2}>
+            <Stack spacing={3}>
               {submissions.map((submission) => {
                 const progressInfo = getSubmissionProgress(submission);
                 const isActive = isProcessingActive(submission) || isUploadActive(submission);
@@ -2354,134 +2378,245 @@ const DesktopProcessingPage = () => {
                 const isPaused = isUploadPaused(submission);
 
                 return (
-                  <Box
+                  <Paper
                     key={submission.id}
+                    elevation={0}
                     sx={{ 
                       p: 3,
-                      borderRadius: 2,
+                      borderRadius: 3,
                       bgcolor: 'background.paper',
                       border: 1,
                       borderColor: isComplete ? 'success.main' : isActive ? 'primary.main' : 'divider',
+                      transition: 'all 0.3s ease',
+                      boxShadow: isActive 
+                        ? `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`
+                        : isComplete 
+                        ? `0 0 0 2px ${alpha(theme.palette.success.main, 0.1)}`
+                        : 'none',
+                      '&:hover': {
+                        boxShadow: theme.shadows[4],
+                      },
                     }}
                   >
-                    <Stack direction="row" spacing={3} alignItems="center">
-                      {/* Left: Status Icon */}
-                      <Box sx={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {isComplete ? (
-                          <CheckCircleIcon sx={{ fontSize: 48, color: 'success.main' }} />
-                        ) : isActive ? (
-                          <CircularProgress size={40} thickness={4} />
-                        ) : isPaused ? (
-                          <PauseCircleOutlineIcon sx={{ fontSize: 48, color: 'warning.main' }} />
-                        ) : (
-                          <Box 
-                            sx={{ 
-                              width: 48, 
-                              height: 48, 
-                              borderRadius: '50%', 
-                              border: 2, 
-                              borderColor: 'divider',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
+                    <Grid container spacing={3} alignItems="center">
+                      {/* Left: Status Icon - Fixed width to prevent layout shift */}
+                      <Grid item xs="auto">
+                        <Box 
+                          sx={{ 
+                            width: 56, 
+                            height: 56, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isComplete ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.success.main, 0.1),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <CheckCircleIcon sx={{ fontSize: 32, color: 'success.main' }} />
+                            </Box>
+                          ) : isActive ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <CircularProgress size={32} thickness={3.5} />
+                            </Box>
+                          ) : isPaused ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <PauseCircleOutlineIcon sx={{ fontSize: 32, color: 'warning.main' }} />
+                            </Box>
+                          ) : (
+                            <Box 
+                              sx={{ 
+                                width: 56, 
+                                height: 56, 
+                                borderRadius: '50%', 
+                                border: 2, 
+                                borderColor: alpha(theme.palette.divider, 0.5),
+                                bgcolor: alpha(theme.palette.background.default, 0.5),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <PlayArrowIcon sx={{ color: 'text.disabled', fontSize: 28 }} />
+                            </Box>
+                          )}
+                        </Box>
+                      </Grid>
+
+                      {/* Middle: Info & Progress - Flexible width */}
+                      <Grid item xs>
+                        <Box sx={{ minHeight: 88 }}>
+                          <Typography variant="h6" fontWeight={600} noWrap sx={{ mb: 0.5 }}>
+                            {submission.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 2 }}>
+                            {submission.seriesName} • {submission.indexName}
+                          </Typography>
+                          
+                          {/* Always reserve space for progress/status to prevent layout shift */}
+                          <Box sx={{ minHeight: 32 }}>
+                            {progressInfo && !isComplete && (
+                              <Box>
+                                <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                    {progressInfo.phase}
+                                  </Typography>
+                                  <Typography variant="caption" fontWeight={700} color={isPaused ? 'warning.main' : 'primary.main'}>
+                                    {progressInfo.progress}%
+                                  </Typography>
+                                </Stack>
+                                <LinearProgress 
+                                  variant="determinate" 
+                                  value={progressInfo.progress}
+                                  sx={{ 
+                                    height: 6, 
+                                    borderRadius: 1,
+                                    bgcolor: isPaused 
+                                      ? alpha(theme.palette.warning.main, 0.1)
+                                      : alpha(theme.palette.primary.main, 0.1),
+                                    '& .MuiLinearProgress-bar': {
+                                      borderRadius: 1,
+                                      bgcolor: isPaused ? 'warning.main' : 'primary.main',
+                                    },
+                                  }}
+                                />
+                              </Box>
+                            )}
+
+                            {isComplete && (
+                              <Chip 
+                                label="Completed" 
+                                color="success" 
+                                size="medium"
+                                icon={<CheckCircleIcon />}
+                                sx={{ fontWeight: 600 }}
+                              />
+                            )}
+
+                            {submission.error && (
+                              <Alert severity="error" sx={{ py: 0, mt: 1 }}>
+                                <Typography variant="caption" fontWeight={500}>
+                                  {submission.error}
+                                </Typography>
+                              </Alert>
+                            )}
+                          </Box>
+                        </Box>
+                      </Grid>
+
+                      {/* Right: Actions - Two buttons always present */}
+                      <Grid item xs="auto">
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          {/* Primary action button - morphs based on state */}
+                          <IconButton
+                            onClick={() => {
+                              if (isComplete) {
+                                handleOpenReviewPage(submission.sourceMediaId);
+                              } else if (isActive) {
+                                handlePauseSubmission(submission);
+                              } else {
+                                handleSubmit(submission);
+                              }
+                            }}
+                            disabled={!isComplete && !isActive && !canSubmit(submission)}
+                            title={
+                              isComplete 
+                                ? 'Review Submission' 
+                                : isActive 
+                                  ? (isUploadActive(submission) ? 'Pause Upload' : 'Cancel Processing')
+                                  : getSubmitButtonLabel(submission)
+                            }
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: isComplete
+                                ? alpha(theme.palette.success.main, 0.15)
+                                : isActive
+                                  ? alpha(theme.palette.warning.main, 0.15)
+                                  : alpha(theme.palette.primary.main, 0.15),
+                              color: isComplete
+                                ? 'success.main'
+                                : isActive
+                                  ? 'warning.main'
+                                  : 'primary.main',
+                              '&:hover': {
+                                bgcolor: isComplete
+                                  ? alpha(theme.palette.success.main, 0.25)
+                                  : isActive
+                                    ? alpha(theme.palette.warning.main, 0.25)
+                                    : alpha(theme.palette.primary.main, 0.25),
+                              },
+                              '&.Mui-disabled': {
+                                bgcolor: alpha(theme.palette.action.disabledBackground, 0.5),
+                                color: 'action.disabled',
+                              },
                             }}
                           >
-                            <PlayArrowIcon sx={{ color: 'text.disabled', fontSize: 28 }} />
-                          </Box>
-                        )}
-                      </Box>
-
-                      {/* Middle: Info & Progress */}
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="h6" fontWeight={600} noWrap sx={{ mb: 0.5 }}>
-                          {submission.title}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 2 }}>
-                          {submission.seriesName} • {submission.indexName}
-                        </Typography>
-                        
-                        {progressInfo && !isComplete && (
-                          <Box>
-                            <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
-                              <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                                {progressInfo.phase}
-                              </Typography>
-                              <Typography variant="caption" fontWeight={600} color="primary">
-                                {progressInfo.progress}%
-                              </Typography>
-                            </Stack>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={progressInfo.progress}
-                              sx={{ 
-                                height: 4, 
-                                borderRadius: 1,
-                                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                              }}
-                            />
-                          </Box>
-                        )}
-
-                        {isComplete && (
-                          <Chip 
-                            label="Completed" 
-                            color="success" 
-                            size="small"
-                            icon={<CheckCircleIcon />}
-                          />
-                        )}
-
-                        {submission.error && (
-                          <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
-                            {submission.error}
-                          </Typography>
-                        )}
-                      </Box>
-
-                      {/* Right: Actions */}
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-                        {canSubmit(submission) && (
-                          <LoadingButton
-                            variant="contained"
-                            startIcon={isActive ? undefined : <PlayArrowIcon />}
-                            onClick={() => handleSubmit(submission)}
-                            loading={isActive}
-                            loadingPosition="center"
-                            sx={{ minWidth: 140 }}
-                          >
-                            {getSubmitButtonLabel(submission)}
-                          </LoadingButton>
-                        )}
-                        {isComplete && (
-                          <Button
-                            variant="outlined"
-                            startIcon={<CheckCircleIcon />}
-                            onClick={() => handleOpenReviewPage(submission.sourceMediaId)}
-                          >
-                            Review
-                          </Button>
-                        )}
-                        {/* Show pause for active processing or uploads */}
-                        {isActive && (
-                          <IconButton
-                            onClick={() => handlePauseSubmission(submission)}
-                            color="warning"
-                            title={isUploadActive(submission) ? 'Pause Upload' : 'Cancel Processing'}
-                          >
-                            <PauseIcon />
+                            {isComplete ? (
+                              <CheckCircleIcon sx={{ fontSize: 28 }} />
+                            ) : isActive ? (
+                              <PauseIcon sx={{ fontSize: 28 }} />
+                            ) : (
+                              <PlayArrowIcon sx={{ fontSize: 28 }} />
+                            )}
                           </IconButton>
-                        )}
-                        <IconButton
-                          onClick={() => handleDeleteSubmission(submission)}
-                          disabled={isActive}
-                          color="error"
-                          title="Delete"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Stack>
-                    </Stack>
-                  </Box>
+                          
+                          {/* Delete button - always present */}
+                          <IconButton
+                            onClick={() => handleDeleteSubmission(submission)}
+                            disabled={isActive}
+                            title="Delete Submission"
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: alpha(theme.palette.error.main, 0.08),
+                              color: 'error.main',
+                              '&:hover': {
+                                bgcolor: alpha(theme.palette.error.main, 0.18),
+                              },
+                              '&.Mui-disabled': {
+                                bgcolor: alpha(theme.palette.action.disabledBackground, 0.5),
+                                color: 'action.disabled',
+                                opacity: 0.5,
+                              },
+                            }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 24 }} />
+                          </IconButton>
+                        </Stack>
+                      </Grid>
+                    </Grid>
+                  </Paper>
                 );
               })}
             </Stack>
