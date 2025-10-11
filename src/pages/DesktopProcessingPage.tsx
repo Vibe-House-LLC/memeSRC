@@ -2375,7 +2375,10 @@ const DesktopProcessingPage = () => {
                 const progressInfo = getSubmissionProgress(submission);
                 const isActive = isProcessingActive(submission) || isUploadActive(submission);
                 const isComplete = submission.status === 'completed' || submission.status === 'uploaded';
-                const isPaused = isUploadPaused(submission);
+                const isProcessingPaused = submission.status === 'processing' && 
+                                          activeProcessingId !== submission.id && 
+                                          isSubmissionProcessingIncomplete(submission);
+                const isPaused = isUploadPaused(submission) || isProcessingPaused;
 
                 return (
                   <Paper
@@ -2491,7 +2494,7 @@ const DesktopProcessingPage = () => {
                                   <Typography variant="caption" color="text.secondary" fontWeight={500}>
                                     {progressInfo.phase}
                                   </Typography>
-                                  <Typography variant="caption" fontWeight={700} color={isPaused ? 'warning.main' : 'primary.main'}>
+                                  <Typography variant="caption" fontWeight={700} color={isPaused ? 'text.secondary' : 'primary.main'}>
                                     {progressInfo.progress}%
                                   </Typography>
                                 </Stack>
@@ -2501,12 +2504,12 @@ const DesktopProcessingPage = () => {
                                   sx={{ 
                                     height: 6, 
                                     borderRadius: 1,
-                                    bgcolor: isPaused 
-                                      ? alpha(theme.palette.warning.main, 0.1)
-                                      : alpha(theme.palette.primary.main, 0.1),
+                                    bgcolor: alpha(theme.palette.action.disabledBackground, 0.3),
                                     '& .MuiLinearProgress-bar': {
                                       borderRadius: 1,
-                                      bgcolor: isPaused ? 'warning.main' : 'primary.main',
+                                      bgcolor: isPaused 
+                                        ? theme.palette.action.disabled
+                                        : 'primary.main',
                                     },
                                   }}
                                 />
