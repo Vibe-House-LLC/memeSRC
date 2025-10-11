@@ -1,5 +1,5 @@
 // component
-import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections, NewReleases } from '@mui/icons-material';
+import { Article, Ballot, Edit, Favorite, MapsUgc, PhotoLibrary, QuestionAnswer, Search, Settings, Shield, Star, SupportAgent, Upload, Collections, NewReleases, TrendingUp } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -131,6 +131,12 @@ const navConfig = [
         path: '/dashboard/usage-events',
         externalLink: false,
         icon: <Article />,
+      },
+      {
+        title: 'Popular Searches',
+        path: '/dashboard/popular-searches',
+        externalLink: false,
+        icon: <TrendingUp />,
       },
       {
         title: 'Website Settings',
