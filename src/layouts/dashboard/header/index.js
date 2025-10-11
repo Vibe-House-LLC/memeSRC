@@ -33,6 +33,7 @@ import { MagicPopupContext } from '../../../MagicPopupContext';
 import { SubscribeDialogContext } from '../../../contexts/SubscribeDialog';
 import { CURRENT_SALE } from '../../../constants/sales';
 import { SnowEffect } from '../../../components/CountdownTimer';
+import SubmissionStatusIndicator from '../../../components/SubmissionStatusIndicator';
 
 // ----------------------------------------------------------------------
 
@@ -212,6 +213,7 @@ export default function Header({ onOpenNav }) {
             }}
           >
             <>
+              <SubmissionStatusIndicator />
               {user?.userDetails?.subscriptionStatus === 'active' ? (
                 <Chip
                   onClick={(event) => {

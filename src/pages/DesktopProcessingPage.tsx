@@ -23,6 +23,11 @@ import {
   Button,
   Paper,
   Grid,
+  Stepper,
+  Step,
+  StepLabel,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import AddIcon from '@mui/icons-material/Add';
@@ -32,6 +37,10 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
+import PauseIcon from '@mui/icons-material/Pause';
+import FolderIcon from '@mui/icons-material/Folder';
+import MovieIcon from '@mui/icons-material/Movie';
 import { API, Auth, graphqlOperation, Storage } from 'aws-amplify';
 import { nanoid } from 'nanoid';
 import { paramCase } from 'change-case';
@@ -39,6 +48,11 @@ import { listSeries } from '../graphql/queries';
 import { UserContext } from '../UserContext';
 import { SnackbarContext } from '../SnackbarContext';
 import { readJSON, safeRemoveItem, writeJSON } from '../utils/storage';
+import {
+  deriveProcessingProgressFromSummary,
+  isProcessingSummaryComplete,
+  summarizeProcessingStatus,
+} from '../utils/processingStatus';
 import {
   DESKTOP_RESUME_VERSION,
   ProcessingMetadata,
@@ -217,48 +231,6 @@ const getExtension = (filePath: string): string => {
     return 'unknown';
   }
   return segments.pop()?.toLowerCase() ?? 'unknown';
-};
-
-const summarizeStatusData = (statusData: unknown): ProcessingStatusSummary => {
-  const summary: ProcessingStatusSummary = {
-    done: 0,
-    indexing: 0,
-    pending: 0,
-    total: 0,
-  };
-  if (!statusData || typeof statusData !== 'object') {
-    return summary;
-  }
-  Object.values(statusData as Record<string, unknown>).forEach((seasonValue) => {
-    if (seasonValue && typeof seasonValue === 'object') {
-      Object.values(seasonValue as Record<string, unknown>).forEach((statusValue) => {
-        summary.total += 1;
-        if (statusValue === 'done') {
-          summary.done += 1;
-        } else if (statusValue === 'indexing') {
-          summary.indexing += 1;
-        } else {
-          summary.pending += 1;
-        }
-      });
-    }
-  });
-  return summary;
-};
-
-const deriveProcessingProgressFromSummary = (
-  summary?: ProcessingStatusSummary | null
-): number | undefined => {
-  if (!summary || summary.total <= 0) {
-    return undefined;
-  }
-  const weightedDone = summary.done + summary.indexing * 0.5;
-  const normalizedRatio = Math.max(0, Math.min(1, weightedDone / summary.total));
-  return Math.round(normalizedRatio * 100);
-};
-
-const isProcessingSummaryComplete = (summary?: ProcessingStatusSummary | null): boolean => {
-  return Boolean(summary && summary.total > 0 && summary.done >= summary.total);
 };
 
 const isProcessingSummaryInProgress = (summary?: ProcessingStatusSummary | null): boolean => {
@@ -554,7 +526,23 @@ const isTokenExpiredError = (error: unknown): boolean => {
   return message.toLowerCase().includes('token') && message.toLowerCase().includes('expir');
 };
 
+// Stable sorting function that doesn't cause items to jump around during progress updates
+// Always sorts by createdAt (newest first) to keep the list stable
+const sortSubmissions = (submissions: Submission[]): Submission[] => {
+  return [...submissions].sort((a, b) => {
+    // Sort by createdAt (newest first)
+    const timeA = new Date(a.createdAt).getTime();
+    const timeB = new Date(b.createdAt).getTime();
+    
+    if (timeB !== timeA) return timeB - timeA;
+    
+    // ID as tiebreaker for absolute stability
+    return a.id.localeCompare(b.id);
+  });
+};
+
 const DesktopProcessingPage = () => {
+  const theme = useTheme();
   const isElectron = typeof window !== 'undefined' && Boolean(window.process?.type);
   const { user: userContextValue, forceTokenRefresh } = useContext(UserContext) as {
     user: AuthUser;
@@ -566,6 +554,16 @@ const DesktopProcessingPage = () => {
   useEffect(() => {
     console.log('[DesktopProcessingPage] Component mounted');
     console.log('[DesktopProcessingPage] SessionStorage active upload:', getActiveUploadJobId());
+    try { sessionStorage.setItem('desktop-processing-page-mounted', 'true'); } catch {}
+  }, []);
+
+  // Clear the mounted flag on unmount to allow background provider to take over
+  useEffect(() => {
+    return () => {
+      try {
+        sessionStorage.removeItem('desktop-processing-page-mounted');
+      } catch {}
+    };
   }, []);
 
   const authUser = userContextValue;
@@ -605,6 +603,7 @@ const DesktopProcessingPage = () => {
 
   // Processing state
   const [activeUploadId, setActiveUploadIdState] = useState<string | null>(() => getActiveUploadJobId());
+  const [pendingAutoUpload, setPendingAutoUpload] = useState<Submission | null>(null);
   
   // Track which job we started processing in THIS session
   // Persisted to sessionStorage to survive page navigation but NOT app restart/quit
@@ -620,9 +619,13 @@ const DesktopProcessingPage = () => {
     }
   };
   const activeProcessingIdRef = useRef<string | null>(getInitialActiveProcessingId());
+  const [activeProcessingId, setActiveProcessingId] = useState<string | null>(() => getInitialActiveProcessingId());
   
   const lastCredentialsRefreshRef = useRef<number>(0);
   const statusPollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Track if upload should continue (used to cancel upload loops)
+  const shouldContinueUploadRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => subscribeToActiveUploadJobId(setActiveUploadIdState), [setActiveUploadIdState]);
 
@@ -653,6 +656,42 @@ const DesktopProcessingPage = () => {
     return readJSON<Submission>(getSubmissionStorageKey(submissionId));
   }, [getSubmissionStorageKey]);
 
+  const cancelProcessingJob = useCallback((submissionId: string) => {
+    const electronModule = getElectronModule();
+    if (!electronModule) {
+      return;
+    }
+    
+    console.log('Cancelling processing job:', submissionId);
+    
+    // Send cancel signal to Electron
+    electronModule.ipcRenderer.send('cancel-processing-job', { id: submissionId });
+    
+    // Clear active processing state
+    if (activeProcessingIdRef.current === submissionId) {
+      activeProcessingIdRef.current = null;
+      setActiveProcessingId(null);
+      try {
+        sessionStorage.removeItem('desktop-processing-active-job-id');
+        sessionStorage.removeItem(`desktop-auto-upload-after-${submissionId}`);
+      } catch {
+        // Ignore sessionStorage errors
+      }
+    }
+  }, [getElectronModule]);
+
+  const cancelUploadJob = useCallback((submissionId: string) => {
+    console.log('Cancelling upload job:', submissionId);
+    
+    // Set flag to break upload loop
+    shouldContinueUploadRef.current[submissionId] = false;
+    
+    // Clear active upload state
+    if (activeUploadId === submissionId) {
+      setActiveUploadId(null);
+    }
+  }, [activeUploadId, setActiveUploadId]);
+
   // Unified status polling for all active jobs (processing or uploading)
   useEffect(() => {
     if (!isElectron || !window.require) {
@@ -664,11 +703,16 @@ const DesktopProcessingPage = () => {
       const path = window.require('path') as typeof import('path');
       const os = window.require('os') as typeof import('os');
 
+      // CRITICAL: Always read from current ref to avoid stale closures
       const currentSubs = submissionsRef.current;
       const updates: Array<{ id: string; submission: Submission }> = [];
 
-      for (let index = 0; index < currentSubs.length; index++) {
-        const submission = currentSubs[index];
+      // Use for...of instead of indexed loop to avoid index confusion
+      for (const submission of currentSubs) {
+        // Skip if this submission no longer exists (defensive check)
+        if (!submission || !submission.id) {
+          continue;
+        }
         
         // Only poll jobs that are actively processing or uploading
         if (submission.status !== 'processing' && submission.status !== 'uploading') {
@@ -684,7 +728,7 @@ const DesktopProcessingPage = () => {
             const statusExists = await fs.promises.access(statusPath).then(() => true).catch(() => false);
             if (statusExists) {
               const rawStatus = await fs.promises.readFile(statusPath, 'utf-8');
-              const statusSummary = summarizeStatusData(JSON.parse(rawStatus));
+              const statusSummary = summarizeProcessingStatus(JSON.parse(rawStatus));
               const processingProgress = deriveProcessingProgressFromSummary(statusSummary);
 
               // Check if processing completed
@@ -699,14 +743,34 @@ const DesktopProcessingPage = () => {
                 updates.push({ id: submission.id, submission: updated });
                 saveSubmission(updated);
                 
+                // Check if we should auto-upload after processing
+                let shouldAutoUpload = false;
+                try {
+                  shouldAutoUpload = sessionStorage.getItem(`desktop-auto-upload-after-${submission.id}`) === 'true';
+                } catch {
+                  // Ignore sessionStorage errors
+                }
+                
                 // Clear active processing flag
                 if (activeProcessingIdRef.current === submission.id) {
                   activeProcessingIdRef.current = null;
+                  setActiveProcessingId(null);
                   try {
                     sessionStorage.removeItem('desktop-processing-active-job-id');
+                    if (shouldAutoUpload) {
+                      sessionStorage.removeItem(`desktop-auto-upload-after-${submission.id}`);
+                    }
                   } catch {
                     // Ignore sessionStorage errors
                   }
+                }
+                
+                // Schedule auto-upload if requested
+                if (shouldAutoUpload) {
+                  console.log('[Auto-upload] Processing complete, scheduling auto-upload for', submission.id);
+                  setTimeout(() => {
+                    setPendingAutoUpload(updated);
+                  }, 500);
                 }
               } else if (
                 processingProgress !== submission.processingProgress ||
@@ -729,8 +793,14 @@ const DesktopProcessingPage = () => {
 
         // Poll upload status from storage
         if (submission.status === 'uploading') {
+          // Re-verify submission still exists before loading
           const stored = loadSubmission(submission.id);
-          if (stored && stored.status === 'uploading') {
+          if (!stored) {
+            // Submission was deleted, skip it
+            continue;
+          }
+          
+          if (stored.status === 'uploading') {
             const resumeState = parseStoredResume(submission.id);
             const stats = deriveResumeUploadStats(resumeState);
 
@@ -765,19 +835,21 @@ const DesktopProcessingPage = () => {
         }
       }
 
-      // Apply all updates using submission IDs instead of stale indices
+      // Apply all updates using submission IDs (never indices)
       if (updates.length > 0) {
-        setSubmissions((subs) => {
+        setSubmissions((currentSubs) => {
           // Create a map of updates by ID for O(1) lookup
           const updateMap = new Map(updates.map((u) => [u.id, u.submission]));
           
-          // Apply updates by finding submissions by ID
-          const updatedSubs = subs.map((sub) => updateMap.get(sub.id) ?? sub);
+          // Apply updates by matching ID only
+          // This ensures we never use stale array positions
+          const updatedSubs = currentSubs.map((sub) => {
+            const update = updateMap.get(sub.id);
+            return update ?? sub;
+          });
           
-          // Sort by updatedAt
-          updatedSubs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-          
-          return updatedSubs;
+          // Use stable sort that won't cause items to jump around
+          return sortSubmissions(updatedSubs);
         });
 
         // Also update selected submission if it was updated
@@ -857,7 +929,7 @@ const DesktopProcessingPage = () => {
             const statusExists = await fs.promises.access(statusPath).then(() => true).catch(() => false);
             if (statusExists) {
               const rawStatus = await fs.promises.readFile(statusPath, 'utf-8');
-              statusSummary = summarizeStatusData(JSON.parse(rawStatus));
+              statusSummary = summarizeProcessingStatus(JSON.parse(rawStatus));
             }
           } catch {}
 
@@ -962,11 +1034,8 @@ const DesktopProcessingPage = () => {
         }
       }
 
-      loadedSubmissions.sort(
-        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      );
-
-      setSubmissions(loadedSubmissions);
+      // Use stable sort
+      setSubmissions(sortSubmissions(loadedSubmissions));
     } catch (error) {
       console.error('Failed to load submissions', error);
     } finally {
@@ -1157,6 +1226,10 @@ const DesktopProcessingPage = () => {
 
       // Select the new submission
       setSelectedSubmission(newSubmission);
+
+      // Auto-start processing (with auto-upload after processing)
+      // Fire-and-forget to avoid blocking the UI
+      handleStartProcessing(newSubmission, true);
     } catch (error) {
       console.error('Failed to create submission', error);
       setMessage(error instanceof Error ? error.message : 'Failed to create submission.');
@@ -1181,7 +1254,7 @@ const DesktopProcessingPage = () => {
     loadAllSubmissions,
   ]);
 
-  const handleStartProcessing = useCallback(async (submission: Submission) => {
+  const handleStartProcessing = useCallback(async (submission: Submission, autoUploadAfter = false) => {
     const electronModule = getElectronModule();
     if (!electronModule) {
       setMessage('Processing is only available in the desktop app.');
@@ -1191,10 +1264,25 @@ const DesktopProcessingPage = () => {
     }
 
     try {
+      // Pause any currently active submission first
+      if (activeProcessingId && activeProcessingId !== submission.id) {
+        console.log('Auto-pausing active processing job:', activeProcessingId);
+        cancelProcessingJob(activeProcessingId);
+      }
+      if (activeUploadId && activeUploadId !== submission.id) {
+        console.log('Auto-pausing active upload job:', activeUploadId);
+        cancelUploadJob(activeUploadId);
+      }
+
       // Mark as actively processing in this session
       activeProcessingIdRef.current = submission.id;
+      setActiveProcessingId(submission.id);
       try {
         sessionStorage.setItem('desktop-processing-active-job-id', submission.id);
+        // Store auto-upload flag if needed
+        if (autoUploadAfter) {
+          sessionStorage.setItem(`desktop-auto-upload-after-${submission.id}`, 'true');
+        }
       } catch {
         // Ignore sessionStorage errors
       }
@@ -1208,7 +1296,12 @@ const DesktopProcessingPage = () => {
         updatedAt: new Date().toISOString(),
       };
       saveSubmission(updated);
-      setSubmissions(subs => subs.map(s => s.id === submission.id ? updated : s));
+      
+      // Use functional updates to avoid stale state
+      setSubmissions(subs => {
+        const updatedSubs = subs.map(s => s.id === submission.id ? updated : s);
+        return sortSubmissions(updatedSubs);
+      });
       setSelectedSubmission(prev => prev?.id === submission.id ? updated : prev);
 
       // Tell electron to start processing (fire and forget)
@@ -1225,7 +1318,7 @@ const DesktopProcessingPage = () => {
         fontFamily: '',
       });
 
-      setMessage('Processing started!');
+      setMessage(autoUploadAfter ? 'Submission started!' : 'Processing started!');
       setSeverity('info');
       setOpen(true);
     } catch (error) {
@@ -1234,13 +1327,15 @@ const DesktopProcessingPage = () => {
       setSeverity('error');
       setOpen(true);
       activeProcessingIdRef.current = null;
+      setActiveProcessingId(null);
       try {
         sessionStorage.removeItem('desktop-processing-active-job-id');
+        sessionStorage.removeItem(`desktop-auto-upload-after-${submission.id}`);
       } catch {
         // Ignore sessionStorage errors
       }
     }
-  }, [getElectronModule, saveSubmission, setMessage, setSeverity, setOpen]);
+  }, [getElectronModule, saveSubmission, setMessage, setSeverity, setOpen, activeProcessingId, activeUploadId, cancelProcessingJob, cancelUploadJob]);
 
   const loadProcessedSummary = useCallback(
     async (id: string): Promise<ProcessedSummary> => {
@@ -1309,13 +1404,14 @@ const DesktopProcessingPage = () => {
   const handleStartUpload = useCallback(async (submission: Submission) => {
     console.log('handleStartUpload called for', submission.id, 'current activeUploadId:', activeUploadId);
     
-    // Prevent multiple simultaneous uploads
+    // Pause any currently active submission first
+    if (activeProcessingId && activeProcessingId !== submission.id) {
+      console.log('Auto-pausing active processing job:', activeProcessingId);
+      cancelProcessingJob(activeProcessingId);
+    }
     if (activeUploadId && activeUploadId !== submission.id) {
-      console.warn('Upload blocked: another upload already in progress');
-      setMessage('Another upload is already in progress. Please wait for it to finish.');
-      setSeverity('warning');
-      setOpen(true);
-      return;
+      console.log('Auto-pausing active upload job:', activeUploadId);
+      cancelUploadJob(activeUploadId);
     }
 
     if (!userSub) {
@@ -1342,14 +1438,32 @@ const DesktopProcessingPage = () => {
     let currentSubmission: Submission = submission;
     
     console.log('Starting upload process for', submission.id);
+    
+    // Set flag to allow upload to continue
+    shouldContinueUploadRef.current[submission.id] = true;
 
     const applySubmissionPatch = (patch: Partial<Submission>) => {
       const nextSubmission: Submission = {
         ...currentSubmission,
         ...patch,
+        updatedAt: new Date().toISOString(), // Always update timestamp
       };
       saveSubmission(nextSubmission);
-      setSubmissions((subs) => subs.map((s) => (s.id === submission.id ? nextSubmission : s)));
+      
+      // Use functional update with proper sorting
+      setSubmissions((subs) => {
+        // Check if submission still exists (could have been deleted)
+        if (!subs.find(s => s.id === submission.id)) {
+          console.warn('Submission', submission.id, 'no longer exists, skipping update');
+          return subs;
+        }
+        
+        const updatedSubs = subs.map((s) => (s.id === submission.id ? nextSubmission : s));
+        
+        // Use stable sort based on createdAt (won't cause items to jump around)
+        return sortSubmissions(updatedSubs);
+      });
+      
       setSelectedSubmission((prev) => (prev?.id === submission.id ? nextSubmission : prev));
       currentSubmission = nextSubmission;
       return nextSubmission;
@@ -1539,6 +1653,12 @@ const DesktopProcessingPage = () => {
       console.log('Starting upload loop:', eligibleFiles.length, 'total files,', completedSet.size, 'already completed');
       
       for (const file of eligibleFiles) {
+        // Check if upload was cancelled/paused
+        if (!shouldContinueUploadRef.current[submission.id]) {
+          console.log('Upload cancelled by user for', submission.id);
+          throw new Error('Upload paused');
+        }
+        
         const normalizedRelativePath = file.normalizedPath;
         if (completedSet.has(normalizedRelativePath)) {
           continue;
@@ -1611,7 +1731,8 @@ const DesktopProcessingPage = () => {
 
         // Only mark as complete after successful upload
         completedSet.add(normalizedRelativePath);
-        uploadedBytes += file.size;
+        // Use the size from snapshot.fileSizes to ensure consistency with progress calculations
+        uploadedBytes += snapshot.fileSizes[normalizedRelativePath] ?? 0;
 
         workingResume = persistResume({
           completedFiles: Array.from(completedSet),
@@ -1656,6 +1777,13 @@ const DesktopProcessingPage = () => {
     } catch (error) {
       console.error('Upload failed for', submission.id, ':', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      
+      // Don't treat "Upload paused" as an error - it's intentional
+      if (errorMessage === 'Upload paused') {
+        console.log('Upload paused gracefully for', submission.id);
+        // Don't update status to error, leave it as 'uploading' so it can be resumed
+        return;
+      }
 
       applySubmissionPatch({
         status: 'error',
@@ -1671,10 +1799,15 @@ const DesktopProcessingPage = () => {
       // Always clear the active upload ID when done (success, error, or interrupted)
       console.log('Clearing active upload ID');
       setActiveUploadId(null);
+      // Clean up the continue flag
+      delete shouldContinueUploadRef.current[submission.id];
     }
   }, [
     userSub,
     activeUploadId,
+    activeProcessingId,
+    cancelProcessingJob,
+    cancelUploadJob,
     loadProcessedSummary,
     saveSubmission,
     forceTokenRefresh,
@@ -1684,6 +1817,15 @@ const DesktopProcessingPage = () => {
     loadAllSubmissions,
     setActiveUploadId,
   ]);
+
+  // Effect to trigger auto-upload when pendingAutoUpload is set
+  useEffect(() => {
+    if (pendingAutoUpload) {
+      console.log('[Auto-upload] Triggering upload for', pendingAutoUpload.id);
+      handleStartUpload(pendingAutoUpload);
+      setPendingAutoUpload(null);
+    }
+  }, [pendingAutoUpload, handleStartUpload]);
 
   // Auto-resume upload after navigation/refresh if there's an active upload in sessionStorage
   const hasAttemptedAutoResumeRef = useRef(false);
@@ -1739,17 +1881,53 @@ const DesktopProcessingPage = () => {
     }
   }, [isElectron, hasUserDetails, submissions, handleStartUpload]);
 
+  const handlePauseSubmission = useCallback((submission: Submission) => {
+    if (activeUploadId === submission.id) {
+      console.log('Pausing upload for', submission.id);
+      cancelUploadJob(submission.id);
+      setMessage('Upload paused. Click Resume to continue.');
+      setSeverity('info');
+      setOpen(true);
+    } else if (activeProcessingId === submission.id) {
+      console.log('Pausing processing for', submission.id);
+      cancelProcessingJob(submission.id);
+      setMessage('Processing cancelled. Click Resume to restart from the last checkpoint.');
+      setSeverity('info');
+      setOpen(true);
+    }
+  }, [activeUploadId, activeProcessingId, cancelUploadJob, cancelProcessingJob, setMessage, setSeverity, setOpen]);
+
   const handleDeleteSubmission = useCallback(async (submission: Submission) => {
     if (!window.confirm(`Are you sure you want to delete "${submission.title}"? This will remove the local submission record but not the remote SourceMedia.`)) {
       return;
     }
 
     try {
-      deleteSubmission(submission.id);
-      setSubmissions(subs => subs.filter(s => s.id !== submission.id));
-      if (selectedSubmission?.id === submission.id) {
-        setSelectedSubmission(null);
+      const submissionId = submission.id;
+      
+      // Cancel any active operations first
+      if (activeUploadId === submissionId) {
+        cancelUploadJob(submissionId);
       }
+      if (activeProcessingIdRef.current === submissionId) {
+        cancelProcessingJob(submissionId);
+      }
+      
+      // Clean up the continue flag
+      delete shouldContinueUploadRef.current[submissionId];
+      
+      // Delete from localStorage
+      deleteSubmission(submissionId);
+      
+      // Update state with functional update to ensure we filter by ID
+      setSubmissions(subs => {
+        const filtered = subs.filter(s => s.id !== submissionId);
+        console.log('[Delete] Removed submission', submissionId, 'from state. Remaining:', filtered.length);
+        return filtered;
+      });
+      
+      // Clear selected submission if it was the deleted one
+      setSelectedSubmission(prev => prev?.id === submissionId ? null : prev);
 
       setMessage('Submission deleted successfully.');
       setSeverity('success');
@@ -1760,7 +1938,7 @@ const DesktopProcessingPage = () => {
       setSeverity('error');
       setOpen(true);
     }
-  }, [deleteSubmission, selectedSubmission, setMessage, setSeverity, setOpen]);
+  }, [deleteSubmission, activeUploadId, cancelUploadJob, cancelProcessingJob, setMessage, setSeverity, setOpen]);
 
   const handleRefresh = useCallback(() => {
     loadAllSubmissions();
@@ -1844,7 +2022,7 @@ const DesktopProcessingPage = () => {
   const isProcessingActive = (submission: Submission) => {
     // Only consider it actively processing if we started it in THIS session
     return submission.status === 'processing' && 
-           activeProcessingIdRef.current === submission.id &&
+           activeProcessingId === submission.id &&
            !isProcessingSummaryComplete(submission.statusSummary);
   };
 
@@ -1861,7 +2039,7 @@ const DesktopProcessingPage = () => {
       return true;
     }
     // Can resume processing if it's marked as processing but not active (paused/interrupted)
-    if (submission.status === 'processing' && activeProcessingIdRef.current !== submission.id) {
+    if (submission.status === 'processing' && activeProcessingId !== submission.id) {
       return true;
     }
     if (submission.status === 'processed' && isSubmissionProcessingIncomplete(submission)) {
@@ -1915,6 +2093,108 @@ const DesktopProcessingPage = () => {
     return 'Start Upload';
   };
 
+  // Unified submission flow
+  const handleSubmit = useCallback((submission: Submission) => {
+    // If not yet processed, start processing with auto-upload
+    if (submission.status === 'created' || submission.status === 'error') {
+      handleStartProcessing(submission, true);
+    }
+    // If processing incomplete, resume processing with auto-upload
+    else if (submission.status === 'processing' || (submission.status === 'processed' && isSubmissionProcessingIncomplete(submission))) {
+      handleStartProcessing(submission, true);
+    }
+    // If processed, start upload directly
+    else if (submission.status === 'processed' || submission.status === 'uploading') {
+      handleStartUpload(submission);
+    }
+  }, [handleStartProcessing, handleStartUpload]);
+
+  const canSubmit = (submission: Submission) => {
+    // Can't submit if another upload is active
+    if (activeUploadId && activeUploadId !== submission.id) {
+      return false;
+    }
+    // Can't submit if another processing job is active
+    if (activeProcessingId && activeProcessingId !== submission.id) {
+      return false;
+    }
+    // Can't submit if already completed
+    if (submission.status === 'completed' || submission.status === 'uploaded') {
+      return false;
+    }
+    return true;
+  };
+
+  const getSubmitButtonLabel = (submission: Submission): string => {
+    const processingIncomplete = isSubmissionProcessingIncomplete(submission);
+    const uploadIncomplete = submission.status === 'uploading' && (submission.uploadProgress ?? 0) < 100;
+    
+    if (submission.status === 'created') {
+      return 'Submit';
+    }
+    if (submission.status === 'error') {
+      return 'Retry Submission';
+    }
+    if (submission.status === 'processing' && processingIncomplete) {
+      return 'Resume Submission';
+    }
+    if (submission.status === 'processed' && processingIncomplete) {
+      return 'Resume Submission';
+    }
+    if (submission.status === 'processed' && !processingIncomplete) {
+      return 'Submit (Start Upload)';
+    }
+    if (uploadIncomplete || isUploadPaused(submission)) {
+      return 'Resume Submission';
+    }
+    return 'Submit';
+  };
+
+  const getSubmissionPhase = (submission: Submission): { activeStep: number; steps: string[] } => {
+    const steps = ['Processing', 'Uploading'];
+    let activeStep = 0;
+    
+    if (submission.status === 'created') {
+      activeStep = 0;
+    } else if (submission.status === 'processing' || submission.status === 'processed') {
+      activeStep = 0;
+    } else if (submission.status === 'uploading' || submission.status === 'uploaded') {
+      activeStep = 1;
+    } else if (submission.status === 'completed') {
+      activeStep = 2;
+    }
+    
+    return { activeStep, steps };
+  };
+
+  const getSubmissionProgress = (submission: Submission): { phase: string; progress: number; label: string } | null => {
+    if (submission.status === 'processing' || (submission.status === 'processed' && isSubmissionProcessingIncomplete(submission))) {
+      const progress = submission.processingProgress ?? 0;
+      return {
+        phase: 'Processing',
+        progress,
+        label: `Processing: ${progress}%`,
+      };
+    }
+    if (submission.status === 'uploading' || isUploadPaused(submission)) {
+      const progress = submission.uploadProgress ?? 0;
+      const paused = isUploadPaused(submission);
+      return {
+        phase: 'Uploading',
+        progress,
+        label: paused ? `Upload paused at ${progress}%` : `Uploading: ${progress}%`,
+      };
+    }
+    if (submission.status === 'completed' || submission.status === 'uploaded') {
+      return {
+        phase: 'Completed',
+        progress: 100,
+        label: 'Submission complete',
+      };
+    }
+    return null;
+  };
+
   if (isAuthLoading) {
     return (
       <Box
@@ -1954,17 +2234,32 @@ const DesktopProcessingPage = () => {
       <Helmet>
         <title>Desktop Processing - memeSRC Dashboard</title>
       </Helmet>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 5 }}>
         <Stack spacing={4}>
           {/* Header */}
           <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack 
+              direction={{ xs: 'column', sm: 'row' }} 
+              alignItems={{ xs: 'flex-start', sm: 'center' }} 
+              justifyContent="space-between"
+              spacing={3}
+            >
               <Box>
-                <Typography variant="h4" gutterBottom>
-                  Desktop Submissions
+                <Typography 
+                  variant="h3" 
+                  sx={{ 
+                    fontWeight: 700,
+                    mb: 1,
+                    background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  Submissions
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Manage your local processing and upload workflow
+                <Typography variant="body1" color="text.secondary" fontWeight={500}>
+                  Process and upload your content in a unified workflow
                 </Typography>
               </Box>
               <Stack direction="row" spacing={2}>
@@ -1973,6 +2268,11 @@ const DesktopProcessingPage = () => {
                   startIcon={<RefreshIcon />}
                   onClick={handleRefresh}
                   disabled={loadingSubmissions}
+                  size="large"
+                  sx={{ 
+                    fontWeight: 600,
+                    minWidth: 120,
+                  }}
                 >
                   Refresh
                 </Button>
@@ -1980,6 +2280,11 @@ const DesktopProcessingPage = () => {
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => setCreateDialogOpen(true)}
+                  size="large"
+                  sx={{ 
+                    fontWeight: 600,
+                    minWidth: 180,
+                  }}
                 >
                   New Submission
                 </Button>
@@ -1991,139 +2296,874 @@ const DesktopProcessingPage = () => {
           {loadingSubmissions && <LinearProgress />}
           
           {!loadingSubmissions && submissions.length === 0 && (
-            <Paper sx={{ p: 6, textAlign: 'center' }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper 
+              elevation={0}
+              sx={{ 
+                p: 8, 
+                textAlign: 'center',
+                borderRadius: 3,
+                border: 2,
+                borderStyle: 'dashed',
+                borderColor: 'divider',
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
+              }}
+            >
+              <Box
+                sx={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: '50%',
+                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mx: 'auto',
+                  mb: 3,
+                }}
+              >
+                <CloudUploadIcon sx={{ fontSize: 60, color: 'primary.main', opacity: 0.6 }} />
+              </Box>
+              <Typography variant="h5" fontWeight={700} gutterBottom>
                 No submissions yet
               </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Create your first submission to get started
+              <Typography variant="body1" color="text.secondary" fontWeight={500} sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
+                Create your first submission to start processing and uploading content. The unified workflow will handle both phases automatically.
               </Typography>
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={() => setCreateDialogOpen(true)}
-                sx={{ mt: 2 }}
+                size="large"
+                sx={{ 
+                  fontWeight: 600,
+                  px: 4,
+                  py: 1.5,
+                  minWidth: 240,
+                }}
               >
-                Create Submission
+                Create Your First Submission
               </Button>
             </Paper>
           )}
 
           {submissions.length > 0 && (
-            <Grid container spacing={3}>
-              {submissions.map((submission) => (
-                <Grid item xs={12} md={6} key={submission.id}>
-                  <Card 
-                    sx={{ 
-                      height: '100%',
-                      border: selectedSubmission?.id === submission.id ? 2 : 0,
-                      borderColor: 'primary.main',
-                    }}
+            <Stack spacing={4}>
+              {/* Active Section */}
+              {submissions.filter(s => {
+                const isActive = isProcessingActive(s) || isUploadActive(s);
+                return isActive;
+              }).length > 0 && (
+                <Box>
+                  <Typography 
+                    variant="h6" 
+                    fontWeight={700} 
+                    sx={{ mb: 2, color: '#8b5cf6' }}
                   >
-                    <CardContent>
-                      <Stack spacing={2}>
-                        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-                          <Box flex={1}>
-                            <Typography variant="h6" gutterBottom>
-                              {submission.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {submission.seriesName} • {submission.indexName}
-                            </Typography>
-                          </Box>
-                          <Chip 
-                            size="small" 
-                            label={getStatusLabel(submission)} 
-                            color={getStatusColor(submission)}
-                          />
-                        </Stack>
+                    Active
+                  </Typography>
+            <Stack spacing={2}>
+                    {submissions
+                      .filter(s => {
+                        const isActive = isProcessingActive(s) || isUploadActive(s);
+                        return isActive;
+                      })
+                      .map((submission) => {
+                const progressInfo = getSubmissionProgress(submission);
+                const isActive = isProcessingActive(submission) || isUploadActive(submission);
+                const isComplete = submission.status === 'completed' || submission.status === 'uploaded';
+                        const isProcessingPaused = submission.status === 'processing' && 
+                                                  activeProcessingId !== submission.id && 
+                                                  isSubmissionProcessingIncomplete(submission);
+                        const isPaused = isUploadPaused(submission) || isProcessingPaused;
 
-                        <Divider />
-
-                        <Stack spacing={1}>
-                          <Typography variant="caption" color="text.secondary">
-                            Created: {formatDateTime(submission.createdAt)}
-                          </Typography>
-                          {submission.statusSummary && submission.statusSummary.total > 0 && (
-                            <Typography variant="caption" color="text.secondary">
-                              Episodes: {submission.statusSummary.done}/{submission.statusSummary.total} processed
-                            </Typography>
-                          )}
-                          {submission.processingProgress !== undefined && submission.processingProgress > 0 && (
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">
-                                Processing: {submission.processingProgress}%
-                              </Typography>
-                              <LinearProgress variant="determinate" value={submission.processingProgress} />
-                            </Box>
-                          )}
-                          {submission.uploadProgress !== undefined && submission.uploadProgress > 0 && (
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">
-                                Upload: {submission.uploadProgress}%{isUploadPaused(submission) ? ' • Paused' : ''}
-                              </Typography>
-                              <LinearProgress variant="determinate" value={submission.uploadProgress} />
-                            </Box>
-                          )}
-                          {isUploadPaused(submission) && (
-                            <Typography variant="caption" color="warning.main">
-                              Upload paused — resume to finish sending the remaining files.
-                            </Typography>
-                          )}
-                          {submission.error && (
-                            <Alert severity="error" sx={{ mt: 1 }}>
-                              {submission.error}
-                            </Alert>
-                          )}
-                        </Stack>
-
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                          {canStartProcessing(submission) && (
-                            <LoadingButton
-                              size="small"
-                              variant="contained"
-                              startIcon={<PlayArrowIcon />}
-                              onClick={() => handleStartProcessing(submission)}
-                              loading={isProcessingActive(submission)}
-                            >
-                              {getProcessingButtonLabel(submission)}
-                            </LoadingButton>
-                          )}
-                          {canStartUpload(submission) && (
-                            <LoadingButton
-                              size="small"
-                              variant="contained"
-                              startIcon={<CloudUploadIcon />}
-                              onClick={() => handleStartUpload(submission)}
-                              loading={isUploadActive(submission)}
-                            >
-                              {getUploadButtonLabel(submission)}
-                            </LoadingButton>
-                          )}
-                          {(submission.status === 'completed' || submission.status === 'uploaded') && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<CheckCircleIcon />}
-                              onClick={() => handleOpenReviewPage(submission.sourceMediaId)}
-                            >
-                              Review
-                            </Button>
-                          )}
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDeleteSubmission(submission)}
-                            disabled={isProcessingActive(submission) || isUploadActive(submission)}
+                return (
+                          <Paper
+                    key={submission.id}
+                            elevation={0}
+                    sx={{ 
+                      p: 3,
+                              borderRadius: 3,
+                      bgcolor: 'background.paper',
+                      border: 1,
+                              borderColor: isActive ? '#8b5cf6' : 'divider',
+                              transition: 'all 0.3s ease',
+                              boxShadow: isActive 
+                                ? `0 0 0 2px ${alpha('#8b5cf6', 0.2)}`
+                                : 'none',
+                              '&:hover': {
+                                boxShadow: theme.shadows[4],
+                              },
+                            }}
                           >
-                            <DeleteIcon fontSize="small" />
+                    <Grid container spacing={3} alignItems="center">
+                      {/* Left: Status Icon - Fixed width to prevent layout shift */}
+                      <Grid item xs="auto">
+                        <Box 
+                          sx={{ 
+                            width: 56, 
+                            height: 56, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                        {isComplete ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.success.main, 0.1),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <CheckCircleIcon sx={{ fontSize: 32, color: 'success.main' }} />
+                            </Box>
+                        ) : isActive ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <CircularProgress size={32} thickness={3.5} />
+                            </Box>
+                        ) : isPaused ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <PauseCircleOutlineIcon sx={{ fontSize: 32, color: 'warning.main' }} />
+                            </Box>
+                        ) : (
+                          <Box 
+                            sx={{ 
+                                width: 56, 
+                                height: 56, 
+                              borderRadius: '50%', 
+                              border: 2, 
+                                borderColor: alpha(theme.palette.divider, 0.5),
+                                bgcolor: alpha(theme.palette.background.default, 0.5),
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <PlayArrowIcon sx={{ color: 'text.disabled', fontSize: 28 }} />
+                          </Box>
+                        )}
+                      </Box>
+                      </Grid>
+
+                      {/* Middle: Info & Progress - Flexible width */}
+                      <Grid item xs>
+                        <Box sx={{ minHeight: 88 }}>
+                        <Typography variant="h6" fontWeight={600} noWrap sx={{ mb: 0.5 }}>
+                          {submission.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 2 }}>
+                          {submission.seriesName} • {submission.indexName}
+                        </Typography>
+                        
+                          {/* Always reserve space for progress/status to prevent layout shift */}
+                          <Box sx={{ minHeight: 32 }}>
+                        {progressInfo && !isComplete && (
+                          <Box>
+                            <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+                              <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                {progressInfo.phase}
+                              </Typography>
+                                  <Typography variant="caption" fontWeight={700} color={isPaused ? 'text.secondary' : 'primary.main'}>
+                                {progressInfo.progress}%
+                              </Typography>
+                            </Stack>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={progressInfo.progress}
+                              sx={{ 
+                                    height: 6, 
+                                borderRadius: 1,
+                                    bgcolor: alpha(theme.palette.action.disabledBackground, 0.3),
+                                    '& .MuiLinearProgress-bar': {
+                                      borderRadius: 1,
+                                      bgcolor: isPaused 
+                                        ? theme.palette.action.disabled
+                                        : 'primary.main',
+                                    },
+                              }}
+                            />
+                          </Box>
+                        )}
+
+                        {isComplete && (
+                          <Chip 
+                            label="Completed" 
+                            color="success" 
+                                size="medium"
+                            icon={<CheckCircleIcon />}
+                                sx={{ fontWeight: 600 }}
+                          />
+                        )}
+
+                        {submission.error && (
+                              <Alert severity="error" sx={{ py: 0, mt: 1 }}>
+                                <Typography variant="caption" fontWeight={500}>
+                            {submission.error}
+                          </Typography>
+                              </Alert>
+                        )}
+                      </Box>
+                        </Box>
+                      </Grid>
+
+                      {/* Right: Actions - Two buttons always present */}
+                      <Grid item xs="auto">
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          {/* Primary action button - morphs based on state */}
+                          <IconButton
+                            onClick={() => {
+                              if (isComplete) {
+                                handleOpenReviewPage(submission.sourceMediaId);
+                              } else if (isActive) {
+                                handlePauseSubmission(submission);
+                              } else {
+                                handleSubmit(submission);
+                              }
+                            }}
+                            disabled={isComplete ? false : submission.status === 'completed' || submission.status === 'uploaded'}
+                            title={
+                              isComplete 
+                                ? 'Review Submission' 
+                                : isActive 
+                                  ? (isUploadActive(submission) ? 'Pause Upload' : 'Cancel Processing')
+                                  : getSubmitButtonLabel(submission)
+                            }
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: isComplete
+                                ? alpha(theme.palette.success.main, 0.15)
+                                : isActive
+                                  ? alpha(theme.palette.warning.main, 0.15)
+                                  : alpha(theme.palette.primary.main, 0.15),
+                              color: isComplete
+                                ? 'success.main'
+                                : isActive
+                                  ? 'warning.main'
+                                  : 'primary.main',
+                              '&:hover': {
+                                bgcolor: isComplete
+                                  ? alpha(theme.palette.success.main, 0.25)
+                                  : isActive
+                                    ? alpha(theme.palette.warning.main, 0.25)
+                                    : alpha(theme.palette.primary.main, 0.25),
+                              },
+                              '&.Mui-disabled': {
+                                bgcolor: alpha(theme.palette.action.disabledBackground, 0.5),
+                                color: 'action.disabled',
+                              },
+                            }}
+                          >
+                            {isComplete ? (
+                              <CheckCircleIcon sx={{ fontSize: 28 }} />
+                            ) : isActive ? (
+                              <PauseIcon sx={{ fontSize: 28 }} />
+                            ) : (
+                              <PlayArrowIcon sx={{ fontSize: 28 }} />
+                            )}
+                          </IconButton>
+                          
+                          {/* Delete button - always present */}
+                          <IconButton
+                            onClick={() => handleDeleteSubmission(submission)}
+                            disabled={isActive}
+                            title="Delete Submission"
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: alpha(theme.palette.error.main, 0.08),
+                              color: 'error.main',
+                              '&:hover': {
+                                bgcolor: alpha(theme.palette.error.main, 0.18),
+                              },
+                              '&.Mui-disabled': {
+                                bgcolor: alpha(theme.palette.action.disabledBackground, 0.5),
+                                color: 'action.disabled',
+                                opacity: 0.5,
+                              },
+                            }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 24 }} />
                           </IconButton>
                         </Stack>
+                      </Grid>
+                    </Grid>
+                  </Paper>
+                        );
+                      })}
+                  </Stack>
+                </Box>
+              )}
+
+              {/* Paused Section */}
+              {submissions.filter(s => {
+                const isActive = isProcessingActive(s) || isUploadActive(s);
+                const isComplete = s.status === 'completed' || s.status === 'uploaded';
+                const isProcessingPaused = s.status === 'processing' && 
+                                          activeProcessingId !== s.id && 
+                                          isSubmissionProcessingIncomplete(s);
+                const isPaused = isUploadPaused(s) || isProcessingPaused;
+                return !isActive && !isComplete && (isPaused || s.status === 'created' || s.status === 'processed' || s.status === 'error');
+              }).length > 0 && (
+                <Box>
+                  <Typography 
+                    variant="h6" 
+                    fontWeight={700} 
+                    sx={{ mb: 2, color: '#fb923c' }}
+                  >
+                    Paused
+                  </Typography>
+                  <Stack spacing={2}>
+                    {submissions
+                      .filter(s => {
+                        const isActive = isProcessingActive(s) || isUploadActive(s);
+                        const isComplete = s.status === 'completed' || s.status === 'uploaded';
+                        const isProcessingPaused = s.status === 'processing' && 
+                                                  activeProcessingId !== s.id && 
+                                                  isSubmissionProcessingIncomplete(s);
+                        const isPaused = isUploadPaused(s) || isProcessingPaused;
+                        return !isActive && !isComplete && (isPaused || s.status === 'created' || s.status === 'processed' || s.status === 'error');
+                      })
+                      .map((submission) => {
+                        const progressInfo = getSubmissionProgress(submission);
+                        const isActive = isProcessingActive(submission) || isUploadActive(submission);
+                        const isComplete = submission.status === 'completed' || submission.status === 'uploaded';
+                        const isProcessingPaused = submission.status === 'processing' && 
+                                                  activeProcessingId !== submission.id && 
+                                                  isSubmissionProcessingIncomplete(submission);
+                        const isPaused = isUploadPaused(submission) || isProcessingPaused;
+
+                        return (
+                          <Paper
+                            key={submission.id}
+                            elevation={0}
+                            sx={{ 
+                              p: 3,
+                              borderRadius: 3,
+                              bgcolor: 'background.paper',
+                              border: 1,
+                              borderColor: 'divider',
+                              transition: 'all 0.3s ease',
+                              boxShadow: 'none',
+                              '&:hover': {
+                                boxShadow: theme.shadows[4],
+                              },
+                            }}
+                          >
+                    <Grid container spacing={3} alignItems="center">
+                      {/* Left: Status Icon - Fixed width to prevent layout shift */}
+                      <Grid item xs="auto">
+                        <Box 
+                          sx={{ 
+                            width: 56, 
+                            height: 56, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isComplete ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.success.main, 0.1),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <CheckCircleIcon sx={{ fontSize: 32, color: 'success.main' }} />
+                            </Box>
+                          ) : isActive ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <CircularProgress size={32} thickness={3.5} />
+                            </Box>
+                          ) : isPaused ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <PauseCircleOutlineIcon sx={{ fontSize: 32, color: 'warning.main' }} />
+                            </Box>
+                          ) : (
+                            <Box 
+                              sx={{ 
+                                width: 56, 
+                                height: 56, 
+                                borderRadius: '50%', 
+                                border: 2, 
+                                borderColor: alpha(theme.palette.divider, 0.5),
+                                bgcolor: alpha(theme.palette.background.default, 0.5),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <PlayArrowIcon sx={{ color: 'text.disabled', fontSize: 28 }} />
+                            </Box>
+                          )}
+                        </Box>
+                      </Grid>
+
+                      {/* Middle: Info & Progress - Flexible width */}
+                      <Grid item xs>
+                        <Box sx={{ minHeight: 88 }}>
+                          <Typography variant="h6" fontWeight={600} noWrap sx={{ mb: 0.5 }}>
+                            {submission.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 2 }}>
+                            {submission.seriesName} • {submission.indexName}
+                          </Typography>
+                          
+                          {/* Always reserve space for progress/status to prevent layout shift */}
+                          <Box sx={{ minHeight: 32 }}>
+                            {progressInfo && !isComplete && (
+                              <Box>
+                                <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                    {progressInfo.phase}
+                                  </Typography>
+                                  <Typography variant="caption" fontWeight={700} color={isPaused ? 'text.secondary' : 'primary.main'}>
+                                    {progressInfo.progress}%
+                                  </Typography>
+                                </Stack>
+                                <LinearProgress 
+                                  variant="determinate" 
+                                  value={progressInfo.progress}
+                                  sx={{ 
+                                    height: 6, 
+                                    borderRadius: 1,
+                                    bgcolor: alpha(theme.palette.action.disabledBackground, 0.3),
+                                    '& .MuiLinearProgress-bar': {
+                                      borderRadius: 1,
+                                      bgcolor: isPaused 
+                                        ? theme.palette.action.disabled
+                                        : 'primary.main',
+                                    },
+                                  }}
+                                />
+                              </Box>
+                            )}
+
+                            {isComplete && (
+                              <Chip 
+                                label="Completed" 
+                                color="success" 
+                                size="medium"
+                                icon={<CheckCircleIcon />}
+                                sx={{ fontWeight: 600 }}
+                              />
+                            )}
+
+                            {submission.error && (
+                              <Alert severity="error" sx={{ py: 0, mt: 1 }}>
+                                <Typography variant="caption" fontWeight={500}>
+                                  {submission.error}
+                                </Typography>
+                              </Alert>
+                            )}
+                          </Box>
+                        </Box>
+                      </Grid>
+
+                      {/* Right: Actions - Two buttons always present */}
+                      <Grid item xs="auto">
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          {/* Primary action button - morphs based on state */}
+                          <IconButton
+                            onClick={() => {
+                              if (isComplete) {
+                                handleOpenReviewPage(submission.sourceMediaId);
+                              } else if (isActive) {
+                                handlePauseSubmission(submission);
+                              } else {
+                                handleSubmit(submission);
+                              }
+                            }}
+                            disabled={isComplete ? false : submission.status === 'completed' || submission.status === 'uploaded'}
+                            title={
+                              isComplete 
+                                ? 'Review Submission' 
+                                : isActive 
+                                  ? (isUploadActive(submission) ? 'Pause Upload' : 'Cancel Processing')
+                                  : getSubmitButtonLabel(submission)
+                            }
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: isComplete
+                                ? alpha(theme.palette.success.main, 0.15)
+                                : isActive
+                                  ? alpha(theme.palette.warning.main, 0.15)
+                                  : alpha(theme.palette.primary.main, 0.15),
+                              color: isComplete
+                                ? 'success.main'
+                                : isActive
+                                  ? 'warning.main'
+                                  : 'primary.main',
+                              '&:hover': {
+                                bgcolor: isComplete
+                                  ? alpha(theme.palette.success.main, 0.25)
+                                  : isActive
+                                    ? alpha(theme.palette.warning.main, 0.25)
+                                    : alpha(theme.palette.primary.main, 0.25),
+                              },
+                              '&.Mui-disabled': {
+                                bgcolor: alpha(theme.palette.action.disabledBackground, 0.5),
+                                color: 'action.disabled',
+                              },
+                            }}
+                          >
+                            {isComplete ? (
+                              <CheckCircleIcon sx={{ fontSize: 28 }} />
+                            ) : isActive ? (
+                              <PauseIcon sx={{ fontSize: 28 }} />
+                            ) : (
+                              <PlayArrowIcon sx={{ fontSize: 28 }} />
+                            )}
+                          </IconButton>
+                          
+                          {/* Delete button - always present */}
+                        <IconButton
+                          onClick={() => handleDeleteSubmission(submission)}
+                          disabled={isActive}
+                            title="Delete Submission"
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: alpha(theme.palette.error.main, 0.08),
+                              color: 'error.main',
+                              '&:hover': {
+                                bgcolor: alpha(theme.palette.error.main, 0.18),
+                              },
+                              '&.Mui-disabled': {
+                                bgcolor: alpha(theme.palette.action.disabledBackground, 0.5),
+                                color: 'action.disabled',
+                                opacity: 0.5,
+                              },
+                            }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 24 }} />
+                        </IconButton>
                       </Stack>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                      </Grid>
+                    </Grid>
+                  </Paper>
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+              )}
+
+              {/* Submitted Section */}
+              {submissions.filter(s => s.status === 'completed' || s.status === 'uploaded').length > 0 && (
+                <Box>
+                  <Typography 
+                    variant="h6" 
+                    fontWeight={700} 
+                    sx={{ mb: 2, color: '#10b981' }}
+                  >
+                    Submitted
+                  </Typography>
+                  <Stack spacing={2}>
+                    {submissions
+                      .filter(s => s.status === 'completed' || s.status === 'uploaded')
+                      .map((submission) => {
+                        const progressInfo = getSubmissionProgress(submission);
+                        const isActive = isProcessingActive(submission) || isUploadActive(submission);
+                        const isComplete = submission.status === 'completed' || submission.status === 'uploaded';
+                        const isProcessingPaused = submission.status === 'processing' && 
+                                                  activeProcessingId !== submission.id && 
+                                                  isSubmissionProcessingIncomplete(submission);
+                        const isPaused = isUploadPaused(submission) || isProcessingPaused;
+
+                        return (
+                          <Paper
+                            key={submission.id}
+                            elevation={0}
+                            sx={{ 
+                              p: 3,
+                              borderRadius: 3,
+                              bgcolor: 'background.paper',
+                              border: 1,
+                              borderColor: '#10b981',
+                              transition: 'all 0.3s ease',
+                              boxShadow: `0 0 0 2px ${alpha('#10b981', 0.1)}`,
+                              '&:hover': {
+                                boxShadow: theme.shadows[4],
+                              },
+                            }}
+                          >
+                    <Grid container spacing={3} alignItems="center">
+                      {/* Left: Status Icon - Fixed width to prevent layout shift */}
+                      <Grid item xs="auto">
+                        <Box 
+                          sx={{ 
+                            width: 56, 
+                            height: 56, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isComplete ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.success.main, 0.1),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <CheckCircleIcon sx={{ fontSize: 32, color: 'success.main' }} />
+                            </Box>
+                          ) : isActive ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <CircularProgress size={32} thickness={3.5} />
+                            </Box>
+                          ) : isPaused ? (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <PauseCircleOutlineIcon sx={{ fontSize: 32, color: 'warning.main' }} />
+                            </Box>
+                          ) : (
+                            <Box 
+                              sx={{ 
+                                width: 56, 
+                                height: 56, 
+                                borderRadius: '50%', 
+                                border: 2, 
+                                borderColor: alpha(theme.palette.divider, 0.5),
+                                bgcolor: alpha(theme.palette.background.default, 0.5),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <PlayArrowIcon sx={{ color: 'text.disabled', fontSize: 28 }} />
+                            </Box>
+                          )}
+                        </Box>
+                      </Grid>
+
+                      {/* Middle: Info & Progress - Flexible width */}
+                      <Grid item xs>
+                        <Box sx={{ minHeight: 88 }}>
+                          <Typography variant="h6" fontWeight={600} noWrap sx={{ mb: 0.5 }}>
+                            {submission.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 2 }}>
+                            {submission.seriesName} • {submission.indexName}
+                          </Typography>
+                          
+                          {/* Always reserve space for progress/status to prevent layout shift */}
+                          <Box sx={{ minHeight: 32 }}>
+                            {progressInfo && !isComplete && (
+                              <Box>
+                                <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                    {progressInfo.phase}
+                                  </Typography>
+                                  <Typography variant="caption" fontWeight={700} color={isPaused ? 'text.secondary' : 'primary.main'}>
+                                    {progressInfo.progress}%
+                                  </Typography>
+                                </Stack>
+                                <LinearProgress 
+                                  variant="determinate" 
+                                  value={progressInfo.progress}
+                                  sx={{ 
+                                    height: 6, 
+                                    borderRadius: 1,
+                                    bgcolor: alpha(theme.palette.action.disabledBackground, 0.3),
+                                    '& .MuiLinearProgress-bar': {
+                                      borderRadius: 1,
+                                      bgcolor: isPaused 
+                                        ? theme.palette.action.disabled
+                                        : 'primary.main',
+                                    },
+                                  }}
+                                />
+                              </Box>
+                            )}
+
+                            {isComplete && (
+                              <Chip 
+                                label="Completed" 
+                                color="success" 
+                                size="medium"
+                                icon={<CheckCircleIcon />}
+                                sx={{ fontWeight: 600 }}
+                              />
+                            )}
+
+                            {submission.error && (
+                              <Alert severity="error" sx={{ py: 0, mt: 1 }}>
+                                <Typography variant="caption" fontWeight={500}>
+                                  {submission.error}
+                                </Typography>
+                              </Alert>
+                            )}
+                          </Box>
+                        </Box>
+                      </Grid>
+
+                      {/* Right: Actions - Two buttons always present */}
+                      <Grid item xs="auto">
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          {/* Primary action button - morphs based on state */}
+                          <IconButton
+                            onClick={() => {
+                              if (isComplete) {
+                                handleOpenReviewPage(submission.sourceMediaId);
+                              } else if (isActive) {
+                                handlePauseSubmission(submission);
+                              } else {
+                                handleSubmit(submission);
+                              }
+                            }}
+                            disabled={isComplete ? false : submission.status === 'completed' || submission.status === 'uploaded'}
+                            title={
+                              isComplete 
+                                ? 'Review Submission' 
+                                : isActive 
+                                  ? (isUploadActive(submission) ? 'Pause Upload' : 'Cancel Processing')
+                                  : getSubmitButtonLabel(submission)
+                            }
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: isComplete
+                                ? alpha(theme.palette.success.main, 0.15)
+                                : isActive
+                                  ? alpha(theme.palette.warning.main, 0.15)
+                                  : alpha(theme.palette.primary.main, 0.15),
+                              color: isComplete
+                                ? 'success.main'
+                                : isActive
+                                  ? 'warning.main'
+                                  : 'primary.main',
+                              '&:hover': {
+                                bgcolor: isComplete
+                                  ? alpha(theme.palette.success.main, 0.25)
+                                  : isActive
+                                    ? alpha(theme.palette.warning.main, 0.25)
+                                    : alpha(theme.palette.primary.main, 0.25),
+                              },
+                              '&.Mui-disabled': {
+                                bgcolor: alpha(theme.palette.action.disabledBackground, 0.5),
+                                color: 'action.disabled',
+                              },
+                            }}
+                          >
+                            {isComplete ? (
+                              <CheckCircleIcon sx={{ fontSize: 28 }} />
+                            ) : isActive ? (
+                              <PauseIcon sx={{ fontSize: 28 }} />
+                            ) : (
+                              <PlayArrowIcon sx={{ fontSize: 28 }} />
+                            )}
+                          </IconButton>
+                          
+                          {/* Delete button - always present */}
+                          <IconButton
+                            onClick={() => handleDeleteSubmission(submission)}
+                            disabled={isActive}
+                            title="Delete Submission"
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: alpha(theme.palette.error.main, 0.08),
+                              color: 'error.main',
+                              '&:hover': {
+                                bgcolor: alpha(theme.palette.error.main, 0.18),
+                              },
+                              '&.Mui-disabled': {
+                                bgcolor: alpha(theme.palette.action.disabledBackground, 0.5),
+                                color: 'action.disabled',
+                                opacity: 0.5,
+                              },
+                            }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 24 }} />
+                          </IconButton>
+                        </Stack>
+                      </Grid>
+                    </Grid>
+                  </Paper>
+                );
+              })}
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
           )}
         </Stack>
       </Container>
@@ -2132,19 +3172,35 @@ const DesktopProcessingPage = () => {
       <Dialog 
         open={createDialogOpen} 
         onClose={() => !creating && setCreateDialogOpen(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+          },
+        }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ pb: 2 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography variant="h6">Create New Submission</Typography>
-            <IconButton onClick={() => setCreateDialogOpen(false)} disabled={creating}>
+            <Box>
+              <Typography variant="h5" fontWeight={700}>
+                Create New Submission
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Set up a new content submission for processing and upload
+              </Typography>
+            </Box>
+            <IconButton 
+              onClick={() => setCreateDialogOpen(false)} 
+              disabled={creating}
+              sx={{ ml: 2 }}
+            >
               <CloseIcon />
             </IconButton>
           </Stack>
         </DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
+        <DialogContent sx={{ px: 3, pb: 2 }}>
+          <Stack spacing={3} sx={{ mt: 2 }}>
             <Autocomplete
               options={seriesOptions}
               loading={seriesLoading}
@@ -2190,58 +3246,84 @@ const DesktopProcessingPage = () => {
               helperText="This will be the pending alias for the SourceMedia"
             />
 
-            <Stack spacing={1}>
-              <Typography variant="subtitle2">Source Folder</Typography>
-              <TextField
-                value={newSourceFolder}
-                placeholder="No folder selected"
-                InputProps={{
-                  readOnly: true,
-                }}
-                fullWidth
-              />
-              <Button
-                variant="outlined"
-                onClick={handleBrowseSourceFolder}
-                disabled={creating}
-              >
-                Browse...
-              </Button>
-              <Typography variant="caption" color="text.secondary">
-                Select the folder containing episodes to process
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Source Folder
               </Typography>
-            </Stack>
+              <Stack spacing={2}>
+                <TextField
+                  value={newSourceFolder}
+                  placeholder="No folder selected"
+                  InputProps={{
+                    readOnly: true,
+                    startAdornment: <FolderIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                  }}
+                  fullWidth
+                  sx={{ 
+                    '& .MuiInputBase-root': {
+                      bgcolor: (theme) => alpha(theme.palette.background.default, 0.5),
+                    },
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  startIcon={<FolderIcon />}
+                  onClick={handleBrowseSourceFolder}
+                  disabled={creating}
+                  fullWidth
+                  sx={{ fontWeight: 600 }}
+                >
+                  Browse for Source Folder
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  Select the folder containing episodes to process
+                </Typography>
+              </Stack>
+            </Box>
 
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Background Color"
-                type="color"
-                value={newBackgroundColor}
-                onChange={(e) => setNewBackgroundColor(e.target.value)}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                label="Text Color"
-                type="color"
-                value={newTextColor}
-                onChange={(e) => setNewTextColor(e.target.value)}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-              />
-            </Stack>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Theme Colors
+              </Typography>
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="Background Color"
+                  type="color"
+                  value={newBackgroundColor}
+                  onChange={(e) => setNewBackgroundColor(e.target.value)}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  label="Text Color"
+                  type="color"
+                  value={newTextColor}
+                  onChange={(e) => setNewTextColor(e.target.value)}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Stack>
+            </Box>
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)} disabled={creating}>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button 
+            onClick={() => setCreateDialogOpen(false)} 
+            disabled={creating}
+            size="large"
+            sx={{ fontWeight: 600 }}
+          >
             Cancel
           </Button>
           <LoadingButton
             variant="contained"
             onClick={handleCreateSubmission}
             loading={creating}
+            size="large"
+            startIcon={<AddIcon />}
+            sx={{ fontWeight: 600, px: 3 }}
           >
-            Create
+            Create Submission
           </LoadingButton>
         </DialogActions>
       </Dialog>
