@@ -554,6 +554,16 @@ const DesktopProcessingPage = () => {
   useEffect(() => {
     console.log('[DesktopProcessingPage] Component mounted');
     console.log('[DesktopProcessingPage] SessionStorage active upload:', getActiveUploadJobId());
+    try { sessionStorage.setItem('desktop-processing-page-mounted', 'true'); } catch {}
+  }, []);
+
+  // Clear the mounted flag on unmount to allow background provider to take over
+  useEffect(() => {
+    return () => {
+      try {
+        sessionStorage.removeItem('desktop-processing-page-mounted');
+      } catch {}
+    };
   }, []);
 
   const authUser = userContextValue;
@@ -1216,6 +1226,10 @@ const DesktopProcessingPage = () => {
 
       // Select the new submission
       setSelectedSubmission(newSubmission);
+
+      // Auto-start processing (with auto-upload after processing)
+      // Fire-and-forget to avoid blocking the UI
+      handleStartProcessing(newSubmission, true);
     } catch (error) {
       console.error('Failed to create submission', error);
       setMessage(error instanceof Error ? error.message : 'Failed to create submission.');
