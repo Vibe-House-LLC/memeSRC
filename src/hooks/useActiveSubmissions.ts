@@ -18,7 +18,7 @@ export const useActiveSubmissions = () => {
   const [activeSubmissions, setActiveSubmissions] = useState<ActiveSubmission[]>([]);
   const isElectron = typeof window !== 'undefined' && window.process && window.process.type;
 
-  const loadActiveSubmissions = useCallback(async () => {
+  const loadActiveSubmissions = useCallback(() => {
     if (!isElectron || !window.require) {
       return;
     }
@@ -30,16 +30,13 @@ export const useActiveSubmissions = () => {
 
       const baseDir = path.join(os.homedir(), '.memesrc', 'processing');
       
-      // Check if directory exists asynchronously
-      try {
-        await fs.promises.access(baseDir);
-      } catch {
-        // Directory doesn't exist
+      // Check if directory exists synchronously
+      if (!fs.existsSync(baseDir)) {
         setActiveSubmissions([]);
         return;
       }
 
-      const entries = await fs.promises.readdir(baseDir, { withFileTypes: true });
+      const entries = fs.readdirSync(baseDir, { withFileTypes: true });
       const active: ActiveSubmission[] = [];
 
       for (const entry of entries) {
