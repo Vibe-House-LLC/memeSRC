@@ -67,6 +67,10 @@ const haveSameActiveSubmissions = (
   return true;
 };
 
+// Yield back to the browser event loop to avoid long-running tasks blocking the UI
+const yieldToBrowser = async (): Promise<void> =>
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
 export const useActiveSubmissions = () => {
   const [activeSubmissions, setActiveSubmissions] = useState<ActiveSubmission[]>([]);
   const isElectron = typeof window !== 'undefined' && window.process && window.process.type;
@@ -139,6 +143,7 @@ export const useActiveSubmissions = () => {
 
       const entries = await fsPromises.readdir(baseDir, { withFileTypes: true });
       const active: ActiveSubmission[] = [];
+      let processedCount = 0;
 
       for (const entry of entries) {
         if (!entry.isDirectory()) {
@@ -163,7 +168,11 @@ export const useActiveSubmissions = () => {
         let progress: number | undefined;
         let error: string | undefined = submission.error;
 
-        if (status === 'processing' || status === 'processed') {
+        // Fast-path: skip disk reads for already processed submissions
+        if (status === 'processed') {
+          effectiveStatus = 'processed';
+          progress = 100;
+        } else if (status === 'processing') {
           const statusPath = path.join(baseDir, jobId, 'status.json');
 
           try {
@@ -184,8 +193,6 @@ export const useActiveSubmissions = () => {
           } catch {
             if (status === 'processing') {
               progress = clampProgress(submission.processingProgress);
-            } else if (status === 'processed') {
-              progress = 100;
             }
           }
         } else if (status === 'uploading' || status === 'uploaded') {
@@ -214,6 +221,12 @@ export const useActiveSubmissions = () => {
           progress,
           error,
         });
+
+        // Periodically yield to keep the UI responsive when handling many entries
+        processedCount += 1;
+        if (processedCount % 5 === 0) {
+          await yieldToBrowser();
+        }
       }
 
       active.sort((a, b) => a.id.localeCompare(b.id));
