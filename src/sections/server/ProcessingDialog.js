@@ -2,12 +2,26 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Dialog, DialogContent, DialogTitle, LinearProgress, Typography, Button } from '@mui/material';
 
-function ProcessingDialog({ isOpen, progress, metadata, onDismiss }) {
+function ProcessingDialog({ isOpen, progress, metadata, onDismiss, errorMessage }) {
+    const hasError = Boolean(errorMessage);
+    const isComplete = progress >= 100 && !hasError;
+
     return (
         <Dialog open={isOpen} maxWidth="sm" fullWidth>
-            <DialogTitle>Processing Index</DialogTitle>
+            <DialogTitle>
+                {hasError ? 'Processing Failed' : (isComplete ? 'Processing Complete!' : 'Processing Index')}
+            </DialogTitle>
             <DialogContent>
-                {progress < 100 ? (
+                {hasError ? (
+                    <>
+                        <Typography variant="body1" color="error" gutterBottom>
+                            {errorMessage}
+                        </Typography>
+                        <Button onClick={onDismiss} color="primary" variant="contained" sx={{ mt: 2 }}>
+                            Dismiss
+                        </Button>
+                    </>
+                ) : !isComplete ? (
                     <>
                         <Typography variant="body1">Processing your index...</Typography>
                         <Typography variant="body2">Title: {metadata.title}</Typography>
@@ -36,6 +50,7 @@ ProcessingDialog.propTypes = {
         description: PropTypes.string,
     }).isRequired,
     onDismiss: PropTypes.func.isRequired,
+    errorMessage: PropTypes.string,
 };
 
 export default ProcessingDialog;
