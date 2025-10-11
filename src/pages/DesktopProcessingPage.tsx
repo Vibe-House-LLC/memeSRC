@@ -2133,12 +2133,12 @@ const DesktopProcessingPage = () => {
   }, [handleStartProcessing, handleStartUpload]);
 
   const canSubmit = (submission: Submission) => {
-    // Can't submit if upload is already active
-    if (isUploadActive(submission)) {
-      return false;
-    }
     // Can't submit if another upload is active
     if (activeUploadId && activeUploadId !== submission.id) {
+      return false;
+    }
+    // Can't submit if another processing job is active
+    if (activeProcessingId && activeProcessingId !== submission.id) {
       return false;
     }
     // Can't submit if already completed
