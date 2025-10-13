@@ -202,19 +202,9 @@ export default function GuestAuth(props) {
       delete updatedUser.email;
     }
 
-    const finalUsername = pickFirstValidString(
-      resolvedUsername,
-      existingUser?.username,
-      refreshedUser?.username,
-      tokenPayload?.['cognito:username'],
-      tokenPayload?.preferred_username,
-      tokenPayload?.username,
-      resolvedEmail
-    );
-
-    if (finalUsername) {
-      updatedUser.username = finalUsername;
-      updatedUser.userDetails.username = finalUsername;
+    if (resolvedUsername) {
+      updatedUser.username = resolvedUsername;
+      updatedUser.userDetails.username = resolvedUsername;
     } else if (updatedUser.username && !normalizeOptionalString(updatedUser.username)) {
       delete updatedUser.username;
       if (updatedUser.userDetails?.username && !normalizeOptionalString(updatedUser.userDetails.username)) {
