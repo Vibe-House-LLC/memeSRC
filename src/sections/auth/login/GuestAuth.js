@@ -25,6 +25,7 @@ export default function GuestAuth(props) {
     }
     return storedPreference !== 'false';
   });
+  const [isUserLoading, setIsUserLoading] = useState(false);
   const location = useLocation();
   const userGroups = user?.['cognito:groups'];
   const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
@@ -34,11 +35,34 @@ export default function GuestAuth(props) {
   const paymentRefreshTriggeredRef = useRef(false);
   const forceTokenRefreshRef = useRef(async () => {});
   const hasInitializedAuthRef = useRef(false);
+  const loadingCounterRef = useRef(0);
+  const isMountedRef = useRef(true);
+
+  const startLoading = useCallback(() => {
+    loadingCounterRef.current += 1;
+    if (loadingCounterRef.current === 1 && isMountedRef.current) {
+      setIsUserLoading(true);
+    }
+  }, [setIsUserLoading]);
+
+  const stopLoading = useCallback(() => {
+    loadingCounterRef.current = Math.max(loadingCounterRef.current - 1, 0);
+    if (loadingCounterRef.current === 0 && isMountedRef.current) {
+      setIsUserLoading(false);
+    }
+  }, [setIsUserLoading]);
 
   useEffect(() => {
     profilePhotoRef.current = user?.profilePhoto ?? null;
     userRef.current = user;
   }, [user]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -61,189 +85,206 @@ export default function GuestAuth(props) {
     }
   }, [user])
 
-  const handleTokenRefreshed = useCallback(async (authData, options = {}) => {
-    const refreshedUser = authData?.data ?? authData;
-    if (!refreshedUser) {
-      return;
-    }
-
-    const {
-      overrideUserDetails: overrideDetailsInput = null,
-      profilePhoto: explicitProfilePhoto,
-    } = options;
-
-    const existingUser = userRef.current || {};
-    const existingUserDetails = existingUser.userDetails || {};
-
-    const sanitizedExistingUserDetails = sanitizeStringRecord(existingUserDetails);
-    const rawTokenPayload =
-      refreshedUser?.signInUserSession?.idToken?.payload ||
-      refreshedUser?.signInUserSession?.accessToken?.payload ||
-      {};
-    const tokenPayload = sanitizeStringRecord(rawTokenPayload);
-    const overrideDetails = overrideDetailsInput ? sanitizeStringRecord(overrideDetailsInput) : null;
-
-    const resolveFavoriteIds = (source) => {
-      if (source === undefined) return null;
-      if (Array.isArray(source)) return source;
-      if (typeof source === 'string') {
-        try {
-          return JSON.parse(source) || [];
-        } catch (error) {
-          console.log('Failed to parse favorites payload:', error);
-          return null;
-        }
-      }
-      return null;
-    };
-
-    let favoriteIds = null;
-    if (overrideDetails && Object.prototype.hasOwnProperty.call(overrideDetails, 'favorites')) {
-      favoriteIds = resolveFavoriteIds(overrideDetails.favorites);
-    }
-    if (favoriteIds === null && Object.prototype.hasOwnProperty.call(tokenPayload || {}, 'favorites')) {
-      favoriteIds = resolveFavoriteIds(tokenPayload?.favorites);
-    }
-    if (
-      favoriteIds === null &&
-      Object.prototype.hasOwnProperty.call(sanitizedExistingUserDetails || {}, 'favorites')
-    ) {
-      favoriteIds = resolveFavoriteIds(sanitizedExistingUserDetails?.favorites);
-    }
-    if (favoriteIds === null) {
-      favoriteIds = [];
-    }
-
-    const parseUserNotifications = (notifications) => {
-      if (typeof notifications !== 'string') {
-        return notifications;
-      }
-
+  const handleTokenRefreshed = useCallback(
+    async (authData, options = {}) => {
+      startLoading();
       try {
-        return JSON.parse(notifications);
+        const refreshedUser = authData?.data ?? authData;
+        if (!refreshedUser) {
+          return;
+        }
+
+        const {
+          overrideUserDetails: overrideDetailsInput = null,
+          profilePhoto: explicitProfilePhoto,
+        } = options;
+
+        const existingUser = userRef.current || {};
+        const existingUserDetails = existingUser.userDetails || {};
+
+        const sanitizedExistingUserDetails = sanitizeStringRecord(existingUserDetails);
+        const rawTokenPayload =
+          refreshedUser?.signInUserSession?.idToken?.payload ||
+          refreshedUser?.signInUserSession?.accessToken?.payload ||
+          {};
+        const tokenPayload = sanitizeStringRecord(rawTokenPayload);
+        const overrideDetails = overrideDetailsInput ? sanitizeStringRecord(overrideDetailsInput) : null;
+
+        const resolveFavoriteIds = (source) => {
+          if (source === undefined) return null;
+          if (Array.isArray(source)) return source;
+          if (typeof source === 'string') {
+            try {
+              return JSON.parse(source) || [];
+            } catch (error) {
+              console.log('Failed to parse favorites payload:', error);
+              return null;
+            }
+          }
+          return null;
+        };
+
+        let favoriteIds = null;
+        if (overrideDetails && Object.prototype.hasOwnProperty.call(overrideDetails, 'favorites')) {
+          favoriteIds = resolveFavoriteIds(overrideDetails.favorites);
+        }
+        if (favoriteIds === null && Object.prototype.hasOwnProperty.call(tokenPayload || {}, 'favorites')) {
+          favoriteIds = resolveFavoriteIds(tokenPayload?.favorites);
+        }
+        if (
+          favoriteIds === null &&
+          Object.prototype.hasOwnProperty.call(sanitizedExistingUserDetails || {}, 'favorites')
+        ) {
+          favoriteIds = resolveFavoriteIds(sanitizedExistingUserDetails?.favorites);
+        }
+        if (favoriteIds === null) {
+          favoriteIds = [];
+        }
+
+        const parseUserNotifications = (notifications) => {
+          if (typeof notifications !== 'string') {
+            return notifications;
+          }
+
+          try {
+            return JSON.parse(notifications);
+          } catch (error) {
+            console.log('Failed to parse user notifications from refreshed token payload:', error);
+            return notifications;
+          }
+        };
+
+        const baseUserDetails = {
+          ...sanitizedExistingUserDetails,
+          ...tokenPayload,
+        };
+
+        if (tokenPayload?.userNotifications) {
+          baseUserDetails.userNotifications = parseUserNotifications(tokenPayload.userNotifications);
+        } else if (typeof sanitizedExistingUserDetails.userNotifications === 'string') {
+          baseUserDetails.userNotifications = parseUserNotifications(
+            sanitizedExistingUserDetails.userNotifications
+          );
+        }
+
+        const mergedUserDetails = overrideDetails
+          ? sanitizeStringRecord({
+              ...baseUserDetails,
+              ...overrideDetails,
+            })
+          : baseUserDetails;
+
+        const resolvedEmail = pickFirstValidString(
+          overrideDetails?.email,
+          mergedUserDetails?.email,
+          sanitizedExistingUserDetails?.email,
+          existingUser?.email,
+          tokenPayload?.email,
+          refreshedUser?.attributes?.email
+        );
+
+        if (resolvedEmail) {
+          mergedUserDetails.email = resolvedEmail;
+        } else if (mergedUserDetails.email && !normalizeOptionalString(mergedUserDetails.email)) {
+          delete mergedUserDetails.email;
+        }
+
+        const resolvedUsername = pickFirstValidString(
+          overrideDetails?.username,
+          mergedUserDetails?.username,
+          sanitizedExistingUserDetails?.username,
+          existingUser?.username,
+          refreshedUser?.username,
+          tokenPayload?.['cognito:username'],
+          tokenPayload?.preferred_username,
+          tokenPayload?.username,
+          resolvedEmail
+        );
+
+        if (resolvedUsername) {
+          mergedUserDetails.username = resolvedUsername;
+        } else if (
+          mergedUserDetails.username &&
+          !normalizeOptionalString(mergedUserDetails.username)
+        ) {
+          delete mergedUserDetails.username;
+        }
+
+        const resolvedProfilePhoto =
+          explicitProfilePhoto !== undefined
+            ? explicitProfilePhoto
+            : profilePhotoRef.current ?? existingUser.profilePhoto ?? null;
+
+        const updatedUser = {
+          ...existingUser,
+          ...refreshedUser,
+          ...tokenPayload,
+          userDetails: mergedUserDetails,
+          profilePhoto: resolvedProfilePhoto,
+        };
+
+        if (resolvedEmail) {
+          updatedUser.email = resolvedEmail;
+        } else if (updatedUser.email && !normalizeOptionalString(updatedUser.email)) {
+          delete updatedUser.email;
+        }
+
+        if (resolvedUsername) {
+          updatedUser.username = resolvedUsername;
+          updatedUser.userDetails.username = resolvedUsername;
+        } else if (updatedUser.username && !normalizeOptionalString(updatedUser.username)) {
+          delete updatedUser.username;
+          if (
+            updatedUser.userDetails?.username &&
+            !normalizeOptionalString(updatedUser.userDetails.username)
+          ) {
+            delete updatedUser.userDetails.username;
+          }
+        }
+
+        profilePhotoRef.current = resolvedProfilePhoto ?? null;
+        userRef.current = updatedUser;
+
+        try {
+          const loadedShows = await getShowsWithFavorites(favoriteIds);
+          if (!loadedShows?.some((show) => show.isFavorite)) {
+            setDefaultShow('_universal');
+          }
+
+          const cleanedUser = { ...updatedUser };
+          delete cleanedUser.storage;
+          setUser(cleanedUser);
+          writeJSON('memeSRCUserDetails', cleanedUser);
+          writeJSON('memeSRCShows', loadedShows);
+          setShows(loadedShows);
+        } catch (error) {
+          console.log('Failed to refresh shows after token refresh:', error);
+          const cleanedUser = { ...updatedUser };
+          delete cleanedUser.storage;
+          setUser(cleanedUser);
+          writeJSON('memeSRCUserDetails', cleanedUser);
+        }
+      } finally {
+        stopLoading();
+      }
+    },
+    [setUser, setShows, setDefaultShow, startLoading, stopLoading]
+  );
+
+  const forceTokenRefresh = useCallback(
+    async (options = {}) => {
+      startLoading();
+      try {
+        const refreshedUser = await Auth.currentAuthenticatedUser({ bypassCache: true });
+        await handleTokenRefreshed(refreshedUser, options);
       } catch (error) {
-        console.log('Failed to parse user notifications from refreshed token payload:', error);
-        return notifications;
+        console.log('Failed to force token refresh after payment completion:', error);
+      } finally {
+        stopLoading();
       }
-    };
-
-    const baseUserDetails = {
-      ...sanitizedExistingUserDetails,
-      ...tokenPayload,
-    };
-
-    if (tokenPayload?.userNotifications) {
-      baseUserDetails.userNotifications = parseUserNotifications(tokenPayload.userNotifications);
-    } else if (typeof sanitizedExistingUserDetails.userNotifications === 'string') {
-      baseUserDetails.userNotifications = parseUserNotifications(
-        sanitizedExistingUserDetails.userNotifications
-      );
-    }
-
-    const mergedUserDetails = overrideDetails
-      ? sanitizeStringRecord({
-          ...baseUserDetails,
-          ...overrideDetails,
-        })
-      : baseUserDetails;
-
-    const resolvedEmail = pickFirstValidString(
-      overrideDetails?.email,
-      mergedUserDetails?.email,
-      sanitizedExistingUserDetails?.email,
-      existingUser?.email,
-      tokenPayload?.email,
-      refreshedUser?.attributes?.email
-    );
-
-    if (resolvedEmail) {
-      mergedUserDetails.email = resolvedEmail;
-    } else if (mergedUserDetails.email && !normalizeOptionalString(mergedUserDetails.email)) {
-      delete mergedUserDetails.email;
-    }
-
-    const resolvedUsername = pickFirstValidString(
-      overrideDetails?.username,
-      mergedUserDetails?.username,
-      sanitizedExistingUserDetails?.username,
-      existingUser?.username,
-      refreshedUser?.username,
-      tokenPayload?.['cognito:username'],
-      tokenPayload?.preferred_username,
-      tokenPayload?.username,
-      resolvedEmail
-    );
-
-    if (resolvedUsername) {
-      mergedUserDetails.username = resolvedUsername;
-    } else if (
-      mergedUserDetails.username &&
-      !normalizeOptionalString(mergedUserDetails.username)
-    ) {
-      delete mergedUserDetails.username;
-    }
-
-    const resolvedProfilePhoto =
-      explicitProfilePhoto !== undefined
-        ? explicitProfilePhoto
-        : profilePhotoRef.current ?? existingUser.profilePhoto ?? null;
-
-    const updatedUser = {
-      ...existingUser,
-      ...refreshedUser,
-      ...tokenPayload,
-      userDetails: mergedUserDetails,
-      profilePhoto: resolvedProfilePhoto,
-    };
-
-    if (resolvedEmail) {
-      updatedUser.email = resolvedEmail;
-    } else if (updatedUser.email && !normalizeOptionalString(updatedUser.email)) {
-      delete updatedUser.email;
-    }
-
-    if (resolvedUsername) {
-      updatedUser.username = resolvedUsername;
-      updatedUser.userDetails.username = resolvedUsername;
-    } else if (updatedUser.username && !normalizeOptionalString(updatedUser.username)) {
-      delete updatedUser.username;
-      if (updatedUser.userDetails?.username && !normalizeOptionalString(updatedUser.userDetails.username)) {
-        delete updatedUser.userDetails.username;
-      }
-    }
-
-    profilePhotoRef.current = resolvedProfilePhoto ?? null;
-    userRef.current = updatedUser;
-
-    try {
-      const loadedShows = await getShowsWithFavorites(favoriteIds);
-      if (!loadedShows?.some((show) => show.isFavorite)) {
-        setDefaultShow('_universal');
-      }
-
-      const cleanedUser = { ...updatedUser };
-      delete cleanedUser.storage;
-      setUser(cleanedUser);
-      writeJSON('memeSRCUserDetails', cleanedUser);
-      writeJSON('memeSRCShows', loadedShows);
-      setShows(loadedShows);
-    } catch (error) {
-      console.log('Failed to refresh shows after token refresh:', error);
-      const cleanedUser = { ...updatedUser };
-      delete cleanedUser.storage;
-      setUser(cleanedUser);
-      writeJSON('memeSRCUserDetails', cleanedUser);
-    }
-  }, [setUser, setShows, setDefaultShow]);
-
-  const forceTokenRefresh = useCallback(async (options = {}) => {
-    try {
-      const refreshedUser = await Auth.currentAuthenticatedUser({ bypassCache: true });
-      await handleTokenRefreshed(refreshedUser, options);
-    } catch (error) {
-      console.log('Failed to force token refresh after payment completion:', error);
-    }
-  }, [handleTokenRefreshed]);
+    },
+    [handleTokenRefreshed, startLoading, stopLoading]
+  );
 
   useEffect(() => {
     forceTokenRefreshRef.current = forceTokenRefresh;
@@ -284,89 +325,93 @@ export default function GuestAuth(props) {
     setDefaultShow(show)
   }
 
-  const handleUpdateUserDetails = (newUserDetails) => new Promise((resolve, reject) => {
-      const sanitizedDetails = sanitizeStringRecord(newUserDetails || {});
+  const handleUpdateUserDetails = useCallback(
+    async (newUserDetails) => {
+      startLoading();
+      try {
+        const sanitizedDetails = sanitizeStringRecord(newUserDetails || {});
 
-      const favoritesSource = Object.prototype.hasOwnProperty.call(sanitizedDetails, 'favorites')
-        ? sanitizedDetails.favorites
-        : newUserDetails?.favorites;
+        const favoritesSource = Object.prototype.hasOwnProperty.call(sanitizedDetails, 'favorites')
+          ? sanitizedDetails.favorites
+          : newUserDetails?.favorites;
 
-      let favorites = [];
-      if (Array.isArray(favoritesSource)) {
-        favorites = favoritesSource;
-      } else if (typeof favoritesSource === 'string') {
-        try {
-          favorites = JSON.parse(favoritesSource) || [];
-        } catch (error) {
-          console.log('Failed to parse favorites from user details update:', error);
+        let favorites = [];
+        if (Array.isArray(favoritesSource)) {
+          favorites = favoritesSource;
+        } else if (typeof favoritesSource === 'string') {
+          try {
+            favorites = JSON.parse(favoritesSource) || [];
+          } catch (error) {
+            console.log('Failed to parse favorites from user details update:', error);
+          }
         }
+
+        const loadedShows = await getShowsWithFavorites(favorites);
+        if (!shows?.some((show) => show.isFavorite)) {
+          setDefaultShow('_universal');
+        }
+
+        const resolvedEmail = pickFirstValidString(
+          sanitizedDetails?.email,
+          user?.userDetails?.email,
+          user?.email
+        );
+        if (resolvedEmail) {
+          sanitizedDetails.email = resolvedEmail;
+        } else if (sanitizedDetails.email && !normalizeOptionalString(sanitizedDetails.email)) {
+          delete sanitizedDetails.email;
+        }
+
+        const resolvedUsername = pickFirstValidString(
+          sanitizedDetails?.username,
+          user?.userDetails?.username,
+          user?.username,
+          resolvedEmail
+        );
+        if (resolvedUsername) {
+          sanitizedDetails.username = resolvedUsername;
+        } else if (
+          sanitizedDetails.username &&
+          !normalizeOptionalString(sanitizedDetails.username)
+        ) {
+          delete sanitizedDetails.username;
+        }
+
+        const updatedUser = {
+          ...user,
+          userDetails: sanitizedDetails,
+          profilePhoto: profilePhotoRef.current,
+        };
+
+        if (resolvedEmail) {
+          updatedUser.email = resolvedEmail;
+        } else if (updatedUser.email && !normalizeOptionalString(updatedUser.email)) {
+          delete updatedUser.email;
+        }
+
+        if (resolvedUsername) {
+          updatedUser.username = resolvedUsername;
+        } else if (updatedUser.username && !normalizeOptionalString(updatedUser.username)) {
+          delete updatedUser.username;
+        }
+
+        profilePhotoRef.current = updatedUser.profilePhoto ?? null;
+        userRef.current = updatedUser;
+        setUser(updatedUser);
+        const clensedUser = { ...updatedUser };
+        delete clensedUser.storage;
+        writeJSON('memeSRCUserDetails', clensedUser);
+        writeJSON('memeSRCShows', loadedShows);
+        setShows(loadedShows);
+      } catch (error) {
+        console.log(error);
+        throw error;
+      } finally {
+        stopLoading();
       }
-
-      getShowsWithFavorites(favorites)
-        .then((loadedShows) => {
-          if (!shows?.some((show) => show.isFavorite)) {
-            setDefaultShow('_universal');
-          }
-
-          const resolvedEmail = pickFirstValidString(
-            sanitizedDetails?.email,
-            user?.userDetails?.email,
-            user?.email
-          );
-          if (resolvedEmail) {
-            sanitizedDetails.email = resolvedEmail;
-          } else if (sanitizedDetails.email && !normalizeOptionalString(sanitizedDetails.email)) {
-            delete sanitizedDetails.email;
-          }
-
-          const resolvedUsername = pickFirstValidString(
-            sanitizedDetails?.username,
-            user?.userDetails?.username,
-            user?.username,
-            resolvedEmail
-          );
-          if (resolvedUsername) {
-            sanitizedDetails.username = resolvedUsername;
-          } else if (
-            sanitizedDetails.username &&
-            !normalizeOptionalString(sanitizedDetails.username)
-          ) {
-            delete sanitizedDetails.username;
-          }
-
-          const updatedUser = {
-            ...user,
-            userDetails: sanitizedDetails,
-            profilePhoto: profilePhotoRef.current,
-          };
-
-          if (resolvedEmail) {
-            updatedUser.email = resolvedEmail;
-          } else if (updatedUser.email && !normalizeOptionalString(updatedUser.email)) {
-            delete updatedUser.email;
-          }
-
-          if (resolvedUsername) {
-            updatedUser.username = resolvedUsername;
-          } else if (updatedUser.username && !normalizeOptionalString(updatedUser.username)) {
-            delete updatedUser.username;
-          }
-
-          profilePhotoRef.current = updatedUser.profilePhoto ?? null;
-          userRef.current = updatedUser;
-          setUser(updatedUser);
-          const clensedUser = { ...updatedUser };
-          delete clensedUser.storage;
-          writeJSON('memeSRCUserDetails', clensedUser);
-          writeJSON('memeSRCShows', loadedShows);
-          setShows(loadedShows);
-          resolve();
-        })
-        .catch((error) => {
-          console.log(error);
-          reject(error);
-        });
-    });
+    },
+    [startLoading, stopLoading, shows, user, setDefaultShow, setUser, setShows]
+  );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -396,8 +441,10 @@ export default function GuestAuth(props) {
       setDefaultShow(hasFavorites ? localStorageDefaultShow || '_universal' : '_universal');
     }
 
-    Auth.currentAuthenticatedUser()
-      .then(async (currentUser) => {
+    const initialiseAuthState = async () => {
+      startLoading();
+      try {
+        const currentUser = await Auth.currentAuthenticatedUser();
         try {
           const profilePhotoUrl = await fetchProfilePhoto();
           await handleTokenRefreshed(currentUser, { profilePhoto: profilePhotoUrl ?? null });
@@ -405,23 +452,26 @@ export default function GuestAuth(props) {
           console.log('Failed to initialise authenticated user state:', error);
           await handleTokenRefreshed(currentUser, { profilePhoto: null });
         }
-      })
-      .catch(() => {
-        getShowsWithFavorites()
-          .then((loadedShows) => {
-            if (!shows?.some((show) => show.isFavorite)) {
-              setDefaultShow('_universal');
-            }
-            setUser(false); // indicate the context is ready but user is not auth'd
-            safeRemoveItem('memeSRCUserInfo');
-            writeJSON('memeSRCShows', loadedShows);
-            setShows(loadedShows);
+      } catch (error) {
+        try {
+          const loadedShows = await getShowsWithFavorites();
+          if (!shows?.some((show) => show.isFavorite)) {
             setDefaultShow('_universal');
-          })
-          .catch((error) => {
-            console.log(error);
-          });
-      });
+          }
+          setUser(false); // indicate the context is ready but user is not auth'd
+          safeRemoveItem('memeSRCUserInfo');
+          writeJSON('memeSRCShows', loadedShows);
+          setShows(loadedShows);
+          setDefaultShow('_universal');
+        } catch (loadError) {
+          console.log(loadError);
+        }
+      } finally {
+        stopLoading();
+      }
+    };
+
+    initialiseAuthState();
   }, [location.pathname, user])
 
   useEffect(() => {
@@ -429,7 +479,7 @@ export default function GuestAuth(props) {
   }, [showFeed]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh }}>
+    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh, isUserLoading }}>
       {props.children}
     </UserContext.Provider>
   )

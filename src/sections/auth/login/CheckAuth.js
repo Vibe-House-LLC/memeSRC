@@ -22,6 +22,7 @@ export default function CheckAuth(props) {
     }
     return storedPreference !== 'false';
   });
+  const [isUserLoading, setIsUserLoading] = useState(false);
   const location = useLocation();
   const userGroups = user?.['cognito:groups'];
   const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
@@ -30,11 +31,34 @@ export default function CheckAuth(props) {
   const userRef = useRef(null);
   const paymentRefreshTriggeredRef = useRef(false);
   const hasAttemptedAuthRef = useRef(false);
+  const loadingCounterRef = useRef(0);
+  const isMountedRef = useRef(true);
+
+  const startLoading = useCallback(() => {
+    loadingCounterRef.current += 1;
+    if (loadingCounterRef.current === 1 && isMountedRef.current) {
+      setIsUserLoading(true);
+    }
+  }, [setIsUserLoading]);
+
+  const stopLoading = useCallback(() => {
+    loadingCounterRef.current = Math.max(loadingCounterRef.current - 1, 0);
+    if (loadingCounterRef.current === 0 && isMountedRef.current) {
+      setIsUserLoading(false);
+    }
+  }, [setIsUserLoading]);
 
   useEffect(() => {
     profilePhotoRef.current = user?.profilePhoto ?? null;
     userRef.current = user;
   }, [user]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const userDetails = safeGetItem('memeSRCUserDetails')
@@ -54,143 +78,160 @@ export default function CheckAuth(props) {
     }
   }, [user])
 
-  const handleTokenRefreshed = useCallback(async (authData, options = {}) => {
-    const refreshedUser = authData?.data ?? authData;
-    if (!refreshedUser) {
-      return;
-    }
-
-    const {
-      overrideUserDetails: overrideDetailsInput = null,
-      profilePhoto: explicitProfilePhoto,
-    } = options;
-
-    const existingUser = userRef.current || {};
-    const existingUserDetails = existingUser.userDetails || {};
-
-    const sanitizedExistingUserDetails = sanitizeStringRecord(existingUserDetails);
-    const rawTokenPayload =
-      refreshedUser?.signInUserSession?.idToken?.payload ||
-      refreshedUser?.signInUserSession?.accessToken?.payload ||
-      {};
-    const tokenPayload = sanitizeStringRecord(rawTokenPayload);
-    const overrideDetails = overrideDetailsInput ? sanitizeStringRecord(overrideDetailsInput) : null;
-
-    const parseUserNotifications = (notifications) => {
-      if (typeof notifications !== 'string') {
-        return notifications;
-      }
-
+  const handleTokenRefreshed = useCallback(
+    async (authData, options = {}) => {
+      startLoading();
       try {
-        return JSON.parse(notifications);
+        const refreshedUser = authData?.data ?? authData;
+        if (!refreshedUser) {
+          return;
+        }
+
+        const {
+          overrideUserDetails: overrideDetailsInput = null,
+          profilePhoto: explicitProfilePhoto,
+        } = options;
+
+        const existingUser = userRef.current || {};
+        const existingUserDetails = existingUser.userDetails || {};
+
+        const sanitizedExistingUserDetails = sanitizeStringRecord(existingUserDetails);
+        const rawTokenPayload =
+          refreshedUser?.signInUserSession?.idToken?.payload ||
+          refreshedUser?.signInUserSession?.accessToken?.payload ||
+          {};
+        const tokenPayload = sanitizeStringRecord(rawTokenPayload);
+        const overrideDetails = overrideDetailsInput ? sanitizeStringRecord(overrideDetailsInput) : null;
+
+        const parseUserNotifications = (notifications) => {
+          if (typeof notifications !== 'string') {
+            return notifications;
+          }
+
+          try {
+            return JSON.parse(notifications);
+          } catch (error) {
+            console.log('Failed to parse user notifications from refreshed token payload:', error);
+            return notifications;
+          }
+        };
+
+        const baseUserDetails = {
+          ...sanitizedExistingUserDetails,
+          ...tokenPayload,
+        };
+
+        if (tokenPayload?.userNotifications) {
+          baseUserDetails.userNotifications = parseUserNotifications(tokenPayload.userNotifications);
+        } else if (typeof sanitizedExistingUserDetails.userNotifications === 'string') {
+          baseUserDetails.userNotifications = parseUserNotifications(
+            sanitizedExistingUserDetails.userNotifications
+          );
+        }
+
+        const mergedUserDetails = overrideDetails
+          ? sanitizeStringRecord({
+              ...baseUserDetails,
+              ...overrideDetails,
+            })
+          : baseUserDetails;
+
+        const resolvedEmail = pickFirstValidString(
+          overrideDetails?.email,
+          mergedUserDetails?.email,
+          sanitizedExistingUserDetails?.email,
+          existingUser?.email,
+          tokenPayload?.email,
+          refreshedUser?.attributes?.email
+        );
+
+        if (resolvedEmail) {
+          mergedUserDetails.email = resolvedEmail;
+        } else if (mergedUserDetails.email && !normalizeOptionalString(mergedUserDetails.email)) {
+          delete mergedUserDetails.email;
+        }
+
+        const resolvedUsername = pickFirstValidString(
+          overrideDetails?.username,
+          mergedUserDetails?.username,
+          sanitizedExistingUserDetails?.username,
+          existingUser?.username,
+          refreshedUser?.username,
+          tokenPayload?.['cognito:username'],
+          tokenPayload?.preferred_username,
+          tokenPayload?.username,
+          resolvedEmail
+        );
+
+        if (resolvedUsername) {
+          mergedUserDetails.username = resolvedUsername;
+        } else if (
+          mergedUserDetails.username &&
+          !normalizeOptionalString(mergedUserDetails.username)
+        ) {
+          delete mergedUserDetails.username;
+        }
+
+        const resolvedProfilePhoto =
+          explicitProfilePhoto !== undefined
+            ? explicitProfilePhoto
+            : profilePhotoRef.current ?? existingUser.profilePhoto ?? null;
+
+        const updatedUser = {
+          ...existingUser,
+          ...refreshedUser,
+          ...tokenPayload,
+          userDetails: mergedUserDetails,
+          profilePhoto: resolvedProfilePhoto,
+        };
+
+        if (resolvedEmail) {
+          updatedUser.email = resolvedEmail;
+        } else if (updatedUser.email && !normalizeOptionalString(updatedUser.email)) {
+          delete updatedUser.email;
+        }
+
+        if (resolvedUsername) {
+          updatedUser.username = resolvedUsername;
+          updatedUser.userDetails.username = resolvedUsername;
+        } else if (updatedUser.username && !normalizeOptionalString(updatedUser.username)) {
+          delete updatedUser.username;
+          if (
+            updatedUser.userDetails?.username &&
+            !normalizeOptionalString(updatedUser.userDetails.username)
+          ) {
+            delete updatedUser.userDetails.username;
+          }
+        }
+
+        profilePhotoRef.current = resolvedProfilePhoto ?? null;
+        userRef.current = updatedUser;
+
+        const clensedUser = { ...updatedUser };
+        delete clensedUser.storage;
+        setUser(clensedUser);
+        writeJSON('memeSRCUserDetails', clensedUser);
+      } finally {
+        stopLoading();
+      }
+    },
+    [setUser, startLoading, stopLoading]
+  );
+
+  const forceTokenRefresh = useCallback(
+    async (options = {}) => {
+      startLoading();
+      try {
+        const refreshedUser = await Auth.currentAuthenticatedUser({ bypassCache: true });
+        await handleTokenRefreshed(refreshedUser, options);
       } catch (error) {
-        console.log('Failed to parse user notifications from refreshed token payload:', error);
-        return notifications;
+        console.log('Failed to force token refresh after payment completion:', error);
+      } finally {
+        stopLoading();
       }
-    };
-
-    const baseUserDetails = {
-      ...sanitizedExistingUserDetails,
-      ...tokenPayload,
-    };
-
-    if (tokenPayload?.userNotifications) {
-      baseUserDetails.userNotifications = parseUserNotifications(tokenPayload.userNotifications);
-    } else if (typeof sanitizedExistingUserDetails.userNotifications === 'string') {
-      baseUserDetails.userNotifications = parseUserNotifications(
-        sanitizedExistingUserDetails.userNotifications
-      );
-    }
-
-    const mergedUserDetails = overrideDetails
-      ? sanitizeStringRecord({
-          ...baseUserDetails,
-          ...overrideDetails,
-        })
-      : baseUserDetails;
-
-    const resolvedEmail = pickFirstValidString(
-      overrideDetails?.email,
-      mergedUserDetails?.email,
-      sanitizedExistingUserDetails?.email,
-      existingUser?.email,
-      tokenPayload?.email,
-      refreshedUser?.attributes?.email
-    );
-
-    if (resolvedEmail) {
-      mergedUserDetails.email = resolvedEmail;
-    } else if (mergedUserDetails.email && !normalizeOptionalString(mergedUserDetails.email)) {
-      delete mergedUserDetails.email;
-    }
-
-    const resolvedUsername = pickFirstValidString(
-      overrideDetails?.username,
-      mergedUserDetails?.username,
-      sanitizedExistingUserDetails?.username,
-      existingUser?.username,
-      refreshedUser?.username,
-      tokenPayload?.['cognito:username'],
-      tokenPayload?.preferred_username,
-      tokenPayload?.username,
-      resolvedEmail
-    );
-
-    if (resolvedUsername) {
-      mergedUserDetails.username = resolvedUsername;
-    } else if (
-      mergedUserDetails.username &&
-      !normalizeOptionalString(mergedUserDetails.username)
-    ) {
-      delete mergedUserDetails.username;
-    }
-
-    const resolvedProfilePhoto =
-      explicitProfilePhoto !== undefined
-        ? explicitProfilePhoto
-        : profilePhotoRef.current ?? existingUser.profilePhoto ?? null;
-
-    const updatedUser = {
-      ...existingUser,
-      ...refreshedUser,
-      ...tokenPayload,
-      userDetails: mergedUserDetails,
-      profilePhoto: resolvedProfilePhoto,
-    };
-
-    if (resolvedEmail) {
-      updatedUser.email = resolvedEmail;
-    } else if (updatedUser.email && !normalizeOptionalString(updatedUser.email)) {
-      delete updatedUser.email;
-    }
-
-    if (resolvedUsername) {
-      updatedUser.username = resolvedUsername;
-      updatedUser.userDetails.username = resolvedUsername;
-    } else if (updatedUser.username && !normalizeOptionalString(updatedUser.username)) {
-      delete updatedUser.username;
-      if (updatedUser.userDetails?.username && !normalizeOptionalString(updatedUser.userDetails.username)) {
-        delete updatedUser.userDetails.username;
-      }
-    }
-
-    profilePhotoRef.current = resolvedProfilePhoto ?? null;
-    userRef.current = updatedUser;
-
-    const clensedUser = { ...updatedUser };
-    delete clensedUser.storage;
-    setUser(clensedUser);
-    writeJSON('memeSRCUserDetails', clensedUser);
-  }, [setUser]);
-
-  const forceTokenRefresh = useCallback(async (options = {}) => {
-    try {
-      const refreshedUser = await Auth.currentAuthenticatedUser({ bypassCache: true });
-      await handleTokenRefreshed(refreshedUser, options);
-    } catch (error) {
-      console.log('Failed to force token refresh after payment completion:', error);
-    }
-  }, [handleTokenRefreshed]);
+    },
+    [handleTokenRefreshed, startLoading, stopLoading]
+  );
 
   useEffect(() => {
     const listener = (capsule) => {
@@ -247,8 +288,10 @@ export default function CheckAuth(props) {
       setUser(localStorageUser);
     }
 
-    Auth.currentAuthenticatedUser()
-      .then(async (currentUser) => {
+    const initialiseAuthState = async () => {
+      startLoading();
+      try {
+        const currentUser = await Auth.currentAuthenticatedUser();
         try {
           const profilePhotoUrl = await fetchProfilePhoto();
           await handleTokenRefreshed(currentUser, { profilePhoto: profilePhotoUrl ?? null });
@@ -262,8 +305,7 @@ export default function CheckAuth(props) {
         // Amplify.configure({
         //     "aws_appsync_authenticationType": "AMAZON_COGNITO_USER_POOLS",
         // });
-      })
-      .catch(() => {
+      } catch (error) {
         setUser({ username: false }); // indicate the context is ready but user is not auth'd
         safeRemoveItem('memeSRCUserInfo');
         console.log("There wasn't an authenticated user found");
@@ -271,7 +313,12 @@ export default function CheckAuth(props) {
         // Amplify.configure({
         //     "aws_appsync_authenticationType": "API_KEY",
         // });
-      });
+      } finally {
+        stopLoading();
+      }
+    };
+
+    initialiseAuthState();
   }, [user]);
 
   useEffect(() => {
@@ -279,7 +326,7 @@ export default function CheckAuth(props) {
   }, [showFeed]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh }}>
+    <UserContext.Provider value={{ user, setUser, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh, isUserLoading }}>
       {content}
     </UserContext.Provider>
   )
