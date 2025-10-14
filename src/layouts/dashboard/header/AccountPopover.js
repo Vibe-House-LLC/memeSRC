@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
-import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover, Switch } from '@mui/material';
+import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover, Switch, CircularProgress } from '@mui/material';
 import { AutoFixHigh, Person } from '@mui/icons-material';
 // mocks_
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -43,6 +43,7 @@ export default function AccountPopover() {
   const isPro = userDetails?.user?.userDetails?.magicSubscription === 'true';
   const username = userDetails?.user?.userDetails?.username || userDetails?.user?.userDetails?.email || userDetails?.user?.username || 'U';
   const avatarLetter = username.charAt(0).toUpperCase();
+  const isLoadingProfile = Boolean(userDetails?.isUserLoading);
 
   const handleShowFeedToggle = (event, checked) => {
     event.stopPropagation();
@@ -90,82 +91,94 @@ export default function AccountPopover() {
   }
 
 
+  const loadingSpinner = (
+    <CircularProgress
+      size={18}
+      thickness={5}
+      sx={{
+        color: 'rgba(255, 255, 255, 0.88)',
+      }}
+    />
+  );
+
+  const accountButton = userDetails?.user ? (
+    <IconButton
+      onClick={handleOpen}
+      aria-label="account options"
+      sx={{
+        p: 0.5,
+        width: 44,
+        height: 44,
+        ...(open && {
+          '&:before': {
+            zIndex: 1,
+            content: "''",
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            position: 'absolute',
+            bgcolor: (theme) => alpha(theme.palette.grey[900], 0.8),
+          },
+        }),
+      }}
+    >
+      <Avatar
+        {...(userDetails?.user?.profilePhoto && { src: userDetails?.user?.profilePhoto })}
+        alt={username}
+        sx={{
+          width: 36,
+          height: 36,
+          bgcolor: 'primary.main',
+          fontSize: '1rem',
+          fontWeight: 600,
+          border: (theme) => (isPro
+            ? `2px solid ${theme.palette.primary.main}`
+            : `2px solid ${alpha(theme.palette.common.white, 0.2)}`),
+        }}
+      >
+        {isLoadingProfile ? loadingSpinner : avatarLetter}
+      </Avatar>
+    </IconButton>
+  ) : (
+    <IconButton
+      onClick={handleOpen}
+      aria-label="account options"
+      sx={{
+        p: 0.5,
+        width: 44,
+        height: 44,
+        ...(open && {
+          '&:before': {
+            zIndex: 1,
+            content: "''",
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            position: 'absolute',
+            bgcolor: (theme) => alpha(theme.palette.grey[900], 0.8),
+          },
+        }),
+      }}
+    >
+      <Avatar
+        alt="Guest"
+        sx={{
+          width: 36,
+          height: 36,
+          bgcolor: 'grey.600',
+          fontSize: '1rem',
+          fontWeight: 600,
+          border: (theme) => `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
+        }}
+      >
+        {isLoadingProfile ? loadingSpinner : null}
+      </Avatar>
+    </IconButton>
+  );
+
   return (
     <>
-      {userDetails?.user &&
-        <IconButton
-          onClick={handleOpen}
-          aria-label="account options"
-          sx={{
-            p: 0.5,
-            width: 44,
-            height: 44,
-            ...(open && {
-              '&:before': {
-                zIndex: 1,
-                content: "''",
-                width: '100%',
-                height: '100%',
-                borderRadius: '50%',
-                position: 'absolute',
-                bgcolor: (theme) => alpha(theme.palette.grey[900], 0.8),
-              },
-            }),
-          }}
-        >
-          <Avatar
-            {...(userDetails?.user?.profilePhoto && { src: userDetails?.user?.profilePhoto })}
-            alt={username}
-            sx={{
-              width: 36,
-              height: 36,
-              bgcolor: 'primary.main',
-              fontSize: '1rem',
-              fontWeight: 600,
-              border: (theme) => isPro
-                ? `2px solid ${theme.palette.primary.main}`
-                : `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
-            }}
-          >
-            {avatarLetter}
-          </Avatar>
-        </IconButton>
-      }
-
-      {!(userDetails?.user) &&
-        <IconButton
-          onClick={handleOpen}
-          aria-label="account options"
-          sx={{
-            p: 0.5,
-            width: 44,
-            height: 44,
-            ...(open && {
-              '&:before': {
-                zIndex: 1,
-                content: "''",
-                width: '100%',
-                height: '100%',
-                borderRadius: '50%',
-                position: 'absolute',
-                bgcolor: (theme) => alpha(theme.palette.grey[900], 0.8),
-              },
-            }),
-          }}
-        >
-          <Avatar
-            alt="Guest"
-            sx={{
-              width: 36,
-              height: 36,
-              bgcolor: 'grey.600',
-              fontSize: '1rem',
-              fontWeight: 600,
-              border: (theme) => `2px solid ${alpha(theme.palette.common.white, 0.2)}`,
-            }}
-          />
-        </IconButton>
-      }
+      {accountButton}
 
       {open &&
         <Popover
