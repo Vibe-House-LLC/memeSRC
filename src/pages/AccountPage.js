@@ -89,12 +89,13 @@ const AccountPage = () => {
       const response = await API.get('publicapi', '/user/update/listInvoices', {
         ...(lastInvoiceId ? { body: { lastInvoice: lastInvoiceId } } : {}),
       });
-      if (typeof response.latestSubscriptionStatus !== 'undefined') {
-        setLatestSubscriptionStatus(response?.latestSubscriptionStatus);
-      }
 
       if (fetchSequenceRef.current !== requestSequence) {
         return;
+      }
+
+      if (typeof response.latestSubscriptionStatus !== 'undefined') {
+        setLatestSubscriptionStatus(response?.latestSubscriptionStatus);
       }
 
       const fetchedInvoices = response.data || [];
