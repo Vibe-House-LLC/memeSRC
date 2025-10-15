@@ -93,11 +93,11 @@ const AccountPage = () => {
       const fetchedInvoices = response.data || [];
       setInvoices((prev) => (lastInvoiceId ? [...prev, ...fetchedInvoices] : fetchedInvoices));
       setHasMore(response.has_more || false);
-      setHasLoadedSubscriptionData(true);
     } catch (error) {
       console.error('Error fetching invoices:', error);
     } finally {
       isFetchingInvoicesRef.current = false;
+      setHasLoadedSubscriptionData(true);
       setLoadingInvoices(false);
     }
   };
