@@ -55,6 +55,7 @@ const AccountPage = () => {
   const isAuthLoading = authUser === null || typeof authUser === 'undefined';
 
   const hasInitializedDataRef = useRef(false);
+  const isFetchingInvoicesRef = useRef(false);
 
   useEffect(() => {
     if (hasInitializedDataRef.current) {
@@ -72,9 +73,16 @@ const AccountPage = () => {
   }, [isAuthLoading, hasUserDetails]);
 
   const fetchInvoices = async () => {
+    if (isFetchingInvoicesRef.current) {
+      return;
+    }
+
+    isFetchingInvoicesRef.current = true;
+    setLoadingInvoices(true);
+
+    const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1].id : null;
+
     try {
-      setLoadingInvoices(true);
-      const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1].id : null;
       const response = await API.get('publicapi', '/user/update/listInvoices', {
         ...(lastInvoiceId ? { body: { lastInvoice: lastInvoiceId } } : {}),
       });
@@ -85,10 +93,11 @@ const AccountPage = () => {
       const fetchedInvoices = response.data || [];
       setInvoices((prev) => (lastInvoiceId ? [...prev, ...fetchedInvoices] : fetchedInvoices));
       setHasMore(response.has_more || false);
+      setHasLoadedSubscriptionData(true);
     } catch (error) {
       console.error('Error fetching invoices:', error);
     } finally {
-      setHasLoadedSubscriptionData(true);
+      isFetchingInvoicesRef.current = false;
       setLoadingInvoices(false);
     }
   };
