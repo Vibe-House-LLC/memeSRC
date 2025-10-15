@@ -7,6 +7,7 @@ import { CollageProvider } from './contexts/CollageContext';
 import Router from './routes';
 // theme
 import ThemeProvider from './theme';
+import DesktopProcessingProvider from './contexts/DesktopProcessingProvider';
 import SnackBar from './utils/Snackbar';
 import StripeWatcher from './utils/StripeWatcher';
 
@@ -33,9 +34,11 @@ export default function App() {
             {/* <FeaturePopover> */}
             <SearchDetailsProvider>
               <CollageProvider>
-                {/* <FeatureSectionPopover> */}
+                <DesktopProcessingProvider>
+                  {/* <FeatureSectionPopover> */}
                   <Router />
-                {/* </FeatureSectionPopover> */}
+                  {/* </FeatureSectionPopover> */}
+                </DesktopProcessingProvider>
               </CollageProvider>
             </SearchDetailsProvider>
             {/* </FeaturePopover> */}
