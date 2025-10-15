@@ -330,7 +330,7 @@ const AccountPage = () => {
   const accountUsername = accountDetails.username || accountEmail;
   const isSubscriptionActive = latestSubscriptionStatus === 'active';
   const hasSubscription = Boolean(latestSubscriptionStatus && latestSubscriptionStatus !== 'canceled');
-  const isPro = hasSubscription;
+  const isPro = !(latestSubscriptionStatus === 'canceled' || latestSubscriptionStatus === null);
   const hasPaymentIssue = accountDetails.subscriptionStatus === 'failedPayment';
   const shouldShowSubscriptionWarning = hasSubscription && !isSubscriptionActive;
   const shouldShowPaymentIssueAlert = hasPaymentIssue && !shouldShowSubscriptionWarning;
