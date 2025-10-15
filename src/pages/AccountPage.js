@@ -939,8 +939,24 @@ const AccountPage = () => {
             </Box>
           )}
 
+          <Button
+            variant="text"
+            onClick={() => navigate('/support')}
+            sx={{
+              alignSelf: 'flex-start',
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              color: 'primary.light',
+              textTransform: 'none',
+              px: 3,
+              py: 0,
+            }}
+          >
+            Need help? Click here.
+          </Button>
+
           {/* Sign Out */}
-          <Box sx={{ pt: 2 }}>
+          <Box sx={{ pt: 0 }}>
             <Divider sx={{ mb: 3 }} />
             <Button 
               variant="text" 
