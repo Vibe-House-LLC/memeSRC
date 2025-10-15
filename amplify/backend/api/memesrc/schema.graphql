@@ -96,7 +96,6 @@ type Episode @model @auth(
   name: String,
   season: Season @belongsTo
   subtitles: [Subtitle] @hasMany
-  contributors: [UserDetails] @manyToMany(relationName: "EpisodeContributors")
 }
 
 type Subtitle @model @auth(
@@ -239,7 +238,6 @@ type UserDetails @model @auth(
   favorites: AWSJSON
   seriesContributions: [Series] @manyToMany(relationName: "SeriesContributors")
   seasonContributions: [Season] @manyToMany(relationName: "SeasonContributors")
-  episodeContributions: [Episode] @manyToMany(relationName: "EpisodeContributors")
 }
 
 type StripeCustomer @model @auth(
