@@ -56,6 +56,7 @@ const AccountPage = () => {
 
   const hasInitializedDataRef = useRef(false);
   const isFetchingInvoicesRef = useRef(false);
+  const fetchSequenceRef = useRef(0);
 
   useEffect(() => {
     if (hasInitializedDataRef.current) {
@@ -80,25 +81,70 @@ const AccountPage = () => {
     isFetchingInvoicesRef.current = true;
     setLoadingInvoices(true);
 
-    const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1].id : null;
+    const lastInvoiceId = invoices.length > 0 ? invoices[invoices.length - 1]?.id : null;
+    const requestSequence = fetchSequenceRef.current + 1;
+    fetchSequenceRef.current = requestSequence;
 
     try {
       const response = await API.get('publicapi', '/user/update/listInvoices', {
         ...(lastInvoiceId ? { body: { lastInvoice: lastInvoiceId } } : {}),
       });
       if (typeof response.latestSubscriptionStatus !== 'undefined') {
-        setLatestSubscriptionStatus(response.latestSubscriptionStatus);
+        setLatestSubscriptionStatus(response?.latestSubscriptionStatus);
+      }
+
+      if (fetchSequenceRef.current !== requestSequence) {
+        return;
       }
 
       const fetchedInvoices = response.data || [];
-      setInvoices((prev) => (lastInvoiceId ? [...prev, ...fetchedInvoices] : fetchedInvoices));
+      setInvoices((prev) => {
+        if (lastInvoiceId === null) {
+          return fetchedInvoices;
+        }
+
+        if (!prev.length) {
+          return fetchedInvoices;
+        }
+
+        const prevLastId = prev[prev.length - 1]?.id;
+
+        if (prevLastId !== lastInvoiceId) {
+          return prev;
+        }
+
+        const seenIds = new Set(prev.map((invoice) => invoice?.id).filter(Boolean));
+        const merged = [...prev];
+
+        fetchedInvoices.forEach((invoice) => {
+          if (!invoice) {
+            return;
+          }
+
+          const invoiceId = invoice.id;
+
+          if (invoiceId && seenIds.has(invoiceId)) {
+            return;
+          }
+
+          if (invoiceId) {
+            seenIds.add(invoiceId);
+          }
+
+          merged.push(invoice);
+        });
+
+        return merged;
+      });
       setHasMore(response.has_more || false);
+      setHasLoadedSubscriptionData(true);
     } catch (error) {
       console.error('Error fetching invoices:', error);
     } finally {
-      isFetchingInvoicesRef.current = false;
-      setHasLoadedSubscriptionData(true);
-      setLoadingInvoices(false);
+      if (fetchSequenceRef.current === requestSequence) {
+        isFetchingInvoicesRef.current = false;
+        setLoadingInvoices(false);
+      }
     }
   };
 
