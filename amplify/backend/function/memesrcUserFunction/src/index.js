@@ -2833,15 +2833,27 @@ export const handler = async (event) => {
         // The user is subscribed and has a customer id. Let's get and return their invoices.
         // You can optionally pass the last invoice as the "ending_before" for pagination.
         // The response should include "has_more": true if there are more to get.
-        const invoices = await stripe.invoices.list({
-          limit: 12,
-          ...(body.lastInvoice && { ending_before: body.lastInvoice }),
-          customer: stripeCustomerId
-        });
+        const [invoices, subscriptions] = await Promise.all([
+          stripe.invoices.list({
+            limit: 12,
+            ...(body.lastInvoice && { ending_before: body.lastInvoice }),
+            customer: stripeCustomerId
+          }),
+          stripe.subscriptions.list({
+            customer: stripeCustomerId,
+            limit: 1,
+            status: 'all'
+          })
+        ]);
+
+        const latestSubscriptionStatus = subscriptions?.data?.[0]?.status || null;
 
         response = {
           statusCode: 200,
-          body: invoices,
+          body: {
+            ...invoices,
+            latestSubscriptionStatus,
+          },
         };
 
       } else {
