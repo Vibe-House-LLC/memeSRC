@@ -287,6 +287,7 @@ const AccountPage = () => {
   const isPro = hasSubscription;
   const hasPaymentIssue = accountDetails.subscriptionStatus === 'failedPayment';
   const shouldShowSubscriptionWarning = hasSubscription && !isSubscriptionActive;
+  const shouldShowPaymentIssueAlert = hasPaymentIssue && !shouldShowSubscriptionWarning;
 
   const formatAmount = (invoice) => {
     const amount = invoice.amount_paid || invoice.total || 0;
@@ -563,7 +564,7 @@ const AccountPage = () => {
           </Card>
 
           {/* Payment Issue Alert */}
-          {hasPaymentIssue && (
+          {shouldShowPaymentIssueAlert && (
             <Alert 
               severity="error" 
               variant="filled"
