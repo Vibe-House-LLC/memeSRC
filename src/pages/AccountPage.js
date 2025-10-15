@@ -38,6 +38,8 @@ const AccountPage = () => {
   const [invoices, setInvoices] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
+  const [latestSubscriptionStatus, setLatestSubscriptionStatus] = useState(null);
+  const [hasLoadedSubscriptionData, setHasLoadedSubscriptionData] = useState(false);
   const [loadingPortalUrl, setLoadingPortalUrl] = useState(false);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -76,11 +78,17 @@ const AccountPage = () => {
       const response = await API.get('publicapi', '/user/update/listInvoices', {
         ...(lastInvoiceId ? { body: { lastInvoice: lastInvoiceId } } : {}),
       });
-      setInvoices((prev) => [...prev, ...(response.data || [])]);
+      if (typeof response.latestSubscriptionStatus !== 'undefined') {
+        setLatestSubscriptionStatus(response.latestSubscriptionStatus);
+      }
+
+      const fetchedInvoices = response.data || [];
+      setInvoices((prev) => (lastInvoiceId ? [...prev, ...fetchedInvoices] : fetchedInvoices));
       setHasMore(response.has_more || false);
-      setLoadingInvoices(false);
     } catch (error) {
       console.error('Error fetching invoices:', error);
+    } finally {
+      setHasLoadedSubscriptionData(true);
       setLoadingInvoices(false);
     }
   };
@@ -265,8 +273,11 @@ const AccountPage = () => {
   const accountDetails = authUser.userDetails;
   const accountEmail = accountDetails.email || 'N/A';
   const accountUsername = accountDetails.username || accountEmail;
-  const isPro = accountDetails.magicSubscription === 'true';
+  const isSubscriptionActive = latestSubscriptionStatus === 'active';
+  const hasSubscription = Boolean(latestSubscriptionStatus && latestSubscriptionStatus !== 'canceled');
+  const isPro = hasSubscription;
   const hasPaymentIssue = accountDetails.subscriptionStatus === 'failedPayment';
+  const shouldShowSubscriptionWarning = hasSubscription && !isSubscriptionActive;
 
   const formatAmount = (invoice) => {
     const amount = invoice.amount_paid || invoice.total || 0;
@@ -284,6 +295,94 @@ const AccountPage = () => {
       day: 'numeric',
       year: 'numeric',
     }).format(new Date(timestamp * 1000));
+  };
+
+  const subscriptionStatusMeta = {
+    incomplete: {
+      severity: 'warning',
+      message: 'Your subscription setup is incomplete. Update billing to finish getting access.',
+    },
+    incomplete_expired: {
+      severity: 'error',
+      message: 'Your subscription setup expired. Update billing to try again.',
+    },
+    trialing: {
+      severity: 'warning',
+      message: 'Your subscription is still in trial. Update billing to make sure you stay connected when it ends.',
+    },
+    past_due: {
+      severity: 'error',
+      message: 'Your payment is past due. Update billing to avoid losing access.',
+    },
+    unpaid: {
+      severity: 'error',
+      message: 'Your subscription payment failed. Update billing to restore access.',
+    },
+    paused: {
+      severity: 'warning',
+      message: 'Your subscription is paused. Update billing to get back in.',
+    },
+  };
+
+  const subscriptionStatusLabelMap = {
+    incomplete: 'Incomplete',
+    incomplete_expired: 'Setup Expired',
+    trialing: 'Trialing',
+    active: 'Active',
+    past_due: 'Past Due',
+    canceled: 'Canceled',
+    unpaid: 'Unpaid',
+    paused: 'Paused',
+  };
+
+  const subscriptionStatusLabel = latestSubscriptionStatus
+    ? subscriptionStatusLabelMap[latestSubscriptionStatus] || latestSubscriptionStatus
+    : null;
+  const subscriptionStatusAlert = latestSubscriptionStatus
+    ? subscriptionStatusMeta[latestSubscriptionStatus]
+    : null;
+
+  const planStatusLabel = (() => {
+    if (!hasSubscription) {
+      if (latestSubscriptionStatus === 'canceled') {
+        return 'Canceled';
+      }
+      return 'Free';
+    }
+    if (hasPaymentIssue) return 'Payment Issue';
+    if (isSubscriptionActive) return 'Active';
+    if (subscriptionStatusLabel) return subscriptionStatusLabel;
+    return 'Status Pending';
+  })();
+
+  const planStatusColor = (() => {
+    if (!hasSubscription) return 'default';
+    if (hasPaymentIssue) return 'error';
+    if (isSubscriptionActive) return 'success';
+    return subscriptionStatusAlert?.severity === 'error' ? 'error' : 'warning';
+  })();
+
+  const planStatusIcon = hasSubscription && !hasPaymentIssue && isSubscriptionActive ? <CheckCircleIcon /> : undefined;
+  const manageSubscriptionButtonLabel = isSubscriptionActive ? 'Manage Subscription' : 'Update Billing';
+  const shouldShowBillingHistory = hasSubscription || invoices.length > 0;
+  const isSubscriptionDataLoading = !hasLoadedSubscriptionData;
+  const planCardStyles = {
+    borderRadius: 4,
+    background: (theme) => hasSubscription
+      ? `linear-gradient(135deg, ${alpha(theme.palette.primary.dark, 0.2)} 0%, ${alpha(theme.palette.secondary.dark, 0.4)} 100%)`
+      : theme.palette.background.paper,
+    border: (theme) => hasSubscription ? `1px solid ${alpha(theme.palette.primary.main, 0.3)}` : undefined,
+    position: 'relative',
+    overflow: 'hidden',
+    '&::before': hasSubscription ? {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '4px',
+      background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
+    } : {},
   };
 
   return (
@@ -435,15 +534,19 @@ const AccountPage = () => {
                     flexWrap="wrap"
                     justifyContent={{ xs: 'center', sm: 'flex-start' }}
                   >
-                    <Chip
-                      icon={isPro ? <StarIcon sx={{ fontSize: 16 }} /> : undefined}
-                      label={isPro ? 'Pro Member' : 'Free Account'}
-                      color={isPro ? 'primary' : 'default'}
-                      sx={{ 
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                      }}
-                    />
+                    {isSubscriptionDataLoading ? (
+                      <Skeleton variant="rounded" width={120} height={32} sx={{ borderRadius: 16 }} />
+                    ) : (
+                      <Chip
+                        icon={isPro ? <StarIcon sx={{ fontSize: 16 }} /> : undefined}
+                        label={isPro ? 'Pro Member' : 'Free Account'}
+                        color={isPro ? 'primary' : 'default'}
+                        sx={{ 
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    )}
                   </Stack>
                 </Box>
               </Stack>
@@ -465,159 +568,185 @@ const AccountPage = () => {
             </Alert>
           )}
 
+          {shouldShowSubscriptionWarning && (
+            <Alert
+              severity={subscriptionStatusAlert?.severity || 'warning'}
+              variant="filled"
+              icon={<CreditCardIcon />}
+              action={
+                <Button color="inherit" size="small" onClick={openCustomerPortal}>
+                  Update Billing
+                </Button>
+              }
+              sx={{
+                borderRadius: 3,
+                fontWeight: 500,
+              }}
+            >
+              {subscriptionStatusAlert?.message || `Your subscription status is ${subscriptionStatusLabel || latestSubscriptionStatus}. Update billing to stay active.`}
+            </Alert>
+          )}
+
           {/* Plan Card - Premium Design */}
-          <Card 
-            sx={{ 
-              borderRadius: 4,
-              background: (theme) => isPro
-                ? `linear-gradient(135deg, ${alpha(theme.palette.primary.dark, 0.2)} 0%, ${alpha(theme.palette.secondary.dark, 0.4)} 100%)`
-                : theme.palette.background.paper,
-              border: (theme) => isPro ? `1px solid ${alpha(theme.palette.primary.main, 0.3)}` : undefined,
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': isPro ? {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
-              } : {},
-            }}
-          >
-            <Box sx={{ p: { xs: 3, sm: 5 } }}>
-              <Stack spacing={3}>
-                {/* Plan Header */}
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
-                  <Box>
-                    <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
-                      {isPro && (
-                        <Box
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 2,
-                            bgcolor: 'success.main',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+          {isSubscriptionDataLoading ? (
+            <Card sx={planCardStyles}>
+              <Box sx={{ p: { xs: 3, sm: 5 } }}>
+                <Stack spacing={3}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+                    <Box sx={{ width: '100%' }}>
+                      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
+                        <Skeleton variant="circular" width={32} height={32} />
+                        <Skeleton variant="text" width={80} height={32} sx={{ borderRadius: 1 }} />
+                        <Skeleton variant="rounded" width={96} height={28} />
+                      </Stack>
+                      <Skeleton variant="text" width="80%" height={24} sx={{ borderRadius: 1 }} />
+                      <Skeleton variant="text" width="60%" height={24} sx={{ borderRadius: 1, mt: 1 }} />
+                    </Box>
+                  </Stack>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <Skeleton variant="rounded" height={48} sx={{ flex: 1, borderRadius: 2 }} />
+                    <Skeleton variant="rounded" height={48} sx={{ flex: 1, borderRadius: 2 }} />
+                    <Skeleton variant="rounded" height={48} sx={{ flex: 1, borderRadius: 2, display: { xs: 'none', sm: 'block' } }} />
+                  </Stack>
+                  <Skeleton variant="rounded" height={56} sx={{ borderRadius: 2 }} />
+                </Stack>
+              </Box>
+            </Card>
+          ) : (
+            <Card sx={planCardStyles}>
+              <Box sx={{ p: { xs: 3, sm: 5 } }}>
+                <Stack spacing={3}>
+                  {/* Plan Header */}
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+                    <Box>
+                      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
+                        {isPro && (
+                          <Box
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 2,
+                              bgcolor: 'success.main',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <StarIcon sx={{ fontSize: 20, color: 'common.black' }} />
+                          </Box>
+                        )}
+                        <Typography 
+                          variant="h4" 
+                          sx={{ 
+                            fontWeight: 700,
+                            fontSize: { xs: '1.5rem', sm: '1.75rem' },
                           }}
                         >
-                          <StarIcon sx={{ fontSize: 20, color: 'common.black' }} />
-                        </Box>
-                      )}
+                          {isPro ? 'Pro' : 'Free'}
+                        </Typography>
+                        <Chip
+                          icon={planStatusIcon}
+                          label={planStatusLabel}
+                          color={planStatusColor}
+                          sx={{ 
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            height: 28,
+                          }}
+                        />
+                      </Stack>
                       <Typography 
-                        variant="h4" 
+                        variant="body1" 
+                        color="text.secondary"
                         sx={{ 
-                          fontWeight: 700,
-                          fontSize: { xs: '1.5rem', sm: '1.75rem' },
+                          fontSize: { xs: '0.9375rem', sm: '1rem' },
+                          lineHeight: 1.6,
+                          maxWidth: '500px',
                         }}
                       >
-                        {isPro ? 'Pro' : 'Free'}
+                        {isPro
+                          ? 'Unlock the full power of memeSRC with ad-free browsing, priority support, and magic credits'
+                          : 'Upgrade to Pro and unlock premium features, magic credits, and an ad-free experience'}
                       </Typography>
-                      <Chip
-                        icon={isPro && !hasPaymentIssue ? <CheckCircleIcon /> : undefined}
-                        label={isPro ? (hasPaymentIssue ? 'Payment Issue' : 'Active') : 'Free'}
-                        color={isPro ? (hasPaymentIssue ? 'error' : 'success') : 'default'}
-                        sx={{ 
-                          fontWeight: 700,
-                          fontSize: '0.75rem',
-                          height: 28,
-                        }}
-                      />
-                    </Stack>
-                    <Typography 
-                      variant="body1" 
-                      color="text.secondary"
-                      sx={{ 
-                        fontSize: { xs: '0.9375rem', sm: '1rem' },
-                        lineHeight: 1.6,
-                        maxWidth: '500px',
+                    </Box>
+                  </Stack>
+
+                  {/* Features List for Pro */}
+                  {isPro && (
+                    <Stack 
+                      direction={{ xs: 'column', sm: 'row' }} 
+                      spacing={2}
+                      sx={{
+                        p: 2.5,
+                        borderRadius: 2,
+                        bgcolor: (theme) => alpha(theme.palette.background.paper, 0.4),
                       }}
                     >
-                      {isPro
-                        ? 'Unlock the full power of memeSRC with ad-free browsing, priority support, and magic credits'
-                        : 'Upgrade to Pro and unlock premium features, magic credits, and an ad-free experience'}
-                    </Typography>
+                      {[
+                        'Ad-free experience',
+                        'Magic credits',
+                        'Priority support',
+                      ].map((feature, idx) => (
+                        <Stack key={idx} direction="row" alignItems="center" spacing={1} flex={1}>
+                          <CheckCircleIcon sx={{ fontSize: 18, color: 'success.main' }} />
+                          <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                            {feature}
+                          </Typography>
+                        </Stack>
+                      ))}
+                    </Stack>
+                  )}
+
+                  {/* Action Button */}
+                  <Box>
+                    {isPro ? (
+                      <LoadingButton
+                        variant="outlined"
+                        loading={loadingPortalUrl}
+                        onClick={openCustomerPortal}
+                        size="large"
+                        fullWidth
+                        sx={{ 
+                          py: 1.75,
+                          fontSize: '0.9375rem',
+                          fontWeight: 600,
+                          borderRadius: 2,
+                          borderWidth: 2,
+                          '&:hover': {
+                            borderWidth: 2,
+                          }
+                        }}
+                      >
+                        {manageSubscriptionButtonLabel}
+                      </LoadingButton>
+                    ) : (
+                      <Button 
+                        variant="contained" 
+                        onClick={openSubscriptionDialog}
+                        size="large"
+                        fullWidth
+                        sx={{ 
+                          py: 1.75,
+                          fontSize: '0.9375rem',
+                          fontWeight: 600,
+                          borderRadius: 2,
+                          background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                          '&:hover': {
+                            background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.darker} 100%)`,
+                          }
+                        }}
+                      >
+                        Upgrade to Pro
+                      </Button>
+                    )}
                   </Box>
                 </Stack>
-
-                {/* Features List for Pro */}
-                {isPro && (
-                  <Stack 
-                    direction={{ xs: 'column', sm: 'row' }} 
-                    spacing={2}
-                    sx={{
-                      p: 2.5,
-                      borderRadius: 2,
-                      bgcolor: (theme) => alpha(theme.palette.background.paper, 0.4),
-                    }}
-                  >
-                    {[
-                      'Ad-free experience',
-                      'Magic credits',
-                      'Priority support',
-                    ].map((feature, idx) => (
-                      <Stack key={idx} direction="row" alignItems="center" spacing={1} flex={1}>
-                        <CheckCircleIcon sx={{ fontSize: 18, color: 'success.main' }} />
-                        <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                          {feature}
-                        </Typography>
-                      </Stack>
-                    ))}
-                  </Stack>
-                )}
-
-                {/* Action Button */}
-                <Box>
-                  {isPro ? (
-                    <LoadingButton
-                      variant="outlined"
-                      loading={loadingPortalUrl}
-                      onClick={openCustomerPortal}
-                      size="large"
-                      fullWidth
-                      sx={{ 
-                        py: 1.75,
-                        fontSize: '0.9375rem',
-                        fontWeight: 600,
-                        borderRadius: 2,
-                        borderWidth: 2,
-                        '&:hover': {
-                          borderWidth: 2,
-                        }
-                      }}
-                    >
-                      Manage Subscription
-                    </LoadingButton>
-                  ) : (
-                    <Button 
-                      variant="contained" 
-                      onClick={openSubscriptionDialog}
-                      size="large"
-                      fullWidth
-                      sx={{ 
-                        py: 1.75,
-                        fontSize: '0.9375rem',
-                        fontWeight: 600,
-                        borderRadius: 2,
-                        background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                        '&:hover': {
-                          background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.darker} 100%)`,
-                        }
-                      }}
-                    >
-                      Upgrade to Pro
-                    </Button>
-                  )}
-                </Box>
-              </Stack>
-            </Box>
-          </Card>
+              </Box>
+            </Card>
+          )}
 
           {/* Billing History */}
-          {isPro && (
+          {shouldShowBillingHistory && (
             <Box>
               <Stack 
                 direction="row" 
@@ -767,42 +896,44 @@ const AccountPage = () => {
                     )}
                   </>
                 ) : (
-                  <Card 
-                    sx={{ 
-                      borderRadius: 3,
-                      border: (theme) => `2px dashed ${alpha(theme.palette.divider, 0.3)}`,
-                      bgcolor: 'transparent',
-                    }}
-                  >
-                    <Box sx={{ p: 6, textAlign: 'center' }}>
-                      <Box
-                        sx={{
-                          width: 64,
-                          height: 64,
-                          borderRadius: 3,
-                          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mb: 2,
-                        }}
-                      >
-                        <ReceiptIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+                  isPro && (
+                    <Card 
+                      sx={{ 
+                        borderRadius: 3,
+                        border: (theme) => `2px dashed ${alpha(theme.palette.divider, 0.3)}`,
+                        bgcolor: 'transparent',
+                      }}
+                    >
+                      <Box sx={{ p: 6, textAlign: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: 3,
+                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mb: 2,
+                          }}
+                        >
+                          <ReceiptIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+                        </Box>
+                        <Typography 
+                          variant="h6" 
+                          sx={{ mb: 0.5, fontWeight: 600 }}
+                        >
+                          No invoices yet
+                        </Typography>
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                        >
+                          Your billing history will appear here
+                        </Typography>
                       </Box>
-                      <Typography 
-                        variant="h6" 
-                        sx={{ mb: 0.5, fontWeight: 600 }}
-                      >
-                        No invoices yet
-                      </Typography>
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary"
-                      >
-                        Your billing history will appear here
-                      </Typography>
-                    </Box>
-                  </Card>
+                    </Card>
+                  )
                 )}
               </Stack>
             </Box>
