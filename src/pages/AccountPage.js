@@ -549,7 +549,7 @@ const AccountPage = () => {
                     ) : (
                       <Chip
                         icon={isPro ? <StarIcon sx={{ fontSize: 16 }} /> : undefined}
-                        label={isPro ? 'Pro Member' : 'Free Account'}
+                        label={isSubscriptionActive ? 'Pro Member' : 'Free Account'}
                         color={isPro ? 'primary' : 'default'}
                         sx={{ 
                           fontWeight: 600,
@@ -652,7 +652,7 @@ const AccountPage = () => {
                             fontSize: { xs: '1.5rem', sm: '1.75rem' },
                           }}
                         >
-                          {isPro ? 'Pro' : 'Free'}
+                          {isSubscriptionActive ? 'Pro' : 'Free'}
                         </Typography>
                         <Chip
                           icon={planStatusIcon}
