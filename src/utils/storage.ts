@@ -88,7 +88,23 @@ export const readJSON = <T>(key: string): T | null => {
 
 export const writeJSON = (key: string, value: unknown): boolean => {
   try {
-    const serialized = JSON.stringify(value);
+    const serialized = JSON.stringify(
+      value,
+      (propertyKey, propertyValue) => {
+        if (propertyKey === 'storage') {
+          return undefined;
+        }
+
+        if (
+          typeof Storage !== 'undefined' &&
+          propertyValue instanceof Storage
+        ) {
+          return undefined;
+        }
+
+        return propertyValue;
+      }
+    );
     return safeSetItem(key, serialized);
   } catch (error) {
     console.warn(`localStorage JSON stringify failed for key "${key}".`, error);
