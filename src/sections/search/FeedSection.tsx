@@ -33,6 +33,7 @@ interface ShowRecord {
   updatedAt?: string | null;
   isFavorite?: boolean | null;
   frameCount?: number | null;
+  emoji?: string | null;
 }
 
 type UserContextValue = {
@@ -138,6 +139,49 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
   const addedOnDisplay = addedOnTimestamp
     ? DATE_TIME_FORMATTER.format(new Date(addedOnTimestamp))
     : null;
+  const addedOnRelativeLabel = (() => {
+    if (!addedOnTimestamp) {
+      return null;
+    }
+
+    const elapsedMs = Date.now() - addedOnTimestamp;
+    if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
+      return 'Added: Just Now';
+    }
+
+    const hourMs = 60 * 60 * 1000;
+    const dayMs = 24 * hourMs;
+    const weekMs = 7 * dayMs;
+    const monthMs = 30 * dayMs;
+    const yearMs = 365 * dayMs;
+
+    const elapsedHours = Math.floor(elapsedMs / hourMs);
+    if (elapsedHours < 1) {
+      return 'Added: Just Now';
+    }
+
+    const elapsedYears = Math.floor(elapsedMs / yearMs);
+    if (elapsedYears >= 1) {
+      return `Added: ${elapsedYears}y Ago`;
+    }
+
+    const elapsedMonths = Math.floor(elapsedMs / monthMs);
+    if (elapsedMonths >= 1) {
+      return `Added: ${elapsedMonths}mo Ago`;
+    }
+
+    const elapsedWeeks = Math.floor(elapsedMs / weekMs);
+    if (elapsedWeeks >= 1) {
+      return `Added: ${elapsedWeeks}w Ago`;
+    }
+
+    const elapsedDays = Math.floor(elapsedMs / dayMs);
+    if (elapsedDays >= 1) {
+      return `Added: ${elapsedDays}d Ago`;
+    }
+
+    return `Added: ${elapsedHours}h Ago`;
+  })();
 
   useEffect(() => {
     setIsFavorite(Boolean(show.isFavorite));
@@ -160,36 +204,15 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
         pointerEvents: isRemoving ? 'none' : 'auto',
       }}
     >
-      <IconButton
-        aria-label={`Dismiss ${show.title || show.id}`}
-        onClick={handleDismiss}
-        size="small"
-        sx={{
-          position: 'absolute',
-          top: { xs: 10, sm: 10 },
-          right: { xs: 10, sm: 10 },
-          color: actionTextColor,
-          backgroundColor: alpha(actionFillColor, 0.25),
-          border: `1px solid ${alpha(actionFillColor, 0.35)}`,
-          backdropFilter: 'blur(12px)',
-          '&:hover': {
-            backgroundColor: alpha(actionFillColor, 0.28),
-          },
-        }}
-      >
-        <CloseIcon fontSize="small" />
-      </IconButton>
-      <Stack spacing={{ xs: 1.5 }} sx={{ width: '100%', mt: 1.2 }}>
-        <Box
-          sx={{
-            width: '100%',
-            display: 'grid',
-            gridTemplateColumns: '1fr auto 1fr',
-            alignItems: 'center',
-            columnGap: { xs: 0.5, sm: 0.75 },
-          }}
+
+      <Stack spacing={{ xs: 1 }} sx={{ width: '100%' }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          alignContent="center"
         >
-          <Box
+          {/* <Box
             sx={{
               display: 'flex',
               justifyContent: 'flex-end',
@@ -202,7 +225,24 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
               initialIsFavorite={isFavorite}
               onToggle={setIsFavorite}
             />
-          </Box>
+          </Box> */}
+
+          <IconButton
+            aria-label={`Dismiss ${show.title || show.id}`}
+            size="small"
+            sx={{
+              color: actionTextColor,
+              backgroundColor: alpha(actionFillColor, 0.25),
+              border: `1px solid ${alpha(actionFillColor, 0.35)}`,
+              backdropFilter: 'blur(12px)',
+              '&:hover': {
+                backgroundColor: alpha(actionFillColor, 0.25),
+                cursor: 'default',
+              },
+            }}
+          >
+            {show.emoji || '🆕'}
+          </IconButton>
           <Typography
             component="h3"
             variant="h3"
@@ -214,11 +254,28 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
               fontSize: { xs: '1.5rem', sm: '1.8rem' },
               lineHeight: { xs: 1.12, md: 1.08 },
               letterSpacing: { xs: -0.22, md: -0.28 },
+              pb: 0.5,
             }}
           >
             {show.title || show.id}
           </Typography>
-        </Box>
+          <IconButton
+            aria-label={`Dismiss ${show.title || show.id}`}
+            onClick={handleDismiss}
+            size="small"
+            sx={{
+              color: actionTextColor,
+              backgroundColor: alpha(actionFillColor, 0.25),
+              border: `1px solid ${alpha(actionFillColor, 0.35)}`,
+              backdropFilter: 'blur(12px)',
+              '&:hover': {
+                backgroundColor: alpha(actionFillColor, 0.28),
+              },
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
 
         <Stack
           direction="row"
@@ -227,6 +284,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
           sx={{
             flexWrap: 'wrap',
             gap: { xs: 1.6, sm: 2 },
+            pt: 2
           }}
         >
           <Button
@@ -261,11 +319,34 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
             fontWeight: 500,
             textAlign: 'center',
             pt: 1.5,
+            pb: 0,
+            mb: 0,
           }}
         >
           Search over {show.frameCount?.toLocaleString()} meme templates from {show.title}
         </Typography>
       </Stack>
+      {addedOnRelativeLabel ? (
+        <Box
+          component="span"
+          title={addedOnDisplay ?? undefined}
+          sx={{
+            display: 'inline-block',
+            width: 'fit-content',
+            px: { xs: 1.4, sm: 1.6 },
+            py: { xs: 0.6, sm: 0.65 },
+            borderRadius: 999,
+            color: actionTextColor,
+            backgroundColor: alpha(actionFillColor, 0.35),
+            border: `1px solid ${alpha(actionFillColor, 0.35)}`,
+            backdropFilter: 'blur(12px)',
+            fontSize: { xs: '0.78rem', sm: '0.8rem' },
+            fontWeight: 600,
+          }}
+        >
+          {addedOnRelativeLabel}
+        </Box>
+      ) : null}
     </FeedCardSurface>
   );
 }
