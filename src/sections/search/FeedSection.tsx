@@ -129,10 +129,10 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
 
   const backgroundColor = normalizeColorValue(show.colorMain) ?? DEFAULT_BACKGROUND;
   const baseForeground = normalizeColorValue(show.colorSecondary) ?? DEFAULT_FOREGROUND;
-  const textColor = isColorNearBlack(baseForeground) ? DEFAULT_FOREGROUND : baseForeground;
-  const isBackgroundDark = isColorNearBlack(backgroundColor);
-  const actionFillColor = isBackgroundDark ? '#ffffff' : '#000000';
-  const actionTextColor = isBackgroundDark ? '#000000' : '#ffffff';
+  const textColor = baseForeground;
+  const isBackgroundDark = isColorNearBlack(baseForeground || '#000000');
+  const actionFillColor = isBackgroundDark ? '#000000' : '#ffffff';
+  const actionTextColor = isBackgroundDark ? '#ffffff' : '#000000';
 
   const addedOnTimestamp = resolveSeriesTimestamp(show);
   const addedOnDisplay = addedOnTimestamp
@@ -168,8 +168,8 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
           position: 'absolute',
           top: { xs: 18, sm: 22 },
           right: { xs: 18, sm: 22 },
-          color: actionFillColor,
-          backgroundColor: alpha(actionFillColor, 0.16),
+          color: actionTextColor,
+          backgroundColor: alpha(actionFillColor, 0.25),
           border: `1px solid ${alpha(actionFillColor, 0.35)}`,
           backdropFilter: 'blur(12px)',
           '&:hover': {
