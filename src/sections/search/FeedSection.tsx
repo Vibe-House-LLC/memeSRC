@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
-import { alpha } from '@mui/material/styles';
+import { Box, Button, IconButton, Stack, Typography, useMediaQuery } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { Link as RouterLink } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
 import FavoriteToggle from '../../components/FavoriteToggle';
@@ -364,6 +364,8 @@ export default function FeedSection(): ReactElement | null {
   const [retainedIds, setRetainedIds] = useState<string[]>([]);
   const retainedSet = useMemo(() => new Set(retainedIds), [retainedIds]);
   const timeoutsRef = useRef<number[]>([]);
+  const theme = useTheme();
+  const isMd = useMediaQuery(theme.breakpoints.up('md'));
 
   useEffect(() => {
     const stored = safeGetItem(buildClearAllKey(userIdentifier));
@@ -512,11 +514,11 @@ export default function FeedSection(): ReactElement | null {
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        alignItems={{ xs: isMd ? 'flex-start' : 'flex-end', sm: 'center' }}
         spacing={{ xs: 1, sm: 2 }}
         sx={{ px: { xs: 3, sm: 0 } }}
       >
-        <Typography
+        {isMd && <Typography
           component="h2"
           variant="h5"
           sx={{
@@ -526,8 +528,8 @@ export default function FeedSection(): ReactElement | null {
             paddingLeft: { xs: 0.5, md: 0 },
           }}
         >
-          Recently Added
-        </Typography>
+          News Feed
+        </Typography>}
         <Button
           variant="text"
           size="small"
