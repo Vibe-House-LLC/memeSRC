@@ -853,9 +853,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Box>
           </Paper>
 
-          {isFeedEnabled && (
-            <FeedSection />
-          )}
+          <FeedSection />
         </Box>
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />

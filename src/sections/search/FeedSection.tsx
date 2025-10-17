@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { Link as RouterLink } from 'react-router-dom';
@@ -19,7 +19,7 @@ const FEED_CARD_WRAPPER_SX = {
 const DEFAULT_BACKGROUND = '#0f172a';
 const DEFAULT_FOREGROUND = '#f8fafc';
 const RECENT_SERIES_LIMIT = 12;
-const FEED_CLEAR_ALL_KEY_PREFIX = 'memesrcFeedClearAll';
+const CARD_EXIT_DURATION_MS = 360;
 const FEED_CLEAR_SINGLE_KEY_PREFIX = 'memesrcFeedClear';
 
 interface ShowRecord {
@@ -37,6 +37,7 @@ interface ShowRecord {
 type UserContextValue = {
   shows?: unknown;
   user?: MaybeUser | null | false | undefined;
+  setShowFeed?: (value: boolean) => void;
 };
 
 interface MaybeUserDetails {
@@ -100,10 +101,6 @@ function resolveUserIdentifier(user?: MaybeUser | null | false): string {
   return 'signedOutGuest';
 }
 
-function buildClearAllKey(identifier: string): string {
-  return `${FEED_CLEAR_ALL_KEY_PREFIX}-${sanitizeKeySegment(identifier)}`;
-}
-
 function buildShowDismissKey(showId: string, identifier: string): string {
   return `${FEED_CLEAR_SINGLE_KEY_PREFIX}-${sanitizeKeySegment(showId)}-${sanitizeKeySegment(identifier)}`;
 }
@@ -119,9 +116,10 @@ function parseStoredTimestamp(value: string | null): number | null {
 interface SeriesCardProps {
   show: ShowRecord;
   onDismiss: (show: ShowRecord) => void;
+  isRemoving: boolean;
 }
 
-function SeriesCard({ show, onDismiss }: SeriesCardProps): ReactElement {
+function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElement {
   const [isFavorite, setIsFavorite] = useState(Boolean(show.isFavorite));
 
   const backgroundColor = normalizeColorValue(show.colorMain) ?? DEFAULT_BACKGROUND;
@@ -151,6 +149,10 @@ function SeriesCard({ show, onDismiss }: SeriesCardProps): ReactElement {
         border: '1px solid rgba(255,255,255,0.18)',
         boxShadow: '0 32px 64px rgba(9,11,24,0.52)',
         color: textColor,
+        opacity: isRemoving ? 0 : 1,
+        transform: isRemoving ? 'translateY(-28px)' : 'translateY(0)',
+        transition: `opacity ${CARD_EXIT_DURATION_MS}ms ease, transform ${CARD_EXIT_DURATION_MS}ms ease` ,
+        pointerEvents: isRemoving ? 'none' : 'auto',
       }}
     >
       <IconButton
@@ -248,45 +250,21 @@ export default function FeedSection(): ReactElement | null {
   const contextValue = (useContext(UserContext) as unknown as UserContextValue) ?? {};
   const showsInput = Array.isArray(contextValue.shows) ? (contextValue.shows as ShowRecord[]) : [];
   const userIdentifier = useMemo(() => resolveUserIdentifier(contextValue.user), [contextValue.user]);
-  const [clearAllTimestamp, setClearAllTimestamp] = useState<number | null>(null);
+  const setShowFeed = typeof contextValue.setShowFeed === 'function' ? contextValue.setShowFeed : undefined;
   const [dismissalVersion, setDismissalVersion] = useState(0);
+  const [renderedShows, setRenderedShows] = useState<ShowRecord[]>([]);
+  const [removingIds, setRemovingIds] = useState<string[]>([]);
+  const removingSet = useMemo(() => new Set(removingIds), [removingIds]);
+  const [retainedIds, setRetainedIds] = useState<string[]>([]);
+  const retainedSet = useMemo(() => new Set(retainedIds), [retainedIds]);
+  const timeoutsRef = useRef<number[]>([]);
 
-  useEffect(() => {
-    const stored = safeGetItem(buildClearAllKey(userIdentifier));
-    const parsed = parseStoredTimestamp(stored);
-    setClearAllTimestamp(parsed);
-    setDismissalVersion((prev) => prev + 1);
-  }, [userIdentifier]);
-
-  const handleClearAll = useCallback(() => {
-    const isoValue = new Date().toISOString();
-    safeSetItem(buildClearAllKey(userIdentifier), isoValue);
-    const parsed = parseStoredTimestamp(isoValue) ?? Date.now();
-    setClearAllTimestamp(parsed);
-    setDismissalVersion((prev) => prev + 1);
-  }, [userIdentifier]);
-
-  const handleDismissShow = useCallback(
-    (show: ShowRecord) => {
-      if (!show.id) {
-        return;
-      }
-      const isoValue = new Date().toISOString();
-      safeSetItem(buildShowDismissKey(show.id, userIdentifier), isoValue);
-      setDismissalVersion((prev) => prev + 1);
-    },
-    [userIdentifier]
-  );
-
-  const orderedShows = useMemo(() => {
+  const eligibleShows = useMemo(() => {
     return [...showsInput]
       .filter((show): show is ShowRecord => Boolean(show && show.id && !show.id.startsWith('_')))
       .map((show) => ({ show, timestamp: resolveSeriesTimestamp(show) }))
       .sort((a, b) => b.timestamp - a.timestamp)
       .filter(({ show, timestamp }) => {
-        if (clearAllTimestamp && timestamp <= clearAllTimestamp) {
-          return false;
-        }
         const stored = safeGetItem(buildShowDismissKey(show.id, userIdentifier));
         const dismissedAt = parseStoredTimestamp(stored);
         if (dismissedAt && timestamp <= dismissedAt) {
@@ -296,9 +274,117 @@ export default function FeedSection(): ReactElement | null {
       })
       .slice(0, RECENT_SERIES_LIMIT)
       .map(({ show }) => show);
-  }, [showsInput, clearAllTimestamp, userIdentifier, dismissalVersion]);
+  }, [showsInput, userIdentifier, dismissalVersion]);
 
-  if (!orderedShows.length) {
+  useEffect(() => {
+    setRenderedShows((prev) => {
+      const prevMap = new Map(prev.map((item) => [item.id, item]));
+      const next: ShowRecord[] = [];
+      const added = new Set<string>();
+
+      eligibleShows.forEach((show) => {
+        if (!show.id || added.has(show.id)) {
+          return;
+        }
+        next.push(prevMap.get(show.id) ?? show);
+        added.add(show.id);
+      });
+
+      retainedSet.forEach((id) => {
+        if (added.has(id)) {
+          return;
+        }
+        const existing = prevMap.get(id) ?? showsInput.find((item) => item.id === id);
+        if (existing) {
+          next.push(existing);
+          added.add(id);
+        }
+      });
+
+      return next;
+    });
+  }, [eligibleShows, retainedSet, showsInput]);
+
+  useEffect(() => {
+    setShowFeed?.(eligibleShows.length > 0);
+  }, [eligibleShows, setShowFeed]);
+
+  useEffect(() => () => {
+    timeoutsRef.current.forEach((timeoutId) => {
+      window.clearTimeout(timeoutId);
+    });
+    timeoutsRef.current = [];
+  }, []);
+
+  const scheduleRemoval = useCallback(
+    (show: ShowRecord, delayMs: number, persist: () => void) => {
+      if (!show.id) {
+        return;
+      }
+
+      setRetainedIds((prev) => (prev.includes(show.id) ? prev : [...prev, show.id]));
+
+      const startTimeout = window.setTimeout(() => {
+        setRemovingIds((prev) => (prev.includes(show.id) ? prev : [...prev, show.id]));
+
+        const finalizeTimeout = window.setTimeout(() => {
+          persist();
+          setRenderedShows((prev) => prev.filter((item) => item.id !== show.id));
+          setRemovingIds((prev) => prev.filter((id) => id !== show.id));
+          setRetainedIds((prev) => prev.filter((id) => id !== show.id));
+        }, CARD_EXIT_DURATION_MS);
+
+        timeoutsRef.current.push(finalizeTimeout);
+      }, delayMs);
+
+      timeoutsRef.current.push(startTimeout);
+    },
+    []
+  );
+
+  const handleDismissShow = useCallback(
+    (show: ShowRecord) => {
+      if (!show.id || removingSet.has(show.id)) {
+        return;
+      }
+      scheduleRemoval(show, 0, () => {
+        const isoValue = new Date().toISOString();
+        safeSetItem(buildShowDismissKey(show.id, userIdentifier), isoValue);
+        setDismissalVersion((prev) => prev + 1);
+      });
+    },
+    [scheduleRemoval, removingSet, userIdentifier]
+  );
+
+  const handleClearAll = useCallback(() => {
+    if (!renderedShows.length) {
+      return;
+    }
+
+    const timestampIso = new Date().toISOString();
+    setDismissalVersion((prev) => prev + 1);
+
+    setRetainedIds((prev) => {
+      const next = new Set(prev);
+      renderedShows.forEach((show) => {
+        if (show.id) {
+          next.add(show.id);
+        }
+      });
+      return Array.from(next);
+    });
+
+    renderedShows.forEach((show) => {
+      scheduleRemoval(show, 0, () => {
+        safeSetItem(buildShowDismissKey(show.id, userIdentifier), timestampIso);
+        setDismissalVersion((prev) => prev + 1);
+      });
+    });
+  }, [renderedShows, scheduleRemoval, userIdentifier]);
+
+  const hasShows = renderedShows.length > 0;
+
+  if (!hasShows) {
     return null;
   }
 
@@ -327,6 +413,7 @@ export default function FeedSection(): ReactElement | null {
           variant="text"
           size="small"
           onClick={handleClearAll}
+          disabled={!hasShows}
           sx={{
             textTransform: 'none',
             fontWeight: 600,
@@ -335,16 +422,39 @@ export default function FeedSection(): ReactElement | null {
               color: '#f8fafc',
               backgroundColor: alpha('#f8fafc', 0.08),
             },
+            '&.Mui-disabled': {
+              color: alpha('#f8fafc', 0.32),
+            },
           }}
         >
           Clear All
         </Button>
       </Stack>
-      {orderedShows.map((show) => (
-        <Box key={show.id} sx={FEED_CARD_WRAPPER_SX}>
-          <SeriesCard show={show} onDismiss={handleDismissShow} />
-        </Box>
-      ))}
+      {hasShows ? (
+        renderedShows.map((show) => (
+          <Box
+            key={show.id}
+            sx={{
+              ...FEED_CARD_WRAPPER_SX,
+              transition: `transform ${CARD_EXIT_DURATION_MS}ms ease, opacity ${CARD_EXIT_DURATION_MS}ms ease`,
+            }}
+          >
+            <SeriesCard show={show} onDismiss={handleDismissShow} isRemoving={removingSet.has(show.id)} />
+          </Box>
+        ))
+      ) : (
+        <Typography
+          component="p"
+          variant="body2"
+          sx={{
+            color: alpha('#f8fafc', 0.72),
+            fontWeight: 500,
+            mt: { xs: 1, sm: 1.5 },
+          }}
+        >
+          No recent shows to display
+        </Typography>
+      )}
     </Stack>
   );
 }
