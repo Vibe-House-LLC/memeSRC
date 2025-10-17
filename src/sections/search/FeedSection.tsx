@@ -228,7 +228,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
               },
             }}
           >
-            {show.emoji || '🆕'}
+            {show.emoji || '🎬'}
           </IconButton>
           <Typography
             component="h3"
