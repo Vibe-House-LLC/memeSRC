@@ -4,6 +4,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { Link as RouterLink } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
 import FavoriteToggle from '../../components/FavoriteToggle';
+import useSearchDetails from '../../hooks/useSearchDetails';
 import { UserContext } from '../../UserContext';
 import { normalizeColorValue, isColorNearBlack } from '../../utils/colors';
 import { safeGetItem, safeSetItem } from '../../utils/storage';
@@ -356,6 +357,7 @@ export default function FeedSection(): ReactElement | null {
   const showsInput = Array.isArray(contextValue.shows) ? (contextValue.shows as ShowRecord[]) : [];
   const userIdentifier = useMemo(() => resolveUserIdentifier(contextValue.user), [contextValue.user]);
   const setShowFeed = typeof contextValue.setShowFeed === 'function' ? contextValue.setShowFeed : undefined;
+  const { show: activeSeriesId } = useSearchDetails();
   const [dismissalVersion, setDismissalVersion] = useState(0);
   const [clearAllTimestamp, setClearAllTimestamp] = useState<number | null>(null);
   const [renderedShows, setRenderedShows] = useState<ShowRecord[]>([]);
@@ -380,6 +382,9 @@ export default function FeedSection(): ReactElement | null {
       .map((show) => ({ show, timestamp: resolveSeriesTimestamp(show) }))
       .sort((a, b) => b.timestamp - a.timestamp)
       .filter(({ show, timestamp }) => {
+        if (activeSeriesId && show.id === activeSeriesId) {
+          return false;
+        }
         if (clearAllTimestamp && timestamp <= clearAllTimestamp) {
           return false;
         }
@@ -392,7 +397,7 @@ export default function FeedSection(): ReactElement | null {
       })
       .slice(0, RECENT_SERIES_LIMIT)
       .map(({ show }) => show);
-  }, [showsInput, userIdentifier, clearAllTimestamp, dismissalVersion]);
+  }, [showsInput, userIdentifier, clearAllTimestamp, dismissalVersion, activeSeriesId]);
 
   useEffect(() => {
     setRenderedShows((prev) => {
