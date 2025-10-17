@@ -1,10 +1,12 @@
-import { useContext, useEffect, useMemo, useState, type ReactElement } from 'react';
-import { Box, Button, Stack, Typography } from '@mui/material';
+import { useCallback, useContext, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { Link as RouterLink } from 'react-router-dom';
+import CloseIcon from '@mui/icons-material/Close';
 import FavoriteToggle from '../../components/FavoriteToggle';
 import { UserContext } from '../../UserContext';
 import { normalizeColorValue, isColorNearBlack } from '../../utils/colors';
+import { safeGetItem, safeSetItem } from '../../utils/storage';
 import { FeedCardSurface } from './cards/CardSurface';
 
 const FEED_CARD_WRAPPER_SX = {
@@ -17,6 +19,8 @@ const FEED_CARD_WRAPPER_SX = {
 const DEFAULT_BACKGROUND = '#0f172a';
 const DEFAULT_FOREGROUND = '#f8fafc';
 const RECENT_SERIES_LIMIT = 12;
+const FEED_CLEAR_ALL_KEY_PREFIX = 'memesrcFeedClearAll';
+const FEED_CLEAR_SINGLE_KEY_PREFIX = 'memesrcFeedClear';
 
 interface ShowRecord {
   id: string;
@@ -31,8 +35,22 @@ interface ShowRecord {
 }
 
 type UserContextValue = {
-  shows?: ShowRecord[];
+  shows?: unknown;
+  user?: MaybeUser | null | false | undefined;
 };
+
+interface MaybeUserDetails {
+  username?: string | null;
+  email?: string | null;
+  [key: string]: unknown;
+}
+
+interface MaybeUser {
+  username?: string | null;
+  userDetails?: MaybeUserDetails | null;
+  attributes?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -52,18 +70,66 @@ function resolveSeriesTimestamp(show: ShowRecord): number {
   return Math.max(coerceTimestamp(show.updatedAt), coerceTimestamp(show.createdAt));
 }
 
-interface SeriesCardProps {
-  show: ShowRecord;
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
-function SeriesCard({ show }: SeriesCardProps): ReactElement {
+function sanitizeKeySegment(value: string): string {
+  return value.replace(/[^0-9a-zA-Z_-]/g, '_');
+}
+
+function resolveUserIdentifier(user?: MaybeUser | null | false): string {
+  if (!user || typeof user !== 'object') {
+    return 'signedOutGuest';
+  }
+
+  const candidates: unknown[] = [
+    user.username,
+    user.userDetails?.username,
+    user.userDetails?.email,
+    (user.attributes as Record<string, unknown> | null | undefined)?.preferred_username,
+    (user.attributes as Record<string, unknown> | null | undefined)?.email,
+  ];
+
+  const match = candidates.find(isNonEmptyString) ?? null;
+
+  if (isNonEmptyString(match)) {
+    return sanitizeKeySegment(match.trim());
+  }
+
+  return 'signedOutGuest';
+}
+
+function buildClearAllKey(identifier: string): string {
+  return `${FEED_CLEAR_ALL_KEY_PREFIX}-${sanitizeKeySegment(identifier)}`;
+}
+
+function buildShowDismissKey(showId: string, identifier: string): string {
+  return `${FEED_CLEAR_SINGLE_KEY_PREFIX}-${sanitizeKeySegment(showId)}-${sanitizeKeySegment(identifier)}`;
+}
+
+function parseStoredTimestamp(value: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+interface SeriesCardProps {
+  show: ShowRecord;
+  onDismiss: (show: ShowRecord) => void;
+}
+
+function SeriesCard({ show, onDismiss }: SeriesCardProps): ReactElement {
   const [isFavorite, setIsFavorite] = useState(Boolean(show.isFavorite));
 
   const backgroundColor = normalizeColorValue(show.colorMain) ?? DEFAULT_BACKGROUND;
   const baseForeground = normalizeColorValue(show.colorSecondary) ?? DEFAULT_FOREGROUND;
   const textColor = isColorNearBlack(baseForeground) ? DEFAULT_FOREGROUND : baseForeground;
-  const buttonBackground = isColorNearBlack(baseForeground) ? DEFAULT_FOREGROUND : baseForeground;
-  const buttonTextColor = isColorNearBlack(buttonBackground) ? DEFAULT_FOREGROUND : DEFAULT_BACKGROUND;
+  const isBackgroundDark = isColorNearBlack(backgroundColor);
+  const actionFillColor = isBackgroundDark ? '#ffffff' : '#000000';
+  const actionTextColor = isBackgroundDark ? '#000000' : '#ffffff';
 
   const addedOnTimestamp = resolveSeriesTimestamp(show);
   const addedOnDisplay = addedOnTimestamp
@@ -74,6 +140,10 @@ function SeriesCard({ show }: SeriesCardProps): ReactElement {
     setIsFavorite(Boolean(show.isFavorite));
   }, [show.isFavorite]);
 
+  const handleDismiss = useCallback(() => {
+    onDismiss(show);
+  }, [onDismiss, show]);
+
   return (
     <FeedCardSurface
       gradient={backgroundColor}
@@ -83,6 +153,25 @@ function SeriesCard({ show }: SeriesCardProps): ReactElement {
         color: textColor,
       }}
     >
+      <IconButton
+        aria-label={`Dismiss ${show.title || show.id}`}
+        onClick={handleDismiss}
+        size="small"
+        sx={{
+          position: 'absolute',
+          top: { xs: 18, sm: 22 },
+          right: { xs: 18, sm: 22 },
+          color: actionFillColor,
+          backgroundColor: alpha(actionFillColor, 0.16),
+          border: `1px solid ${alpha(actionFillColor, 0.35)}`,
+          backdropFilter: 'blur(12px)',
+          '&:hover': {
+            backgroundColor: alpha(actionFillColor, 0.28),
+          },
+        }}
+      >
+        <CloseIcon fontSize="small" />
+      </IconButton>
       <Stack spacing={{ xs: 2.4, sm: 2.8 }} sx={{ width: '100%' }}>
         <Stack spacing={{ xs: 1.4, sm: 1.6 }}>
           <Typography
@@ -97,21 +186,6 @@ function SeriesCard({ show }: SeriesCardProps): ReactElement {
           >
             {show.title || show.id}
           </Typography>
-          {show.description && (
-            <Typography
-              component="p"
-              variant="body1"
-              sx={{
-                color: alpha(textColor, 0.9),
-                fontWeight: 500,
-                fontSize: { xs: '1.05rem', sm: '1.12rem' },
-                lineHeight: 1.56,
-                maxWidth: { xs: '100%', sm: 560 },
-              }}
-            >
-              {show.description}
-            </Typography>
-          )}
           {addedOnDisplay && (
             <Typography
               component="p"
@@ -146,11 +220,11 @@ function SeriesCard({ show }: SeriesCardProps): ReactElement {
               textTransform: 'none',
               fontWeight: 700,
               fontSize: { xs: '1rem', sm: '1.05rem' },
-              color: buttonTextColor,
-              backgroundColor: buttonBackground,
+              color: actionTextColor,
+              backgroundColor: actionFillColor,
               boxShadow: '0 18px 40px rgba(0,0,0,0.35)',
               '&:hover': {
-                backgroundColor: buttonBackground,
+                backgroundColor: actionFillColor,
                 opacity: 0.92,
               },
             }}
@@ -171,18 +245,58 @@ function SeriesCard({ show }: SeriesCardProps): ReactElement {
 }
 
 export default function FeedSection(): ReactElement | null {
-  const { shows } = (useContext(UserContext) as UserContextValue) ?? {};
+  const contextValue = (useContext(UserContext) as unknown as UserContextValue) ?? {};
+  const showsInput = Array.isArray(contextValue.shows) ? (contextValue.shows as ShowRecord[]) : [];
+  const userIdentifier = useMemo(() => resolveUserIdentifier(contextValue.user), [contextValue.user]);
+  const [clearAllTimestamp, setClearAllTimestamp] = useState<number | null>(null);
+  const [dismissalVersion, setDismissalVersion] = useState(0);
+
+  useEffect(() => {
+    const stored = safeGetItem(buildClearAllKey(userIdentifier));
+    const parsed = parseStoredTimestamp(stored);
+    setClearAllTimestamp(parsed);
+    setDismissalVersion((prev) => prev + 1);
+  }, [userIdentifier]);
+
+  const handleClearAll = useCallback(() => {
+    const isoValue = new Date().toISOString();
+    safeSetItem(buildClearAllKey(userIdentifier), isoValue);
+    const parsed = parseStoredTimestamp(isoValue) ?? Date.now();
+    setClearAllTimestamp(parsed);
+    setDismissalVersion((prev) => prev + 1);
+  }, [userIdentifier]);
+
+  const handleDismissShow = useCallback(
+    (show: ShowRecord) => {
+      if (!show.id) {
+        return;
+      }
+      const isoValue = new Date().toISOString();
+      safeSetItem(buildShowDismissKey(show.id, userIdentifier), isoValue);
+      setDismissalVersion((prev) => prev + 1);
+    },
+    [userIdentifier]
+  );
 
   const orderedShows = useMemo(() => {
-    if (!Array.isArray(shows)) {
-      return [];
-    }
-
-    return [...shows]
+    return [...showsInput]
       .filter((show): show is ShowRecord => Boolean(show && show.id && !show.id.startsWith('_')))
-      .sort((a, b) => resolveSeriesTimestamp(b) - resolveSeriesTimestamp(a))
-      .slice(0, RECENT_SERIES_LIMIT);
-  }, [shows]);
+      .map((show) => ({ show, timestamp: resolveSeriesTimestamp(show) }))
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .filter(({ show, timestamp }) => {
+        if (clearAllTimestamp && timestamp <= clearAllTimestamp) {
+          return false;
+        }
+        const stored = safeGetItem(buildShowDismissKey(show.id, userIdentifier));
+        const dismissedAt = parseStoredTimestamp(stored);
+        if (dismissedAt && timestamp <= dismissedAt) {
+          return false;
+        }
+        return true;
+      })
+      .slice(0, RECENT_SERIES_LIMIT)
+      .map(({ show }) => show);
+  }, [showsInput, clearAllTimestamp, userIdentifier, dismissalVersion]);
 
   if (!orderedShows.length) {
     return null;
@@ -190,9 +304,45 @@ export default function FeedSection(): ReactElement | null {
 
   return (
     <Stack spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 } }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        spacing={{ xs: 1, sm: 2 }}
+        sx={{ px: { xs: 3, sm: 0 } }}
+      >
+        <Typography
+          component="h2"
+          variant="h5"
+          sx={{
+            fontWeight: 700,
+            letterSpacing: -0.18,
+            color: '#f8fafc',
+            paddingLeft: { xs: 0.5, md: 0 },
+          }}
+        >
+          Recently Added
+        </Typography>
+        <Button
+          variant="text"
+          size="small"
+          onClick={handleClearAll}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+            color: alpha('#f8fafc', 0.9),
+            '&:hover': {
+              color: '#f8fafc',
+              backgroundColor: alpha('#f8fafc', 0.08),
+            },
+          }}
+        >
+          Clear All
+        </Button>
+      </Stack>
       {orderedShows.map((show) => (
         <Box key={show.id} sx={FEED_CARD_WRAPPER_SX}>
-          <SeriesCard show={show} />
+          <SeriesCard show={show} onDismiss={handleDismissShow} />
         </Box>
       ))}
     </Stack>
