@@ -166,8 +166,8 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
         size="small"
         sx={{
           position: 'absolute',
-          top: { xs: 18, sm: 22 },
-          right: { xs: 18, sm: 22 },
+          top: { xs: 10, sm: 10 },
+          right: { xs: 10, sm: 10 },
           color: actionTextColor,
           backgroundColor: alpha(actionFillColor, 0.25),
           border: `1px solid ${alpha(actionFillColor, 0.35)}`,
@@ -179,33 +179,46 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
       >
         <CloseIcon fontSize="small" />
       </IconButton>
-      <Stack spacing={{ xs: 2.4, sm: 2.8 }} sx={{ width: '100%' }}>
-        <Stack spacing={{ xs: 1.4, sm: 1.6 }}>
+      <Stack spacing={{ xs: 1.5 }} sx={{ width: '100%', mt: 1.2 }}>
+        <Box
+          sx={{
+            width: '100%',
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+            columnGap: { xs: 0.5, sm: 0.75 },
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              color: textColor,
+            }}
+          >
+            <FavoriteToggle
+              indexId={show.id}
+              initialIsFavorite={isFavorite}
+              onToggle={setIsFavorite}
+            />
+          </Box>
           <Typography
             component="h3"
             variant="h3"
             sx={{
+              gridColumn: 2,
+              justifySelf: 'center',
+              textAlign: 'center',
               fontWeight: 800,
-              fontSize: { xs: '1.9rem', sm: '2.3rem', md: '2.7rem' },
+              fontSize: { xs: '1.5rem', sm: '1.8rem' },
               lineHeight: { xs: 1.12, md: 1.08 },
               letterSpacing: { xs: -0.22, md: -0.28 },
             }}
           >
             {show.title || show.id}
           </Typography>
-          {addedOnDisplay && (
-            <Typography
-              component="p"
-              variant="body2"
-              sx={{
-                color: alpha(textColor, 0.72),
-                fontWeight: 500,
-              }}
-            >
-              Added {addedOnDisplay}
-            </Typography>
-          )}
-        </Stack>
+        </Box>
 
         <Stack
           direction="row"
@@ -218,6 +231,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
         >
           <Button
             component={RouterLink}
+            fullWidth
             to={`/${show.id}`}
             variant="contained"
             sx={{
@@ -238,14 +252,19 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
           >
             Search
           </Button>
-          <Box sx={{ display: 'flex', alignItems: 'center', color: textColor }}>
-            <FavoriteToggle
-              indexId={show.id}
-              initialIsFavorite={isFavorite}
-              onToggle={setIsFavorite}
-            />
-          </Box>
         </Stack>
+        <Typography
+          component="p"
+          variant="body1"
+          sx={{
+            color: textColor,
+            fontWeight: 500,
+            textAlign: 'center',
+            pt: 1.5,
+          }}
+        >
+          Search over {show.frameCount?.toLocaleString()} meme templates from {show.title}
+        </Typography>
       </Stack>
     </FeedCardSurface>
   );
