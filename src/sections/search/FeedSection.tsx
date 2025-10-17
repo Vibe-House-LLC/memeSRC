@@ -156,7 +156,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
         color: textColor,
         opacity: isRemoving ? 0 : 1,
         transform: isRemoving ? 'translateY(-28px)' : 'translateY(0)',
-        transition: `opacity ${CARD_EXIT_DURATION_MS}ms ease, transform ${CARD_EXIT_DURATION_MS}ms ease` ,
+        transition: `opacity ${CARD_EXIT_DURATION_MS}ms ease, transform ${CARD_EXIT_DURATION_MS}ms ease`,
         pointerEvents: isRemoving ? 'none' : 'auto',
       }}
     >
@@ -449,31 +449,17 @@ export default function FeedSection(): ReactElement | null {
           Clear All
         </Button>
       </Stack>
-      {hasShows ? (
-        renderedShows.map((show) => (
-          <Box
-            key={show.id}
-            sx={{
-              ...FEED_CARD_WRAPPER_SX,
-              transition: `transform ${CARD_EXIT_DURATION_MS}ms ease, opacity ${CARD_EXIT_DURATION_MS}ms ease`,
-            }}
-          >
-            <SeriesCard show={show} onDismiss={handleDismissShow} isRemoving={removingSet.has(show.id)} />
-          </Box>
-        ))
-      ) : (
-        <Typography
-          component="p"
-          variant="body2"
+      {renderedShows?.length > 0 && renderedShows.map((show) => (
+        <Box
+          key={show.id}
           sx={{
-            color: alpha('#f8fafc', 0.72),
-            fontWeight: 500,
-            mt: { xs: 1, sm: 1.5 },
+            ...FEED_CARD_WRAPPER_SX,
+            transition: `transform ${CARD_EXIT_DURATION_MS}ms ease, opacity ${CARD_EXIT_DURATION_MS}ms ease`,
           }}
         >
-          No recent shows to display
-        </Typography>
-      )}
+          <SeriesCard show={show} onDismiss={handleDismissShow} isRemoving={removingSet.has(show.id)} />
+        </Box>
+      ))}
     </Stack>
   );
 }
