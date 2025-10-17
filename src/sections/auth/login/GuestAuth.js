@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Auth, Hub } from 'aws-amplify';
 import PropTypes from "prop-types";
-import { UserContext } from '../../../UserContext';
+import { UserContext, STRIPE_REFRESH_STORAGE_KEY } from '../../../UserContext';
 import { getShowsWithFavorites } from "../../../utils/fetchShowsRevised";
 import { readJSON, safeGetItem, safeRemoveItem, safeSetItem, writeJSON } from '../../../utils/storage';
 import { fetchProfilePhoto } from '../../../utils/profilePhoto';
@@ -37,6 +37,8 @@ export default function GuestAuth(props) {
   const hasInitializedAuthRef = useRef(false);
   const loadingCounterRef = useRef(0);
   const isMountedRef = useRef(true);
+  const stripeRefreshIntervalRef = useRef(null);
+  const stripeRefreshInFlightRef = useRef(false);
 
   const startLoading = useCallback(() => {
     loadingCounterRef.current += 1;
@@ -286,6 +288,79 @@ export default function GuestAuth(props) {
     [handleTokenRefreshed, startLoading, stopLoading]
   );
 
+  const stopStripeRefreshPolling = useCallback(() => {
+    if (typeof window === 'undefined') {
+      stripeRefreshIntervalRef.current = null;
+      return;
+    }
+
+    if (stripeRefreshIntervalRef.current !== null) {
+      window.clearInterval(stripeRefreshIntervalRef.current);
+      stripeRefreshIntervalRef.current = null;
+    }
+  }, []);
+
+  const runStripeRefresh = useCallback(async () => {
+    if (stripeRefreshInFlightRef.current) {
+      return;
+    }
+
+    stripeRefreshInFlightRef.current = true;
+    try {
+      console.log('Running stripe refresh');
+      await forceTokenRefresh();
+    } finally {
+      stripeRefreshInFlightRef.current = false;
+    }
+  }, [forceTokenRefresh]);
+
+  const startStripeRefreshPolling = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return stopStripeRefreshPolling;
+    }
+
+    safeSetItem(STRIPE_REFRESH_STORAGE_KEY, 'pending');
+    stopStripeRefreshPolling();
+    runStripeRefresh();
+
+    const intervalId = window.setInterval(() => {
+      runStripeRefresh();
+    }, 5000);
+
+    stripeRefreshIntervalRef.current = intervalId;
+
+    return stopStripeRefreshPolling;
+  }, [runStripeRefresh, stopStripeRefreshPolling]);
+
+  useEffect(() => {
+    const refreshStatus = safeGetItem(STRIPE_REFRESH_STORAGE_KEY);
+    if (refreshStatus !== 'pending' || stripeRefreshIntervalRef.current !== null) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const executePendingRefresh = async () => {
+      try {
+        await runStripeRefresh();
+      } finally {
+        if (!isCancelled && location.pathname !== '/account' && location.pathname !== '/subscription-portal') {
+          safeSetItem(STRIPE_REFRESH_STORAGE_KEY, 'completed');
+        }
+      }
+    };
+
+    executePendingRefresh();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [location.pathname, runStripeRefresh]);
+
+  useEffect(() => () => {
+    stopStripeRefreshPolling();
+  }, [stopStripeRefreshPolling]);
+
   useEffect(() => {
     forceTokenRefreshRef.current = forceTokenRefresh;
   }, [forceTokenRefresh]);
@@ -479,7 +554,7 @@ export default function GuestAuth(props) {
   }, [showFeed]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh, isUserLoading }}>
+    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh, isUserLoading, startStripeRefreshPolling }}>
       {props.children}
     </UserContext.Provider>
   )

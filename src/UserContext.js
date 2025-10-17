@@ -1,5 +1,7 @@
 import { createContext } from 'react'
 
+export const STRIPE_REFRESH_STORAGE_KEY = 'memeSRCStripeRefreshPending'
+
 export const UserContext = createContext({
     user: false,
     setUser: () => {},
@@ -12,5 +14,6 @@ export const UserContext = createContext({
     showFeed: false,
     setShowFeed: () => {},
     forceTokenRefresh: async () => {},
-    isUserLoading: false
+    isUserLoading: false,
+    startStripeRefreshPolling: () => {},
 });

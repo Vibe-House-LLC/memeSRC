@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -25,10 +25,10 @@ import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { API, Auth, Storage } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
-import { UserContext } from '../UserContext';
+import { UserContext, STRIPE_REFRESH_STORAGE_KEY } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
-import { safeRemoveItem, writeJSON } from '../utils/storage';
+import { safeRemoveItem, safeSetItem, writeJSON } from '../utils/storage';
 import ProfilePhotoCropper from '../components/ProfilePhotoCropper';
 import { fetchProfilePhoto as fetchProfilePhotoUtil } from '../utils/profilePhoto';
 
@@ -57,6 +57,8 @@ const AccountPage = () => {
   const hasInitializedDataRef = useRef(false);
   const isFetchingInvoicesRef = useRef(false);
   const fetchSequenceRef = useRef(0);
+  const stripePollingCleanupRef = useRef(null);
+  const startStripeRefreshPollingFromContext = userDetails?.startStripeRefreshPolling;
 
   useEffect(() => {
     if (hasInitializedDataRef.current) {
@@ -72,6 +74,33 @@ const AccountPage = () => {
     fetchProfilePhoto();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthLoading, hasUserDetails]);
+
+  const beginStripeRefreshPolling = useCallback(() => {
+    safeSetItem(STRIPE_REFRESH_STORAGE_KEY, 'pending');
+
+    if (typeof startStripeRefreshPollingFromContext !== 'function') {
+      return;
+    }
+
+    if (stripePollingCleanupRef.current) {
+      stripePollingCleanupRef.current();
+      stripePollingCleanupRef.current = null;
+    }
+
+    const cleanup = startStripeRefreshPollingFromContext();
+    if (typeof cleanup === 'function') {
+      stripePollingCleanupRef.current = cleanup;
+    }
+  }, [startStripeRefreshPollingFromContext]);
+
+  useEffect(() => {
+    return () => {
+      if (stripePollingCleanupRef.current) {
+        stripePollingCleanupRef.current();
+        stripePollingCleanupRef.current = null;
+      }
+    };
+  }, []);
 
   const fetchInvoices = async () => {
     if (isFetchingInvoicesRef.current) {
@@ -270,6 +299,7 @@ const AccountPage = () => {
   };
 
   const openCustomerPortal = () => {
+    beginStripeRefreshPolling();
     setLoadingPortalUrl(true);
     const currentUrl = window.location.href;
     const portalUrl = new URL('/subscription-portal', window.location.origin);
@@ -285,6 +315,11 @@ const AccountPage = () => {
     }
 
     setLoadingPortalUrl(false);
+  };
+
+  const handleUpgradeClick = () => {
+    beginStripeRefreshPolling();
+    openSubscriptionDialog();
   };
 
   const handleLogout = () => {
@@ -779,7 +814,7 @@ const AccountPage = () => {
                     ) : (
                       <Button 
                         variant="contained" 
-                        onClick={openSubscriptionDialog}
+                        onClick={handleUpgradeClick}
                         size="large"
                         fullWidth
                         sx={{ 
@@ -854,6 +889,7 @@ const AccountPage = () => {
                     {invoices.map((invoice) => {
                       const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf;
                       const handleClick = () => {
+                        beginStripeRefreshPolling();
                         if (invoice.hosted_invoice_url) {
                           window.open(invoice.hosted_invoice_url, '_blank');
                         } else if (invoice.invoice_pdf) {
