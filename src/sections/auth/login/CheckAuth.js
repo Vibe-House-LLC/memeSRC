@@ -15,18 +15,9 @@ export default function CheckAuth(props) {
   const navigate = useNavigate();
   const [content, setContent] = useState(null);
   const [user, setUser] = useState(() => readJSON('memeSRCUserDetails') || null);
-  const [showFeed, setShowFeed] = useState(() => {
-    const storedPreference = safeGetItem('memeSRCShowFeed');
-    if (storedPreference === null) {
-      return false;
-    }
-    return storedPreference !== 'false';
-  });
+  const [showFeed, setShowFeed] = useState(false);
   const [isUserLoading, setIsUserLoading] = useState(false);
   const location = useLocation();
-  const userGroups = user?.['cognito:groups'];
-  const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
-  const effectiveShowFeed = isAdmin && showFeed;
   const profilePhotoRef = useRef(null);
   const userRef = useRef(null);
   const paymentRefreshTriggeredRef = useRef(false);
@@ -396,12 +387,8 @@ export default function CheckAuth(props) {
     initialiseAuthState();
   }, [user]);
 
-  useEffect(() => {
-    safeSetItem('memeSRCShowFeed', showFeed ? 'true' : 'false');
-  }, [showFeed]);
-
   return (
-    <UserContext.Provider value={{ user, setUser, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh, isUserLoading, startStripeRefreshPolling }}>
+    <UserContext.Provider value={{ user, setUser, showFeed, setShowFeed, forceTokenRefresh, isUserLoading, startStripeRefreshPolling }}>
       {content}
     </UserContext.Provider>
   )

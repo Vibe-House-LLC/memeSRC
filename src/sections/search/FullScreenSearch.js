@@ -47,7 +47,7 @@ const DESKTOP_STICKY_TOP_OFFSET = DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING;
 const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING * 2}px)`;
 const MOBILE_CARD_OFFSET = NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER;
 const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${MOBILE_CARD_OFFSET}px)`;
-const MOBILE_CARD_TARGET_HEIGHT = `calc(90svh - ${MOBILE_CARD_OFFSET}px)`;
+const MOBILE_CARD_TARGET_HEIGHT = `calc(80svh - ${MOBILE_CARD_OFFSET}px)`;
 const MOBILE_CARD_MIN_HEIGHT = `clamp(280px, ${MOBILE_CARD_TARGET_HEIGHT}, ${MOBILE_MAX_CARD_HEIGHT})`;
 const SHORT_VIEWPORT_MEDIA_QUERY = '@media (max-height: 720px)';
 // Standalone mode: vertical padding inside the hero surface box
@@ -55,8 +55,6 @@ const STANDALONE_HERO_PADDING_TOP_XS = 12;
 const STANDALONE_HERO_PADDING_BOTTOM_XS = 14;
 const STANDALONE_HERO_PADDING_TOP_MD = 14;
 const STANDALONE_HERO_PADDING_BOTTOM_MD = 16;
-const STANDALONE_TOTAL_VERTICAL_PADDING_XS = STANDALONE_HERO_PADDING_TOP_XS + STANDALONE_HERO_PADDING_BOTTOM_XS;
-const STANDALONE_TOTAL_VERTICAL_PADDING_MD = STANDALONE_HERO_PADDING_TOP_MD + STANDALONE_HERO_PADDING_BOTTOM_MD;
 // Container heights account for navbar only
 // Use svh (small viewport height) on mobile - represents viewport when browser UI is fully visible (smallest size)
 // This prevents content overflow when address bar shows/hides on mobile browsers
@@ -68,8 +66,6 @@ const STANDALONE_PAPER_HEIGHT_XS = STANDALONE_CONTAINER_MIN_HEIGHT_XS;
 const STANDALONE_PAPER_MIN_HEIGHT_XS = STANDALONE_PAPER_HEIGHT_XS;
 const STANDALONE_PAPER_MIN_HEIGHT_MD = STANDALONE_CONTAINER_MIN_HEIGHT_MD;
 // Surface heights account for internal padding to prevent overflow
-const STANDALONE_SURFACE_MIN_HEIGHT_XS = `calc(${STANDALONE_CONTAINER_HEIGHT_XS} - ${NAVBAR_HEIGHT + STANDALONE_TOTAL_VERTICAL_PADDING_XS}px)`;
-const STANDALONE_SURFACE_MIN_HEIGHT_MD = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT + STANDALONE_TOTAL_VERTICAL_PADDING_MD}px)`;
 
 // Simplified grid container
 const StyledGridContainer = styled(Grid)`
@@ -853,9 +849,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Box>
           </Paper>
 
-          {isFeedEnabled && (
-            <FeedSection />
-          )}
+          <FeedSection />
         </Box>
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />

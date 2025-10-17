@@ -18,18 +18,9 @@ export default function GuestAuth(props) {
   const [user, setUser] = useState(() => readJSON('memeSRCUserDetails') || null);
   const [shows, setShows] = useState(() => readJSON('memeSRCShows') || []);
   const [defaultShow, setDefaultShow] = useState();
-  const [showFeed, setShowFeed] = useState(() => {
-    const storedPreference = safeGetItem('memeSRCShowFeed');
-    if (storedPreference === null) {
-      return false;
-    }
-    return storedPreference !== 'false';
-  });
+  const [showFeed, setShowFeed] = useState(false);
   const [isUserLoading, setIsUserLoading] = useState(false);
   const location = useLocation();
-  const userGroups = user?.['cognito:groups'];
-  const isAdmin = Array.isArray(userGroups) && userGroups.includes('admins');
-  const effectiveShowFeed = isAdmin && showFeed;
   const profilePhotoRef = useRef(null);
   const userRef = useRef(null);
   const paymentRefreshTriggeredRef = useRef(false);
@@ -549,12 +540,8 @@ export default function GuestAuth(props) {
     initialiseAuthState();
   }, [location.pathname, user])
 
-  useEffect(() => {
-    safeSetItem('memeSRCShowFeed', showFeed ? 'true' : 'false');
-  }, [showFeed]);
-
   return (
-    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed: effectiveShowFeed, setShowFeed, forceTokenRefresh, isUserLoading, startStripeRefreshPolling }}>
+    <UserContext.Provider value={{ user, setUser, shows, setShows, defaultShow, handleUpdateDefaultShow, setDefaultShow, handleUpdateUserDetails, showFeed, setShowFeed, forceTokenRefresh, isUserLoading, startStripeRefreshPolling }}>
       {props.children}
     </UserContext.Provider>
   )
