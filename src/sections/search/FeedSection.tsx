@@ -3,12 +3,13 @@ import { Box, Button, IconButton, Stack, Typography, useMediaQuery } from '@mui/
 import { alpha, useTheme } from '@mui/material/styles';
 import { Link as RouterLink } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
-import FavoriteToggle from '../../components/FavoriteToggle';
 import useSearchDetails from '../../hooks/useSearchDetails';
+import FavoriteToggleButton from '../../components/FavoriteToggleButton';
 import { UserContext } from '../../UserContext';
 import { normalizeColorValue, isColorNearBlack } from '../../utils/colors';
 import { safeGetItem, safeSetItem } from '../../utils/storage';
 import { FeedCardSurface } from './cards/CardSurface';
+import { Search } from '@mui/icons-material';
 
 const FEED_CARD_WRAPPER_SX = {
   px: { xs: 0, md: 0 },
@@ -213,21 +214,6 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
           alignItems="center"
           alignContent="center"
         >
-          {/* <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              alignItems: 'center',
-              color: textColor,
-            }}
-          >
-            <FavoriteToggle
-              indexId={show.id}
-              initialIsFavorite={isFavorite}
-              onToggle={setIsFavorite}
-            />
-          </Box> */}
-
           <IconButton
             aria-label={`Dismiss ${show.title || show.id}`}
             size="small"
@@ -283,14 +269,14 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
           alignItems="center"
           spacing={{ xs: 1.6, sm: 2 }}
           sx={{
-            flexWrap: 'wrap',
-            gap: { xs: 1.6, sm: 2 },
-            pt: 2
+            gap: { xs: 0.5, sm: 1 },
+            pt: 2,
+            width: '100%',
+            flexWrap: { xs: 'nowrap', sm: 'wrap' }
           }}
         >
           <Button
             component={RouterLink}
-            fullWidth
             to={`/${show.id}`}
             variant="contained"
             sx={{
@@ -307,10 +293,26 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
                 backgroundColor: actionFillColor,
                 opacity: 0.92,
               },
+              flexGrow: { xs: 1, sm: 0 },
+              flexShrink: 1,
+              minWidth: 0,
             }}
+            startIcon={<Search fontSize="small" />}
           >
             Search
           </Button>
+          <FavoriteToggleButton
+            indexId={show.id}
+            initialIsFavorite={isFavorite}
+            onToggle={setIsFavorite}
+            backgroundColor={actionFillColor}
+            textColor={actionTextColor}
+            sx={{
+              flexGrow: { xs: 1, sm: 0 },
+              flexShrink: 1,
+              minWidth: 0,
+            }}
+          />
         </Stack>
         <Typography
           component="p"
@@ -409,7 +411,9 @@ export default function FeedSection(): ReactElement | null {
         if (!show.id || added.has(show.id)) {
           return;
         }
-        next.push(prevMap.get(show.id) ?? show);
+        const previous = prevMap.get(show.id);
+        const merged = previous ? { ...previous, ...show } : show;
+        next.push(merged);
         added.add(show.id);
       });
 
@@ -417,9 +421,13 @@ export default function FeedSection(): ReactElement | null {
         if (added.has(id)) {
           return;
         }
-        const existing = prevMap.get(id) ?? showsInput.find((item) => item.id === id);
-        if (existing) {
-          next.push(existing);
+        const previous = prevMap.get(id);
+        const latest = showsInput.find((item) => item.id === id);
+        const merged = latest
+          ? ({ ...(previous ?? {}), ...latest } as ShowRecord)
+          : previous;
+        if (merged) {
+          next.push(merged);
           added.add(id);
         }
       });
