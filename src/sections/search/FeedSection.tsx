@@ -254,7 +254,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
               fontSize: { xs: '1.5rem', sm: '1.8rem' },
               lineHeight: { xs: 1.12, md: 1.08 },
               letterSpacing: { xs: -0.22, md: -0.28 },
-              pb: 0.5,
+              pb: 0,
             }}
           >
             {show.title || show.id}
