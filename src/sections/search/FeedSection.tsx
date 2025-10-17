@@ -20,6 +20,7 @@ const DEFAULT_BACKGROUND = '#0f172a';
 const DEFAULT_FOREGROUND = '#f8fafc';
 const RECENT_SERIES_LIMIT = 12;
 const CARD_EXIT_DURATION_MS = 360;
+const FEED_CLEAR_ALL_KEY_PREFIX = 'memesrcFeedClearAll';
 const FEED_CLEAR_SINGLE_KEY_PREFIX = 'memesrcFeedClear';
 
 interface ShowRecord {
@@ -99,6 +100,10 @@ function resolveUserIdentifier(user?: MaybeUser | null | false): string {
   }
 
   return 'signedOutGuest';
+}
+
+function buildClearAllKey(identifier: string): string {
+  return `${FEED_CLEAR_ALL_KEY_PREFIX}-${sanitizeKeySegment(identifier)}`;
 }
 
 function buildShowDismissKey(showId: string, identifier: string): string {
@@ -252,6 +257,7 @@ export default function FeedSection(): ReactElement | null {
   const userIdentifier = useMemo(() => resolveUserIdentifier(contextValue.user), [contextValue.user]);
   const setShowFeed = typeof contextValue.setShowFeed === 'function' ? contextValue.setShowFeed : undefined;
   const [dismissalVersion, setDismissalVersion] = useState(0);
+  const [clearAllTimestamp, setClearAllTimestamp] = useState<number | null>(null);
   const [renderedShows, setRenderedShows] = useState<ShowRecord[]>([]);
   const [removingIds, setRemovingIds] = useState<string[]>([]);
   const removingSet = useMemo(() => new Set(removingIds), [removingIds]);
@@ -259,12 +265,22 @@ export default function FeedSection(): ReactElement | null {
   const retainedSet = useMemo(() => new Set(retainedIds), [retainedIds]);
   const timeoutsRef = useRef<number[]>([]);
 
+  useEffect(() => {
+    const stored = safeGetItem(buildClearAllKey(userIdentifier));
+    const parsed = parseStoredTimestamp(stored);
+    setClearAllTimestamp(parsed);
+    setDismissalVersion((prev) => prev + 1);
+  }, [userIdentifier]);
+
   const eligibleShows = useMemo(() => {
     return [...showsInput]
       .filter((show): show is ShowRecord => Boolean(show && show.id && !show.id.startsWith('_')))
       .map((show) => ({ show, timestamp: resolveSeriesTimestamp(show) }))
       .sort((a, b) => b.timestamp - a.timestamp)
       .filter(({ show, timestamp }) => {
+        if (clearAllTimestamp && timestamp <= clearAllTimestamp) {
+          return false;
+        }
         const stored = safeGetItem(buildShowDismissKey(show.id, userIdentifier));
         const dismissedAt = parseStoredTimestamp(stored);
         if (dismissedAt && timestamp <= dismissedAt) {
@@ -274,7 +290,7 @@ export default function FeedSection(): ReactElement | null {
       })
       .slice(0, RECENT_SERIES_LIMIT)
       .map(({ show }) => show);
-  }, [showsInput, userIdentifier, dismissalVersion]);
+  }, [showsInput, userIdentifier, clearAllTimestamp, dismissalVersion]);
 
   useEffect(() => {
     setRenderedShows((prev) => {
@@ -362,6 +378,10 @@ export default function FeedSection(): ReactElement | null {
     }
 
     const timestampIso = new Date().toISOString();
+    const parsed = parseStoredTimestamp(timestampIso) ?? Date.now();
+
+    safeSetItem(buildClearAllKey(userIdentifier), timestampIso);
+    setClearAllTimestamp(parsed);
     setDismissalVersion((prev) => prev + 1);
 
     setRetainedIds((prev) => {
@@ -376,7 +396,6 @@ export default function FeedSection(): ReactElement | null {
 
     renderedShows.forEach((show) => {
       scheduleRemoval(show, 0, () => {
-        safeSetItem(buildShowDismissKey(show.id, userIdentifier), timestampIso);
         setDismissalVersion((prev) => prev + 1);
       });
     });
