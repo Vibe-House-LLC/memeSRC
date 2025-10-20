@@ -24,6 +24,9 @@ const RECENT_SERIES_LIMIT = 12;
 const CARD_EXIT_DURATION_MS = 360;
 const FEED_CLEAR_ALL_KEY_PREFIX = 'memesrcFeedClearAll';
 const FEED_CLEAR_SINGLE_KEY_PREFIX = 'memesrcFeedClear';
+const FEED_PRIMER_GRADIENT = 'linear-gradient(135deg, #5461c8 0%, #c724b1 100%)';
+const FEED_PRIMER_DISMISS_KEY_PREFIX = 'memesrcFeedPrimerDismiss';
+const FEED_PRIMER_VERSION = '20240618';
 
 interface ShowRecord {
   id: string;
@@ -113,6 +116,10 @@ function buildShowDismissKey(showId: string, identifier: string): string {
   return `${FEED_CLEAR_SINGLE_KEY_PREFIX}-${sanitizeKeySegment(showId)}-${sanitizeKeySegment(identifier)}`;
 }
 
+function buildPrimerDismissKey(identifier: string): string {
+  return `${FEED_PRIMER_DISMISS_KEY_PREFIX}-${sanitizeKeySegment(FEED_PRIMER_VERSION)}-${sanitizeKeySegment(identifier)}`;
+}
+
 function parseStoredTimestamp(value: string | null): number | null {
   if (!value) {
     return null;
@@ -126,6 +133,8 @@ interface SeriesCardProps {
   onDismiss: (show: ShowRecord) => void;
   isRemoving: boolean;
 }
+
+type PrimerRenderState = 'hidden' | 'visible' | 'removing';
 
 function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElement {
   const [isFavorite, setIsFavorite] = useState(Boolean(show.isFavorite));
@@ -226,6 +235,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
                 backgroundColor: alpha(actionFillColor, 0.25),
                 cursor: 'default',
               },
+              aspectRatio: '1/1',
             }}
           >
             {show.emoji || '🎬'}
@@ -258,6 +268,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
               '&:hover': {
                 backgroundColor: alpha(actionFillColor, 0.28),
               },
+              aspectRatio: '1/1',
             }}
           >
             <CloseIcon fontSize="small" />
@@ -358,8 +369,13 @@ export default function FeedSection(): ReactElement | null {
   const contextValue = (useContext(UserContext) as unknown as UserContextValue) ?? {};
   const showsInput = Array.isArray(contextValue.shows) ? (contextValue.shows as ShowRecord[]) : [];
   const userIdentifier = useMemo(() => resolveUserIdentifier(contextValue.user), [contextValue.user]);
+  const primerDismissKey = useMemo(() => buildPrimerDismissKey(userIdentifier), [userIdentifier]);
   const setShowFeed = typeof contextValue.setShowFeed === 'function' ? contextValue.setShowFeed : undefined;
   const { show: activeSeriesId } = useSearchDetails();
+  const [primerState, setPrimerState] = useState<PrimerRenderState>(() => {
+    const stored = safeGetItem(primerDismissKey);
+    return parseStoredTimestamp(stored) ? 'hidden' : 'visible';
+  });
   const [dismissalVersion, setDismissalVersion] = useState(0);
   const [clearAllTimestamp, setClearAllTimestamp] = useState<number | null>(null);
   const [renderedShows, setRenderedShows] = useState<ShowRecord[]>([]);
@@ -517,6 +533,29 @@ export default function FeedSection(): ReactElement | null {
   }, [renderedShows, scheduleRemoval, userIdentifier]);
 
   const hasShows = renderedShows.length > 0;
+  const shouldRenderPrimer = primerState !== 'hidden';
+  const isPrimerRemoving = primerState === 'removing';
+
+  useEffect(() => {
+    const stored = safeGetItem(primerDismissKey);
+    const dismissedAt = parseStoredTimestamp(stored);
+    setPrimerState(dismissedAt ? 'hidden' : 'visible');
+  }, [primerDismissKey]);
+
+  const handleDismissPrimer = useCallback(() => {
+    if (!shouldRenderPrimer || isPrimerRemoving) {
+      return;
+    }
+
+    setPrimerState('removing');
+
+    const finalizeTimeout = window.setTimeout(() => {
+      safeSetItem(primerDismissKey, new Date().toISOString());
+      setPrimerState('hidden');
+    }, CARD_EXIT_DURATION_MS);
+
+    timeoutsRef.current.push(finalizeTimeout);
+  }, [isPrimerRemoving, primerDismissKey, shouldRenderPrimer]);
 
   if (!hasShows) {
     return null;
@@ -544,6 +583,130 @@ export default function FeedSection(): ReactElement | null {
           News Feed
         </Typography>}
       </Stack>
+      {shouldRenderPrimer ? (
+        <Box
+          sx={{
+            ...FEED_CARD_WRAPPER_SX,
+            opacity: isPrimerRemoving ? 0 : 1,
+            transform: isPrimerRemoving ? 'translateY(-28px)' : 'translateY(0)',
+            transition: `transform ${CARD_EXIT_DURATION_MS}ms ease, opacity ${CARD_EXIT_DURATION_MS}ms ease`,
+            pointerEvents: isPrimerRemoving ? 'none' : 'auto',
+          }}
+        >
+          <FeedCardSurface
+            tone="neutral"
+            gradient={FEED_PRIMER_GRADIENT}
+            sx={{
+              border: '1px solid rgba(255,255,255,0.28)',
+              boxShadow: '0 34px 68px rgba(18,7,36,0.6)',
+              gap: { xs: 2.2, sm: 2.3, md: 2.5 },
+            }}
+          >
+            <Stack
+              spacing={{ xs: 2.4, sm: 2.3, md: 2.6 }}
+              sx={{
+                width: '100%',
+                maxWidth: { xs: '100%', sm: 560, md: 660 },
+                textAlign: 'left',
+                alignItems: 'stretch',
+              }}
+            >
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                spacing={{ xs: 1.4, sm: 1.8 }}
+                sx={{ width: '100%' }}
+              >
+                <IconButton
+                  aria-label="Feed spotlight"
+                  size="small"
+                  sx={{
+                    flexShrink: 0,
+                    color: 'rgba(17,24,39,0.92)',
+                    backgroundColor: alpha('#ffffff', 0.9),
+                    border: `1px solid ${alpha('#ffffff', 0.92)}`,
+                    boxShadow: '0 18px 36px rgba(9,11,24,0.35)',
+                    backdropFilter: 'blur(12px)',
+                    pointerEvents: 'none',
+                    fontSize: '1rem',
+                    aspectRatio: '1/1',
+                  }}
+                >
+                  👋
+                </IconButton>
+                <Typography
+                  component="h3"
+                  variant="h3"
+                  sx={{
+                    flexGrow: 1,
+                    minWidth: 0,
+                    fontWeight: 800,
+                    color: '#fff',
+                    textShadow: '0 22px 55px rgba(38,7,32,0.7)',
+                    fontSize: { xs: '1.8rem', sm: '2.4rem', md: '3.12rem', lg: '3.32rem' },
+                    lineHeight: { xs: 1.14, md: 1.1 },
+                    letterSpacing: { xs: -0.22, md: -0.3 },
+                    textAlign: 'center',
+                  }}
+                >
+                  Welcome to the feed
+                </Typography>
+                <IconButton
+                  aria-label="Dismiss feed spotlight"
+                  onClick={handleDismissPrimer}
+                  size="small"
+                  sx={{
+                    flexShrink: 0,
+                    color: 'rgba(255,255,255,0.92)',
+                    backgroundColor: alpha('#ffffff', 0.16),
+                    border: `1px solid ${alpha('#ffffff', 0.28)}`,
+                    boxShadow: '0 18px 36px rgba(9,11,24,0.35)',
+                    backdropFilter: 'blur(12px)',
+                    transition: 'background-color 160ms ease, transform 160ms ease',
+                    '&:hover': {
+                      backgroundColor: alpha('#ffffff', 0.24),
+                      transform: 'translateY(-1px)',
+                    },
+                    aspectRatio: '1/1',
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+              <Typography
+                component="p"
+                variant="body1"
+                sx={{
+                  color: 'rgba(255,255,255,0.93)',
+                  fontWeight: 600,
+                  letterSpacing: { xs: 0.1, md: 0.14 },
+                  fontSize: { xs: '1.08rem', sm: '1.16rem', md: '1.24rem' },
+                  lineHeight: { xs: 1.6, md: 1.68 },
+                  maxWidth: { xs: '100%', sm: 540 },
+                  textAlign: 'center',
+                  width: '100%',
+                }}
+              >
+                Stay up to date with the latest shows and features from the memeSRC team.
+              </Typography>
+              {/* <Typography
+                component="p"
+                variant="body2"
+                sx={{
+                  color: 'rgba(245,245,255,0.85)',
+                  fontWeight: 500,
+                  fontSize: { xs: '0.98rem', sm: '1rem' },
+                  lineHeight: 1.7,
+                  maxWidth: { xs: '100%', sm: 520 },
+                }}
+              >
+                We are iterating quickly—expect this space to evolve as new feed content and experiments roll out.
+              </Typography> */}
+            </Stack>
+          </FeedCardSurface>
+        </Box>
+      ) : null}
       {renderedShows?.length > 0 && renderedShows.map((show) => (
         <Box
           key={show.id}
