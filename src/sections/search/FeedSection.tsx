@@ -377,6 +377,7 @@ export default function FeedSection(): ReactElement | null {
   const eligibleShows = useMemo(() => {
     return [...showsInput]
       .filter((show): show is ShowRecord => Boolean(show && show.id && !show.id.startsWith('_')))
+      .filter((show) => show.createdAt > new Date('2025-09-01').toISOString())
       .map((show) => ({ show, timestamp: resolveSeriesTimestamp(show) }))
       .sort((a, b) => b.timestamp - a.timestamp)
       .filter(({ show, timestamp }) => {
