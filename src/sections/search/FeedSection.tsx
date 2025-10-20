@@ -283,7 +283,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
             gap: { xs: 0.5, sm: 1 },
             pt: 2,
             width: '100%',
-            flexWrap: { xs: 'nowrap', sm: 'wrap' }
+            flexWrap: { xs: 'nowrap' }
           }}
         >
           <Button
@@ -304,7 +304,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
                 backgroundColor: actionFillColor,
                 opacity: 0.92,
               },
-              flexGrow: { xs: 1, sm: 0 },
+              flexGrow: { xs: 1 },
               flexShrink: 1,
               minWidth: 0,
             }}
@@ -319,7 +319,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
             backgroundColor={actionFillColor}
             textColor={actionTextColor}
             sx={{
-              flexGrow: { xs: 1, sm: 0 },
+              flexGrow: { xs: 1 },
               flexShrink: 1,
               minWidth: 0,
             }}
@@ -624,7 +624,7 @@ export default function FeedSection(): ReactElement | null {
                     fontWeight: 800,
                     color: '#fff',
                     textShadow: '0 22px 55px rgba(38,7,32,0.7)',
-                    fontSize: { xs: '1.8rem', sm: '2.4rem', md: '3.12rem', lg: '3.32rem' },
+                    fontSize: { xs: '1.5rem', sm: '1.8rem' },
                     lineHeight: { xs: 1.14, md: 1.1 },
                     letterSpacing: { xs: -0.22, md: -0.3 },
                     textAlign: 'center',
