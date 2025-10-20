@@ -340,27 +340,6 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
           Search over {show.frameCount?.toLocaleString()} meme templates from {show.title}
         </Typography>
       </Stack>
-      {addedOnRelativeLabel ? (
-        <Box
-          component="span"
-          title={addedOnDisplay ?? undefined}
-          sx={{
-            display: 'inline-block',
-            width: 'fit-content',
-            px: { xs: 1.4, sm: 1.6 },
-            py: { xs: 0.6, sm: 0.65 },
-            borderRadius: 999,
-            color: actionTextColor,
-            backgroundColor: alpha(actionFillColor, 0.35),
-            border: `1px solid ${alpha(actionFillColor, 0.35)}`,
-            backdropFilter: 'blur(12px)',
-            fontSize: { xs: '0.78rem', sm: '0.8rem' },
-            fontWeight: 600,
-          }}
-        >
-          {addedOnRelativeLabel}
-        </Box>
-      ) : null}
     </FeedCardSurface>
   );
 }
@@ -562,27 +541,28 @@ export default function FeedSection(): ReactElement | null {
   }
 
   return (
+
     <Stack spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 } }}>
-      <Stack
+      {isMd && <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
         alignItems={{ xs: isMd ? 'flex-start' : 'flex-end', sm: 'center' }}
         spacing={{ xs: 1, sm: 2 }}
         sx={{ px: { xs: 3, sm: 0 } }}
+      ><Typography
+        component="h2"
+        variant="h5"
+        sx={{
+          fontWeight: 700,
+          letterSpacing: -0.18,
+          color: '#f8fafc',
+          paddingLeft: { xs: 0.5, md: 0 },
+        }}
       >
-        {isMd && <Typography
-          component="h2"
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-            letterSpacing: -0.18,
-            color: '#f8fafc',
-            paddingLeft: { xs: 0.5, md: 0 },
-          }}
-        >
           News Feed
-        </Typography>}
+        </Typography>
       </Stack>
+      }
       {shouldRenderPrimer ? (
         <Box
           sx={{
