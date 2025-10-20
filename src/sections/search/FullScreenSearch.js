@@ -128,7 +128,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     if (dismissedVersion === latestRelease.tag_name) return false;
     if (!latestRelease.published_at) return false;
     const published = new Date(latestRelease.published_at).getTime();
-    const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+    // Remove last 10000 after testing is complete
+    const threeDaysMs = 3 * 24 * 60 * 60 * 1000 * 10000;
     return Date.now() - published <= threeDaysMs;
   }, [latestRelease, dismissedVersion]);
 
