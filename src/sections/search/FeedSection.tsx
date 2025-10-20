@@ -248,10 +248,11 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
               justifySelf: 'center',
               textAlign: 'center',
               fontWeight: 800,
-              fontSize: { xs: '1.5rem', sm: '1.8rem' },
+              fontSize: { xs: '1.5rem', sm: '1.6rem' },
               lineHeight: { xs: 1.12, md: 1.08 },
               letterSpacing: { xs: -0.22, md: -0.28 },
               pb: 0,
+              px: { xs: 0.5, sm: 1 },
             }}
           >
             {show.title || show.id}
@@ -586,7 +587,7 @@ export default function FeedSection(): ReactElement | null {
               spacing={{ xs: 2.4, sm: 2.3, md: 2.6 }}
               sx={{
                 width: '100%',
-                maxWidth: { xs: '100%', sm: 560, md: 660 },
+                maxWidth: { xs: '100%'},
                 textAlign: 'left',
                 alignItems: 'stretch',
               }}
@@ -624,7 +625,7 @@ export default function FeedSection(): ReactElement | null {
                     fontWeight: 800,
                     color: '#fff',
                     textShadow: '0 22px 55px rgba(38,7,32,0.7)',
-                    fontSize: { xs: '1.5rem', sm: '1.8rem' },
+                    fontSize: { xs: '1.5rem', sm: '1.6rem' },
                     lineHeight: { xs: 1.14, md: 1.1 },
                     letterSpacing: { xs: -0.22, md: -0.3 },
                     textAlign: 'center',
@@ -663,7 +664,7 @@ export default function FeedSection(): ReactElement | null {
                   letterSpacing: { xs: 0.1, md: 0.14 },
                   fontSize: { xs: '1.08rem', sm: '1.16rem', md: '1.24rem' },
                   lineHeight: { xs: 1.6, md: 1.68 },
-                  maxWidth: { xs: '100%', sm: 540 },
+                  maxWidth: { xs: '100%' },
                   textAlign: 'center',
                   width: '100%',
                 }}

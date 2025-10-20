@@ -558,7 +558,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             gridTemplateColumns: isFeedEnabled
               ? {
                   xs: '1fr',
-                  md: 'minmax(0, 3fr) minmax(0, 1fr)',
+                  md: 'minmax(0, 2fr) minmax(0, 1fr)',
+                  lg: 'minmax(0, 3fr) minmax(0, 1fr)',
                 }
               : { xs: '1fr' },
             gap: isFeedEnabled ? { xs: 0.25, md: 3 } : 0,
@@ -849,7 +850,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Box>
           </Paper>
 
-          <FeedSection />
+          <Box
+            sx={{
+              minWidth: 0,
+              display: isFeedEnabled ? 'block' : 'none',
+              px: 0,
+            }}
+          >
+            <FeedSection />
+          </Box>
         </Box>
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
