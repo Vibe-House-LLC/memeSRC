@@ -543,26 +543,6 @@ export default function FeedSection(): ReactElement | null {
         >
           News Feed
         </Typography>}
-        <Button
-          variant="text"
-          size="small"
-          onClick={handleClearAll}
-          disabled={!hasShows}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 600,
-            color: alpha('#f8fafc', 0.9),
-            '&:hover': {
-              color: '#f8fafc',
-              backgroundColor: alpha('#f8fafc', 0.08),
-            },
-            '&.Mui-disabled': {
-              color: alpha('#f8fafc', 0.32),
-            },
-          }}
-        >
-          Clear All
-        </Button>
       </Stack>
       {renderedShows?.length > 0 && renderedShows.map((show) => (
         <Box
