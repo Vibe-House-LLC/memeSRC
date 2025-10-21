@@ -701,9 +701,9 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
       >
         <Stack spacing={{ xs: 1.6, sm: 2.1 }} sx={{ width: '100%' }}>
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
+            direction={{ xs: 'row', sm: 'row' }}
             spacing={{ xs: 1.1, sm: 1.6 }}
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            alignItems={{ xs: 'center', sm: 'center' }}
             justifyContent="space-between"
             sx={{ width: '100%' }}
           >
@@ -739,17 +739,6 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
               >
                 Latest update
               </Typography>
-              <Box
-                component="span"
-                sx={{
-                  color: 'rgba(203,213,225,0.88)',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  letterSpacing: 0.4,
-                }}
-              >
-                {formatRelativeTimeCompact(latestRelease.published_at)}
-              </Box>
             </Stack>
             <IconButton
               aria-label="Dismiss latest update"
@@ -768,15 +757,16 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
               <CloseIcon fontSize="small" />
             </IconButton>
           </Stack>
-          <Stack spacing={{ xs: 0.8, sm: 1 }} sx={{ width: '100%' }}>
+          <Stack spacing={{ xs: 0.8, sm: 1 }} sx={{ width: '100%', pb: 1 }}>
             <Typography
               component="p"
               variant="body1"
               sx={{
                 color: '#e2e8f0',
-                fontWeight: 600,
-                fontSize: { xs: '1.02rem', sm: '1.08rem' },
+                fontWeight: 800,
+                fontSize: { xs: '1.4rem', sm: '1.5rem' },
                 lineHeight: { xs: 1.56, sm: 1.6 },
+                textAlign: 'center',
               }}
             >
               Updated to{' '}
@@ -784,24 +774,11 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
                 {formatReleaseDisplay(latestRelease.tag_name)}
               </Box>
             </Typography>
-            {latestRelease.name ? (
-              <Typography
-                component="p"
-                variant="body2"
-                sx={{
-                  color: 'rgba(148,163,184,0.9)',
-                  fontWeight: 500,
-                  lineHeight: 1.6,
-                }}
-              >
-                {latestRelease.name}
-              </Typography>
-            ) : null}
           </Stack>
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
+            direction='column'
             spacing={{ xs: 1, sm: 1.4 }}
-            alignItems={{ xs: 'stretch', sm: 'center' }}
+            alignItems='stretch'
             sx={{ width: '100%' }}
           >
             <Button
