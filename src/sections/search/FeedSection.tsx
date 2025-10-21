@@ -35,6 +35,7 @@ const FEED_PRIMER_GRADIENT = 'linear-gradient(135deg, #5461c8 0%, #c724b1 100%)'
 const FEED_PRIMER_DISMISS_KEY_PREFIX = 'memesrcFeedPrimerDismiss';
 const FEED_PRIMER_VERSION = '20240618';
 const FEED_UPDATE_DISMISSED_VERSION_KEY = 'feedUpdateBannerDismissedVersion';
+const FEED_RECENCY_THRESHOLD_MS = 24 * 24 * 60 * 60 * 1000;
 
 interface ShowRecord {
   id: string;
@@ -47,6 +48,22 @@ interface ShowRecord {
   isFavorite?: boolean | null;
   frameCount?: number | null;
   emoji?: string | null;
+}
+
+interface FeedSectionProps {
+  anchorId?: string;
+  onFeedSummaryChange?: (summary: FeedSummary) => void;
+}
+
+export type FeedSummaryEntry = {
+  kind: 'release' | 'show';
+  timestamp: number;
+  release?: GitHubRelease;
+  show?: ShowRecord;
+};
+
+export interface FeedSummary {
+  entries: FeedSummaryEntry[];
 }
 
 type UserContextValue = {
@@ -94,7 +111,7 @@ function sanitizeKeySegment(value: string): string {
   return value.replace(/[^0-9a-zA-Z_-]/g, '_');
 }
 
-function resolveUserIdentifier(user?: MaybeUser | null | false): string {
+export function resolveUserIdentifier(user?: MaybeUser | null | false): string {
   if (!user || typeof user !== 'object') {
     return 'signedOutGuest';
   }
@@ -353,7 +370,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
   );
 }
 
-export default function FeedSection(): ReactElement | null {
+export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChange }: FeedSectionProps): ReactElement | null {
   const contextValue = (useContext(UserContext) as unknown as UserContextValue) ?? {};
   const showsInput = Array.isArray(contextValue.shows) ? (contextValue.shows as ShowRecord[]) : [];
   const userIdentifier = useMemo(() => resolveUserIdentifier(contextValue.user), [contextValue.user]);
@@ -372,9 +389,12 @@ export default function FeedSection(): ReactElement | null {
   const [retainedIds, setRetainedIds] = useState<string[]>([]);
   const retainedSet = useMemo(() => new Set(retainedIds), [retainedIds]);
   const [latestRelease, setLatestRelease] = useState<GitHubRelease | null>(null);
-  const [feedDismissedVersion, setFeedDismissedVersion] = useState<string>(
-    () => safeGetItem(FEED_UPDATE_DISMISSED_VERSION_KEY) || ''
-  );
+  const feedDismissedStorageKey = useMemo(() => `${FEED_UPDATE_DISMISSED_VERSION_KEY}:${userIdentifier}`, [userIdentifier]);
+  const [feedDismissedVersion, setFeedDismissedVersion] = useState<string>(() => safeGetItem(feedDismissedStorageKey) || '');
+  useEffect(() => {
+    const stored = safeGetItem(feedDismissedStorageKey);
+    setFeedDismissedVersion(stored || '');
+  }, [feedDismissedStorageKey]);
   const [isReleaseRemoving, setIsReleaseRemoving] = useState(false);
   const hasRecentUndismissedUpdate = useMemo(() => {
     if (!latestRelease?.tag_name || !latestRelease?.published_at) {
@@ -387,8 +407,8 @@ export default function FeedSection(): ReactElement | null {
     if (!Number.isFinite(published)) {
       return false;
     }
-    const threeDaysMs = 3 * 24 * 60 * 60 * 1000 * 10000;
-    return Date.now() - published <= threeDaysMs;
+    const threeDaysMsExtended = 3 * 24 * 60 * 60 * 1000 * 10000;
+    return Date.now() - published <= threeDaysMsExtended;
   }, [latestRelease, feedDismissedVersion]);
   const timeoutsRef = useRef<number[]>([]);
   const theme = useTheme();
@@ -470,7 +490,7 @@ export default function FeedSection(): ReactElement | null {
 
     const finalizeTimeout = window.setTimeout(() => {
       try {
-        safeSetItem(FEED_UPDATE_DISMISSED_VERSION_KEY, tagName);
+        safeSetItem(feedDismissedStorageKey, tagName);
       } catch (error) {
         // no-op
       } finally {
@@ -480,7 +500,7 @@ export default function FeedSection(): ReactElement | null {
     }, CARD_EXIT_DURATION_MS);
 
     timeoutsRef.current.push(finalizeTimeout);
-  }, [isReleaseRemoving, latestRelease]);
+  }, [feedDismissedStorageKey, isReleaseRemoving, latestRelease]);
 
   useEffect(() => {
     const stored = safeGetItem(buildClearAllKey(userIdentifier));
@@ -662,7 +682,7 @@ export default function FeedSection(): ReactElement | null {
       key={latestRelease.tag_name ?? latestRelease.id ?? 'latestReleaseCard'}
       sx={{
         ...FEED_CARD_WRAPPER_SX,
-        px: { xs: 2.4, sm: 0 },
+        px: { xs: 0, sm: 0 },
         pointerEvents: isReleaseRemoving ? 'none' : 'auto',
         opacity: isReleaseRemoving ? 0 : 1,
         transform: isReleaseRemoving ? 'translateY(-28px)' : 'translateY(0)',
@@ -840,13 +860,87 @@ export default function FeedSection(): ReactElement | null {
     feedItems.push(releaseCardElement);
   }
 
+  const releaseIsRecent = useMemo(() => {
+    if (releaseTimestamp === null) {
+      return false;
+    }
+    return Date.now() - releaseTimestamp <= FEED_RECENCY_THRESHOLD_MS;
+  }, [releaseTimestamp]);
+
+  const summaryEntries = useMemo<FeedSummaryEntry[]>(() => {
+    const now = Date.now();
+    const entries: FeedSummaryEntry[] = [];
+
+    if (
+      latestRelease &&
+      releaseTimestamp !== null &&
+      releaseIsRecent &&
+      latestRelease.tag_name !== feedDismissedVersion
+    ) {
+      entries.push({ kind: 'release', timestamp: releaseTimestamp, release: latestRelease });
+    }
+
+    renderedShows.forEach((show) => {
+      const timestamp = resolveSeriesTimestamp(show);
+      if (!timestamp) {
+        return;
+      }
+      if (now - timestamp > FEED_RECENCY_THRESHOLD_MS) {
+        return;
+      }
+      entries.push({ kind: 'show', timestamp, show });
+    });
+
+    return entries.sort((a, b) => b.timestamp - a.timestamp);
+  }, [feedDismissedVersion, latestRelease, releaseIsRecent, releaseTimestamp, renderedShows]);
+
+  const summarySignature = useMemo(() => {
+    if (!summaryEntries.length) {
+      return 'empty';
+    }
+    return summaryEntries
+      .map((entry) => {
+        if (entry.kind === 'release') {
+          return `release:${entry.release?.tag_name ?? 'unknown'}:${entry.timestamp}`;
+        }
+        if (entry.kind === 'show') {
+          return `show:${entry.show?.id ?? 'unknown'}:${entry.timestamp}`;
+        }
+        return `entry:${entry.timestamp}`;
+      })
+      .join('|');
+  }, [summaryEntries]);
+
+  const previousSummarySignatureRef = useRef<string>('');
+
+  useEffect(() => {
+    if (!onFeedSummaryChange) {
+      return;
+    }
+    if (summarySignature === previousSummarySignatureRef.current) {
+      return;
+    }
+    previousSummarySignatureRef.current = summarySignature;
+    onFeedSummaryChange({ entries: summaryEntries });
+  }, [onFeedSummaryChange, summaryEntries, summarySignature]);
+
+  useEffect(
+    () => () => {
+      if (onFeedSummaryChange) {
+        onFeedSummaryChange({ entries: [] });
+      }
+      previousSummarySignatureRef.current = '';
+    },
+    [onFeedSummaryChange]
+  );
+
   if (!hasFeedContent) {
     return null;
   }
 
   return (
 
-    <Stack spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 } }}>
+    <Stack id={anchorId} spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 } }}>
       {isMd && <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
