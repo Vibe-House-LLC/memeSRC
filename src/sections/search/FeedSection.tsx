@@ -35,7 +35,7 @@ const FEED_PRIMER_GRADIENT = 'linear-gradient(135deg, #5461c8 0%, #c724b1 100%)'
 const FEED_PRIMER_DISMISS_KEY_PREFIX = 'memesrcFeedPrimerDismiss';
 const FEED_PRIMER_VERSION = '20240618';
 const FEED_UPDATE_DISMISSED_VERSION_KEY = 'feedUpdateBannerDismissedVersion';
-const FEED_RECENCY_THRESHOLD_MS = 24 * 24 * 60 * 60 * 1000;
+const FEED_RECENCY_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000;
 
 interface ShowRecord {
   id: string;
