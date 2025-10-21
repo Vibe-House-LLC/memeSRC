@@ -407,7 +407,7 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
     if (!Number.isFinite(published)) {
       return false;
     }
-    const threeDaysMsExtended = 3 * 24 * 60 * 60 * 1000 * 10000;
+    const threeDaysMsExtended = 3 * 24 * 60 * 60 * 1000;
     return Date.now() - published <= threeDaysMsExtended;
   }, [latestRelease, feedDismissedVersion]);
   const timeoutsRef = useRef<number[]>([]);
