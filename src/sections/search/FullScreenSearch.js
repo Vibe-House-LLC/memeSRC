@@ -347,10 +347,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         clearTimeout(autoDismissTimeoutRef.current);
         autoDismissTimeoutRef.current = null;
       }
-      if (autoDismissTimeoutRef.current) {
-        clearTimeout(autoDismissTimeoutRef.current);
-        autoDismissTimeoutRef.current = null;
-      }
       if (visibilitySessionStartRef.current) {
         visibilityAccumulatedRef.current += Math.max(0, Date.now() - visibilitySessionStartRef.current);
         visibilitySessionStartRef.current = null;
