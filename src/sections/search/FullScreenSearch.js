@@ -18,19 +18,12 @@ import Logo from '../../components/logo';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
-import {
-  fetchLatestRelease,
-  getReleaseType,
-  formatRelativeTimeCompact,
-  setDismissedVersion,
-  getDismissedVersion,
-  formatReleaseDisplay,
-} from '../../utils/githubReleases';
+import { getReleaseType, formatRelativeTimeCompact, formatReleaseDisplay, DISMISSED_VERSION_KEY } from '../../utils/githubReleases';
 import { safeGetItem, safeSetItem } from '../../utils/storage';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import { isColorNearBlack } from '../../utils/colors';
-import FeedSection from './FeedSection';
+import FeedSection, { resolveUserIdentifier } from './FeedSection';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -39,7 +32,7 @@ import FeedSection from './FeedSection';
 const NAVBAR_HEIGHT = 45;
 const AUTO_DISMISS_TOTAL_MS = 30 * 1000;
 const AUTO_DISMISS_MIN_VISIBLE_MS = 3 * 1000;
-const VISIBILITY_STORAGE_PREFIX = 'recentUpdateVisible:';
+const SCROLL_TO_FEED_FLAG = 'scrollToFeedPending';
 const MOBILE_SECTION_GUTTER = 6;
 const DESKTOP_CARD_PADDING = 32;
 const DESKTOP_NAVBAR_HEIGHT = NAVBAR_HEIGHT;
@@ -47,7 +40,7 @@ const DESKTOP_STICKY_TOP_OFFSET = DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING;
 const DESKTOP_STICKY_HEIGHT = `calc(100vh - ${DESKTOP_NAVBAR_HEIGHT + DESKTOP_CARD_PADDING * 2}px)`;
 const MOBILE_CARD_OFFSET = NAVBAR_HEIGHT + MOBILE_SECTION_GUTTER;
 const MOBILE_MAX_CARD_HEIGHT = `calc(100svh - ${MOBILE_CARD_OFFSET}px)`;
-const MOBILE_CARD_TARGET_HEIGHT = `calc(80svh - ${MOBILE_CARD_OFFSET}px)`;
+const MOBILE_CARD_TARGET_HEIGHT = `calc(87svh - ${MOBILE_CARD_OFFSET}px)`;
 const MOBILE_CARD_MIN_HEIGHT = `clamp(280px, ${MOBILE_CARD_TARGET_HEIGHT}, ${MOBILE_MAX_CARD_HEIGHT})`;
 const SHORT_VIEWPORT_MEDIA_QUERY = '@media (max-height: 720px)';
 // Standalone mode: vertical padding inside the hero surface box
@@ -109,6 +102,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { user, shows, defaultShow, handleUpdateDefaultShow, showFeed = false } = useContext(UserContext);
   const isFeedEnabled = Boolean(showFeed);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
@@ -116,59 +110,122 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
 
   // Recent update indicator state
-  const [latestRelease, setLatestRelease] = useState(null);
-  const [dismissedVersion, setDismissedVersionState] = useState(() => getDismissedVersion());
+  const [feedSummary, setFeedSummary] = useState({ entries: [] });
+  const heroUserIdentifier = useMemo(() => resolveUserIdentifier(user), [user]);
+  const heroDismissedStorageKey = useMemo(() => `${DISMISSED_VERSION_KEY}:${heroUserIdentifier}`, [heroUserIdentifier]);
+  const [dismissedTimestamp, setDismissedTimestamp] = useState(null);
+  useEffect(() => {
+    const stored = safeGetItem(heroDismissedStorageKey);
+    if (!stored) {
+      setDismissedTimestamp(null);
+      return;
+    }
+    const parsed = Number.parseInt(stored, 10);
+    setDismissedTimestamp(Number.isFinite(parsed) ? parsed : null);
+  }, [heroDismissedStorageKey]);
   const visibilityAccumulatedRef = useRef(0);
   const visibilitySessionStartRef = useRef(null);
   const autoDismissTimeoutRef = useRef(null);
 
-  const hasRecentUndismissedUpdate = useMemo(() => {
-    if (!latestRelease) return false;
-    if (!latestRelease.tag_name) return false;
-    if (dismissedVersion === latestRelease.tag_name) return false;
-    if (!latestRelease.published_at) return false;
-    const published = new Date(latestRelease.published_at).getTime();
-    const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
-    return Date.now() - published <= threeDaysMs;
-  }, [latestRelease, dismissedVersion]);
-
-  const statusDotColor = useMemo(() => {
-    if (!latestRelease) return '#22c55e';
-    const isDraft = Boolean(latestRelease.draft);
-    const isPrerelease = Boolean(latestRelease.prerelease);
-    const type = getReleaseType(latestRelease.tag_name);
-    if (isDraft) return (theme?.palette?.error?.main) || '#ef4444';
-    if (isPrerelease) return (theme?.palette?.warning?.main) || '#f59e0b';
-    switch (type) {
-      case 'major':
-        return (theme?.palette?.error?.main) || '#ef4444';
-      case 'minor':
-        return (theme?.palette?.success?.main) || '#22c55e';
-      default:
-        return (theme?.palette?.info?.main) || '#3b82f6';
+  const handleFeedSummaryChange = useCallback((summary) => {
+    if (!summary || !Array.isArray(summary.entries)) {
+      setFeedSummary({ entries: [] });
+      return;
     }
-  }, [latestRelease, theme]);
+    setFeedSummary(summary);
+  }, []);
 
-  const releaseVisibilityStorageKey = useMemo(() => {
-    if (!latestRelease?.tag_name) return null;
-    return `${VISIBILITY_STORAGE_PREFIX}${latestRelease.tag_name}`;
-  }, [latestRelease?.tag_name]);
+  const summaryEntries = useMemo(() => {
+    if (!feedSummary || !Array.isArray(feedSummary.entries)) return [];
+    return feedSummary.entries;
+  }, [feedSummary]);
+
+  const heroEntry = summaryEntries[0] || null;
+  const multipleEntries = summaryEntries.length > 1;
+
+  const heroKey = useMemo(() => {
+    if (!heroEntry) return null;
+    if (multipleEntries) {
+      const signature = summaryEntries
+        .slice(0, 5)
+        .map((entry) => {
+          if (entry?.kind === 'release' && entry?.release?.tag_name) {
+            return `release:${entry.release.tag_name}`;
+          }
+          if (entry?.kind === 'show' && entry?.show?.id) {
+            return `show:${entry.show.id}:${entry.timestamp}`;
+          }
+          return `entry:${entry?.timestamp ?? 'unknown'}`;
+        })
+        .join('|');
+      return `multi:${signature}`;
+    }
+    if (heroEntry.kind === 'release' && heroEntry.release?.tag_name) {
+      return `release:${heroEntry.release.tag_name}`;
+    }
+    if (heroEntry.kind === 'show' && heroEntry.show?.id) {
+      return `show:${heroEntry.show.id}:${heroEntry.timestamp}`;
+    }
+    return null;
+  }, [heroEntry, multipleEntries, summaryEntries]);
+
+  const heroTimestampValue = useMemo(() => {
+    if (!heroEntry) {
+      return null;
+    }
+    if (Number.isFinite(heroEntry.timestamp)) {
+      return heroEntry.timestamp;
+    }
+    if (heroEntry.kind === 'release' && heroEntry.release?.published_at) {
+      const parsed = Date.parse(heroEntry.release.published_at);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }, [heroEntry]);
+
+  const shouldShowHeroBanner = useMemo(() => {
+    if (!heroEntry || !heroKey) return false;
+    if (heroTimestampValue === null) {
+      return dismissedTimestamp === null;
+    }
+    if (dismissedTimestamp !== null && heroTimestampValue <= dismissedTimestamp) {
+      return false;
+    }
+    return true;
+  }, [dismissedTimestamp, heroEntry, heroKey, heroTimestampValue]);
+
+  const heroStatusColor = useMemo(() => {
+    if (multipleEntries) return (theme?.palette?.info?.main) || '#38bdf8';
+    if (!heroEntry) return (theme?.palette?.success?.main) || '#22c55e';
+    if (heroEntry.kind === 'release' && heroEntry.release?.tag_name) {
+      const release = heroEntry.release;
+      const isDraft = Boolean(release.draft);
+      const isPrerelease = Boolean(release.prerelease);
+      const type = getReleaseType(release.tag_name);
+      if (isDraft) return (theme?.palette?.error?.main) || '#ef4444';
+      if (isPrerelease) return (theme?.palette?.warning?.main) || '#f59e0b';
+      switch (type) {
+        case 'major':
+          return (theme?.palette?.error?.main) || '#ef4444';
+        case 'minor':
+          return (theme?.palette?.success?.main) || '#22c55e';
+        default:
+          return (theme?.palette?.info?.main) || '#3b82f6';
+      }
+    }
+    return (theme?.palette?.success?.main) || '#22c55e';
+  }, [heroEntry, multipleEntries, theme]);
 
   useEffect(() => {
-    if (!releaseVisibilityStorageKey) {
-      visibilityAccumulatedRef.current = 0;
-      return;
+    visibilityAccumulatedRef.current = 0;
+    visibilitySessionStartRef.current = null;
+    if (autoDismissTimeoutRef.current) {
+      clearTimeout(autoDismissTimeoutRef.current);
+      autoDismissTimeoutRef.current = null;
     }
-    const stored = safeGetItem(releaseVisibilityStorageKey);
-    if (!stored) {
-      visibilityAccumulatedRef.current = 0;
-      return;
-    }
-    const parsed = Number.parseInt(stored, 10);
-    visibilityAccumulatedRef.current = Number.isFinite(parsed) ? parsed : 0;
-  }, [releaseVisibilityStorageKey]);
+  }, [heroKey, heroTimestampValue]);
 
-  const releaseLinkStyle = useMemo(
+  const heroLinkStyle = useMemo(
     () => ({
       color: '#bfdbfe',
       textDecoration: 'none',
@@ -203,42 +260,89 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     []
   );
 
-  useEffect(() => {
-    let didCancel = false;
-    const load = async () => {
-      try {
-        const latest = await fetchLatestRelease();
-        if (!didCancel) setLatestRelease(latest);
-      } catch (e) {
-        // silent fail
-      }
-    };
-    load();
-    return () => { didCancel = true };
+  const heroTimestampIso = useMemo(() => {
+    if (heroTimestampValue === null) {
+      return null;
+    }
+    return new Date(heroTimestampValue).toISOString();
+  }, [heroTimestampValue]);
+
+  const heroTimeLabel = heroTimestampIso ? formatRelativeTimeCompact(heroTimestampIso) : null;
+
+  const scrollFeedIntoView = useCallback(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const element = document.getElementById('news-feed');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, []);
 
-  const handleDismissUpdateBanner = useCallback(() => {
-    if (latestRelease?.tag_name) {
-      try {
-        setDismissedVersion(latestRelease.tag_name);
-        setDismissedVersionState(latestRelease.tag_name);
-      } catch (e) {
-        // no-op
+  const handleScrollToFeedClick = useCallback(
+    (event) => {
+      event.preventDefault();
+      if (pathname !== '/') {
+        try {
+          sessionStorage.setItem(SCROLL_TO_FEED_FLAG, '1');
+        } catch (error) {
+          // no-op
+        }
+        navigate('/', { replace: false });
+        return;
       }
+      scrollFeedIntoView();
+    },
+    [navigate, pathname, scrollFeedIntoView]
+  );
+
+  useEffect(() => {
+    if (pathname !== '/') {
+      return;
     }
-  }, [latestRelease]);
+    let shouldScroll = false;
+    try {
+      shouldScroll = Boolean(sessionStorage.getItem(SCROLL_TO_FEED_FLAG));
+    } catch (error) {
+      shouldScroll = false;
+    }
+    if (!shouldScroll) {
+      return;
+    }
+    try {
+      sessionStorage.removeItem(SCROLL_TO_FEED_FLAG);
+    } catch (error) {
+      // no-op
+    }
+    const timeoutId = window.setTimeout(() => {
+      scrollFeedIntoView();
+    }, 60);
+    return () => window.clearTimeout(timeoutId);
+  }, [pathname, scrollFeedIntoView]);
+
+  const handleDismissUpdateBanner = useCallback(() => {
+    if (!heroKey) {
+      return;
+    }
+    const timestampValue = heroTimestampValue ?? Date.now();
+    try {
+      safeSetItem(heroDismissedStorageKey, String(Math.round(timestampValue)));
+    } catch (e) {
+      // no-op
+    }
+    setDismissedTimestamp(timestampValue);
+  }, [heroDismissedStorageKey, heroKey, heroTimestampValue]);
 
   const persistVisibilityTime = useCallback(() => {
-    if (!releaseVisibilityStorageKey) return;
     const clamped = Math.min(
       visibilityAccumulatedRef.current,
       AUTO_DISMISS_TOTAL_MS + AUTO_DISMISS_MIN_VISIBLE_MS
     );
-    safeSetItem(releaseVisibilityStorageKey, String(Math.round(clamped)));
-  }, [releaseVisibilityStorageKey]);
+    visibilityAccumulatedRef.current = clamped;
+  }, []);
 
   useEffect(() => {
-    if (!hasRecentUndismissedUpdate || !releaseVisibilityStorageKey) {
+    if (!shouldShowHeroBanner) {
       if (autoDismissTimeoutRef.current) {
         clearTimeout(autoDismissTimeoutRef.current);
         autoDismissTimeoutRef.current = null;
@@ -279,7 +383,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
         persistVisibilityTime();
       }
     };
-  }, [hasRecentUndismissedUpdate, handleDismissUpdateBanner, persistVisibilityTime, releaseVisibilityStorageKey]);
+  }, [handleDismissUpdateBanner, persistVisibilityTime, shouldShowHeroBanner]);
 
   // Scroll to top when arriving at this page
   useEffect(() => {
@@ -298,8 +402,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   );
 
   const { seriesId } = useParams();
-
-  const navigate = useNavigate();
 
   // The handleChangeSeries function now only handles theme updates
   const handleChangeSeries = useCallback(
@@ -558,7 +660,8 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             gridTemplateColumns: isFeedEnabled
               ? {
                   xs: '1fr',
-                  md: 'minmax(0, 3fr) minmax(0, 1fr)',
+                  md: 'minmax(0, 2fr) minmax(0, 1fr)',
+                  lg: 'minmax(0, 3fr) minmax(0, 1fr)',
                 }
               : { xs: '1fr' },
             gap: isFeedEnabled ? { xs: 0.25, md: 3 } : 0,
@@ -618,9 +721,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                 }}
               >
                 <Box sx={heroSurfaceSx}>
-                  {latestRelease?.tag_name && (
+                  {heroEntry && (
                     <Slide
-                      in={hasRecentUndismissedUpdate}
+                      in={shouldShowHeroBanner}
                       direction={isMobile ? 'down' : 'left'}
                       mountOnEnter
                       unmountOnExit
@@ -653,7 +756,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                                 width: 10,
                                 height: 10,
                                 borderRadius: '50%',
-                                backgroundColor: statusDotColor,
+                                backgroundColor: heroStatusColor,
                                 boxShadow: '0 0 0 3px rgba(148,163,184,0.2)',
                               }}
                             />
@@ -669,30 +772,50 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                                 textOverflow: 'ellipsis',
                               }}
                             >
-                              Updated to{' '}
-                              <Link to="/releases" style={releaseLinkStyle}>
-                                {formatReleaseDisplay(latestRelease?.tag_name)}
-                              </Link>
+                              {multipleEntries ? (
+                                <>
+                                  New stuff!{' '}
+                                  <Link to="/#news-feed" style={heroLinkStyle} onClick={handleScrollToFeedClick}>
+                                    Click here to view.
+                                  </Link>
+                                </>
+                              ) : heroEntry.kind === 'show' && heroEntry.show ? (
+                                <>
+                                  Recently Added:{' '}
+                                  <Link to={`/${heroEntry.show.id}`} style={heroLinkStyle}>
+                                    {heroEntry.show.title || heroEntry.show.id}
+                                  </Link>
+                                </>
+                              ) : heroEntry.kind === 'release' && heroEntry.release ? (
+                                <>
+                                  Updated to{' '}
+                                  <Link to="/releases" style={heroLinkStyle}>
+                                    {formatReleaseDisplay(heroEntry.release.tag_name)}
+                                  </Link>
+                                </>
+                              ) : null}
                             </Typography>
                           </Box>
-                          <Box
-                            component="span"
-                            sx={{
-                              px: 1,
-                              py: 0.28,
-                              borderRadius: '999px',
-                              backgroundColor: 'rgba(148,163,184,0.16)',
-                              color: 'rgba(226,232,240,0.88)',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              letterSpacing: 0.5,
-                              textTransform: 'uppercase',
-                              whiteSpace: 'nowrap',
-                              flexShrink: 0,
-                            }}
-                          >
-                            {formatRelativeTimeCompact(latestRelease?.published_at)}
-                          </Box>
+                          {heroTimeLabel ? (
+                            <Box
+                              component="span"
+                              sx={{
+                                px: 1,
+                                py: 0.28,
+                                borderRadius: '999px',
+                                backgroundColor: 'rgba(148,163,184,0.16)',
+                                color: 'rgba(226,232,240,0.88)',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                letterSpacing: 0.5,
+                                textTransform: 'uppercase',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {heroTimeLabel}
+                            </Box>
+                          ) : null}
                           <IconButton
                             aria-label="Dismiss update"
                             size="small"
@@ -849,7 +972,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             </Box>
           </Paper>
 
-          <FeedSection />
+          <Box
+            sx={{
+              minWidth: 0,
+              display: isFeedEnabled ? 'block' : 'none',
+              px: 0,
+            }}
+          >
+            <FeedSection anchorId="news-feed" onFeedSummaryChange={handleFeedSummaryChange} />
+          </Box>
         </Box>
       </StyledGridContainer>
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />

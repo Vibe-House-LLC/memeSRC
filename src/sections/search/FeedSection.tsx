@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import { Box, Button, IconButton, Stack, Typography, useMediaQuery } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { Link as RouterLink } from 'react-router-dom';
@@ -8,6 +8,13 @@ import FavoriteToggleButton from '../../components/FavoriteToggleButton';
 import { UserContext } from '../../UserContext';
 import { normalizeColorValue, isColorNearBlack } from '../../utils/colors';
 import { safeGetItem, safeSetItem } from '../../utils/storage';
+import {
+  fetchLatestRelease,
+  formatReleaseDisplay,
+  formatRelativeTimeCompact,
+  getReleaseType,
+  type GitHubRelease,
+} from '../../utils/githubReleases';
 import { FeedCardSurface } from './cards/CardSurface';
 import { Search } from '@mui/icons-material';
 
@@ -24,6 +31,11 @@ const RECENT_SERIES_LIMIT = 12;
 const CARD_EXIT_DURATION_MS = 360;
 const FEED_CLEAR_ALL_KEY_PREFIX = 'memesrcFeedClearAll';
 const FEED_CLEAR_SINGLE_KEY_PREFIX = 'memesrcFeedClear';
+const FEED_PRIMER_GRADIENT = 'linear-gradient(135deg, #5461c8 0%, #c724b1 100%)';
+const FEED_PRIMER_DISMISS_KEY_PREFIX = 'memesrcFeedPrimerDismiss';
+const FEED_PRIMER_VERSION = '20240618';
+const FEED_UPDATE_DISMISSED_VERSION_KEY = 'feedUpdateBannerDismissedVersion';
+const FEED_RECENCY_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000;
 
 interface ShowRecord {
   id: string;
@@ -36,6 +48,22 @@ interface ShowRecord {
   isFavorite?: boolean | null;
   frameCount?: number | null;
   emoji?: string | null;
+}
+
+interface FeedSectionProps {
+  anchorId?: string;
+  onFeedSummaryChange?: (summary: FeedSummary) => void;
+}
+
+export type FeedSummaryEntry = {
+  kind: 'release' | 'show';
+  timestamp: number;
+  release?: GitHubRelease;
+  show?: ShowRecord;
+};
+
+export interface FeedSummary {
+  entries: FeedSummaryEntry[];
 }
 
 type UserContextValue = {
@@ -83,7 +111,7 @@ function sanitizeKeySegment(value: string): string {
   return value.replace(/[^0-9a-zA-Z_-]/g, '_');
 }
 
-function resolveUserIdentifier(user?: MaybeUser | null | false): string {
+export function resolveUserIdentifier(user?: MaybeUser | null | false): string {
   if (!user || typeof user !== 'object') {
     return 'signedOutGuest';
   }
@@ -113,6 +141,10 @@ function buildShowDismissKey(showId: string, identifier: string): string {
   return `${FEED_CLEAR_SINGLE_KEY_PREFIX}-${sanitizeKeySegment(showId)}-${sanitizeKeySegment(identifier)}`;
 }
 
+function buildPrimerDismissKey(identifier: string): string {
+  return `${FEED_PRIMER_DISMISS_KEY_PREFIX}-${sanitizeKeySegment(FEED_PRIMER_VERSION)}-${sanitizeKeySegment(identifier)}`;
+}
+
 function parseStoredTimestamp(value: string | null): number | null {
   if (!value) {
     return null;
@@ -126,6 +158,8 @@ interface SeriesCardProps {
   onDismiss: (show: ShowRecord) => void;
   isRemoving: boolean;
 }
+
+type PrimerRenderState = 'hidden' | 'visible' | 'removing';
 
 function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElement {
   const [isFavorite, setIsFavorite] = useState(Boolean(show.isFavorite));
@@ -226,6 +260,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
                 backgroundColor: alpha(actionFillColor, 0.25),
                 cursor: 'default',
               },
+              aspectRatio: '1/1',
             }}
           >
             {show.emoji || '🎬'}
@@ -238,10 +273,11 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
               justifySelf: 'center',
               textAlign: 'center',
               fontWeight: 800,
-              fontSize: { xs: '1.5rem', sm: '1.8rem' },
+              fontSize: { xs: '1.5rem', sm: '1.6rem' },
               lineHeight: { xs: 1.12, md: 1.08 },
               letterSpacing: { xs: -0.22, md: -0.28 },
               pb: 0,
+              px: { xs: 0.5, sm: 1 },
             }}
           >
             {show.title || show.id}
@@ -258,6 +294,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
               '&:hover': {
                 backgroundColor: alpha(actionFillColor, 0.28),
               },
+              aspectRatio: '1/1',
             }}
           >
             <CloseIcon fontSize="small" />
@@ -272,7 +309,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
             gap: { xs: 0.5, sm: 1 },
             pt: 2,
             width: '100%',
-            flexWrap: { xs: 'nowrap', sm: 'wrap' }
+            flexWrap: { xs: 'nowrap' }
           }}
         >
           <Button
@@ -293,7 +330,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
                 backgroundColor: actionFillColor,
                 opacity: 0.92,
               },
-              flexGrow: { xs: 1, sm: 0 },
+              flexGrow: { xs: 1 },
               flexShrink: 1,
               minWidth: 0,
             }}
@@ -308,7 +345,7 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
             backgroundColor={actionFillColor}
             textColor={actionTextColor}
             sx={{
-              flexGrow: { xs: 1, sm: 0 },
+              flexGrow: { xs: 1 },
               flexShrink: 1,
               minWidth: 0,
             }}
@@ -329,37 +366,21 @@ function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElem
           Search over {show.frameCount?.toLocaleString()} meme templates from {show.title}
         </Typography>
       </Stack>
-      {addedOnRelativeLabel ? (
-        <Box
-          component="span"
-          title={addedOnDisplay ?? undefined}
-          sx={{
-            display: 'inline-block',
-            width: 'fit-content',
-            px: { xs: 1.4, sm: 1.6 },
-            py: { xs: 0.6, sm: 0.65 },
-            borderRadius: 999,
-            color: actionTextColor,
-            backgroundColor: alpha(actionFillColor, 0.35),
-            border: `1px solid ${alpha(actionFillColor, 0.35)}`,
-            backdropFilter: 'blur(12px)',
-            fontSize: { xs: '0.78rem', sm: '0.8rem' },
-            fontWeight: 600,
-          }}
-        >
-          {addedOnRelativeLabel}
-        </Box>
-      ) : null}
     </FeedCardSurface>
   );
 }
 
-export default function FeedSection(): ReactElement | null {
+export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChange }: FeedSectionProps): ReactElement | null {
   const contextValue = (useContext(UserContext) as unknown as UserContextValue) ?? {};
   const showsInput = Array.isArray(contextValue.shows) ? (contextValue.shows as ShowRecord[]) : [];
   const userIdentifier = useMemo(() => resolveUserIdentifier(contextValue.user), [contextValue.user]);
+  const primerDismissKey = useMemo(() => buildPrimerDismissKey(userIdentifier), [userIdentifier]);
   const setShowFeed = typeof contextValue.setShowFeed === 'function' ? contextValue.setShowFeed : undefined;
   const { show: activeSeriesId } = useSearchDetails();
+  const [primerState, setPrimerState] = useState<PrimerRenderState>(() => {
+    const stored = safeGetItem(primerDismissKey);
+    return parseStoredTimestamp(stored) ? 'hidden' : 'visible';
+  });
   const [dismissalVersion, setDismissalVersion] = useState(0);
   const [clearAllTimestamp, setClearAllTimestamp] = useState<number | null>(null);
   const [renderedShows, setRenderedShows] = useState<ShowRecord[]>([]);
@@ -367,9 +388,119 @@ export default function FeedSection(): ReactElement | null {
   const removingSet = useMemo(() => new Set(removingIds), [removingIds]);
   const [retainedIds, setRetainedIds] = useState<string[]>([]);
   const retainedSet = useMemo(() => new Set(retainedIds), [retainedIds]);
+  const [latestRelease, setLatestRelease] = useState<GitHubRelease | null>(null);
+  const feedDismissedStorageKey = useMemo(() => `${FEED_UPDATE_DISMISSED_VERSION_KEY}:${userIdentifier}`, [userIdentifier]);
+  const [feedDismissedVersion, setFeedDismissedVersion] = useState<string>(() => safeGetItem(feedDismissedStorageKey) || '');
+  useEffect(() => {
+    const stored = safeGetItem(feedDismissedStorageKey);
+    setFeedDismissedVersion(stored || '');
+  }, [feedDismissedStorageKey]);
+  const [isReleaseRemoving, setIsReleaseRemoving] = useState(false);
+  const hasRecentUndismissedUpdate = useMemo(() => {
+    if (!latestRelease?.tag_name || !latestRelease?.published_at) {
+      return false;
+    }
+    if (feedDismissedVersion === latestRelease.tag_name) {
+      return false;
+    }
+    const published = new Date(latestRelease.published_at).getTime();
+    if (!Number.isFinite(published)) {
+      return false;
+    }
+    const threeDaysMsExtended = 3 * 24 * 60 * 60 * 1000;
+    return Date.now() - published <= threeDaysMsExtended;
+  }, [latestRelease, feedDismissedVersion]);
   const timeoutsRef = useRef<number[]>([]);
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const releaseStatusColor = useMemo(() => {
+    if (!latestRelease) {
+      return theme?.palette?.success?.main ?? '#22c55e';
+    }
+    const isDraft = Boolean(latestRelease.draft);
+    const isPrerelease = Boolean(latestRelease.prerelease);
+    const type = getReleaseType(latestRelease.tag_name);
+    if (isDraft) return theme?.palette?.error?.main ?? '#ef4444';
+    if (isPrerelease) return theme?.palette?.warning?.main ?? '#f59e0b';
+    switch (type) {
+      case 'major':
+        return theme?.palette?.error?.main ?? '#ef4444';
+      case 'minor':
+        return theme?.palette?.success?.main ?? '#22c55e';
+      default:
+        return theme?.palette?.info?.main ?? '#3b82f6';
+    }
+  }, [latestRelease, theme]);
+  const releaseLinkStyle = useMemo<CSSProperties>(
+    () => ({
+      color: '#bfdbfe',
+      textDecoration: 'none',
+      whiteSpace: isMobile ? 'normal' : 'nowrap',
+      fontWeight: 600,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 4,
+    }),
+    [isMobile]
+  );
+  const releaseTimestamp = useMemo(() => {
+    if (!latestRelease?.published_at) {
+      return null;
+    }
+    const value = new Date(latestRelease.published_at).getTime();
+    return Number.isFinite(value) ? value : null;
+  }, [latestRelease?.published_at]);
+  const shouldShowReleaseCard = Boolean(latestRelease?.tag_name && hasRecentUndismissedUpdate && releaseTimestamp !== null);
+
+  useEffect(() => {
+    let didCancel = false;
+
+    const load = async () => {
+      try {
+        const latest = await fetchLatestRelease();
+        if (!didCancel) {
+          setLatestRelease(latest);
+        }
+      } catch (error) {
+        // Silent fail
+      }
+    };
+
+    load();
+
+    return () => {
+      didCancel = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!shouldShowReleaseCard && isReleaseRemoving) {
+      setIsReleaseRemoving(false);
+    }
+  }, [isReleaseRemoving, shouldShowReleaseCard]);
+
+  const handleDismissReleaseCard = useCallback(() => {
+    if (!latestRelease?.tag_name || isReleaseRemoving) {
+      return;
+    }
+
+    const tagName = latestRelease.tag_name;
+    setIsReleaseRemoving(true);
+
+    const finalizeTimeout = window.setTimeout(() => {
+      try {
+        safeSetItem(feedDismissedStorageKey, tagName);
+      } catch (error) {
+        // no-op
+      } finally {
+        setFeedDismissedVersion(tagName);
+        setIsReleaseRemoving(false);
+      }
+    }, CARD_EXIT_DURATION_MS);
+
+    timeoutsRef.current.push(finalizeTimeout);
+  }, [feedDismissedStorageKey, isReleaseRemoving, latestRelease]);
 
   useEffect(() => {
     const stored = safeGetItem(buildClearAllKey(userIdentifier));
@@ -381,6 +512,7 @@ export default function FeedSection(): ReactElement | null {
   const eligibleShows = useMemo(() => {
     return [...showsInput]
       .filter((show): show is ShowRecord => Boolean(show && show.id && !show.id.startsWith('_')))
+      .filter((show) => show.createdAt > new Date('2025-09-01').toISOString())
       .map((show) => ({ show, timestamp: resolveSeriesTimestamp(show) }))
       .sort((a, b) => b.timestamp - a.timestamp)
       .filter(({ show, timestamp }) => {
@@ -437,15 +569,18 @@ export default function FeedSection(): ReactElement | null {
   }, [eligibleShows, retainedSet, showsInput]);
 
   useEffect(() => {
-    setShowFeed?.(eligibleShows.length > 0);
-  }, [eligibleShows, setShowFeed]);
+    setShowFeed?.(eligibleShows.length > 0 || shouldShowReleaseCard);
+  }, [eligibleShows, shouldShowReleaseCard, setShowFeed]);
 
-  useEffect(() => () => {
-    timeoutsRef.current.forEach((timeoutId) => {
-      window.clearTimeout(timeoutId);
-    });
-    timeoutsRef.current = [];
-  }, []);
+  useEffect(
+    () => () => {
+      timeoutsRef.current.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      timeoutsRef.current = [];
+    },
+    []
+  );
 
   const scheduleRemoval = useCallback(
     (show: ShowRecord, delayMs: number, persist: () => void) => {
@@ -517,64 +652,417 @@ export default function FeedSection(): ReactElement | null {
   }, [renderedShows, scheduleRemoval, userIdentifier]);
 
   const hasShows = renderedShows.length > 0;
+  const shouldRenderPrimer = primerState !== 'hidden';
+  const isPrimerRemoving = primerState === 'removing';
+  const hasFeedContent = hasShows || shouldShowReleaseCard || shouldRenderPrimer;
 
-  if (!hasShows) {
+  useEffect(() => {
+    const stored = safeGetItem(primerDismissKey);
+    const dismissedAt = parseStoredTimestamp(stored);
+    setPrimerState(dismissedAt ? 'hidden' : 'visible');
+  }, [primerDismissKey]);
+
+  const handleDismissPrimer = useCallback(() => {
+    if (!shouldRenderPrimer || isPrimerRemoving) {
+      return;
+    }
+
+    setPrimerState('removing');
+
+    const finalizeTimeout = window.setTimeout(() => {
+      safeSetItem(primerDismissKey, new Date().toISOString());
+      setPrimerState('hidden');
+    }, CARD_EXIT_DURATION_MS);
+
+    timeoutsRef.current.push(finalizeTimeout);
+  }, [isPrimerRemoving, primerDismissKey, shouldRenderPrimer]);
+
+  const releaseCardElement = shouldShowReleaseCard && latestRelease ? (
+    <Box
+      key={latestRelease.tag_name ?? latestRelease.id ?? 'latestReleaseCard'}
+      sx={{
+        ...FEED_CARD_WRAPPER_SX,
+        px: { xs: 0, sm: 0 },
+        pointerEvents: isReleaseRemoving ? 'none' : 'auto',
+        opacity: isReleaseRemoving ? 0 : 1,
+        transform: isReleaseRemoving ? 'translateY(-28px)' : 'translateY(0)',
+        transition: `transform ${CARD_EXIT_DURATION_MS}ms ease, opacity ${CARD_EXIT_DURATION_MS}ms ease`,
+      }}
+    >
+      <FeedCardSurface
+        tone="neutral"
+        gradient="rgba(15,23,42,0.92)"
+        sx={{
+          border: '1px solid rgba(148,163,184,0.25)',
+          boxShadow: '0 32px 64px rgba(8,10,20,0.52)',
+          backdropFilter: 'blur(18px) saturate(140%)',
+          gap: { xs: 1.8, sm: 2 },
+        }}
+      >
+        <Stack spacing={{ xs: 1.6, sm: 2.1 }} sx={{ width: '100%' }}>
+          <Stack
+            direction={{ xs: 'row', sm: 'row' }}
+            spacing={{ xs: 1.1, sm: 1.6 }}
+            alignItems={{ xs: 'center', sm: 'center' }}
+            justifyContent="space-between"
+            sx={{ width: '100%' }}
+          >
+            <Stack
+              direction="row"
+              spacing={1.1}
+              alignItems="center"
+              sx={{
+                flexGrow: 1,
+                minWidth: 0,
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  backgroundColor: releaseStatusColor,
+                  boxShadow: `0 0 0 4px ${alpha(releaseStatusColor, 0.2)}`,
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                component="span"
+                variant="body2"
+                sx={{
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1.2,
+                  color: 'rgba(226,232,240,0.86)',
+                }}
+              >
+                Latest update
+              </Typography>
+            </Stack>
+            <IconButton
+              aria-label="Dismiss latest update"
+              onClick={handleDismissReleaseCard}
+              size="small"
+              sx={{
+                color: 'rgba(226,232,240,0.78)',
+                backgroundColor: 'rgba(148,163,184,0.18)',
+                border: '1px solid rgba(148,163,184,0.28)',
+                '&:hover': {
+                  backgroundColor: 'rgba(148,163,184,0.28)',
+                  color: '#f8fafc',
+                },
+              }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+          <Stack spacing={{ xs: 0.8, sm: 1 }} sx={{ width: '100%', pb: 1 }}>
+            <Typography
+              component="p"
+              variant="body1"
+              sx={{
+                color: '#e2e8f0',
+                fontWeight: 800,
+                fontSize: { xs: '1.4rem', sm: '1.5rem' },
+                lineHeight: { xs: 1.56, sm: 1.6 },
+                textAlign: 'center',
+              }}
+            >
+              Updated to{' '}
+              <Box component={RouterLink} to="/releases" style={releaseLinkStyle}>
+                {formatReleaseDisplay(latestRelease.tag_name)}
+              </Box>
+            </Typography>
+          </Stack>
+          <Stack
+            direction='column'
+            spacing={{ xs: 1, sm: 1.4 }}
+            alignItems='stretch'
+            sx={{ width: '100%' }}
+          >
+            <Button
+              component={RouterLink}
+              to="/releases"
+              variant="contained"
+              sx={{
+                borderRadius: 999,
+                px: { xs: 2.6, sm: 3 },
+                py: { xs: 0.9, sm: 1 },
+                textTransform: 'none',
+                fontWeight: 700,
+                color: isColorNearBlack(releaseStatusColor) ? '#f8fafc' : '#0b1020',
+                backgroundColor: releaseStatusColor,
+                boxShadow: '0 22px 44px rgba(7,11,23,0.42)',
+                '&:hover': {
+                  backgroundColor: releaseStatusColor,
+                  opacity: 0.94,
+                },
+              }}
+            >
+              View release notes
+            </Button>
+          </Stack>
+        </Stack>
+      </FeedCardSurface>
+    </Box>
+  ) : null;
+
+  const feedItems: ReactElement[] = [];
+  let releaseInserted = !releaseCardElement || releaseTimestamp === null;
+
+  renderedShows.forEach((show) => {
+    if (!releaseInserted && releaseCardElement && releaseTimestamp !== null) {
+      const showTimestamp = resolveSeriesTimestamp(show);
+      if (releaseTimestamp >= showTimestamp) {
+        feedItems.push(releaseCardElement);
+        releaseInserted = true;
+      }
+    }
+
+    feedItems.push(
+      <Box
+        key={show.id}
+        sx={{
+          ...FEED_CARD_WRAPPER_SX,
+          transition: `transform ${CARD_EXIT_DURATION_MS}ms ease, opacity ${CARD_EXIT_DURATION_MS}ms ease`,
+        }}
+      >
+        <SeriesCard show={show} onDismiss={handleDismissShow} isRemoving={removingSet.has(show.id)} />
+      </Box>
+    );
+  });
+
+  if (!releaseInserted && releaseCardElement) {
+    feedItems.push(releaseCardElement);
+  }
+
+  const releaseIsRecent = useMemo(() => {
+    if (releaseTimestamp === null) {
+      return false;
+    }
+    return Date.now() - releaseTimestamp <= FEED_RECENCY_THRESHOLD_MS;
+  }, [releaseTimestamp]);
+
+  const summaryEntries = useMemo<FeedSummaryEntry[]>(() => {
+    const now = Date.now();
+    const entries: FeedSummaryEntry[] = [];
+
+    if (
+      latestRelease &&
+      releaseTimestamp !== null &&
+      releaseIsRecent &&
+      latestRelease.tag_name !== feedDismissedVersion
+    ) {
+      entries.push({ kind: 'release', timestamp: releaseTimestamp, release: latestRelease });
+    }
+
+    renderedShows.forEach((show) => {
+      const timestamp = resolveSeriesTimestamp(show);
+      if (!timestamp) {
+        return;
+      }
+      if (now - timestamp > FEED_RECENCY_THRESHOLD_MS) {
+        return;
+      }
+      entries.push({ kind: 'show', timestamp, show });
+    });
+
+    return entries.sort((a, b) => b.timestamp - a.timestamp);
+  }, [feedDismissedVersion, latestRelease, releaseIsRecent, releaseTimestamp, renderedShows]);
+
+  const summarySignature = useMemo(() => {
+    if (!summaryEntries.length) {
+      return 'empty';
+    }
+    return summaryEntries
+      .map((entry) => {
+        if (entry.kind === 'release') {
+          return `release:${entry.release?.tag_name ?? 'unknown'}:${entry.timestamp}`;
+        }
+        if (entry.kind === 'show') {
+          return `show:${entry.show?.id ?? 'unknown'}:${entry.timestamp}`;
+        }
+        return `entry:${entry.timestamp}`;
+      })
+      .join('|');
+  }, [summaryEntries]);
+
+  const previousSummarySignatureRef = useRef<string>('');
+
+  useEffect(() => {
+    if (!onFeedSummaryChange) {
+      return;
+    }
+    if (summarySignature === previousSummarySignatureRef.current) {
+      return;
+    }
+    previousSummarySignatureRef.current = summarySignature;
+    onFeedSummaryChange({ entries: summaryEntries });
+  }, [onFeedSummaryChange, summaryEntries, summarySignature]);
+
+  useEffect(
+    () => () => {
+      if (onFeedSummaryChange) {
+        onFeedSummaryChange({ entries: [] });
+      }
+      previousSummarySignatureRef.current = '';
+    },
+    [onFeedSummaryChange]
+  );
+
+  if (!hasFeedContent) {
     return null;
   }
 
   return (
-    <Stack spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 } }}>
-      <Stack
+
+    <Stack id={anchorId} spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 } }}>
+      {isMd && <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
         alignItems={{ xs: isMd ? 'flex-start' : 'flex-end', sm: 'center' }}
         spacing={{ xs: 1, sm: 2 }}
         sx={{ px: { xs: 3, sm: 0 } }}
+      ><Typography
+        component="h2"
+        variant="h5"
+        sx={{
+          fontWeight: 700,
+          letterSpacing: -0.18,
+          color: '#f8fafc',
+          paddingLeft: { xs: 0.5, md: 0 },
+        }}
       >
-        {isMd && <Typography
-          component="h2"
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-            letterSpacing: -0.18,
-            color: '#f8fafc',
-            paddingLeft: { xs: 0.5, md: 0 },
-          }}
-        >
           News Feed
-        </Typography>}
-        <Button
-          variant="text"
-          size="small"
-          onClick={handleClearAll}
-          disabled={!hasShows}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 600,
-            color: alpha('#f8fafc', 0.9),
-            '&:hover': {
-              color: '#f8fafc',
-              backgroundColor: alpha('#f8fafc', 0.08),
-            },
-            '&.Mui-disabled': {
-              color: alpha('#f8fafc', 0.32),
-            },
-          }}
-        >
-          Clear All
-        </Button>
+        </Typography>
       </Stack>
-      {renderedShows?.length > 0 && renderedShows.map((show) => (
+      }
+      {shouldRenderPrimer ? (
         <Box
-          key={show.id}
           sx={{
             ...FEED_CARD_WRAPPER_SX,
+            opacity: isPrimerRemoving ? 0 : 1,
+            transform: isPrimerRemoving ? 'translateY(-28px)' : 'translateY(0)',
             transition: `transform ${CARD_EXIT_DURATION_MS}ms ease, opacity ${CARD_EXIT_DURATION_MS}ms ease`,
+            pointerEvents: isPrimerRemoving ? 'none' : 'auto',
           }}
         >
-          <SeriesCard show={show} onDismiss={handleDismissShow} isRemoving={removingSet.has(show.id)} />
+          <FeedCardSurface
+            tone="neutral"
+            gradient={FEED_PRIMER_GRADIENT}
+            sx={{
+              border: '1px solid rgba(255,255,255,0.28)',
+              boxShadow: '0 34px 68px rgba(18,7,36,0.6)',
+              gap: { xs: 2.2, sm: 2.3, md: 2.5 },
+            }}
+          >
+            <Stack
+              spacing={{ xs: 2.4, sm: 2.3, md: 2.6 }}
+              sx={{
+                width: '100%',
+                maxWidth: { xs: '100%'},
+                textAlign: 'left',
+                alignItems: 'stretch',
+              }}
+            >
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                spacing={{ xs: 1.4, sm: 1.8 }}
+                sx={{ width: '100%' }}
+              >
+                <IconButton
+                  aria-label="Feed spotlight"
+                  size="small"
+                  sx={{
+                    flexShrink: 0,
+                    color: 'rgba(17,24,39,0.92)',
+                    backgroundColor: alpha('#ffffff', 0.9),
+                    border: `1px solid ${alpha('#ffffff', 0.92)}`,
+                    boxShadow: '0 18px 36px rgba(9,11,24,0.35)',
+                    backdropFilter: 'blur(12px)',
+                    pointerEvents: 'none',
+                    fontSize: '1rem',
+                    aspectRatio: '1/1',
+                  }}
+                >
+                  👋
+                </IconButton>
+                <Typography
+                  component="h3"
+                  variant="h3"
+                  sx={{
+                    flexGrow: 1,
+                    minWidth: 0,
+                    fontWeight: 800,
+                    color: '#fff',
+                    textShadow: '0 22px 55px rgba(38,7,32,0.7)',
+                    fontSize: { xs: '1.5rem', sm: '1.6rem' },
+                    lineHeight: { xs: 1.14, md: 1.1 },
+                    letterSpacing: { xs: -0.22, md: -0.3 },
+                    textAlign: 'center',
+                  }}
+                >
+                  Welcome to the feed
+                </Typography>
+                <IconButton
+                  aria-label="Dismiss feed spotlight"
+                  onClick={handleDismissPrimer}
+                  size="small"
+                  sx={{
+                    flexShrink: 0,
+                    color: 'rgba(255,255,255,0.92)',
+                    backgroundColor: alpha('#ffffff', 0.16),
+                    border: `1px solid ${alpha('#ffffff', 0.28)}`,
+                    boxShadow: '0 18px 36px rgba(9,11,24,0.35)',
+                    backdropFilter: 'blur(12px)',
+                    transition: 'background-color 160ms ease, transform 160ms ease',
+                    '&:hover': {
+                      backgroundColor: alpha('#ffffff', 0.24),
+                      transform: 'translateY(-1px)',
+                    },
+                    aspectRatio: '1/1',
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+              <Typography
+                component="p"
+                variant="body1"
+                sx={{
+                  color: 'rgba(255,255,255,0.93)',
+                  fontWeight: 600,
+                  letterSpacing: { xs: 0.1, md: 0.14 },
+                  fontSize: { xs: '1.08rem', sm: '1.16rem', md: '1.24rem' },
+                  lineHeight: { xs: 1.6, md: 1.68 },
+                  maxWidth: { xs: '100%' },
+                  textAlign: 'center',
+                  width: '100%',
+                }}
+              >
+                Stay up to date with the latest shows and features from the memeSRC team.
+              </Typography>
+              {/* <Typography
+                component="p"
+                variant="body2"
+                sx={{
+                  color: 'rgba(245,245,255,0.85)',
+                  fontWeight: 500,
+                  fontSize: { xs: '0.98rem', sm: '1rem' },
+                  lineHeight: 1.7,
+                  maxWidth: { xs: '100%', sm: 520 },
+                }}
+              >
+                We are iterating quickly—expect this space to evolve as new feed content and experiments roll out.
+              </Typography> */}
+            </Stack>
+          </FeedCardSurface>
         </Box>
-      ))}
+      ) : null}
+      {feedItems}
     </Stack>
   );
 }
