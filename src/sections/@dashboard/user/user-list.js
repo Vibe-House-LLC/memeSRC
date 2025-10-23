@@ -15,6 +15,7 @@ const UserList = () => {
     const [isLoadingAll, setIsLoadingAll] = useState(false);
     const [hasTriggeredLoadAll, setHasTriggeredLoadAll] = useState(false);
     const [isLoadingFromSearch, setIsLoadingFromSearch] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const itemsPerPage = 10;
 
     // Function for loading users
@@ -58,22 +59,27 @@ const UserList = () => {
     };
 
     // Function for loading all users
-    const loadAllUsers = async (fromSearchFocus = false) => {
-        // Prevent multiple simultaneous calls
-        if (isLoadingAll || (hasTriggeredLoadAll && !fromSearchFocus)) {
-            return;
+    const loadAllUsers = async (fromSearchFocus = false, options = {}) => {
+        const { force = false, returnUsers = false } = options;
+
+        if (isLoadingAll) {
+            return returnUsers ? users : undefined;
+        }
+
+        if (hasTriggeredLoadAll && !fromSearchFocus && !force) {
+            return returnUsers ? users : undefined;
         }
 
         setIsLoadingAll(true);
         if (fromSearchFocus) {
             setIsLoadingFromSearch(true);
         }
-        
+
         try {
             let allUsers = [];
             let currentNextToken = null;
 
-            const fetchUsers = async () => {
+            do {
                 const response = await API.graphql({
                     query: listUserDetails,
                     variables: {
@@ -84,25 +90,25 @@ const UserList = () => {
                 const fetchedUsers = response?.data?.listUserDetails?.items || [];
                 allUsers = [...allUsers, ...fetchedUsers];
                 currentNextToken = response?.data?.listUserDetails?.nextToken || null;
+            } while (currentNextToken);
 
-                if (currentNextToken) {
-                    await fetchUsers();
-                }
-            };
-
-            await fetchUsers();
             setUsers(allUsers);
             setNextToken(null);
             setHasTriggeredLoadAll(true);
+
+            return returnUsers ? allUsers : undefined;
         } catch (error) {
             alert('Something went wrong loading users');
             console.log(error);
             // Reset the flag on error so user can try again
             setHasTriggeredLoadAll(false);
-        }
-        setIsLoadingAll(false);
-        if (fromSearchFocus) {
-            setIsLoadingFromSearch(false);
+
+            return returnUsers ? null : undefined;
+        } finally {
+            setIsLoadingAll(false);
+            if (fromSearchFocus) {
+                setIsLoadingFromSearch(false);
+            }
         }
     };
 
@@ -153,6 +159,70 @@ const UserList = () => {
         currentPage * itemsPerPage
     );
 
+    const createCsvContent = (records) => {
+        if (!records || records.length === 0) {
+            return '';
+        }
+
+        const columnSet = new Set();
+        records.forEach((record) => {
+            Object.keys(record || {}).forEach((key) => columnSet.add(key));
+        });
+
+        const columns = Array.from(columnSet);
+        const escapeCell = (value) => {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            const cellValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+            if (/[",\n]/.test(cellValue)) {
+                return `"${cellValue.replace(/"/g, '""')}"`;
+            }
+
+            return cellValue;
+        };
+
+        const header = columns.map((column) => escapeCell(column)).join(',');
+        const rows = records.map((record) => columns.map((column) => escapeCell(record[column])).join(','));
+
+        return [header, ...rows].join('\n');
+    };
+
+    const handleExportCsv = async () => {
+        setIsExporting(true);
+
+        try {
+            let allUsersData = users;
+            if ((!hasTriggeredLoadAll && nextToken) || users.length === 0) {
+                const fetchedUsers = await loadAllUsers(false, { returnUsers: true });
+                allUsersData = fetchedUsers || [];
+            }
+
+            if (!allUsersData || allUsersData.length === 0) {
+                alert('No users available to export');
+                return;
+            }
+
+            const csvContent = createCsvContent(allUsersData);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const timestamp = new Date().toISOString().replace(/[:T]/g, '-').split('.')[0];
+            link.download = `users-${timestamp}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            alert('Something went wrong exporting users');
+            console.log(error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <Box>
             <Typography variant="h4" gutterBottom>
@@ -174,15 +244,24 @@ const UserList = () => {
                         ),
                     }}
                 />
-                <LoadingButton 
-                    disabled={!nextToken || isLoadingAll || hasTriggeredLoadAll} 
-                    loading={isLoadingAll} 
-                    variant="contained" 
-                    onClick={() => loadAllUsers(false)} 
-                    style={{ marginLeft: '16px' }}
-                >
-                    Load All Users
-                </LoadingButton>
+                <Stack direction='row' spacing={2} sx={{ marginLeft: 2 }}>
+                    <LoadingButton
+                        disabled={!nextToken || isLoadingAll || hasTriggeredLoadAll}
+                        loading={isLoadingAll}
+                        variant="contained"
+                        onClick={() => loadAllUsers(false)}
+                    >
+                        Load All Users
+                    </LoadingButton>
+                    <LoadingButton
+                        disabled={isLoadingAll || isLoadingMore || isExporting}
+                        loading={isExporting}
+                        variant="contained"
+                        onClick={handleExportCsv}
+                    >
+                        Export CSV
+                    </LoadingButton>
+                </Stack>
             </Stack>
             <Card
                 sx={{
