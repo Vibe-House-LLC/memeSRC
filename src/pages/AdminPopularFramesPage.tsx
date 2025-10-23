@@ -764,7 +764,7 @@ const AdminPopularFramesPage: React.FC = () => {
                   direction={{ xs: 'column', md: 'row' }}
                   spacing={2}
                   alignItems={{ xs: 'flex-start', md: 'center' }}
-                  justifyContent="space-between"
+                  justifyContent={{ xs: 'flex-start', md: 'space-between' }}
                 >
                   <Box>
                     <Typography variant="h6">
@@ -784,7 +784,7 @@ const AdminPopularFramesPage: React.FC = () => {
                   />
                 </Stack>
 
-                <Grid container spacing={3}>
+                <Grid container spacing={{ xs: 2, sm: 3 }}>
                   {topFrames.map((frame, index) => {
                     const rank = index + 1;
                     const showLabel = showLabelMap.get(frame.cid) ?? frame.cid;
@@ -911,16 +911,26 @@ const AdminPopularFramesPage: React.FC = () => {
 
                           <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
                             <Stack
-                              direction="row"
+                              direction={{ xs: 'column', sm: 'row' }}
                               spacing={1}
-                              alignItems="center"
-                              justifyContent="space-between"
+                              alignItems={{ xs: 'stretch', sm: 'center' }}
+                              justifyContent={{ xs: 'flex-start', sm: 'space-between' }}
                               sx={{ width: '100%' }}
                             >
-                              <Button size="small" component={RouterLink} to={framePath}>
+                              <Button
+                                size="small"
+                                component={RouterLink}
+                                to={framePath}
+                                sx={{ width: { xs: '100%', sm: 'auto' } }}
+                              >
                                 View frame
                               </Button>
-                              <Button size="small" component={RouterLink} to={editorPath}>
+                              <Button
+                                size="small"
+                                component={RouterLink}
+                                to={editorPath}
+                                sx={{ width: { xs: '100%', sm: 'auto' } }}
+                              >
                                 Open editor
                               </Button>
                               <Button
@@ -930,6 +940,7 @@ const AdminPopularFramesPage: React.FC = () => {
                                 target="_blank"
                                 rel="noopener"
                                 endIcon={<LaunchIcon fontSize="small" />}
+                                sx={{ width: { xs: '100%', sm: 'auto' } }}
                               >
                                 Image
                               </Button>
