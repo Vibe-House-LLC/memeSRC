@@ -26,10 +26,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { API, Auth, Storage } from 'aws-amplify';
 import { LoadingButton } from '@mui/lab';
 import { UserContext, STRIPE_REFRESH_STORAGE_KEY } from '../UserContext';
+import { SnackbarContext } from '../SnackbarContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { getShowsWithFavorites } from '../utils/fetchShowsRevised';
 import { safeRemoveItem, safeSetItem, writeJSON } from '../utils/storage';
 import ProfilePhotoCropper from '../components/ProfilePhotoCropper';
+import UpdatePasswordDialog from '../components/UpdatePasswordDialog';
 import { fetchProfilePhoto as fetchProfilePhotoUtil } from '../utils/profilePhoto';
 
 const AccountPage = () => {
@@ -47,8 +49,15 @@ const AccountPage = () => {
   const [deletingPhoto, setDeletingPhoto] = useState(false);
   const [cropperOpen, setCropperOpen] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [isUpdatePasswordDialogOpen, setIsUpdatePasswordDialogOpen] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const snackbar = useContext(SnackbarContext);
+  const {
+    setOpen: setSnackbarOpen,
+    setMessage: setSnackbarMessage,
+    setSeverity: setSnackbarSeverity,
+  } = snackbar || {};
 
   const authUser = userDetails?.user;
   const hasUserDetails = Boolean(authUser && authUser !== false && authUser.userDetails);
@@ -295,6 +304,26 @@ const AccountPage = () => {
       alert('Failed to delete profile photo. Please try again.');
     } finally {
       setDeletingPhoto(false);
+    }
+  };
+
+  const handleOpenUpdatePasswordDialog = () => {
+    setIsUpdatePasswordDialogOpen(true);
+  };
+
+  const handleCloseUpdatePasswordDialog = () => {
+    setIsUpdatePasswordDialogOpen(false);
+  };
+
+  const handlePasswordUpdateSuccess = () => {
+    if (setSnackbarSeverity) {
+      setSnackbarSeverity('success');
+    }
+    if (setSnackbarMessage) {
+      setSnackbarMessage('Password updated successfully.');
+    }
+    if (setSnackbarOpen) {
+      setSnackbarOpen(true);
     }
   };
 
@@ -600,16 +629,37 @@ const AccountPage = () => {
 
                 {/* User Details */}
                 <Box flex={1} sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
-                  <Typography 
-                    variant="h4" 
-                    sx={{ 
-                      fontWeight: 600,
-                      mb: 0.5,
-                      fontSize: { xs: '1.5rem', sm: '1.75rem' },
-                    }}
+                  <Stack
+                    direction="row"
+                    spacing={{ xs: 1, sm: 1.5 }}
+                    alignItems="center"
+                    justifyContent={{ xs: 'center', sm: 'flex-start' }}
+                    flexWrap="wrap"
+                    sx={{ mb: 1.5 }}
                   >
-                    {accountUsername}
-                  </Typography>
+                    <Typography
+                      variant="h4"
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: { xs: '1.5rem', sm: '1.75rem' },
+                      }}
+                    >
+                      {accountUsername}
+                    </Typography>
+                    {isSubscriptionDataLoading ? (
+                      <Skeleton variant="rounded" width={120} height={32} sx={{ borderRadius: 16 }} />
+                    ) : (
+                      <Chip
+                        icon={isPro ? <StarIcon sx={{ fontSize: 16 }} /> : undefined}
+                        label={isSubscriptionActive ? 'Pro Member' : 'Free Account'}
+                        color={isPro ? 'primary' : 'default'}
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    )}
+                  </Stack>
                   <Typography 
                     variant="body1" 
                     color="text.secondary"
@@ -620,26 +670,17 @@ const AccountPage = () => {
                   >
                     {accountEmail}
                   </Typography>
-                  <Stack 
-                    direction="row" 
-                    spacing={1} 
-                    flexWrap="wrap"
-                    justifyContent={{ xs: 'center', sm: 'flex-start' }}
+                  <Box
+                    sx={{
+                      mt: 2,
+                      display: 'flex',
+                      justifyContent: { xs: 'center', sm: 'flex-start' },
+                    }}
                   >
-                    {isSubscriptionDataLoading ? (
-                      <Skeleton variant="rounded" width={120} height={32} sx={{ borderRadius: 16 }} />
-                    ) : (
-                      <Chip
-                        icon={isPro ? <StarIcon sx={{ fontSize: 16 }} /> : undefined}
-                        label={isSubscriptionActive ? 'Pro Member' : 'Free Account'}
-                        color={isPro ? 'primary' : 'default'}
-                        sx={{ 
-                          fontWeight: 600,
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    )}
-                  </Stack>
+                    <Button variant="outlined" onClick={handleOpenUpdatePasswordDialog} size="medium">
+                      Update Password
+                    </Button>
+                  </Box>
                 </Box>
               </Stack>
             </Box>
@@ -1074,6 +1115,11 @@ const AccountPage = () => {
         imageFile={selectedImageFile}
         onClose={handleCropperClose}
         onCrop={handleCroppedPhoto}
+      />
+      <UpdatePasswordDialog
+        open={isUpdatePasswordDialogOpen}
+        onClose={handleCloseUpdatePasswordDialog}
+        onSuccess={handlePasswordUpdateSuccess}
       />
     </Box>
   );
