@@ -172,6 +172,12 @@ const navConfig = [
         icon: <TrendingUp />,
       },
       {
+        title: 'Popular Frames',
+        path: '/dashboard/popular-frames',
+        externalLink: false,
+        icon: <Collections />,
+      },
+      {
         title: 'Website Settings',
         path: '/dashboard/websiteSettings',
         externalLink: false,
