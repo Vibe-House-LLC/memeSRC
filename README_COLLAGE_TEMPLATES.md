@@ -164,7 +164,7 @@ _Last reviewed: 2025-10-23_
 - [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
 
 ## Phase 2 – API & Storage Wiring
-- [x] Replace the localStorage helpers with remote-aware implementations (wrap Amplify `API.graphql` + `Storage`). Keep method names/intents identical so pages/components require minimal changes. _2025-01-24 update:_ Added `src/components/collage/utils/templates.ts` which mirrors the existing helper surface with async Amplify-backed operations (list/create/update/delete). Remote calls upload snapshots/thumbnails to the protected S3 prefix (`collage/templates/{id}/snapshot.json|thumbnail.jpg`) and fall back to the legacy localStorage module if the API errors so we can stage the UI migration safely. Exported cache/utility hooks (`clearTemplateCache`, `__debugGetCache`) to aid upcoming async refactors.
+- [ ] Replace the localStorage helpers with remote-aware implementations (wrap Amplify `API.graphql` + `Storage`). Keep method names/intents identical so pages/components require minimal changes. _2025-01-24 update:_ Added `src/components/collage/utils/templates.ts` with Amplify-backed CRUD plus local cache. _2025-01-25 note:_ Drop the localStorage fallback entirely, ensure cache invalidation works when mutations fail, and finish wiring the helper so remote data stays authoritative before flipping callers.
 - [ ] Update `ProjectPicker` to read pre-signed URLs instead of inline thumbnails. Ensure the list view does not call a write mutation on render; consider a dedicated `resolveThumbnailUrl(project)` helper that downloads or memoizes S3 results.
 - [ ] Upload thumbnails via `Storage.put` after client-side rendering (`renderThumbnailFromSnapshot`), then persist `thumbnailKey` + `thumbnailSignature` so signed URL fetches can validate staleness.
 - [ ] Decide how to persist the heavy `state`: inline AWSJSON vs S3 object vs hybrid. Note the decision (with rationale) in this section once made.
@@ -173,10 +173,12 @@ _Last reviewed: 2025-10-23_
   - Mirror the existing API surface (`loadProjects`, `createProject`, `upsertProject`, `deleteProject`, `buildSnapshotFromState`) in a new remote-aware module (likely `src/components/collage/utils/templates.ts`).
   - Cache template records locally (e.g., Map keyed by `id`) with timestamps so focus refetches do not hammer the API.
   - `loadProjects` → `API.graphql(listTemplates)`; `createProject` → `createTemplate` + initialize protected S3 objects; `upsertProject` → conditional `updateTemplate` plus snapshot/thumbnail uploads when signatures change; `deleteProject` → `deleteTemplate` + S3 cleanup.
-  - Keep a feature flag or fallback path to the current localStorage implementation during rollout, and note decommission steps once remote sync stabilizes.
+  - Remove the legacy localStorage fallback entirely once remote helpers are reliable; migrate callers to the new module in a single pass so cached state cannot drift.
 
 ## Phase 3 – Editor Integration & Cleanup
-- [ ] Swap the editor autosave pipeline (`saveProjectNow`, autosave effects, thumbnail regeneration) to call the new async helpers. Introduce debouncing or a write queue to avoid overlapping mutations and to coalesce thumbnail + state updates.
+- [ ] Swap the editor autosave pipeline (`saveProjectNow`, autosave effects, thumbnail regeneration) to call the new async helpers. Introduce a debounced write queue that coalesces rapid edits (dragging, text tweaks) and keeps metadata-only payloads small.
+- [ ] Block navigation while a save is in flight (React Router transition blocker + `beforeunload`), surface a visible “Saving…” indicator, but keep in-editor interactions responsive. Only disable actions that would drop pending work (e.g., closing dialogs, switching templates) until the queue clears.
+- [ ] On save failures, coalesce and retry with the latest queued state; discard superseded mutations so rapid edits resolve to the freshest snapshot/thumbnail pair. Record telemetry/toasts for repeated failures.
 - [ ] Make sure the `/projects` view reflects remote changes promptly (refetch after mutations or maintain a shared store). Currently `ProjectsPage` reloads on window focus; adjust or supplement as needed. Consider renaming UI copy (“Your Memes”) once Templates are end-user visible.
 - [ ] Retire or gate the `localStorage` fallback once production data is validated. If a migration script is required to migrate existing local drafts, capture the high-level steps and required approvals; avoid documenting direct `amplify push`/apply commands.
 - [ ] Add or update tests (e.g., mock Amplify in unit tests for the helper layer, add smoke tests around the CRUD cycle). Track gaps here until implemented.
