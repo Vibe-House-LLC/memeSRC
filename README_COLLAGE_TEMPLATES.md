@@ -48,7 +48,61 @@ _Last reviewed: 2025-10-23_
   ```
 - [x] Confirm auth (currently `/projects` is admins only) and whether editors need individual ownership (`owner`/`identityId` with `@auth`) for future expansion. **Decision:** keep the admin-only gate during testing but add an owner rule keyed off `ownerIdentityId` (same pattern as `UsageEvent.identityId`) so we are ready for pro-user rollout.
 - [x] Standardize S3 layout for snapshots/thumbnails. **Decision:** store per-user assets at Amplify `protected` level under `collage/templates/{templateId}/snapshot.json` and `collage/templates/{templateId}/thumbnail.jpg`; add a follow-up path for publishing to a `public/` prefix when sharing is enabled.
-- [ ] Lock the GraphQL contract. Proposed fields: `id`, `ownerIdentityId`, `name`, `state` (AWSJSON, deprecated), `snapshotKey`, `snapshotVersion`, `thumbnailKey`, `thumbnailSignature`, `thumbnailUpdatedAt`, `createdAt`, `updatedAt`. Once schema lands, paste the generated `CreateTemplateInput`, `UpdateTemplateInput`, and query/mutation shapes here for quick reference.
+- [x] Lock the GraphQL contract. `amplify/backend/api/memesrc/schema.graphql` now declares the `Template` model (added 2025-01-23; no `amplify push` yet) with the finalized fields below. The Amplify-managed `createdAt`/`updatedAt` timestamps remain implicit via `@model`.
+  ```graphql
+  type Template
+    @model(timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" })
+    @auth(
+      rules: [
+        { allow: groups, groups: ["admins"] },
+        {
+          allow: owner
+          ownerField: "ownerIdentityId"
+          operations: [create, read, update, delete]
+        }
+      ]
+    ) {
+    id: ID!
+    ownerIdentityId: String
+    name: String!
+    state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
+    snapshotKey: String
+    snapshotVersion: Int
+    thumbnailKey: String
+    thumbnailSignature: String
+    thumbnailUpdatedAt: AWSDateTime
+  }
+  ```
+  Expected input/update envelopes (recorded pre-codegen to guide consumers; confirm once `amplify codegen` runs):
+  ```graphql
+  input CreateTemplateInput {
+    id: ID
+    ownerIdentityId: String
+    name: String!
+    state: AWSJSON
+    snapshotKey: String
+    snapshotVersion: Int
+    thumbnailKey: String
+    thumbnailSignature: String
+    thumbnailUpdatedAt: AWSDateTime
+  }
+
+  input UpdateTemplateInput {
+    id: ID!
+    ownerIdentityId: String
+    name: String
+    state: AWSJSON
+    snapshotKey: String
+    snapshotVersion: Int
+    thumbnailKey: String
+    thumbnailSignature: String
+    thumbnailUpdatedAt: AWSDateTime
+  }
+
+  input DeleteTemplateInput {
+    id: ID!
+  }
+  ```
 - [ ] Once schema updates merge, capture the resulting GraphQL query/mutation shapes here (e.g., from `amplify codegen` output). Skip `amplify push` or other backend apply commands unless separately approved.
 - [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
 
