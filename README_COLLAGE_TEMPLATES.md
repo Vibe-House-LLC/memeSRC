@@ -1,0 +1,69 @@
+# Collage Projects Cloud Migration Notes
+
+_Last reviewed: 2025-10-23_
+
+## Current Implementation Snapshot (Phase 0)
+- [x] `src/pages/ProjectsPage.tsx` is admin-only and reads projects via `loadProjects()` from `src/components/collage/utils/projects.ts`, which persists an array in `localStorage` under `memeSRC_collageProjects_v1`. The page re-fetches on window focus and backgrounds caption metadata lookups through `getMetadataForKey` (Amplify Storage).
+- [x] `src/components/collage/utils/projects.ts` defines the `CollageProject` shape and helpers (`createProject`, `getProject`, `upsertProject`, `deleteProject`, `buildSnapshotFromState`). Each project stores `{ id, name, createdAt, updatedAt, thumbnail, thumbnailKey, thumbnailSignature, thumbnailUpdatedAt, state }`.
+- [x] `src/components/collage/components/ProjectPicker.tsx` renders the grid UI, recomputes thumbnails with `renderThumbnailFromSnapshot`, and calls `upsertProject` to cache the thumbnail + signature locally. When we switch to a remote backend this on-mount write must be replaced or throttled so browsing the list does not spam mutations.
+- [x] `src/pages/CollagePage.js` uses the helpers above to seed new projects, autosave state, and regenerate thumbnails (`saveProjectNow`, `handleEditingSessionChange`, and autosave effects). Autosave assumes synchronous writes and relies on a snapshot signature (`computeSnapshotSignature`) to avoid redundant saves.
+- [x] Existing GraphQL schema (`amplify/backend/api/memesrc/schema.graphql`) already exposes an `EditorProject` model that uses API + S3 thumbnails (`src/pages/EditorProjectsPage.js`). It can inform access patterns but is not integrated with the collage flow.
+
+### Data persistence reference
+- Storage key: `memeSRC_collageProjects_v1` (array of `CollageProject` objects).
+- Snapshot builder: `buildSnapshotFromState` converts live editor state into a serializable `CollageSnapshot` (`src/types/collage.ts`).
+- Thumbnail cache: `thumbnail` stores an inline data URL; `thumbnailKey` is reserved for remote storage; `thumbnailSignature` dedupes renders.
+
+## Migration Goals
+- Centralize collage projects in Amplify (GraphQL + S3) while keeping the UI contracts for `loadProjects`, `createProject`, `upsertProject`, and `deleteProject`.
+- Preserve the existing autosave UX and thumbnail previews without introducing excessive network chatter.
+- Ensure admin-only access remains enforced and document any new environment variables, schema changes, or storage prefixes.
+- Provide a clear audit trail in this README so future runs see which steps are complete, which decisions are pending, and how to verify changes.
+
+## Phase 1 – Backend Model & Access
+- [ ] Decide whether to extend `EditorProject` or introduce a dedicated `CollageProject` model. Required fields mirror the TS type plus owner metadata, optional snapshot pointer, and versioning.
+  ```graphql
+  # Proposed shape if creating a new model (update once finalized)
+  type CollageProject @model @auth(rules: [{ allow: groups, groups: ["admins"] }]) {
+    id: ID!
+    ownerIdentityId: String
+    name: String!
+    state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
+    snapshotKey: String
+    snapshotVersion: Int
+    thumbnailKey: String
+    thumbnailSignature: String
+    createdAt: AWSDateTime
+    updatedAt: AWSDateTime
+  }
+  ```
+- [ ] Confirm auth (currently `/projects` is admins only) and whether editors need individual ownership (`owner`/`identityId` with `@auth`) for future expansion.
+- [ ] Standardize S3 layout for snapshots/thumbnails. Working assumption: `collage/projects/{projectId}/snapshot.json` and `collage/projects/{projectId}/thumb.jpg` (document if it changes).
+- [ ] Run `amplify codegen` after schema updates and paste the final GraphQL query/mutation shapes here for quick reference.
+- [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
+
+## Phase 2 – API & Storage Wiring
+- [ ] Replace the localStorage helpers with remote-aware implementations (wrap Amplify `API.graphql` + `Storage`). Keep method names/intents identical so pages/components require minimal changes.
+- [ ] Update `ProjectPicker` to read pre-signed URLs instead of inline thumbnails. Ensure the list view does not call a write mutation on render; consider a dedicated `resolveThumbnailUrl(project)` helper that downloads or memoizes S3 results.
+- [ ] Upload thumbnails via `Storage.put` after client-side rendering (`renderThumbnailFromSnapshot`), then persist `thumbnailKey` + `thumbnailSignature` so signed URL fetches can validate staleness.
+- [ ] Decide how to persist the heavy `state`: inline AWSJSON vs S3 object vs hybrid. Note the decision (with rationale) in this section once made.
+- [ ] Ensure `ProjectsPage`/`ProjectPicker` handle async data (loading states, optimistic cache, refetch). Document any pagination/limit choices adopted.
+
+## Phase 3 – Editor Integration & Cleanup
+- [ ] Swap the editor autosave pipeline (`saveProjectNow`, autosave effects, thumbnail regeneration) to call the new async helpers. Introduce debouncing or a write queue to avoid overlapping mutations and to coalesce thumbnail + state updates.
+- [ ] Make sure the `/projects` view reflects remote changes promptly (refetch after mutations or maintain a shared store). Currently `ProjectsPage` reloads on window focus; adjust or supplement as needed.
+- [ ] Retire or gate the `localStorage` fallback once production data is validated. If a migration script is required to push existing local drafts, outline the CLI/Amplify steps here.
+- [ ] Add or update tests (e.g., mock Amplify in unit tests for the helper layer, add smoke tests around the CRUD cycle). Track gaps here until implemented.
+
+## Open Questions & Notes
+- Where should the authoritative snapshot live? Inline `AWSJSON`, S3 JSON blob, or mixed (short fields in GraphQL, heavy payload in S3)?
+- Do we need per-user ownership in addition to the admin gate today? Capture auth decisions once made.
+- How aggressively should ProjectPicker regenerate/upload thumbnails when the remote path is live? Consider background jobs vs on-demand regeneration.
+- Plan for migrating existing local drafts (export tool, one-time script, or accept reset?). Document once the approach is chosen.
+
+## Update Guidance for Future Runs
+- Keep the phase lists current: mark finished bullets with `[x]`, add timestamps for significant decisions, and append new todos under the appropriate phase instead of creating new sections.
+- When schema/API contracts change, paste the updated GraphQL fragments and S3 prefixes here with a short note (`Updated 2025-10-24`).
+- If you touch helper utilities, note the entry points (file + exported function) so the next contributor can diff quickly.
+- Log open questions or blockers in the section above before ending a run; remove them only once resolved.
+- After shipping code, summarize verification (tests run, manual flows exercised) in this README for traceability.
