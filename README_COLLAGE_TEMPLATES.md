@@ -22,7 +22,7 @@ _Last reviewed: 2025-10-23_
 - Provide a clear audit trail in this README so future runs see which steps are complete, which decisions are pending, and how to verify changes.
 
 ## Phase 1 – Backend Model & Access
-- [ ] Decide whether to extend `EditorProject` or introduce a dedicated `Template` model. Required fields mirror the current TS type plus owner metadata, optional snapshot pointer, and versioning.
+- [x] Decide whether to extend `EditorProject` or introduce a dedicated `Template` model. **Decision:** create a standalone `Template` type so collage artifacts evolve independently from editor projects (confirmed 2025-10-23).
   ```graphql
   # Proposed shape if creating a new model (update once finalized)
   type Template @model @auth(rules: [{ allow: groups, groups: ["admins"] }]) {
@@ -39,7 +39,7 @@ _Last reviewed: 2025-10-23_
   }
   ```
 - [ ] Confirm auth (currently `/projects` is admins only) and whether editors need individual ownership (`owner`/`identityId` with `@auth`) for future expansion.
-- [ ] Standardize S3 layout for snapshots/thumbnails. Working assumption: store per-user assets at Amplify `protected` level under `collage/templates/{templateId}/snapshot.json` and `collage/templates/{templateId}/thumbnail.jpg`, so we can later mirror/clone into `public/` when templates are shared.
+- [x] Standardize S3 layout for snapshots/thumbnails. **Decision:** store per-user assets at Amplify `protected` level under `collage/templates/{templateId}/snapshot.json` and `collage/templates/{templateId}/thumbnail.jpg`; add a follow-up path for publishing to a `public/` prefix when sharing is enabled.
 - [ ] Once schema updates merge, capture the resulting GraphQL query/mutation shapes here (e.g., from `amplify codegen` output). Skip `amplify push` or other backend apply commands unless separately approved.
 - [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
 
