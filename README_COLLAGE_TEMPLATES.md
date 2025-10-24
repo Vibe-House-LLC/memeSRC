@@ -164,7 +164,7 @@ _Last reviewed: 2025-10-23_
 - [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
 
 ## Phase 2 – API & Storage Wiring
-- [ ] Replace the localStorage helpers with remote-aware implementations (wrap Amplify `API.graphql` + `Storage`). Keep method names/intents identical so pages/components require minimal changes.
+- [x] Replace the localStorage helpers with remote-aware implementations (wrap Amplify `API.graphql` + `Storage`). Keep method names/intents identical so pages/components require minimal changes. _2025-01-24 update:_ Added `src/components/collage/utils/templates.ts` which mirrors the existing helper surface with async Amplify-backed operations (list/create/update/delete). Remote calls upload snapshots/thumbnails to the protected S3 prefix (`collage/templates/{id}/snapshot.json|thumbnail.jpg`) and fall back to the legacy localStorage module if the API errors so we can stage the UI migration safely. Exported cache/utility hooks (`clearTemplateCache`, `__debugGetCache`) to aid upcoming async refactors.
 - [ ] Update `ProjectPicker` to read pre-signed URLs instead of inline thumbnails. Ensure the list view does not call a write mutation on render; consider a dedicated `resolveThumbnailUrl(project)` helper that downloads or memoizes S3 results.
 - [ ] Upload thumbnails via `Storage.put` after client-side rendering (`renderThumbnailFromSnapshot`), then persist `thumbnailKey` + `thumbnailSignature` so signed URL fetches can validate staleness.
 - [ ] Decide how to persist the heavy `state`: inline AWSJSON vs S3 object vs hybrid. Note the decision (with rationale) in this section once made.
