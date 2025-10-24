@@ -14,6 +14,7 @@ _Last reviewed: 2025-10-23_
 - Snapshot builder: `buildSnapshotFromState` converts live editor state into a serializable `CollageSnapshot` (`src/types/collage.ts`).
 - Thumbnail cache: `thumbnail` stores an inline data URL; `thumbnailKey` is reserved for remote storage; `thumbnailSignature` dedupes renders.
 - Terminology gap: the runtime types still reference `CollageProject`; plan a follow-up rename to align with the Template model once API hookups land.
+- Ownership signal: new Template records will capture the caller’s Amplify `identityId` in `ownerIdentityId` to satisfy the owner auth rule alongside the admin gate.
 
 ## Migration Goals
 - Formalize the saved artifact as a **Template** and centralize storage in Amplify (GraphQL + S3) while keeping the UI contracts for `loadProjects`, `createProject`, `upsertProject`, and `deleteProject`.
@@ -25,7 +26,14 @@ _Last reviewed: 2025-10-23_
 - [x] Decide whether to extend `EditorProject` or introduce a dedicated `Template` model. **Decision:** create a standalone `Template` type so collage artifacts evolve independently from editor projects (confirmed 2025-10-23).
   ```graphql
   # Proposed shape if creating a new model (update once finalized)
-  type Template @model @auth(rules: [{ allow: groups, groups: ["admins"] }]) {
+  type Template
+    @model
+    @auth(
+      rules: [
+        { allow: groups, groups: ["admins"] },
+        { allow: owner, ownerField: "ownerIdentityId", operations: [create, read, update, delete] }
+      ]
+    ) {
     id: ID!
     ownerIdentityId: String
     name: String!
@@ -38,8 +46,9 @@ _Last reviewed: 2025-10-23_
     updatedAt: AWSDateTime
   }
   ```
-- [ ] Confirm auth (currently `/projects` is admins only) and whether editors need individual ownership (`owner`/`identityId` with `@auth`) for future expansion.
+- [x] Confirm auth (currently `/projects` is admins only) and whether editors need individual ownership (`owner`/`identityId` with `@auth`) for future expansion. **Decision:** keep the admin-only gate during testing but add an owner rule keyed off `ownerIdentityId` (same pattern as `UsageEvent.identityId`) so we are ready for pro-user rollout.
 - [x] Standardize S3 layout for snapshots/thumbnails. **Decision:** store per-user assets at Amplify `protected` level under `collage/templates/{templateId}/snapshot.json` and `collage/templates/{templateId}/thumbnail.jpg`; add a follow-up path for publishing to a `public/` prefix when sharing is enabled.
+- [ ] Lock the GraphQL contract. Proposed fields: `id`, `ownerIdentityId`, `name`, `state` (AWSJSON, deprecated), `snapshotKey`, `snapshotVersion`, `thumbnailKey`, `thumbnailSignature`, `thumbnailUpdatedAt`, `createdAt`, `updatedAt`. Once schema lands, paste the generated `CreateTemplateInput`, `UpdateTemplateInput`, and query/mutation shapes here for quick reference.
 - [ ] Once schema updates merge, capture the resulting GraphQL query/mutation shapes here (e.g., from `amplify codegen` output). Skip `amplify push` or other backend apply commands unless separately approved.
 - [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
 
@@ -49,6 +58,11 @@ _Last reviewed: 2025-10-23_
 - [ ] Upload thumbnails via `Storage.put` after client-side rendering (`renderThumbnailFromSnapshot`), then persist `thumbnailKey` + `thumbnailSignature` so signed URL fetches can validate staleness.
 - [ ] Decide how to persist the heavy `state`: inline AWSJSON vs S3 object vs hybrid. Note the decision (with rationale) in this section once made.
 - [ ] Ensure `ProjectsPage`/`ProjectPicker` handle async data (loading states, optimistic cache, refetch). Document any pagination/limit choices adopted.
+- [ ] Helper rewrite blueprint:
+  - Mirror the existing API surface (`loadProjects`, `createProject`, `upsertProject`, `deleteProject`, `buildSnapshotFromState`) in a new remote-aware module (likely `src/components/collage/utils/templates.ts`).
+  - Cache template records locally (e.g., Map keyed by `id`) with timestamps so focus refetches do not hammer the API.
+  - `loadProjects` → `API.graphql(listTemplates)`; `createProject` → `createTemplate` + initialize protected S3 objects; `upsertProject` → conditional `updateTemplate` plus snapshot/thumbnail uploads when signatures change; `deleteProject` → `deleteTemplate` + S3 cleanup.
+  - Keep a feature flag or fallback path to the current localStorage implementation during rollout, and note decommission steps once remote sync stabilizes.
 
 ## Phase 3 – Editor Integration & Cleanup
 - [ ] Swap the editor autosave pipeline (`saveProjectNow`, autosave effects, thumbnail regeneration) to call the new async helpers. Introduce debouncing or a write queue to avoid overlapping mutations and to coalesce thumbnail + state updates.
@@ -58,7 +72,6 @@ _Last reviewed: 2025-10-23_
 
 ## Open Questions & Notes
 - Where should the authoritative snapshot live? Inline `AWSJSON`, S3 JSON blob, or mixed (short fields in GraphQL, heavy payload in S3)?
-- Do we need per-user ownership in addition to the admin gate today? Capture auth decisions once made.
 - How aggressively should ProjectPicker regenerate/upload thumbnails when the remote path is live? Consider background jobs vs on-demand regeneration. Any throttling should account for Template terminology in future code updates.
 - Plan for migrating existing local drafts (export tool, one-time script, or accept reset?). Document once the approach is chosen.
 
