@@ -1,30 +1,31 @@
-# Collage Projects Cloud Migration Notes
+# Collage Templates Cloud Migration Notes
 
 _Last reviewed: 2025-10-23_
 
 ## Current Implementation Snapshot (Phase 0)
-- [x] `src/pages/ProjectsPage.tsx` is admin-only and reads projects via `loadProjects()` from `src/components/collage/utils/projects.ts`, which persists an array in `localStorage` under `memeSRC_collageProjects_v1`. The page re-fetches on window focus and backgrounds caption metadata lookups through `getMetadataForKey` (Amplify Storage).
-- [x] `src/components/collage/utils/projects.ts` defines the `CollageProject` shape and helpers (`createProject`, `getProject`, `upsertProject`, `deleteProject`, `buildSnapshotFromState`). Each project stores `{ id, name, createdAt, updatedAt, thumbnail, thumbnailKey, thumbnailSignature, thumbnailUpdatedAt, state }`.
+- [x] `src/pages/ProjectsPage.tsx` is admin-only and reads templates via `loadProjects()` from `src/components/collage/utils/projects.ts`, which persists an array in `localStorage` under `memeSRC_collageProjects_v1`. The page re-fetches on window focus and backgrounds caption metadata lookups through `getMetadataForKey` (Amplify Storage).
+- [x] `src/components/collage/utils/projects.ts` defines the legacy `CollageProject` shape and helpers (`createProject`, `getProject`, `upsertProject`, `deleteProject`, `buildSnapshotFromState`). Each saved template currently stores `{ id, name, createdAt, updatedAt, thumbnail, thumbnailKey, thumbnailSignature, thumbnailUpdatedAt, state }` in localStorage.
 - [x] `src/components/collage/components/ProjectPicker.tsx` renders the grid UI, recomputes thumbnails with `renderThumbnailFromSnapshot`, and calls `upsertProject` to cache the thumbnail + signature locally. When we switch to a remote backend this on-mount write must be replaced or throttled so browsing the list does not spam mutations.
-- [x] `src/pages/CollagePage.js` uses the helpers above to seed new projects, autosave state, and regenerate thumbnails (`saveProjectNow`, `handleEditingSessionChange`, and autosave effects). Autosave assumes synchronous writes and relies on a snapshot signature (`computeSnapshotSignature`) to avoid redundant saves.
-- [x] Existing GraphQL schema (`amplify/backend/api/memesrc/schema.graphql`) already exposes an `EditorProject` model that uses API + S3 thumbnails (`src/pages/EditorProjectsPage.js`). It can inform access patterns but is not integrated with the collage flow.
+- [x] `src/pages/CollagePage.js` uses the helpers above to seed new templates, autosave state, and regenerate thumbnails (`saveProjectNow`, `handleEditingSessionChange`, and autosave effects). Autosave assumes synchronous writes and relies on a snapshot signature (`computeSnapshotSignature`) to avoid redundant saves.
+- [x] Existing GraphQL schema (`amplify/backend/api/memesrc/schema.graphql`) already exposes an `EditorProject` model that uses API + S3 thumbnails (`src/pages/EditorProjectsPage.js`). It can inform access patterns but is not integrated with the collage template flow.
 
 ### Data persistence reference
 - Storage key: `memeSRC_collageProjects_v1` (array of `CollageProject` objects).
 - Snapshot builder: `buildSnapshotFromState` converts live editor state into a serializable `CollageSnapshot` (`src/types/collage.ts`).
 - Thumbnail cache: `thumbnail` stores an inline data URL; `thumbnailKey` is reserved for remote storage; `thumbnailSignature` dedupes renders.
+- Terminology gap: the runtime types still reference `CollageProject`; plan a follow-up rename to align with the Template model once API hookups land.
 
 ## Migration Goals
-- Centralize collage projects in Amplify (GraphQL + S3) while keeping the UI contracts for `loadProjects`, `createProject`, `upsertProject`, and `deleteProject`.
+- Formalize the saved artifact as a **Template** and centralize storage in Amplify (GraphQL + S3) while keeping the UI contracts for `loadProjects`, `createProject`, `upsertProject`, and `deleteProject`.
 - Preserve the existing autosave UX and thumbnail previews without introducing excessive network chatter.
 - Ensure admin-only access remains enforced and document any new environment variables, schema changes, or storage prefixes.
 - Provide a clear audit trail in this README so future runs see which steps are complete, which decisions are pending, and how to verify changes.
 
 ## Phase 1 – Backend Model & Access
-- [ ] Decide whether to extend `EditorProject` or introduce a dedicated `CollageProject` model. Required fields mirror the TS type plus owner metadata, optional snapshot pointer, and versioning.
+- [ ] Decide whether to extend `EditorProject` or introduce a dedicated `Template` model. Required fields mirror the current TS type plus owner metadata, optional snapshot pointer, and versioning.
   ```graphql
   # Proposed shape if creating a new model (update once finalized)
-  type CollageProject @model @auth(rules: [{ allow: groups, groups: ["admins"] }]) {
+  type Template @model @auth(rules: [{ allow: groups, groups: ["admins"] }]) {
     id: ID!
     ownerIdentityId: String
     name: String!
@@ -38,7 +39,7 @@ _Last reviewed: 2025-10-23_
   }
   ```
 - [ ] Confirm auth (currently `/projects` is admins only) and whether editors need individual ownership (`owner`/`identityId` with `@auth`) for future expansion.
-- [ ] Standardize S3 layout for snapshots/thumbnails. Working assumption: `collage/projects/{projectId}/snapshot.json` and `collage/projects/{projectId}/thumb.jpg` (document if it changes).
+- [ ] Standardize S3 layout for snapshots/thumbnails. Working assumption: store per-user assets at Amplify `protected` level under `collage/templates/{templateId}/snapshot.json` and `collage/templates/{templateId}/thumbnail.jpg`, so we can later mirror/clone into `public/` when templates are shared.
 - [ ] Once schema updates merge, capture the resulting GraphQL query/mutation shapes here (e.g., from `amplify codegen` output). Skip `amplify push` or other backend apply commands unless separately approved.
 - [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
 
@@ -51,14 +52,14 @@ _Last reviewed: 2025-10-23_
 
 ## Phase 3 – Editor Integration & Cleanup
 - [ ] Swap the editor autosave pipeline (`saveProjectNow`, autosave effects, thumbnail regeneration) to call the new async helpers. Introduce debouncing or a write queue to avoid overlapping mutations and to coalesce thumbnail + state updates.
-- [ ] Make sure the `/projects` view reflects remote changes promptly (refetch after mutations or maintain a shared store). Currently `ProjectsPage` reloads on window focus; adjust or supplement as needed.
+- [ ] Make sure the `/projects` view reflects remote changes promptly (refetch after mutations or maintain a shared store). Currently `ProjectsPage` reloads on window focus; adjust or supplement as needed. Consider renaming UI copy (“Your Memes”) once Templates are end-user visible.
 - [ ] Retire or gate the `localStorage` fallback once production data is validated. If a migration script is required to migrate existing local drafts, capture the high-level steps and required approvals; avoid documenting direct `amplify push`/apply commands.
 - [ ] Add or update tests (e.g., mock Amplify in unit tests for the helper layer, add smoke tests around the CRUD cycle). Track gaps here until implemented.
 
 ## Open Questions & Notes
 - Where should the authoritative snapshot live? Inline `AWSJSON`, S3 JSON blob, or mixed (short fields in GraphQL, heavy payload in S3)?
 - Do we need per-user ownership in addition to the admin gate today? Capture auth decisions once made.
-- How aggressively should ProjectPicker regenerate/upload thumbnails when the remote path is live? Consider background jobs vs on-demand regeneration.
+- How aggressively should ProjectPicker regenerate/upload thumbnails when the remote path is live? Consider background jobs vs on-demand regeneration. Any throttling should account for Template terminology in future code updates.
 - Plan for migrating existing local drafts (export tool, one-time script, or accept reset?). Document once the approach is chosen.
 
 ## Update Guidance for Future Runs
