@@ -39,7 +39,7 @@ _Last reviewed: 2025-10-23_
   ```
 - [ ] Confirm auth (currently `/projects` is admins only) and whether editors need individual ownership (`owner`/`identityId` with `@auth`) for future expansion.
 - [ ] Standardize S3 layout for snapshots/thumbnails. Working assumption: `collage/projects/{projectId}/snapshot.json` and `collage/projects/{projectId}/thumb.jpg` (document if it changes).
-- [ ] Run `amplify codegen` after schema updates and paste the final GraphQL query/mutation shapes here for quick reference.
+- [ ] Once schema updates merge, capture the resulting GraphQL query/mutation shapes here (e.g., from `amplify codegen` output). Skip `amplify push` or other backend apply commands unless separately approved.
 - [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
 
 ## Phase 2 – API & Storage Wiring
@@ -52,7 +52,7 @@ _Last reviewed: 2025-10-23_
 ## Phase 3 – Editor Integration & Cleanup
 - [ ] Swap the editor autosave pipeline (`saveProjectNow`, autosave effects, thumbnail regeneration) to call the new async helpers. Introduce debouncing or a write queue to avoid overlapping mutations and to coalesce thumbnail + state updates.
 - [ ] Make sure the `/projects` view reflects remote changes promptly (refetch after mutations or maintain a shared store). Currently `ProjectsPage` reloads on window focus; adjust or supplement as needed.
-- [ ] Retire or gate the `localStorage` fallback once production data is validated. If a migration script is required to push existing local drafts, outline the CLI/Amplify steps here.
+- [ ] Retire or gate the `localStorage` fallback once production data is validated. If a migration script is required to migrate existing local drafts, capture the high-level steps and required approvals; avoid documenting direct `amplify push`/apply commands.
 - [ ] Add or update tests (e.g., mock Amplify in unit tests for the helper layer, add smoke tests around the CRUD cycle). Track gaps here until implemented.
 
 ## Open Questions & Notes
@@ -67,3 +67,4 @@ _Last reviewed: 2025-10-23_
 - If you touch helper utilities, note the entry points (file + exported function) so the next contributor can diff quickly.
 - Log open questions or blockers in the section above before ending a run; remove them only once resolved.
 - After shipping code, summarize verification (tests run, manual flows exercised) in this README for traceability.
+- Call out any backend apply steps (e.g., `amplify push`) as separate approvals; do not include execution commands in this checklist.
