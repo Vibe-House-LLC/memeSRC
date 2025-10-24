@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { Add } from '@mui/icons-material';
 import ProjectPicker from '../components/collage/components/ProjectPicker';
-import { loadProjects, deleteProject as deleteProjectRecord } from '../components/collage/utils/templates';
+import { loadProjects, deleteProject as deleteProjectRecord, subscribeToTemplates } from '../components/collage/utils/templates';
 import type { CollageProject } from '../types/collage';
 import { UserContext } from '../UserContext';
 import { normalizeString } from '../utils/search/normalize';
@@ -28,6 +28,15 @@ export default function ProjectsPage() {
       navigate('/collage', { replace: true });
     }
   }, [isAdmin, navigate]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToTemplates((next) => {
+      setProjects(next);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;

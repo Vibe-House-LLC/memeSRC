@@ -69,6 +69,8 @@ let listInFlight: Promise<CollageProject[]> | null = null;
 let identityIdPromise: Promise<string | null> | null = null;
 type ThumbnailCacheEntry = { url: string; signature: string };
 const thumbnailUrlCache = new Map<string, ThumbnailCacheEntry>();
+type TemplatesListener = (templates: CollageProject[]) => void;
+const templateListeners = new Set<TemplatesListener>();
 
 function isDev(): boolean {
   return process.env.NODE_ENV !== 'production';
@@ -100,6 +102,7 @@ function cacheProject(record: CollageProject): void {
     }
   }
   templateCache.set(record.id, cloneProject(record));
+  notifyListeners();
 }
 
 function replaceCache(records: CollageProject[]): void {
@@ -108,6 +111,7 @@ function replaceCache(records: CollageProject[]): void {
   records.forEach((record) => {
     templateCache.set(record.id, cloneProject(record));
   });
+  notifyListeners();
 }
 
 function removeFromCache(id: string): void {
@@ -116,12 +120,25 @@ function removeFromCache(id: string): void {
     thumbnailUrlCache.delete(cached.thumbnailKey);
   }
   templateCache.delete(id);
+  notifyListeners();
 }
 
 function cacheToArray(): CollageProject[] {
   return Array.from(templateCache.values())
     .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
     .map((record) => cloneProject(record));
+}
+
+function notifyListeners(): void {
+  if (templateListeners.size === 0) return;
+  const snapshot = cacheToArray();
+  templateListeners.forEach((listener) => {
+    try {
+      listener(snapshot);
+    } catch (err) {
+      if (isDev()) console.warn('[templates] Listener callback failed', err);
+    }
+  });
 }
 
 function parseSnapshot(raw: TemplateModel['state']): CollageSnapshot | null {
@@ -396,6 +413,20 @@ export function clearTemplateCache(): void {
   templateCache.clear();
   listInFlight = null;
   thumbnailUrlCache.clear();
+  notifyListeners();
+}
+
+export function subscribeToTemplates(
+  listener: TemplatesListener,
+  { emitInitial = true }: { emitInitial?: boolean } = {}
+): () => void {
+  templateListeners.add(listener);
+  if (emitInitial) {
+    listener(cacheToArray());
+  }
+  return () => {
+    templateListeners.delete(listener);
+  };
 }
 
 export function __debugGetCache(): Map<string, CollageProject> {

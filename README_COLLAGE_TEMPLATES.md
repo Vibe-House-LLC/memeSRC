@@ -161,13 +161,13 @@ _Last reviewed: 2025-10-23_
     }
   }
   ```
-- [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
+- [x] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access. _2025-01-27:_ No new env vars required; existing Amplify `aws-exports.js` supplies region/API credentials and protected-level S3 access. Documented the `collage/templates/{templateId}/` prefix for snapshots/thumbnails—no IAM changes beyond the Template model owner rule.
 
 ## Phase 2 – API & Storage Wiring
 - [x] Replace the localStorage helpers with remote-aware implementations (wrap Amplify `API.graphql` + `Storage`). Keep method names/intents identical so pages/components require minimal changes. _2025-01-24 update:_ Added `src/components/collage/utils/templates.ts` with Amplify-backed CRUD plus local cache. _2025-01-25 note:_ Drop the localStorage fallback entirely, ensure cache invalidation works when mutations fail, and finish wiring the helper so remote data stays authoritative before flipping callers. _2025-01-26:_ Remote helper now runs without any legacy fallback, replaces cache atomically per list fetch, and reuses S3 uploads for snapshots/thumbnails.
 - [x] Update `ProjectPicker` to read pre-signed URLs instead of inline thumbnails. Ensure the list view does not call a write mutation on render; consider a dedicated `resolveThumbnailUrl(project)` helper that downloads or memoizes S3 results. _2025-01-26:_ Picker now calls `resolveThumbnailUrl`, caches signed URLs per signature, and falls back to client renders without mutating templates.
 - [x] Upload thumbnails via `Storage.put` after client-side rendering (`renderThumbnailFromSnapshot`), then persist `thumbnailKey` + `thumbnailSignature` so signed URL fetches can validate staleness. _2025-01-26:_ Autosave queue drives thumbnail uploads; helper increments `snapshotVersion`/`thumbnailUpdatedAt` to bust caches.
-- [ ] Decide how to persist the heavy `state`: inline AWSJSON vs S3 object vs hybrid. Note the decision (with rationale) in this section once made. _(Still using inline JSON; evaluate S3 scale-up once payload size becomes an issue.)_
+- [x] Decide how to persist the heavy `state`: inline AWSJSON vs S3 object vs hybrid. _2025-01-27 decision:_ Keep the hybrid approach—persist JSON inline for fast searches/preview while uploading the canonical snapshot to protected S3. Revisit with instrumentation if payloads approach GraphQL limits to optionally drop inline copies.
 - [x] Ensure `ProjectsPage`/`ProjectPicker` handle async data (loading states, optimistic cache, refetch). Document any pagination/limit choices adopted. _2025-01-26:_ `ProjectsPage` now awaits the remote helper on focus refresh/delete (50-item pagination retained); picker renders while thumbnails resolve asynchronously.
 - [x] Helper rewrite blueprint:
   - Mirror the existing API surface (`loadProjects`, `createProject`, `upsertProject`, `deleteProject`, `buildSnapshotFromState`) in a new remote-aware module (likely `src/components/collage/utils/templates.ts`).
@@ -179,14 +179,15 @@ _Last reviewed: 2025-10-23_
 - [x] Swap the editor autosave pipeline (`saveProjectNow`, autosave effects, thumbnail regeneration) to call the new async helpers. Introduce a debounced write queue that coalesces rapid edits (dragging, text tweaks) and keeps metadata-only payloads small. _2025-01-26:_ CollagePage now builds a debounce queue (650 ms) that coalesces state writes, uploads thumbnails only when the signature changes, and keeps the snapshot cache authoritative.
 - [x] Block navigation while a save is in flight (React Router transition blocker + `beforeunload`), surface a visible “Saving…” indicator, but keep in-editor interactions responsive. Only disable actions that would drop pending work (e.g., closing dialogs, switching templates) until the queue clears. _Navigation attempts now trigger a blocker that flushes the queue; header shows “Saving…”/“All changes saved”; Cmd/Ctrl+S respects queue state._
 - [x] On save failures, coalesce and retry with the latest queued state; discard superseded mutations so rapid edits resolve to the freshest snapshot/thumbnail pair. Record telemetry/toasts for repeated failures. _Failures surface an error toast, back off (1.5s→8s) and requeue the latest snapshot; retries supersede older mutations._
-- [ ] Make sure the `/projects` view reflects remote changes promptly (refetch after mutations or maintain a shared store). Currently `ProjectsPage` reloads on window focus; adjust or supplement as needed. _Refetch now happens on focus and post-delete, but still relies on manual refresh after remote mutations triggered elsewhere._
+- [x] Make sure the `/projects` view reflects remote changes promptly (refetch after mutations or maintain a shared store). _2025-01-27:_ Added a template cache subscription and ProjectsPage listener so create/update/delete mutations push updates immediately; focus refetch remains for cross-session changes.
 - [x] Retire or gate the `localStorage` fallback once production data is validated. If a migration script is required to migrate existing local drafts, capture the high-level steps and required approvals; avoid documenting direct `amplify push`/apply commands. _Legacy helper remains for migration scripts only; runtime no longer touches localStorage._
-- [ ] Add or update tests (e.g., mock Amplify in unit tests for the helper layer, add smoke tests around the CRUD cycle). Track gaps here until implemented.
+- [x] Add or update tests (e.g., mock Amplify in unit tests for the helper layer, add smoke tests around the CRUD cycle). _2025-01-27:_ Added Jest coverage for the template helper subscription/cache flow (`src/components/collage/utils/templates.test.ts`).
 
 _Verification 2025-01-26:_ `npx eslint src/components/collage/utils/templates.ts src/pages/ProjectsPage.tsx src/components/collage/components/ProjectPicker.tsx src/pages/CollagePage.js`
+_Verification 2025-01-27:_ `npm test -- --runTestsByPath src/components/collage/utils/templates.test.ts --watchAll=false`
 
 ## Open Questions & Notes
-- Where should the authoritative snapshot live? Inline `AWSJSON`, S3 JSON blob, or mixed (short fields in GraphQL, heavy payload in S3)?
+- Where should the authoritative snapshot live? Inline `AWSJSON`, S3 JSON blob, or mixed (short fields in GraphQL, heavy payload in S3)? _Currently running hybrid (inline JSON + protected S3); revisit if snapshots start exceeding comfortable GraphQL payload sizes._
 - How aggressively should ProjectPicker regenerate/upload thumbnails when the remote path is live? Consider background jobs vs on-demand regeneration. Any throttling should account for Template terminology in future code updates.
 - Plan for migrating existing local drafts (export tool, one-time script, or accept reset?). Document once the approach is chosen.
 
