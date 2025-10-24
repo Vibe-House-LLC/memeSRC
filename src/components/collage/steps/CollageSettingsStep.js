@@ -15,7 +15,11 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  TextField
 } from "@mui/material";
 import {
   KeyboardArrowLeft,
@@ -34,6 +38,7 @@ import {
   Colorize
 } from "@mui/icons-material";
 import { UserContext } from "../../../UserContext";
+import { COLLAGE_SEED_FEEDBACK_OPTIONS } from "../../../utils/analytics/collageEvents";
 
 // Import styled components
 import { TemplateCard } from "../styled/CollageStyled";
@@ -343,7 +348,10 @@ const CollageLayoutSettings = ({
   const [colorLeftScroll, setColorLeftScroll] = useState(false);
   const [colorRightScroll, setColorRightScroll] = useState(false);
   // Confirm dialog state for panel reduction when last panel has an image
-  const [confirmState, setConfirmState] = useState({ open: false, imageIndex: null, onConfirm: null });
+  const [confirmState, setConfirmState] = useState({ open: false, imageIndex: null });
+  const [panelRemovalReason, setPanelRemovalReason] = useState('');
+  const [panelRemovalNote, setPanelRemovalNote] = useState('');
+  const panelRemovalCallbackRef = useRef(null);
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -391,6 +399,50 @@ const CollageLayoutSettings = ({
       // The templates should already be prioritized based on aspect ratio suitability
       // The most suitable template for this aspect ratio will be first in the list
       setSelectedTemplate(newCompatibleTemplates[0]);
+    }
+  };
+  
+  const handleClosePanelRemoval = () => {
+    setConfirmState({ open: false, imageIndex: null });
+    setPanelRemovalReason('');
+    setPanelRemovalNote('');
+    panelRemovalCallbackRef.current = null;
+  };
+
+  const handleConfirmPanelRemoval = () => {
+    const imageIndex = confirmState?.imageIndex;
+    if (typeof imageIndex === 'number' && imageIndex >= 0 && typeof removeImage === 'function') {
+      const trimmedNote = panelRemovalReason === 'other' ? panelRemovalNote.trim() : '';
+      try {
+        removeImage(imageIndex, {
+          source: 'CollageSettingsStep',
+          userFeedbackReason: panelRemovalReason || undefined,
+          userFeedbackNote: trimmedNote || undefined,
+        });
+      } catch (_) { /* ignore */ }
+    }
+
+    const proceed = panelRemovalCallbackRef.current;
+    handleClosePanelRemoval();
+    if (typeof proceed === 'function') {
+      try { proceed(); } catch (_) { /* ignore */ }
+    }
+  };
+
+  const handleSkipPanelRemoval = () => {
+    const imageIndex = confirmState?.imageIndex;
+    const proceed = panelRemovalCallbackRef.current;
+
+    if (typeof imageIndex === 'number' && imageIndex >= 0 && typeof removeImage === 'function') {
+      try {
+        removeImage(imageIndex, { source: 'CollageSettingsStep' });
+      } catch (_) { /* ignore */ }
+    }
+
+    handleClosePanelRemoval();
+
+    if (typeof proceed === 'function') {
+      try { proceed(); } catch (_) { /* ignore */ }
     }
   };
   
@@ -457,15 +509,15 @@ const CollageLayoutSettings = ({
     };
 
     if (hasImageToRemove && typeof removeImage === 'function') {
+      panelRemovalCallbackRef.current = proceedToDecrease;
+      setPanelRemovalReason('');
+      setPanelRemovalNote('');
       setConfirmState({
         open: true,
         imageIndex: imageIndexToRemove,
-        onConfirm: () => {
-          try { removeImage(imageIndexToRemove); } catch (_) { /* ignore */ }
-          proceedToDecrease();
-        },
       });
     } else {
+      panelRemovalCallbackRef.current = null;
       proceedToDecrease();
     }
   };
@@ -716,6 +768,8 @@ const CollageLayoutSettings = ({
 
   const compatibleTemplates = getCompatibleTemplates();
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
+  const disablePanelRemovalSubmit =
+    !panelRemovalReason || (panelRemovalReason === 'other' && !panelRemovalNote.trim());
   
   // Clean up all the duplicate state variables and use a single savedCustomColor state
   const [savedCustomColor, setSavedCustomColor] = useState(() => {
@@ -743,7 +797,7 @@ const CollageLayoutSettings = ({
       {/* Confirm removal when reducing panel count hides an image */}
       <Dialog
         open={!!confirmState.open}
-        onClose={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}
+        onClose={handleClosePanelRemoval}
         maxWidth="xs"
         fullWidth
         BackdropProps={{
@@ -767,21 +821,46 @@ const CollageLayoutSettings = ({
         <DialogTitle sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>Remove panel?</DialogTitle>
         <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
           <Typography variant="body1" sx={{ m: 0, letterSpacing: 0, lineHeight: 1.5 }}>
-            This removes a panel and image {panelCount}
+            Removing this panel will delete its image from the collage. Want to share why?
           </Typography>
+          <RadioGroup
+            value={panelRemovalReason}
+            onChange={(event) => setPanelRemovalReason(event.target.value)}
+            sx={{ mt: 2, gap: 0.5 }}
+          >
+            {COLLAGE_SEED_FEEDBACK_OPTIONS.map(option => (
+              <FormControlLabel
+                key={option.value}
+                value={option.value}
+                control={<Radio size="small" />}
+                label={option.label}
+              />
+            ))}
+          </RadioGroup>
+          {panelRemovalReason === 'other' && (
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              sx={{ mt: 2 }}
+              label="Share a bit more (optional)"
+              value={panelRemovalNote}
+              onChange={(event) => setPanelRemovalNote(event.target.value)}
+            />
+          )}
         </DialogContent>
         <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
-          <Button onClick={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}>
+          <Button onClick={handleClosePanelRemoval}>
             Cancel
+          </Button>
+          <Button onClick={handleSkipPanelRemoval}>
+            Skip feedback
           </Button>
           <Button
             color="error"
             variant="contained"
-            onClick={() => {
-              const fn = confirmState.onConfirm;
-              setConfirmState({ open: false, imageIndex: null, onConfirm: null });
-              if (typeof fn === 'function') fn();
-            }}
+            disabled={disablePanelRemovalSubmit}
+            onClick={handleConfirmPanelRemoval}
           >
             Remove
           </Button>
