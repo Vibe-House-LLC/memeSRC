@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { Box, Container, Typography, CircularProgress } from '@mui/material';
 import { Helmet } from 'react-helmet-async';
 import { get as getFromLibrary } from '../utils/library/storage';
+import { getMetadataForKey, DEFAULT_LIBRARY_METADATA } from '../utils/library/metadata';
 import LibraryBrowser from '../components/library/LibraryBrowser';
 import { UserContext } from '../UserContext';
 
@@ -72,20 +73,35 @@ export default function LibraryPage() {
 
             try {
               const images = await Promise.all((selectedItems || []).map(async (it) => {
+                const resolveMetadata = async () => {
+                  if (it?.metadata && typeof it.metadata === 'object') {
+                    return { ...DEFAULT_LIBRARY_METADATA, ...it.metadata, isFromLibrary: true, libraryKey: it.key };
+                  }
+                  if (it?.key) {
+                    try {
+                      const meta = await getMetadataForKey(it.key, { level: storageLevel || 'private' });
+                      return { ...DEFAULT_LIBRARY_METADATA, ...meta, isFromLibrary: true, libraryKey: it.key };
+                    } catch (_) {
+                      return { ...DEFAULT_LIBRARY_METADATA, isFromLibrary: true, libraryKey: it.key };
+                    }
+                  }
+                  return { ...DEFAULT_LIBRARY_METADATA, isFromLibrary: true, libraryKey: it?.key };
+                };
+                const metadata = await resolveMetadata();
                 try {
                   const blob = await getFromLibrary(it.key, { level: storageLevel || 'private' });
                   const dataUrl = await toDataUrl(blob);
                   return {
                     originalUrl: dataUrl,
                     displayUrl: dataUrl,
-                    metadata: { isFromLibrary: true, libraryKey: it.key },
+                    metadata,
                   };
                 } catch (_) {
                   // Fallback to signed URL if blob fetch fails
                   return {
                     originalUrl: it.url,
                     displayUrl: it.url,
-                    metadata: { isFromLibrary: true, libraryKey: it.key },
+                    metadata,
                   };
                 }
               }));

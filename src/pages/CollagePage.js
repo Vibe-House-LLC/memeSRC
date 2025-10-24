@@ -404,13 +404,17 @@ export default function CollagePage() {
           if (typeof item === 'string') {
             return item; // Already a URL
           }
+          const metadata =
+            item.metadata && typeof item.metadata === 'object'
+              ? { ...item.metadata }
+              : {};
           // Return the complete item with subtitle data preserved
           return {
             originalUrl: item.originalUrl || item.displayUrl || item,
             displayUrl: item.displayUrl || item.originalUrl || item,
             subtitle: item.subtitle || '',
             subtitleShowing: item.subtitleShowing || false,
-            metadata: item.metadata || {}
+            metadata,
           };
         });
 

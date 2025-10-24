@@ -10,11 +10,11 @@
 ## Phase 1 — Telemetry & Context Baseline
 **Goal:** make every collage interaction carry show-aware metadata and land in analytics so we can trust downstream heuristics/ML.
 
-- **1.1 Normalize frame metadata everywhere images move**
-  - Update `src/utils/library/metadata.ts` and `src/utils/library/saveImageToLibrary.ts` so `LibraryMetadata` stores a `frameRef` object `{ cid, season, episode, frame, fineTuningIndex? }` alongside the existing tags/caption fields; persist it when saving in `saveImageToLibrary`.
-  - When saving a frame (`src/pages/V2FramePage.js`) populate that `frameRef` plus the show title in `metadata.tags`; ensure `trackUsageEvent('add_to_library', …)` includes the same `frameRef`.
-  - When loading library items (`src/components/library/LibraryBrowser.jsx` + `src/hooks/library/useLibraryData.ts` if needed) merge the fetched metadata into `items` so selections forwarded to `/collage` already include `metadata.frameRef`.
-  - Propagate that metadata through `LibraryPage.js` navigation state and the collage preload branch in `src/pages/CollagePage.js` so `selectedImages[].metadata.frameRef` survives into the editor state.
+- ✅ **1.1 Normalize frame metadata everywhere images move** (Codex 2024-05-19)
+  - ✅ Update `src/utils/library/metadata.ts` and `src/utils/library/saveImageToLibrary.ts` so `LibraryMetadata` stores a `frameRef` object `{ cid, season, episode, frame, fineTuningIndex? }` alongside the existing tags/caption fields; persist it when saving in `saveImageToLibrary`.
+  - ✅ When saving a frame (`src/pages/V2FramePage.js`) populate that `frameRef` plus the show title in `metadata.tags`; ensure `trackUsageEvent('add_to_library', …)` includes the same `frameRef`.
+  - ✅ When loading library items (`src/components/library/LibraryBrowser.jsx` + `src/hooks/library/useLibraryData.ts` if needed) merge the fetched metadata into `items` so selections forwarded to `/collage` already include `metadata.frameRef`.
+  - ✅ Propagate that metadata through `LibraryPage.js` navigation state and the collage preload branch in `src/pages/CollagePage.js` so `selectedImages[].metadata.frameRef` survives into the editor state.
 
 - **1.2 Track collage seed activity explicitly**
   - Wrap the add/remove/update helpers in `src/components/collage/hooks/useCollageState.js` so they call a new helper `trackCollageSeedEvent` (place it in `src/utils/analytics/collageEvents.ts`) whenever a frame with `metadata.frameRef` is added, swapped, or removed. Emit `collage_seed_add`, `collage_seed_replace`, and `collage_seed_remove` with payload `{ cid, season, episode, frame, templateId?, panelIndex?, source, sessionContext, schemaVersion: '1.0' }`.
