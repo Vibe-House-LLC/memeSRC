@@ -35,7 +35,7 @@ _Last reviewed: 2025-10-23_
       ]
     ) {
     id: ID!
-    ownerIdentityId: String!
+    ownerIdentityId: String
     name: String!
     state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
     snapshotKey: String
@@ -63,7 +63,7 @@ _Last reviewed: 2025-10-23_
       ]
     ) {
     id: ID!
-    ownerIdentityId: String!
+    ownerIdentityId: String
     name: String!
     state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
     snapshotKey: String
@@ -77,7 +77,7 @@ _Last reviewed: 2025-10-23_
   ```graphql
   input CreateTemplateInput {
     id: ID
-    ownerIdentityId: String!
+    ownerIdentityId: String
     name: String!
     state: AWSJSON
     snapshotKey: String
@@ -89,7 +89,7 @@ _Last reviewed: 2025-10-23_
 
   input UpdateTemplateInput {
     id: ID!
-    ownerIdentityId: String!
+    ownerIdentityId: String
     name: String
     state: AWSJSON
     snapshotKey: String
@@ -103,6 +103,7 @@ _Last reviewed: 2025-10-23_
     id: ID!
   }
   ```
+- [x] Prevent owner reassignment. Added a resolver override (`amplify/backend/api/memesrc/resolvers/Mutation.updateTemplate.req.vtl`) that strips `ownerIdentityId` from update mutations so only the record creator (or admins) can mutate other fields without transferring ownership.
 - [x] Once schema updates merge, capture the resulting GraphQL query/mutation shapes here (e.g., from `amplify codegen` output). After the backend push on 2025-01-23, reran `amplify codegen` and confirmed the Template operations below (selection sets identical for `createTemplate`, `updateTemplate`, and `deleteTemplate`; subscriptions mirror the same fields). Skip `amplify push` or other backend apply commands unless separately approved.
   ```graphql
   mutation CreateTemplate($input: CreateTemplateInput!, $condition: ModelTemplateConditionInput) {
