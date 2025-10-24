@@ -4,6 +4,7 @@ import type { CollageProject, CollageSnapshot } from '../../../types/collage';
 import { buildSnapshotFromState as buildSnapshotFromStateLegacy } from './projects';
 import { createTemplate, deleteTemplate, updateTemplate } from '../../../graphql/mutations';
 import { getTemplate, listTemplates } from '../../../graphql/queries';
+import { onCreateTemplate, onUpdateTemplate, onDeleteTemplate } from '../../../graphql/subscriptions';
 
 const STORAGE_LEVEL = 'protected';
 const TEMPLATE_STORAGE_PREFIX = 'collage/templates';
@@ -71,6 +72,12 @@ type ThumbnailCacheEntry = { url: string; signature: string };
 const thumbnailUrlCache = new Map<string, ThumbnailCacheEntry>();
 type TemplatesListener = (templates: CollageProject[]) => void;
 const templateListeners = new Set<TemplatesListener>();
+
+type GraphQLSubscriptionHandle = { unsubscribe?: () => void };
+let activeTemplateSubscriptions: GraphQLSubscriptionHandle[] = [];
+let subscriptionStartPromise: Promise<void> | null = null;
+let subscriptionRetryTimer: ReturnType<typeof setTimeout> | null = null;
+const SUBSCRIPTION_RETRY_DELAY_MS = 2500;
 
 function isDev(): boolean {
   return process.env.NODE_ENV !== 'production';
@@ -141,6 +148,45 @@ function notifyListeners(): void {
   });
 }
 
+function cleanupTemplateSubscriptions(): void {
+  if (activeTemplateSubscriptions.length === 0) return;
+  activeTemplateSubscriptions.forEach((subscription) => {
+    try {
+      subscription?.unsubscribe?.();
+    } catch (err) {
+      if (isDev()) console.warn('[templates] Failed to tear down template subscription', err);
+    }
+  });
+  activeTemplateSubscriptions = [];
+}
+
+function stopTemplateSubscriptions(): void {
+  if (subscriptionRetryTimer) {
+    clearTimeout(subscriptionRetryTimer);
+    subscriptionRetryTimer = null;
+  }
+  cleanupTemplateSubscriptions();
+  subscriptionStartPromise = null;
+}
+
+function scheduleTemplateSubscriptionRestart(): void {
+  if (subscriptionRetryTimer || templateListeners.size === 0) return;
+  subscriptionRetryTimer = setTimeout(() => {
+    subscriptionRetryTimer = null;
+    if (templateListeners.size > 0) {
+      void ensureTemplateSubscriptions().catch(() => {
+        if (isDev()) console.warn('[templates] Retrying template subscriptions failed');
+      });
+    }
+  }, SUBSCRIPTION_RETRY_DELAY_MS);
+}
+
+function handleTemplateSubscriptionError(err: unknown, source: string): void {
+  if (isDev()) console.error(`[templates] ${source} subscription failed`, err);
+  stopTemplateSubscriptions();
+  scheduleTemplateSubscriptionRestart();
+}
+
 function parseSnapshot(raw: TemplateModel['state']): CollageSnapshot | null {
   if (!raw) return null;
   if (typeof raw === 'object') return raw as CollageSnapshot;
@@ -179,6 +225,76 @@ async function getIdentityId(): Promise<string | null> {
       .catch(() => null);
   }
   return identityIdPromise;
+}
+
+async function ensureTemplateSubscriptions(): Promise<void> {
+  if (templateListeners.size === 0) return;
+  if (activeTemplateSubscriptions.length > 0) return;
+  if (subscriptionStartPromise) {
+    await subscriptionStartPromise;
+    return;
+  }
+  if (subscriptionRetryTimer) {
+    clearTimeout(subscriptionRetryTimer);
+    subscriptionRetryTimer = null;
+  }
+
+  const start = async () => {
+    try {
+      const identityId = await getIdentityId();
+      const baseVariables = identityId ? { ownerIdentityId: identityId } : {};
+
+      const subscribe = (
+        query: string,
+        key: 'onCreateTemplate' | 'onUpdateTemplate' | 'onDeleteTemplate',
+        sourceLabel: string
+      ) => {
+        let observable: any;
+        try {
+          observable = API.graphql(graphqlOperation(query, baseVariables));
+        } catch (err) {
+          handleTemplateSubscriptionError(err, sourceLabel);
+          return;
+        }
+        if (!observable || typeof observable.subscribe !== 'function') {
+          if (isDev()) console.warn(`[templates] ${sourceLabel} subscription is not supported by API.graphql result`);
+          return;
+        }
+        const subscription = observable.subscribe({
+          next: (event: any) => {
+            const payload = event?.value?.data?.[key] as TemplateModel | null | undefined;
+            if (!payload || !payload.id) return;
+            if (key === 'onDeleteTemplate') {
+              removeFromCache(payload.id);
+              return;
+            }
+            const normalized = normalizeTemplate(payload);
+            cacheProject(normalized);
+          },
+          error: (err: unknown) => {
+            handleTemplateSubscriptionError(err, sourceLabel);
+          },
+          complete: () => {
+            handleTemplateSubscriptionError(new Error(`${sourceLabel} subscription completed unexpectedly`), sourceLabel);
+          },
+        });
+        activeTemplateSubscriptions.push(subscription as GraphQLSubscriptionHandle);
+      };
+
+      subscribe(onCreateTemplate, 'onCreateTemplate', 'createTemplate');
+      subscribe(onUpdateTemplate, 'onUpdateTemplate', 'updateTemplate');
+      subscribe(onDeleteTemplate, 'onDeleteTemplate', 'deleteTemplate');
+    } catch (err) {
+      if (isDev()) console.error('[templates] Failed to start template subscriptions', err);
+      cleanupTemplateSubscriptions();
+      throw err;
+    } finally {
+      subscriptionStartPromise = null;
+    }
+  };
+
+  subscriptionStartPromise = start();
+  await subscriptionStartPromise;
 }
 
 function buildSnapshotKey(id: string): string {
@@ -420,12 +536,21 @@ export function subscribeToTemplates(
   listener: TemplatesListener,
   { emitInitial = true }: { emitInitial?: boolean } = {}
 ): () => void {
+  const shouldStart = templateListeners.size === 0;
   templateListeners.add(listener);
+  if (shouldStart) {
+    void ensureTemplateSubscriptions().catch(() => {
+      if (isDev()) console.warn('[templates] Failed to establish template subscriptions');
+    });
+  }
   if (emitInitial) {
     listener(cacheToArray());
   }
   return () => {
     templateListeners.delete(listener);
+    if (templateListeners.size === 0) {
+      stopTemplateSubscriptions();
+    }
   };
 }
 

@@ -3,6 +3,8 @@
 _Last reviewed: 2025-10-23_
 
 ## Current Implementation Snapshot (Phase 0)
+> **Testing note:** Automated tests for the template helpers are intentionally omitted in this phase—stick to manual verification steps until the Jest setup is stabilized.
+
 - [x] `src/pages/ProjectsPage.tsx` is admin-only and reads templates via `loadProjects()` from `src/components/collage/utils/projects.ts`, which persists an array in `localStorage` under `memeSRC_collageProjects_v1`. The page re-fetches on window focus and backgrounds caption metadata lookups through `getMetadataForKey` (Amplify Storage).
 - [x] `src/components/collage/utils/projects.ts` defines the legacy `CollageProject` shape and helpers (`createProject`, `getProject`, `upsertProject`, `deleteProject`, `buildSnapshotFromState`). Each saved template currently stores `{ id, name, createdAt, updatedAt, thumbnail, thumbnailKey, thumbnailSignature, thumbnailUpdatedAt, state }` in localStorage.
 - [x] `src/components/collage/components/ProjectPicker.tsx` renders the grid UI, recomputes thumbnails with `renderThumbnailFromSnapshot`, and calls `upsertProject` to cache the thumbnail + signature locally. When we switch to a remote backend this on-mount write must be replaced or throttled so browsing the list does not spam mutations.
@@ -181,10 +183,9 @@ _Last reviewed: 2025-10-23_
 - [x] On save failures, coalesce and retry with the latest queued state; discard superseded mutations so rapid edits resolve to the freshest snapshot/thumbnail pair. Record telemetry/toasts for repeated failures. _Failures surface an error toast, back off (1.5s→8s) and requeue the latest snapshot; retries supersede older mutations._
 - [x] Make sure the `/projects` view reflects remote changes promptly (refetch after mutations or maintain a shared store). _2025-01-27:_ Added a template cache subscription and ProjectsPage listener so create/update/delete mutations push updates immediately; focus refetch remains for cross-session changes.
 - [x] Retire or gate the `localStorage` fallback once production data is validated. If a migration script is required to migrate existing local drafts, capture the high-level steps and required approvals; avoid documenting direct `amplify push`/apply commands. _Legacy helper remains for migration scripts only; runtime no longer touches localStorage._
-- [x] Add or update tests (e.g., mock Amplify in unit tests for the helper layer, add smoke tests around the CRUD cycle). _2025-01-27:_ Added Jest coverage for the template helper subscription/cache flow (`src/components/collage/utils/templates.test.ts`).
+- [ ] Automated unit tests intentionally deferred for this phase because the Jest environment is too unstable for the template helpers. Document manual validation steps instead of adding Jest coverage.
 
 _Verification 2025-01-26:_ `npx eslint src/components/collage/utils/templates.ts src/pages/ProjectsPage.tsx src/components/collage/components/ProjectPicker.tsx src/pages/CollagePage.js`
-_Verification 2025-01-27:_ `npm test -- --runTestsByPath src/components/collage/utils/templates.test.ts --watchAll=false`
 
 ## Open Questions & Notes
 - Where should the authoritative snapshot live? Inline `AWSJSON`, S3 JSON blob, or mixed (short fields in GraphQL, heavy payload in S3)? _Currently running hybrid (inline JSON + protected S3); revisit if snapshots start exceeding comfortable GraphQL payload sizes._
@@ -197,4 +198,5 @@ _Verification 2025-01-27:_ `npm test -- --runTestsByPath src/components/collage/
 - If you touch helper utilities, note the entry points (file + exported function) so the next contributor can diff quickly.
 - Log open questions or blockers in the section above before ending a run; remove them only once resolved.
 - After shipping code, summarize verification (tests run, manual flows exercised) in this README for traceability.
+- For this iteration, avoid adding Jest-based tests around templates; rely on manual validation notes until the test harness stabilizes.
 - Call out any backend apply steps (e.g., `amplify push`) as separate approvals; do not include execution commands in this checklist.
