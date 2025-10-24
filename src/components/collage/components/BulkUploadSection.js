@@ -8,6 +8,14 @@ import {
   Chip,
   Menu,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  TextField,
   Snackbar,
   Alert,
   CircularProgress,
@@ -29,6 +37,7 @@ import { UserContext } from '../../../UserContext';
 import useLibraryData from '../../../hooks/library/useLibraryData';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { trackUsageEvent } from '../../../utils/trackUsageEvent';
+import { COLLAGE_SEED_FEEDBACK_OPTIONS } from '../../../utils/analytics/collageEvents';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
@@ -218,6 +227,112 @@ const BulkUploadSection = ({
   // State for context menu
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedPanelForAction, setSelectedPanelForAction] = useState(null);
+  const [seedFeedbackState, setSeedFeedbackState] = useState(null);
+  const [seedFeedbackReason, setSeedFeedbackReason] = useState('');
+  const [seedFeedbackNote, setSeedFeedbackNote] = useState('');
+
+  const resetSeedFeedbackState = useCallback(() => {
+    setSeedFeedbackState(null);
+    setSeedFeedbackReason('');
+    setSeedFeedbackNote('');
+  }, []);
+
+  const commitSeedRemoval = useCallback((reason, note) => {
+    if (!seedFeedbackState || typeof seedFeedbackState.imageIndex !== 'number' || !removeImage) {
+      resetSeedFeedbackState();
+      return;
+    }
+
+    const { imageIndex, source, onAfterRemoval, previousImage } = seedFeedbackState;
+
+    removeImage(imageIndex, {
+      source,
+      userFeedbackReason: reason || undefined,
+      userFeedbackNote: note || undefined,
+    });
+
+    if (typeof onAfterRemoval === 'function') {
+      try {
+        onAfterRemoval();
+      } catch (error) {
+        if (DEBUG_MODE) console.warn('Post-removal callback failed', error);
+      }
+    }
+
+    if (previousImage) {
+      setTimeout(() => revokeImageObjectUrls(previousImage), 0);
+    }
+
+    resetSeedFeedbackState();
+  }, [removeImage, seedFeedbackState, resetSeedFeedbackState]);
+
+  const requestSeedRemoval = useCallback(({
+    imageIndex,
+    source = 'BulkUploadSection',
+    onAfterRemoval,
+    panelLabel,
+  }) => {
+    if (typeof imageIndex !== 'number' || imageIndex < 0 || !removeImage) {
+      if (typeof onAfterRemoval === 'function') {
+        try { onAfterRemoval(); } catch (error) { if (DEBUG_MODE) console.warn('Post-removal callback failed', error); }
+      }
+      return;
+    }
+
+    const targetImage = selectedImages?.[imageIndex];
+    const hasFrameMetadata = targetImage?.metadata?.frameRef;
+
+    if (!hasFrameMetadata) {
+      removeImage(imageIndex, { source });
+      if (typeof onAfterRemoval === 'function') {
+        try { onAfterRemoval(); } catch (error) { if (DEBUG_MODE) console.warn('Post-removal callback failed', error); }
+      }
+      if (targetImage) {
+        setTimeout(() => revokeImageObjectUrls(targetImage), 0);
+      }
+      return;
+    }
+
+    setSeedFeedbackReason('');
+    setSeedFeedbackNote('');
+    setSeedFeedbackState({
+      imageIndex,
+      source,
+      onAfterRemoval: typeof onAfterRemoval === 'function' ? onAfterRemoval : null,
+      previousImage: targetImage,
+      panelLabel: panelLabel || null,
+    });
+  }, [removeImage, selectedImages]);
+
+  const handleSeedFeedbackReasonChange = useCallback((event) => {
+    const { value } = event.target;
+    setSeedFeedbackReason(value);
+    if (value !== 'other') {
+      setSeedFeedbackNote('');
+    }
+  }, []);
+
+  const handleSeedFeedbackNoteChange = useCallback((event) => {
+    setSeedFeedbackNote(event.target.value);
+  }, []);
+
+  const handleSeedRemovalSubmit = useCallback(() => {
+    const trimmedNote = seedFeedbackReason === 'other' ? seedFeedbackNote.trim() : '';
+    commitSeedRemoval(seedFeedbackReason || undefined, trimmedNote || undefined);
+  }, [seedFeedbackReason, seedFeedbackNote, commitSeedRemoval]);
+
+  const handleSeedRemovalSkip = useCallback(() => {
+    commitSeedRemoval(undefined, undefined);
+  }, [commitSeedRemoval]);
+
+  const handleSeedRemovalCancel = useCallback(() => {
+    resetSeedFeedbackState();
+  }, [resetSeedFeedbackState]);
+
+  const seedFeedbackOpen = Boolean(seedFeedbackState);
+  const seedRemovalPanelLabel = seedFeedbackState?.panelLabel;
+  const disableSeedRemovalSubmit =
+    !seedFeedbackReason || (seedFeedbackReason === 'other' && !seedFeedbackNote.trim());
 
   // State for toast notifications
   const [toast, setToast] = useState({
@@ -481,13 +596,13 @@ const BulkUploadSection = ({
   };
 
   // Handler for removing an image
-  const handleRemoveImage = (imageIndex) => {
-    if (removeImage) {
-      const previousImage = selectedImages?.[imageIndex];
-      removeImage(imageIndex);
-      // Defer revocation until after state updates
-      setTimeout(() => revokeImageObjectUrls(previousImage), 0);
-    }
+  const handleRemoveImage = (imageIndex, { onAfterRemoval = null, panelLabel = null } = {}) => {
+    requestSeedRemoval({
+      imageIndex,
+      source: 'BulkUploadSection',
+      onAfterRemoval,
+      panelLabel,
+    });
   };
 
   // Handler for removing a frame/panel
@@ -499,82 +614,72 @@ const BulkUploadSection = ({
 
     debugLog(`Removing frame: ${panelIdToRemove}`);
 
-    // Extract the panel number from the panel ID to remove (1-based)
     const panelNumberToRemove = parseInt(panelIdToRemove.split('-')[1] || '0', 10);
-    
     debugLog(`Removing panel number: ${panelNumberToRemove} (reducing from ${panelCount} to ${panelCount - 1} panels)`);
 
-    // Get the current panel mapping
     const currentMapping = { ...panelImageMapping };
-    
-    // Store the image that was in the removed panel (if any) - we'll remove it from images array
     const removedImageIndex = currentMapping[panelIdToRemove];
     const hasRemovedImage = removedImageIndex !== undefined && removedImageIndex !== null;
-    
+
     debugLog(`Panel ${panelIdToRemove} had image at index: ${removedImageIndex}`);
-    
-    // Remove the image from the images array if it exists
+
+    const finalizePanelRemoval = () => {
+      const updatedMapping = {};
+
+      const remainingMappings = Object.entries(currentMapping)
+        .filter(([panelId]) => panelId !== panelIdToRemove)
+        .map(([panelId, imageIndex]) => {
+          const panelNumber = parseInt(panelId.split('-')[1] || '0', 10);
+          return { panelNumber, imageIndex };
+        })
+        .sort((a, b) => a.panelNumber - b.panelNumber);
+
+      debugLog('Remaining mappings before adjustment:', remainingMappings);
+
+      const adjustedMappings = remainingMappings.map(({ panelNumber, imageIndex }) => {
+        let adjustedImageIndex = imageIndex;
+
+        if (hasRemovedImage && imageIndex > removedImageIndex) {
+          adjustedImageIndex = imageIndex - 1;
+          debugLog(`Adjusted image index from ${imageIndex} to ${adjustedImageIndex}`);
+        }
+
+        return { panelNumber, imageIndex: adjustedImageIndex };
+      });
+
+      debugLog('Mappings after image index adjustment:', adjustedMappings);
+
+      adjustedMappings.forEach(({ panelNumber, imageIndex }) => {
+        let newPanelNumber = panelNumber;
+
+        if (panelNumber > panelNumberToRemove) {
+          newPanelNumber = panelNumber - 1;
+          debugLog(`Shifting panel ${panelNumber} to panel ${newPanelNumber}`);
+        }
+
+        const newPanelId = selectedTemplate?.layout?.panels?.[newPanelNumber - 1]?.id || `panel-${newPanelNumber}`;
+        if (imageIndex !== undefined && imageIndex !== null) {
+          updatedMapping[newPanelId] = imageIndex;
+        }
+
+        debugLog(`Mapped panel ${newPanelId} to image index ${imageIndex}`);
+      });
+
+      const newPanelCount = panelCount - 1;
+      setPanelCount(newPanelCount);
+      updatePanelImageMapping(updatedMapping);
+
+      debugLog(`Frame removed. New panel count: ${newPanelCount}, Updated mapping:`, updatedMapping);
+    };
+
     if (hasRemovedImage && removeImage) {
-      const previousImage = selectedImages?.[removedImageIndex];
-      removeImage(removedImageIndex);
-      setTimeout(() => revokeImageObjectUrls(previousImage), 0);
-      debugLog(`Removed image at index ${removedImageIndex} from images array`);
+      handleRemoveImage(removedImageIndex, {
+        onAfterRemoval: finalizePanelRemoval,
+        panelLabel: panelIdToRemove,
+      });
+    } else {
+      finalizePanelRemoval();
     }
-    
-    // Create new mapping by rebuilding it from scratch for remaining panels
-    const updatedMapping = {};
-    
-    // Get all current panel-to-image mappings, excluding the removed panel
-    const remainingMappings = Object.entries(currentMapping)
-      .filter(([panelId]) => panelId !== panelIdToRemove)
-      .map(([panelId, imageIndex]) => {
-        const panelNumber = parseInt(panelId.split('-')[1] || '0', 10);
-        return { panelId, panelNumber, imageIndex };
-      })
-      .sort((a, b) => a.panelNumber - b.panelNumber); // Sort by panel number
-    
-    debugLog('Remaining mappings before adjustment:', remainingMappings);
-    
-    // Adjust image indices for images that come after the removed image
-    const adjustedMappings = remainingMappings.map(({ panelId, panelNumber, imageIndex }) => {
-      let adjustedImageIndex = imageIndex;
-      
-      // If we removed an image and this mapping points to an image after it, shift the index down
-      if (hasRemovedImage && imageIndex > removedImageIndex) {
-        adjustedImageIndex = imageIndex - 1;
-        debugLog(`Adjusted image index from ${imageIndex} to ${adjustedImageIndex} for panel ${panelId}`);
-      }
-      
-      return { panelId, panelNumber, imageIndex: adjustedImageIndex };
-    });
-    
-    debugLog('Mappings after image index adjustment:', adjustedMappings);
-    
-    // Now rebuild the mapping with new panel IDs for panels that need to shift
-    adjustedMappings.forEach(({ panelNumber, imageIndex }) => {
-      let newPanelNumber = panelNumber;
-      
-      // If this panel comes after the removed panel, shift it up by 1
-      if (panelNumber > panelNumberToRemove) {
-        newPanelNumber = panelNumber - 1;
-        debugLog(`Shifting panel ${panelNumber} to panel ${newPanelNumber}`);
-      }
-      
-      // Generate the new panel ID
-      const newPanelId = selectedTemplate?.layout?.panels?.[newPanelNumber - 1]?.id || `panel-${newPanelNumber}`;
-      updatedMapping[newPanelId] = imageIndex;
-      
-      debugLog(`Mapped panel ${newPanelId} to image index ${imageIndex}`);
-    });
-    
-    // Update panel count first
-    const newPanelCount = panelCount - 1;
-    setPanelCount(newPanelCount);
-    
-    // Apply the updated mapping
-    updatePanelImageMapping(updatedMapping);
-    
-    debugLog(`Frame removed. New panel count: ${newPanelCount}, Updated mapping:`, updatedMapping);
   };
 
   // Handler for opening context menu on empty panel click
@@ -634,15 +739,17 @@ const BulkUploadSection = ({
   // Handler for clearing image from panel
   const handleClearImage = () => {
     if (selectedPanelForAction && selectedPanelForAction.hasImage) {
-      // Remove the image from the images array
-      handleRemoveImage(selectedPanelForAction.imageIndex);
-      
-      // Remove the panel mapping
-      const newMapping = { ...panelImageMapping };
-      delete newMapping[selectedPanelForAction.panelId];
-      updatePanelImageMapping(newMapping);
-      
-      debugLog(`Cleared image from panel ${selectedPanelForAction.panelId}`);
+      const { imageIndex, panelId } = selectedPanelForAction;
+      const cleanupMapping = () => {
+        const newMapping = { ...panelImageMapping };
+        delete newMapping[panelId];
+        updatePanelImageMapping(newMapping);
+        debugLog(`Cleared image from panel ${panelId}`);
+      };
+      handleRemoveImage(imageIndex, {
+        onAfterRemoval: cleanupMapping,
+        panelLabel: panelId,
+      });
     }
     handleContextMenuClose();
   };
@@ -857,7 +964,61 @@ const BulkUploadSection = ({
   };
 
   return (
-    <Box data-testid="bulk-upload-section">
+    <>
+      <Dialog
+        open={seedFeedbackOpen}
+        onClose={handleSeedRemovalCancel}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Remove image?
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {seedRemovalPanelLabel
+              ? `Let us know why you’re removing the image from ${seedRemovalPanelLabel}.`
+              : 'Let us know why you’re removing this image.'}
+          </Typography>
+          <RadioGroup
+            value={seedFeedbackReason}
+            onChange={handleSeedFeedbackReasonChange}
+          >
+            {COLLAGE_SEED_FEEDBACK_OPTIONS.map(option => (
+              <FormControlLabel
+                key={option.value}
+                value={option.value}
+                control={<Radio size="small" />}
+                label={option.label}
+              />
+            ))}
+          </RadioGroup>
+          {seedFeedbackReason === 'other' && (
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              label="Share a bit more (optional)"
+              value={seedFeedbackNote}
+              onChange={handleSeedFeedbackNoteChange}
+              sx={{ mt: 2 }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button onClick={handleSeedRemovalCancel}>Cancel</Button>
+          <Button onClick={handleSeedRemovalSkip}>Skip feedback</Button>
+          <Button
+            variant="contained"
+            onClick={handleSeedRemovalSubmit}
+            disabled={disableSeedRemovalSubmit}
+          >
+            Remove
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Box data-testid="bulk-upload-section">
       {hasImages ? (
         // Show simple image grid
         <Box>
@@ -1237,7 +1398,8 @@ const BulkUploadSection = ({
           {toast.message}
         </Alert>
       </Snackbar>
-    </Box>
+      </Box>
+    </>
   );
 };
 

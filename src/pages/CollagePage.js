@@ -17,6 +17,7 @@ import { get as getFromLibrary } from "../utils/library/storage";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 import CollageResultDialog from "../components/collage/components/CollageResultDialog";
 import { trackUsageEvent } from "../utils/trackUsageEvent";
+import { trackCollageSeedBulkAdd } from "../utils/analytics/collageEvents";
 
 // Pure helpers (module scope) to avoid TDZ and keep stable references
 function computeSnapshotSignature(snap) {
@@ -197,6 +198,11 @@ export default function CollagePage() {
     updatePanelText,
     libraryRefreshTrigger,
   } = useCollageState(isAdmin);
+
+  const selectedTemplateRef = useRef(selectedTemplate);
+  useEffect(() => {
+    selectedTemplateRef.current = selectedTemplate;
+  }, [selectedTemplate]);
 
   // Nudge states: visual hold vs. tooltip visibility
   const [nudgeVisualActive, setNudgeVisualActive] = useState(false);
@@ -398,6 +404,7 @@ export default function CollagePage() {
     if (location.state?.fromCollage && location.state?.images) {
       const loadImages = async () => {
         debugLog('Loading images from collage:', location.state.images);
+        const preloadSource = location.state?.source || 'collage_preload';
 
         // Transform images to the expected format, preserving subtitle data
         const transformedImages = location.state.images.map(item => {
@@ -448,6 +455,24 @@ export default function CollagePage() {
 
             debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
             updatePanelImageMapping(newMapping);
+
+            const templateForEvent = selectedTemplateRef.current || selectedTemplate;
+            const seedsForEvent = [];
+            for (let i = 0; i < imagesToAssign; i += 1) {
+              const frameRef = transformedImages[i]?.metadata?.frameRef;
+              if (!frameRef) continue;
+              seedsForEvent.push({
+                frameRef,
+                panelIndex: i,
+              });
+            }
+            if (seedsForEvent.length > 0) {
+              trackCollageSeedBulkAdd({
+                seeds: seedsForEvent,
+                templateId: templateForEvent?.id || null,
+                source: preloadSource,
+              });
+            }
           }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
         }, 100); // Small delay to ensure images are added first
 
@@ -457,7 +482,7 @@ export default function CollagePage() {
 
       loadImages();
     }
-  }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount]);
+  }, [location.state, addMultipleImages, navigate, location.pathname, panelCount, selectedTemplate, updatePanelImageMapping, setPanelCount, trackCollageSeedBulkAdd]);
 
   // Apply any pending magic edit once images/mapping are available
   useEffect(() => {
