@@ -3,10 +3,10 @@ import { Box, Card, Typography, Stack, CardActionArea, IconButton, Tooltip, Skel
 import type { BoxProps } from '@mui/material';
 import { Masonry } from '@mui/lab';
 import { Delete, Search, Clear, ChevronLeft, ChevronRight } from '@mui/icons-material';
-import { upsertProject } from '../utils/projects';
 import { renderThumbnailFromSnapshot } from '../utils/renderThumbnailFromSnapshot';
 import type { CollageProject } from '../../../types/collage';
 import { alpha } from '@mui/material/styles';
+import { resolveThumbnailUrl } from '../utils/templates';
 // no responsive hooks needed here
 
 type ProjectCardProps = {
@@ -18,42 +18,41 @@ type ProjectCardProps = {
 const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete }) => {
   // Thumbnails are generated inline from project data and stored locally
   const [thumbUrl, setThumbUrl] = useState<string | null>(project.thumbnail || null);
+  const [thumbLoading, setThumbLoading] = useState<boolean>(false);
 
   useEffect(() => {
     setThumbUrl(project.thumbnail || null);
   }, [project.thumbnail]);
 
-  // If state exists and our stored thumbnail is missing or stale, render it client-side from snapshot
+  // Resolve thumbnail URL from remote storage (fallback to inline snapshot render if missing)
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
       try {
-        if (!project?.state) return;
-        // Compute a simple signature; reuse same approach as editor
-        const json = JSON.stringify(project.state);
-        let hash = 5381; for (let i = 0; i < json.length; i += 1) { hash = (hash * 33 + json.charCodeAt(i)) % 4294967296; }
-        const sig = `v2:${Math.floor(hash)}`;
-
-        if (project.thumbnail && project.thumbnailSignature === sig) return;
-        const dataUrl = await renderThumbnailFromSnapshot(project.state, { maxDim: 256 });
-        if (!cancelled && dataUrl) {
-          setThumbUrl(dataUrl);
-          // Persist so list thumbnails remain fast next time
-          upsertProject(project.id, {
-            thumbnail: dataUrl,
-            thumbnailKey: null,
-            thumbnailSignature: sig,
-            thumbnailUpdatedAt: new Date().toISOString(),
-          });
+        if (!project) return;
+        if (project.thumbnailKey) {
+          setThumbLoading(true);
+          const url = await resolveThumbnailUrl(project);
+          if (!cancelled) setThumbUrl(url || project.thumbnail || null);
+          if (!cancelled) setThumbLoading(false);
+          if (url || project.thumbnail) return;
+        }
+        if (project.thumbnail) {
+          if (!cancelled) setThumbUrl(project.thumbnail);
+          return;
+        }
+        if (project?.state) {
+          const dataUrl = await renderThumbnailFromSnapshot(project.state, { maxDim: 256 });
+          if (!cancelled) setThumbUrl(dataUrl || null);
         }
       } catch (_) {
-        // Best-effort only; ignore
+        if (!cancelled) setThumbLoading(false);
       }
     };
     run();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id, project.state]);
+  }, [project.id, project.state, project.thumbnailKey, project.thumbnailUpdatedAt, project.thumbnailSignature]);
 
   return (
     <Card variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider', overflow: 'hidden', borderRadius: 0 }}>
@@ -68,7 +67,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete }) 
               sx={{ display: 'block', width: '100%', height: 'auto' }}
             />
           ) : (
-            <Skeleton variant="rectangular" sx={{ width: '100%', height: 200 }} />
+            <Skeleton variant="rectangular" sx={{ width: '100%', height: 200, opacity: thumbLoading ? 1 : 0.4 }} />
           )}
           {/* Overlay with title and updated time removed for cleaner thumbnail */}
         </CardActionArea>
@@ -339,20 +338,19 @@ const RecentThumb: React.FC<{ project: CollageProject; onOpen: (id: string) => v
     let cancelled = false;
     const run = async () => {
       try {
-        if (!project?.state) return;
-        const json = JSON.stringify(project.state);
-        let hash = 5381; for (let i = 0; i < json.length; i += 1) { hash = (hash * 33 + json.charCodeAt(i)) % 4294967296; }
-        const sig = `v2:${Math.floor(hash)}`;
-        if (project.thumbnail && project.thumbnailSignature === sig) return;
-        const dataUrl = await renderThumbnailFromSnapshot(project.state, { maxDim: 256 });
-        if (!cancelled && dataUrl) {
-          setThumbUrl(dataUrl);
-          upsertProject(project.id, {
-            thumbnail: dataUrl,
-            thumbnailKey: null,
-            thumbnailSignature: sig,
-            thumbnailUpdatedAt: new Date().toISOString(),
-          });
+        if (!project) return;
+        if (project.thumbnailKey) {
+          const url = await resolveThumbnailUrl(project);
+          if (!cancelled) setThumbUrl(url || project.thumbnail || null);
+          if (url || project.thumbnail) return;
+        }
+        if (project.thumbnail) {
+          if (!cancelled) setThumbUrl(project.thumbnail);
+          return;
+        }
+        if (project.state) {
+          const dataUrl = await renderThumbnailFromSnapshot(project.state, { maxDim: 256 });
+          if (!cancelled) setThumbUrl(dataUrl || null);
         }
       } catch (_) {
         // ignore best-effort
@@ -361,7 +359,7 @@ const RecentThumb: React.FC<{ project: CollageProject; onOpen: (id: string) => v
     run();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id, project.state]);
+  }, [project.id, project.state, project.thumbnailKey, project.thumbnailUpdatedAt, project.thumbnailSignature]);
 
   return (
     <Box role="listitem" sx={{ flex: '0 0 auto', width: { xs: 96, sm: 96, md: 88 }, textAlign: 'center' }}>

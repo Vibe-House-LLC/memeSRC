@@ -2086,6 +2086,69 @@ export const deleteMagicResult = /* GraphQL */ `
     }
   }
 `;
+export const createTemplate = /* GraphQL */ `
+  mutation CreateTemplate(
+    $input: CreateTemplateInput!
+    $condition: ModelTemplateConditionInput
+  ) {
+    createTemplate(input: $input, condition: $condition) {
+      id
+      ownerIdentityId
+      name
+      state
+      snapshotKey
+      snapshotVersion
+      thumbnailKey
+      thumbnailSignature
+      thumbnailUpdatedAt
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateTemplate = /* GraphQL */ `
+  mutation UpdateTemplate(
+    $input: UpdateTemplateInput!
+    $condition: ModelTemplateConditionInput
+  ) {
+    updateTemplate(input: $input, condition: $condition) {
+      id
+      ownerIdentityId
+      name
+      state
+      snapshotKey
+      snapshotVersion
+      thumbnailKey
+      thumbnailSignature
+      thumbnailUpdatedAt
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteTemplate = /* GraphQL */ `
+  mutation DeleteTemplate(
+    $input: DeleteTemplateInput!
+    $condition: ModelTemplateConditionInput
+  ) {
+    deleteTemplate(input: $input, condition: $condition) {
+      id
+      ownerIdentityId
+      name
+      state
+      snapshotKey
+      snapshotVersion
+      thumbnailKey
+      thumbnailSignature
+      thumbnailUpdatedAt
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const createEditorProject = /* GraphQL */ `
   mutation CreateEditorProject(
     $input: CreateEditorProjectInput!
