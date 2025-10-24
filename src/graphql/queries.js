@@ -1210,6 +1210,50 @@ export const listMagicResults = /* GraphQL */ `
     }
   }
 `;
+export const getTemplate = /* GraphQL */ `
+  query GetTemplate($id: ID!) {
+    getTemplate(id: $id) {
+      id
+      ownerIdentityId
+      name
+      state
+      snapshotKey
+      snapshotVersion
+      thumbnailKey
+      thumbnailSignature
+      thumbnailUpdatedAt
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listTemplates = /* GraphQL */ `
+  query ListTemplates(
+    $filter: ModelTemplateFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listTemplates(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        ownerIdentityId
+        name
+        state
+        snapshotKey
+        snapshotVersion
+        thumbnailKey
+        thumbnailSignature
+        thumbnailUpdatedAt
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getEditorProject = /* GraphQL */ `
   query GetEditorProject($id: ID!) {
     getEditorProject(id: $id) {

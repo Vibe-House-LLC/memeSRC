@@ -2005,6 +2005,69 @@ export const onDeleteMagicResult = /* GraphQL */ `
     }
   }
 `;
+export const onCreateTemplate = /* GraphQL */ `
+  subscription OnCreateTemplate(
+    $filter: ModelSubscriptionTemplateFilterInput
+    $ownerIdentityId: String
+  ) {
+    onCreateTemplate(filter: $filter, ownerIdentityId: $ownerIdentityId) {
+      id
+      ownerIdentityId
+      name
+      state
+      snapshotKey
+      snapshotVersion
+      thumbnailKey
+      thumbnailSignature
+      thumbnailUpdatedAt
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateTemplate = /* GraphQL */ `
+  subscription OnUpdateTemplate(
+    $filter: ModelSubscriptionTemplateFilterInput
+    $ownerIdentityId: String
+  ) {
+    onUpdateTemplate(filter: $filter, ownerIdentityId: $ownerIdentityId) {
+      id
+      ownerIdentityId
+      name
+      state
+      snapshotKey
+      snapshotVersion
+      thumbnailKey
+      thumbnailSignature
+      thumbnailUpdatedAt
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteTemplate = /* GraphQL */ `
+  subscription OnDeleteTemplate(
+    $filter: ModelSubscriptionTemplateFilterInput
+    $ownerIdentityId: String
+  ) {
+    onDeleteTemplate(filter: $filter, ownerIdentityId: $ownerIdentityId) {
+      id
+      ownerIdentityId
+      name
+      state
+      snapshotKey
+      snapshotVersion
+      thumbnailKey
+      thumbnailSignature
+      thumbnailUpdatedAt
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const onCreateEditorProject = /* GraphQL */ `
   subscription OnCreateEditorProject(
     $filter: ModelSubscriptionEditorProjectFilterInput
