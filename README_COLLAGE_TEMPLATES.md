@@ -35,7 +35,7 @@ _Last reviewed: 2025-10-23_
       ]
     ) {
     id: ID!
-    ownerIdentityId: String
+    ownerIdentityId: String!
     name: String!
     state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
     snapshotKey: String
@@ -63,7 +63,7 @@ _Last reviewed: 2025-10-23_
       ]
     ) {
     id: ID!
-    ownerIdentityId: String
+    ownerIdentityId: String!
     name: String!
     state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
     snapshotKey: String
@@ -77,7 +77,7 @@ _Last reviewed: 2025-10-23_
   ```graphql
   input CreateTemplateInput {
     id: ID
-    ownerIdentityId: String
+    ownerIdentityId: String!
     name: String!
     state: AWSJSON
     snapshotKey: String
@@ -89,7 +89,7 @@ _Last reviewed: 2025-10-23_
 
   input UpdateTemplateInput {
     id: ID!
-    ownerIdentityId: String
+    ownerIdentityId: String!
     name: String
     state: AWSJSON
     snapshotKey: String
@@ -103,7 +103,63 @@ _Last reviewed: 2025-10-23_
     id: ID!
   }
   ```
-- [ ] Once schema updates merge, capture the resulting GraphQL query/mutation shapes here (e.g., from `amplify codegen` output). Skip `amplify push` or other backend apply commands unless separately approved.
+- [x] Once schema updates merge, capture the resulting GraphQL query/mutation shapes here (e.g., from `amplify codegen` output). After the backend push on 2025-01-23, reran `amplify codegen` and confirmed the Template operations below (selection sets identical for `createTemplate`, `updateTemplate`, and `deleteTemplate`; subscriptions mirror the same fields). Skip `amplify push` or other backend apply commands unless separately approved.
+  ```graphql
+  mutation CreateTemplate($input: CreateTemplateInput!, $condition: ModelTemplateConditionInput) {
+    createTemplate(input: $input, condition: $condition) {
+      id
+      ownerIdentityId
+      name
+      state
+      snapshotKey
+      snapshotVersion
+      thumbnailKey
+      thumbnailSignature
+      thumbnailUpdatedAt
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+
+  query GetTemplate($id: ID!) {
+    getTemplate(id: $id) {
+      id
+      ownerIdentityId
+      name
+      state
+      snapshotKey
+      snapshotVersion
+      thumbnailKey
+      thumbnailSignature
+      thumbnailUpdatedAt
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+
+  query ListTemplates($filter: ModelTemplateFilterInput, $limit: Int, $nextToken: String) {
+    listTemplates(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        ownerIdentityId
+        name
+        state
+        snapshotKey
+        snapshotVersion
+        thumbnailKey
+        thumbnailSignature
+        thumbnailUpdatedAt
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+  ```
 - [ ] Record any Amplify env vars, CLI steps, or IAM policy updates needed to grant S3/API access.
 
 ## Phase 2 – API & Storage Wiring
