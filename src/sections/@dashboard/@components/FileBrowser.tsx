@@ -59,7 +59,6 @@ import {
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { ChromePicker } from 'react-color';
-import { calculateFrameCountFromSubfolders } from '../../../utils/calculateFrameCountFromSubfolders';
 
 // Configure Storage to use custom prefix (empty string for bucket root access)
 Storage.configure({
@@ -145,6 +144,129 @@ interface FileBrowserProps {
     aliasName?: string; // Optional: current alias selection (if any)
     isExistingAlias?: boolean; // Optional: indicates the alias already exists in src/
 }
+
+type EpisodeSelection = { season: number; episode: number };
+
+const FRAMES_PER_VIDEO = 250;
+
+const normalizePrefix = (prefix: string): string => prefix.replace(/\/+$/, '');
+
+const createEpisodeKey = (season: number, episode: number): string => `S${season}E${episode}`;
+
+const getRelativePath = (fullKey: string, basePath: string): string | null => {
+    const normalizedBase = normalizePrefix(basePath);
+
+    if (!normalizedBase) {
+        return null;
+    }
+
+    if (fullKey === normalizedBase) {
+        return '';
+    }
+
+    if (fullKey.startsWith(`${normalizedBase}/`)) {
+        return fullKey.slice(normalizedBase.length + 1);
+    }
+
+    return null;
+};
+
+const listAllStorageItems = async (prefix: string): Promise<any[]> => {
+    const normalizedPrefix = normalizePrefix(prefix);
+
+    if (!normalizedPrefix) {
+        return [];
+    }
+
+    const aggregated: any[] = [];
+    let nextToken: string | undefined;
+
+    try {
+        do {
+            const response: any = await Storage.list(normalizedPrefix, {
+                level: 'public',
+                pageSize: 1000,
+                nextToken
+            });
+
+            const items = (response?.results || response || []) as any[];
+            aggregated.push(...items);
+            nextToken = (response as any)?.nextToken as string | undefined;
+        } while (nextToken);
+    } catch (error) {
+        console.warn(`Failed to list items under ${normalizedPrefix}`, error);
+    }
+
+    return aggregated;
+};
+
+const getSeriesEpisodeFrameCounts = async (seriesPath: string): Promise<Record<string, number>> => {
+    const items = await listAllStorageItems(seriesPath);
+    const counts: Record<string, number> = {};
+
+    items.forEach((item) => {
+        const key = item?.key || '';
+
+        if (!key.toLowerCase().endsWith('.mp4')) {
+            return;
+        }
+
+        const relativePath = getRelativePath(key, seriesPath);
+
+        if (!relativePath) {
+            return;
+        }
+
+        const parts = relativePath.split('/').filter(Boolean);
+
+        if (parts.length < 3) {
+            return;
+        }
+
+        const season = Number(parts[0]);
+        const episode = Number(parts[1]);
+
+        if (Number.isNaN(season) || Number.isNaN(episode)) {
+            return;
+        }
+
+        const episodeKey = createEpisodeKey(season, episode);
+        counts[episodeKey] = (counts[episodeKey] || 0) + FRAMES_PER_VIDEO;
+    });
+
+    return counts;
+};
+
+const getPendingEpisodeFrameCounts = async (
+    pendingRoot: string,
+    episodes: EpisodeSelection[]
+): Promise<Record<string, number>> => {
+    const normalizedRoot = normalizePrefix(pendingRoot);
+
+    if (!normalizedRoot || episodes.length === 0) {
+        return {};
+    }
+
+    const counts: Record<string, number> = {};
+    const uniqueEpisodes = Array.from(
+        new Map(episodes.map((episode) => [createEpisodeKey(episode.season, episode.episode), episode])).values()
+    );
+
+    await Promise.all(
+        uniqueEpisodes.map(async ({ season, episode }) => {
+            const episodePath = `${normalizedRoot}/${season}/${episode}`;
+            const items = await listAllStorageItems(episodePath);
+            const mp4Count = items.reduce((total, item) => {
+                const key = item?.key || '';
+                return total + (key.toLowerCase().endsWith('.mp4') ? 1 : 0);
+            }, 0);
+
+            counts[createEpisodeKey(season, episode)] = mp4Count * FRAMES_PER_VIDEO;
+        })
+    );
+
+    return counts;
+};
 
 // Custom TreeNode component
 interface TreeNodeProps {
@@ -510,30 +632,58 @@ const JsonFileViewer: React.FC<{
         return Boolean(isExistingAliasProp && normalizedAlias);
     }, [isExistingAliasProp, normalizedAlias]);
 
+    const hasSelectedEpisodes = selectedEpisodes.length > 0;
+
     
 
     // Function to update frame count in JSON
     const updateFrameCount = useCallback(async () => {
-        if (!hasFrameCount || !selectedFile) return;
-        
+        if (!hasFrameCount || !selectedFile) {
+            return;
+        }
+
+        if (!hasSelectedEpisodes) {
+            setEditError('Select at least one episode before updating the frame count');
+            return;
+        }
+
         setIsUpdatingFrameCount(true);
+        setEditError(null);
+
         try {
-            // Calculate frame count by analyzing MP4 durations
-            const frameCount = await calculateFrameCountFromSubfolders(selectedFile.key, selectedEpisodes);
-            if (frameCount === 0) {
-                setEditError('Could not calculate frame count - no MP4 files found or unable to get video durations');
+            const pendingRoot = [pathPrefix, seriesId].filter(Boolean).join('/');
+            const seriesPath = normalizedAlias ? `protected/src/${normalizedAlias}` : '';
+
+            const [existingCounts, pendingCounts] = await Promise.all([
+                seriesPath ? getSeriesEpisodeFrameCounts(seriesPath) : Promise.resolve({} as Record<string, number>),
+                getPendingEpisodeFrameCounts(pendingRoot, selectedEpisodes)
+            ]);
+
+            const combinedCounts: Record<string, number> = { ...existingCounts };
+
+            Object.entries(pendingCounts).forEach(([episodeKey, frames]) => {
+                combinedCounts[episodeKey] = frames;
+            });
+
+            const totalFrames = Object.values(combinedCounts).reduce((sum, frames) => sum + frames, 0);
+
+            if (totalFrames === 0) {
+                setEditError('No MP4 files found for the selected episodes or existing series.');
                 return;
             }
-            
-            // Update JSON with new frame count
+
+            const roundedTotalFrames = Math.floor(totalFrames / 1000) * 1000;
+
             try {
                 const parsed = JSON.parse(editedJson);
-                parsed.frameCount = frameCount;
+                parsed.frameCount = roundedTotalFrames;
                 const updatedJson = JSON.stringify(parsed, null, 2);
                 setEditedJson(updatedJson);
                 setEditError(null);
-                
-                console.log(`🎯 Updated frameCount to ${frameCount.toLocaleString()}`);
+
+                console.log(
+                    `🎯 Updated frameCount to ${roundedTotalFrames.toLocaleString()} (from ${totalFrames.toLocaleString()})`
+                );
             } catch (parseError) {
                 setEditError('Invalid JSON format');
             }
@@ -543,7 +693,16 @@ const JsonFileViewer: React.FC<{
         } finally {
             setIsUpdatingFrameCount(false);
         }
-    }, [hasFrameCount, selectedFile, editedJson, selectedEpisodes]);
+    }, [
+        hasFrameCount,
+        selectedFile,
+        hasSelectedEpisodes,
+        pathPrefix,
+        seriesId,
+        normalizedAlias,
+        selectedEpisodes,
+        editedJson
+    ]);
 
     // Function to copy existing data from protected/src
     const copyExistingData = useCallback(async () => {
@@ -736,7 +895,7 @@ const JsonFileViewer: React.FC<{
                                     color="primary"
                                     onClick={updateFrameCount}
                                     size="small"
-                                    disabled={isUpdatingFrameCount}
+                                    disabled={isUpdatingFrameCount || !hasSelectedEpisodes}
                                     sx={{ 
                                         whiteSpace: 'nowrap',
                                         width: { xs: '100%', sm: 'auto' }
@@ -780,6 +939,11 @@ const JsonFileViewer: React.FC<{
                                 </Button>
                             ))}
                         </Box>
+                        {hasFrameCount && !hasSelectedEpisodes && (
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                Select at least one episode in the episode selector to enable frame count updates.
+                            </Typography>
+                        )}
                     </Box>
                 )}
 
