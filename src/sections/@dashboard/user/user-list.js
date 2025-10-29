@@ -194,7 +194,7 @@ const UserList = () => {
 
         try {
             let allUsersData = users;
-            if ((!hasTriggeredLoadAll && nextToken) || users.length === 0) {
+            if (!hasTriggeredLoadAll && nextToken) {
                 const fetchedUsers = await loadAllUsers(false, { returnUsers: true });
                 allUsersData = fetchedUsers || [];
             }
