@@ -2,11 +2,12 @@ import React, { useContext, useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Container, Divider, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, CircularProgress, Chip } from "@mui/material";
 import { API, Storage, graphqlOperation } from 'aws-amplify';
-import { Add, Edit, Delete, Refresh, StorageOutlined } from "@mui/icons-material";
+import { Add, Edit, Delete, Refresh, StorageOutlined, Description } from "@mui/icons-material";
 import { getV2ContentMetadata, listAliases } from '../graphql/queries';
 import { createAlias, updateAlias, deleteAlias, createV2ContentMetadata, updateV2ContentMetadata } from '../graphql/mutations';
 import { SnackbarContext } from '../SnackbarContext';
 import ReindexConfirmationDialog from 'src/components/alias/reindex-confirmation-dialog';
+import MetadataEditorDialog from 'src/components/alias-table-row/MetadataEditorDialog';
 
 const onUpdateAlias = /* GraphQL */ `
   subscription OnUpdateAlias($filter: ModelSubscriptionAliasFilterInput) {
@@ -123,6 +124,7 @@ const AliasManagementPageRevised = () => {
   const [refreshingMetadata, setRefreshingMetadata] = useState(false);
   const { setOpen: setSnackbarOpen, setMessage, setSeverity } = useContext(SnackbarContext)
   const [aliasToReindex, setAliasToReindex] = useState(null);
+  const [metadataDialogAliasId, setMetadataDialogAliasId] = useState(null);
 
   useEffect(() => {
     fetchAliases().then(data => {
@@ -369,6 +371,9 @@ const AliasManagementPageRevised = () => {
                   </TableCell>
                   <TableCell>{alias.aliasV2ContentMetadataId}</TableCell>
                   <TableCell align="right">
+                    <IconButton onClick={() => setMetadataDialogAliasId(alias.id)} sx={{ mr: 1 }}>
+                      <Description />
+                    </IconButton>
                     <IconButton
                       onClick={() => refreshMetadata(alias.aliasV2ContentMetadataId)}
                       disabled={refreshingMetadata === alias.aliasV2ContentMetadataId}
@@ -387,6 +392,11 @@ const AliasManagementPageRevised = () => {
       </Container>
       <AliasFormDialog open={dialogOpen} onClose={handleCloseDialog} onSubmit={handleSubmitForm} initialValues={currentAlias || {}} />
       <ConfirmDeleteDialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} onConfirm={handleDeleteAlias} />
+      <MetadataEditorDialog
+        aliasId={metadataDialogAliasId}
+        open={Boolean(metadataDialogAliasId)}
+        onClose={() => setMetadataDialogAliasId(null)}
+      />
       <ReindexConfirmationDialog
         open={Boolean(aliasToReindex)}
         onClose={

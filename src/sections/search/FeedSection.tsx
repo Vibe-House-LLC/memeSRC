@@ -97,7 +97,12 @@ function coerceTimestamp(value?: string | null): number {
 }
 
 function resolveSeriesTimestamp(show: ShowRecord): number {
-  return Math.max(coerceTimestamp(show.updatedAt), coerceTimestamp(show.createdAt));
+  const createdTimestamp = coerceTimestamp(show.createdAt);
+  if (createdTimestamp > 0) {
+    return createdTimestamp;
+  }
+
+  return coerceTimestamp(show.updatedAt);
 }
 
 function isNonEmptyString(value: unknown): value is string {
