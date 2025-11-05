@@ -3,7 +3,7 @@ import type { GraphQLResult } from '@aws-amplify/api-graphql';
 import type { CollageProject, CollageSnapshot } from '../../../types/collage';
 import { buildSnapshotFromState as buildSnapshotFromStateLegacy } from './projects';
 import { createTemplate, deleteTemplate, updateTemplate } from '../../../graphql/mutations';
-import { getTemplate, listTemplates } from '../../../graphql/queries';
+import { getTemplate, templatesByOwnerIdentityIdAndCreatedAt } from '../../../graphql/queries';
 import { onCreateTemplate, onUpdateTemplate, onDeleteTemplate } from '../../../graphql/subscriptions';
 
 const STORAGE_LEVEL = 'protected';
@@ -28,8 +28,8 @@ type TemplateModel = {
   updatedAt?: string | null;
 };
 
-type ListTemplatesQuery = {
-  listTemplates?: {
+type TemplatesByOwnerIdentityIdQuery = {
+  templatesByOwnerIdentityIdAndCreatedAt?: {
     items?: (TemplateModel | null)[] | null;
     nextToken?: string | null;
   } | null;
@@ -354,16 +354,30 @@ async function removeObject(key: string): Promise<void> {
 }
 
 async function fetchAllTemplates(): Promise<CollageProject[]> {
+  const identityId = await getIdentityId();
+  if (!identityId) {
+    replaceCache([]);
+    return [];
+  }
+
   const collected: CollageProject[] = [];
   let nextToken: string | null = null;
   do {
     const response = (await API.graphql(
-      graphqlOperation(listTemplates, { limit: LIST_PAGE_SIZE, nextToken })
-    )) as GraphQLResult<ListTemplatesQuery>;
-    const connection = response?.data?.listTemplates;
+      graphqlOperation(templatesByOwnerIdentityIdAndCreatedAt, {
+        ownerIdentityId: identityId,
+        sortDirection: 'DESC',
+        limit: LIST_PAGE_SIZE,
+        nextToken,
+      })
+    )) as GraphQLResult<TemplatesByOwnerIdentityIdQuery>;
+    const connection = response?.data?.templatesByOwnerIdentityIdAndCreatedAt;
     const items = connection?.items || [];
     items
-      .filter((item): item is TemplateModel => Boolean(item && item.id))
+      .filter(
+        (item): item is TemplateModel =>
+          Boolean(item && item.id && (!item.ownerIdentityId || item.ownerIdentityId === identityId))
+      )
       .map(normalizeTemplate)
       .forEach((record) => {
         collected.push(record);
