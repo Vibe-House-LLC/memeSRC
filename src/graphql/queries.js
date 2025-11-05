@@ -1254,6 +1254,42 @@ export const listTemplates = /* GraphQL */ `
     }
   }
 `;
+export const templatesByOwnerIdentityIdAndCreatedAt = /* GraphQL */ `
+  query TemplatesByOwnerIdentityIdAndCreatedAt(
+    $ownerIdentityId: String!
+    $createdAt: ModelStringKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelTemplateFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    templatesByOwnerIdentityIdAndCreatedAt(
+      ownerIdentityId: $ownerIdentityId
+      createdAt: $createdAt
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        ownerIdentityId
+        name
+        state
+        snapshotKey
+        snapshotVersion
+        thumbnailKey
+        thumbnailSignature
+        thumbnailUpdatedAt
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getEditorProject = /* GraphQL */ `
   query GetEditorProject($id: ID!) {
     getEditorProject(id: $id) {

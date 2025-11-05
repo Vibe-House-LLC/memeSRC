@@ -335,6 +335,8 @@ type Template
   thumbnailKey: String
   thumbnailSignature: String
   thumbnailUpdatedAt: AWSDateTime
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
 }
 
 type EditorProject @model @auth(
