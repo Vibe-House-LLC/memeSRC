@@ -327,6 +327,7 @@ type Template
   ) {
   id: ID!
   ownerIdentityId: String
+    @index(name: "byOwnerIdentityId", sortKeyFields: ["createdAt"])
   name: String!
   state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
   snapshotKey: String
