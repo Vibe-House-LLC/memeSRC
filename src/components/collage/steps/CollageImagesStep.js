@@ -50,6 +50,7 @@ const CollageImagesStep = ({
   onCaptionEditorVisibleChange,
   onGenerateNudgeRequested,
   isFrameActionSuppressed,
+  isHydratingProject = false,
   // Render tracking passthrough for autosave thumbnails
   renderSig,
   onPreviewRendered,
@@ -201,6 +202,7 @@ const CollageImagesStep = ({
           // Initialize with custom layout if provided
           customLayout={customLayout}
           customLayoutKey={customLayoutKey}
+          isHydratingProject={isHydratingProject}
         />
         </Box>
         {/* Hidden file input for Add Image button */}
@@ -259,6 +261,7 @@ CollageImagesStep.propTypes = {
   onCaptionEditorVisibleChange: PropTypes.func,
   onGenerateNudgeRequested: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
+  isHydratingProject: PropTypes.bool,
 };
 
 export default CollageImagesStep;

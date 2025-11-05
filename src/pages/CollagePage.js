@@ -1,9 +1,10 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload, UNSAFE_NavigationContext as NavigationContext } from 'react-router-dom';
+import { unstable_batchedUpdates } from 'react-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 import { useCollage } from "../contexts/CollageContext";
@@ -229,6 +230,7 @@ export default function CollagePage() {
   const creatingProjectRef = useRef(false);
   // Persisted custom grid from border dragging
   const [customLayout, setCustomLayout] = useState(null);
+  const [isHydratingProject, setHydratingProject] = useState(false);
   
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
@@ -280,6 +282,8 @@ export default function CollagePage() {
     updateImage,
     replaceImage,
     clearImages,
+    applySnapshotState,
+    setHydrationMode,
     updatePanelImageMapping,
     updatePanelTransform,
     updatePanelText,
@@ -588,73 +592,123 @@ export default function CollagePage() {
 
   // Load a project snapshot into the current editor state
   const loadProjectById = useCallback(async (projectId) => {
+    setHydratingProject(true);
     const record = await getProjectRecord(projectId);
     if (!record) return;
     loadingProjectRef.current = true;
     const snap = await resolveTemplateSnapshot(record);
     if (!snap) return;
 
-    // Clear current state
-    clearImages();
+    const nextAspectRatio = snap.selectedAspectRatio || 'square';
+    const nextPanelCount = snap.panelCount || 2;
 
-    // Apply layout-level settings first
-    setSelectedAspectRatio(snap.selectedAspectRatio || 'square');
-    setPanelCount(snap.panelCount || 2);
+    let templateForSnapshot = null;
     try {
-      const templates = getLayoutsForPanelCount(snap.panelCount || 2, snap.selectedAspectRatio || 'square');
-      const tpl = templates.find(t => t.id === snap.selectedTemplateId) || templates[0] || null;
-      if (tpl) setSelectedTemplate(tpl);
+      const templates = getLayoutsForPanelCount(nextPanelCount, nextAspectRatio);
+      templateForSnapshot = templates.find((t) => t.id === snap.selectedTemplateId) || templates[0] || null;
     } catch (_) { /* ignore */ }
 
-    if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
-    if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
-    // Restore custom layout grid if present and compatible with the saved panel count
-    const wantPanels = snap.panelCount || 2;
-    const restoredCustom = isCustomLayoutCompatible(snap.customLayout, wantPanels) ? (snap.customLayout || null) : null;
-    setCustomLayout(restoredCustom);
+    const restoredCustom = isCustomLayoutCompatible(snap.customLayout, nextPanelCount)
+      ? (snap.customLayout || null)
+      : null;
 
-    // Resolve images via library or stored URLs
-    if (Array.isArray(snap.images) && snap.images.length > 0) {
-      const resolved = [];
-      // eslint-disable-next-line no-restricted-syntax
-      for (const ref of snap.images) {
-        if (ref?.libraryKey) {
-          try {
-            // Fetch from library and convert to data URL for canvas safety
-            // eslint-disable-next-line no-await-in-loop
-            const blob = await getFromLibrary(ref.libraryKey);
-            // eslint-disable-next-line no-await-in-loop
-            const dataUrl = await blobToDataUrl(blob);
-            resolved.push({ originalUrl: dataUrl, displayUrl: dataUrl, metadata: { libraryKey: ref.libraryKey }, subtitle: ref.subtitle || '', subtitleShowing: !!ref.subtitleShowing });
-          } catch (_) {
-            resolved.push({ originalUrl: ref.url || '', displayUrl: ref.url || '' });
-          }
-        } else if (ref?.url) {
-          resolved.push({ originalUrl: ref.url, displayUrl: ref.url, subtitle: ref.subtitle || '', subtitleShowing: !!ref.subtitleShowing });
+    const resolveImageRef = async (ref) => {
+      if (!ref) return null;
+      if (typeof ref === 'string') {
+        return {
+          originalUrl: ref,
+          displayUrl: ref,
+          metadata: {},
+          subtitle: '',
+          subtitleShowing: false,
+        };
+      }
+      if (ref.libraryKey) {
+        try {
+          const blob = await getFromLibrary(ref.libraryKey);
+          const dataUrl = await blobToDataUrl(blob);
+          return {
+            originalUrl: dataUrl,
+            displayUrl: dataUrl,
+            metadata: { libraryKey: ref.libraryKey },
+            subtitle: ref.subtitle || '',
+            subtitleShowing: !!ref.subtitleShowing,
+          };
+        } catch (_) {
+          const fallbackUrl = ref.url || '';
+          return {
+            originalUrl: fallbackUrl,
+            displayUrl: fallbackUrl,
+            metadata: { libraryKey: ref.libraryKey },
+            subtitle: ref.subtitle || '',
+            subtitleShowing: !!ref.subtitleShowing,
+          };
         }
       }
-      if (resolved.length) {
-        await addMultipleImages(resolved);
+      if (ref.url) {
+        return {
+          originalUrl: ref.url,
+          displayUrl: ref.url,
+          subtitle: ref.subtitle || '',
+          subtitleShowing: !!ref.subtitleShowing,
+        };
       }
+      return null;
+    };
+
+    const resolvedImagesRaw = Array.isArray(snap.images) && snap.images.length > 0
+      ? await Promise.all(snap.images.map(resolveImageRef))
+      : [];
+
+    const imagesForState = resolvedImagesRaw.map((img, index) => {
+      if (img) return img;
+      const fallbackRef = Array.isArray(snap.images) ? snap.images[index] || {} : {};
+      if (typeof fallbackRef === 'string') {
+        return {
+          originalUrl: fallbackRef,
+          displayUrl: fallbackRef,
+          metadata: {},
+          subtitle: '',
+          subtitleShowing: false,
+        };
+      }
+      const fallbackUrl = fallbackRef.url || '';
+      const metadata = fallbackRef.libraryKey ? { libraryKey: fallbackRef.libraryKey } : {};
+      return {
+        originalUrl: fallbackUrl,
+        displayUrl: fallbackUrl,
+        metadata,
+        subtitle: fallbackRef.subtitle || '',
+        subtitleShowing: !!fallbackRef.subtitleShowing,
+      };
+    });
+
+    const snapshotState = {
+      images: imagesForState,
+      mapping: (snap.panelImageMapping && typeof snap.panelImageMapping === 'object') ? snap.panelImageMapping : {},
+      transforms: (snap.panelTransforms && typeof snap.panelTransforms === 'object') ? snap.panelTransforms : {},
+      texts: (snap.panelTexts && typeof snap.panelTexts === 'object') ? snap.panelTexts : {},
+    };
+
+    setHydrationMode(true);
+
+    const applyAll = () => {
+      setSelectedAspectRatio(nextAspectRatio);
+      setPanelCount(nextPanelCount);
+      setSelectedTemplate(templateForSnapshot || null);
+      if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
+      if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
+      setCustomLayout(restoredCustom);
+      applySnapshotState(snapshotState);
+      setActiveProjectId(projectId);
+    };
+
+    if (typeof unstable_batchedUpdates === 'function') {
+      unstable_batchedUpdates(applyAll);
+    } else {
+      applyAll();
     }
 
-    if (snap.panelImageMapping) updatePanelImageMapping(snap.panelImageMapping);
-
-    if (snap.panelTransforms && typeof snap.panelTransforms === 'object') {
-      Object.entries(snap.panelTransforms).forEach(([panelId, transform]) => {
-        if (transform) updatePanelTransform(panelId, transform);
-      });
-    }
-
-    if (snap.panelTexts && typeof snap.panelTexts === 'object') {
-      Object.entries(snap.panelTexts).forEach(([panelId, textConfig]) => {
-        if (textConfig) updatePanelText(panelId, textConfig, { replace: true });
-      });
-    }
-
-    setActiveProjectId(projectId);
-    // ensure editor mode when loading an existing project
-    // Mark current snapshot as saved for status UI
     const sig = computeSnapshotSignature(snap);
     lastSavedSigRef.current = sig;
     lastThumbnailSigRef.current = record.thumbnailSignature || null;
@@ -662,7 +716,7 @@ export default function CollagePage() {
     retryAttemptRef.current = 0;
     saveChainRef.current = Promise.resolve();
     setSaveStatus({ state: 'saved', time: Date.now(), error: null });
-  }, [addMultipleImages, clearImages, getProjectRecord, resolveTemplateSnapshot, setBorderColor, setBorderThickness, setPanelCount, setSelectedAspectRatio, setSelectedTemplate, updatePanelImageMapping, updatePanelText, updatePanelTransform]);
+  }, [applySnapshotState, getProjectRecord, resolveTemplateSnapshot, setActiveProjectId, setBorderColor, setBorderThickness, setCustomLayout, setHydrationMode, setHydratingProject, setPanelCount, setSelectedAspectRatio, setSelectedTemplate]);
 
   // Ensure we always release the loading flag, even on errors, and only
   // after state has settled so custom layouts are not cleared prematurely.
@@ -671,7 +725,11 @@ export default function CollagePage() {
     try {
       await loadProjectById(projectId);
     } finally {
-      const release = () => { loadingProjectRef.current = false; };
+      const release = () => {
+        loadingProjectRef.current = false;
+        setHydratingProject(false);
+        setHydrationMode(false);
+      };
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
         window.requestAnimationFrame(() => {
           window.requestAnimationFrame(release);
@@ -680,7 +738,7 @@ export default function CollagePage() {
         setTimeout(release, 50);
       }
     }
-  }, [loadProjectById]);
+  }, [loadProjectById, setHydrationMode, setHydratingProject]);
 
   // Keep a stable ref to the loader to avoid effect re-runs from changing callback identities
   const loadProjectByIdRef = useRef(safeLoadProjectById);
@@ -1201,7 +1259,7 @@ export default function CollagePage() {
 
   // Props for images step (pass the correct state and actions)
   const imagesStepProps = {
-            selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
+          selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
     panelImageMapping,
     panelTransforms,
     panelTexts,
@@ -1249,6 +1307,7 @@ export default function CollagePage() {
     // Provide persisted custom grid to preview on load
     customLayout,
     customLayoutKey: useMemo(() => `${selectedTemplate?.id || 'none'}|${panelCount}|${selectedAspectRatio}`, [selectedTemplate?.id, panelCount, selectedAspectRatio]),
+    isHydratingProject,
   };
 
   // Log mapping changes for debugging
@@ -1345,26 +1404,50 @@ export default function CollagePage() {
               />
             </Collapse>
 
-            <CollageLayout
-              settingsStepProps={settingsStepProps}
-              imagesStepProps={imagesStepProps}
-              finalImage={finalImage}
-              setFinalImage={setFinalImage}
-              isMobile={isMobile}
-              onBackToEdit={handleBackToEdit}
-              settingsOpen={settingsOpen}
-              setSettingsOpen={setSettingsOpen}
-              settingsRef={settingsRef}
-              onViewChange={(v) => setCurrentView(v)}
-              onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
-              onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
-              // Mobile controls bar actions
-              onBack={hasProjectsAccess ? handleBackToProjects : undefined}
-              onReset={!hasProjectsAccess ? openResetDialog : undefined}
-              onGenerate={handleFloatingButtonClick}
-              canGenerate={allPanelsHaveImages}
-              isGenerating={isCreatingCollage}
-            />
+            <Box sx={{ position: 'relative' }}>
+              <CollageLayout
+                settingsStepProps={settingsStepProps}
+                imagesStepProps={imagesStepProps}
+                finalImage={finalImage}
+                setFinalImage={setFinalImage}
+                isMobile={isMobile}
+                onBackToEdit={handleBackToEdit}
+                settingsOpen={settingsOpen}
+                setSettingsOpen={setSettingsOpen}
+                settingsRef={settingsRef}
+                onViewChange={(v) => setCurrentView(v)}
+                onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
+                onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
+                // Mobile controls bar actions
+                onBack={hasProjectsAccess ? handleBackToProjects : undefined}
+                onReset={!hasProjectsAccess ? openResetDialog : undefined}
+                onGenerate={handleFloatingButtonClick}
+                canGenerate={allPanelsHaveImages}
+                isGenerating={isCreatingCollage}
+              />
+              {isHydratingProject && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    bgcolor: 'rgba(0,0,0,0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 5,
+                    pointerEvents: 'auto',
+                    backdropFilter: 'blur(1px)',
+                  }}
+                >
+                  <Stack spacing={1} alignItems="center">
+                    <CircularProgress size={26} thickness={4} sx={{ color: '#fff' }} />
+                    <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600 }}>
+                      Loading project…
+                    </Typography>
+                  </Stack>
+                </Box>
+              )}
+            </Box>
 
             {/* Save snackbar */}
             <Snackbar 

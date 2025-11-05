@@ -1,10 +1,29 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCallback and useRef
+import { unstable_batchedUpdates } from 'react-dom';
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
 
 // Debug flag - opt-in via localStorage while in development
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
 })();
+
+const revokeImageUrls = (images) => {
+  if (!Array.isArray(images)) return;
+  images.forEach((imgObj) => {
+    if (!imgObj) return;
+    if (imgObj.originalUrl && typeof imgObj.originalUrl === 'string' && imgObj.originalUrl.startsWith('blob:')) {
+      try { URL.revokeObjectURL(imgObj.originalUrl); } catch (_) { /* noop */ }
+    }
+    if (
+      imgObj.displayUrl &&
+      typeof imgObj.displayUrl === 'string' &&
+      imgObj.displayUrl.startsWith('blob:') &&
+      imgObj.displayUrl !== imgObj.originalUrl
+    ) {
+      try { URL.revokeObjectURL(imgObj.displayUrl); } catch (_) { /* noop */ }
+    }
+  });
+};
 
 /**
  * Custom hook to manage collage state
@@ -35,10 +54,10 @@ export const useCollageState = () => {
   const savedImageDataUrls = useRef(new Set());
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
-  const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
-  const [finalImage, setFinalImage] = useState(null);
-  const [isCreatingCollage, setIsCreatingCollage] = useState(false);
-  const [borderThickness, setBorderThickness] = useState(() => {
+const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
+const [finalImage, setFinalImage] = useState(null);
+const [isCreatingCollage, setIsCreatingCollage] = useState(false);
+const [borderThickness, setBorderThickness] = useState(() => {
     const savedBorderThickness = localStorage.getItem('meme-src-collage-border-thickness');
     return savedBorderThickness || 'medium'; // Default to medium border thickness
   });
@@ -57,6 +76,10 @@ export const useCollageState = () => {
 
   // Ref to track previous border thickness for transform adjustment
   const prevBorderThickness = useRef(null);
+  const hydrationModeRef = useRef(false);
+  const setHydrationMode = useCallback((isHydrating) => {
+    hydrationModeRef.current = isHydrating;
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('meme-src-collage-custom-color', borderColor);
@@ -99,6 +122,10 @@ export const useCollageState = () => {
 
   // Adjust transforms when border thickness changes
   useEffect(() => {
+    if (hydrationModeRef.current) {
+      prevBorderThickness.current = borderThickness;
+      return;
+    }
     if (prevBorderThickness.current !== null && prevBorderThickness.current !== borderThickness) {
       // Simply reset transforms when border thickness changes
       // Let DynamicCollagePreview recalculate initial scale for new panel sizes
@@ -167,7 +194,9 @@ export const useCollageState = () => {
 
     // Reset all transforms when layout-related properties change
     // This ensures images get repositioned/rescaled appropriately for the new layout
-    if (hasChanges) {
+    if (hydrationModeRef.current) {
+      hydrationModeRef.current = false;
+    } else if (hasChanges) {
       resetPanelTransforms();
       // Don't reset texts - let the subtitle auto-assignment effect handle text reassignment
       if (DEBUG_MODE) console.log("Layout change detected, resetting transforms only");
@@ -462,10 +491,7 @@ export const useCollageState = () => {
    */
   const clearImages = useCallback(() => {
     // Clean up all potential blob URLs first
-    selectedImages.forEach(imgObj => {
-      if (imgObj.originalUrl && imgObj.originalUrl.startsWith('blob:')) URL.revokeObjectURL(imgObj.originalUrl);
-      if (imgObj.displayUrl && imgObj.displayUrl.startsWith('blob:') && imgObj.displayUrl !== imgObj.originalUrl) URL.revokeObjectURL(imgObj.displayUrl);
-    });
+    revokeImageUrls(selectedImages);
 
     setSelectedImages([]);
     setPanelImageMapping({});
@@ -482,6 +508,36 @@ export const useCollageState = () => {
     savedImageDataUrls.current.clear();
     if (DEBUG_MODE) console.log("Cleared saved image data URL tracking");
   }, []);
+
+  const applySnapshotState = useCallback((nextState) => {
+    const {
+      images,
+      mapping,
+      transforms,
+      texts,
+    } = nextState || {};
+
+    const nextImages = Array.isArray(images) ? images : [];
+    const nextMapping = (mapping && typeof mapping === 'object') ? mapping : {};
+    const nextTransforms = (transforms && typeof transforms === 'object') ? transforms : {};
+    const nextTexts = (texts && typeof texts === 'object') ? texts : {};
+
+    const run = () => {
+      setSelectedImages((prev) => {
+        revokeImageUrls(prev);
+        return nextImages;
+      });
+      setPanelImageMapping(nextMapping);
+      setPanelTransforms(nextTransforms);
+      setPanelTexts(nextTexts);
+    };
+
+    if (typeof unstable_batchedUpdates === 'function') {
+      unstable_batchedUpdates(run);
+    } else {
+      run();
+    }
+  }, [setPanelImageMapping, setPanelTexts, setPanelTransforms, setSelectedImages]);
 
   /**
    * Update the mapping between panels and image indices, and auto-assign subtitles.
@@ -678,6 +734,8 @@ export const useCollageState = () => {
     updateImage, // Updates displayUrl
     replaceImage, // Replaces image object
     clearImages, // Clears images, mapping, transforms & texts
+    applySnapshotState,
+    setHydrationMode,
     updatePanelImageMapping, // UPDATED: Also auto-assigns subtitles
     updatePanelTransform, // Updates transform for a panel
     updatePanelText, // NEW: Updates text configuration for a panel

@@ -545,6 +545,7 @@ CollageLayout.propTypes = {
     onBulkUploadSectionToggle: PropTypes.func.isRequired,
     onStartFromScratch: PropTypes.func,
     libraryRefreshTrigger: PropTypes.number,
+    isHydratingProject: PropTypes.bool,
   }).isRequired,
   finalImage: PropTypes.string,
   setFinalImage: PropTypes.func.isRequired,

@@ -65,6 +65,7 @@ const CollagePreview = ({
   onCaptionEditorVisibleChange,
   onGenerateNudgeRequested,
   isFrameActionSuppressed,
+  isHydratingProject = false,
   // New: notify when the canvas has rendered a given signature
   renderSig,
   onPreviewRendered,
@@ -588,6 +589,7 @@ const CollagePreview = ({
         onMenuOpen={handleMenuOpen}
         onSaveGestureDetected={onGenerateNudgeRequested}
         isFrameActionSuppressed={isFrameActionSuppressed}
+        isHydratingProject={isHydratingProject}
         aspectRatioValue={aspectRatioValue}
         panelImageMapping={panelImageMapping}
         updatePanelImageMapping={updatePanelImageMapping}
@@ -736,6 +738,7 @@ CollagePreview.propTypes = {
   onCaptionEditorVisibleChange: PropTypes.func,
   onGenerateNudgeRequested: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
+  isHydratingProject: PropTypes.bool,
   renderSig: PropTypes.string,
   onPreviewRendered: PropTypes.func,
   onPreviewMetaChange: PropTypes.func,

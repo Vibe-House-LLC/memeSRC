@@ -15,10 +15,36 @@ type ProjectCardProps = {
   onDelete: (id: string) => void;
 };
 
+const aspectRatioLookup: Record<string, number> = {
+  square: 1,
+  portrait: 0.8,
+  'ratio-2-3': 2 / 3,
+  story: 0.5625,
+  classic: 1.33,
+  'ratio-3-2': 1.5,
+  landscape: 1.78,
+};
+
+const getProjectAspectRatio = (project: CollageProject): number => {
+  const snap = project.state;
+  if (snap) {
+    const { canvasWidth, canvasHeight } = snap;
+    if (typeof canvasWidth === 'number' && typeof canvasHeight === 'number' && canvasWidth > 0 && canvasHeight > 0) {
+      const ratio = canvasWidth / canvasHeight;
+      if (Number.isFinite(ratio) && ratio > 0) return ratio;
+    }
+    const presetRatio = snap.selectedAspectRatio ? aspectRatioLookup[snap.selectedAspectRatio] : undefined;
+    if (presetRatio && presetRatio > 0) return presetRatio;
+  }
+  return 1;
+};
+
 const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete }) => {
   // Thumbnails are generated inline from project data and stored locally
   const [thumbUrl, setThumbUrl] = useState<string | null>(project.thumbnail || null);
   const [thumbLoading, setThumbLoading] = useState<boolean>(false);
+  const aspectRatio = getProjectAspectRatio(project);
+  const paddingPercent = useMemo(() => `${(1 / Math.max(0.01, aspectRatio)) * 100}%`, [aspectRatio]);
 
   useEffect(() => {
     setThumbUrl(project.thumbnail || null);
@@ -30,22 +56,25 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete }) 
     const run = async () => {
       try {
         if (!project) return;
+        setThumbLoading(true);
         if (project.thumbnailKey) {
-          setThumbLoading(true);
           const url = await resolveThumbnailUrl(project);
-          if (!cancelled) setThumbUrl(url || project.thumbnail || null);
-          if (!cancelled) setThumbLoading(false);
-          if (url || project.thumbnail) return;
+          if (!cancelled) {
+            setThumbUrl(url || project.thumbnail || null);
+            if (url || project.thumbnail) return;
+          }
         }
-        if (project.thumbnail) {
-          if (!cancelled) setThumbUrl(project.thumbnail);
+        if (!cancelled && project.thumbnail) {
+          setThumbUrl(project.thumbnail);
           return;
         }
-        if (project?.state) {
+        if (!cancelled && project?.state) {
           const dataUrl = await renderThumbnailFromSnapshot(project.state, { maxDim: 256 });
           if (!cancelled) setThumbUrl(dataUrl || null);
         }
       } catch (_) {
+        // ignore best-effort
+      } finally {
         if (!cancelled) setThumbLoading(false);
       }
     };
@@ -58,17 +87,22 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete }) 
     <Card variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider', overflow: 'hidden', borderRadius: 0 }}>
       <Box sx={{ position: 'relative' }}>
         <CardActionArea onClick={() => onOpen(project.id)}>
-          {thumbUrl ? (
-            <Box
-              component="img"
-              src={thumbUrl}
-              alt="preview"
-              loading="lazy"
-              sx={{ display: 'block', width: '100%', height: 'auto' }}
-            />
-          ) : (
-            <Skeleton variant="rectangular" sx={{ width: '100%', height: 200, opacity: thumbLoading ? 1 : 0.4 }} />
-          )}
+          <Box sx={{ position: 'relative', width: '100%', pt: paddingPercent, bgcolor: '#000', overflow: 'hidden' }}>
+            {thumbUrl ? (
+              <Box
+                component="img"
+                src={thumbUrl}
+                alt="preview"
+                loading="lazy"
+                sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <Skeleton
+                variant="rectangular"
+                sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: thumbLoading ? 1 : 0.4 }}
+              />
+            )}
+          </Box>
           {/* Overlay with title and updated time removed for cleaner thumbnail */}
         </CardActionArea>
         <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>

@@ -474,6 +474,7 @@ const CanvasCollagePreview = ({
   canEditImage = false, // new: control visibility of magic edit option
   onSaveGestureDetected, // new: notify parent when long-press/right-click implies save intent
   isFrameActionSuppressed, // optional: function to indicate suppression window
+  isHydratingProject = false,
   aspectRatioValue = 1,
   panelImageMapping = {},
   updatePanelImageMapping,
@@ -636,6 +637,19 @@ const CanvasCollagePreview = ({
 
   // Track previous panel rect sizes to adjust transforms when frames resize (border drag)
   const prevPanelRectsRef = useRef({});
+  const skipPanelRectDiffRef = useRef(false);
+  const wasHydratingRef = useRef(false);
+  useEffect(() => {
+    if (isHydratingProject) {
+      wasHydratingRef.current = true;
+      prevPanelRectsRef.current = {};
+      return;
+    }
+    if (wasHydratingRef.current) {
+      skipPanelRectDiffRef.current = true;
+      wasHydratingRef.current = false;
+    }
+  }, [isHydratingProject]);
 
   // Shared helper: carry transform from one frame to another preserving
   // absolute zoom and focal point while ensuring the image still covers
@@ -911,6 +925,15 @@ const CanvasCollagePreview = ({
   // When panel sizes change (e.g., inner border dragged), carry focal point and clamp to avoid gaps
   useEffect(() => {
     if (!panelRects || panelRects.length === 0) return;
+    const nextMap = {};
+    panelRects.forEach(r => { nextMap[r.panelId] = { width: r.width, height: r.height }; });
+
+    if (skipPanelRectDiffRef.current) {
+      prevPanelRectsRef.current = nextMap;
+      skipPanelRectDiffRef.current = false;
+      return;
+    }
+
     const prevRects = prevPanelRectsRef.current || {};
 
     // Build quick lookups for current rects by panelId
@@ -941,8 +964,6 @@ const CanvasCollagePreview = ({
     });
 
     // Update the ref after processing to be the source-of-truth for next diff
-    const nextMap = {};
-    panelRects.forEach(r => { nextMap[r.panelId] = { width: r.width, height: r.height }; });
     prevPanelRectsRef.current = nextMap;
 
     // no-op return
@@ -3953,6 +3974,7 @@ CanvasCollagePreview.propTypes = {
   canEditImage: PropTypes.bool,
   onSaveGestureDetected: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
+  isHydratingProject: PropTypes.bool,
   aspectRatioValue: PropTypes.number,
   panelImageMapping: PropTypes.object,
   updatePanelImageMapping: PropTypes.func,
