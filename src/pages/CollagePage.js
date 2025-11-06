@@ -479,11 +479,12 @@ export default function CollagePage() {
     if (saveStatus.state === 'saving' || saveStatus.state === 'queued') {
       return <Chip label="Saving…" color="warning" size="small" />;
     }
+    // Check saved state before isDirty to avoid showing "Unsaved changes" right after save completes
+    if (saveStatus.state === 'saved' && !isDirty) {
+      return <Chip label="All changes saved" color="success" size="small" variant="outlined" />;
+    }
     if (isDirty) {
       return <Chip label="Unsaved changes" color="warning" size="small" variant="outlined" />;
-    }
-    if (saveStatus.state === 'saved') {
-      return <Chip label="All changes saved" color="success" size="small" variant="outlined" />;
     }
     return null;
   }, [isDirty, saveStatus.state]);
@@ -715,6 +716,9 @@ export default function CollagePage() {
     queuedSigRef.current = null;
     retryAttemptRef.current = 0;
     saveChainRef.current = Promise.resolve();
+    didInitialSaveRef.current = true; // Prevent autosave from triggering immediately after load
+    justLoadedRef.current = true; // Flag to sync signature after first render
+    setIsDirty(false); // Project just loaded, no unsaved changes
     setSaveStatus({ state: 'saved', time: Date.now(), error: null });
   }, [applySnapshotState, getProjectRecord, resolveTemplateSnapshot, setActiveProjectId, setBorderColor, setBorderThickness, setCustomLayout, setHydrationMode, setHydratingProject, setPanelCount, setSelectedAspectRatio, setSelectedTemplate]);
 
@@ -754,6 +758,7 @@ export default function CollagePage() {
     if (!nextForceThumbnail && sig === lastSavedSigRef.current) {
       if (showToast) setSnackbar({ open: true, message: 'All changes saved', severity: 'success' });
       setSaveStatus({ state: 'saved', time: Date.now(), error: null });
+      setIsDirty(false); // Ensure isDirty is false when there are no changes to save
       queuedSigRef.current = null;
       return;
     }
@@ -773,6 +778,8 @@ export default function CollagePage() {
         }
       }
       setSaveStatus({ state: 'saved', time: Date.now(), error: null });
+      // Update isDirty since we just updated the saved signature ref
+      setIsDirty(currentSigRef.current !== sig);
       retryAttemptRef.current = 0;
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
@@ -888,10 +895,28 @@ export default function CollagePage() {
     }
   }, [enqueueSave]);
 
+  // After loading a project, update the saved signature to match the first render
+  // This prevents autosave from triggering due to canvas dimension differences
+  const justLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!activeProjectId) return;
+    if (!justLoadedRef.current) return;
+    if (loadingProjectRef.current || isHydratingProject) return;
+    // Once hydration completes and preview has rendered, sync the saved signature
+    if (lastRenderedSigRef.current && lastRenderedSigRef.current !== lastSavedSigRef.current) {
+      lastSavedSigRef.current = lastRenderedSigRef.current;
+      justLoadedRef.current = false;
+      // Force isDirty to recalculate since we updated the ref
+      setIsDirty(currentSig !== lastRenderedSigRef.current);
+    }
+  }, [activeProjectId, isHydratingProject, currentSig]);
+
   // Autosave trigger when the rendered snapshot changes
   const didInitialSaveRef = useRef(false);
   useEffect(() => {
     if (!activeProjectId) return undefined;
+    // Skip autosave while loading/hydrating a project to avoid spurious saves from canvas dimension changes
+    if (loadingProjectRef.current || isHydratingProject) return undefined;
     if (currentSig === lastSavedSigRef.current) return undefined;
     let fallbackTimer = null;
     const hasRendered = lastRenderedSigRef.current === currentSig;
@@ -913,7 +938,7 @@ export default function CollagePage() {
     return () => {
       if (fallbackTimer) clearTimeout(fallbackTimer);
     };
-  }, [activeProjectId, currentSig, renderBump, enqueueSave]);
+  }, [activeProjectId, currentSig, renderBump, enqueueSave, isHydratingProject]);
 
   // After the first save of a newly created project on /projects/new, navigate to /projects/<id>
   const didNavigateToProjectRef = useRef(false);
