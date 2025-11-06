@@ -219,7 +219,7 @@ const getSeriesEpisodeFrameCounts = async (seriesPath: string): Promise<Record<s
 
         const parts = relativePath.split('/').filter(Boolean);
 
-        if (parts.length < 3) {
+        if (parts.length < 2) {
             return;
         }
 
