@@ -601,7 +601,7 @@ export async function resolveThumbnailUrl(
 }
 
 export async function resolveTemplateSnapshot(
-  projectOrId: string | Pick<CollageProject, 'id' | 'state' | 'snapshotKey'>
+  projectOrId: string | Pick<CollageProject, 'id' | 'state' | 'snapshotKey'> | CollageProject
 ): Promise<CollageSnapshot | null> {
   const ensureRecord = async (): Promise<CollageProject | null> => {
     if (typeof projectOrId === 'string') {
