@@ -67,7 +67,6 @@ type UpsertProjectPayload = Partial<
 
 const templateCache = new Map<string, CollageProject>();
 let listInFlight: Promise<CollageProject[]> | null = null;
-let identityIdPromise: Promise<string | null> | null = null;
 type ThumbnailCacheEntry = { url: string; signature: string };
 const thumbnailUrlCache = new Map<string, ThumbnailCacheEntry>();
 type TemplatesListener = (templates: CollageProject[]) => void;
@@ -219,12 +218,12 @@ function normalizeTemplate(model: TemplateModel): CollageProject {
 }
 
 async function getIdentityId(): Promise<string | null> {
-  if (!identityIdPromise) {
-    identityIdPromise = Auth.currentCredentials()
-      .then((creds: any) => creds?.identityId ?? null)
-      .catch(() => null);
+  try {
+    const credentials = await Auth.currentCredentials();
+    return credentials?.identityId ?? null;
+  } catch (_) {
+    return null;
   }
-  return identityIdPromise;
 }
 
 async function ensureTemplateSubscriptions(): Promise<void> {
