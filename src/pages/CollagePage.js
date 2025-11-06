@@ -890,9 +890,11 @@ export default function CollagePage() {
     const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
     if (!hasRendered) return;
     creatingProjectRef.current = true;
+    let isActive = true;
     (async () => {
       try {
         const project = await createProject({ name: 'Untitled Meme' });
+        if (!isActive) return;
         setActiveProjectId(project.id);
         lastSavedSigRef.current = null;
         lastThumbnailSigRef.current = null;
@@ -904,6 +906,9 @@ export default function CollagePage() {
         creatingProjectRef.current = false;
       }
     })();
+    return () => {
+      isActive = false;
+    };
   }, [hasProjectsAccess, activeProjectId, selectedImages?.length, currentSig, createProject]);
 
   // When the user changes layout controls, drop any existing custom grid override
