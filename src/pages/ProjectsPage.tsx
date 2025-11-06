@@ -98,15 +98,14 @@ export default function ProjectsPage() {
   const handleDelete = useCallback(async (id: string) => {
     try {
       await deleteProjectRecord(id);
-      const next = await loadProjects({ forceRefresh: true });
-      setProjects(next);
+      setProjects((prev) => prev.filter((project) => project.id !== id));
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
         // eslint-disable-next-line no-console
         console.error('[ProjectsPage] Failed to delete template', err);
       }
     }
-  }, [loadProjects, deleteProjectRecord]);
+  }, []);
 
   const normalizedQuery = React.useMemo(() => normalizeString(searchQuery), [searchQuery]);
 
