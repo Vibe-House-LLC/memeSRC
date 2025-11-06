@@ -166,7 +166,7 @@ export default function ProjectPicker(props: ProjectPickerProps) {
       )}
 
 
-      {projects.length === 0 ? (
+      {projects.length === 0 && !searchQuery ? (
         <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved memes yet. Click "Create Meme" to begin.</Box>
       ) : (
         <>
@@ -200,13 +200,20 @@ export default function ProjectPicker(props: ProjectPickerProps) {
               />
             </Box>
           )}
-          <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
-            {projects.map((p) => (
-              <div key={p.id}>
-                <ProjectCard project={p} onOpen={onOpen} onDelete={onDelete} />
-              </div>
-            ))}
-          </Masonry>
+          {projects.length === 0 && searchQuery ? (
+            <Box sx={{ mt: 4, color: 'text.secondary', textAlign: 'center' }}>
+              <Typography variant="body1" sx={{ mb: 1 }}>No memes found matching "{searchQuery}"</Typography>
+              <Typography variant="body2" color="text.secondary">Try a different search term or clear the search to see all your memes.</Typography>
+            </Box>
+          ) : (
+            <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
+              {projects.map((p) => (
+                <div key={p.id}>
+                  <ProjectCard project={p} onOpen={onOpen} onDelete={onDelete} />
+                </div>
+              ))}
+            </Masonry>
+          )}
         </>
       )}
     </Box>
