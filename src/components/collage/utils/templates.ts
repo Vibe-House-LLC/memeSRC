@@ -399,9 +399,20 @@ async function fetchTemplateById(id: string): Promise<CollageProject | null> {
 }
 
 export async function loadProjects({ forceRefresh = false }: { forceRefresh?: boolean } = {}): Promise<CollageProject[]> {
+  const inFlightBeforeRefresh = forceRefresh ? listInFlight : null;
+  if (inFlightBeforeRefresh) {
+    try {
+      await inFlightBeforeRefresh;
+    } catch (err) {
+      if (isDev()) console.warn('[templates] Ignoring templates list failure before force refresh', err);
+    } finally {
+      if (listInFlight === inFlightBeforeRefresh) {
+        listInFlight = null;
+      }
+    }
+  }
   if (forceRefresh) {
     templateCache.clear();
-    listInFlight = null;
   }
   if (templateCache.size > 0 && !forceRefresh) {
     return cacheToArray();
