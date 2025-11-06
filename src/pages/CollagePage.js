@@ -140,7 +140,12 @@ export default function CollagePage() {
   const retryTimerRef = useRef(null);
   const enqueueSaveRef = useRef(null);
   const queuedSigRef = useRef(null);
+  const isMountedRef = useRef(true);
   
+  useEffect(() => () => {
+    isMountedRef.current = false;
+  }, []);
+
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId } = useParams();
@@ -828,6 +833,7 @@ export default function CollagePage() {
     if (!activeProjectId) return undefined;
     // Skip autosave while loading/hydrating a project to avoid spurious saves from canvas dimension changes
     if (loadingProjectRef.current || isHydratingProject) return undefined;
+    if (justLoadedRef.current) return undefined;
     if (currentSig === lastSavedSigRef.current) return undefined;
     let fallbackTimer = null;
     const hasRendered = lastRenderedSigRef.current === currentSig;
@@ -894,7 +900,7 @@ export default function CollagePage() {
     (async () => {
       try {
         const project = await createProject({ name: 'Untitled Meme' });
-        if (!isActive) return;
+        if (!isMountedRef.current || !isActive) return;
         setActiveProjectId(project.id);
         lastSavedSigRef.current = null;
         lastThumbnailSigRef.current = null;
@@ -907,7 +913,10 @@ export default function CollagePage() {
       }
     })();
     return () => {
-      isActive = false;
+      // Only mark inactive when the in-flight request has completed so we don't cancel it prematurely
+      if (!creatingProjectRef.current) {
+        isActive = false;
+      }
     };
   }, [hasProjectsAccess, activeProjectId, selectedImages?.length, currentSig, createProject]);
 
