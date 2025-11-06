@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
-import { useNavigate, useLocation, useParams, useBeforeUnload, UNSAFE_NavigationContext as NavigationContext } from 'react-router-dom';
+import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
 import { unstable_batchedUpdates } from 'react-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
@@ -66,80 +66,7 @@ const AUTOSAVE_DEBOUNCE_MS = 650;
 const AUTOSAVE_RETRY_BASE_DELAY_MS = 1500;
 const AUTOSAVE_RETRY_MAX_DELAY_MS = 8000;
 
-function useNavigationBlocker(when) {
-  const navigation = useContext(NavigationContext);
-  const navigator = navigation?.navigator;
-  const pendingTxRef = useRef(null);
-  const unblockRef = useRef(null);
-  const [state, setState] = useState('unblocked'); // blocked | proceeding | unblocked
-
-  const releaseBlock = useCallback(() => {
-    if (unblockRef.current) {
-      unblockRef.current();
-      unblockRef.current = null;
-    }
-  }, []);
-
-  const resetPending = useCallback(() => {
-    pendingTxRef.current = null;
-    setState('unblocked');
-  }, []);
-
-  useEffect(() => {
-    if (!navigator || typeof navigator.block !== 'function') {
-      return undefined;
-    }
-
-    if (!when) {
-      if (!pendingTxRef.current) {
-        setState('unblocked');
-        releaseBlock();
-      }
-      return undefined;
-    }
-
-    if (unblockRef.current) return undefined;
-
-    const unblock = navigator.block((tx) => {
-      const autoTx = {
-        ...tx,
-        retry() {
-          releaseBlock();
-          resetPending();
-          tx.retry();
-        },
-      };
-      pendingTxRef.current = autoTx;
-      setState('blocked');
-    });
-    unblockRef.current = unblock;
-
-    return () => {
-      releaseBlock();
-      resetPending();
-    };
-  }, [navigator, when, releaseBlock, resetPending]);
-
-  const proceed = useCallback(() => {
-    if (pendingTxRef.current) {
-      setState('proceeding');
-      pendingTxRef.current.retry();
-    }
-  }, []);
-
-  const reset = useCallback(() => {
-    if (pendingTxRef.current) {
-      pendingTxRef.current = null;
-      setState('unblocked');
-    }
-  }, []);
-
-  return useMemo(() => ({
-    state,
-    proceed,
-    reset,
-  }), [state, proceed, reset]);
-}
+// Navigation blocking removed - only browser tab close warning remains via useBeforeUnload
 
 // Development utility removed - welcome screen is no longer shown for users with access
 
@@ -212,7 +139,6 @@ export default function CollagePage() {
   const retryAttemptRef = useRef(0);
   const retryTimerRef = useRef(null);
   const enqueueSaveRef = useRef(null);
-  const pendingNavigationRef = useRef(null);
   const queuedSigRef = useRef(null);
   
   const navigate = useNavigate();
@@ -849,21 +775,6 @@ export default function CollagePage() {
   }, []);
 
   const isSaveBusy = saveStatus.state === 'saving' || saveStatus.state === 'queued' || saveStatus.state === 'error';
-  const navigationBlocker = useNavigationBlocker(isSaveBusy);
-
-  useEffect(() => {
-    if (navigationBlocker.state === 'blocked') {
-      pendingNavigationRef.current = navigationBlocker;
-      enqueueSave({ reason: 'navigation', immediate: true, forceThumbnail: true });
-    }
-  }, [navigationBlocker, enqueueSave]);
-
-  useEffect(() => {
-    if (pendingNavigationRef.current && !isSaveBusy && !isDirty) {
-      pendingNavigationRef.current.proceed();
-      pendingNavigationRef.current = null;
-    }
-  }, [isSaveBusy, isDirty]);
 
   useBeforeUnload(useCallback((event) => {
     if (isSaveBusy || isDirty) {
