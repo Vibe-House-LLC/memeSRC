@@ -32,10 +32,12 @@ export interface CollageProject {
   name: string;
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
+  ownerIdentityId?: string | null;
   thumbnail: string | null; // data URL (legacy)
   thumbnailKey: string | null; // reserved for remote storage key
   thumbnailSignature: string | null; // version/dedupe signature
   thumbnailUpdatedAt: string | null; // ISO timestamp
   state: CollageSnapshot | null;
+  snapshotKey?: string | null; // remote snapshot key (S3)
+  snapshotVersion?: number | null;
 }
-

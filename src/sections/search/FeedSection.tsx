@@ -31,7 +31,6 @@ const RECENT_SERIES_LIMIT = 12;
 const CARD_EXIT_DURATION_MS = 360;
 const FEED_CLEAR_ALL_KEY_PREFIX = 'memesrcFeedClearAll';
 const FEED_CLEAR_SINGLE_KEY_PREFIX = 'memesrcFeedClear';
-// Feed primer removed
 const FEED_UPDATE_DISMISSED_VERSION_KEY = 'feedUpdateBannerDismissedVersion';
 const FEED_RECENCY_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -98,7 +97,12 @@ function coerceTimestamp(value?: string | null): number {
 }
 
 function resolveSeriesTimestamp(show: ShowRecord): number {
-  return Math.max(coerceTimestamp(show.updatedAt), coerceTimestamp(show.createdAt));
+  const createdTimestamp = coerceTimestamp(show.createdAt);
+  if (createdTimestamp > 0) {
+    return createdTimestamp;
+  }
+
+  return coerceTimestamp(show.updatedAt);
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -139,8 +143,6 @@ function buildShowDismissKey(showId: string, identifier: string): string {
   return `${FEED_CLEAR_SINGLE_KEY_PREFIX}-${sanitizeKeySegment(showId)}-${sanitizeKeySegment(identifier)}`;
 }
 
-// buildPrimerDismissKey removed
-
 function parseStoredTimestamp(value: string | null): number | null {
   if (!value) {
     return null;
@@ -154,8 +156,6 @@ interface SeriesCardProps {
   onDismiss: (show: ShowRecord) => void;
   isRemoving: boolean;
 }
-
-// PrimerRenderState removed
 
 function SeriesCard({ show, onDismiss, isRemoving }: SeriesCardProps): ReactElement {
   const [isFavorite, setIsFavorite] = useState(Boolean(show.isFavorite));
@@ -643,9 +643,7 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
   }, [renderedShows, scheduleRemoval, userIdentifier]);
 
   const hasShows = renderedShows.length > 0;
-  const hasFeedContent = hasShows || shouldShowReleaseCard;
-
-  // Feed primer logic removed
+const hasFeedContent = hasShows || shouldShowReleaseCard;
 
   const releaseCardElement = shouldShowReleaseCard && latestRelease ? (
     <Box
@@ -908,7 +906,6 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
         </Typography>
       </Stack>
       }
-      {/* Feed primer removed */}
       {feedItems}
     </Stack>
   );

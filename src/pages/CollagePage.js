@@ -1,9 +1,10 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
+import { unstable_batchedUpdates } from 'react-dom';
 import { UserContext } from "../UserContext";
 import { useSubscribeDialog } from "../contexts/useSubscribeDialog";
 import { useCollage } from "../contexts/CollageContext";
@@ -11,7 +12,7 @@ import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "..
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
-import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord } from "../components/collage/utils/projects";
+import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot } from "../components/collage/utils/templates";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { get as getFromLibrary } from "../utils/library/storage";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
@@ -60,6 +61,12 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== '
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
 })();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
+
+const AUTOSAVE_DEBOUNCE_MS = 650;
+const AUTOSAVE_RETRY_BASE_DELAY_MS = 1500;
+const AUTOSAVE_RETRY_MAX_DELAY_MS = 8000;
+
+// Navigation blocking removed - only browser tab close warning remains via useBeforeUnload
 
 // Development utility removed - welcome screen is no longer shown for users with access
 
@@ -123,10 +130,22 @@ export default function CollagePage() {
 
   // Autosave UI state
   const lastSavedSigRef = useRef(null);
-  const [saveStatus, setSaveStatus] = useState({ state: 'idle', time: null }); // states: idle | saving | saved
+  const lastThumbnailSigRef = useRef(null);
+  const [saveStatus, setSaveStatus] = useState({ state: 'idle', time: null, error: null }); // states: idle | queued | saving | saved | error
   const [isDirty, setIsDirty] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const saveTimerRef = useRef(null);
+  const saveChainRef = useRef(Promise.resolve());
+  const retryAttemptRef = useRef(0);
+  const retryTimerRef = useRef(null);
+  const enqueueSaveRef = useRef(null);
+  const queuedSigRef = useRef(null);
+  const isMountedRef = useRef(true);
   
+  useEffect(() => () => {
+    isMountedRef.current = false;
+  }, []);
+
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId } = useParams();
@@ -139,8 +158,10 @@ export default function CollagePage() {
   const captionOpenPrevRef = useRef(false);
   const exitSaveTimerRef = useRef(null);
   const loadingProjectRef = useRef(false);
+  const creatingProjectRef = useRef(false);
   // Persisted custom grid from border dragging
   const [customLayout, setCustomLayout] = useState(null);
+  const [isHydratingProject, setHydratingProject] = useState(false);
   
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
@@ -192,6 +213,8 @@ export default function CollagePage() {
     updateImage,
     replaceImage,
     clearImages,
+    applySnapshotState,
+    setHydrationMode,
     updatePanelImageMapping,
     updatePanelTransform,
     updatePanelText,
@@ -380,6 +403,23 @@ export default function CollagePage() {
     setIsDirty(currentSig !== lastSavedSigRef.current);
   }, [activeProjectId, currentSig]);
 
+  const saveIndicator = useMemo(() => {
+    if (saveStatus.state === 'error') {
+      return <Chip label="Retrying…" color="error" size="small" variant="outlined" />;
+    }
+    if (saveStatus.state === 'saving' || saveStatus.state === 'queued') {
+      return <Chip label="Saving…" color="warning" size="small" />;
+    }
+    // Check saved state before isDirty to avoid showing "Unsaved changes" right after save completes
+    if (saveStatus.state === 'saved' && !isDirty) {
+      return <Chip label="All changes saved" color="success" size="small" variant="outlined" />;
+    }
+    if (isDirty) {
+      return <Chip label="Unsaved changes" color="warning" size="small" variant="outlined" />;
+    }
+    return null;
+  }, [isDirty, saveStatus.state]);
+
   // Handle images passed from collage
   useEffect(() => {
     // Handle a magic editor return (navigation-based)
@@ -484,75 +524,134 @@ export default function CollagePage() {
 
   // Load a project snapshot into the current editor state
   const loadProjectById = useCallback(async (projectId) => {
-    const record = getProjectRecord(projectId);
-    if (!record || !record.state) return;
-    const snap = record.state;
+    setHydratingProject(true);
+    const record = await getProjectRecord(projectId);
+    if (!record) return;
     loadingProjectRef.current = true;
+    const snap = await resolveTemplateSnapshot(record);
+    if (!snap) return;
 
-    // Clear current state
-    clearImages();
+    const nextAspectRatio = snap.selectedAspectRatio || 'square';
+    const nextPanelCount = snap.panelCount || 2;
 
-    // Apply layout-level settings first
-    setSelectedAspectRatio(snap.selectedAspectRatio || 'square');
-    setPanelCount(snap.panelCount || 2);
+    let templateForSnapshot = null;
     try {
-      const templates = getLayoutsForPanelCount(snap.panelCount || 2, snap.selectedAspectRatio || 'square');
-      const tpl = templates.find(t => t.id === snap.selectedTemplateId) || templates[0] || null;
-      if (tpl) setSelectedTemplate(tpl);
+      const templates = getLayoutsForPanelCount(nextPanelCount, nextAspectRatio);
+      templateForSnapshot = templates.find((t) => t.id === snap.selectedTemplateId) || templates[0] || null;
     } catch (_) { /* ignore */ }
 
-    if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
-    if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
-    // Restore custom layout grid if present and compatible with the saved panel count
-    const wantPanels = snap.panelCount || 2;
-    const restoredCustom = isCustomLayoutCompatible(snap.customLayout, wantPanels) ? (snap.customLayout || null) : null;
-    setCustomLayout(restoredCustom);
+    const restoredCustom = isCustomLayoutCompatible(snap.customLayout, nextPanelCount)
+      ? (snap.customLayout || null)
+      : null;
 
-    // Resolve images via library or stored URLs
-    if (Array.isArray(snap.images) && snap.images.length > 0) {
-      const resolved = [];
-      // eslint-disable-next-line no-restricted-syntax
-      for (const ref of snap.images) {
-        if (ref?.libraryKey) {
-          try {
-            // Fetch from library and convert to data URL for canvas safety
-            // eslint-disable-next-line no-await-in-loop
-            const blob = await getFromLibrary(ref.libraryKey);
-            // eslint-disable-next-line no-await-in-loop
-            const dataUrl = await blobToDataUrl(blob);
-            resolved.push({ originalUrl: dataUrl, displayUrl: dataUrl, metadata: { libraryKey: ref.libraryKey }, subtitle: ref.subtitle || '', subtitleShowing: !!ref.subtitleShowing });
-          } catch (_) {
-            resolved.push({ originalUrl: ref.url || '', displayUrl: ref.url || '' });
-          }
-        } else if (ref?.url) {
-          resolved.push({ originalUrl: ref.url, displayUrl: ref.url, subtitle: ref.subtitle || '', subtitleShowing: !!ref.subtitleShowing });
+    const resolveImageRef = async (ref) => {
+      if (!ref) return null;
+      if (typeof ref === 'string') {
+        return {
+          originalUrl: ref,
+          displayUrl: ref,
+          metadata: {},
+          subtitle: '',
+          subtitleShowing: false,
+        };
+      }
+      if (ref.libraryKey) {
+        try {
+          const blob = await getFromLibrary(ref.libraryKey);
+          const dataUrl = await blobToDataUrl(blob);
+          return {
+            originalUrl: dataUrl,
+            displayUrl: dataUrl,
+            metadata: { libraryKey: ref.libraryKey },
+            subtitle: ref.subtitle || '',
+            subtitleShowing: !!ref.subtitleShowing,
+          };
+        } catch (_) {
+          const fallbackUrl = ref.url || '';
+          return {
+            originalUrl: fallbackUrl,
+            displayUrl: fallbackUrl,
+            metadata: { libraryKey: ref.libraryKey },
+            subtitle: ref.subtitle || '',
+            subtitleShowing: !!ref.subtitleShowing,
+          };
         }
       }
-      if (resolved.length) {
-        await addMultipleImages(resolved);
+      if (ref.url) {
+        return {
+          originalUrl: ref.url,
+          displayUrl: ref.url,
+          subtitle: ref.subtitle || '',
+          subtitleShowing: !!ref.subtitleShowing,
+        };
       }
+      return null;
+    };
+
+    const resolvedImagesRaw = Array.isArray(snap.images) && snap.images.length > 0
+      ? await Promise.all(snap.images.map(resolveImageRef))
+      : [];
+
+    const imagesForState = resolvedImagesRaw.map((img, index) => {
+      if (img) return img;
+      const fallbackRef = Array.isArray(snap.images) ? snap.images[index] || {} : {};
+      if (typeof fallbackRef === 'string') {
+        return {
+          originalUrl: fallbackRef,
+          displayUrl: fallbackRef,
+          metadata: {},
+          subtitle: '',
+          subtitleShowing: false,
+        };
+      }
+      const fallbackUrl = fallbackRef.url || '';
+      const metadata = fallbackRef.libraryKey ? { libraryKey: fallbackRef.libraryKey } : {};
+      return {
+        originalUrl: fallbackUrl,
+        displayUrl: fallbackUrl,
+        metadata,
+        subtitle: fallbackRef.subtitle || '',
+        subtitleShowing: !!fallbackRef.subtitleShowing,
+      };
+    });
+
+    const snapshotState = {
+      images: imagesForState,
+      mapping: (snap.panelImageMapping && typeof snap.panelImageMapping === 'object') ? snap.panelImageMapping : {},
+      transforms: (snap.panelTransforms && typeof snap.panelTransforms === 'object') ? snap.panelTransforms : {},
+      texts: (snap.panelTexts && typeof snap.panelTexts === 'object') ? snap.panelTexts : {},
+    };
+
+    setHydrationMode(true);
+
+    const applyAll = () => {
+      setSelectedAspectRatio(nextAspectRatio);
+      setPanelCount(nextPanelCount);
+      setSelectedTemplate(templateForSnapshot || null);
+      if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
+      if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
+      setCustomLayout(restoredCustom);
+      applySnapshotState(snapshotState);
+      setActiveProjectId(projectId);
+    };
+
+    if (typeof unstable_batchedUpdates === 'function') {
+      unstable_batchedUpdates(applyAll);
+    } else {
+      applyAll();
     }
 
-    if (snap.panelImageMapping) updatePanelImageMapping(snap.panelImageMapping);
-
-    if (snap.panelTransforms && typeof snap.panelTransforms === 'object') {
-      Object.entries(snap.panelTransforms).forEach(([panelId, transform]) => {
-        if (transform) updatePanelTransform(panelId, transform);
-      });
-    }
-
-    if (snap.panelTexts && typeof snap.panelTexts === 'object') {
-      Object.entries(snap.panelTexts).forEach(([panelId, textConfig]) => {
-        if (textConfig) updatePanelText(panelId, textConfig, { replace: true });
-      });
-    }
-
-    setActiveProjectId(projectId);
-    // ensure editor mode when loading an existing project
-    // Mark current snapshot as saved for status UI
-    lastSavedSigRef.current = computeSnapshotSignature(snap);
-    setSaveStatus({ state: 'saved', time: Date.now() });
-  }, [addMultipleImages, clearImages, setBorderColor, setBorderThickness, setPanelCount, setSelectedAspectRatio, setSelectedTemplate, updatePanelImageMapping, updatePanelText, updatePanelTransform]);
+    const sig = computeSnapshotSignature(snap);
+    lastSavedSigRef.current = sig;
+    lastThumbnailSigRef.current = record.thumbnailSignature || null;
+    queuedSigRef.current = null;
+    retryAttemptRef.current = 0;
+    saveChainRef.current = Promise.resolve();
+    didInitialSaveRef.current = true; // Prevent autosave from triggering immediately after load
+    justLoadedRef.current = true; // Flag to sync signature after first render
+    setIsDirty(false); // Project just loaded, no unsaved changes
+    setSaveStatus({ state: 'saved', time: Date.now(), error: null });
+  }, [applySnapshotState, getProjectRecord, resolveTemplateSnapshot, setActiveProjectId, setBorderColor, setBorderThickness, setCustomLayout, setHydrationMode, setHydratingProject, setPanelCount, setSelectedAspectRatio, setSelectedTemplate]);
 
   // Ensure we always release the loading flag, even on errors, and only
   // after state has settled so custom layouts are not cleared prematurely.
@@ -561,7 +660,11 @@ export default function CollagePage() {
     try {
       await loadProjectById(projectId);
     } finally {
-      const release = () => { loadingProjectRef.current = false; };
+      const release = () => {
+        loadingProjectRef.current = false;
+        setHydratingProject(false);
+        setHydrationMode(false);
+      };
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
         window.requestAnimationFrame(() => {
           window.requestAnimationFrame(release);
@@ -570,37 +673,121 @@ export default function CollagePage() {
         setTimeout(release, 50);
       }
     }
-  }, [loadProjectById]);
+  }, [loadProjectById, setHydrationMode, setHydratingProject]);
 
   // Keep a stable ref to the loader to avoid effect re-runs from changing callback identities
   const loadProjectByIdRef = useRef(safeLoadProjectById);
   useEffect(() => { loadProjectByIdRef.current = safeLoadProjectById; }, [safeLoadProjectById]);
 
-  // Centralized save used by autosave-on-exit and manual save
-  const saveProjectNow = useCallback(async ({ showToast = false } = {}) => {
+  // Centralized save used by autosave queue and manual save
+  const saveProjectNow = useCallback(async ({ showToast = false, forceThumbnail = false } = {}) => {
     if (!activeProjectId) return;
-    // Compute signature from the exact snapshot we are about to persist
     const state = currentSnapshotRef.current;
+    if (!state) return;
     const sig = computeSnapshotSignature(state);
-    if (sig === lastSavedSigRef.current) return;
-    try {
-      setSaveStatus({ state: 'saving', time: null });
-      upsertProject(activeProjectId, { state });
-      lastSavedSigRef.current = sig;
-      // Generate thumbnail immediately from saved snapshot
-      const dataUrl = await renderThumbnailFromSnapshot(state, { maxDim: 512 });
-      if (dataUrl) {
-        upsertProject(activeProjectId, { thumbnail: dataUrl, thumbnailKey: null, thumbnailSignature: sig, thumbnailUpdatedAt: new Date().toISOString() });
-      }
-      // notify ProjectsPage via storage; no local list to update
-      setSaveStatus({ state: 'saved', time: Date.now() });
-      if (showToast) setSnackbar({ open: true, message: 'Saved', severity: 'success' });
-    } catch (e) {
-      if (DEBUG_MODE) console.warn('Autosave failed:', e);
-      setTimeout(() => setSaveStatus({ state: 'idle', time: null }), 800);
-      if (showToast) setSnackbar({ open: true, message: 'Save failed', severity: 'error' });
+    const nextForceThumbnail = forceThumbnail || sig !== lastThumbnailSigRef.current;
+    if (!nextForceThumbnail && sig === lastSavedSigRef.current) {
+      if (showToast) setSnackbar({ open: true, message: 'All changes saved', severity: 'success' });
+      setSaveStatus({ state: 'saved', time: Date.now(), error: null });
+      setIsDirty(false); // Ensure isDirty is false when there are no changes to save
+      queuedSigRef.current = null;
+      return;
     }
-  }, [activeProjectId]);
+    try {
+      setSaveStatus({ state: 'saving', time: null, error: null });
+      await upsertProject(activeProjectId, { state });
+      lastSavedSigRef.current = sig;
+      if (nextForceThumbnail) {
+        const dataUrl = await renderThumbnailFromSnapshot(state, { maxDim: 512 });
+        if (dataUrl) {
+          await upsertProject(activeProjectId, {
+            thumbnail: dataUrl,
+            thumbnailSignature: sig,
+            thumbnailUpdatedAt: new Date().toISOString(),
+          });
+          lastThumbnailSigRef.current = sig;
+        }
+      }
+      setSaveStatus({ state: 'saved', time: Date.now(), error: null });
+      // Update isDirty since we just updated the saved signature ref
+      setIsDirty(currentSigRef.current !== sig);
+      retryAttemptRef.current = 0;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      queuedSigRef.current = null;
+      if (showToast) setSnackbar({ open: true, message: 'Saved', severity: 'success' });
+    } catch (error) {
+      if (DEBUG_MODE) console.warn('Autosave failed:', error);
+      retryAttemptRef.current += 1;
+      setSaveStatus({ state: 'error', time: Date.now(), error });
+      setSnackbar({ open: true, message: 'Save failed. Retrying…', severity: 'error' });
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      const delay = Math.min(AUTOSAVE_RETRY_BASE_DELAY_MS * retryAttemptRef.current, AUTOSAVE_RETRY_MAX_DELAY_MS);
+      retryTimerRef.current = setTimeout(() => {
+        if (enqueueSaveRef.current) {
+          enqueueSaveRef.current({ reason: 'retry', immediate: true, forceThumbnail: true });
+        }
+      }, delay);
+      throw error;
+    }
+  }, [activeProjectId, setSnackbar, upsertProject, renderThumbnailFromSnapshot]);
+
+  const enqueueSave = useCallback(
+    ({ reason = 'autosave', immediate = false, forceThumbnail = false, showToast = false } = {}) => {
+      if (!activeProjectId) return saveChainRef.current;
+      const sig = currentSigRef.current;
+      const hasChanges = forceThumbnail || sig !== lastSavedSigRef.current;
+      if (!hasChanges) {
+        return saveChainRef.current;
+      }
+      if (DEBUG_MODE) debugLog('[autosave] queue', { reason, immediate, sig, forceThumbnail });
+      queuedSigRef.current = sig;
+      setSaveStatus((prev) => (prev.state === 'saving' ? prev : { state: 'queued', time: prev.time, error: null }));
+      const schedule = () => {
+        const run = () => saveProjectNow({ showToast, forceThumbnail });
+        saveChainRef.current = saveChainRef.current
+          .catch(() => undefined)
+          .then(run)
+          .catch(() => undefined);
+        return saveChainRef.current;
+      };
+      if (immediate) {
+        if (saveTimerRef.current) {
+          clearTimeout(saveTimerRef.current);
+          saveTimerRef.current = null;
+        }
+        return schedule();
+      }
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null;
+        schedule();
+      }, AUTOSAVE_DEBOUNCE_MS);
+      return saveChainRef.current;
+    },
+    [activeProjectId, saveProjectNow]
+  );
+
+  useEffect(() => { enqueueSaveRef.current = enqueueSave; }, [enqueueSave]);
+  useEffect(() => () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+  }, []);
+
+  const isSaveBusy = saveStatus.state === 'saving' || saveStatus.state === 'queued' || saveStatus.state === 'error';
+
+  useBeforeUnload(useCallback((event) => {
+    if (isSaveBusy || isDirty) {
+      event.preventDefault();
+      // eslint-disable-next-line no-param-reassign
+      event.returnValue = '';
+    }
+  }, [isSaveBusy, isDirty]));
 
 
   // Receive editing session state from preview and save once editing ends
@@ -619,67 +806,56 @@ export default function CollagePage() {
       if (exitSaveTimerRef.current) clearTimeout(exitSaveTimerRef.current);
       exitSaveTimerRef.current = setTimeout(() => {
         exitSaveTimerRef.current = null;
-        saveProjectNow();
-      }, 60);
+        enqueueSave({ reason: 'editing-session-end' });
+      }, 80);
     }
-  }, [saveProjectNow]);
+  }, [enqueueSave]);
 
-  // Collage-level autosave triggers
-  // 1) Save on border color/thickness changes once rendered settles
-  useEffect(() => {
-    let t = null;
-    if (activeProjectId) {
-      // Only attempt save if we have rendered the new state at least once
-      const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
-      if (hasRendered) {
-        // Defer slightly to batch rapid UI updates
-        t = setTimeout(() => { saveProjectNow(); }, 120);
-      }
-    }
-    return () => { if (t) clearTimeout(t); };
-  }, [activeProjectId, borderColor, borderThickness, renderBump, saveProjectNow]);
-
-  // 2) Save on layout changes: template, aspect ratio, or panel count
-  // Ensure we still save even if render callback is delayed (fallback timer)
-  useEffect(() => {
-    let t = null;
-    if (!activeProjectId) return undefined;
-    const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
-    // Fast path: save shortly after a confirmed render of the new state
-    if (hasRendered) {
-      t = setTimeout(() => { saveProjectNow(); }, 120);
-    } else {
-      // Fallback: if render callback lags (e.g., panel count UI), still save soon
-      t = setTimeout(() => { saveProjectNow(); }, 400);
-    }
-    return () => { if (t) clearTimeout(t); };
-  }, [activeProjectId, selectedTemplate?.id, selectedAspectRatio, panelCount, renderBump, saveProjectNow]);
-
-  // 2.5) Save on image content changes (e.g., replace/crop) once preview has rendered
-  // This complements (3) which only handles the very first appearance of any images.
-  useEffect(() => {
-    let t = null;
-    if (activeProjectId) {
-      const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
-      if (hasRendered) {
-        t = setTimeout(() => { saveProjectNow(); }, 120);
-      }
-    }
-    return () => { if (t) clearTimeout(t); };
-  }, [activeProjectId, selectedImages, renderBump, saveProjectNow]);
-
-  // 3) Initial save when images first appear and preview has rendered
-  const didInitialSaveRef = useRef(false);
+  // After loading a project, update the saved signature to match the first render
+  // This prevents autosave from triggering due to canvas dimension differences
+  const justLoadedRef = useRef(false);
   useEffect(() => {
     if (!activeProjectId) return;
-    if (didInitialSaveRef.current) return;
-    const hasAnyImage = (selectedImages?.length || 0) > 0;
-    const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
-    if (hasAnyImage && hasRendered) {
-      didInitialSaveRef.current = true;
-      saveProjectNow();
+    if (!justLoadedRef.current) return;
+    if (loadingProjectRef.current || isHydratingProject) return;
+    // Once hydration completes and preview has rendered, sync the saved signature
+    if (lastRenderedSigRef.current && lastRenderedSigRef.current !== lastSavedSigRef.current) {
+      lastSavedSigRef.current = lastRenderedSigRef.current;
+      justLoadedRef.current = false;
+      // Force isDirty to recalculate since we updated the ref
+      setIsDirty(currentSig !== lastRenderedSigRef.current);
     }
-  }, [activeProjectId, selectedImages?.length, saveProjectNow]);
+  }, [activeProjectId, isHydratingProject, currentSig]);
+
+  // Autosave trigger when the rendered snapshot changes
+  const didInitialSaveRef = useRef(false);
+  useEffect(() => {
+    if (!activeProjectId) return undefined;
+    // Skip autosave while loading/hydrating a project to avoid spurious saves from canvas dimension changes
+    if (loadingProjectRef.current || isHydratingProject) return undefined;
+    if (justLoadedRef.current) return undefined;
+    if (currentSig === lastSavedSigRef.current) return undefined;
+    let fallbackTimer = null;
+    const hasRendered = lastRenderedSigRef.current === currentSig;
+    if (!hasRendered) {
+      fallbackTimer = setTimeout(() => {
+        if (!didInitialSaveRef.current) didInitialSaveRef.current = true;
+        enqueueSave({ reason: 'preview-fallback', immediate: true, forceThumbnail: true });
+      }, 450);
+      return () => {
+        if (fallbackTimer) clearTimeout(fallbackTimer);
+      };
+    }
+    if (!didInitialSaveRef.current) {
+      didInitialSaveRef.current = true;
+      enqueueSave({ reason: 'initial-render', immediate: true, forceThumbnail: true });
+    } else {
+      enqueueSave({ reason: 'state-change' });
+    }
+    return () => {
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    };
+  }, [activeProjectId, currentSig, renderBump, enqueueSave, isHydratingProject]);
 
   // After the first save of a newly created project on /projects/new, navigate to /projects/<id>
   const didNavigateToProjectRef = useRef(false);
@@ -712,18 +888,37 @@ export default function CollagePage() {
   //    This avoids leaving blank projects when a user abandons during selection.
   useEffect(() => {
     if (!hasProjectsAccess) return;
-    // Do not auto-create while actively loading an existing project
     if (loadingProjectRef.current) return;
     if (activeProjectId) return;
+    if (creatingProjectRef.current) return;
     const hasAnyImage = (selectedImages?.length || 0) > 0;
     if (!hasAnyImage) return;
     const hasRendered = lastRenderedSigRef.current === currentSigRef.current;
     if (!hasRendered) return;
-    const p = createProject({ name: 'Untitled Meme' });
-    setActiveProjectId(p.id);
-    // Reset initial-save gate so we capture the first render under this new project
-    didInitialSaveRef.current = false;
-  }, [hasProjectsAccess, activeProjectId, selectedImages?.length, currentSig]);
+    creatingProjectRef.current = true;
+    let isActive = true;
+    (async () => {
+      try {
+        const project = await createProject({ name: 'Untitled Meme' });
+        if (!isMountedRef.current || !isActive) return;
+        setActiveProjectId(project.id);
+        lastSavedSigRef.current = null;
+        lastThumbnailSigRef.current = null;
+        queuedSigRef.current = null;
+        didInitialSaveRef.current = false;
+      } catch (err) {
+        if (DEBUG_MODE) console.warn('Failed to create template', err);
+      } finally {
+        creatingProjectRef.current = false;
+      }
+    })();
+    return () => {
+      // Only mark inactive when the in-flight request has completed so we don't cancel it prematurely
+      if (!creatingProjectRef.current) {
+        isActive = false;
+      }
+    };
+  }, [hasProjectsAccess, activeProjectId, selectedImages?.length, currentSig, createProject]);
 
   // When the user changes layout controls, drop any existing custom grid override
   useEffect(() => {
@@ -735,16 +930,22 @@ export default function CollagePage() {
 
   // Manual Save handler (forces immediate thumbnail generation)
   const handleManualSave = useCallback(async () => {
-    saveProjectNow({ showToast: true });
-  }, [saveProjectNow]);
+    const promise = enqueueSave({ reason: 'manual', immediate: true, forceThumbnail: true, showToast: true });
+    try {
+      await promise;
+    } catch (_) {
+      // Errors surface via snackbar; retries happen automatically
+    }
+  }, [enqueueSave]);
 
   // Save before switching to the project picker so recent changes (e.g., replace image) persist
   const handleBackToProjects = useCallback(async () => {
     try {
-      await saveProjectNow();
+      await enqueueSave({ reason: 'navigate-back', immediate: true, forceThumbnail: true });
+      await saveChainRef.current;
     } catch (_) { /* best-effort save */ }
     if (hasProjectsAccess) navigate('/projects');
-  }, [saveProjectNow, hasProjectsAccess, navigate]);
+  }, [enqueueSave, hasProjectsAccess, navigate]);
 
   // Cancel from library selection: go back to /projects when on /projects/* routes
   const handleLibraryCancel = useCallback(() => {
@@ -762,14 +963,14 @@ export default function CollagePage() {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        if (isDirty && saveStatus.state !== 'saving') {
+        if (isDirty && !isSaveBusy) {
           handleManualSave();
         }
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleManualSave, isDirty, saveStatus.state]);
+  }, [handleManualSave, isDirty, isSaveBusy]);
 
   // Note: BulkUploadSection auto-collapse logic removed since section is now hidden when images are present
 
@@ -1008,7 +1209,7 @@ export default function CollagePage() {
 
   // Props for images step (pass the correct state and actions)
   const imagesStepProps = {
-            selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
+          selectedImages, // Pass the array of objects [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
     panelImageMapping,
     panelTransforms,
     panelTexts,
@@ -1056,6 +1257,7 @@ export default function CollagePage() {
     // Provide persisted custom grid to preview on load
     customLayout,
     customLayoutKey: useMemo(() => `${selectedTemplate?.id || 'none'}|${panelCount}|${selectedAspectRatio}`, [selectedTemplate?.id, panelCount, selectedAspectRatio]),
+    isHydratingProject,
   };
 
   // Log mapping changes for debugging
@@ -1137,7 +1339,11 @@ export default function CollagePage() {
                     )}
                   </Box>
                 </Typography>
-                {/* Removed top action for inline projects view */}
+                {saveIndicator && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 32 }}>
+                    {saveIndicator}
+                  </Box>
+                )}
               </Box>
             </Box>
 
@@ -1148,26 +1354,50 @@ export default function CollagePage() {
               />
             </Collapse>
 
-            <CollageLayout
-              settingsStepProps={settingsStepProps}
-              imagesStepProps={imagesStepProps}
-              finalImage={finalImage}
-              setFinalImage={setFinalImage}
-              isMobile={isMobile}
-              onBackToEdit={handleBackToEdit}
-              settingsOpen={settingsOpen}
-              setSettingsOpen={setSettingsOpen}
-              settingsRef={settingsRef}
-              onViewChange={(v) => setCurrentView(v)}
-              onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
-              onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
-              // Mobile controls bar actions
-              onBack={hasProjectsAccess ? handleBackToProjects : undefined}
-              onReset={!hasProjectsAccess ? openResetDialog : undefined}
-              onGenerate={handleFloatingButtonClick}
-              canGenerate={allPanelsHaveImages}
-              isGenerating={isCreatingCollage}
-            />
+            <Box sx={{ position: 'relative' }}>
+              <CollageLayout
+                settingsStepProps={settingsStepProps}
+                imagesStepProps={imagesStepProps}
+                finalImage={finalImage}
+                setFinalImage={setFinalImage}
+                isMobile={isMobile}
+                onBackToEdit={handleBackToEdit}
+                settingsOpen={settingsOpen}
+                setSettingsOpen={setSettingsOpen}
+                settingsRef={settingsRef}
+                onViewChange={(v) => setCurrentView(v)}
+                onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
+                onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
+                // Mobile controls bar actions
+                onBack={hasProjectsAccess ? handleBackToProjects : undefined}
+                onReset={!hasProjectsAccess ? openResetDialog : undefined}
+                onGenerate={handleFloatingButtonClick}
+                canGenerate={allPanelsHaveImages}
+                isGenerating={isCreatingCollage}
+              />
+              {isHydratingProject && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    bgcolor: 'rgba(0,0,0,0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 5,
+                    pointerEvents: 'auto',
+                    backdropFilter: 'blur(1px)',
+                  }}
+                >
+                  <Stack spacing={1} alignItems="center">
+                    <CircularProgress size={26} thickness={4} sx={{ color: '#fff' }} />
+                    <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600 }}>
+                      Loading project…
+                    </Typography>
+                  </Stack>
+                </Box>
+              )}
+            </Box>
 
             {/* Save snackbar */}
             <Snackbar 

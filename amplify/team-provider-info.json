@@ -41,7 +41,7 @@
         "memesrcSearch": {},
         "memesrcRandom": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcRandom-7a394543673759483976-build.zip",
+          "s3Key": "amplify-builds/memesrcRandom-2f30666c476974445043-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcFrameFunction": {
@@ -85,7 +85,7 @@
         },
         "memesrcUserFunction": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcUserFunction-6d31666c35474d544f6b-build.zip",
+          "s3Key": "amplify-builds/memesrcUserFunction-4a5a7241304b74486478-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcVote": {
@@ -171,19 +171,19 @@
         },
         "memesrcGraphQlLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcGraphQlLayer-LambdaLayerVersion8eb6c4bf-build.zip"
+          "s3Key": "amplify-builds/memesrcGraphQlLayer-LambdaLayerVersion003532db-build.zip"
         },
         "memesrcS3Layer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcS3Layer-LambdaLayerVersion17c66d2f-build.zip"
+          "s3Key": "amplify-builds/memesrcS3Layer-LambdaLayerVersionb6c34c68-build.zip"
         },
         "memesrcSesLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcSesLayer-LambdaLayerVersionaf688481-build.zip"
+          "s3Key": "amplify-builds/memesrcSesLayer-LambdaLayerVersion5356f792-build.zip"
         },
         "memesrcUpdateMedia": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcUpdateMedia-38542b39344650326a6b-build.zip"
+          "s3Key": "amplify-builds/memesrcUpdateMedia-674e5a78444a47593264-build.zip"
         },
         "memesrcUpdateSubtitles": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -191,20 +191,20 @@
         },
         "memesrcDynamoDBLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcDynamoDBLayer-LambdaLayerVersion4575fa91-build.zip"
+          "s3Key": "amplify-builds/memesrcDynamoDBLayer-LambdaLayerVersionefe2789b-build.zip"
         },
         "memesrcIndexAndPublish": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcIndexAndPublish-6f753075473058513463-build.zip",
+          "s3Key": "amplify-builds/memesrcIndexAndPublish-4759375232694e347557-build.zip",
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5"
         },
         "memesrcAxiosLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAxiosLayer-LambdaLayerVersion9915f36a-build.zip"
+          "s3Key": "amplify-builds/memesrcAxiosLayer-LambdaLayerVersionf44bd4f8-build.zip"
         },
         "memesrcOpenSearchLayer": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcOpenSearchLayer-LambdaLayerVersionf39880a2-build.zip"
+          "s3Key": "amplify-builds/memesrcOpenSearchLayer-LambdaLayerVersion676805e0-build.zip"
         },
         "memesrcApproveMedia": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",

@@ -313,6 +313,32 @@ type MagicResult @model @auth(
   results: String
 }
 
+type Template
+  @model(timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" })
+  @auth(
+    rules: [
+      { allow: groups, groups: ["admins"] },
+      {
+        allow: owner
+        ownerField: "ownerIdentityId"
+        operations: [create, read, update, delete]
+      }
+    ]
+  ) {
+  id: ID!
+  ownerIdentityId: String
+    @index(name: "byOwnerIdentityId", sortKeyFields: ["createdAt"])
+  name: String!
+  state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
+  snapshotKey: String
+  snapshotVersion: Int
+  thumbnailKey: String
+  thumbnailSignature: String
+  thumbnailUpdatedAt: AWSDateTime
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
 type EditorProject @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] }
@@ -391,4 +417,3 @@ type LocationLeads @model @auth(
   id: ID!,
   countryCode: String
 }
-

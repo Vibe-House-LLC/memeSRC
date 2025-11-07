@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { Add } from '@mui/icons-material';
 import ProjectPicker from '../components/collage/components/ProjectPicker';
-import { loadProjects, deleteProject as deleteProjectRecord } from '../components/collage/utils/projects';
+import { loadProjects, deleteProject as deleteProjectRecord, subscribeToTemplates } from '../components/collage/utils/templates';
 import type { CollageProject } from '../types/collage';
 import { UserContext } from '../UserContext';
 import { normalizeString } from '../utils/search/normalize';
@@ -30,11 +30,35 @@ export default function ProjectsPage() {
   }, [isAdmin, navigate]);
 
   useEffect(() => {
-    setProjects(loadProjects());
-    const onFocus = () => setProjects(loadProjects());
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    const unsubscribe = subscribeToTemplates((next) => {
+      setProjects(next);
+    });
+    return () => {
+      unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchProjects = async (options?: { forceRefresh?: boolean }) => {
+      try {
+        const next = await loadProjects(options);
+        if (mounted) setProjects(next);
+      } catch (err) {
+        if (mounted && process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.error('[ProjectsPage] Failed to load templates', err);
+        }
+      }
+    };
+    fetchProjects();
+    const onFocus = () => { void fetchProjects({ forceRefresh: true }); };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      mounted = false;
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [loadProjects]);
 
   // Background fetch default captions for images referenced by projects
   useEffect(() => {
@@ -71,9 +95,16 @@ export default function ProjectsPage() {
     navigate(`/projects/${id}`);
   }, [navigate]);
 
-  const handleDelete = useCallback((id: string) => {
-    deleteProjectRecord(id);
-    setProjects(loadProjects());
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await deleteProjectRecord(id);
+      setProjects((prev) => prev.filter((project) => project.id !== id));
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error('[ProjectsPage] Failed to delete template', err);
+      }
+    }
   }, []);
 
   const normalizedQuery = React.useMemo(() => normalizeString(searchQuery), [searchQuery]);
