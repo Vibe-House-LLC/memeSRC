@@ -12,7 +12,7 @@ import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "..
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
-import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot } from "../components/collage/utils/templates";
+import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot, subscribeToProject } from "../components/collage/utils/templates";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { get as getFromLibrary } from "../utils/library/storage";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
@@ -45,12 +45,36 @@ function blobToDataUrl(blob) {
 // Guard against adopting a stale custom layout from snapshots saved
 // under a different panel count. We only accept if the layout has
 // enough areas/items for the requested panel count.
+function expandGridTemplate(template) {
+  if (typeof template !== 'string' || template.trim().length === 0) return '';
+  return template.replace(/repeat\((\d+)\s*,\s*([^)]+)\)/gi, (_, count, body) => {
+    const n = Math.max(0, parseInt(count, 10) || 0);
+    if (n === 0) return '';
+    const token = body.trim();
+    return Array.from({ length: n }).map(() => token).join(' ');
+  });
+}
+
+function countGridTracks(template) {
+  if (typeof template !== 'string' || template.trim().length === 0) return 0;
+  const expanded = expandGridTemplate(template);
+  return expanded
+    .split(/\s+/)
+    .filter((token) => token.length > 0)
+    .length;
+}
+
 function isCustomLayoutCompatible(customLayout, panelCount) {
   try {
     if (!customLayout || typeof customLayout !== 'object') return false;
     const needed = Math.max(2, panelCount || 2);
     if (Array.isArray(customLayout.areas)) return customLayout.areas.length >= needed;
     if (Array.isArray(customLayout.items)) return customLayout.items.length >= needed;
+    const cols = countGridTracks(customLayout.gridTemplateColumns);
+    const rows = countGridTracks(customLayout.gridTemplateRows);
+    if (cols > 0 && rows > 0) {
+      return cols * rows >= needed;
+    }
     return false;
   } catch (_) {
     return false;
@@ -162,6 +186,12 @@ export default function CollagePage() {
   // Persisted custom grid from border dragging
   const [customLayout, setCustomLayout] = useState(null);
   const [isHydratingProject, setHydratingProject] = useState(false);
+  const [remoteUpdateWarning, setRemoteUpdateWarning] = useState(null);
+  const activeSnapshotVersionRef = useRef(null);
+  const acknowledgedRemoteVersionRef = useRef(null);
+  const projectSubscriptionCleanupRef = useRef(null);
+  const isDirtyRef = useRef(false);
+  const isHydratingProjectRef = useRef(isHydratingProject);
   
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
@@ -343,8 +373,16 @@ export default function CollagePage() {
         clearImages();
       } catch (_) { /* ignore */ }
       setCustomLayout(null);
+      setLiveCustomLayout(null);
     }
   }, [hasProjectsAccess, location.pathname]);
+
+  useEffect(() => {
+    if (activeProjectId) return;
+    activeSnapshotVersionRef.current = null;
+    acknowledgedRemoteVersionRef.current = null;
+    setRemoteUpdateWarning(null);
+  }, [activeProjectId]);
 
   // Build current snapshot/signature once per state change
   const [renderBump, setRenderBump] = useState(0);
@@ -396,6 +434,8 @@ export default function CollagePage() {
   const currentSigRef = useRef(currentSig);
   useEffect(() => { currentSnapshotRef.current = currentSnapshot; }, [currentSnapshot]);
   useEffect(() => { currentSigRef.current = currentSig; }, [currentSig]);
+  useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
+  useEffect(() => { isHydratingProjectRef.current = isHydratingProject; }, [isHydratingProject]);
 
   // Track whether current state differs from last saved snapshot (for UI enablement)
   useEffect(() => {
@@ -527,6 +567,9 @@ export default function CollagePage() {
     setHydratingProject(true);
     const record = await getProjectRecord(projectId);
     if (!record) return;
+    activeSnapshotVersionRef.current = typeof record.snapshotVersion === 'number' ? record.snapshotVersion : null;
+    acknowledgedRemoteVersionRef.current = activeSnapshotVersionRef.current;
+    setRemoteUpdateWarning(null);
     loadingProjectRef.current = true;
     const snap = await resolveTemplateSnapshot(record);
     if (!snap) return;
@@ -631,6 +674,7 @@ export default function CollagePage() {
       if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
       if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
       setCustomLayout(restoredCustom);
+      setLiveCustomLayout(restoredCustom || null);
       applySnapshotState(snapshotState);
       setActiveProjectId(projectId);
     };
@@ -695,8 +739,13 @@ export default function CollagePage() {
     }
     try {
       setSaveStatus({ state: 'saving', time: null, error: null });
-      await upsertProject(activeProjectId, { state });
+      const updatedRecord = await upsertProject(activeProjectId, { state });
       lastSavedSigRef.current = sig;
+      if (updatedRecord && typeof updatedRecord.snapshotVersion === 'number') {
+        activeSnapshotVersionRef.current = updatedRecord.snapshotVersion;
+        acknowledgedRemoteVersionRef.current = updatedRecord.snapshotVersion;
+      }
+      setRemoteUpdateWarning(null);
       if (nextForceThumbnail) {
         const dataUrl = await renderThumbnailFromSnapshot(state, { maxDim: 512 });
         if (dataUrl) {
@@ -884,6 +933,89 @@ export default function CollagePage() {
     return () => {};
   }, [hasProjectsAccess, projectId]);
 
+  const handleRemoteProjectUpdate = useCallback((record) => {
+    if (!record || record.id !== activeProjectId) return;
+    const remoteVersion = typeof record.snapshotVersion === 'number' ? record.snapshotVersion : null;
+    if (remoteVersion === null) return;
+    const localVersion = typeof activeSnapshotVersionRef.current === 'number' ? activeSnapshotVersionRef.current : null;
+    if (localVersion !== null && remoteVersion <= localVersion) {
+      if ((acknowledgedRemoteVersionRef.current ?? -1) < remoteVersion) {
+        acknowledgedRemoteVersionRef.current = remoteVersion;
+      }
+      return;
+    }
+    if (loadingProjectRef.current || isHydratingProjectRef.current) return;
+    if (!isDirtyRef.current) {
+      acknowledgedRemoteVersionRef.current = remoteVersion;
+      const loader = loadProjectByIdRef.current;
+      if (typeof loader === 'function') {
+        Promise.resolve(loader(record.id)).catch(() => {});
+      }
+      return;
+    }
+    if ((acknowledgedRemoteVersionRef.current ?? -1) >= remoteVersion) return;
+    setRemoteUpdateWarning({
+      projectId: record.id,
+      version: remoteVersion,
+      updatedAt: record.updatedAt || null,
+    });
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    if (!hasProjectsAccess || !activeProjectId) {
+      if (projectSubscriptionCleanupRef.current) {
+        projectSubscriptionCleanupRef.current();
+        projectSubscriptionCleanupRef.current = null;
+      }
+      return undefined;
+    }
+    const unsubscribe = subscribeToProject(activeProjectId, handleRemoteProjectUpdate);
+    projectSubscriptionCleanupRef.current = unsubscribe;
+    return () => {
+      unsubscribe?.();
+      if (projectSubscriptionCleanupRef.current === unsubscribe) {
+        projectSubscriptionCleanupRef.current = null;
+      }
+    };
+  }, [hasProjectsAccess, activeProjectId, handleRemoteProjectUpdate]);
+
+  const handleRemoteReload = useCallback(() => {
+    if (!activeProjectId) return;
+    const targetVersion = typeof remoteUpdateWarning?.version === 'number' ? remoteUpdateWarning.version : null;
+    if (targetVersion !== null) {
+      acknowledgedRemoteVersionRef.current = targetVersion;
+    }
+    setRemoteUpdateWarning(null);
+    const loader = loadProjectByIdRef.current;
+    if (typeof loader === 'function') {
+      Promise.resolve(loader(activeProjectId)).catch(() => {});
+    }
+  }, [activeProjectId, remoteUpdateWarning]);
+
+  const handleRemoteDismiss = useCallback(() => {
+    const targetVersion = typeof remoteUpdateWarning?.version === 'number' ? remoteUpdateWarning.version : null;
+    if (targetVersion !== null) {
+      acknowledgedRemoteVersionRef.current = targetVersion;
+    }
+    setRemoteUpdateWarning(null);
+  }, [remoteUpdateWarning]);
+
+  const remoteUpdateTimestampLabel = useMemo(() => {
+    if (!remoteUpdateWarning?.updatedAt) return 'just now';
+    try {
+      const date = new Date(remoteUpdateWarning.updatedAt);
+      if (Number.isNaN(date.getTime())) return remoteUpdateWarning.updatedAt;
+      return date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    } catch (_) {
+      return remoteUpdateWarning.updatedAt;
+    }
+  }, [remoteUpdateWarning]);
+
   // 4) Create a project only after images are present AND preview has rendered
   //    This avoids leaving blank projects when a user abandons during selection.
   useEffect(() => {
@@ -902,6 +1034,9 @@ export default function CollagePage() {
         const project = await createProject({ name: 'Untitled Meme' });
         if (!isMountedRef.current || !isActive) return;
         setActiveProjectId(project.id);
+        activeSnapshotVersionRef.current = typeof project.snapshotVersion === 'number' ? project.snapshotVersion : null;
+        acknowledgedRemoteVersionRef.current = activeSnapshotVersionRef.current;
+        setRemoteUpdateWarning(null);
         lastSavedSigRef.current = null;
         lastThumbnailSigRef.current = null;
         queuedSigRef.current = null;
@@ -924,6 +1059,7 @@ export default function CollagePage() {
   useEffect(() => {
     if (loadingProjectRef.current) return;
     setCustomLayout(null);
+    setLiveCustomLayout(null);
   }, [selectedTemplate?.id, selectedAspectRatio, panelCount]);
 
   // New/open/delete handlers removed along with inline projects view
@@ -986,6 +1122,7 @@ export default function CollagePage() {
       setShowResultDialog(false);
       clearImages();
       setCustomLayout(null);
+      setLiveCustomLayout(null);
       // Also reset layout to default 2 panels to avoid leftover empty panels
       if (typeof setPanelCount === 'function') {
         setPanelCount(2);
@@ -1250,7 +1387,12 @@ export default function CollagePage() {
     onPreviewMetaChange: ({ canvasWidth, canvasHeight, customLayout }) => {
       setPreviewCanvasWidth(canvasWidth || null);
       setPreviewCanvasHeight(canvasHeight || null);
-      if (customLayout) setLiveCustomLayout(customLayout);
+      setLiveCustomLayout((prev) => {
+        if (!customLayout) {
+          return prev ? null : prev;
+        }
+        return customLayout;
+      });
     },
     // Editing session tracking to gate thumbnail updates
     onEditingSessionChange: handleEditingSessionChange,
@@ -1346,6 +1488,45 @@ export default function CollagePage() {
                 )}
               </Box>
             </Box>
+
+            <Collapse in={!!remoteUpdateWarning} unmountOnExit>
+              <Alert
+                severity="warning"
+                sx={{
+                  mb: 2,
+                  border: '1px solid rgba(255, 193, 7, 0.4)',
+                  background: 'rgba(255, 193, 7, 0.12)',
+                }}
+                action={(
+                  <Stack direction={isMobile ? 'column' : 'row'} spacing={1} sx={{ minWidth: isMobile ? 'auto' : 240 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="inherit"
+                      onClick={handleRemoteDismiss}
+                    >
+                      Keep Working & Overwrite
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="warning"
+                      onClick={handleRemoteReload}
+                      disabled={isHydratingProject}
+                    >
+                      Reload & Lose Local Changes
+                    </Button>
+                  </Stack>
+                )}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Project updated elsewhere at {remoteUpdateTimestampLabel}.
+                </Typography>
+                <Typography variant="body2">
+                  Reload to pull in those edits, or keep working to overwrite them (last save wins).
+                </Typography>
+              </Alert>
+            </Collapse>
 
             <Collapse in={showEarlyAccess} unmountOnExit>
               <EarlyAccessFeedback 

@@ -596,15 +596,38 @@ const CanvasCollagePreview = ({
   // If the layout key changes (template/panelCount/aspect), drop any prior custom grid.
   // When a persisted custom layout exists, only adopt it if it supports the current panel count.
   const prevLayoutKeyRef = useRef(customLayoutKey);
+  const injectedLayoutSignature = useMemo(
+    () => (initialCustomLayout ? JSON.stringify(initialCustomLayout) : null),
+    [initialCustomLayout]
+  );
+  const prevInjectedLayoutSignatureRef = useRef(injectedLayoutSignature);
+  const countGridTracks = useCallback((template) => {
+    if (typeof template !== 'string' || template.trim().length === 0) return 0;
+    const expanded = template.replace(/repeat\((\d+)\s*,\s*([^)]+)\)/gi, (_, count, body) => {
+      const n = Math.max(0, parseInt(count, 10) || 0);
+      if (n === 0) return '';
+      const token = body.trim();
+      return Array.from({ length: n }).map(() => token).join(' ');
+    });
+    return expanded
+      .split(/\s+/)
+      .filter((token) => token.length > 0)
+      .length;
+  }, []);
   const isCustomLayoutCompatible = useCallback((layout, count) => {
     try {
       if (!layout || typeof layout !== 'object') return false;
       const needed = Math.max(2, count || 2);
       if (Array.isArray(layout.areas)) return layout.areas.length >= needed;
       if (Array.isArray(layout.items)) return layout.items.length >= needed;
+      const cols = countGridTracks(layout.gridTemplateColumns);
+      const rows = countGridTracks(layout.gridTemplateRows);
+      if (cols > 0 && rows > 0) {
+        return cols * rows >= needed;
+      }
       return false;
     } catch (_) { return false; }
-  }, []);
+  }, [countGridTracks]);
   useEffect(() => {
     if (prevLayoutKeyRef.current !== customLayoutKey) {
       // Apply provided layout only if it's compatible; otherwise reset to base
@@ -616,12 +639,16 @@ const CanvasCollagePreview = ({
 
   // If a custom layout is provided after mount (e.g., load sequence), adopt it once
   useEffect(() => {
-    if (initialCustomLayout && !customLayoutConfig) {
-      if (isCustomLayoutCompatible(initialCustomLayout, panelCount)) {
-        setCustomLayoutConfig(initialCustomLayout);
-      }
+    if (prevInjectedLayoutSignatureRef.current === injectedLayoutSignature) return;
+    prevInjectedLayoutSignatureRef.current = injectedLayoutSignature;
+    if (!initialCustomLayout) {
+      setCustomLayoutConfig(null);
+      return;
     }
-  }, [initialCustomLayout, customLayoutConfig, panelCount, isCustomLayoutCompatible]);
+    if (isCustomLayoutCompatible(initialCustomLayout, panelCount)) {
+      setCustomLayoutConfig(initialCustomLayout);
+    }
+  }, [injectedLayoutSignature, initialCustomLayout, panelCount, isCustomLayoutCompatible]);
 
   // Long-press (press-and-hold) hint state
   const [saveHintOpen, setSaveHintOpen] = useState(false);
