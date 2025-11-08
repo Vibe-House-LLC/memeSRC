@@ -472,11 +472,13 @@ export default function CollagePage() {
       if (!savedPanelDims || !panelDimensions) return false;
       const scaled = JSON.parse(JSON.stringify(source || {}));
       let changed = false;
+      let touched = false;
       Object.keys(savedPanelDims).forEach((panelId) => {
         const saved = savedPanelDims[panelId];
         const current = panelDimensions[panelId];
         if (!saved || !current) return;
         if (!saved.width || !saved.height || !current.width || !current.height) return;
+        touched = true;
         const scaleX = current.width / saved.width;
         const scaleY = current.height / saved.height;
         if (Math.abs(scaleX - 1) < 0.0001 && Math.abs(scaleY - 1) < 0.0001) return;
@@ -489,8 +491,13 @@ export default function CollagePage() {
       if (changed) {
         setAllPanelTransforms(scaled);
         hydrationTransformAdjustRef.current = null;
+        return true;
       }
-      return changed;
+      if (touched) {
+        hydrationTransformAdjustRef.current = null;
+        return true;
+      }
+      return false;
     };
 
     if (scaleWithPanels()) return;
