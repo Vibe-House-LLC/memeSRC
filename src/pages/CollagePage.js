@@ -389,7 +389,7 @@ export default function CollagePage() {
       } catch (_) { /* ignore */ }
       return {};
     })(),
-  }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, renderBump, previewCanvasWidth, previewCanvasHeight, liveCustomLayout]);
+  }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout]);
 
   const currentSig = useMemo(() => computeSnapshotSignature(currentSnapshot), [currentSnapshot]);
   const currentSnapshotRef = useRef(currentSnapshot);

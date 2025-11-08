@@ -1818,7 +1818,10 @@ const CanvasCollagePreview = ({
   // Redraw canvas when dependencies change
   useEffect(() => {
     drawCanvas();
-    // After drawing, tag the canvas and notify parent if requested
+  }, [drawCanvas]);
+
+  // Notify parent about render state separately to avoid loops from unstable callback references
+  useEffect(() => {
     try {
       const canvas = canvasRef.current;
       if (canvas) {
@@ -1850,7 +1853,7 @@ const CanvasCollagePreview = ({
     } catch (_) {
       // ignore
     }
-  }, [drawCanvas]);
+  }, [renderSig, componentWidth, componentHeight, customLayoutConfig]);
 
   // Notify parent when any editing mode is active/inactive (transform, reorder, captions, border-drag)
   useEffect(() => {
