@@ -497,6 +497,7 @@ const CanvasCollagePreview = ({
   customLayoutKey,
   // New: report preview metrics and layout without DOM queries
   onPreviewMetaChange,
+  allowHydrationTransformCarry = false,
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -669,14 +670,16 @@ const CanvasCollagePreview = ({
   useEffect(() => {
     if (isHydratingProject) {
       wasHydratingRef.current = true;
-      prevPanelRectsRef.current = {};
+      if (!allowHydrationTransformCarry) {
+        prevPanelRectsRef.current = {};
+      }
       return;
     }
     if (wasHydratingRef.current) {
-      skipPanelRectDiffRef.current = true;
+      skipPanelRectDiffRef.current = !allowHydrationTransformCarry;
       wasHydratingRef.current = false;
     }
-  }, [isHydratingProject]);
+  }, [isHydratingProject, allowHydrationTransformCarry]);
 
   // Shared helper: carry transform from one frame to another preserving
   // absolute zoom and focal point while ensuring the image still covers
@@ -1864,13 +1867,31 @@ const CanvasCollagePreview = ({
         } else if (canvas.dataset.customLayout) {
           delete canvas.dataset.customLayout;
         }
+        if (panelRects.length > 0) {
+          try {
+            const serializedPanelDims = panelRects.reduce((acc, rect) => {
+              acc[rect.panelId] = { width: rect.width, height: rect.height };
+              return acc;
+            }, {});
+            canvas.dataset.panelDimensions = JSON.stringify(serializedPanelDims);
+          } catch (_) {
+            // Ignore serialization issues
+          }
+        } else if (canvas.dataset.panelDimensions) {
+          delete canvas.dataset.panelDimensions;
+        }
         // Also emit a callback with the same info to avoid DOM races
         if (typeof onPreviewMetaChange === 'function') {
+          const panelDimensions = {};
+          panelRects.forEach((rect) => {
+            panelDimensions[rect.panelId] = { width: rect.width, height: rect.height };
+          });
           onPreviewMetaChange({
             canvasWidth: componentWidth || 0,
             canvasHeight: componentHeight || 0,
             customLayout: customLayoutConfig || null,
             renderSig,
+            panelDimensions,
           });
         }
         if (typeof onRendered === 'function') {
@@ -1880,7 +1901,7 @@ const CanvasCollagePreview = ({
     } catch (_) {
       // ignore
     }
-  }, [renderSig, componentWidth, componentHeight, customLayoutConfig]);
+  }, [renderSig, componentWidth, componentHeight, customLayoutConfig, panelRects]);
 
   // Notify parent when any editing mode is active/inactive (transform, reorder, captions, border-drag)
   useEffect(() => {
@@ -4021,6 +4042,7 @@ CanvasCollagePreview.propTypes = {
   onRendered: PropTypes.func,
   onEditingSessionChange: PropTypes.func,
   onPreviewMetaChange: PropTypes.func,
+  allowHydrationTransformCarry: PropTypes.bool,
 };
 
 export default CanvasCollagePreview;

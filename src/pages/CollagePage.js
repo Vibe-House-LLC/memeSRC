@@ -89,6 +89,7 @@ const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
 const AUTOSAVE_DEBOUNCE_MS = 650;
 const AUTOSAVE_RETRY_BASE_DELAY_MS = 1500;
 const AUTOSAVE_RETRY_MAX_DELAY_MS = 8000;
+const PANEL_DIM_REFRESH_TIMEOUT_MS = 1800;
 
 // Navigation blocking removed - only browser tab close warning remains via useBeforeUnload
 
@@ -187,11 +188,13 @@ export default function CollagePage() {
   const [customLayout, setCustomLayout] = useState(null);
   const [isHydratingProject, setHydratingProject] = useState(false);
   const [remoteUpdateWarning, setRemoteUpdateWarning] = useState(null);
+  const [allowHydrationTransformCarry, setAllowHydrationTransformCarry] = useState(false);
   const activeSnapshotVersionRef = useRef(null);
   const acknowledgedRemoteVersionRef = useRef(null);
   const projectSubscriptionCleanupRef = useRef(null);
   const isDirtyRef = useRef(false);
   const isHydratingProjectRef = useRef(isHydratingProject);
+  const hydrationTransformAdjustRef = useRef(null);
   
   // State to control the result dialog
   const [showResultDialog, setShowResultDialog] = useState(false);
@@ -247,6 +250,7 @@ export default function CollagePage() {
     setHydrationMode,
     updatePanelImageMapping,
     updatePanelTransform,
+    setAllPanelTransforms,
     updatePanelText,
     libraryRefreshTrigger,
   } = useCollageState(isAdmin);
@@ -374,6 +378,7 @@ export default function CollagePage() {
       } catch (_) { /* ignore */ }
       setCustomLayout(null);
       setLiveCustomLayout(null);
+      setLivePanelDimensions(null);
     }
   }, [hasProjectsAccess, location.pathname]);
 
@@ -382,6 +387,7 @@ export default function CollagePage() {
     activeSnapshotVersionRef.current = null;
     acknowledgedRemoteVersionRef.current = null;
     setRemoteUpdateWarning(null);
+    hydrationTransformAdjustRef.current = null;
   }, [activeProjectId]);
 
   // Build current snapshot/signature once per state change
@@ -390,6 +396,8 @@ export default function CollagePage() {
   const [previewCanvasWidth, setPreviewCanvasWidth] = useState(null);
   const [previewCanvasHeight, setPreviewCanvasHeight] = useState(null);
   const [liveCustomLayout, setLiveCustomLayout] = useState(null);
+  const [livePanelDimensions, setLivePanelDimensions] = useState(null);
+  const [previewResetKey, setPreviewResetKey] = useState(0);
 
   const currentSnapshot = useMemo(() => buildSnapshotFromState({
     selectedImages,
@@ -427,7 +435,21 @@ export default function CollagePage() {
       } catch (_) { /* ignore */ }
       return {};
     })(),
-  }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout]);
+    panelDimensions: livePanelDimensions || (() => {
+      try {
+        const canvas = document.querySelector('[data-testid="canvas-collage-preview"]');
+        const json = canvas?.dataset?.panelDimensions;
+        if (!json) return undefined;
+        const parsed = JSON.parse(json);
+        if (!parsed || typeof parsed !== 'object' || Object.keys(parsed).length === 0) {
+          return undefined;
+        }
+        return parsed;
+      } catch (_) {
+        return undefined;
+      }
+    })(),
+  }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout, livePanelDimensions]);
 
   const currentSig = useMemo(() => computeSnapshotSignature(currentSnapshot), [currentSnapshot]);
   const currentSnapshotRef = useRef(currentSnapshot);
@@ -436,6 +458,62 @@ export default function CollagePage() {
   useEffect(() => { currentSigRef.current = currentSig; }, [currentSig]);
   useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
   useEffect(() => { isHydratingProjectRef.current = isHydratingProject; }, [isHydratingProject]);
+  const maybeNormalizeHydratedTransforms = useCallback(({ canvasWidth = null, canvasHeight = null, panelDimensions = null } = {}) => {
+    const pending = hydrationTransformAdjustRef.current;
+    if (!pending) return;
+    const source = pending.transforms || {};
+    const savedPanelDims = pending.panelDimensions || null;
+    if (savedPanelDims && (!panelDimensions || Object.keys(panelDimensions).length === 0)) {
+      // Wait until live panel dimensions are available to avoid mis-scaling on remote hydration.
+      return;
+    }
+
+    const scaleWithPanels = () => {
+      if (!savedPanelDims || !panelDimensions) return false;
+      const scaled = JSON.parse(JSON.stringify(source || {}));
+      let changed = false;
+      Object.keys(savedPanelDims).forEach((panelId) => {
+        const saved = savedPanelDims[panelId];
+        const current = panelDimensions[panelId];
+        if (!saved || !current) return;
+        if (!saved.width || !saved.height || !current.width || !current.height) return;
+        const scaleX = current.width / saved.width;
+        const scaleY = current.height / saved.height;
+        if (Math.abs(scaleX - 1) < 0.0001 && Math.abs(scaleY - 1) < 0.0001) return;
+        const transform = scaled[panelId];
+        if (!transform) return;
+        transform.positionX = (transform.positionX || 0) * scaleX;
+        transform.positionY = (transform.positionY || 0) * scaleY;
+        changed = true;
+      });
+      if (changed) {
+        setAllPanelTransforms(scaled);
+        hydrationTransformAdjustRef.current = null;
+      }
+      return changed;
+    };
+
+    if (scaleWithPanels()) return;
+
+    const baseWidth = pending.width || canvasWidth;
+    const baseHeight = pending.height || canvasHeight;
+    if (!baseWidth || !canvasWidth) return;
+    const scaleX = canvasWidth / baseWidth;
+    const scaleY = baseHeight && canvasHeight ? canvasHeight / baseHeight : scaleX;
+    if (Math.abs(scaleX - 1) < 0.0001 && Math.abs(scaleY - 1) < 0.0001) {
+      hydrationTransformAdjustRef.current = null;
+      return;
+    }
+    const scaled = JSON.parse(JSON.stringify(source || {}));
+    Object.keys(scaled).forEach((panelId) => {
+      const transform = scaled[panelId];
+      if (!transform) return;
+      transform.positionX = (transform.positionX || 0) * scaleX;
+      transform.positionY = (transform.positionY || 0) * scaleY;
+    });
+    setAllPanelTransforms(scaled);
+    hydrationTransformAdjustRef.current = null;
+  }, [setAllPanelTransforms]);
 
   // Track whether current state differs from last saved snapshot (for UI enablement)
   useEffect(() => {
@@ -658,11 +736,24 @@ export default function CollagePage() {
       };
     });
 
+    const normalizedTransforms = (snap.panelTransforms && typeof snap.panelTransforms === 'object')
+      ? JSON.parse(JSON.stringify(snap.panelTransforms))
+      : {};
+
     const snapshotState = {
       images: imagesForState,
       mapping: (snap.panelImageMapping && typeof snap.panelImageMapping === 'object') ? snap.panelImageMapping : {},
-      transforms: (snap.panelTransforms && typeof snap.panelTransforms === 'object') ? snap.panelTransforms : {},
+      transforms: normalizedTransforms,
       texts: (snap.panelTexts && typeof snap.panelTexts === 'object') ? snap.panelTexts : {},
+    };
+
+    hydrationTransformAdjustRef.current = {
+      width: snap.canvasWidth || null,
+      height: snap.canvasHeight || null,
+      panelDimensions: (snap.panelDimensions && typeof snap.panelDimensions === 'object')
+        ? JSON.parse(JSON.stringify(snap.panelDimensions))
+        : null,
+      transforms: JSON.parse(JSON.stringify(normalizedTransforms)),
     };
 
     setHydrationMode(true);
@@ -675,8 +766,10 @@ export default function CollagePage() {
       if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
       setCustomLayout(restoredCustom);
       setLiveCustomLayout(restoredCustom || null);
+      setLivePanelDimensions(null);
       applySnapshotState(snapshotState);
       setActiveProjectId(projectId);
+      setPreviewResetKey((key) => key + 1);
     };
 
     if (typeof unstable_batchedUpdates === 'function') {
@@ -722,6 +815,15 @@ export default function CollagePage() {
   // Keep a stable ref to the loader to avoid effect re-runs from changing callback identities
   const loadProjectByIdRef = useRef(safeLoadProjectById);
   useEffect(() => { loadProjectByIdRef.current = safeLoadProjectById; }, [safeLoadProjectById]);
+
+  const triggerProjectLoad = useCallback((id, { allowTransformCarry = false } = {}) => {
+    if (!id || typeof loadProjectByIdRef.current !== 'function') return Promise.resolve();
+    if (allowTransformCarry) setAllowHydrationTransformCarry(true);
+    const promise = Promise.resolve(loadProjectByIdRef.current(id));
+    return promise.finally(() => {
+      if (allowTransformCarry) setAllowHydrationTransformCarry(false);
+    });
+  }, [setAllowHydrationTransformCarry]);
 
   // Centralized save used by autosave queue and manual save
   const saveProjectNow = useCallback(async ({ showToast = false, forceThumbnail = false } = {}) => {
@@ -922,16 +1024,10 @@ export default function CollagePage() {
   // Use a ref-backed loader to avoid re-running due to changing callback identity
   useEffect(() => {
     if (hasProjectsAccess && projectId) {
-      (async () => {
-        try {
-          await loadProjectByIdRef.current(projectId);
-        } catch (_) {
-          // ignore
-        }
-      })();
+      void triggerProjectLoad(projectId).catch(() => {});
     }
     return () => {};
-  }, [hasProjectsAccess, projectId]);
+  }, [hasProjectsAccess, projectId, triggerProjectLoad]);
 
   const handleRemoteProjectUpdate = useCallback((record) => {
     if (!record || record.id !== activeProjectId) return;
@@ -947,10 +1043,7 @@ export default function CollagePage() {
     if (loadingProjectRef.current || isHydratingProjectRef.current) return;
     if (!isDirtyRef.current) {
       acknowledgedRemoteVersionRef.current = remoteVersion;
-      const loader = loadProjectByIdRef.current;
-      if (typeof loader === 'function') {
-        Promise.resolve(loader(record.id)).catch(() => {});
-      }
+      triggerProjectLoad(record.id).catch(() => {});
       return;
     }
     if ((acknowledgedRemoteVersionRef.current ?? -1) >= remoteVersion) return;
@@ -959,7 +1052,7 @@ export default function CollagePage() {
       version: remoteVersion,
       updatedAt: record.updatedAt || null,
     });
-  }, [activeProjectId]);
+  }, [activeProjectId, triggerProjectLoad]);
 
   useEffect(() => {
     if (!hasProjectsAccess || !activeProjectId) {
@@ -986,11 +1079,8 @@ export default function CollagePage() {
       acknowledgedRemoteVersionRef.current = targetVersion;
     }
     setRemoteUpdateWarning(null);
-    const loader = loadProjectByIdRef.current;
-    if (typeof loader === 'function') {
-      Promise.resolve(loader(activeProjectId)).catch(() => {});
-    }
-  }, [activeProjectId, remoteUpdateWarning]);
+    triggerProjectLoad(activeProjectId).catch(() => {});
+  }, [activeProjectId, remoteUpdateWarning, triggerProjectLoad]);
 
   const handleRemoteDismiss = useCallback(() => {
     const targetVersion = typeof remoteUpdateWarning?.version === 'number' ? remoteUpdateWarning.version : null;
@@ -1060,6 +1150,7 @@ export default function CollagePage() {
     if (loadingProjectRef.current) return;
     setCustomLayout(null);
     setLiveCustomLayout(null);
+    setLivePanelDimensions(null);
   }, [selectedTemplate?.id, selectedAspectRatio, panelCount]);
 
   // New/open/delete handlers removed along with inline projects view
@@ -1123,6 +1214,7 @@ export default function CollagePage() {
       clearImages();
       setCustomLayout(null);
       setLiveCustomLayout(null);
+      setLivePanelDimensions(null);
       // Also reset layout to default 2 panels to avoid leftover empty panels
       if (typeof setPanelCount === 'function') {
         setPanelCount(2);
@@ -1384,15 +1476,17 @@ export default function CollagePage() {
     // Render tracking for timely thumbnail capture
     renderSig: currentSig,
     onPreviewRendered: (sig) => { lastRenderedSigRef.current = sig; setRenderBump(b => b + 1); },
-    onPreviewMetaChange: ({ canvasWidth, canvasHeight, customLayout }) => {
+    onPreviewMetaChange: ({ canvasWidth, canvasHeight, customLayout, panelDimensions }) => {
       setPreviewCanvasWidth(canvasWidth || null);
       setPreviewCanvasHeight(canvasHeight || null);
+      setLivePanelDimensions(panelDimensions || null);
       setLiveCustomLayout((prev) => {
         if (!customLayout) {
           return prev ? null : prev;
         }
         return customLayout;
       });
+      maybeNormalizeHydratedTransforms({ canvasWidth: canvasWidth || null, canvasHeight: canvasHeight || null, panelDimensions: panelDimensions || null });
     },
     // Editing session tracking to gate thumbnail updates
     onEditingSessionChange: handleEditingSessionChange,
@@ -1400,6 +1494,8 @@ export default function CollagePage() {
     customLayout,
     customLayoutKey: useMemo(() => `${selectedTemplate?.id || 'none'}|${panelCount}|${selectedAspectRatio}`, [selectedTemplate?.id, panelCount, selectedAspectRatio]),
     isHydratingProject,
+    allowHydrationTransformCarry,
+    canvasResetKey: previewResetKey,
   };
 
   // Log mapping changes for debugging

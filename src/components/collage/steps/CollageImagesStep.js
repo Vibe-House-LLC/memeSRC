@@ -60,6 +60,8 @@ const CollageImagesStep = ({
   // Optional persisted custom layout to initialize preview grid
   customLayout,
   customLayoutKey,
+  allowHydrationTransformCarry = false,
+  canvasResetKey = 0,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -166,6 +168,7 @@ const CollageImagesStep = ({
           position: 'relative'
         }} id="collage-preview-container">
           <CollagePreview 
+            canvasResetKey={canvasResetKey}
             selectedTemplate={selectedTemplate}
             selectedAspectRatio={selectedAspectRatio}
             panelCount={panelCount || 2} /* Ensure we always have a fallback */
@@ -203,6 +206,7 @@ const CollageImagesStep = ({
           customLayout={customLayout}
           customLayoutKey={customLayoutKey}
           isHydratingProject={isHydratingProject}
+          allowHydrationTransformCarry={allowHydrationTransformCarry}
         />
         </Box>
         {/* Hidden file input for Add Image button */}
@@ -262,6 +266,8 @@ CollageImagesStep.propTypes = {
   onGenerateNudgeRequested: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
   isHydratingProject: PropTypes.bool,
+  allowHydrationTransformCarry: PropTypes.bool,
+  canvasResetKey: PropTypes.number,
 };
 
 export default CollageImagesStep;

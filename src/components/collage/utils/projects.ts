@@ -123,6 +123,7 @@ export function buildSnapshotFromState({
   // Optional: capture the live preview canvas size to scale transforms correctly when rendering thumbnails
   canvasWidth,
   canvasHeight,
+  panelDimensions,
 }: {
   selectedImages: Array<
     | string
@@ -145,6 +146,7 @@ export function buildSnapshotFromState({
   customLayout?: unknown;
   canvasWidth?: number;
   canvasHeight?: number;
+  panelDimensions?: Record<string, { width: number; height: number } | null> | null;
 }): CollageSnapshot {
   const images = (selectedImages || []).map((img) => {
     const ref: { libraryKey?: string; url?: string; subtitle?: string; subtitleShowing?: boolean } = {};
@@ -186,6 +188,15 @@ export function buildSnapshotFromState({
     // Persist the preview canvas size used when saving so thumbnails can scale pixel-based transforms
     canvasWidth: typeof canvasWidth === 'number' ? canvasWidth : undefined,
     canvasHeight: typeof canvasHeight === 'number' ? canvasHeight : undefined,
+    panelDimensions: (() => {
+      if (!panelDimensions || typeof panelDimensions !== 'object') return undefined;
+      const entries = Object.entries(panelDimensions).filter(([, value]) => value && typeof value.width === 'number' && typeof value.height === 'number');
+      if (entries.length === 0) return undefined;
+      return entries.reduce((acc, [panelId, value]) => {
+        acc[panelId] = { width: value.width, height: value.height };
+        return acc;
+      }, {} as Record<string, { width: number; height: number }>);
+    })(),
   };
 }
 

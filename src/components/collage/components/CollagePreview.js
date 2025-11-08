@@ -46,6 +46,7 @@ const getAspectRatioValue = (selectedAspectRatio) => {
  * Wraps DynamicCollagePreview and adds panel interaction functionality
  */
 const CollagePreview = ({
+  canvasResetKey = 0,
   selectedTemplate,
   selectedAspectRatio,
   panelCount,
@@ -75,6 +76,7 @@ const CollagePreview = ({
   // Optional persisted custom layout to initialize preview grid
   customLayout,
   customLayoutKey,
+  allowHydrationTransformCarry = false,
 }) => {
   const fileInputRef = useRef(null);
   const theme = useTheme();
@@ -579,6 +581,7 @@ const CollagePreview = ({
   return (
     <Box sx={{ position: 'relative' }}>
       <CanvasCollagePreview
+        key={`canvas-preview-${canvasResetKey}`}
         selectedTemplate={selectedTemplate}
         selectedAspectRatio={selectedAspectRatio}
         panelCount={panelCount}
@@ -611,6 +614,7 @@ const CollagePreview = ({
         // Initialize with a custom grid when reloading a project
         initialCustomLayout={customLayout}
         customLayoutKey={customLayoutKey}
+        allowHydrationTransformCarry={allowHydrationTransformCarry}
       />
       
       {/* Hidden file input */}
@@ -743,6 +747,8 @@ CollagePreview.propTypes = {
   onPreviewRendered: PropTypes.func,
   onPreviewMetaChange: PropTypes.func,
   onEditingSessionChange: PropTypes.func,
+  allowHydrationTransformCarry: PropTypes.bool,
+  canvasResetKey: PropTypes.number,
 };
 
 export default CollagePreview; 
