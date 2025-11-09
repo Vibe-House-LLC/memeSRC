@@ -66,6 +66,7 @@ type UpsertProjectPayload = Partial<
 >;
 
 const templateCache = new Map<string, CollageProject>();
+let templateCacheComplete = false;
 let listInFlight: Promise<CollageProject[]> | null = null;
 type ThumbnailCacheEntry = { url: string; signature: string };
 const thumbnailUrlCache = new Map<string, ThumbnailCacheEntry>();
@@ -118,6 +119,7 @@ function replaceCache(records: CollageProject[]): void {
   records.forEach((record) => {
     templateCache.set(record.id, cloneProject(record));
   });
+  templateCacheComplete = true;
   notifyListeners();
 }
 
@@ -414,8 +416,9 @@ export async function loadProjects({ forceRefresh = false }: { forceRefresh?: bo
   }
   if (forceRefresh) {
     templateCache.clear();
+    templateCacheComplete = false;
   }
-  if (templateCache.size > 0 && !forceRefresh) {
+  if (templateCacheComplete && !forceRefresh) {
     return cacheToArray();
   }
   if (!listInFlight) {
@@ -554,6 +557,7 @@ export function clearTemplateCache(): void {
   templateCache.clear();
   listInFlight = null;
   thumbnailUrlCache.clear();
+  templateCacheComplete = false;
   notifyListeners();
 }
 
