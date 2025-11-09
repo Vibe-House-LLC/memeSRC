@@ -1854,49 +1854,22 @@ const CanvasCollagePreview = ({
   useEffect(() => {
     try {
       const canvas = canvasRef.current;
-      if (canvas) {
-        if (renderSig !== undefined) {
-          canvas.dataset.renderSig = renderSig;
-        }
-        // Tag current preview canvas size for snapshot consumers (e.g., thumbnail rendering)
-        canvas.dataset.previewWidth = String(componentWidth || 0);
-        canvas.dataset.previewHeight = String(componentHeight || 0);
-        // Expose custom layout to parent for snapshot persistence
-        if (customLayoutConfig) {
-          canvas.dataset.customLayout = JSON.stringify(customLayoutConfig);
-        } else if (canvas.dataset.customLayout) {
-          delete canvas.dataset.customLayout;
-        }
-        if (panelRects.length > 0) {
-          try {
-            const serializedPanelDims = panelRects.reduce((acc, rect) => {
-              acc[rect.panelId] = { width: rect.width, height: rect.height };
-              return acc;
-            }, {});
-            canvas.dataset.panelDimensions = JSON.stringify(serializedPanelDims);
-          } catch (_) {
-            // Ignore serialization issues
-          }
-        } else if (canvas.dataset.panelDimensions) {
-          delete canvas.dataset.panelDimensions;
-        }
-        // Also emit a callback with the same info to avoid DOM races
-        if (typeof onPreviewMetaChange === 'function') {
-          const panelDimensions = {};
-          panelRects.forEach((rect) => {
-            panelDimensions[rect.panelId] = { width: rect.width, height: rect.height };
-          });
-          onPreviewMetaChange({
-            canvasWidth: componentWidth || 0,
-            canvasHeight: componentHeight || 0,
-            customLayout: customLayoutConfig || null,
-            renderSig,
-            panelDimensions,
-          });
-        }
-        if (typeof onRendered === 'function') {
-          onRendered(renderSig);
-        }
+      if (!canvas) return;
+      if (typeof onPreviewMetaChange === 'function') {
+        const panelDimensions = {};
+        panelRects.forEach((rect) => {
+          panelDimensions[rect.panelId] = { width: rect.width, height: rect.height };
+        });
+        onPreviewMetaChange({
+          canvasWidth: componentWidth || 0,
+          canvasHeight: componentHeight || 0,
+          customLayout: customLayoutConfig || null,
+          renderSig,
+          panelDimensions,
+        });
+      }
+      if (typeof onRendered === 'function') {
+        onRendered(renderSig);
       }
     } catch (_) {
       // ignore
@@ -1907,10 +1880,6 @@ const CanvasCollagePreview = ({
   useEffect(() => {
     const anyPanelInTransformMode = Object.values(isTransformMode).some(Boolean);
     const active = anyPanelInTransformMode || isReorderMode || (textEditingPanel !== null) || isDraggingBorder;
-    try {
-      const canvas = canvasRef.current;
-      if (canvas) canvas.dataset.editing = active ? '1' : '0';
-    } catch (_) { /* ignore */ }
     if (typeof onEditingSessionChange === 'function') {
       onEditingSessionChange(active);
     }

@@ -468,59 +468,34 @@ export default function CollagePage() {
   useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
   const maybeNormalizeHydratedTransforms = useCallback(({ canvasWidth = null, canvasHeight = null, panelDimensions = null } = {}) => {
     const pending = hydrationTransformAdjustRef.current;
-    if (!pending) return;
-    const source = pending.transforms || {};
-    const savedPanelDims = pending.panelDimensions || null;
-    if (savedPanelDims && (!panelDimensions || Object.keys(panelDimensions).length === 0)) {
-      // Wait for actual panel dimensions before scaling so we don't misalign focal points.
-      return;
-    }
+    if (!pending || !pending.transforms) return;
+    const savedPanelDims = pending.savedPanelDimensions || null;
+    const hasSavedPanels = savedPanelDims && Object.keys(savedPanelDims).length > 0;
+    const nextPanelDimensions = panelDimensions && Object.keys(panelDimensions).length > 0 ? panelDimensions : null;
 
-    const scaleWithPanels = () => {
-      if (!savedPanelDims || !panelDimensions) return false;
-      const scaled = JSON.parse(JSON.stringify(source || {}));
-      let changed = false;
-      Object.keys(savedPanelDims).forEach((panelId) => {
-        const saved = savedPanelDims[panelId];
-        const current = panelDimensions[panelId];
-        if (!saved || !current) return;
-        if (!saved.width || !saved.height || !current.width || !current.height) return;
-        const scaleX = current.width / saved.width;
-        const scaleY = current.height / saved.height;
-        if (Math.abs(scaleX - 1) < 0.0001 && Math.abs(scaleY - 1) < 0.0001) return;
-        const transform = scaled[panelId];
-        if (!transform) return;
-        transform.positionX = (transform.positionX || 0) * scaleX;
-        transform.positionY = (transform.positionY || 0) * scaleY;
-        changed = true;
-      });
-      if (changed) {
-        setAllPanelTransforms(scaled);
-        hydrationTransformAdjustRef.current = null;
-      }
-      return changed;
-    };
+    // Wait for actual panel dimensions before scaling so we don't misalign focal points.
+    if (hasSavedPanels && !nextPanelDimensions) return;
 
-    if (scaleWithPanels()) return;
+    const nextCanvasWidth = typeof canvasWidth === 'number' && canvasWidth > 0 ? canvasWidth : null;
+    const nextCanvasHeight = typeof canvasHeight === 'number' && canvasHeight > 0 ? canvasHeight : null;
 
-    const baseWidth = pending.width || canvasWidth;
-    const baseHeight = pending.height || canvasHeight;
-    if (!baseWidth || !canvasWidth) return;
-    const scaleX = canvasWidth / baseWidth;
-    const scaleY = baseHeight && canvasHeight ? canvasHeight / baseHeight : scaleX;
-    if (Math.abs(scaleX - 1) < 0.0001 && Math.abs(scaleY - 1) < 0.0001) {
-      hydrationTransformAdjustRef.current = null;
-      return;
-    }
-    const scaled = JSON.parse(JSON.stringify(source || {}));
-    Object.keys(scaled).forEach((panelId) => {
-      const transform = scaled[panelId];
-      if (!transform) return;
-      transform.positionX = (transform.positionX || 0) * scaleX;
-      transform.positionY = (transform.positionY || 0) * scaleY;
+    // If we lack both panel dimensions and canvas size we can't scale yet.
+    if (!nextPanelDimensions && (!nextCanvasWidth || !nextCanvasHeight)) return;
+
+    const scaled = scaleTransforms(pending.transforms, {
+      savedCanvasWidth: pending.savedCanvasWidth || undefined,
+      savedCanvasHeight: pending.savedCanvasHeight || undefined,
+      savedPanelDimensions: savedPanelDims || undefined,
+      currentCanvasWidth: nextCanvasWidth || 0,
+      currentCanvasHeight: nextCanvasHeight || 0,
+      currentPanelDimensions: nextPanelDimensions || undefined,
     });
-    setAllPanelTransforms(scaled);
+
+    // Clear the pending ref even if no scaling is needed to avoid repeated checks.
     hydrationTransformAdjustRef.current = null;
+    if (!scaled) return;
+
+    setAllPanelTransforms(scaled);
   }, [setAllPanelTransforms]);
   useEffect(() => {
     if (!remoteHydrationGuardRef.current) return;
@@ -805,9 +780,9 @@ export default function CollagePage() {
     };
 
     hydrationTransformAdjustRef.current = {
-      width: snap.canvasWidth || null,
-      height: snap.canvasHeight || null,
-      panelDimensions: (snap.panelDimensions && typeof snap.panelDimensions === 'object')
+      savedCanvasWidth: typeof snap.canvasWidth === 'number' ? snap.canvasWidth : null,
+      savedCanvasHeight: typeof snap.canvasHeight === 'number' ? snap.canvasHeight : null,
+      savedPanelDimensions: (snap.panelDimensions && typeof snap.panelDimensions === 'object')
         ? JSON.parse(JSON.stringify(snap.panelDimensions))
         : null,
       transforms: JSON.parse(JSON.stringify(normalizedTransforms)),
