@@ -76,10 +76,6 @@ const [borderThickness, setBorderThickness] = useState(() => {
 
   // Ref to track previous border thickness for transform adjustment
   const prevBorderThickness = useRef(null);
-  const hydrationModeRef = useRef(false);
-  const setHydrationMode = useCallback((isHydrating) => {
-    hydrationModeRef.current = isHydrating;
-  }, []);
 
   useEffect(() => {
     localStorage.setItem('meme-src-collage-custom-color', borderColor);
@@ -122,10 +118,6 @@ const [borderThickness, setBorderThickness] = useState(() => {
 
   // Adjust transforms when border thickness changes
   useEffect(() => {
-    if (hydrationModeRef.current) {
-      prevBorderThickness.current = borderThickness;
-      return;
-    }
     if (prevBorderThickness.current !== null && prevBorderThickness.current !== borderThickness) {
       // Simply reset transforms when border thickness changes
       // Let DynamicCollagePreview recalculate initial scale for new panel sizes
@@ -194,9 +186,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
 
     // Reset all transforms when layout-related properties change
     // This ensures images get repositioned/rescaled appropriately for the new layout
-    if (hydrationModeRef.current) {
-      hydrationModeRef.current = false;
-    } else if (hasChanges) {
+    if (hasChanges) {
       resetPanelTransforms();
       // Don't reset texts - let the subtitle auto-assignment effect handle text reassignment
       if (DEBUG_MODE) console.log("Layout change detected, resetting transforms only");
@@ -739,7 +729,6 @@ const [borderThickness, setBorderThickness] = useState(() => {
     replaceImage, // Replaces image object
     clearImages, // Clears images, mapping, transforms & texts
     applySnapshotState,
-    setHydrationMode,
     updatePanelImageMapping, // UPDATED: Also auto-assigns subtitles
     updatePanelTransform, // Updates transform for a panel
     setAllPanelTransforms,

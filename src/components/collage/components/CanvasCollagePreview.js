@@ -474,7 +474,6 @@ const CanvasCollagePreview = ({
   canEditImage = false, // new: control visibility of magic edit option
   onSaveGestureDetected, // new: notify parent when long-press/right-click implies save intent
   isFrameActionSuppressed, // optional: function to indicate suppression window
-  isHydratingProject = false,
   aspectRatioValue = 1,
   panelImageMapping = {},
   updatePanelImageMapping,
@@ -497,6 +496,7 @@ const CanvasCollagePreview = ({
   customLayoutKey,
   // New: report preview metrics and layout without DOM queries
   onPreviewMetaChange,
+  isHydratingProject = false,
   allowHydrationTransformCarry = false,
 }) => {
   const theme = useTheme();
@@ -4025,7 +4025,6 @@ CanvasCollagePreview.propTypes = {
   canEditImage: PropTypes.bool,
   onSaveGestureDetected: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
-  isHydratingProject: PropTypes.bool,
   aspectRatioValue: PropTypes.number,
   panelImageMapping: PropTypes.object,
   updatePanelImageMapping: PropTypes.func,
@@ -4042,6 +4041,7 @@ CanvasCollagePreview.propTypes = {
   onRendered: PropTypes.func,
   onEditingSessionChange: PropTypes.func,
   onPreviewMetaChange: PropTypes.func,
+  isHydratingProject: PropTypes.bool,
   allowHydrationTransformCarry: PropTypes.bool,
 };
 
