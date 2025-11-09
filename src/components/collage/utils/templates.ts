@@ -66,11 +66,13 @@ type UpsertProjectPayload = Partial<
 >;
 
 const templateCache = new Map<string, CollageProject>();
+let templateCacheComplete = false;
 let listInFlight: Promise<CollageProject[]> | null = null;
 type ThumbnailCacheEntry = { url: string; signature: string };
 const thumbnailUrlCache = new Map<string, ThumbnailCacheEntry>();
 type TemplatesListener = (templates: CollageProject[]) => void;
 const templateListeners = new Set<TemplatesListener>();
+type ProjectListener = (project: CollageProject) => void;
 
 type GraphQLSubscriptionHandle = { unsubscribe?: () => void };
 let activeTemplateSubscriptions: GraphQLSubscriptionHandle[] = [];
@@ -117,6 +119,7 @@ function replaceCache(records: CollageProject[]): void {
   records.forEach((record) => {
     templateCache.set(record.id, cloneProject(record));
   });
+  templateCacheComplete = true;
   notifyListeners();
 }
 
@@ -413,8 +416,9 @@ export async function loadProjects({ forceRefresh = false }: { forceRefresh?: bo
   }
   if (forceRefresh) {
     templateCache.clear();
+    templateCacheComplete = false;
   }
-  if (templateCache.size > 0 && !forceRefresh) {
+  if (templateCacheComplete && !forceRefresh) {
     return cacheToArray();
   }
   if (!listInFlight) {
@@ -553,6 +557,7 @@ export function clearTemplateCache(): void {
   templateCache.clear();
   listInFlight = null;
   thumbnailUrlCache.clear();
+  templateCacheComplete = false;
   notifyListeners();
 }
 
@@ -575,6 +580,79 @@ export function subscribeToTemplates(
     if (templateListeners.size === 0) {
       stopTemplateSubscriptions();
     }
+  };
+}
+
+export function subscribeToProject(
+  projectId: string,
+  listener: ProjectListener
+): () => void {
+  if (!projectId) return () => {};
+  let cancelled = false;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let subscription: GraphQLSubscriptionHandle | null = null;
+
+  const cleanup = () => {
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+    if (subscription) {
+      try {
+        subscription.unsubscribe?.();
+      } catch (_) {
+        // ignore
+      }
+      subscription = null;
+    }
+  };
+
+  const start = async () => {
+    cleanup();
+    if (cancelled) return;
+    try {
+      const identityId = await getIdentityId();
+      const variables: Record<string, unknown> = {
+        filter: { id: { eq: projectId } },
+      };
+      if (identityId) {
+        variables.ownerIdentityId = identityId;
+      }
+      const observable: any = API.graphql(graphqlOperation(onUpdateTemplate, variables));
+      if (!observable || typeof observable.subscribe !== 'function') {
+        if (isDev()) console.warn('[templates] Project subscription observable missing subscribe');
+        return;
+      }
+      subscription = observable.subscribe({
+        next: (payload: any) => {
+          if (cancelled) return;
+          const raw = payload?.value?.data?.onUpdateTemplate;
+          if (!raw || raw.id !== projectId) return;
+          const normalized = normalizeTemplate(raw);
+          cacheProject(normalized);
+          listener(cloneProject(normalized));
+        },
+        error: (err: unknown) => {
+          if (isDev()) console.warn(`[templates] Project ${projectId} subscription error`, err);
+          cleanup();
+          if (!cancelled) {
+            retryTimer = setTimeout(start, SUBSCRIPTION_RETRY_DELAY_MS);
+          }
+        },
+      });
+    } catch (err) {
+      if (isDev()) console.warn(`[templates] Failed to subscribe to project ${projectId}`, err);
+      if (!cancelled) {
+        retryTimer = setTimeout(start, SUBSCRIPTION_RETRY_DELAY_MS);
+      }
+    }
+  };
+
+  void start();
+
+  return () => {
+    cancelled = true;
+    cleanup();
   };
 }
 

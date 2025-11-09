@@ -705,6 +705,10 @@ const [borderThickness, setBorderThickness] = useState(() => {
     }
   }, []);
 
+  const setAllPanelTransforms = useCallback((nextTransforms) => {
+    setPanelTransforms(nextTransforms || {});
+  }, []);
+
   return {
     // State
           selectedImages, // Now [{ originalUrl, displayUrl, subtitle?, subtitleShowing?, metadata? }, ...]
@@ -738,6 +742,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     setHydrationMode,
     updatePanelImageMapping, // UPDATED: Also auto-assigns subtitles
     updatePanelTransform, // Updates transform for a panel
+    setAllPanelTransforms,
     updatePanelText, // NEW: Updates text configuration for a panel
     resetPanelTransforms, // Resets all transforms to defaults
     resetPanelTexts, // NEW: Resets all texts to defaults

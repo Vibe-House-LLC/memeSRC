@@ -25,6 +25,7 @@ export interface CollageSnapshot {
   customLayout?: unknown;
   canvasWidth?: number;
   canvasHeight?: number;
+  panelDimensions?: Record<string, { width: number; height: number }>;
 }
 
 export interface CollageProject {
