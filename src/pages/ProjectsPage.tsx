@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback, useContext } from 'react';
+import React, { useEffect, useState, useCallback, useContext, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Container, Stack } from '@mui/material';
+import { Alert, Box, Button, Container, Stack } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { Add } from '@mui/icons-material';
@@ -16,11 +16,20 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<CollageProject[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [metaByKey, setMetaByKey] = useState<Record<string, { tags: string[]; description: string; defaultCaption: string }>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { user } = useContext(UserContext);
+  const mountedRef = useRef(true);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const isAdmin = user?.['cognito:groups']?.includes('admins');
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Gate this page for non-admins; redirect to single-page collage
   useEffect(() => {
@@ -31,34 +40,48 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     const unsubscribe = subscribeToTemplates((next) => {
+      if (!mountedRef.current) return;
       setProjects(next);
     });
     return () => {
       unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchProjects = async (options?: { forceRefresh?: boolean }) => {
-      try {
-        const next = await loadProjects(options);
-        if (mounted) setProjects(next);
-      } catch (err) {
-        if (mounted && process.env.NODE_ENV !== 'production') {
+  const fetchProjects = useCallback(async (options?: { forceRefresh?: boolean; showLoading?: boolean }) => {
+    const { forceRefresh = false, showLoading = true } = options || {};
+    const shouldShowLoading = showLoading !== false;
+    if (shouldShowLoading && mountedRef.current) {
+      setIsLoading(true);
+      setLoadError(null);
+    }
+    try {
+      const next = await loadProjects({ forceRefresh });
+      if (!mountedRef.current) return;
+      setProjects(next);
+      setLoadError(null);
+    } catch (err) {
+      if (mountedRef.current) {
+        if (process.env.NODE_ENV !== 'production') {
           // eslint-disable-next-line no-console
           console.error('[ProjectsPage] Failed to load templates', err);
         }
+        setLoadError('We could not load your memes. Please try again.');
       }
-    };
-    fetchProjects();
-    const onFocus = () => { void fetchProjects({ forceRefresh: true }); };
+    } finally {
+      if (shouldShowLoading && mountedRef.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [loadProjects]);
+
+  useEffect(() => {
+    void fetchProjects({ showLoading: true });
+    const onFocus = () => { void fetchProjects({ forceRefresh: true, showLoading: false }); };
     window.addEventListener('focus', onFocus);
     return () => {
-      mounted = false;
       window.removeEventListener('focus', onFocus);
     };
-  }, [loadProjects]);
+  }, [fetchProjects]);
 
   // Background fetch default captions for images referenced by projects
   useEffect(() => {
@@ -106,6 +129,10 @@ export default function ProjectsPage() {
       }
     }
   }, []);
+
+  const handleRetryFetch = useCallback(() => {
+    void fetchProjects({ forceRefresh: true, showLoading: true });
+  }, [fetchProjects]);
 
   const normalizedQuery = React.useMemo(() => normalizeString(searchQuery), [searchQuery]);
 
@@ -158,12 +185,27 @@ export default function ProjectsPage() {
           <Box sx={{ flex: 1 }} />
         </Stack>
       )}
+      {loadError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleRetryFetch}>
+              Retry
+            </Button>
+          }
+        >
+          {loadError}
+        </Alert>
+      )}
       <ProjectPicker
         projects={filteredProjects}
         onOpen={handleOpen}
         onDelete={handleDelete}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        isLoading={isLoading}
+        hasError={Boolean(loadError)}
       />
 
       {/* Bottom Action Bar (mobile-first, consistent with editor) */}

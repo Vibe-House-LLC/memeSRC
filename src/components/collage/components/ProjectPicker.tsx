@@ -124,10 +124,21 @@ export type ProjectPickerProps = BoxProps & {
   // Optional search controls rendered just above the list
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
+  isLoading?: boolean;
+  hasError?: boolean;
 };
 
 export default function ProjectPicker(props: ProjectPickerProps) {
-  const { projects, onOpen, onDelete, searchQuery, onSearchChange, ...rest } = props; // keep onCreateNew in props type for API consistency
+  const {
+    projects,
+    onOpen,
+    onDelete,
+    searchQuery,
+    onSearchChange,
+    isLoading = false,
+    hasError = false,
+    ...rest
+  } = props; // keep onCreateNew in props type for API consistency
   const recent = useMemo(() => {
     try {
       return [...projects]
@@ -137,6 +148,10 @@ export default function ProjectPicker(props: ProjectPickerProps) {
       return projects.slice(0, 15);
     }
   }, [projects]);
+  const showRecent = !isLoading && recent.length > 0;
+  const showEmptyState = !isLoading && !hasError && projects.length === 0 && !searchQuery;
+  const showSearch = !isLoading && typeof searchQuery === 'string' && typeof onSearchChange === 'function';
+  const showNoResults = !isLoading && !hasError && projects.length === 0 && Boolean(searchQuery);
 
   return (
     <Box sx={{ width: '100%' }} {...rest}>
@@ -156,7 +171,7 @@ export default function ProjectPicker(props: ProjectPickerProps) {
       </Stack>
 
       {/* Recent scroller */}
-      {recent.length > 0 && (
+      {showRecent && (
         <Box sx={{ mb: 1.5 }} aria-label="Recent Edits">
           <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
             Recent Edits
@@ -166,14 +181,40 @@ export default function ProjectPicker(props: ProjectPickerProps) {
       )}
 
 
-      {projects.length === 0 && !searchQuery ? (
+      {isLoading ? (
+        <>
+          <Typography
+            variant="subtitle2"
+            sx={{ mt: 1, mb: 1, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}
+            role="status"
+            aria-live="polite"
+          >
+            Loading your memes...
+          </Typography>
+          <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div key={`project-loading-${idx}`}>
+                <Skeleton
+                  variant="rectangular"
+                  sx={(theme) => ({
+                    width: '100%',
+                    height: 208,
+                    borderRadius: 1.5,
+                    bgcolor: alpha(theme.palette.text.primary, 0.08),
+                  })}
+                />
+              </div>
+            ))}
+          </Masonry>
+        </>
+      ) : showEmptyState ? (
         <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved memes yet. Click "Create Meme" to begin.</Box>
       ) : (
         <>
           <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.75, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
             All Memes
           </Typography>
-          {typeof searchQuery === 'string' && typeof onSearchChange === 'function' && (
+          {showSearch && (
             <Box sx={{ mb: 1.5 }}>
               <TextField
                 size="small"
@@ -200,7 +241,7 @@ export default function ProjectPicker(props: ProjectPickerProps) {
               />
             </Box>
           )}
-          {projects.length === 0 && searchQuery ? (
+          {showNoResults ? (
             <Box sx={{ mt: 4, color: 'text.secondary', textAlign: 'center' }}>
               <Typography variant="body1" sx={{ mb: 1 }}>No memes found matching "{searchQuery}"</Typography>
               <Typography variant="body2" color="text.secondary">Try a different search term or clear the search to see all your memes.</Typography>
