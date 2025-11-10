@@ -10,11 +10,11 @@
 - Add analytics/logging hooks (if available) to monitor visibility changes and shared link usage for future iteration.
 
 ## Next Action Items
-- **Clarify requirements**
-  - Confirm whether protected links expire, can be regenerated, or require authentication before viewing.
-  - Decide if public templates appear in global search immediately or require moderation/approval.
-  - Define how public user profiles are accessed (e.g., `/u/:handle`) and what data besides public templates they should show.
-  - Determine copywriting/UX needs for explaining visibility states within forms and confirmation dialogs.
+- **Clarify requirements** (resolved)
+  - Protected links remain valid indefinitely unless the owner switches the template back to private, which revokes access; no authentication, expiration, or regeneration UX needed.
+  - Public templates must clear a moderation/approval step before they appear in global search.
+  - Public profiles should live at `/u/:username` and display the user's public templates plus display name, avatar, and optional short bio.
+  - Visibility copy can stay lightweight via inline helper text or tooltips describing “Private,” “Protected link,” and “Public,” plus confirmation prompts when changing visibility.
 - **Backend investigations**
   - Identify schema files/models (likely Amplify resources) that currently define templates and map out changes needed for a `visibility` field plus any share-link tokens.
   - Trace all API endpoints/mutations that create/update/fetch templates to ensure the new field is persisted, validated, and returned to the client.
