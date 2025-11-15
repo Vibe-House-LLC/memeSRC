@@ -31,6 +31,7 @@ import listAliases from "./functions/list-aliases";
 import updateSourceMedia from "./functions/update-source-media";
 import { useEffect, useState, useContext, useMemo, type Dispatch, type SetStateAction } from "react";
 import { SnackbarContext } from "../../../../SnackbarContext";
+import { SeasonEpisodeSelection, compareEpisodeIds, formatSeasonEpisodeLabel } from "../../../../types/episodes";
 
 // Custom subscription that only requests non-nullable fields to avoid GraphQL errors
 const onUpdateSourceMedia = /* GraphQL */ `
@@ -43,6 +44,24 @@ const onUpdateSourceMedia = /* GraphQL */ `
     }
   }
 `;
+
+const sortEpisodeSelections = (episodes: SeasonEpisodeSelection[]): SeasonEpisodeSelection[] =>
+    [...episodes].sort((a, b) => {
+        if (a.season !== b.season) {
+            return a.season - b.season;
+        }
+        return compareEpisodeIds(a.episode, b.episode);
+    });
+
+const formatEpisodeSelectionSummary = (episodes: SeasonEpisodeSelection[]): string => {
+    if (!episodes.length) {
+        return '';
+    }
+
+    return sortEpisodeSelections(episodes)
+        .map(selection => formatSeasonEpisodeLabel(selection))
+        .join(', ');
+};
 
 // Placeholder component that mimics FileBrowser appearance
 const FileBrowserPlaceholder = ({
@@ -157,7 +176,7 @@ export default function AdminReviewUpload({
     const [sourceMediaStatus, setSourceMediaStatus] = useState<string>(initialStatus);
     const [approvingUpload, setApprovingUpload] = useState(false);
     const [indexing, setIndexing] = useState(false);
-    const [selectedEpisodes, setSelectedEpisodes] = useState<{ season: number; episode: number }[]>([]);
+    const [selectedEpisodes, setSelectedEpisodes] = useState<SeasonEpisodeSelection[]>([]);
     const [openApproveDialog, setOpenApproveDialog] = useState(false);
     const [useEmailNotifications, setUseEmailNotifications] = useState(false);
     const [emailAddresses, setEmailAddresses] = useState<string[]>([]);
@@ -371,7 +390,7 @@ export default function AdminReviewUpload({
         await handleApproveUpload(emailsToSend);
     };
 
-    const handleEpisodeSelectionChange = (episodes: { season: number; episode: number }[]) => {
+    const handleEpisodeSelectionChange = (episodes: SeasonEpisodeSelection[]) => {
         setSelectedEpisodes(episodes);
         console.log('Selected episodes updated:', episodes);
     };
@@ -385,7 +404,7 @@ export default function AdminReviewUpload({
             // Prepare the request body with the selected episodes
             const requestBody: {
                 sourceMediaId: string;
-                episodes: { season: number; episode: number }[];
+                episodes: SeasonEpisodeSelection[];
                 emailAddresses?: string[];
             } = {
                 sourceMediaId,
@@ -405,7 +424,12 @@ export default function AdminReviewUpload({
             });
             
             setSeverity('success');
-            setMessage(`Upload approved! Processing will begin shortly${selectedEpisodes.length > 0 ? ` for ${selectedEpisodes.length} selected episode${selectedEpisodes.length !== 1 ? 's' : ''}.` : '.'}`);
+            const summary = formatEpisodeSelectionSummary(selectedEpisodes);
+            setMessage(
+                summary
+                    ? `Upload approved! Processing will begin shortly for ${summary}.`
+                    : 'Upload approved! Processing will begin shortly.'
+            );
             setOpen(true);
         } catch (err) {
             console.error('Failed to approve upload:', err);
@@ -470,46 +494,52 @@ export default function AdminReviewUpload({
             {!loading && hasFiles && (
                 <>
                     {/* Approve Upload Button */}
-                    <Box sx={{ mb: 3, display: 'flex', justifyContent: 'left' }}>
-                        <Button
-                            variant="contained"
-                            size="medium"
-                            startIcon={
-                                approvingUpload ? (
-                                    <CircularProgress size={20} color="inherit" />
-                                ) : (
-                                    <ApproveIcon />
-                                )
-                            }
-                            onClick={handleOpenApproveDialog}
-                            disabled={!canApprove}
-                            color="success"
-                        >
-                            {approvingUpload ? 'Approving...' : 'Approve Upload'}
-                        </Button>
-                        {!hasSelectedEpisodes && isSourceMediaReady && (
-                            <Typography variant="body2" color="warning.main" sx={{ ml: 2, alignSelf: 'center' }}>
-                                Choose seasons or episodes to approve
-                            </Typography>
-                        )}
-                        {showIndexButton && (
+                    <Box sx={{ mb: hasSelectedEpisodes ? 1 : 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'left', flexWrap: 'wrap', gap: 2 }}>
                             <Button
                                 variant="contained"
                                 size="medium"
-                                sx={{ ml: 2 }}
                                 startIcon={
-                                    indexing ? (
+                                    approvingUpload ? (
                                         <CircularProgress size={20} color="inherit" />
                                     ) : (
-                                        <ReindexIcon />
+                                        <ApproveIcon />
                                     )
                                 }
-                                onClick={handleIndexAndPublish}
-                                disabled={indexing}
-                                color="primary"
+                                onClick={handleOpenApproveDialog}
+                                disabled={!canApprove}
+                                color="success"
                             >
-                                {indexing ? 'Starting…' : indexButtonLabel}
+                                {approvingUpload ? 'Approving...' : 'Approve Upload'}
                             </Button>
+                            {!hasSelectedEpisodes && isSourceMediaReady && (
+                                <Typography variant="body2" color="warning.main" sx={{ alignSelf: 'center' }}>
+                                    Choose seasons or episodes to approve
+                                </Typography>
+                            )}
+                            {showIndexButton && (
+                                <Button
+                                    variant="contained"
+                                    size="medium"
+                                    startIcon={
+                                        indexing ? (
+                                            <CircularProgress size={20} color="inherit" />
+                                        ) : (
+                                            <ReindexIcon />
+                                        )
+                                    }
+                                    onClick={handleIndexAndPublish}
+                                    disabled={indexing}
+                                    color="primary"
+                                >
+                                    {indexing ? 'Starting…' : indexButtonLabel}
+                                </Button>
+                            )}
+                        </Box>
+                        {hasSelectedEpisodes && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                Selected episodes: {formatEpisodeSelectionSummary(selectedEpisodes)}
+                            </Typography>
                         )}
                     </Box>
 
@@ -614,8 +644,18 @@ export default function AdminReviewUpload({
                 <DialogTitle>Send update notifications?</DialogTitle>
                 <DialogContent>
                     <Stack spacing={2} sx={{ mt: 1 }}>
+                        <Box>
+                            <Typography variant="body1">
+                                Approving this upload will begin processing the selected episodes.
+                            </Typography>
+                            {selectedEpisodes.length > 0 && (
+                                <Typography variant="body2" color="text.secondary">
+                                    Episodes: {formatEpisodeSelectionSummary(selectedEpisodes)}
+                                </Typography>
+                            )}
+                        </Box>
                         <Typography variant="body1">
-                            Approving this upload will begin processing the selected episodes. Would you like to receive email updates while it runs?
+                            Would you like to receive email updates while it runs?
                         </Typography>
                         <FormControlLabel
                             control={

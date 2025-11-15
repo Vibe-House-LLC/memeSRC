@@ -39,6 +39,94 @@ const s3 = new AWS.S3();
 // Initialize Lambda client
 const lambda = new AWS.Lambda();
 
+const EPISODE_ID_PATTERN = /^(\d+)([a-zA-Z]*)$/;
+
+const normalizeEpisodeId = (value) => String(value ?? '').trim();
+
+const parseEpisodeSortParts = (value) => {
+    const raw = normalizeEpisodeId(value);
+    const match = raw.match(EPISODE_ID_PATTERN);
+    const hasNumeric = Boolean(match);
+    const numeric = hasNumeric ? parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+    const suffix = hasNumeric ? (match[2] || '').toLowerCase() : raw.toLowerCase();
+
+    return {
+        raw,
+        numeric,
+        suffix,
+        hasNumeric
+    };
+};
+
+const compareEpisodeIds = (a, b) => {
+    const left = parseEpisodeSortParts(a);
+    const right = parseEpisodeSortParts(b);
+
+    if (left.hasNumeric && right.hasNumeric && left.numeric !== right.numeric) {
+        return left.numeric - right.numeric;
+    }
+
+    if (left.hasNumeric && !right.hasNumeric) {
+        return -1;
+    }
+
+    if (!left.hasNumeric && right.hasNumeric) {
+        return 1;
+    }
+
+    if (left.suffix === right.suffix) {
+        return left.raw.localeCompare(right.raw, undefined, { numeric: true, sensitivity: 'base' });
+    }
+
+    if (!left.suffix) {
+        return -1;
+    }
+
+    if (!right.suffix) {
+        return 1;
+    }
+
+    return left.suffix.localeCompare(right.suffix, undefined, { numeric: true, sensitivity: 'base' });
+};
+
+const extractEpisodeNumber = (episodeId) => {
+    const normalized = normalizeEpisodeId(episodeId);
+    const match = normalized.match(/^(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+};
+
+const normalizeEpisodeSelections = (episodes = []) => {
+    if (!Array.isArray(episodes)) {
+        return [];
+    }
+
+    return episodes
+        .map((episode) => {
+            const seasonNumber = Number(episode?.season);
+            const episodeId = normalizeEpisodeId(episode?.episode);
+
+            if (Number.isNaN(seasonNumber) || !episodeId) {
+                return null;
+            }
+
+            return {
+                season: seasonNumber,
+                episode: episodeId
+            };
+        })
+        .filter(Boolean);
+};
+
+const sortEpisodeSelections = (episodes = []) =>
+    [...episodes].sort((a, b) => {
+        const seasonA = a?.season ?? 0;
+        const seasonB = b?.season ?? 0;
+        if (seasonA !== seasonB) {
+            return seasonA - seasonB;
+        }
+        return compareEpisodeIds(a?.episode || '', b?.episode || '');
+    });
+
 const reviewUrl = process.env.ENV === 'beta'
     ? 'https://memesrc.com/dashboard/review-upload?sourceMediaId='
     : 'https://dev.memesrc.com/dashboard/review-upload?sourceMediaId=';
@@ -322,43 +410,47 @@ const getSeasonsFromDocs = async (docs, tvdbid) => {
 
 const getEpisodesFromDocs = async (docs, tvdbid, token) => {
     try {
-        // Create a map to group episodes by season
         const seasonEpisodesMap = new Map();
 
-        // Go through docs and group episodes by season
         for (const doc of docs) {
             if (doc.season && doc.episode) {
-                const seasonNum = doc.season;
-                const episodeNum = doc.episode;
+                const seasonNum = Number(doc.season);
+                const episodeId = normalizeEpisodeId(doc.episode);
+
+                if (Number.isNaN(seasonNum) || !episodeId) {
+                    continue;
+                }
 
                 if (!seasonEpisodesMap.has(seasonNum)) {
                     seasonEpisodesMap.set(seasonNum, new Set());
                 }
 
-                seasonEpisodesMap.get(seasonNum).add(episodeNum);
+                seasonEpisodesMap.get(seasonNum).add(episodeId);
             }
         }
 
-        // Convert to the desired format: { season: [episodes] }
         const result = {};
 
         for (const [season, episodeSet] of seasonEpisodesMap.entries()) {
-            const episodeNumbers = Array.from(episodeSet).sort((a, b) => a - b);
+            const episodeNumbers = Array.from(episodeSet).sort(compareEpisodeIds);
 
-            // Fetch episode data from TVDB for each episode
             const episodeDataPromises = episodeNumbers.map(async (episodeNumber) => {
+                const numericEpisode = extractEpisodeNumber(episodeNumber);
+                if (!numericEpisode) {
+                    return { storageEpisodeId: episodeNumber };
+                }
+
                 try {
-                    const episodeData = await getEpisodeFromTvdb(tvdbid, season, episodeNumber, token);
-                    return episodeData;
+                    const episodeData = await getEpisodeFromTvdb(tvdbid, season, numericEpisode, token);
+                    return episodeData ? { ...episodeData, storageEpisodeId: episodeNumber } : { storageEpisodeId: episodeNumber };
                 } catch (error) {
                     console.warn(`Failed to fetch episode data for S${season}E${episodeNumber}:`, error);
-                    return null;
+                    return { storageEpisodeId: episodeNumber };
                 }
             });
 
             const episodeData = await Promise.all(episodeDataPromises);
-            // Filter out any null results from failed API calls
-            result[season] = episodeData.filter(episode => episode !== null);
+            result[season] = episodeData.filter(Boolean);
         }
 
         return result;
@@ -366,7 +458,7 @@ const getEpisodesFromDocs = async (docs, tvdbid, token) => {
         console.error('Error getting episodes from docs:', error);
         throw error;
     }
-}
+};
 
 const addSeason = async (data) => {
 
@@ -568,10 +660,11 @@ const formatEpisodeSummary = (episodes = []) => {
         return 'None specified';
     }
 
-    return episodes
+    return sortEpisodeSelections(episodes)
         .map(({ season, episode }) => {
             const seasonLabel = season !== undefined && season !== null ? `S${String(season).padStart(2, '0')}` : 'S??';
-            const episodeLabel = episode !== undefined && episode !== null ? `E${String(episode).padStart(2, '0')}` : 'E??';
+            const episodeId = normalizeEpisodeId(episode);
+            const episodeLabel = episodeId ? `E${episodeId}` : 'E??';
             return `${seasonLabel}${episodeLabel}`;
         })
         .join(', ');
@@ -911,8 +1004,9 @@ const updateSeasonDocsFromEpisodes = async (alias, season) => {
         const listedObjects = await s3.listObjectsV2(listParams).promise();
         const episodeFolders = (listedObjects.CommonPrefixes || [])
             .map(prefix => prefix.Prefix.split('/').slice(-2, -1)[0])
-            .filter(folder => /^\d+$/.test(folder)) // Only numeric episode folders
-            .sort((a, b) => parseInt(a) - parseInt(b));
+            .map(folder => normalizeEpisodeId(folder))
+            .filter(folder => EPISODE_ID_PATTERN.test(folder))
+            .sort(compareEpisodeIds);
 
         console.log(`Found episode folders in season ${season}: ${episodeFolders.join(', ')}`);
 
@@ -952,10 +1046,9 @@ const updateSeasonDocsFromEpisodes = async (alias, season) => {
 
         // Sort by episode then subtitle_index
         allSeasonDocs.sort((a, b) => {
-            const episodeA = parseInt(a.episode) || 0;
-            const episodeB = parseInt(b.episode) || 0;
-            if (episodeA !== episodeB) {
-                return episodeA - episodeB;
+            const episodeComparison = compareEpisodeIds(a.episode || '', b.episode || '');
+            if (episodeComparison !== 0) {
+                return episodeComparison;
             }
             const subtitleIndexA = parseInt(a.subtitle_index) || 0;
             const subtitleIndexB = parseInt(b.subtitle_index) || 0;
@@ -1055,10 +1148,9 @@ const regenerateRootDocsFromSeasons = async (alias) => {
             if (seasonA !== seasonB) {
                 return seasonA - seasonB;
             }
-            const episodeA = parseInt(a.episode) || 0;
-            const episodeB = parseInt(b.episode) || 0;
-            if (episodeA !== episodeB) {
-                return episodeA - episodeB;
+            const episodeComparison = compareEpisodeIds(a.episode || '', b.episode || '');
+            if (episodeComparison !== 0) {
+                return episodeComparison;
             }
             const subtitleIndexA = parseInt(a.subtitle_index) || 0;
             const subtitleIndexB = parseInt(b.subtitle_index) || 0;
@@ -1398,8 +1490,9 @@ exports.handler = async (event) => {
         throw parseError;
     }
 
-    const { sourceMediaId, episodes = [] } = payload;
+    const { sourceMediaId, episodes: rawEpisodes = [] } = payload;
     const emailAddresses = extractEmailAddresses(payload);
+    const episodes = normalizeEpisodeSelections(rawEpisodes);
     console.log('SOURCE MEDIA ID: ', sourceMediaId);
     console.log('EPISODES: ', episodes);
     console.log('EMAIL ADDRESSES: ', emailAddresses);

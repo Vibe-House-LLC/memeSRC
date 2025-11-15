@@ -59,6 +59,7 @@ import {
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { ChromePicker } from 'react-color';
+import { SeasonEpisodeSelection, compareEpisodeIds, formatSeasonEpisodeLabel, isEpisodeId } from '../../../types/episodes';
 
 // Configure Storage to use custom prefix (empty string for bucket root access)
 Storage.configure({
@@ -139,19 +140,19 @@ interface FileBrowserProps {
     files?: FileItem[]; // Optional: if provided, use these instead of listing
     base64Columns?: string[]; // Optional: column names to decode from base64 in CSV files
     srcEditor?: boolean; // Optional: if true, show the src editor options
-    onEpisodeSelectionChange?: (selectedEpisodes: { season: number; episode: number }[]) => void; // Optional: callback for episode selection
+    onEpisodeSelectionChange?: (selectedEpisodes: EpisodeSelection[]) => void; // Optional: callback for episode selection
     refreshKey?: number; // Optional: when changed, triggers a refresh of the file list
     aliasName?: string; // Optional: current alias selection (if any)
     isExistingAlias?: boolean; // Optional: indicates the alias already exists in src/
 }
 
-type EpisodeSelection = { season: number; episode: number };
+type EpisodeSelection = SeasonEpisodeSelection;
 
 const FRAMES_PER_VIDEO = 250;
 
 const normalizePrefix = (prefix: string): string => prefix.replace(/\/+$/, '');
 
-const createEpisodeKey = (season: number, episode: number): string => `S${season}E${episode}`;
+const createEpisodeKey = (season: number, episode: string): string => `S${season}E${episode}`;
 
 const getRelativePath = (fullKey: string, basePath: string): string | null => {
     const normalizedBase = normalizePrefix(basePath);
@@ -224,13 +225,13 @@ const getSeriesEpisodeFrameCounts = async (seriesPath: string): Promise<Record<s
         }
 
         const season = Number(parts[0]);
-        const episode = Number(parts[1]);
+        const episodeSegment = parts[1];
 
-        if (Number.isNaN(season) || Number.isNaN(episode)) {
+        if (Number.isNaN(season) || !episodeSegment || !isEpisodeId(episodeSegment)) {
             return;
         }
 
-        const episodeKey = createEpisodeKey(season, episode);
+        const episodeKey = createEpisodeKey(season, episodeSegment);
         counts[episodeKey] = (counts[episodeKey] || 0) + FRAMES_PER_VIDEO;
     });
 
@@ -572,7 +573,7 @@ const JsonFileViewer: React.FC<{
     srcEditor?: boolean;
     selectedFile?: FileItem | null;
     onUnsavedChanges?: (hasChanges: boolean) => void;
-    selectedEpisodes?: { season: number; episode: number }[];
+    selectedEpisodes?: EpisodeSelection[];
     pathPrefix?: string;
     seriesId?: string;
     aliasName?: string;
@@ -1772,8 +1773,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
     const [loadingManualSearch, setLoadingManualSearch] = useState<boolean>(false);
     const [episodeSelectionDialogOpen, setEpisodeSelectionDialogOpen] = useState<boolean>(false);
     const [hasPromptedEpisodeSelection, setHasPromptedEpisodeSelection] = useState<boolean>(false);
-    const [selectedEpisodes, setSelectedEpisodes] = useState<{ season: number; episode: number }[]>([]);
-    const [availableSeasons, setAvailableSeasons] = useState<{ [season: number]: number[] }>({});
+    const [selectedEpisodes, setSelectedEpisodes] = useState<EpisodeSelection[]>([]);
+    const [availableSeasons, setAvailableSeasons] = useState<Record<number, string[]>>({});
 
     const fullPath = `${pathPrefix}/${id}`;
 
@@ -1841,7 +1842,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
 
     // Function to parse folder structure and extract seasons/episodes
     const parseSeasonEpisodeStructure = useCallback(() => {
-        const seasons: { [season: number]: number[] } = {};
+        const seasons: Record<number, Set<string>> = {};
         
         files.forEach(file => {
             if (file.isDirectory) return; // Skip directories, we'll infer structure from file paths
@@ -1849,33 +1850,28 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
             const pathParts = (file.relativePath || '').split('/').filter(part => part.length > 0);
             
             if (pathParts.length >= 2) {
-                // Check if first part is a season number
                 const seasonMatch = pathParts[0].match(/^(\d+)$/);
-                // Check if second part is an episode number
-                const episodeMatch = pathParts[1].match(/^(\d+)$/);
+                const episodeSegment = pathParts[1];
                 
-                if (seasonMatch && episodeMatch) {
+                if (seasonMatch && episodeSegment && isEpisodeId(episodeSegment)) {
                     const seasonNum = parseInt(seasonMatch[1], 10);
-                    const episodeNum = parseInt(episodeMatch[1], 10);
                     
                     if (!seasons[seasonNum]) {
-                        seasons[seasonNum] = [];
+                        seasons[seasonNum] = new Set();
                     }
                     
-                    if (!seasons[seasonNum].includes(episodeNum)) {
-                        seasons[seasonNum].push(episodeNum);
-                    }
+                    seasons[seasonNum]!.add(episodeSegment);
                 }
             }
         });
         
-        // Sort episodes within each season
+        const normalizedSeasons: Record<number, string[]> = {};
         Object.keys(seasons).forEach(seasonKey => {
             const seasonNum = parseInt(seasonKey, 10);
-            seasons[seasonNum].sort((a, b) => a - b);
+            normalizedSeasons[seasonNum] = Array.from(seasons[seasonNum]!).sort(compareEpisodeIds);
         });
         
-        setAvailableSeasons(seasons);
+        setAvailableSeasons(normalizedSeasons);
     }, [files]);
 
     const loadFileContent = useCallback(async (file: FileItem) => {
@@ -2013,15 +2009,15 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
     };
 
     const allEpisodes = useMemo(() => {
-        const episodes: { season: number; episode: number }[] = [];
+        const episodes: EpisodeSelection[] = [];
         const sortedSeasons = Object.keys(availableSeasons)
             .map(seasonKey => Number(seasonKey))
             .sort((a, b) => a - b);
 
         sortedSeasons.forEach(seasonNumber => {
-            const episodeList = [...(availableSeasons[seasonNumber] || [])].sort((a, b) => a - b);
-            episodeList.forEach(episodeNumber => {
-                episodes.push({ season: seasonNumber, episode: episodeNumber });
+            const episodeList = [...(availableSeasons[seasonNumber] || [])].sort(compareEpisodeIds);
+            episodeList.forEach(episodeId => {
+                episodes.push({ season: seasonNumber, episode: episodeId });
             });
         });
 
@@ -2043,8 +2039,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
         setEpisodeSelectionDialogOpen(false);
     };
 
-    const handleEpisodeToggle = (season: number, episode: number) => {
-        const episodeKey = { season, episode };
+    const handleEpisodeToggle = (season: number, episode: string) => {
+        const episodeKey: EpisodeSelection = { season, episode };
         const isSelected = selectedEpisodes.some(ep => ep.season === season && ep.episode === episode);
         
         if (isSelected) {
@@ -2066,14 +2062,14 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
 
     const handleSeasonToggle = (season: number) => {
         const episodes = availableSeasons[season] || [];
-        const seasonEpisodes = episodes.map(ep => ({ season, episode: ep }));
+        const seasonEpisodes: EpisodeSelection[] = episodes.map(ep => ({ season, episode: ep }));
         
         // Check if all episodes in this season are selected
         const allSelected = seasonEpisodes.every(ep => 
             selectedEpisodes.some(selected => selected.season === ep.season && selected.episode === ep.episode)
         );
         
-        let newSelection: { season: number; episode: number }[];
+        let newSelection: EpisodeSelection[];
         
         if (allSelected) {
             // Unselect all episodes in this season
@@ -2089,6 +2085,17 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
             onEpisodeSelectionChange(newSelection);
         }
     };
+
+    const sortedSelectedEpisodes = useMemo(
+        () =>
+            [...selectedEpisodes].sort((a, b) => {
+                if (a.season !== b.season) {
+                    return a.season - b.season;
+                }
+                return compareEpisodeIds(a.episode, b.episode);
+            }),
+        [selectedEpisodes]
+    );
 
     const isAllSelected = selectedEpisodes.length > 0 && selectedEpisodes.length === allEpisodes.length && allEpisodes.length > 0;
     const isPartialSelection = selectedEpisodes.length > 0 && selectedEpisodes.length < allEpisodes.length;
@@ -2186,10 +2193,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                         }
                         
                         if (pathParts.length >= 2) {
-                            // Check if second part is an episode number
-                            const episodeMatch = pathParts[1].match(/^(\d+)$/);
-                            if (episodeMatch) {
-                                const episodeNumber = episodeMatch[1];
+                            const episodeSegment = pathParts[1];
+                            if (episodeSegment && isEpisodeId(episodeSegment)) {
+                                const episodeNumber = episodeSegment;
                                 episodeFolders[seasonNumber].add(episodeNumber);
                                 
                                 // Track video files in episodes
@@ -2252,7 +2258,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
 
                 // Analyze episodes in this season
                 const episodes = episodeFolders[seasonNumber] || new Set();
-                for (const episodeNumber of Array.from(episodes).sort((a, b) => parseInt(a) - parseInt(b))) {
+                for (const episodeNumber of Array.from(episodes).sort(compareEpisodeIds)) {
                     const episodeData = {
                         folderExists: true, // We found files in this episode, so folder exists
                         docsExists: false,
@@ -2520,10 +2526,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                 if (pathParts.length === 3 && file.name === '_docs.csv') {
                     // This is an episode CSV (season/episode/_docs.csv)
                     const seasonMatch = pathParts[0].match(/^(\d+)$/);
-                    const episodeMatch = pathParts[1].match(/^(\d+)$/);
+                    const episodeSegment = pathParts[1];
                     
-                    if (seasonMatch && episodeMatch) {
-                        const episodeKey = `S${seasonMatch[1]}E${episodeMatch[1]}`;
+                    if (seasonMatch && episodeSegment && isEpisodeId(episodeSegment)) {
+                        const episodeKey = `S${seasonMatch[1]}E${episodeSegment}`;
                         episodeCsvFiles[episodeKey] = file;
                     }
                 }
@@ -2725,10 +2731,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                 if (pathParts.length === 3 && file.name === '_docs.csv') {
                     // This is an episode CSV (season/episode/_docs.csv)
                     const seasonMatch = pathParts[0].match(/^(\d+)$/);
-                    const episodeMatch = pathParts[1].match(/^(\d+)$/);
+                    const episodeSegment = pathParts[1];
                     
-                    if (seasonMatch && episodeMatch) {
-                        const episodeKey = `S${seasonMatch[1]}E${episodeMatch[1]}`;
+                    if (seasonMatch && episodeSegment && isEpisodeId(episodeSegment)) {
+                        const episodeKey = `S${seasonMatch[1]}E${episodeSegment}`;
                         episodeCsvFiles[episodeKey] = file;
                     }
                 }
@@ -3227,7 +3233,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                                                     .sort(([a], [b]) => parseInt(a) - parseInt(b))
                                                     .map(([seasonNumber, seasonData]) => {
                                                         const episodeEntries = Object.entries(seasonData.episodes)
-                                                            .sort(([a], [b]) => parseInt(a) - parseInt(b));
+                                                            .sort(([a], [b]) => compareEpisodeIds(a, b));
                                                         
                                                         return episodeEntries.length > 0 ? (
                                                             episodeEntries.map(([episodeNumber, episodeData], episodeIndex) => (
@@ -3508,6 +3514,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                                     const someSelected = seasonEpisodes.some(ep => 
                                         selectedEpisodes.some(selected => selected.season === ep.season && selected.episode === ep.episode)
                                     );
+                                    const sortedEpisodes = [...episodes].sort(compareEpisodeIds);
 
                                     return (
                                         <Card key={seasonStr} sx={{ mb: 2 }}>
@@ -3530,9 +3537,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                                                 <Box sx={{ ml: 4, mt: 1 }}>
                                                     <FormGroup>
                                                         <Grid container spacing={1}>
-                                                            {episodes
-                                                                .sort((a, b) => a - b)
-                                                                .map(episodeNum => {
+                                                            {sortedEpisodes.map(episodeNum => {
                                                                     const isSelected = selectedEpisodes.some(ep => 
                                                                         ep.season === seasonNum && ep.episode === episodeNum
                                                                     );
@@ -3617,6 +3622,18 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                             >
                                 Select Episodes ({selectedEpisodes.length})
                             </Button>
+                            {selectedEpisodes.length > 0 && (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {sortedSelectedEpisodes.map(({ season, episode }) => (
+                                        <Chip
+                                            key={`${season}-${episode}`}
+                                            label={formatSeasonEpisodeLabel({ season, episode })}
+                                            size="small"
+                                            onDelete={() => handleEpisodeToggle(season, episode)}
+                                        />
+                                    ))}
+                                </Box>
+                            )}
                         </Box>
                     )}
                     
