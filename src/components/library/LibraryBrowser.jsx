@@ -61,7 +61,7 @@ export default function LibraryBrowser({
   const [sortDisclosureOpen, setSortDisclosureOpen] = useState(false);
   const [sortOption, setSortOption] = useState('newest'); // 'newest' | 'oldest' | 'az'
   const [searchQuery, setSearchQuery] = useState('');
-  const [metaByKey, setMetaByKey] = useState({}); // { [key]: { tags, description, defaultCaption } }
+  const [metaByKey, setMetaByKey] = useState({}); // { [key]: LibraryMetadata }
   const [deletingKeys, setDeletingKeys] = useState(() => new Set());
 
   const sentinelRef = useRef(null);
@@ -89,7 +89,12 @@ export default function LibraryBrowser({
   };
 
   const displayItems = useMemo(() => {
-    const arr = items.slice();
+    const arr = items.map((item) => {
+      if (!item?.key) return item;
+      const meta = metaByKey[item.key];
+      if (!meta) return item;
+      return { ...item, metadata: { ...DEFAULT_LIBRARY_METADATA, ...meta } };
+    });
     const getTime = (it) => {
       if (it?.key) return parseTimestampFromKey(it.key);
       if (typeof it?.createdAt === 'number') return it.createdAt;
@@ -97,7 +102,7 @@ export default function LibraryBrowser({
     };
     arr.sort((a, b) => (sortOption === 'oldest' ? getTime(a) - getTime(b) : getTime(b) - getTime(a)));
     return arr;
-  }, [items, sortOption]);
+  }, [items, metaByKey, sortOption]);
 
   // Background-load metadata for visible items so search can include tags/description/captions
   useEffect(() => {
@@ -126,6 +131,20 @@ export default function LibraryBrowser({
 
   const normalizedQuery = useMemo(() => normalizeString(searchQuery), [searchQuery]);
 
+  const ensureMetadataForKey = useCallback(async (key) => {
+    if (!key) return { ...DEFAULT_LIBRARY_METADATA };
+    if (metaByKey[key]) return metaByKey[key];
+    try {
+      const meta = await getMetadataForKey(key, { level: storageLevel });
+      setMetaByKey((prev) => ({ ...prev, [key]: meta }));
+      return meta;
+    } catch (_) {
+      const fallback = { ...DEFAULT_LIBRARY_METADATA };
+      setMetaByKey((prev) => ({ ...prev, [key]: fallback }));
+      return fallback;
+    }
+  }, [metaByKey, storageLevel]);
+
   const filteredItems = useMemo(() => {
     if (!normalizedQuery) return displayItems;
     return displayItems.filter((it) => {
@@ -151,8 +170,17 @@ export default function LibraryBrowser({
   const selectedItems = useMemo(() => {
     if (!orderedKeys || orderedKeys.length === 0) return [];
     const byId = new Map(items.map((i) => [getItemId(i), i]));
-    return orderedKeys.map((k) => byId.get(k)).filter(Boolean);
-  }, [items, orderedKeys, getItemId]);
+    return orderedKeys
+      .map((k) => {
+        const item = byId.get(k);
+        if (!item) return null;
+        if (!item.key) return item;
+        const meta = metaByKey[item.key];
+        if (!meta) return item;
+        return { ...item, metadata: { ...DEFAULT_LIBRARY_METADATA, ...meta } };
+      })
+      .filter(Boolean);
+  }, [items, metaByKey, orderedKeys, getItemId]);
 
   const handleUseSelected = useCallback(async () => {
     try {
@@ -166,16 +194,20 @@ export default function LibraryBrowser({
         try {
           const blob = await get(it.key, { level: storageLevel });
           const dataUrl = await blobToDataUrl(blob);
+          const meta = await ensureMetadataForKey(it.key);
+          const mergedMeta = { ...DEFAULT_LIBRARY_METADATA, ...(meta || {}) };
           results[idx] = {
             originalUrl: dataUrl,
             displayUrl: dataUrl,
-            metadata: { isFromLibrary: true, libraryKey: it.key },
+            metadata: { ...mergedMeta, isFromLibrary: true, libraryKey: it.key },
           };
         } catch (e) {
+          const meta = await ensureMetadataForKey(it.key);
+          const mergedMeta = { ...DEFAULT_LIBRARY_METADATA, ...(meta || {}) };
           results[idx] = {
             originalUrl: it.url,
             displayUrl: it.url,
-            metadata: { isFromLibrary: true, libraryKey: it.key },
+            metadata: { ...mergedMeta, isFromLibrary: true, libraryKey: it.key },
           };
         }
       };
@@ -194,15 +226,24 @@ export default function LibraryBrowser({
       if (onError) onError(e);
       setSnack({ open: true, message: 'Failed to load selected images', severity: 'error' });
     }
-  }, [clear, onError, onSelect, selectedItems, storageLevel]);
+  }, [clear, ensureMetadataForKey, onError, onSelect, selectedItems, storageLevel]);
 
   const handlePrimary = useCallback(async () => {
+    const prepareItems = async () => Promise.all(
+      (selectedItems || []).map(async (item) => {
+        if (!item?.key) return item;
+        const meta = await ensureMetadataForKey(item.key);
+        return { ...item, metadata: { ...DEFAULT_LIBRARY_METADATA, ...(meta || {}) } };
+      })
+    );
+
     if (typeof onActionBarPrimary === 'function') {
-      await onActionBarPrimary({ selectedItems, storageLevel, clear });
+      const enriched = await prepareItems();
+      await onActionBarPrimary({ selectedItems: enriched, storageLevel, clear });
     } else {
       await handleUseSelected();
     }
-  }, [clear, handleUseSelected, onActionBarPrimary, selectedItems, storageLevel]);
+  }, [clear, ensureMetadataForKey, handleUseSelected, onActionBarPrimary, selectedItems, storageLevel]);
 
   // Expose selection count to parent (for external action bars)
   useEffect(() => {

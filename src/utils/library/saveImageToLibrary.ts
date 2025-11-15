@@ -1,5 +1,5 @@
 import { put } from './storage';
-import { putMetadataForKey } from './metadata';
+import { putMetadataForKey, type LibraryMetadata } from './metadata';
 import { resizeImage } from './resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
 
@@ -29,7 +29,7 @@ function generateKey(filename: string | null, blob: Blob): string {
 export async function saveImageToLibrary(
   input: Blob | string,
   filename: string | null = null,
-  { level = 'private', metadata }: { level?: string; metadata?: Record<string, any> } = {}
+  { level = 'private', metadata }: { level?: string; metadata?: Partial<LibraryMetadata> } = {}
 ): Promise<string> {
   let blob: Blob;
   if (typeof input === 'string') {

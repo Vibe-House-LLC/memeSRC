@@ -7,7 +7,7 @@ import { getMetadataForKey, putMetadataForKey } from '../../utils/library/metada
 export default function PreviewDialog({ open, onClose, imageUrl, imageKey, storageLevel = 'private', onDelete, titleId, onPrev, onNext, hasPrev, hasNext, isSelected, onToggleSelected, footerMode = 'default', title = 'Image Preview', ctaLabel, onCta, showInfo = true }) {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const [infoAnchor, setInfoAnchor] = useState(null);
-  const [meta, setMeta] = useState({ tags: [], description: '', defaultCaption: '' });
+  const [meta, setMeta] = useState({ tags: [], description: '', defaultCaption: '', frameRef: null });
   const canEdit = showInfo && Boolean(imageKey);
   const [moreAnchorEl, setMoreAnchorEl] = useState(null);
   const moreMenuOpen = Boolean(moreAnchorEl);
