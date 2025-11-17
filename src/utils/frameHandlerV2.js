@@ -10,7 +10,7 @@ const findSubtitleForFrame = (csvData, season, episode, frame) => {
     const [csvSeason, csvEpisode, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
     if (
       season === parseInt(csvSeason, 10) &&
-      episode === parseInt(csvEpisode, 10) &&
+      episode === csvEpisode &&
       frame >= parseInt(startFrame, 10) &&
       frame <= parseInt(endFrame, 10)
     ) {
@@ -28,7 +28,7 @@ const findSubtitleForFrame = (csvData, season, episode, frame) => {
 // Function to fetch only the subtitle and main image for a frame
 const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
   season = parseInt(season, 10);
-  episode = parseInt(episode, 10);
+  // episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
 
   const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
@@ -49,7 +49,7 @@ const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
 // Function to fetch only the frames_fine_tuning array
 const fetchFramesFineTuning = async (cid, season, episode, frame) => {
   season = parseInt(season, 10);
-  episode = parseInt(episode, 10);
+  // episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
   // Generate an array of frame indexes for fine-tuning
   const frameIndexes = Array.from({ length: 11 }, (_, i) => frame - 5 + i);
@@ -59,7 +59,7 @@ const fetchFramesFineTuning = async (cid, season, episode, frame) => {
 // Function to fetch frames_surrounding as an array of promises for image extraction
 const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
   season = parseInt(season, 10);
-  episode = parseInt(episode, 10);
+  // episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
 
   const offsets = [-40, -30, -20, -10, 0, 10, 20, 30, 40];
@@ -82,7 +82,7 @@ const fetchFramesSurroundingPromises = (cid, season, episode, frame) => {
 const fetchFrameInfo = async (cid, season, episode, frame, options = {}) => {
   try {
     season = parseInt(season, 10);
-    episode = parseInt(episode, 10);
+    // episode = parseInt(episode, 10);
     frame = parseInt(frame, 10);
   
 
