@@ -10,7 +10,7 @@ const findSubtitleForFrame = (csvData, season, episode, frame) => {
     const [csvSeason, csvEpisode, , encodedSubtitleText, startFrame, endFrame] = csvData[i];
     if (
       season === parseInt(csvSeason, 10) &&
-      episode === parseInt(csvEpisode, 10) &&
+      episode === csvEpisode &&
       frame >= parseInt(startFrame, 10) &&
       frame <= parseInt(endFrame, 10)
     ) {
@@ -28,7 +28,7 @@ const findSubtitleForFrame = (csvData, season, episode, frame) => {
 // Function to fetch only the subtitle and main image for a frame
 const fetchFrameSubtitleAndImage = async (cid, season, episode, frame) => {
   season = parseInt(season, 10);
-  episode = parseInt(episode, 10);
+  // episode = parseInt(episode, 10);
   frame = parseInt(frame, 10);
 
   const csvDownload = (await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, { level: 'public', download: true, customPrefix: { public: 'protected/' } })).Body
