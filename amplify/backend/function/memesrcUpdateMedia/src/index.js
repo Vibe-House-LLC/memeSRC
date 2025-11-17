@@ -1005,7 +1005,7 @@ const updateSeasonDocsFromEpisodes = async (alias, season) => {
         const episodeFolders = (listedObjects.CommonPrefixes || [])
             .map(prefix => prefix.Prefix.split('/').slice(-2, -1)[0])
             .map(folder => normalizeEpisodeId(folder))
-            .filter(folder => EPISODE_ID_PATTERN.test(folder))
+            .filter(folder => Boolean(folder))
             .sort(compareEpisodeIds);
 
         console.log(`Found episode folders in season ${season}: ${episodeFolders.join(', ')}`);

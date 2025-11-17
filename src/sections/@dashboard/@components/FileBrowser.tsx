@@ -59,7 +59,7 @@ import {
 } from '@mui/icons-material';
 import { Storage } from 'aws-amplify';
 import { ChromePicker } from 'react-color';
-import { SeasonEpisodeSelection, compareEpisodeIds, formatSeasonEpisodeLabel, isEpisodeId } from '../../../types/episodes';
+import { SeasonEpisodeSelection, compareEpisodeIds, formatSeasonEpisodeLabel } from '../../../types/episodes';
 
 // Configure Storage to use custom prefix (empty string for bucket root access)
 Storage.configure({
@@ -201,6 +201,18 @@ const listAllStorageItems = async (prefix: string): Promise<any[]> => {
     return aggregated;
 };
 
+const hasEpisodeFolderEvidence = (pathParts: string[], file?: Pick<FileItem, 'isDirectory'> | null): boolean => {
+    if (pathParts.length < 2) {
+        return false;
+    }
+
+    if (file?.isDirectory) {
+        return true;
+    }
+
+    return pathParts.length >= 3;
+};
+
 const getSeriesEpisodeFrameCounts = async (seriesPath: string): Promise<Record<string, number>> => {
     const items = await listAllStorageItems(seriesPath);
     const counts: Record<string, number> = {};
@@ -227,7 +239,7 @@ const getSeriesEpisodeFrameCounts = async (seriesPath: string): Promise<Record<s
         const season = Number(parts[0]);
         const episodeSegment = parts[1];
 
-        if (Number.isNaN(season) || !episodeSegment || !isEpisodeId(episodeSegment)) {
+        if (Number.isNaN(season) || !episodeSegment) {
             return;
         }
 
@@ -1845,24 +1857,30 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
         const seasons: Record<number, Set<string>> = {};
         
         files.forEach(file => {
-            if (file.isDirectory) return; // Skip directories, we'll infer structure from file paths
-            
             const pathParts = (file.relativePath || '').split('/').filter(part => part.length > 0);
             
-            if (pathParts.length >= 2) {
-                const seasonMatch = pathParts[0].match(/^(\d+)$/);
-                const episodeSegment = pathParts[1];
-                
-                if (seasonMatch && episodeSegment && isEpisodeId(episodeSegment)) {
-                    const seasonNum = parseInt(seasonMatch[1], 10);
-                    
-                    if (!seasons[seasonNum]) {
-                        seasons[seasonNum] = new Set();
-                    }
-                    
-                    seasons[seasonNum]!.add(episodeSegment);
-                }
+            if (pathParts.length < 2) {
+                return;
             }
+            
+            const seasonMatch = pathParts[0].match(/^(\d+)$/);
+            const episodeSegment = pathParts[1];
+            
+            if (!seasonMatch || !episodeSegment) {
+                return;
+            }
+            
+            if (!hasEpisodeFolderEvidence(pathParts, file)) {
+                return;
+            }
+            
+            const seasonNum = parseInt(seasonMatch[1], 10);
+            
+            if (!seasons[seasonNum]) {
+                seasons[seasonNum] = new Set();
+            }
+            
+            seasons[seasonNum]!.add(episodeSegment);
         });
         
         const normalizedSeasons: Record<number, string[]> = {};
@@ -2194,7 +2212,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                         
                         if (pathParts.length >= 2) {
                             const episodeSegment = pathParts[1];
-                            if (episodeSegment && isEpisodeId(episodeSegment)) {
+                            if (episodeSegment && hasEpisodeFolderEvidence(pathParts, file)) {
                                 const episodeNumber = episodeSegment;
                                 episodeFolders[seasonNumber].add(episodeNumber);
                                 
@@ -2528,7 +2546,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                     const seasonMatch = pathParts[0].match(/^(\d+)$/);
                     const episodeSegment = pathParts[1];
                     
-                    if (seasonMatch && episodeSegment && isEpisodeId(episodeSegment)) {
+                    if (seasonMatch && episodeSegment) {
                         const episodeKey = `S${seasonMatch[1]}E${episodeSegment}`;
                         episodeCsvFiles[episodeKey] = file;
                     }
@@ -2733,7 +2751,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                     const seasonMatch = pathParts[0].match(/^(\d+)$/);
                     const episodeSegment = pathParts[1];
                     
-                    if (seasonMatch && episodeSegment && isEpisodeId(episodeSegment)) {
+                    if (seasonMatch && episodeSegment) {
                         const episodeKey = `S${seasonMatch[1]}E${episodeSegment}`;
                         episodeCsvFiles[episodeKey] = file;
                     }

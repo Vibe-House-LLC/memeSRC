@@ -1,5 +1,5 @@
 import { Storage } from 'aws-amplify';
-import { SeasonEpisodeSelection, isEpisodeId } from '../types/episodes';
+import { SeasonEpisodeSelection } from '../types/episodes';
 
 function getFileExtension(filename: string): string {
     const parts = filename.split('.');
@@ -58,7 +58,7 @@ async function getEpisodeFrameCountsFromPath(basePath: string): Promise<Record<s
                     const seasonMatch = parts[0].match(/^(\d+)$/);
                     const episodeSegment = parts[1];
 
-                    if (seasonMatch && episodeSegment && isEpisodeId(episodeSegment)) {
+                    if (seasonMatch && episodeSegment) {
                         const seasonNum = parseInt(seasonMatch[1], 10);
                         const episodeId = episodeSegment;
                         const episodeKey = `S${seasonNum}E${episodeId}`;

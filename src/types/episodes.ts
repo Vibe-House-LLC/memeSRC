@@ -18,14 +18,6 @@ const parseEpisodeSortParts = (value: string) => {
     };
 };
 
-export const isEpisodeId = (value: string): boolean => {
-    if (!value) {
-        return false;
-    }
-
-    return EPISODE_ID_PATTERN.test(String(value).trim());
-};
-
 export const compareEpisodeIds = (a: string, b: string): number => {
     const left = parseEpisodeSortParts(a);
     const right = parseEpisodeSortParts(b);
