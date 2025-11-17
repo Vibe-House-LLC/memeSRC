@@ -1,4 +1,5 @@
 import { Storage } from 'aws-amplify';
+import { SeasonEpisodeSelection } from '../types/episodes';
 
 function getFileExtension(filename: string): string {
     const parts = filename.split('.');
@@ -55,13 +56,13 @@ async function getEpisodeFrameCountsFromPath(basePath: string): Promise<Record<s
                 
                 if (parts.length >= 3) {
                     const seasonMatch = parts[0].match(/^(\d+)$/);
-                    const episodeMatch = parts[1].match(/^(\d+)$/);
-                    
-                    if (seasonMatch && episodeMatch) {
+                    const episodeSegment = parts[1];
+
+                    if (seasonMatch && episodeSegment) {
                         const seasonNum = parseInt(seasonMatch[1], 10);
-                        const episodeNum = parseInt(episodeMatch[1], 10);
-                        const episodeKey = `S${seasonNum}E${episodeNum}`;
-                        
+                        const episodeId = episodeSegment;
+                        const episodeKey = `S${seasonNum}E${episodeId}`;
+
                         if (!episodeToClipKeys[episodeKey]) {
                             episodeToClipKeys[episodeKey] = [];
                         }
@@ -135,7 +136,7 @@ async function getEpisodeFrameCountsFromPath(basePath: string): Promise<Record<s
  */
 async function calculateHybridFrameCount(
     alias: string, 
-    selectedEpisodes: { season: number; episode: number }[]
+    selectedEpisodes: SeasonEpisodeSelection[]
 ): Promise<number> {
     console.log('🔄 Calculating hybrid frame count for existing alias:', alias);
     console.log('📝 Selected episodes:', selectedEpisodes);
@@ -198,7 +199,7 @@ async function calculateHybridFrameCount(
  */
 export async function calculateFrameCountFromSubfolders(
     selectedFileKey: string, 
-    selectedEpisodes?: { season: number; episode: number }[]
+    selectedEpisodes?: SeasonEpisodeSelection[]
 ): Promise<number> {
     console.log('🎬 Starting optimized frame count calculation...');
 
