@@ -250,6 +250,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const [filter, setFilter] = useState<string>('');
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
   const [isCreating, setIsCreating] = useState(false);
+  const [creationStep, setCreationStep] = useState<'name' | 'selection'>('name');
   const [newFilterName, setNewFilterName] = useState('');
   const [newFilterItems, setNewFilterItems] = useState<Set<string>>(new Set());
   const { customFilters, addFilter, removeFilter } = useCustomFilters();
@@ -370,63 +371,37 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     });
   }, [baseSeries]);
 
+  const handleStartCreation = () => {
+    setIsCreating(true);
+    setCreationStep('name');
+    setNewFilterName('');
+    setNewFilterItems(new Set());
+    setFilter(''); // Clear any existing search filter
+  };
+
+  const handleNextStep = () => {
+    if (newFilterName.trim()) {
+      setCreationStep('selection');
+      // Focus the search input on next tick
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+  };
+
+  const handleBackStep = () => {
+    setCreationStep('name');
+  };
+
   const handleCreateFilter = () => {
     if (!newFilterName.trim()) return;
     addFilter(newFilterName, Array.from(newFilterItems));
     setIsCreating(false);
+    setCreationStep('name');
     setNewFilterName('');
     setNewFilterItems(new Set());
+    setFilter('');
   };
-
-  const handleToggleItemInNewFilter = (id: string) => {
-    setNewFilterItems(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const createFilterContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', gap: 1 }}>
-        <TextField
-          size="small"
-          fullWidth
-          placeholder="Filter Name"
-          value={newFilterName}
-          onChange={(e) => setNewFilterName(e.target.value)}
-        />
-        <Button
-          variant="contained"
-          onClick={handleCreateFilter}
-          disabled={!newFilterName.trim() || newFilterItems.size === 0}
-        >
-          Save
-        </Button>
-      </Box>
-      <List sx={{ flex: 1, overflowY: 'auto' }}>
-        {allSeries.map((s) => {
-          const isSelected = newFilterItems.has(s.id);
-          return (
-            <ListItemButton
-              key={s.id}
-              onClick={() => handleToggleItemInNewFilter(s.id)}
-              selected={isSelected}
-            >
-              <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
-                {isSelected ? <CheckIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
-              </Box>
-              <ListItemText primary={s.title} sx={{ ml: 1 }} />
-            </ListItemButton>
-          );
-        })}
-      </List>
-    </Box>
-  );
 
   const renderFilterInput = () => (
     <TextField
@@ -477,6 +452,101 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     />
   );
 
+  const handleToggleItemInNewFilter = (id: string) => {
+    setNewFilterItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const renderNameStep = (
+    <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+        Name Your Filter
+      </Typography>
+      <TextField
+        autoFocus
+        fullWidth
+        placeholder="e.g., My Comedy Mix"
+        value={newFilterName}
+        onChange={(e) => setNewFilterName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && newFilterName.trim()) {
+            handleNextStep();
+          }
+        }}
+      />
+      <Box sx={{ display: 'flex', gap: 1, width: '100%', mt: 1 }}>
+        <Button
+          variant="outlined"
+          fullWidth
+          onClick={() => setIsCreating(false)}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={handleNextStep}
+          disabled={!newFilterName.trim()}
+        >
+          Next
+        </Button>
+      </Box>
+    </Box>
+  );
+
+  const renderSelectionStep = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
+        <IconButton onClick={handleBackStep} size="small">
+          <ChevronLeftIcon />
+        </IconButton>
+        <Box sx={{ flex: 1 }}>
+          {renderFilterInput()}
+        </Box>
+        <Button
+          variant="contained"
+          size="small"
+          onClick={handleCreateFilter}
+          disabled={newFilterItems.size === 0}
+          sx={{ minWidth: 64 }}
+        >
+          Save
+        </Button>
+      </Box>
+      <List sx={{ flex: 1, overflowY: 'auto' }}>
+        {filteredAllSeries.map((s) => {
+          const isSelected = newFilterItems.has(s.id);
+          return (
+            <ListItemButton
+              key={s.id}
+              onClick={() => handleToggleItemInNewFilter(s.id)}
+              selected={isSelected}
+            >
+              <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
+                {isSelected ? <CheckIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+              </Box>
+              <ListItemText primary={s.title} sx={{ ml: 1 }} />
+            </ListItemButton>
+          );
+        })}
+        {filteredAllSeries.length === 0 && (
+          <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
+            <Typography variant="body2">No results found</Typography>
+          </Box>
+        )}
+      </List>
+    </Box>
+  );
+
+  const createFilterContent = creationStep === 'name' ? renderNameStep : renderSelectionStep;
+
   const filterInputListItem = (
     <ListItem
       disablePadding
@@ -504,30 +574,50 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     >
 
       {filterInputListItem}
-      {/* Quick picks when not filtering */}
-      {showQuickPicks && (
-        <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}>
-          Quick Filters
-        </ListSubheader>
-      )}
-      {/* Custom Filters */}
+      {/* Quick Filters (Universal + Favorites + Custom) */}
       {showQuickPicks && (
         <>
           <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}>
-            Custom Filters
+            Quick Filters
           </ListSubheader>
+
+          {/* Universal */}
           <ListItemButton
-            onClick={() => setIsCreating(true)}
+            selected={currentValueId === '_universal'}
+            onClick={() => handleSelect('_universal')}
             sx={(theme) => quickActionButtonSx(theme)}
           >
-            <Box sx={{ mr: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)' }}>
-              <AddIcon fontSize="small" />
+            <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
+              {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
             </Box>
+            <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>🌈</Box>
             <ListItemText
-              primary="Create New Filter"
-              primaryTypographyProps={{ fontWeight: 700, fontSize: '1.02rem' }}
+              sx={{ ml: 0, flex: 1 }}
+              primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
+              primary="All Shows & Movies"
             />
           </ListItemButton>
+
+          {/* Favorites */}
+          {includeAllFavorites && hasAnyFavorite && (
+            <ListItemButton
+              selected={currentValueId === '_favorites'}
+              onClick={() => handleSelect('_favorites')}
+              sx={(theme) => quickActionButtonSx(theme)}
+            >
+              <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
+                {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+              </Box>
+              <Box component="span" sx={{ fontSize: 22, lineHeight: 1, mr: 1 }}>⭐</Box>
+              <ListItemText
+                sx={{ ml: 0, flex: 1 }}
+                primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
+                primary="All Favorites"
+              />
+            </ListItemButton>
+          )}
+
+          {/* Custom Filters */}
           {customFilters.map((filter) => {
             const isSelected = currentValueId === filter.id;
             return (
@@ -559,6 +649,20 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               </ListItemButton>
             );
           })}
+
+          {/* Create New Filter Button */}
+          <ListItemButton
+            onClick={handleStartCreation}
+            sx={(theme) => quickActionButtonSx(theme)}
+          >
+            <Box sx={{ mr: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)' }}>
+              <AddIcon fontSize="small" />
+            </Box>
+            <ListItemText
+              primary="Create New Filter"
+              primaryTypographyProps={{ fontWeight: 700, fontSize: '1.02rem' }}
+            />
+          </ListItemButton>
         </>
       )}
       {/* No results state */}
@@ -569,39 +673,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       )}
       {showQuickPicks && (
         <>
-          <ListItemButton
-            selected={currentValueId === '_universal'}
-            onClick={() => handleSelect('_universal')}
-            sx={(theme) => quickActionButtonSx(theme)}
-          >
-            <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
-              {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
-            </Box>
-            <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>🌈</Box>
-            <ListItemText
-              sx={{ ml: 0, flex: 1 }}
-              primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
-              primary="All Shows & Movies"
-            />
-          </ListItemButton>
 
-          {includeAllFavorites && hasAnyFavorite && (
-            <ListItemButton
-              selected={currentValueId === '_favorites'}
-              onClick={() => handleSelect('_favorites')}
-              sx={(theme) => quickActionButtonSx(theme)}
-            >
-              <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
-                {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
-              </Box>
-              <Box component="span" sx={{ fontSize: 22, lineHeight: 1, mr: 1 }}>⭐</Box>
-              <ListItemText
-                sx={{ ml: 0, flex: 1 }}
-                primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
-                primary="All Favorites"
-              />
-            </ListItemButton>
-          )}
 
           {favoritesForSection.length > 0 && (
             <>
