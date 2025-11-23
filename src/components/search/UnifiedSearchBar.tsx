@@ -9,6 +9,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
+import { useCustomFilters } from '../../hooks/useCustomFilters';
 
 type SeriesSelectorDialogProps = React.ComponentProps<typeof SeriesSelectorDialog>;
 
@@ -531,11 +532,13 @@ const ClearInputButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
-function findSeriesItem(currentValueId: string, shows: SeriesItem[], savedCids: SeriesItem[]): SeriesItem | undefined {
+function findSeriesItem(currentValueId: string, shows: SeriesItem[], savedCids: SeriesItem[], customFilters: any[]): SeriesItem | undefined {
   if (!currentValueId || currentValueId.startsWith('_')) {
     return undefined;
   }
-  return shows.find((s) => s.id === currentValueId) ?? savedCids.find((s) => s.id === currentValueId);
+  return shows.find((s) => s.id === currentValueId) ??
+    savedCids.find((s) => s.id === currentValueId) ??
+    customFilters.find((s) => s.id === currentValueId);
 }
 
 function buildCurrentLabel(currentValueId: string, currentSeries?: SeriesItem): string {
@@ -544,7 +547,7 @@ function buildCurrentLabel(currentValueId: string, currentSeries?: SeriesItem): 
   if (!currentSeries) return 'Select show or movie';
   const emoji = currentSeries.emoji?.trim();
   const emojiPrefix = emoji ? `${emoji} ` : '';
-  return `${emojiPrefix}${currentSeries.title}`;
+  return `${emojiPrefix}${currentSeries.title || currentSeries.name}`;
 }
 
 export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
@@ -562,6 +565,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   onSelectSeries,
   appearance = 'light',
 }) => {
+  const { customFilters } = useCustomFilters();
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
@@ -571,8 +575,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const shouldRestoreFocusRef = useRef(false);
   // railId and scopeButtonSx removed with inline expansion approach
   const currentSeries = useMemo(
-    () => findSeriesItem(currentValueId, shows, savedCids),
-    [currentValueId, savedCids, shows],
+    () => findSeriesItem(currentValueId, shows, savedCids, customFilters),
+    [currentValueId, savedCids, shows, customFilters],
   );
 
   // Show "Random" label for 1 second on mount, then fade it out
@@ -580,12 +584,12 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     const fadeTimer = setTimeout(() => {
       setIsFadingOutLabel(true);
     }, 1000);
-    
+
     const hideTimer = setTimeout(() => {
       setShowRandomLabel(false);
       setIsFadingOutLabel(false);
     }, 1400); // 1000ms display + 300ms fade animation + 100ms buffer
-    
+
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
@@ -602,7 +606,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     if (currentValueId === '_favorites') return '⭐';
     const trimmedEmoji = currentSeries?.emoji?.trim();
     if (trimmedEmoji) return trimmedEmoji;
-    const source = currentSeries?.title ?? currentLabel;
+    const source = currentSeries?.title ?? currentSeries?.name ?? currentLabel;
     const trimmed = source.trim();
     if (!trimmed) return '∙';
     const [glyph] = Array.from(trimmed);
@@ -782,8 +786,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     style={
                       isFadingOutLabel
                         ? {
-                            animation: `${labelFadeOut} 300ms cubic-bezier(0.4, 0, 0.6, 1) both`,
-                          }
+                          animation: `${labelFadeOut} 300ms cubic-bezier(0.4, 0, 0.6, 1) both`,
+                        }
                         : undefined
                     }
                   >

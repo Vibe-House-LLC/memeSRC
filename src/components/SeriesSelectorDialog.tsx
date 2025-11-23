@@ -15,6 +15,7 @@ import {
   ListSubheader,
   Typography,
   useTheme,
+  Button,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
@@ -27,10 +28,16 @@ import { normalizeColorValue } from '../utils/colors';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import CheckIcon from '@mui/icons-material/Check';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { useCustomFilters } from '../hooks/useCustomFilters';
 
 export interface SeriesItem {
   id: string;
   title: string;
+  name?: string; // For custom filters
+  items?: string[]; // For custom filters
   emoji?: string;
   isFavorite?: boolean;
   colorMain?: string;
@@ -242,6 +249,10 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+  const [isCreating, setIsCreating] = useState(false);
+  const [newFilterName, setNewFilterName] = useState('');
+  const [newFilterItems, setNewFilterItems] = useState<Set<string>>(new Set());
+  const { customFilters, addFilter, removeFilter } = useCustomFilters();
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -359,6 +370,64 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     });
   }, [baseSeries]);
 
+  const handleCreateFilter = () => {
+    if (!newFilterName.trim()) return;
+    addFilter(newFilterName, Array.from(newFilterItems));
+    setIsCreating(false);
+    setNewFilterName('');
+    setNewFilterItems(new Set());
+  };
+
+  const handleToggleItemInNewFilter = (id: string) => {
+    setNewFilterItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const createFilterContent = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', gap: 1 }}>
+        <TextField
+          size="small"
+          fullWidth
+          placeholder="Filter Name"
+          value={newFilterName}
+          onChange={(e) => setNewFilterName(e.target.value)}
+        />
+        <Button
+          variant="contained"
+          onClick={handleCreateFilter}
+          disabled={!newFilterName.trim() || newFilterItems.size === 0}
+        >
+          Save
+        </Button>
+      </Box>
+      <List sx={{ flex: 1, overflowY: 'auto' }}>
+        {allSeries.map((s) => {
+          const isSelected = newFilterItems.has(s.id);
+          return (
+            <ListItemButton
+              key={s.id}
+              onClick={() => handleToggleItemInNewFilter(s.id)}
+              selected={isSelected}
+            >
+              <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
+                {isSelected ? <CheckIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+              </Box>
+              <ListItemText primary={s.title} sx={{ ml: 1 }} />
+            </ListItemButton>
+          );
+        })}
+      </List>
+    </Box>
+  );
+
   const renderFilterInput = () => (
     <TextField
       inputRef={inputRef}
@@ -441,6 +510,57 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           Quick Filters
         </ListSubheader>
       )}
+      {/* Custom Filters */}
+      {showQuickPicks && (
+        <>
+          <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}>
+            Custom Filters
+          </ListSubheader>
+          <ListItemButton
+            onClick={() => setIsCreating(true)}
+            sx={(theme) => quickActionButtonSx(theme)}
+          >
+            <Box sx={{ mr: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)' }}>
+              <AddIcon fontSize="small" />
+            </Box>
+            <ListItemText
+              primary="Create New Filter"
+              primaryTypographyProps={{ fontWeight: 700, fontSize: '1.02rem' }}
+            />
+          </ListItemButton>
+          {customFilters.map((filter) => {
+            const isSelected = currentValueId === filter.id;
+            return (
+              <ListItemButton
+                key={filter.id}
+                selected={isSelected}
+                onClick={() => handleSelect(filter.id)}
+                sx={(theme) => quickActionButtonSx(theme)}
+              >
+                <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
+                  {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+                </Box>
+                <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>{filter.emoji || '📁'}</Box>
+                <ListItemText
+                  sx={{ ml: 0, flex: 1 }}
+                  primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
+                  primary={filter.name}
+                />
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeFilter(filter.id);
+                  }}
+                  sx={{ color: 'inherit', opacity: 0.7, '&:hover': { opacity: 1 } }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </ListItemButton>
+            );
+          })}
+        </>
+      )}
       {/* No results state */}
       {isFiltering && filteredAllSeries.length === 0 && (
         <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
@@ -457,7 +577,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
               {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
             </Box>
-              <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>🌈</Box>
+            <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>🌈</Box>
             <ListItemText
               sx={{ ml: 0, flex: 1 }}
               primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
@@ -469,7 +589,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <ListItemButton
               selected={currentValueId === '_favorites'}
               onClick={() => handleSelect('_favorites')}
-                sx={(theme) => quickActionButtonSx(theme)}
+              sx={(theme) => quickActionButtonSx(theme)}
             >
               <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
                 {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
@@ -478,7 +598,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               <ListItemText
                 sx={{ ml: 0, flex: 1 }}
                 primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
-              primary="All Favorites"
+                primary="All Favorites"
               />
             </ListItemButton>
           )}
@@ -538,7 +658,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <ListSubheader
               disableSticky
               component="div"
-                sx={(theme) => sectionHeaderSx(
+              sx={(theme) => sectionHeaderSx(
                 theme,
                 { density: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
               )}
@@ -694,7 +814,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               bgcolor: 'background.default',
             }}
           >
-            {listContent}
+            {isCreating ? createFilterContent : listContent}
           </Box>
         </DialogContent>
       </Dialog>
@@ -753,7 +873,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             bgcolor: 'background.default',
           }}
         >
-          {listContent}
+          {isCreating ? createFilterContent : listContent}
         </Box>
       </Box>
     </Popover>
