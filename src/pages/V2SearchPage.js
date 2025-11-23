@@ -1,15 +1,385 @@
 // V2SearchPage.js
 
+import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
+import styled from '@emotion/styled';
+import { API, graphqlOperation } from 'aws-amplify';
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import InfiniteScroll from 'react-infinite-scroll-component';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@emotion/react';
+import sanitizeHtml from 'sanitize-html';
+import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { useCustomFilters } from '../hooks/useCustomFilters';
+import { UserContext } from '../UserContext';
 
-// ... existing imports ...
+import { getWebsiteSetting } from '../graphql/queries';
+
+import ImageSkeleton from '../components/ImageSkeleton.tsx';
+import SearchPageResultsAd from '../ads/SearchPageResultsAd';
+import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+import HomePageBannerAd from '../ads/HomePageBannerAd';
+import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
+
+
+
+const StyledCard = styled(Card)`
+  border: 3px solid transparent;
+  box-sizing: border-box;
+  position: relative;
+
+  &:hover {
+    border: 3px solid orange;
+  }
+`;
+
+const StyledCardVideoContainer = styled.div`
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+  overflow: hidden;
+  position: relative;
+  background-color: black;
+`;
+
+const StyledCardImageContainer = styled.div`
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+  overflow: hidden;
+  position: relative;
+  background-color: black;
+`;
+
+const StyledCardImage = styled.img`
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  object-fit: contain;
+`;
+
+const StyledCardMedia = styled.video`
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  object-fit: contain;
+`;
+
+const BottomCardCaption = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  ${props => props.theme.breakpoints.up("xs")} {
+    font-size: clamp(1em, 1.5vw, 1.5em);
+    }
+  ${props => props.theme.breakpoints.up("md")} {
+  font-size: clamp(1em, 1.5vw, 1.5em);
+  }
+  font-weight: 800;
+  padding: 18px 10px;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+`;
+
+const BottomCardLabel = styled.div`
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: ${props => props.theme.palette.common.white};
+  text-align: left;
+`;
+
+const SearchResultMedia = ({
+  result,
+  resultId,
+  resultIndex,
+  searchTerm,
+  mediaSrc,
+  isMediaLoaded,
+  onMediaLoad,
+  addVideoRef,
+  animationsEnabled,
+}) => {
+  const frameCandidate = Number.isFinite(Number(result?.start_frame)) && Number.isFinite(Number(result?.end_frame))
+    ? Math.round(((Number(result.start_frame) + Number(result.end_frame)) / 2) / 10) * 10
+    : undefined;
+
+  const saveIntentMeta = useMemo(() => {
+    const meta = {
+      source: 'V2SearchPage',
+      intentTarget: 'SearchResultThumbnail',
+      position: resultIndex,
+      resultId,
+    };
+
+    if (result?.cid) {
+      meta.cid = result.cid;
+    }
+
+    if (result?.season) {
+      meta.season = result.season;
+    }
+
+    if (result?.episode) {
+      meta.episode = result.episode;
+    }
+
+    if (typeof frameCandidate === 'number' && Number.isFinite(frameCandidate)) {
+      meta.frame = frameCandidate;
+    }
+
+    if (typeof searchTerm === 'string' && searchTerm.length > 0) {
+      meta.searchTerm = searchTerm;
+    }
+
+    return meta;
+  }, [frameCandidate, result, resultId, resultIndex, searchTerm]);
+
+  const saveIntentHandlers = useTrackImageSaveIntent(saveIntentMeta);
+
+  if (animationsEnabled) {
+    return (
+      <StyledCardVideoContainer>
+        {!isMediaLoaded && <ImageSkeleton />}
+        <StyledCardMedia
+          ref={addVideoRef}
+          src={mediaSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          onError={() => console.error('Error loading video:', JSON.stringify(result))}
+          key={`${resultId}-video`}
+          style={{ display: isMediaLoaded ? 'block' : 'none' }}
+          onLoad={onMediaLoad}
+          {...saveIntentHandlers}
+        />
+      </StyledCardVideoContainer>
+    );
+  }
+
+  return (
+    <StyledCardImageContainer>
+      {!isMediaLoaded && <ImageSkeleton />}
+      <StyledCardImage
+        src={mediaSrc}
+        alt={`Frame from S${result?.season} E${result?.episode}`}
+        key={`${resultId}-image`}
+        style={{ display: isMediaLoaded ? 'block' : 'none' }}
+        onLoad={onMediaLoad}
+        draggable
+        {...saveIntentHandlers}
+      />
+    </StyledCardImageContainer>
+  );
+};
 
 export default function SearchPage() {
-  // ... existing code ...
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
 
+  const params = useParams();
+
+  const { user, shows } = useContext(UserContext);
+
+  const RESULTS_PER_PAGE = 8;
+
+  const [loadingCsv, setLoadingCsv] = useState(false);
+
+  // ===== Upgraded Index Banner States ===== 
+  const [animationsEnabled] = useState(false);
+  // const [animationsEnabled, setAnimationsEnabled] = useState(
+  //   localStorage.getItem('animationsEnabled') === 'true' || false
+  // );
+  // ===== ===== ===== ===== ===== ===== ===== 
+
+  const [universalSearchMaintenance, setUniversalSearchMaintenance] = useState(false);
+  const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
+  const [availableShows, setAvailableShows] = useState([]);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
+  const [newResults, setNewResults] = useState();
+  const { showObj, setShowObj, cid } = useSearchDetailsV2();
   const { getFilterById } = useCustomFilters();
+  const [loadingResults, setLoadingResults] = useState(true);
+  const [videoUrls, setVideoUrls] = useState({});
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get('searchTerm');
+  const encodedSearchQuery = useMemo(
+    () => (searchQuery ? encodeURIComponent(searchQuery) : ''),
+    [searchQuery],
+  );
 
-  // ... existing code ...
+  const [autoplay] = useState(true);
+
+  const videoRefs = useRef([]);
+
+  const addVideoRef = (element) => {
+    if (element && !videoRefs.current.includes(element)) {
+      videoRefs.current.push(element);
+    }
+  };
+
+
+  const [videoLoadedStates, setVideoLoadedStates] = useState({});
+
+  const handleMediaLoad = (resultId) => {
+    setVideoLoadedStates((prevState) => ({
+      ...prevState,
+      [resultId]: true,
+    }));
+  };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            if (autoplay) {
+              entry.target.play();
+            }
+          } else {
+            entry.target.pause();
+          }
+        });
+      },
+      {
+        rootMargin: '0px',
+        threshold: 0.1
+      }
+    );
+
+    videoRefs.current.forEach(video => observer.observe(video));
+
+    return () => {
+      videoRefs.current.forEach(video => observer.unobserve(video));
+    };
+  }, [newResults, autoplay]);
+
+  // const checkBannerDismissed = () => {
+  //   const dismissedBanner = localStorage.getItem(`dismissedBanner`);
+  //   if (dismissedBanner === 'true') {
+  //     setIsBannerMinimized(true);
+  //     setShowBanner(false);
+  //   } else {
+  //     setIsBannerMinimized(false);
+  //     setShowBanner(true);
+  //   }
+  // };
+
+  useEffect(() => {
+    async function initialize(cid = null) {
+      const selectedCid = cid;
+      if (!selectedCid) {
+        alert("Please enter a valid CID.");
+        return;
+      }
+      setLoadingCsv(false);
+      setShowObj([]);
+
+      // checkBannerDismissed(selectedCid);
+    }
+
+    async function getMaintenanceMode() {
+      try {
+        const response = await API.graphql({
+          ...graphqlOperation(getWebsiteSetting, { id: 'globalSettings' }),
+          authMode: 'API_KEY',
+        });
+        // console.log("setUniversalSearchMaintenance to: ", response?.data?.getWebsiteSetting?.universalSearchMaintenance);
+        return response?.data?.getWebsiteSetting?.universalSearchMaintenance;
+      } catch (error) {
+        console.log(error);
+        return false;
+      }
+    }
+
+    async function fetchData() {
+      const maintenance = await getMaintenanceMode();
+      setUniversalSearchMaintenance(maintenance);
+
+      if (!maintenance || params.cid !== '_universal') {
+        initialize(params.cid);
+      } else {
+        setMaintenanceDialogOpen(true);
+        // const shows = await fetchShows();
+        setAvailableShows(shows);
+      }
+    }
+
+    fetchData();
+  }, [params.cid]);
+
+  // useEffect(() => {
+  //   if (cid) {
+  //     checkBannerDismissed(cid);
+  //   }
+  // }, [cid]);
+
+  useEffect(() => {
+    if (newResults) {
+      newResults.forEach((result) => loadVideoUrl(result, cid));
+    }
+  }, [animationsEnabled, newResults, cid]);
+
+  const loadVideoUrl = async (result, metadataCid) => {
+    const resultCid = result.cid || metadataCid;
+    const thumbnailUrl = animationsEnabled
+      ? `unsupported`
+      : `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/frame/${resultCid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}`;
+    const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
+    setVideoUrls((prevVideoUrls) => ({ ...prevVideoUrls, [resultId]: thumbnailUrl }));
+  };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const resultIndex = entry.target.getAttribute("data-result-index");
+            const result = newResults[resultIndex];
+            const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
+            if (resultIndex && !videoUrls[resultId]) {
+              loadVideoUrl(result, result);
+            }
+          }
+        });
+      },
+      {
+        rootMargin: "0px",
+        threshold: 0.1,
+      }
+    );
+
+    const resultElements = document.querySelectorAll(".result-item");
+    resultElements.forEach((element) => observer.observe(element));
+
+    return () => {
+      resultElements.forEach((element) => observer.unobserve(element));
+    };
+  }, [newResults, videoUrls, cid]);
+
+  const injectAds = (results, adInterval) => {
+    const injectedResults = [];
+
+    for (let i = 0; i < results.length; i += 1) {
+      injectedResults.push(results[i]);
+
+      if ((i + 1) % adInterval === 0 && i !== results.length - 1) {
+        injectedResults.push({ isAd: true });
+      }
+    }
+
+    return injectedResults;
+  };
 
   useEffect(() => {
     async function searchText() {
@@ -42,7 +412,6 @@ export default function SearchPage() {
           seriesToSearch = cid || params?.cid
         }
 
-
         const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${seriesToSearch}/${searchTerm}`);
 
         // const response = await fetch(`http://the-internet.herokuapp.com/status_codes/500`);
@@ -71,7 +440,7 @@ export default function SearchPage() {
       setNewResults([]);
     }
     // }
-  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance]);
+  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance, getFilterById]);
 
   // useEffect(() => {
   //   console.log(newResults);
