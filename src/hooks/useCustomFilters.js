@@ -8,21 +8,27 @@ const STORAGE_KEY = 'memeSRC_custom_filters';
  * @property {string} name - Display name for the filter
  * @property {string[]} items - List of series IDs included in the filter
  * @property {string} [emoji] - Optional emoji for the filter
+ * @property {string} [colorMain] - Optional main color
+ * @property {string} [colorSecondary] - Optional secondary color
  */
 
 export function useCustomFilters() {
-    const [customFilters, setCustomFilters] = useState([]);
-
-    // Load filters from localStorage on mount
-    useEffect(() => {
+    const [customFilters, setCustomFilters] = useState(() => {
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                setCustomFilters(JSON.parse(stored));
-            }
+            return stored ? JSON.parse(stored) : [];
         } catch (error) {
             console.error('Failed to load custom filters:', error);
+            return [];
         }
+    });
+
+    // Save filters to localStorage whenever they change
+    useEffect(() => {
+        // This effect is now only for syncing updates to other tabs or if we want to re-read on focus, 
+        // but primarily we just want to ensure we write back.
+        // Actually, the lazy init handles the initial read. 
+        // We might want to listen to storage events to sync across tabs, but for now let's just keep it simple.
     }, []);
 
     // Save filters to localStorage whenever they change
@@ -35,12 +41,14 @@ export function useCustomFilters() {
         }
     }, []);
 
-    const addFilter = useCallback((name, items, emoji = '📁') => {
+    const addFilter = useCallback((name, items, emoji = '📁', colorMain = null, colorSecondary = null) => {
         const newFilter = {
             id: `custom_${Date.now()}`,
             name,
             items,
-            emoji
+            emoji,
+            colorMain,
+            colorSecondary
         };
         saveFilters([...customFilters, newFilter]);
         return newFilter;

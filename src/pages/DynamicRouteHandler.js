@@ -7,9 +7,11 @@ import HomePage from './HomePage';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import Page404 from './Page404';
 import { safeSetItem } from '../utils/storage';
+import { useCustomFilters } from '../hooks/useCustomFilters';
 
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
+  const { getFilterById } = useCustomFilters();
   const [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState(null);
   const { loadingSavedCids } = useSearchDetailsV2();
@@ -42,6 +44,22 @@ const DynamicRouteHandler = () => {
     if (seriesId === '_favorites') {
       setFavorites(true)
       setLoading(false)
+    } else if (seriesId?.startsWith('custom_')) {
+      const filter = getFilterById(seriesId);
+      if (filter) {
+        setMetadata({
+          id: filter.id,
+          title: filter.name,
+          colorMain: filter.colorMain,
+          colorSecondary: filter.colorSecondary,
+          frameCount: filter.items.length,
+        });
+        setLoading(false);
+        setError(false);
+      } else {
+        setLoading(false);
+        setError(true);
+      }
     } else {
       setFavorites(false)
       console.log(seriesId)
@@ -102,7 +120,7 @@ const DynamicRouteHandler = () => {
       }
     }
 
-  }, [seriesId]);
+  }, [seriesId, getFilterById]);
 
   useEffect(() => {
     // console.log('LOADING: ', loading)

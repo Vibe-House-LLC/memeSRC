@@ -16,6 +16,7 @@ import {
   Typography,
   useTheme,
   Button,
+  Divider,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
@@ -252,6 +253,9 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [creationStep, setCreationStep] = useState<'name' | 'selection'>('name');
   const [newFilterName, setNewFilterName] = useState('');
+  const [newFilterEmoji, setNewFilterEmoji] = useState('📁');
+  const [newFilterColorMain, setNewFilterColorMain] = useState('#000000');
+  const [newFilterColorSecondary, setNewFilterColorSecondary] = useState('#FFFFFF');
   const [newFilterItems, setNewFilterItems] = useState<Set<string>>(new Set());
   const { customFilters, addFilter, removeFilter } = useCustomFilters();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -375,6 +379,9 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     setIsCreating(true);
     setCreationStep('name');
     setNewFilterName('');
+    setNewFilterEmoji('📁');
+    setNewFilterColorMain('#000000');
+    setNewFilterColorSecondary('#FFFFFF');
     setNewFilterItems(new Set());
     setFilter(''); // Clear any existing search filter
   };
@@ -395,10 +402,13 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
   const handleCreateFilter = () => {
     if (!newFilterName.trim()) return;
-    addFilter(newFilterName, Array.from(newFilterItems));
+    addFilter(newFilterName, Array.from(newFilterItems), newFilterEmoji, newFilterColorMain, newFilterColorSecondary);
     setIsCreating(false);
     setCreationStep('name');
     setNewFilterName('');
+    setNewFilterEmoji('📁');
+    setNewFilterColorMain('#000000');
+    setNewFilterColorSecondary('#FFFFFF');
     setNewFilterItems(new Set());
     setFilter('');
   };
@@ -459,6 +469,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
         next.delete(id);
       } else {
         next.add(id);
+        setFilter(''); // Clear search on select
       }
       return next;
     });
@@ -472,6 +483,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       <TextField
         autoFocus
         fullWidth
+        label="Filter Name"
         placeholder="e.g., My Comedy Mix"
         value={newFilterName}
         onChange={(e) => setNewFilterName(e.target.value)}
@@ -480,7 +492,38 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             handleNextStep();
           }
         }}
+        sx={{ mb: 2 }}
       />
+
+      <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
+        <TextField
+          label="Emoji"
+          value={newFilterEmoji}
+          onChange={(e) => setNewFilterEmoji(e.target.value)}
+          sx={{ width: 80 }}
+          inputProps={{ maxLength: 2, style: { textAlign: 'center' } }}
+        />
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="caption">Background:</Typography>
+            <input
+              type="color"
+              value={newFilterColorMain}
+              onChange={(e) => setNewFilterColorMain(e.target.value)}
+              style={{ border: 'none', width: 40, height: 30, padding: 0, cursor: 'pointer' }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="caption">Text:</Typography>
+            <input
+              type="color"
+              value={newFilterColorSecondary}
+              onChange={(e) => setNewFilterColorSecondary(e.target.value)}
+              style={{ border: 'none', width: 40, height: 30, padding: 0, cursor: 'pointer' }}
+            />
+          </Box>
+        </Box>
+      </Box>
       <Box sx={{ display: 'flex', gap: 1, width: '100%', mt: 1 }}>
         <Button
           variant="outlined"
@@ -521,8 +564,37 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
         </Button>
       </Box>
       <List sx={{ flex: 1, overflowY: 'auto' }}>
+        {/* Selected Items Section */}
+        {newFilterItems.size > 0 && (
+          <>
+            <ListSubheader disableSticky sx={{ lineHeight: '32px', bgcolor: 'background.paper', zIndex: 2 }}>
+              Selected ({newFilterItems.size})
+            </ListSubheader>
+            {allSeries
+              .filter(s => newFilterItems.has(s.id))
+              .map((s) => (
+                <ListItemButton
+                  key={s.id}
+                  onClick={() => handleToggleItemInNewFilter(s.id)}
+                  selected
+                >
+                  <Box sx={(theme) => radioIconSx(theme, true, { inverted: true })}>
+                    <CheckIcon fontSize="small" />
+                  </Box>
+                  <ListItemText primary={s.title} sx={{ ml: 1 }} />
+                </ListItemButton>
+              ))}
+            <Divider />
+          </>
+        )}
+
+        {/* Available Items Section */}
+        <ListSubheader disableSticky sx={{ lineHeight: '32px', bgcolor: 'background.paper', zIndex: 2 }}>
+          {filter ? 'Search Results' : 'All Shows'}
+        </ListSubheader>
         {filteredAllSeries.map((s) => {
-          const isSelected = newFilterItems.has(s.id);
+          if (newFilterItems.has(s.id)) return null; // Skip already selected items
+          const isSelected = false;
           return (
             <ListItemButton
               key={s.id}
