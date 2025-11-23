@@ -31,10 +31,21 @@ interface SeriesItem {
     isFavorite?: boolean;
 }
 
+export interface CustomFilter {
+    id: string;
+    name: string;
+    items: string[];
+    emoji: string;
+    colorMain: string;
+    colorSecondary: string;
+}
+
 interface FilterEditorDialogProps {
     open: boolean;
     onClose: () => void;
     allSeries: SeriesItem[];
+    initialFilter?: CustomFilter | null;
+    onSave?: (filter: Omit<CustomFilter, 'id'> & { id?: string }) => void;
 }
 
 const radioIconSx = (theme: any, selected: boolean, options?: { inverted?: boolean }) => {
@@ -56,10 +67,10 @@ const radioIconSx = (theme: any, selected: boolean, options?: { inverted?: boole
     };
 };
 
-export default function FilterEditorDialog({ open, onClose, allSeries }: FilterEditorDialogProps) {
+export default function FilterEditorDialog({ open, onClose, allSeries, initialFilter, onSave }: FilterEditorDialogProps) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const { addFilter } = useCustomFilters();
+    const { addFilter, updateFilter } = useCustomFilters();
 
     const [step, setStep] = useState<'name' | 'selection'>('name');
     const [name, setName] = useState('');
@@ -69,19 +80,29 @@ export default function FilterEditorDialog({ open, onClose, allSeries }: FilterE
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
     const [filter, setFilter] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
+    const selectedSectionRef = useRef<HTMLDivElement>(null);
 
     // Reset state on open
     useEffect(() => {
         if (open) {
-            setStep('name');
-            setName('');
-            setEmoji('📁');
-            setColorMain('#000000');
-            setColorSecondary('#FFFFFF');
-            setSelectedItems(new Set());
+            if (initialFilter) {
+                setStep('name');
+                setName(initialFilter.name);
+                setEmoji(initialFilter.emoji);
+                setColorMain(initialFilter.colorMain || '#000000');
+                setColorSecondary(initialFilter.colorSecondary || '#FFFFFF');
+                setSelectedItems(new Set(initialFilter.items));
+            } else {
+                setStep('name');
+                setName('');
+                setEmoji('📁');
+                setColorMain('#000000');
+                setColorSecondary('#FFFFFF');
+                setSelectedItems(new Set());
+            }
             setFilter('');
         }
-    }, [open]);
+    }, [open, initialFilter]);
 
     const handleNext = () => {
         if (name.trim()) {
@@ -98,7 +119,24 @@ export default function FilterEditorDialog({ open, onClose, allSeries }: FilterE
 
     const handleSave = () => {
         if (!name.trim()) return;
-        addFilter(name, Array.from(selectedItems), emoji, colorMain, colorSecondary);
+
+        const filterData = {
+            name,
+            items: Array.from(selectedItems),
+            emoji,
+            colorMain,
+            colorSecondary
+        };
+
+        if (onSave) {
+            onSave(initialFilter ? { ...filterData, id: initialFilter.id } : filterData);
+        } else {
+            if (initialFilter) {
+                updateFilter(initialFilter.id, filterData);
+            } else {
+                addFilter(name, Array.from(selectedItems), emoji, colorMain, colorSecondary);
+            }
+        }
         onClose();
     };
 
@@ -239,12 +277,45 @@ export default function FilterEditorDialog({ open, onClose, allSeries }: FilterE
         </Box>
     );
 
+    const scrollToSelected = () => {
+        if (selectedSectionRef.current) {
+            selectedSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     const renderSelectionStep = (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
             <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
                 <IconButton onClick={handleBack} edge="start">
                     <ChevronLeftIcon />
                 </IconButton>
+                <Box sx={{ flex: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
+                        {name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        {selectedItems.size} shows selected
+                    </Typography>
+                </Box>
+                <Button
+                    variant="contained"
+                    onClick={handleSave}
+                    disabled={selectedItems.size === 0}
+                    sx={{
+                        borderRadius: 3,
+                        boxShadow: 'none',
+                        fontWeight: 700,
+                        px: 3,
+                        py: 1,
+                        background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                        color: 'white'
+                    }}
+                >
+                    Finish
+                </Button>
+            </Box>
+
+            <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
                 <TextField
                     inputRef={inputRef}
                     size="small"
@@ -268,68 +339,88 @@ export default function FilterEditorDialog({ open, onClose, allSeries }: FilterE
                         sx: { borderRadius: 3 }
                     }}
                 />
-                <Button
-                    variant="contained"
-                    onClick={handleSave}
-                    disabled={selectedItems.size === 0}
-                    sx={{ minWidth: 80, borderRadius: 3, boxShadow: 'none', fontWeight: 700 }}
-                >
-                    Save
-                </Button>
             </Box>
 
-            <List sx={{ flex: 1, overflowY: 'auto', px: 2, pb: 2 }}>
+            <Box sx={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
                 {selectedItems.size > 0 && (
-                    <>
-                        <ListSubheader sx={{ bgcolor: 'background.paper', zIndex: 1, fontWeight: 700, fontSize: '0.9rem', mt: 1 }}>
-                            Selected ({selectedItems.size})
-                        </ListSubheader>
-                        {allSeries
-                            .filter(s => selectedItems.has(s.id))
-                            .map(s => (
-                                <ListItemButton
-                                    key={s.id}
-                                    onClick={() => handleToggleItem(s.id)}
-                                    selected
-                                    sx={{ borderRadius: 2, mb: 0.5 }}
-                                >
-                                    <Box sx={(theme) => radioIconSx(theme, true, { inverted: true })}>
-                                        <CheckIcon fontSize="small" />
-                                    </Box>
-                                    <ListItemText primary={s.title} primaryTypographyProps={{ fontWeight: 600 }} sx={{ ml: 1.5 }} />
-                                </ListItemButton>
-                            ))
-                        }
-                        <Divider sx={{ my: 2 }} />
-                    </>
-                )}
-
-                <ListSubheader sx={{ bgcolor: 'background.paper', zIndex: 1, fontWeight: 700, fontSize: '0.9rem' }}>
-                    {filter ? 'Search Results' : 'All Shows'}
-                </ListSubheader>
-
-                {filteredSeries.map(s => {
-                    if (selectedItems.has(s.id)) return null;
-                    return (
-                        <ListItemButton
-                            key={s.id}
-                            onClick={() => handleToggleItem(s.id)}
-                            sx={{ borderRadius: 2, mb: 0.5 }}
-                        >
-                            <Box sx={(theme) => radioIconSx(theme, false, { inverted: true })}>
-                                <RadioButtonUncheckedIcon fontSize="small" />
-                            </Box>
-                            <ListItemText primary={s.title} sx={{ ml: 1.5 }} />
-                        </ListItemButton>
-                    );
-                })}
-
-                {filteredSeries.length === 0 && (
-                    <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
-                        <Typography variant="body2">No results found</Typography>
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            bottom: 24,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 10,
+                        }}
+                    >
+                        <Chip
+                            icon={<CheckIcon style={{ color: 'white' }} />}
+                            label={`${selectedItems.size} Selected`}
+                            onClick={scrollToSelected}
+                            sx={{
+                                bgcolor: 'rgba(0, 0, 0, 0.8)',
+                                color: 'white',
+                                backdropFilter: 'blur(8px)',
+                                fontWeight: 700,
+                                boxShadow: 4,
+                                '&:hover': { bgcolor: 'black' }
+                            }}
+                        />
                     </Box>
                 )}
-            </List>
+
+                <List sx={{ height: '100%', overflowY: 'auto', px: 2, pb: 10 }}>
+                    {selectedItems.size > 0 && (
+                        <Box ref={selectedSectionRef}>
+                            <ListSubheader sx={{ bgcolor: 'background.paper', zIndex: 1, fontWeight: 700, fontSize: '0.9rem', mt: 1 }}>
+                                Selected ({selectedItems.size})
+                            </ListSubheader>
+                            {allSeries
+                                .filter(s => selectedItems.has(s.id))
+                                .map(s => (
+                                    <ListItemButton
+                                        key={s.id}
+                                        onClick={() => handleToggleItem(s.id)}
+                                        selected
+                                        sx={{ borderRadius: 2, mb: 0.5 }}
+                                    >
+                                        <Box sx={(theme) => radioIconSx(theme, true, { inverted: true })}>
+                                            <CheckIcon fontSize="small" />
+                                        </Box>
+                                        <ListItemText primary={s.title} primaryTypographyProps={{ fontWeight: 600 }} sx={{ ml: 1.5 }} />
+                                    </ListItemButton>
+                                ))
+                            }
+                            <Divider sx={{ my: 2 }} />
+                        </Box>
+                    )}
+
+                    <ListSubheader sx={{ bgcolor: 'background.paper', zIndex: 1, fontWeight: 700, fontSize: '0.9rem' }}>
+                        {filter ? 'Search Results' : 'All Shows'}
+                    </ListSubheader>
+
+                    {filteredSeries.map(s => {
+                        if (selectedItems.has(s.id)) return null;
+                        return (
+                            <ListItemButton
+                                key={s.id}
+                                onClick={() => handleToggleItem(s.id)}
+                                sx={{ borderRadius: 2, mb: 0.5 }}
+                            >
+                                <Box sx={(theme) => radioIconSx(theme, false, { inverted: true })}>
+                                    <RadioButtonUncheckedIcon fontSize="small" />
+                                </Box>
+                                <ListItemText primary={s.title} sx={{ ml: 1.5 }} />
+                            </ListItemButton>
+                        );
+                    })}
+
+                    {filteredSeries.length === 0 && (
+                        <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
+                            <Typography variant="body2">No results found</Typography>
+                        </Box>
+                    )}
+                </List>
+            </Box>
         </Box>
     );
 

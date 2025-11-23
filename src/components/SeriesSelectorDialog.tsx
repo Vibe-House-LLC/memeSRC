@@ -55,6 +55,7 @@ export interface SeriesSelectorDialogProps {
   includeAllFavorites?: boolean;
   anchorEl?: HTMLElement | null;
   onOpenEditor?: () => void;
+  onEdit?: (filter: SeriesItem) => void;
 }
 
 function normalizeString(input: string): string {
@@ -247,6 +248,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     includeAllFavorites = true,
     anchorEl,
     onOpenEditor,
+    onEdit,
   } = props;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -514,6 +516,16 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                   primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
                   primary={filter.name}
                 />
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onEdit) onEdit(filter);
+                  }}
+                  sx={{ color: 'inherit', opacity: 0.7, '&:hover': { opacity: 1 }, mr: 0.5 }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
                 <IconButton
                   size="small"
                   onClick={(e) => {
