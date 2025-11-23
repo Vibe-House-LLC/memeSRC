@@ -54,6 +54,7 @@ export interface SeriesSelectorDialogProps {
   currentValueId?: string;
   includeAllFavorites?: boolean;
   anchorEl?: HTMLElement | null;
+  onOpenEditor?: () => void;
 }
 
 function normalizeString(input: string): string {
@@ -245,19 +246,13 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     currentValueId,
     includeAllFavorites = true,
     anchorEl,
+    onOpenEditor,
   } = props;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
-  const [isCreating, setIsCreating] = useState(false);
-  const [creationStep, setCreationStep] = useState<'name' | 'selection'>('name');
-  const [newFilterName, setNewFilterName] = useState('');
-  const [newFilterEmoji, setNewFilterEmoji] = useState('📁');
-  const [newFilterColorMain, setNewFilterColorMain] = useState('#000000');
-  const [newFilterColorSecondary, setNewFilterColorSecondary] = useState('#FFFFFF');
-  const [newFilterItems, setNewFilterItems] = useState<Set<string>>(new Set());
-  const { customFilters, addFilter, removeFilter } = useCustomFilters();
+  const { customFilters, removeFilter } = useCustomFilters();
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -375,43 +370,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     });
   }, [baseSeries]);
 
-  const handleStartCreation = () => {
-    setIsCreating(true);
-    setCreationStep('name');
-    setNewFilterName('');
-    setNewFilterEmoji('📁');
-    setNewFilterColorMain('#000000');
-    setNewFilterColorSecondary('#FFFFFF');
-    setNewFilterItems(new Set());
-    setFilter(''); // Clear any existing search filter
-  };
 
-  const handleNextStep = () => {
-    if (newFilterName.trim()) {
-      setCreationStep('selection');
-      // Focus the search input on next tick
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-    }
-  };
-
-  const handleBackStep = () => {
-    setCreationStep('name');
-  };
-
-  const handleCreateFilter = () => {
-    if (!newFilterName.trim()) return;
-    addFilter(newFilterName, Array.from(newFilterItems), newFilterEmoji, newFilterColorMain, newFilterColorSecondary);
-    setIsCreating(false);
-    setCreationStep('name');
-    setNewFilterName('');
-    setNewFilterEmoji('📁');
-    setNewFilterColorMain('#000000');
-    setNewFilterColorSecondary('#FFFFFF');
-    setNewFilterItems(new Set());
-    setFilter('');
-  };
 
   const renderFilterInput = () => (
     <TextField
@@ -462,162 +421,9 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     />
   );
 
-  const handleToggleItemInNewFilter = (id: string) => {
-    setNewFilterItems(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-        setFilter(''); // Clear search on select
-      }
-      return next;
-    });
-  };
 
-  const renderNameStep = (
-    <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-        Name Your Filter
-      </Typography>
-      <TextField
-        autoFocus
-        fullWidth
-        label="Filter Name"
-        placeholder="e.g., My Comedy Mix"
-        value={newFilterName}
-        onChange={(e) => setNewFilterName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && newFilterName.trim()) {
-            handleNextStep();
-          }
-        }}
-        sx={{ mb: 2 }}
-      />
 
-      <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-        <TextField
-          label="Emoji"
-          value={newFilterEmoji}
-          onChange={(e) => setNewFilterEmoji(e.target.value)}
-          sx={{ width: 80 }}
-          inputProps={{ maxLength: 2, style: { textAlign: 'center' } }}
-        />
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption">Background:</Typography>
-            <input
-              type="color"
-              value={newFilterColorMain}
-              onChange={(e) => setNewFilterColorMain(e.target.value)}
-              style={{ border: 'none', width: 40, height: 30, padding: 0, cursor: 'pointer' }}
-            />
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption">Text:</Typography>
-            <input
-              type="color"
-              value={newFilterColorSecondary}
-              onChange={(e) => setNewFilterColorSecondary(e.target.value)}
-              style={{ border: 'none', width: 40, height: 30, padding: 0, cursor: 'pointer' }}
-            />
-          </Box>
-        </Box>
-      </Box>
-      <Box sx={{ display: 'flex', gap: 1, width: '100%', mt: 1 }}>
-        <Button
-          variant="outlined"
-          fullWidth
-          onClick={() => setIsCreating(false)}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          fullWidth
-          onClick={handleNextStep}
-          disabled={!newFilterName.trim()}
-        >
-          Next
-        </Button>
-      </Box>
-    </Box>
-  );
 
-  const renderSelectionStep = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
-        <IconButton onClick={handleBackStep} size="small">
-          <ChevronLeftIcon />
-        </IconButton>
-        <Box sx={{ flex: 1 }}>
-          {renderFilterInput()}
-        </Box>
-        <Button
-          variant="contained"
-          size="small"
-          onClick={handleCreateFilter}
-          disabled={newFilterItems.size === 0}
-          sx={{ minWidth: 64 }}
-        >
-          Save
-        </Button>
-      </Box>
-      <List sx={{ flex: 1, overflowY: 'auto' }}>
-        {/* Selected Items Section */}
-        {newFilterItems.size > 0 && (
-          <>
-            <ListSubheader disableSticky sx={{ lineHeight: '32px', bgcolor: 'background.paper', zIndex: 2 }}>
-              Selected ({newFilterItems.size})
-            </ListSubheader>
-            {allSeries
-              .filter(s => newFilterItems.has(s.id))
-              .map((s) => (
-                <ListItemButton
-                  key={s.id}
-                  onClick={() => handleToggleItemInNewFilter(s.id)}
-                  selected
-                >
-                  <Box sx={(theme) => radioIconSx(theme, true, { inverted: true })}>
-                    <CheckIcon fontSize="small" />
-                  </Box>
-                  <ListItemText primary={s.title} sx={{ ml: 1 }} />
-                </ListItemButton>
-              ))}
-            <Divider />
-          </>
-        )}
-
-        {/* Available Items Section */}
-        <ListSubheader disableSticky sx={{ lineHeight: '32px', bgcolor: 'background.paper', zIndex: 2 }}>
-          {filter ? 'Search Results' : 'All Shows'}
-        </ListSubheader>
-        {filteredAllSeries.map((s) => {
-          if (newFilterItems.has(s.id)) return null; // Skip already selected items
-          const isSelected = false;
-          return (
-            <ListItemButton
-              key={s.id}
-              onClick={() => handleToggleItemInNewFilter(s.id)}
-              selected={isSelected}
-            >
-              <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
-                {isSelected ? <CheckIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
-              </Box>
-              <ListItemText primary={s.title} sx={{ ml: 1 }} />
-            </ListItemButton>
-          );
-        })}
-        {filteredAllSeries.length === 0 && (
-          <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
-            <Typography variant="body2">No results found</Typography>
-          </Box>
-        )}
-      </List>
-    </Box>
-  );
-
-  const createFilterContent = creationStep === 'name' ? renderNameStep : renderSelectionStep;
 
   const filterInputListItem = (
     <ListItem
@@ -724,7 +530,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
           {/* Create New Filter Button */}
           <ListItemButton
-            onClick={handleStartCreation}
+            onClick={onOpenEditor}
             sx={(theme) => quickActionButtonSx(theme)}
           >
             <Box sx={{ mr: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)' }}>
@@ -958,7 +764,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
               bgcolor: 'background.default',
             }}
           >
-            {isCreating ? createFilterContent : listContent}
+            {listContent}
           </Box>
         </DialogContent>
       </Dialog>
@@ -1017,7 +823,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             bgcolor: 'background.default',
           }}
         >
-          {isCreating ? createFilterContent : listContent}
+          {listContent}
         </Box>
       </Box>
     </Popover>

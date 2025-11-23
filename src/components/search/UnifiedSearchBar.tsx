@@ -9,6 +9,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
+import FilterEditorDialog from '../FilterEditorDialog';
 import { useCustomFilters } from '../../hooks/useCustomFilters';
 
 type SeriesSelectorDialogProps = React.ComponentProps<typeof SeriesSelectorDialog>;
@@ -567,6 +568,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 }) => {
   const { customFilters } = useCustomFilters();
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
   const [showRandomLabel, setShowRandomLabel] = useState(true);
@@ -875,6 +877,15 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         currentValueId={currentValueId}
         includeAllFavorites={includeAllFavorites}
         anchorEl={selectorAnchorEl}
+        onOpenEditor={() => {
+          handleCloseSelector();
+          setEditorOpen(true);
+        }}
+      />
+      <FilterEditorDialog
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        allSeries={[...shows, ...savedCids]}
       />
     </FormRoot>
   );

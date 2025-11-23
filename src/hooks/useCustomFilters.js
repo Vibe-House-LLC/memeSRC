@@ -24,21 +24,33 @@ export function useCustomFilters() {
     });
 
     // Save filters to localStorage whenever they change
-    useEffect(() => {
-        // This effect is now only for syncing updates to other tabs or if we want to re-read on focus, 
-        // but primarily we just want to ensure we write back.
-        // Actually, the lazy init handles the initial read. 
-        // We might want to listen to storage events to sync across tabs, but for now let's just keep it simple.
-    }, []);
-
-    // Save filters to localStorage whenever they change
     const saveFilters = useCallback((filters) => {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
             setCustomFilters(filters);
+            window.dispatchEvent(new Event('memeSRC_custom_filters_updated'));
         } catch (error) {
             console.error('Failed to save custom filters:', error);
         }
+    }, []);
+
+    useEffect(() => {
+        const handleStorageChange = () => {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                setCustomFilters(stored ? JSON.parse(stored) : []);
+            } catch (error) {
+                console.error('Failed to load custom filters:', error);
+            }
+        };
+
+        window.addEventListener('memeSRC_custom_filters_updated', handleStorageChange);
+        window.addEventListener('storage', handleStorageChange); // Also listen for cross-tab changes
+
+        return () => {
+            window.removeEventListener('memeSRC_custom_filters_updated', handleStorageChange);
+            window.removeEventListener('storage', handleStorageChange);
+        };
     }, []);
 
     const addFilter = useCallback((name, items, emoji = '📁', colorMain = null, colorSecondary = null) => {
