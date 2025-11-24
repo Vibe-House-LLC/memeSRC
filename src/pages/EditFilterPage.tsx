@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
     Box,
     TextField,
@@ -25,7 +25,8 @@ import {
     DialogContent,
     DialogContentText,
     DialogActions,
-    CircularProgress
+    CircularProgress,
+    Alert
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
@@ -59,9 +60,10 @@ const radioIconSx = (theme, selected, options) => {
 export default function EditFilterPage() {
     const theme = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
     const { filterId } = useParams();
     const { groups, createGroup, updateGroup, loading } = useSearchFilterGroups();
-    const { shows } = useContext(UserContext);
+    const { shows, user } = useContext(UserContext);
 
     const [name, setName] = useState('');
     const [emoji, setEmoji] = useState('📁');
@@ -73,6 +75,31 @@ export default function EditFilterPage() {
     const [pendingFilterId, setPendingFilterId] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
 
+
+    // Load state from URL query params (for restoring state after login)
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const paramName = params.get('name');
+        const paramEmoji = params.get('emoji');
+        const paramColorMain = params.get('colorMain');
+        const paramColorSecondary = params.get('colorSecondary');
+        const paramItems = params.get('items');
+
+        if (paramName) setName(paramName);
+        if (paramEmoji) setEmoji(paramEmoji);
+        if (paramColorMain) setColorMain(paramColorMain);
+        if (paramColorSecondary) setColorSecondary(paramColorSecondary);
+        if (paramItems) {
+            try {
+                const items = JSON.parse(paramItems);
+                if (Array.isArray(items)) {
+                    setSelectedItems(new Set(items));
+                }
+            } catch (e) {
+                console.error("Failed to parse items from query params", e);
+            }
+        }
+    }, [location.search]);
 
     // Load existing filter data
     useEffect(() => {
@@ -98,16 +125,37 @@ export default function EditFilterPage() {
     // Reset for new filter
     useEffect(() => {
         if (!filterId) {
+            // Check if we have params that should take precedence
+            const params = new URLSearchParams(location.search);
+            if (params.get('name') || params.get('items')) {
+                return;
+            }
+
             setName('');
             setEmoji('📁');
             setColorMain('#000000');
             setColorSecondary('#FFFFFF');
             setSelectedItems(new Set());
         }
-    }, [filterId]);
+    }, [filterId, location.search]);
 
     const handleSave = async () => {
         if (!name.trim()) return;
+
+        if (!user) {
+            const params = new URLSearchParams();
+            params.set('name', name);
+            params.set('emoji', emoji);
+            params.set('colorMain', colorMain);
+            params.set('colorSecondary', colorSecondary);
+            params.set('items', JSON.stringify(Array.from(selectedItems)));
+
+            const currentPath = location.pathname;
+            const destinationUrl = `${currentPath}?${params.toString()}`;
+            navigate(`/login?dest=${encodeURIComponent(destinationUrl)}`);
+            return;
+        }
+
         setIsSaving(true);
 
         const filterData = {
@@ -208,6 +256,8 @@ export default function EditFilterPage() {
                     </Button>
                 </Toolbar>
             </AppBar>
+
+
 
             <Container maxWidth="md" sx={{ mt: 6 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
