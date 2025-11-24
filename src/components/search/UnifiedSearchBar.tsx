@@ -929,6 +929,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         currentValueId={currentValueId}
         includeAllFavorites={includeAllFavorites}
         anchorEl={selectorAnchorEl}
+
         onOpenEditor={() => {
           handleCloseSelector();
           setEditingFilter(null);

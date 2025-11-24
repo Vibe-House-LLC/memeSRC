@@ -17,6 +17,9 @@ import {
   useTheme,
   Button,
   Divider,
+  DialogTitle,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
@@ -56,6 +59,7 @@ export interface SeriesSelectorDialogProps {
   anchorEl?: HTMLElement | null;
   onOpenEditor?: () => void;
   onEdit?: (filter: SeriesItem) => void;
+
 }
 
 function normalizeString(input: string): string {
@@ -257,6 +261,34 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const { customFilters, removeFilter } = useCustomFilters();
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [filterToDelete, setFilterToDelete] = useState<SeriesItem | null>(null);
+
+  const handleDeleteClick = (filter: SeriesItem) => {
+    setFilterToDelete(filter);
+    setDeleteConfirmationOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (filterToDelete) {
+      removeFilter(filterToDelete.id);
+
+      // Check if the deleted filter was the currently selected one
+      if (currentValueId === filterToDelete.id) {
+        // Switch to default filter
+        const defaultFilter = localStorage.getItem('memeSRCDefaultIndex') || '_universal';
+        onSelect(defaultFilter);
+      }
+    }
+    setDeleteConfirmationOpen(false);
+    setFilterToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmationOpen(false);
+    setFilterToDelete(null);
+  };
 
   // Merge shows + savedCids and dedupe by id
   const baseSeries: SeriesItem[] = useMemo(() => {
@@ -530,7 +562,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
-                    removeFilter(filter.id);
+                    handleDeleteClick(filter);
                   }}
                   sx={{ color: 'inherit', opacity: 0.7, '&:hover': { opacity: 1 } }}
                 >
@@ -784,60 +816,80 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   }
 
   return (
-    <Popover
-      open={open}
-      onClose={onClose}
-      anchorEl={anchorEl}
-      anchorOrigin={popoverAnchorOrigin}
-      transformOrigin={popoverTransformOrigin}
-      slotProps={{
-        paper: {
-          sx: (theme) => ({
-            mt: isMobile ? 0.9 : 1,
-            width: isMobile ? 'min(360px, calc(100vw - 32px))' : 420,
-            maxWidth: isMobile ? 'min(360px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 32px))',
-            // On mobile, make it tall enough to be useful but leave room for keyboard
-            height: isMobile ? 'min(70vh, 500px)' : 'auto',
-            maxHeight: isMobile ? 'min(70vh, 500px)' : desktopMaxHeight,
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: isMobile ? theme.spacing(2) : theme.spacing(1.5),
-            overflow: 'hidden',
-            border: '1px solid',
-            borderColor: theme.palette.mode === 'light'
-              ? alpha(theme.palette.common.black, 0.12)
-              : alpha(theme.palette.common.white, 0.26),
-            backgroundImage: theme.palette.mode === 'light'
-              ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
-              : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.96)} 0%, ${alpha(theme.palette.background.default, 0.88)} 100%)`,
-            boxShadow: isMobile ? theme.shadows[16] : theme.shadows[18],
-            backdropFilter: 'blur(18px)',
-          }),
-        },
-      }}
-    >
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          minHeight: 0,
-          bgcolor: 'background.paper',
+    <>
+      <Popover
+        open={open}
+        onClose={onClose}
+        anchorEl={anchorEl}
+        anchorOrigin={popoverAnchorOrigin}
+        transformOrigin={popoverTransformOrigin}
+        slotProps={{
+          paper: {
+            sx: (theme) => ({
+              mt: isMobile ? 0.9 : 1,
+              width: isMobile ? 'min(360px, calc(100vw - 32px))' : 420,
+              maxWidth: isMobile ? 'min(360px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 32px))',
+              // On mobile, make it tall enough to be useful but leave room for keyboard
+              height: isMobile ? 'min(70vh, 500px)' : 'auto',
+              maxHeight: isMobile ? 'min(70vh, 500px)' : desktopMaxHeight,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: isMobile ? theme.spacing(2) : theme.spacing(1.5),
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: theme.palette.mode === 'light'
+                ? alpha(theme.palette.common.black, 0.12)
+                : alpha(theme.palette.common.white, 0.26),
+              backgroundImage: theme.palette.mode === 'light'
+                ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
+                : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.96)} 0%, ${alpha(theme.palette.background.default, 0.88)} 100%)`,
+              boxShadow: isMobile ? theme.shadows[16] : theme.shadows[18],
+              backdropFilter: 'blur(18px)',
+            }),
+          },
         }}
       >
         <Box
-          ref={contentRef}
           sx={{
+            display: 'flex',
+            flexDirection: 'column',
             flex: 1,
             minHeight: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            bgcolor: 'background.default',
+            bgcolor: 'background.paper',
           }}
         >
-          {listContent}
+          <Box
+            ref={contentRef}
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              bgcolor: 'background.default',
+            }}
+          >
+            {listContent}
+          </Box>
         </Box>
-      </Box>
-    </Popover>
+      </Popover>
+
+      <Dialog
+        open={deleteConfirmationOpen}
+        onClose={handleCancelDelete}
+      >
+        <DialogTitle>Delete Filter?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete <b>{filterToDelete?.title}</b>? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete}>Cancel</Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
