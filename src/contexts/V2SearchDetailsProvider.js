@@ -27,10 +27,15 @@ export const V2SearchDetailsProvider = ({ children }) => {
         if (!(pathname.startsWith('/frame') || pathname.startsWith('/editor'))) {
             setFineTuningFrame(null)
         }
-        if (!cid && seriesId) {
-            setCid(seriesId)
+
+        const match = pathname.match(/^\/(search|frame|editor|episode)\/([^/]+)/);
+        if (match) {
+            const urlCid = match[2];
+            if (urlCid && urlCid !== cid) {
+                setCid(urlCid);
+            }
         }
-    }, [pathname])
+    }, [pathname, cid])
 
     // useEffect(() => {
     //     console.log('USER: ', user)

@@ -406,6 +406,21 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       : { backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor },
   );
 
+  // Update theme state when metadata changes
+  useEffect(() => {
+    if (metadata) {
+      setCurrentThemeTitleText(metadata.title || defaultTitleText);
+      setCurrentThemeBragText(metadata.frameCount ? `Search over ${metadata.frameCount.toLocaleString('en-US')} meme templates from ${metadata.title}` : defaultBragText);
+      setCurrentThemeFontFamily(metadata.fontFamily || theme?.typography?.fontFamily);
+      setCurrentThemeFontColor(metadata.colorSecondary || defaultFontColor);
+      setCurrentThemeBackground(
+        metadata.colorMain
+          ? { backgroundColor: `${metadata.colorMain}` }
+          : { backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor }
+      );
+    }
+  }, [metadata, theme]);
+
   const { seriesId } = useParams();
 
   // The handleChangeSeries function now only handles theme updates

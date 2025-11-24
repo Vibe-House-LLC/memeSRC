@@ -401,7 +401,7 @@ export default function SearchPage() {
 
       try {
         let seriesToSearch;
-        const customFilter = groups.find(g => g.id === (cid || params?.cid));
+        const customFilter = groups.find(g => g.id === (params?.cid || cid));
         let customFilterItems = [];
         if (customFilter) {
           try {
@@ -418,7 +418,7 @@ export default function SearchPage() {
         } else if (customFilter) {
           seriesToSearch = customFilterItems.join(',');
         } else {
-          seriesToSearch = cid || params?.cid
+          seriesToSearch = params?.cid || cid
         }
 
         const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${seriesToSearch}/${searchTerm}`);
