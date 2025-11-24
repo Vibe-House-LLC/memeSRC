@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { keyframes } from '@mui/system';
@@ -567,6 +568,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   appearance = 'light',
 }) => {
   const { customFilters } = useCustomFilters();
+  const navigate = useNavigate();
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
@@ -710,11 +712,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   }, [handleFilterClick]);
 
   const handleEditFilter = (filter: SeriesItem) => {
-    window.location.href = `/search/filter/edit/${filter.id}`;
+    navigate(`/search/filter/edit/${filter.id}`);
   };
 
   const handleOpenEditor = () => {
-    window.location.href = '/search/filter/edit';
+    navigate('/search/filter/edit');
   };
 
   return (
