@@ -486,7 +486,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     >
 
       {filterInputListItem}
-      {/* Quick Filters (Universal + Favorites + Custom) */}
+      {/* Quick Filters (Universal + Favorites) */}
       {showQuickPicks && (
         <>
           <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}>
@@ -529,7 +529,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             </ListItemButton>
           )}
 
-          {/* Custom Filters */}
+          {/* Custom Filters Section */}
+          <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'regular' })}>
+            Custom Filters
+          </ListSubheader>
+
+          {/* Custom Filters List */}
           {customFilters.map((filter) => {
             const isSelected = currentValueId === filter.id;
             return (
