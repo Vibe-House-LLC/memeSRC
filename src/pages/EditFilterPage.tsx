@@ -26,8 +26,10 @@ import {
     DialogContentText,
     DialogActions,
     CircularProgress,
-    Alert
+    Alert,
+    Popover
 } from '@mui/material';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import CheckIcon from '@mui/icons-material/Check';
@@ -74,6 +76,19 @@ export default function EditFilterPage() {
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
     const [pendingFilterId, setPendingFilterId] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [emojiAnchorEl, setEmojiAnchorEl] = useState(null);
+
+    const handleEmojiClick = (emojiData) => {
+        setEmoji(emojiData.emoji);
+        setEmojiAnchorEl(null);
+    };
+
+    const handleEmojiClose = () => {
+        setEmojiAnchorEl(null);
+    };
+
+    const isEmojiOpen = Boolean(emojiAnchorEl);
+    const emojiId = isEmojiOpen ? 'emoji-popover' : undefined;
 
 
     // Load state from URL query params (for restoring state after login)
@@ -266,6 +281,7 @@ export default function EditFilterPage() {
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                         <Box sx={{ position: 'relative' }}>
                             <Box
+                                onClick={(event) => setEmojiAnchorEl(event.currentTarget)}
                                 sx={{
                                     width: 120,
                                     height: 120,
@@ -284,22 +300,35 @@ export default function EditFilterPage() {
                                 }}
                             >
                                 {emoji}
-                                <input
-                                    type="text"
-                                    value={emoji}
-                                    onChange={(e) => setEmoji(e.target.value)}
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        width: '100%',
-                                        height: '100%',
-                                        opacity: 0,
-                                        cursor: 'pointer'
-                                    }}
-                                    maxLength={2}
-                                />
                             </Box>
+                            <Popover
+                                id={emojiId}
+                                open={isEmojiOpen}
+                                anchorEl={emojiAnchorEl}
+                                onClose={handleEmojiClose}
+                                anchorOrigin={{
+                                    vertical: 'bottom',
+                                    horizontal: 'center',
+                                }}
+                                transformOrigin={{
+                                    vertical: 'top',
+                                    horizontal: 'center',
+                                }}
+                                sx={{
+                                    '& .MuiPaper-root': {
+                                        borderRadius: 4,
+                                        boxShadow: theme.shadows[8],
+                                        border: '1px solid',
+                                        borderColor: 'divider'
+                                    }
+                                }}
+                            >
+                                <EmojiPicker
+                                    onEmojiClick={handleEmojiClick}
+                                    theme={theme.palette.mode === 'dark' ? Theme.DARK : Theme.LIGHT}
+                                    lazyLoadEmojis={true}
+                                />
+                            </Popover>
                             <Box
                                 sx={{
                                     position: 'absolute',
@@ -314,7 +343,8 @@ export default function EditFilterPage() {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     border: '2px solid',
-                                    borderColor: 'background.default'
+                                    borderColor: 'background.default',
+                                    pointerEvents: 'none'
                                 }}
                             >
                                 <Typography variant="caption" fontWeight={700}>Aa</Typography>
