@@ -422,13 +422,13 @@ type LocationLeads @model @auth(
 type SearchFilterGroup @model @auth(
   rules: [
     { allow: owner },
-    { allow: groups, groups: ["admins"], operations: [read, delete] }
+    { allow: groups, groups: ["admins"], operations: [create, read, delete] }
   ]
 ) {
   id: ID!
   name: String!
   filters: AWSJSON!
   owner: String
-    @auth(rules: [{ allow: owner, operations: [read, delete] }, { allow: groups, groups: ["admins"], operations: [read, delete] }])
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }])
     @index(name: "byOwner", queryField: "searchFilterGroupsByOwner")
 }
