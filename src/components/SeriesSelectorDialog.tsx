@@ -15,6 +15,11 @@ import {
   ListSubheader,
   Typography,
   useTheme,
+  Button,
+  Divider,
+  DialogTitle,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
@@ -27,10 +32,16 @@ import { normalizeColorValue } from '../utils/colors';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import CheckIcon from '@mui/icons-material/Check';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
 
 export interface SeriesItem {
   id: string;
   title: string;
+  name?: string; // For custom filters
+  items?: string[]; // For custom filters
   emoji?: string;
   isFavorite?: boolean;
   colorMain?: string;
@@ -46,6 +57,9 @@ export interface SeriesSelectorDialogProps {
   currentValueId?: string;
   includeAllFavorites?: boolean;
   anchorEl?: HTMLElement | null;
+  onOpenEditor?: () => void;
+  onEdit?: (filter: SeriesItem) => void;
+
 }
 
 function normalizeString(input: string): string {
@@ -237,13 +251,69 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     currentValueId,
     includeAllFavorites = true,
     anchorEl,
+    onOpenEditor,
+    onEdit,
   } = props;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+  const { groups, deleteGroup } = useSearchFilterGroups();
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [filterToDelete, setFilterToDelete] = useState<SeriesItem | null>(null);
+
+  const customFilters = useMemo(() => {
+    return groups.map(g => {
+      try {
+        const parsed = JSON.parse(g.filters);
+        return {
+          id: g.id,
+          title: g.name,
+          name: g.name,
+          emoji: parsed.emoji,
+          items: parsed.items,
+          colorMain: parsed.colorMain,
+          colorSecondary: parsed.colorSecondary
+        };
+      } catch (e) {
+        return {
+          id: g.id,
+          title: g.name,
+          name: g.name,
+          emoji: '📁',
+          items: []
+        };
+      }
+    });
+  }, [groups]);
+
+  const handleDeleteClick = (filter: SeriesItem) => {
+    setFilterToDelete(filter);
+    setDeleteConfirmationOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (filterToDelete) {
+      await deleteGroup(filterToDelete.id);
+
+      // Check if the deleted filter was the currently selected one
+      if (currentValueId === filterToDelete.id) {
+        // Switch to default filter
+        const defaultFilter = localStorage.getItem('memeSRCDefaultIndex') || '_universal';
+        onSelect(defaultFilter);
+      }
+    }
+    setDeleteConfirmationOpen(false);
+    setFilterToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmationOpen(false);
+    setFilterToDelete(null);
+  };
 
   // Merge shows + savedCids and dedupe by id
   const baseSeries: SeriesItem[] = useMemo(() => {
@@ -359,6 +429,8 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     });
   }, [baseSeries]);
 
+
+
   const renderFilterInput = () => (
     <TextField
       inputRef={inputRef}
@@ -408,6 +480,10 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     />
   );
 
+
+
+
+
   const filterInputListItem = (
     <ListItem
       disablePadding
@@ -435,11 +511,111 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
     >
 
       {filterInputListItem}
-      {/* Quick picks when not filtering */}
+      {/* Quick Filters (Universal + Favorites) */}
       {showQuickPicks && (
-        <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}>
-          Quick Filters
-        </ListSubheader>
+        <>
+          <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}>
+            Quick Filters
+          </ListSubheader>
+
+          {/* Universal */}
+          <ListItemButton
+            selected={currentValueId === '_universal'}
+            onClick={() => handleSelect('_universal')}
+            sx={(theme) => quickActionButtonSx(theme)}
+          >
+            <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
+              {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+            </Box>
+            <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>🌈</Box>
+            <ListItemText
+              sx={{ ml: 0, flex: 1 }}
+              primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
+              primary="All Shows & Movies"
+            />
+          </ListItemButton>
+
+          {/* Favorites */}
+          {includeAllFavorites && hasAnyFavorite && (
+            <ListItemButton
+              selected={currentValueId === '_favorites'}
+              onClick={() => handleSelect('_favorites')}
+              sx={(theme) => quickActionButtonSx(theme)}
+            >
+              <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
+                {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+              </Box>
+              <Box component="span" sx={{ fontSize: 22, lineHeight: 1, mr: 1 }}>⭐</Box>
+              <ListItemText
+                sx={{ ml: 0, flex: 1 }}
+                primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
+                primary="All Favorites"
+              />
+            </ListItemButton>
+          )}
+
+          {/* Custom Filters Section */}
+          <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'regular' })}>
+            Custom Filters
+          </ListSubheader>
+
+          {/* Custom Filters List */}
+          {customFilters.map((filter) => {
+            const isSelected = currentValueId === filter.id;
+            return (
+              <ListItemButton
+                key={filter.id}
+                selected={isSelected}
+                onClick={() => handleSelect(filter.id)}
+                sx={(theme) => quickActionButtonSx(theme)}
+              >
+                <Box sx={(theme) => radioIconSx(theme, isSelected, { inverted: true })}>
+                  {isSelected ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
+                </Box>
+                <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>{filter.emoji || '📁'}</Box>
+                <ListItemText
+                  sx={{ ml: 0, flex: 1 }}
+                  primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
+                  primary={filter.name}
+                />
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onEdit) onEdit(filter);
+                  }}
+                  sx={{ color: 'inherit', opacity: 0.7, '&:hover': { opacity: 1 }, mr: 0.5 }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick(filter);
+                  }}
+                  sx={{ color: 'inherit', opacity: 0.7, '&:hover': { opacity: 1 } }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </ListItemButton>
+            );
+          })}
+
+          {/* Create New Filter Button */}
+          <ListItemButton
+            onClick={onOpenEditor}
+            sx={(theme) => quickActionButtonSx(theme)}
+          >
+            <Box sx={{ mr: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)' }}>
+              <AddIcon fontSize="small" />
+            </Box>
+            <ListItemText
+              primary="Create New Filter"
+              primaryTypographyProps={{ fontWeight: 700, fontSize: '1.02rem' }}
+            />
+          </ListItemButton>
+        </>
       )}
       {/* No results state */}
       {isFiltering && filteredAllSeries.length === 0 && (
@@ -449,39 +625,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
       )}
       {showQuickPicks && (
         <>
-          <ListItemButton
-            selected={currentValueId === '_universal'}
-            onClick={() => handleSelect('_universal')}
-            sx={(theme) => quickActionButtonSx(theme)}
-          >
-            <Box sx={(theme) => radioIconSx(theme, currentValueId === '_universal', { inverted: true })}>
-              {currentValueId === '_universal' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
-            </Box>
-              <Box component="span" sx={{ fontSize: 19, lineHeight: 1, mr: 0.7 }}>🌈</Box>
-            <ListItemText
-              sx={{ ml: 0, flex: 1 }}
-              primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
-              primary="All Shows & Movies"
-            />
-          </ListItemButton>
 
-          {includeAllFavorites && hasAnyFavorite && (
-            <ListItemButton
-              selected={currentValueId === '_favorites'}
-              onClick={() => handleSelect('_favorites')}
-                sx={(theme) => quickActionButtonSx(theme)}
-            >
-              <Box sx={(theme) => radioIconSx(theme, currentValueId === '_favorites', { inverted: true })}>
-                {currentValueId === '_favorites' ? <RadioButtonCheckedIcon fontSize="small" /> : <RadioButtonUncheckedIcon fontSize="small" />}
-              </Box>
-              <Box component="span" sx={{ fontSize: 22, lineHeight: 1, mr: 1 }}>⭐</Box>
-              <ListItemText
-                sx={{ ml: 0, flex: 1 }}
-                primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '1.02rem', color: 'inherit' } }}
-              primary="All Favorites"
-              />
-            </ListItemButton>
-          )}
 
           {favoritesForSection.length > 0 && (
             <>
@@ -538,7 +682,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             <ListSubheader
               disableSticky
               component="div"
-                sx={(theme) => sectionHeaderSx(
+              sx={(theme) => sectionHeaderSx(
                 theme,
                 { density: showQuickPicks || favoritesForSection.length > 0 ? 'regular' : 'tight' }
               )}
@@ -702,60 +846,80 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   }
 
   return (
-    <Popover
-      open={open}
-      onClose={onClose}
-      anchorEl={anchorEl}
-      anchorOrigin={popoverAnchorOrigin}
-      transformOrigin={popoverTransformOrigin}
-      slotProps={{
-        paper: {
-          sx: (theme) => ({
-            mt: isMobile ? 0.9 : 1,
-            width: isMobile ? 'min(360px, calc(100vw - 32px))' : 420,
-            maxWidth: isMobile ? 'min(360px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 32px))',
-            // On mobile, make it tall enough to be useful but leave room for keyboard
-            height: isMobile ? 'min(70vh, 500px)' : 'auto',
-            maxHeight: isMobile ? 'min(70vh, 500px)' : desktopMaxHeight,
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: isMobile ? theme.spacing(2) : theme.spacing(1.5),
-            overflow: 'hidden',
-            border: '1px solid',
-            borderColor: theme.palette.mode === 'light'
-              ? alpha(theme.palette.common.black, 0.12)
-              : alpha(theme.palette.common.white, 0.26),
-            backgroundImage: theme.palette.mode === 'light'
-              ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
-              : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.96)} 0%, ${alpha(theme.palette.background.default, 0.88)} 100%)`,
-            boxShadow: isMobile ? theme.shadows[16] : theme.shadows[18],
-            backdropFilter: 'blur(18px)',
-          }),
-        },
-      }}
-    >
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          minHeight: 0,
-          bgcolor: 'background.paper',
+    <>
+      <Popover
+        open={open}
+        onClose={onClose}
+        anchorEl={anchorEl}
+        anchorOrigin={popoverAnchorOrigin}
+        transformOrigin={popoverTransformOrigin}
+        slotProps={{
+          paper: {
+            sx: (theme) => ({
+              mt: isMobile ? 0.9 : 1,
+              width: isMobile ? 'min(360px, calc(100vw - 32px))' : 420,
+              maxWidth: isMobile ? 'min(360px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 32px))',
+              // On mobile, make it tall enough to be useful but leave room for keyboard
+              height: isMobile ? 'min(70vh, 500px)' : 'auto',
+              maxHeight: isMobile ? 'min(70vh, 500px)' : desktopMaxHeight,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: isMobile ? theme.spacing(2) : theme.spacing(1.5),
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: theme.palette.mode === 'light'
+                ? alpha(theme.palette.common.black, 0.12)
+                : alpha(theme.palette.common.white, 0.26),
+              backgroundImage: theme.palette.mode === 'light'
+                ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
+                : `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.96)} 0%, ${alpha(theme.palette.background.default, 0.88)} 100%)`,
+              boxShadow: isMobile ? theme.shadows[16] : theme.shadows[18],
+              backdropFilter: 'blur(18px)',
+            }),
+          },
         }}
       >
         <Box
-          ref={contentRef}
           sx={{
+            display: 'flex',
+            flexDirection: 'column',
             flex: 1,
             minHeight: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            bgcolor: 'background.default',
+            bgcolor: 'background.paper',
           }}
         >
-          {listContent}
+          <Box
+            ref={contentRef}
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              bgcolor: 'background.default',
+            }}
+          >
+            {listContent}
+          </Box>
         </Box>
-      </Box>
-    </Popover>
+      </Popover>
+
+      <Dialog
+        open={deleteConfirmationOpen}
+        onClose={handleCancelDelete}
+      >
+        <DialogTitle>Delete Filter?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete <b>{filterToDelete?.title}</b>? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete}>Cancel</Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }

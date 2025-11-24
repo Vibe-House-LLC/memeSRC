@@ -408,6 +408,7 @@ type UsageEvent
   createdAt: AWSDateTime!
 }
 
+
 type LocationLeads @model @auth(
   rules: [
     { allow: groups, groups: ["admins", "mods"] },
@@ -416,4 +417,18 @@ type LocationLeads @model @auth(
 ) {
   id: ID!,
   countryCode: String
+}
+
+type SearchFilterGroup @model @auth(
+  rules: [
+    { allow: owner },
+    { allow: groups, groups: ["admins"], operations: [create, read, delete] }
+  ]
+) {
+  id: ID!
+  name: String!
+  filters: AWSJSON!
+  owner: String
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
+    @index(name: "byOwner", queryField: "searchFilterGroupsByOwner")
 }

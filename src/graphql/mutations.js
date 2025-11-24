@@ -2497,6 +2497,54 @@ export const deleteLocationLeads = /* GraphQL */ `
     }
   }
 `;
+export const createSearchFilterGroup = /* GraphQL */ `
+  mutation CreateSearchFilterGroup(
+    $input: CreateSearchFilterGroupInput!
+    $condition: ModelSearchFilterGroupConditionInput
+  ) {
+    createSearchFilterGroup(input: $input, condition: $condition) {
+      id
+      name
+      filters
+      owner
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateSearchFilterGroup = /* GraphQL */ `
+  mutation UpdateSearchFilterGroup(
+    $input: UpdateSearchFilterGroupInput!
+    $condition: ModelSearchFilterGroupConditionInput
+  ) {
+    updateSearchFilterGroup(input: $input, condition: $condition) {
+      id
+      name
+      filters
+      owner
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteSearchFilterGroup = /* GraphQL */ `
+  mutation DeleteSearchFilterGroup(
+    $input: DeleteSearchFilterGroupInput!
+    $condition: ModelSearchFilterGroupConditionInput
+  ) {
+    deleteSearchFilterGroup(input: $input, condition: $condition) {
+      id
+      name
+      filters
+      owner
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const createSeriesContributors = /* GraphQL */ `
   mutation CreateSeriesContributors(
     $input: CreateSeriesContributorsInput!

@@ -1562,6 +1562,73 @@ export const listLocationLeads = /* GraphQL */ `
     }
   }
 `;
+export const getSearchFilterGroup = /* GraphQL */ `
+  query GetSearchFilterGroup($id: ID!) {
+    getSearchFilterGroup(id: $id) {
+      id
+      name
+      filters
+      owner
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listSearchFilterGroups = /* GraphQL */ `
+  query ListSearchFilterGroups(
+    $filter: ModelSearchFilterGroupFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listSearchFilterGroups(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        name
+        filters
+        owner
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const searchFilterGroupsByOwner = /* GraphQL */ `
+  query SearchFilterGroupsByOwner(
+    $owner: String!
+    $sortDirection: ModelSortDirection
+    $filter: ModelSearchFilterGroupFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    searchFilterGroupsByOwner(
+      owner: $owner
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        name
+        filters
+        owner
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getSeriesContributors = /* GraphQL */ `
   query GetSeriesContributors($id: ID!) {
     getSeriesContributors(id: $id) {

@@ -70,6 +70,7 @@ const AdminSourceMedia = lazy(() => import('./pages/AdminSourceMedia'));
 const AdminFileReview = lazy(() => import('./pages/AdminFileReview'));
 const MagicPage = lazy(() => import('./pages/MagicPage'));
 const SubscriptionPortalRedirect = lazy(() => import('./pages/SubscriptionPortalRedirect'));
+const EditFilterPage = lazy(() => import('./pages/EditFilterPage'));
 // Removed insecure HelloWorldPage route
 
 const DonationRedirect = () => {
@@ -104,6 +105,8 @@ export default function Router() {
         { path: 'editor/project/:editorProjectId', element: <SiteWideMaintenance><V2EditorPage /></SiteWideMaintenance> },
         { path: 'search/:cid', element: <SiteWideMaintenance><IpfsSearchBar><V2SearchPage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'search/:cid/:searchTerms', element: <SiteWideMaintenance><IpfsSearchBar><V2SearchPage /></IpfsSearchBar></SiteWideMaintenance> },
+        { path: 'search/filter/edit', element: <SiteWideMaintenance><EditFilterPage /></SiteWideMaintenance> },
+        { path: 'search/filter/edit/:filterId', element: <SiteWideMaintenance><EditFilterPage /></SiteWideMaintenance> },
 
         { path: 'frame/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2FramePage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'editor/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2EditorPage /></IpfsSearchBar></SiteWideMaintenance> },

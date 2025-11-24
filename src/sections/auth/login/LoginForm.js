@@ -125,7 +125,7 @@ export default function LoginForm() {
 
       handleUpdateDefaultShow(nextDefaultShow);
 
-      navigate(dest ? decodeURIComponent(dest) : '/', { replace: true });
+      navigate(dest || '/', { replace: true });
     } catch (error) {
       console.log(error.name);
 

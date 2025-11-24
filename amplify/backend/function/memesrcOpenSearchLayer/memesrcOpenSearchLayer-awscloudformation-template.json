@@ -20,7 +20,7 @@
     }
   },
   "Resources": {
-    "LambdaLayerVersion676805e0": {
+    "LambdaLayerVersiond51fe54c": {
       "Type": "AWS::Lambda::LayerVersion",
       "Properties": {
         "CompatibleRuntimes": {
@@ -51,12 +51,12 @@
       "DeletionPolicy": "Delete",
       "UpdateReplacePolicy": "Retain"
     },
-    "LambdaLayerPermissionPrivate676805e0": {
+    "LambdaLayerPermissionPrivated51fe54c": {
       "Type": "AWS::Lambda::LayerVersionPermission",
       "Properties": {
         "Action": "lambda:GetLayerVersion",
         "LayerVersionArn": {
-          "Ref": "LambdaLayerVersion676805e0"
+          "Ref": "LambdaLayerVersiond51fe54c"
         },
         "Principal": {
           "Ref": "AWS::AccountId"
@@ -67,7 +67,7 @@
   "Outputs": {
     "Arn": {
       "Value": {
-        "Ref": "LambdaLayerVersion676805e0"
+        "Ref": "LambdaLayerVersiond51fe54c"
       }
     }
   }

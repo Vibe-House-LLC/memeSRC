@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API } from 'aws-amplify';
 import { CircularProgress } from '@mui/material';
@@ -7,9 +7,13 @@ import HomePage from './HomePage';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import Page404 from './Page404';
 import { safeSetItem } from '../utils/storage';
+import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
+import { UserContext } from '../UserContext';
 
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
+  const { groups } = useSearchFilterGroups();
+  const { shows } = useContext(UserContext); // Access shows from UserContext
   const [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState(null);
   const { loadingSavedCids } = useSearchDetailsV2();
@@ -42,6 +46,40 @@ const DynamicRouteHandler = () => {
     if (seriesId === '_favorites') {
       setFavorites(true)
       setLoading(false)
+    } else if (seriesId?.startsWith('custom_') || groups.some(g => g.id === seriesId)) {
+      const filter = groups.find(g => g.id === seriesId);
+      if (filter) {
+        let items = [];
+        let colorMain = '#000000';
+        let colorSecondary = '#FFFFFF';
+        try {
+          const parsed = JSON.parse(filter.filters);
+          items = parsed.items || [];
+          colorMain = parsed.colorMain || '#000000';
+          colorSecondary = parsed.colorSecondary || '#FFFFFF';
+        } catch (e) {
+          console.error("Error parsing filter", e);
+        }
+
+        // Calculate total frame count
+        const totalFrameCount = items.reduce((acc, itemId) => {
+          const show = shows.find(s => s.id === itemId);
+          return acc + (show?.frameCount || 0);
+        }, 0);
+
+        setMetadata({
+          id: filter.id,
+          title: filter.name,
+          colorMain,
+          colorSecondary,
+          frameCount: totalFrameCount,
+        });
+        setLoading(false);
+        setError(false);
+      } else {
+        setLoading(false);
+        setError(true);
+      }
     } else {
       setFavorites(false)
       console.log(seriesId)
@@ -102,7 +140,7 @@ const DynamicRouteHandler = () => {
       }
     }
 
-  }, [seriesId]);
+  }, [seriesId, groups, shows]);
 
   useEffect(() => {
     // console.log('LOADING: ', loading)

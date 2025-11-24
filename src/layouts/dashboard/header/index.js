@@ -63,9 +63,7 @@ const StyledRoot = styled(AppBar)(({ theme }) => ({
   [theme.breakpoints.up('md')]: {
     // Only apply sticky on web, Electron handles it above
     ...(!isElectron() && {
-      position: 'sticky',
-      top: -1,
-      zIndex: theme.zIndex.appBar + 1,
+      position: 'static',
     }),
   },
 }));
@@ -107,7 +105,7 @@ export default function Header({ onOpenNav }) {
   const { openSubscriptionDialog } = useContext(SubscribeDialogContext);
   const [proChipEl, setProChipEl] = useState(null);
   const [showProTip, setShowProTip] = useState(false);
-  
+
   // Electron-specific styles for making elements clickable (not draggable)
   const electronNoDragStyle = isElectron() ? { WebkitAppRegion: 'no-drag' } : {};
 
@@ -156,9 +154,9 @@ export default function Header({ onOpenNav }) {
   }
 
   useEffect(() => {
-    if (!CURRENT_SALE.isActive || 
-        location.pathname !== '/' || 
-        user?.userDetails?.subscriptionStatus === 'active') {
+    if (!CURRENT_SALE.isActive ||
+      location.pathname !== '/' ||
+      user?.userDetails?.subscriptionStatus === 'active') {
       setShowProTip(false);
       return undefined;
     }
@@ -459,11 +457,11 @@ export default function Header({ onOpenNav }) {
               </IconButton>
               <SnowEffect />
               <Stack direction="row" spacing={1} alignItems="center">
-                <Box sx={{ 
-                  display: 'flex', 
+                <Box sx={{
+                  display: 'flex',
                   alignItems: 'center',
                   position: 'relative',
-                  pl: 1 
+                  pl: 1
                 }}>
                   <Box
                     sx={{
@@ -475,9 +473,9 @@ export default function Header({ onOpenNav }) {
                       overflow: 'hidden'
                     }}
                   >
-                    <Logo 
+                    <Logo
                       color="white"
-                      sx={{ 
+                      sx={{
                         width: 38,
                         height: 38,
                         position: 'relative',
@@ -486,7 +484,7 @@ export default function Header({ onOpenNav }) {
                         padding: 0,
                         margin: 0,
                         display: 'block'
-                      }} 
+                      }}
                     />
                   </Box>
                 </Box>
@@ -511,7 +509,7 @@ export default function Header({ onOpenNav }) {
                   >
                     {CURRENT_SALE.name}!
                   </Typography>
-                  <Typography 
+                  <Typography
                     variant="body2"
                     sx={{
                       color: '#b794f4',

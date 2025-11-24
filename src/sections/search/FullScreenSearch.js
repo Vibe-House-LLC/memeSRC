@@ -6,11 +6,13 @@ import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
+import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
 
@@ -24,6 +26,7 @@ import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import { isColorNearBlack } from '../../utils/colors';
 import FeedSection, { resolveUserIdentifier } from './FeedSection';
+import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -97,6 +100,7 @@ const defaultBackgroundColor = '#080808';
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata, persistSearchTerm }) {
   const { savedCids, cid, setCid, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
   const { setShow, setSearchQuery } = useSearchDetails();
+  const { groups } = useSearchFilterGroups();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, shows, defaultShow, handleUpdateDefaultShow, showFeed = false } = useContext(UserContext);
@@ -108,6 +112,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
   const theme = useTheme();
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
+  const { effectiveTheme } = useSearchSettings();
 
   // Recent update indicator state
   const [feedSummary, setFeedSummary] = useState({ entries: [] });
@@ -401,6 +406,21 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       : { backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor },
   );
 
+  // Update theme state when metadata changes
+  useEffect(() => {
+    if (metadata) {
+      setCurrentThemeTitleText(metadata.title || defaultTitleText);
+      setCurrentThemeBragText(metadata.frameCount ? `Search over ${metadata.frameCount.toLocaleString('en-US')} meme templates from ${metadata.title}` : defaultBragText);
+      setCurrentThemeFontFamily(metadata.fontFamily || theme?.typography?.fontFamily);
+      setCurrentThemeFontColor(metadata.colorSecondary || defaultFontColor);
+      setCurrentThemeBackground(
+        metadata.colorMain
+          ? { backgroundColor: `${metadata.colorMain}` }
+          : { backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor }
+      );
+    }
+  }, [metadata, theme]);
+
   const { seriesId } = useParams();
 
   // The handleChangeSeries function now only handles theme updates
@@ -483,12 +503,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }, [currentValueId, shows, savedCids]);
 
   const unifiedSearchAppearance = useMemo(() => {
+    if (!currentSeries) {
+      return effectiveTheme;
+    }
     const candidateColor = currentSeries?.colorSecondary || currentThemeFontColor;
     if (!candidateColor) {
-      return 'light';
+      return effectiveTheme;
     }
     return isColorNearBlack(candidateColor) ? 'dark' : 'light';
-  }, [currentSeries, currentThemeFontColor]);
+  }, [currentSeries, currentThemeFontColor, effectiveTheme]);
 
   const handleRandomSearch = useCallback(() => {
     const scope = currentValueId || '_universal';
@@ -533,6 +556,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   );
 
   const heroSurfaceSx = useMemo(() => {
+    // Check if we're using the default rainbow background (not a show-specific background)
+    const isDefaultBackground = !metadata?.colorMain && currentThemeBackground?.backgroundImage === defaultBackground;
+    const shouldDimBackground = isDefaultBackground && effectiveTheme === 'dark';
+
     const base = {
       width: '100%',
       position: 'relative',
@@ -547,6 +574,25 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       boxShadow: 'none',
       boxSizing: 'border-box',
       flex: 1,
+      // Add dark overlay when in dark mode with default background
+      ...(shouldDimBackground && {
+        '::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.18) 50%, rgba(0, 0, 0, 0.4) 100%)',
+          borderRadius: 'inherit',
+          pointerEvents: 'none',
+          zIndex: 0,
+        },
+        '& > *': {
+          position: 'relative',
+          zIndex: 1,
+        }
+      }),
     };
 
     if (isFeedEnabled) {
@@ -565,7 +611,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       paddingTop: { xs: STANDALONE_HERO_PADDING_TOP_XS, md: STANDALONE_HERO_PADDING_TOP_MD },
       paddingBottom: { xs: STANDALONE_HERO_PADDING_BOTTOM_XS, md: STANDALONE_HERO_PADDING_BOTTOM_MD },
     };
-  }, [currentThemeBackground, isFeedEnabled]);
+  }, [currentThemeBackground, isFeedEnabled, metadata?.colorMain, effectiveTheme]);
 
   const heroPaperSx = useMemo(() => {
     const sharedBorderRadius = { xs: '28px', md: 4 };
@@ -659,10 +705,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             display: 'grid',
             gridTemplateColumns: isFeedEnabled
               ? {
-                  xs: '1fr',
-                  md: 'minmax(0, 2fr) minmax(0, 1fr)',
-                  lg: 'minmax(0, 3fr) minmax(0, 1fr)',
-                }
+                xs: '1fr',
+                md: 'minmax(0, 2fr) minmax(0, 1fr)',
+                lg: 'minmax(0, 3fr) minmax(0, 1fr)',
+              }
               : { xs: '1fr' },
             gap: isFeedEnabled ? { xs: 0.25, md: 3 } : 0,
             alignItems: 'stretch',
@@ -671,22 +717,22 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               : { xs: 0, sm: 0 },
             paddingTop: isFeedEnabled
               ? {
-                  xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
-                  md: `${DESKTOP_CARD_PADDING}px`,
-                }
+                xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
+                md: `${DESKTOP_CARD_PADDING}px`,
+              }
               : 0,
             paddingBottom: isFeedEnabled
               ? {
-                  xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
-                  md: 0,
-                }
+                xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
+                md: 0,
+              }
               : 0,
             minHeight: isFeedEnabled
               ? undefined
               : {
-                  xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
-                  md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
-                },
+                xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
+                md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
+              },
             backgroundColor: '#000',
           }}
         >
@@ -846,11 +892,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       mt: 0,
                     }}
                   >
-                      <Box
-                        sx={{
-                          ...heroContentSx,
-                        }}
-                      >
+                    <Box
+                      sx={{
+                        ...heroContentSx,
+                      }}
+                    >
                       <Grid
                         container
                         justifyContent="center"
@@ -875,6 +921,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                                   height: 'auto',
                                   margin: '0 auto',
                                   color: 'yellow',
+                                  // Soft glow in dark mode
+                                  ...(effectiveTheme === 'dark' && !metadata?.colorMain && {
+                                    filter: 'drop-shadow(0 0 32px rgba(255, 255, 255, 0.22)) drop-shadow(0 0 60px rgba(255, 255, 255, 0.14))',
+                                  }),
                                 }}
                               />
                             </Box>
@@ -885,7 +935,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                               fontFamily={currentThemeFontFamily}
                               sx={{
                                 color: currentThemeFontColor,
-                                textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20)',
+                                textShadow: effectiveTheme === 'dark' && !metadata?.colorMain
+                                  ? '0 0 32px rgba(255, 255, 255, 0.28), 0 0 60px rgba(255, 255, 255, 0.16), 1px 1px 1px rgba(0, 0, 0, 0.20)'
+                                  : '1px 1px 1px rgba(0, 0, 0, 0.20)',
                                 display: 'grid',
                                 gridTemplateColumns: { xs: '26px 1fr 26px', sm: '30px 1fr 30px' },
                                 alignItems: 'center',
@@ -894,10 +946,27 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                               }}
                             >
                               {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
-                                <FavoriteToggle
-                                  indexId={cid}
-                                  initialIsFavorite={shows.find((singleShow) => singleShow.id === cid)?.isFavorite || false}
-                                />
+                                groups.some(g => g.id === cid) ? (
+                                  <IconButton
+                                    component={Link}
+                                    to={`/search/filter/edit/${cid}`}
+                                    size="small"
+                                    sx={{
+                                      color: currentThemeFontColor,
+                                      mr: 1,
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                      }
+                                    }}
+                                  >
+                                    <SettingsIcon />
+                                  </IconButton>
+                                ) : (
+                                  <FavoriteToggle
+                                    indexId={cid}
+                                    initialIsFavorite={shows.find((singleShow) => singleShow.id === cid)?.isFavorite || false}
+                                  />
+                                )
                               ) : (
                                 <span />
                               )}
@@ -925,7 +994,17 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                           </Grid>
                         </Grid>
                         <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={0.8} marginTop={0.4}>
-                          <Typography component="h2" variant="h4" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' }, fontWeight: 700 }}>
+                          <Typography
+                            component="h2"
+                            variant="h4"
+                            sx={{
+                              fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' },
+                              fontWeight: 700,
+                              textShadow: effectiveTheme === 'dark' && !metadata?.colorMain
+                                ? '0 0 28px rgba(255, 255, 255, 0.22), 0 0 52px rgba(255, 255, 255, 0.14)'
+                                : 'none',
+                            }}
+                          >
                             {currentThemeBragText}
                           </Typography>
                         </Grid>

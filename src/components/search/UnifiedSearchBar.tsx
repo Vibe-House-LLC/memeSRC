@@ -1,14 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { keyframes } from '@mui/system';
 import { ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
-import { Shuffle as ShuffleIcon } from 'lucide-react';
+import { Shuffle as ShuffleIcon, Settings as SettingsIcon } from 'lucide-react';
+import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
+import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 
 type SeriesSelectorDialogProps = React.ComponentProps<typeof SeriesSelectorDialog>;
 
@@ -244,6 +248,37 @@ const RandomButton = styled(IconButton)(({ theme }) => {
         background: '#232327',
         color: 'rgba(200, 200, 200, 0.7)',
         borderColor: 'rgba(135, 135, 135, 0.25)',
+      },
+    },
+  };
+});
+
+const SettingsButton = styled(IconButton)(({ theme }) => {
+  const base = buildCircleButtonStyles(theme);
+  return {
+    ...base,
+    background: 'transparent',
+    color: '#2e2e2e',
+    borderColor: 'transparent',
+    boxShadow: 'none',
+    opacity: 0.5,
+    '&:hover': {
+      background: 'rgba(0, 0, 0, 0.05)',
+      boxShadow: 'none',
+      opacity: 1,
+    },
+    '&:active': {
+      background: 'rgba(0, 0, 0, 0.1)',
+      boxShadow: 'none',
+      opacity: 1,
+    },
+    '&[data-appearance="dark"]': {
+      color: '#f5f5f5',
+      '&:hover': {
+        background: 'rgba(255, 255, 255, 0.1)',
+      },
+      '&:active': {
+        background: 'rgba(255, 255, 255, 0.15)',
       },
     },
   };
@@ -531,11 +566,13 @@ const ClearInputButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
-function findSeriesItem(currentValueId: string, shows: SeriesItem[], savedCids: SeriesItem[]): SeriesItem | undefined {
+function findSeriesItem(currentValueId: string, shows: SeriesItem[], savedCids: SeriesItem[], customFilters: any[]): SeriesItem | undefined {
   if (!currentValueId || currentValueId.startsWith('_')) {
     return undefined;
   }
-  return shows.find((s) => s.id === currentValueId) ?? savedCids.find((s) => s.id === currentValueId);
+  return shows.find((s) => s.id === currentValueId) ??
+    savedCids.find((s) => s.id === currentValueId) ??
+    customFilters.find((s) => s.id === currentValueId);
 }
 
 function buildCurrentLabel(currentValueId: string, currentSeries?: SeriesItem): string {
@@ -544,7 +581,7 @@ function buildCurrentLabel(currentValueId: string, currentSeries?: SeriesItem): 
   if (!currentSeries) return 'Select show or movie';
   const emoji = currentSeries.emoji?.trim();
   const emojiPrefix = emoji ? `${emoji} ` : '';
-  return `${emojiPrefix}${currentSeries.title}`;
+  return `${emojiPrefix}${currentSeries.title || currentSeries.name}`;
 }
 
 export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
@@ -560,37 +597,52 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   currentValueId,
   includeAllFavorites,
   onSelectSeries,
-  appearance = 'light',
+  appearance: propAppearance = 'light',
 }) => {
+  const { groups } = useSearchFilterGroups();
+  const { themePreference, setThemePreference, sizePreference, setSizePreference, effectiveTheme } = useSearchSettings();
+  const navigate = useNavigate();
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
-  const [showRandomLabel, setShowRandomLabel] = useState(true);
-  const [isFadingOutLabel, setIsFadingOutLabel] = useState(false);
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shouldRestoreFocusRef = useRef(false);
-  // railId and scopeButtonSx removed with inline expansion approach
+
+  const customFilters = useMemo(() => {
+    return groups.map(g => {
+      try {
+        const parsed = JSON.parse(g.filters);
+        return {
+          id: g.id,
+          title: g.name,
+          name: g.name,
+          emoji: parsed.emoji,
+          items: parsed.items,
+          colorMain: parsed.colorMain,
+          colorSecondary: parsed.colorSecondary
+        };
+      } catch (e) {
+        return {
+          id: g.id,
+          title: g.name,
+          name: g.name,
+          emoji: '📁',
+          items: []
+        };
+      }
+    });
+  }, [groups]);
+
+  // Use effectiveTheme if the prop is 'light' (default fallback), otherwise respect the prop (e.g. 'dark' from a show)
+  const appearance = propAppearance === 'light' ? effectiveTheme : propAppearance;
+
   const currentSeries = useMemo(
-    () => findSeriesItem(currentValueId, shows, savedCids),
-    [currentValueId, savedCids, shows],
+    () => findSeriesItem(currentValueId, shows, savedCids, customFilters),
+    [currentValueId, savedCids, shows, customFilters],
   );
 
-  // Show "Random" label for 1 second on mount, then fade it out
-  useEffect(() => {
-    const fadeTimer = setTimeout(() => {
-      setIsFadingOutLabel(true);
-    }, 1000);
-    
-    const hideTimer = setTimeout(() => {
-      setShowRandomLabel(false);
-      setIsFadingOutLabel(false);
-    }, 1400); // 1000ms display + 300ms fade animation + 100ms buffer
-    
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(hideTimer);
-    };
-  }, []);
+
 
   const currentLabel = useMemo(
     () => buildCurrentLabel(currentValueId, currentSeries),
@@ -602,7 +654,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     if (currentValueId === '_favorites') return '⭐';
     const trimmedEmoji = currentSeries?.emoji?.trim();
     if (trimmedEmoji) return trimmedEmoji;
-    const source = currentSeries?.title ?? currentLabel;
+    const source = currentSeries?.title ?? currentSeries?.name ?? currentLabel;
     const trimmed = source.trim();
     if (!trimmed) return '∙';
     const [glyph] = Array.from(trimmed);
@@ -693,7 +745,9 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   const trimmedValue = value.trim();
   const hasInput = trimmedValue.length > 0;
-  const scopeExpanded = hasInput;
+  // Expansion is now controlled by preference, not input
+  const scopeExpanded = sizePreference === 'large';
+
   // Controls move to second line when expanded
   // SubmitButton now uses consistent black styling; disabled state is dark grey
   const scopeButtonLabel = scopeExpanded
@@ -703,6 +757,22 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const handleScopeClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     handleFilterClick(event.currentTarget);
   }, [handleFilterClick]);
+
+  const handleEditFilter = (filter: SeriesItem) => {
+    navigate(`/search/filter/edit/${filter.id}`);
+  };
+
+  const handleOpenEditor = () => {
+    navigate('/search/filter/edit');
+  };
+
+  const handleOpenSettings = (event: React.MouseEvent<HTMLElement>) => {
+    setSettingsAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseSettings = () => {
+    setSettingsAnchorEl(null);
+  };
 
   return (
     <FormRoot onSubmit={onSubmit} noValidate>
@@ -765,48 +835,34 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                 >
                   <ArrowForwardRoundedIcon fontSize="small" />
                 </SubmitButton>
-              ) : (showRandomLabel || isFadingOutLabel) && !randomLoading ? (
-                <LabeledSubmitButton
-                  type="button"
-                  aria-label="Show something random"
-                  onClick={handleRandomClick}
-                  onPointerDown={handleRandomPointerDown}
-                  disabled={randomLoading}
-                  aria-busy={randomLoading}
-                  data-appearance={appearance}
-                  data-collapsing={isFadingOutLabel ? 'true' : 'false'}
-                >
-                  <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
-                  <span
-                    className="actionLabel"
-                    style={
-                      isFadingOutLabel
-                        ? {
-                            animation: `${labelFadeOut} 300ms cubic-bezier(0.4, 0, 0.6, 1) both`,
-                          }
-                        : undefined
-                    }
-                  >
-                    Random
-                  </span>
-                </LabeledSubmitButton>
               ) : (
-                <SubmitButton
-                  type="button"
-                  aria-label="Show something random"
-                  onClick={handleRandomClick}
-                  onPointerDown={handleRandomPointerDown}
-                  disabled={randomLoading}
-                  aria-busy={randomLoading}
-                  title="Random"
-                  data-appearance={appearance}
-                >
-                  {randomLoading ? (
-                    <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
-                  ) : (
-                    <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
-                  )}
-                </SubmitButton>
+                <>
+                  <SettingsButton
+                    type="button"
+                    aria-label="Settings"
+                    onClick={handleOpenSettings}
+                    title="Settings"
+                    data-appearance={appearance}
+                  >
+                    <SettingsIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                  </SettingsButton>
+                  <SubmitButton
+                    type="button"
+                    aria-label="Show something random"
+                    onClick={handleRandomClick}
+                    onPointerDown={handleRandomPointerDown}
+                    disabled={randomLoading}
+                    aria-busy={randomLoading}
+                    title="Random"
+                    data-appearance={appearance}
+                  >
+                    {randomLoading ? (
+                      <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
+                    ) : (
+                      <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                    )}
+                  </SubmitButton>
+                </>
               )}
             </>
           )}
@@ -831,6 +887,16 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               <ArrowDropDownIcon fontSize="small" />
             </ScopeSelectorButton>
             <RailRight>
+              <SettingsButton
+                type="button"
+                aria-label="Settings"
+                onClick={handleOpenSettings}
+                title="Settings"
+                className="railButton"
+                data-appearance={appearance}
+              >
+                <SettingsIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+              </SettingsButton>
               {hasInput ? (
                 <LabeledSubmitButton
                   type="submit"
@@ -839,24 +905,35 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   className="railButton"
                   data-appearance={appearance}
                   sx={(theme) => ({
-                    padding: theme.spacing(0.66, 1.0, 0.66, 1.2),
+                    padding: theme.spacing(0.66, 1.2, 0.66, 1.0),
                     gap: theme.spacing(0.5),
                   })}
                 >
-                  <span className="actionLabel">Search</span>
                   <ArrowForwardRoundedIcon sx={{ fontSize: '18px' }} aria-hidden="true" />
+                  <span className="actionLabel">Search</span>
                 </LabeledSubmitButton>
               ) : (
-                <SubmitButton
+                <LabeledSubmitButton
+                  type="button"
+                  aria-label="Show something random"
+                  onClick={handleRandomClick}
+                  onPointerDown={handleRandomPointerDown}
+                  disabled={randomLoading}
+                  aria-busy={randomLoading}
                   className="railButton"
-                  type="submit"
-                  aria-label="Search"
-                  disabled={!hasInput}
-                  title="Search"
                   data-appearance={appearance}
+                  sx={(theme) => ({
+                    padding: theme.spacing(0.66, 1.2, 0.66, 1.0),
+                    gap: theme.spacing(0.5),
+                  })}
                 >
-                  <ArrowForwardRoundedIcon sx={{ fontSize: '18px' }} aria-hidden="true" />
-                </SubmitButton>
+                  {randomLoading ? (
+                    <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
+                  ) : (
+                    <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                  )}
+                  <span className="actionLabel">Random</span>
+                </LabeledSubmitButton>
               )}
             </RailRight>
           </ControlsRail>
@@ -871,7 +948,77 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         currentValueId={currentValueId}
         includeAllFavorites={includeAllFavorites}
         anchorEl={selectorAnchorEl}
+        onOpenEditor={handleOpenEditor}
+        onEdit={handleEditFilter}
       />
+
+      <Menu
+        anchorEl={settingsAnchorEl}
+        open={Boolean(settingsAnchorEl)}
+        onClose={handleCloseSettings}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        PaperProps={{
+          elevation: 0,
+          sx: {
+            overflow: 'visible',
+            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            mt: 1.5,
+            minWidth: 180,
+            '&:before': {
+              content: '""',
+              display: 'block',
+              position: 'absolute',
+              top: 0,
+              right: 14,
+              width: 10,
+              height: 10,
+              bgcolor: 'background.paper',
+              transform: 'translateY(-50%) rotate(45deg)',
+              zIndex: 0,
+            },
+          },
+        }}
+      >
+        <MenuItem disabled sx={{ opacity: '1 !important', fontWeight: 'bold', fontSize: '0.75rem', color: 'text.secondary', py: 0.5 }}>
+          APPEARANCE
+        </MenuItem>
+        <MenuItem onClick={() => { setThemePreference('system'); handleCloseSettings(); }} dense>
+          <ListItemIcon>
+            {themePreference === 'system' && <CheckRoundedIcon fontSize="small" />}
+          </ListItemIcon>
+          System
+        </MenuItem>
+        <MenuItem onClick={() => { setThemePreference('dark'); handleCloseSettings(); }} dense>
+          <ListItemIcon>
+            {themePreference === 'dark' && <CheckRoundedIcon fontSize="small" />}
+          </ListItemIcon>
+          Dark
+        </MenuItem>
+        <MenuItem onClick={() => { setThemePreference('light'); handleCloseSettings(); }} dense>
+          <ListItemIcon>
+            {themePreference === 'light' && <CheckRoundedIcon fontSize="small" />}
+          </ListItemIcon>
+          Light
+        </MenuItem>
+        <Divider sx={{ my: 1 }} />
+        <MenuItem disabled sx={{ opacity: '1 !important', fontWeight: 'bold', fontSize: '0.75rem', color: 'text.secondary', py: 0.5 }}>
+          SIZE
+        </MenuItem>
+        <MenuItem onClick={() => { setSizePreference('small'); handleCloseSettings(); }} dense>
+          <ListItemIcon>
+            {sizePreference === 'small' && <CheckRoundedIcon fontSize="small" />}
+          </ListItemIcon>
+          Small
+        </MenuItem>
+        <MenuItem onClick={() => { setSizePreference('large'); handleCloseSettings(); }} dense>
+          <ListItemIcon>
+            {sizePreference === 'large' && <CheckRoundedIcon fontSize="small" />}
+          </ListItemIcon>
+          Large
+        </MenuItem>
+      </Menu>
+
     </FormRoot>
   );
 };
