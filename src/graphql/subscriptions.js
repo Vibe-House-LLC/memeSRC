@@ -2404,6 +2404,54 @@ export const onDeleteLocationLeads = /* GraphQL */ `
     }
   }
 `;
+export const onCreateSearchFilterGroup = /* GraphQL */ `
+  subscription OnCreateSearchFilterGroup(
+    $filter: ModelSubscriptionSearchFilterGroupFilterInput
+    $owner: String
+  ) {
+    onCreateSearchFilterGroup(filter: $filter, owner: $owner) {
+      id
+      name
+      filters
+      owner
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateSearchFilterGroup = /* GraphQL */ `
+  subscription OnUpdateSearchFilterGroup(
+    $filter: ModelSubscriptionSearchFilterGroupFilterInput
+    $owner: String
+  ) {
+    onUpdateSearchFilterGroup(filter: $filter, owner: $owner) {
+      id
+      name
+      filters
+      owner
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteSearchFilterGroup = /* GraphQL */ `
+  subscription OnDeleteSearchFilterGroup(
+    $filter: ModelSubscriptionSearchFilterGroupFilterInput
+    $owner: String
+  ) {
+    onDeleteSearchFilterGroup(filter: $filter, owner: $owner) {
+      id
+      name
+      filters
+      owner
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const onCreateSeriesContributors = /* GraphQL */ `
   subscription OnCreateSeriesContributors(
     $filter: ModelSubscriptionSeriesContributorsFilterInput
