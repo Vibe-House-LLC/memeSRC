@@ -131,33 +131,39 @@ export default function EditFilterPage() {
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', pb: 8 }}>
             {/* Header */}
             <AppBar
-                position="static"
+                position="sticky"
                 elevation={0}
                 sx={{
-                    bgcolor: 'background.default',
-                    color: 'text.primary',
+                    bgcolor: alpha(theme.palette.background.default, 0.8),
+                    backdropFilter: 'blur(12px)',
                     borderBottom: '1px solid',
-                    borderColor: 'divider'
+                    borderColor: 'divider',
+                    color: 'text.primary'
                 }}
             >
-                <Toolbar>
-                    <IconButton edge="start" color="inherit" onClick={() => navigate(-1)} sx={{ mr: 2 }}>
+                <Toolbar sx={{ justifyContent: 'space-between' }}>
+                    <IconButton
+                        edge="start"
+                        color="inherit"
+                        onClick={() => navigate(-1)}
+                        sx={{ mr: 2 }}
+                    >
                         <ArrowBackIcon />
                     </IconButton>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 800 }}>
                         {filterId ? 'Edit Filter' : 'New Filter'}
                     </Typography>
                     <Button
                         variant="contained"
-                        color="primary"
                         onClick={handleSave}
                         disabled={!name.trim() || selectedItems.size === 0}
                         startIcon={<SaveIcon />}
                         sx={{
-                            borderRadius: 20,
+                            borderRadius: 8,
                             fontWeight: 700,
                             textTransform: 'none',
-                            px: 3
+                            px: 3,
+                            boxShadow: theme.shadows[4]
                         }}
                     >
                         Save
@@ -169,104 +175,206 @@ export default function EditFilterPage() {
                 {/* Configuration Card */}
                 <Paper
                     elevation={0}
-                    variant="outlined"
                     sx={{
-                        p: 3,
+                        p: { xs: 2, md: 4 },
                         borderRadius: 4,
                         mb: 4,
+                        border: '1px solid',
+                        borderColor: 'divider',
                         bgcolor: 'background.paper'
                     }}
                 >
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 3, md: 4 } }}>
+                        {/* Name & Emoji */}
                         <Box sx={{ display: 'flex', gap: 2 }}>
                             <TextField
-                                label="Icon"
+                                label="Emoji"
                                 value={emoji}
                                 onChange={(e) => setEmoji(e.target.value)}
-                                variant="outlined"
-                                sx={{ width: 80 }}
-                                inputProps={{
-                                    maxLength: 2,
-                                    style: { textAlign: 'center', fontSize: '1.5rem', cursor: 'pointer' }
+                                variant="filled"
+                                sx={{
+                                    width: { xs: 80, md: 100 },
+                                    '& .MuiFilledInput-root': {
+                                        height: '100%', // Match height
+                                        fontSize: { xs: '1.5rem', md: '2.5rem' },
+                                        textAlign: 'center',
+                                        borderRadius: 3,
+                                        bgcolor: 'action.hover',
+                                        '&:before, &:after': { display: 'none' },
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        p: 0
+                                    },
+                                    '& input': {
+                                        textAlign: 'center',
+                                        p: 2,
+                                        height: 'auto'
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                        display: 'none' // Hide label for cleaner look on emoji, or keep it? User said "Emoji part is way taller".
+                                    }
                                 }}
+                                inputProps={{ maxLength: 2 }}
+                            // Remove label to simplify height calc or keep it?
+                            // Let's keep label but rely on flex stretch.
                             />
                             <TextField
                                 fullWidth
-                                label="Filter Name"
-                                placeholder="e.g., My Comedy Mix"
+                                placeholder="Filter Name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                variant="outlined"
-                                InputProps={{
-                                    sx: { fontSize: '1.2rem', fontWeight: 600 }
+                                variant="filled"
+                                autoFocus={!filterId}
+                                sx={{
+                                    '& .MuiFilledInput-root': {
+                                        height: '100%', // Match height
+                                        borderRadius: 3,
+                                        fontSize: { xs: '1rem', md: '1.2rem' },
+                                        fontWeight: 600,
+                                        bgcolor: 'action.hover',
+                                        '&:before, &:after': { display: 'none' },
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    },
+                                    '& input': {
+                                        p: 2
+                                    }
                                 }}
                             />
                         </Box>
 
-                        <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <Box sx={{ flex: 1, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Box
-                                        sx={{
-                                            width: 48,
-                                            height: 48,
-                                            borderRadius: '50%',
-                                            bgcolor: colorMain,
-                                            border: '2px solid',
-                                            borderColor: 'divider',
-                                            position: 'relative',
-                                            overflow: 'hidden',
-                                            cursor: 'pointer',
-                                            boxShadow: 2
-                                        }}
-                                    >
-                                        <input
-                                            type="color"
-                                            value={colorMain}
-                                            onChange={(e) => setColorMain(e.target.value)}
-                                            style={{ position: 'absolute', top: -10, left: -10, width: 70, height: 70, opacity: 0, cursor: 'pointer' }}
-                                        />
-                                    </Box>
-                                    <Typography variant="body2" fontWeight={600}>Background</Typography>
-                                </Box>
+                        <Divider />
 
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Box
-                                        sx={{
-                                            width: 48,
-                                            height: 48,
-                                            borderRadius: '50%',
-                                            bgcolor: colorSecondary,
-                                            border: '2px solid',
-                                            borderColor: 'divider',
-                                            position: 'relative',
-                                            overflow: 'hidden',
+                        {/* Colors */}
+                        <Box>
+                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                Appearance
+                            </Typography>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+                                {/* Background Color Card */}
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        p: 2,
+                                        border: '2px solid',
+                                        borderColor: 'divider',
+                                        borderRadius: 4,
+                                        cursor: 'pointer',
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        transition: 'all 0.2s',
+                                        '&:hover': {
+                                            borderColor: 'primary.main',
+                                            bgcolor: alpha(theme.palette.primary.main, 0.04)
+                                        }
+                                    }}
+                                >
+                                    <input
+                                        type="color"
+                                        value={colorMain}
+                                        onChange={(e) => setColorMain(e.target.value)}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            opacity: 0,
                                             cursor: 'pointer',
-                                            boxShadow: 2
+                                            zIndex: 2
                                         }}
-                                    >
-                                        <input
-                                            type="color"
-                                            value={colorSecondary}
-                                            onChange={(e) => setColorSecondary(e.target.value)}
-                                            style={{ position: 'absolute', top: -10, left: -10, width: 70, height: 70, opacity: 0, cursor: 'pointer' }}
+                                    />
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Box
+                                            sx={{
+                                                width: 64,
+                                                height: 64,
+                                                borderRadius: 3,
+                                                bgcolor: colorMain,
+                                                border: '1px solid',
+                                                borderColor: 'divider',
+                                                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+                                            }}
                                         />
+                                        <Box>
+                                            <Typography variant="body1" fontWeight={700}>Background</Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                                {colorMain}
+                                            </Typography>
+                                        </Box>
                                     </Box>
-                                    <Typography variant="body2" fontWeight={600}>Text Color</Typography>
-                                </Box>
+                                </Paper>
+
+                                {/* Text Color Card */}
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        p: 2,
+                                        border: '2px solid',
+                                        borderColor: 'divider',
+                                        borderRadius: 4,
+                                        cursor: 'pointer',
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        transition: 'all 0.2s',
+                                        '&:hover': {
+                                            borderColor: 'primary.main',
+                                            bgcolor: alpha(theme.palette.primary.main, 0.04)
+                                        }
+                                    }}
+                                >
+                                    <input
+                                        type="color"
+                                        value={colorSecondary}
+                                        onChange={(e) => setColorSecondary(e.target.value)}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            opacity: 0,
+                                            cursor: 'pointer',
+                                            zIndex: 2
+                                        }}
+                                    />
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Box
+                                            sx={{
+                                                width: 64,
+                                                height: 64,
+                                                borderRadius: 3,
+                                                bgcolor: colorSecondary,
+                                                border: '1px solid',
+                                                borderColor: 'divider',
+                                                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+                                            }}
+                                        />
+                                        <Box>
+                                            <Typography variant="body1" fontWeight={700}>Text Color</Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                                {colorSecondary}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </Paper>
                             </Box>
                         </Box>
                     </Box>
                 </Paper>
 
                 {/* Selection Section */}
-                <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6" fontWeight={700} gutterBottom>
-                        Select Shows ({selectedItems.size})
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="h5" fontWeight={800} gutterBottom>
+                        Select Shows
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {selectedItems.size} selected
                     </Typography>
                     <TextField
                         fullWidth
-                        placeholder="Search shows to add..."
+                        placeholder="Search shows..."
                         value={filterQuery}
                         onChange={(e) => setFilterQuery(e.target.value)}
                         InputProps={{
@@ -282,16 +390,30 @@ export default function EditFilterPage() {
                                     </IconButton>
                                 </InputAdornment>
                             ) : null,
-                            sx: { borderRadius: 3, bgcolor: 'background.paper' }
+                            sx: {
+                                borderRadius: 4,
+                                bgcolor: 'background.paper',
+                                boxShadow: theme.shadows[1],
+                                '& fieldset': { border: 'none' }
+                            }
                         }}
                     />
                 </Box>
 
-                <Paper elevation={0} variant="outlined" sx={{ borderRadius: 4, overflow: 'hidden', bgcolor: 'background.paper' }}>
+                <Paper
+                    elevation={0}
+                    sx={{
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        bgcolor: 'background.paper'
+                    }}
+                >
                     <List sx={{ p: 0 }}>
                         {selectedItems.size > 0 && (
                             <>
-                                <ListSubheader sx={{ bgcolor: 'background.paper', fontWeight: 700 }}>
+                                <ListSubheader sx={{ bgcolor: alpha(theme.palette.background.paper, 0.9), backdropFilter: 'blur(8px)', fontWeight: 700, lineHeight: '48px' }}>
                                     Selected
                                 </ListSubheader>
                                 {shows
@@ -304,7 +426,9 @@ export default function EditFilterPage() {
                                             sx={{
                                                 borderBottom: '1px solid',
                                                 borderColor: 'divider',
-                                                '&.Mui-selected': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                                                py: 1.5,
+                                                '&.Mui-selected': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
+                                                '&.Mui-selected:hover': { bgcolor: alpha(theme.palette.primary.main, 0.12) }
                                             }}
                                         >
                                             <Box sx={(theme) => radioIconSx(theme, true, { inverted: true })}>
@@ -312,17 +436,16 @@ export default function EditFilterPage() {
                                             </Box>
                                             <ListItemText
                                                 primary={s.title}
-                                                primaryTypographyProps={{ fontWeight: 600 }}
+                                                primaryTypographyProps={{ fontWeight: 600, fontSize: '1rem' }}
                                                 sx={{ ml: 2 }}
                                             />
                                         </ListItemButton>
                                     ))
                                 }
-                                <Divider />
                             </>
                         )}
 
-                        <ListSubheader sx={{ bgcolor: 'background.paper', fontWeight: 700 }}>
+                        <ListSubheader sx={{ bgcolor: alpha(theme.palette.background.paper, 0.9), backdropFilter: 'blur(8px)', fontWeight: 700, lineHeight: '48px' }}>
                             {filterQuery ? 'Search Results' : 'All Shows'}
                         </ListSubheader>
 
@@ -332,29 +455,33 @@ export default function EditFilterPage() {
                                 <ListItemButton
                                     key={s.id}
                                     onClick={() => handleToggleItem(s.id)}
-                                    sx={{ borderBottom: '1px solid', borderColor: 'divider' }}
+                                    sx={{
+                                        borderBottom: '1px solid',
+                                        borderColor: 'divider',
+                                        py: 1.5
+                                    }}
                                 >
                                     <Box sx={(theme) => radioIconSx(theme, false, { inverted: true })}>
                                         <RadioButtonUncheckedIcon color="action" />
                                     </Box>
-                                    <ListItemText primary={s.title} sx={{ ml: 2 }} />
+                                    <ListItemText
+                                        primary={s.title}
+                                        primaryTypographyProps={{ fontSize: '1rem' }}
+                                        sx={{ ml: 2 }}
+                                    />
                                 </ListItemButton>
                             );
                         })}
 
                         {filteredSeries.length === 0 && (
-                            <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
-                                <Typography variant="body2">No results found</Typography>
+                            <Box sx={{ p: 6, textAlign: 'center', color: 'text.secondary' }}>
+                                <SearchIcon sx={{ fontSize: 48, opacity: 0.2, mb: 2 }} />
+                                <Typography variant="body1">No shows found matching "{filterQuery}"</Typography>
                             </Box>
                         )}
                     </List>
                 </Paper>
             </Container>
-
-            {/* Floating Action Button for Mobile Save (Optional, if header button is not enough) */}
-            {/* <Fab color="primary" aria-label="save" sx={{ position: 'fixed', bottom: 16, right: 16 }}>
-                <SaveIcon />
-            </Fab> */}
         </Box>
     );
 }
