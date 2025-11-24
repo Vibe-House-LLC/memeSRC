@@ -9,7 +9,6 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
-import FilterEditorDialog, { type CustomFilter } from '../FilterEditorDialog';
 import { useCustomFilters } from '../../hooks/useCustomFilters';
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
 
@@ -567,14 +566,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   onSelectSeries,
   appearance = 'light',
 }) => {
-  const { customFilters, addFilter, updateFilter } = useCustomFilters();
+  const { customFilters } = useCustomFilters();
   const [selectorOpen, setSelectorOpen] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingFilter, setEditingFilter] = useState<CustomFilter | null>(null);
-  const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
-  const [pendingFilterId, setPendingFilterId] = useState<string | null>(null);
-  const [pendingFilterName, setPendingFilterName] = useState<string>('');
-
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
   const [showRandomLabel, setShowRandomLabel] = useState(true);
@@ -717,49 +710,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   }, [handleFilterClick]);
 
   const handleEditFilter = (filter: SeriesItem) => {
-    // Convert SeriesItem to CustomFilter structure if needed, or just cast if they match enough
-    // SeriesItem has id, title, items. CustomFilter has id, name, items.
-    // We need to find the full custom filter object to get colors/emoji if they aren't on SeriesItem
-    const fullFilter = customFilters.find(f => f.id === filter.id);
-    if (fullFilter) {
-      setEditingFilter(fullFilter);
-      setSelectorOpen(false);
-      setEditorOpen(true);
-    }
+    window.location.href = `/search/filter/edit/${filter.id}`;
   };
 
-  const handleFilterSave = (filterData: Omit<CustomFilter, 'id'> & { id?: string }) => {
-    if (filterData.id) {
-      // Editing existing
-      updateFilter(filterData.id, filterData);
-      setEditorOpen(false);
-      setEditingFilter(null);
-      // Optional: Switch to it if not already? Or just stay.
-      // If we are currently on this filter, it will auto-update via the hook.
-    } else {
-      // Creating new
-      const newFilter = addFilter(filterData.name, filterData.items, filterData.emoji, filterData.colorMain, filterData.colorSecondary);
-      setEditorOpen(false);
-      setEditingFilter(null);
-
-      // Prompt to switch
-      setPendingFilterId(newFilter.id);
-      setPendingFilterName(newFilter.name);
-      setConfirmSwitchOpen(true);
-    }
-  };
-
-  const handleConfirmSwitch = (shouldSwitch: boolean) => {
-    setConfirmSwitchOpen(false);
-    if (shouldSwitch && pendingFilterId) {
-      onSelectSeries(pendingFilterId);
-    } else {
-      // If they say no, maybe re-open the selector so they can see their new filter?
-      // Or just do nothing. The user request said: "make sure the filter show index selector 'dropdown' is showing"
-      setSelectorOpen(true);
-    }
-    setPendingFilterId(null);
-    setPendingFilterName('');
+  const handleOpenEditor = () => {
+    window.location.href = '/search/filter/edit';
   };
 
   return (
@@ -929,41 +884,10 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         currentValueId={currentValueId}
         includeAllFavorites={includeAllFavorites}
         anchorEl={selectorAnchorEl}
-
-        onOpenEditor={() => {
-          handleCloseSelector();
-          setEditingFilter(null);
-          setEditorOpen(true);
-        }}
+        onOpenEditor={handleOpenEditor}
         onEdit={handleEditFilter}
       />
-      <FilterEditorDialog
-        open={editorOpen}
-        onClose={() => {
-          setEditorOpen(false);
-          setEditingFilter(null);
-        }}
-        allSeries={[...shows, ...savedCids]}
-        initialFilter={editingFilter}
-        onSave={handleFilterSave}
-      />
-      <Dialog
-        open={confirmSwitchOpen}
-        onClose={() => handleConfirmSwitch(false)}
-      >
-        <DialogTitle>Switch to new filter?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Do you want to switch to <b>{pendingFilterName}</b> now?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => handleConfirmSwitch(false)}>No</Button>
-          <Button onClick={() => handleConfirmSwitch(true)} autoFocus variant="contained">
-            Yes, Switch
-          </Button>
-        </DialogActions>
-      </Dialog>
+
     </FormRoot>
   );
 };
