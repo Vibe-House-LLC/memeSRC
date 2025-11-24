@@ -62,7 +62,7 @@ export default function EditFilterPage() {
     const [colorSecondary, setColorSecondary] = useState('#FFFFFF');
     const [selectedItems, setSelectedItems] = useState(new Set());
     const [filterQuery, setFilterQuery] = useState('');
-    const [isScrolled, setIsScrolled] = useState(false);
+
 
     // Initialize state
     useEffect(() => {
@@ -87,15 +87,6 @@ export default function EditFilterPage() {
             setSelectedItems(new Set());
         }
     }, [filterId, getFilterById, navigate]);
-
-    // Handle scroll for sticky header effect
-    useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 10);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
     const handleSave = () => {
         if (!name.trim()) return;
@@ -138,15 +129,14 @@ export default function EditFilterPage() {
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', pb: 8 }}>
-            {/* Sticky Header */}
+            {/* Header */}
             <AppBar
-                position="sticky"
-                elevation={isScrolled ? 4 : 0}
+                position="static"
+                elevation={0}
                 sx={{
                     bgcolor: 'background.default',
                     color: 'text.primary',
-                    transition: 'box-shadow 0.3s',
-                    borderBottom: isScrolled ? 'none' : '1px solid',
+                    borderBottom: '1px solid',
                     borderColor: 'divider'
                 }}
             >
