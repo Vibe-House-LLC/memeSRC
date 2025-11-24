@@ -429,6 +429,6 @@ type SearchFilterGroup @model @auth(
   name: String!
   filters: AWSJSON!
   owner: String
-    @auth(rules: [{ allow: owner, operations: [create, read, delete] }])
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
     @index(name: "byOwner", queryField: "searchFilterGroupsByOwner")
 }
