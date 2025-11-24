@@ -10,7 +10,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@emotion/react';
 import sanitizeHtml from 'sanitize-html';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
-import { useCustomFilters } from '../hooks/useCustomFilters';
+import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
 import { UserContext } from '../UserContext';
 
 import { getWebsiteSetting } from '../graphql/queries';
@@ -208,7 +208,7 @@ export default function SearchPage() {
   const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
-  const { getFilterById } = useCustomFilters();
+  const { groups } = useSearchFilterGroups();
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
   const [searchParams] = useSearchParams();
@@ -401,13 +401,22 @@ export default function SearchPage() {
 
       try {
         let seriesToSearch;
-        const customFilter = getFilterById(cid || params?.cid);
+        const customFilter = groups.find(g => g.id === (cid || params?.cid));
+        let customFilterItems = [];
+        if (customFilter) {
+          try {
+            const parsed = JSON.parse(customFilter.filters);
+            customFilterItems = parsed.items || [];
+          } catch (e) {
+            console.error("Error parsing custom filter", e);
+          }
+        }
 
         if (cid === '_favorites' || params?.cid === '_favorites') {
           // console.log(shows)
           seriesToSearch = shows.filter(show => show.isFavorite).map(show => show.id).join(',');
         } else if (customFilter) {
-          seriesToSearch = customFilter.items.join(',');
+          seriesToSearch = customFilterItems.join(',');
         } else {
           seriesToSearch = cid || params?.cid
         }
@@ -440,7 +449,7 @@ export default function SearchPage() {
       setNewResults([]);
     }
     // }
-  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance, getFilterById]);
+  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance, groups]);
 
   // useEffect(() => {
   //   console.log(newResults);

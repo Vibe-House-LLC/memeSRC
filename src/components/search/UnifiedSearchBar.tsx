@@ -10,7 +10,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Shuffle as ShuffleIcon, Settings as SettingsIcon } from 'lucide-react';
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
-import { useCustomFilters } from '../../hooks/useCustomFilters';
+import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 
@@ -599,7 +599,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   onSelectSeries,
   appearance: propAppearance = 'light',
 }) => {
-  const { customFilters } = useCustomFilters();
+  const { groups } = useSearchFilterGroups();
   const { themePreference, setThemePreference, sizePreference, setSizePreference, effectiveTheme } = useSearchSettings();
   const navigate = useNavigate();
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -608,6 +608,31 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shouldRestoreFocusRef = useRef(false);
+
+  const customFilters = useMemo(() => {
+    return groups.map(g => {
+      try {
+        const parsed = JSON.parse(g.filters);
+        return {
+          id: g.id,
+          title: g.name,
+          name: g.name,
+          emoji: parsed.emoji,
+          items: parsed.items,
+          colorMain: parsed.colorMain,
+          colorSecondary: parsed.colorSecondary
+        };
+      } catch (e) {
+        return {
+          id: g.id,
+          title: g.name,
+          name: g.name,
+          emoji: '📁',
+          items: []
+        };
+      }
+    });
+  }, [groups]);
 
   // Use effectiveTheme if the prop is 'light' (default fallback), otherwise respect the prop (e.g. 'dark' from a show)
   const appearance = propAppearance === 'light' ? effectiveTheme : propAppearance;

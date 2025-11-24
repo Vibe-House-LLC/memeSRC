@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import FullScreenSearch from '../sections/search/FullScreenSearch';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
-import { useCustomFilters } from '../hooks/useCustomFilters';
+import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
 import { UserContext } from '../UserContext';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 import getSessionID from '../utils/getSessionsId';
@@ -42,7 +42,7 @@ export default function SearchPage({ metadata }) {
   const [searchTerm, setSearchTerm] = useState(() => readStoredSearchTerm());
   const [seriesTitle, setSeriesTitle] = useState(shows.some(show => show.isFavorite) ? defaultShow : '_universal');
   const { setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
-  const { getFilterById } = useCustomFilters();
+  const { groups } = useSearchFilterGroups();
 
   const navigate = useNavigate();
 
@@ -98,10 +98,17 @@ export default function SearchPage({ metadata }) {
     let resolvedIndex = seriesTitle;
     if (seriesTitle === '_favorites') {
       resolvedIndex = favoritesList.join(',') || '_favorites';
-    } else if (seriesTitle.startsWith('custom_')) {
-      const filter = getFilterById(seriesTitle);
-      if (filter && filter.items.length > 0) {
-        resolvedIndex = filter.items.join(',');
+    } else {
+      const filter = groups.find(g => g.id === seriesTitle);
+      if (filter) {
+        try {
+          const parsed = JSON.parse(filter.filters);
+          if (parsed.items && parsed.items.length > 0) {
+            resolvedIndex = parsed.items.join(',');
+          }
+        } catch (e) {
+          console.error("Error parsing filter", e);
+        }
       }
     }
 
@@ -116,7 +123,7 @@ export default function SearchPage({ metadata }) {
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
     setSearchTerm('')
     persistSearchTerm('')
-  }, [seriesTitle, searchTerm, shows, navigate, setSearchTerm, setV2SearchQuery, persistSearchTerm, getFilterById]);
+  }, [seriesTitle, searchTerm, shows, navigate, setSearchTerm, setV2SearchQuery, persistSearchTerm, groups]);
 
   const memoizedFullScreenSearch = useMemo(() => (
     <FullScreenSearch

@@ -35,7 +35,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { useCustomFilters } from '../hooks/useCustomFilters';
+import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
 
 export interface SeriesItem {
   id: string;
@@ -258,21 +258,46 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
-  const { customFilters, removeFilter } = useCustomFilters();
+  const { groups, deleteGroup } = useSearchFilterGroups();
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [filterToDelete, setFilterToDelete] = useState<SeriesItem | null>(null);
 
+  const customFilters = useMemo(() => {
+    return groups.map(g => {
+      try {
+        const parsed = JSON.parse(g.filters);
+        return {
+          id: g.id,
+          title: g.name,
+          name: g.name,
+          emoji: parsed.emoji,
+          items: parsed.items,
+          colorMain: parsed.colorMain,
+          colorSecondary: parsed.colorSecondary
+        };
+      } catch (e) {
+        return {
+          id: g.id,
+          title: g.name,
+          name: g.name,
+          emoji: '📁',
+          items: []
+        };
+      }
+    });
+  }, [groups]);
+
   const handleDeleteClick = (filter: SeriesItem) => {
     setFilterToDelete(filter);
     setDeleteConfirmationOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (filterToDelete) {
-      removeFilter(filterToDelete.id);
+      await deleteGroup(filterToDelete.id);
 
       // Check if the deleted filter was the currently selected one
       if (currentValueId === filterToDelete.id) {

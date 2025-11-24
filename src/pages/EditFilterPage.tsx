@@ -25,6 +25,7 @@ import {
     DialogContent,
     DialogContentText,
     DialogActions,
+    CircularProgress
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
@@ -33,7 +34,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { alpha } from '@mui/material/styles';
-import { useCustomFilters } from '../hooks/useCustomFilters';
+import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
 import { UserContext } from '../UserContext';
 
 const radioIconSx = (theme, selected, options) => {
@@ -59,7 +60,7 @@ export default function EditFilterPage() {
     const theme = useTheme();
     const navigate = useNavigate();
     const { filterId } = useParams();
-    const { customFilters, addFilter, updateFilter, getFilterById } = useCustomFilters();
+    const { groups, createGroup, updateGroup, loading } = useSearchFilterGroups();
     const { shows } = useContext(UserContext);
 
     const [name, setName] = useState('');
@@ -70,23 +71,29 @@ export default function EditFilterPage() {
     const [filterQuery, setFilterQuery] = useState('');
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
     const [pendingFilterId, setPendingFilterId] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
 
 
     // Load existing filter data
     useEffect(() => {
-        if (filterId) {
-            const existingFilter = getFilterById(filterId);
+        if (filterId && groups.length > 0) {
+            const existingFilter = groups.find(g => g.id === filterId);
             if (existingFilter) {
                 setName(existingFilter.name);
-                setEmoji(existingFilter.emoji);
-                setColorMain(existingFilter.colorMain || '#000000');
-                setColorSecondary(existingFilter.colorSecondary || '#FFFFFF');
-                setSelectedItems(new Set(existingFilter.items));
-            } else {
+                try {
+                    const parsedFilters = JSON.parse(existingFilter.filters);
+                    setEmoji(parsedFilters.emoji || '📁');
+                    setColorMain(parsedFilters.colorMain || '#000000');
+                    setColorSecondary(parsedFilters.colorSecondary || '#FFFFFF');
+                    setSelectedItems(new Set(parsedFilters.items || []));
+                } catch (e) {
+                    console.error("Failed to parse filter data", e);
+                }
+            } else if (!loading) {
                 navigate('/search');
             }
         }
-    }, [filterId, getFilterById, navigate]);
+    }, [filterId, groups, loading, navigate]);
 
     // Reset for new filter
     useEffect(() => {
@@ -99,24 +106,32 @@ export default function EditFilterPage() {
         }
     }, [filterId]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!name.trim()) return;
+        setIsSaving(true);
 
         const filterData = {
-            name,
             items: Array.from(selectedItems),
             emoji,
             colorMain,
             colorSecondary
         };
 
-        if (filterId) {
-            updateFilter(filterId, filterData);
-            navigate(`/${filterId}`);
-        } else {
-            const newFilter = addFilter(name, Array.from(selectedItems), emoji, colorMain, colorSecondary);
-            setPendingFilterId(newFilter.id);
-            setSaveDialogOpen(true);
+        try {
+            if (filterId) {
+                await updateGroup(filterId, name, filterData);
+                navigate(`/${filterId}`);
+            } else {
+                const newFilter = await createGroup(name, filterData);
+                if (newFilter) {
+                    setPendingFilterId(newFilter.id);
+                    setSaveDialogOpen(true);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to save filter", error);
+        } finally {
+            setIsSaving(false);
         }
     };
 

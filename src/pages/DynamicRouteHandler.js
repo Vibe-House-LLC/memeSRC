@@ -7,11 +7,11 @@ import HomePage from './HomePage';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import Page404 from './Page404';
 import { safeSetItem } from '../utils/storage';
-import { useCustomFilters } from '../hooks/useCustomFilters';
+import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
 
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
-  const { getFilterById } = useCustomFilters();
+  const { groups } = useSearchFilterGroups();
   const [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState(null);
   const { loadingSavedCids } = useSearchDetailsV2();
@@ -44,15 +44,27 @@ const DynamicRouteHandler = () => {
     if (seriesId === '_favorites') {
       setFavorites(true)
       setLoading(false)
-    } else if (seriesId?.startsWith('custom_')) {
-      const filter = getFilterById(seriesId);
+    } else if (seriesId?.startsWith('custom_') || groups.some(g => g.id === seriesId)) {
+      const filter = groups.find(g => g.id === seriesId);
       if (filter) {
+        let items = [];
+        let colorMain = '#000000';
+        let colorSecondary = '#FFFFFF';
+        try {
+          const parsed = JSON.parse(filter.filters);
+          items = parsed.items || [];
+          colorMain = parsed.colorMain || '#000000';
+          colorSecondary = parsed.colorSecondary || '#FFFFFF';
+        } catch (e) {
+          console.error("Error parsing filter", e);
+        }
+
         setMetadata({
           id: filter.id,
           title: filter.name,
-          colorMain: filter.colorMain,
-          colorSecondary: filter.colorSecondary,
-          frameCount: filter.items.length,
+          colorMain,
+          colorSecondary,
+          frameCount: items.length,
         });
         setLoading(false);
         setError(false);
@@ -120,7 +132,7 @@ const DynamicRouteHandler = () => {
       }
     }
 
-  }, [seriesId, getFilterById]);
+  }, [seriesId, groups]);
 
   useEffect(() => {
     // console.log('LOADING: ', loading)
