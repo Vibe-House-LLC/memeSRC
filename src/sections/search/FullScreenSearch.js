@@ -538,6 +538,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   );
 
   const heroSurfaceSx = useMemo(() => {
+    // Check if we're using the default rainbow background (not a show-specific background)
+    const isDefaultBackground = !metadata?.colorMain && currentThemeBackground?.backgroundImage === defaultBackground;
+    const shouldDimBackground = isDefaultBackground && effectiveTheme === 'dark';
+
     const base = {
       width: '100%',
       position: 'relative',
@@ -552,6 +556,25 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       boxShadow: 'none',
       boxSizing: 'border-box',
       flex: 1,
+      // Add dark overlay when in dark mode with default background
+      ...(shouldDimBackground && {
+        '::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.18) 50%, rgba(0, 0, 0, 0.4) 100%)',
+          borderRadius: 'inherit',
+          pointerEvents: 'none',
+          zIndex: 0,
+        },
+        '& > *': {
+          position: 'relative',
+          zIndex: 1,
+        }
+      }),
     };
 
     if (isFeedEnabled) {
@@ -570,7 +593,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       paddingTop: { xs: STANDALONE_HERO_PADDING_TOP_XS, md: STANDALONE_HERO_PADDING_TOP_MD },
       paddingBottom: { xs: STANDALONE_HERO_PADDING_BOTTOM_XS, md: STANDALONE_HERO_PADDING_BOTTOM_MD },
     };
-  }, [currentThemeBackground, isFeedEnabled]);
+  }, [currentThemeBackground, isFeedEnabled, metadata?.colorMain, effectiveTheme]);
 
   const heroPaperSx = useMemo(() => {
     const sharedBorderRadius = { xs: '28px', md: 4 };
@@ -880,6 +903,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                                   height: 'auto',
                                   margin: '0 auto',
                                   color: 'yellow',
+                                  // Soft glow in dark mode
+                                  ...(effectiveTheme === 'dark' && !metadata?.colorMain && {
+                                    filter: 'drop-shadow(0 0 32px rgba(255, 255, 255, 0.22)) drop-shadow(0 0 60px rgba(255, 255, 255, 0.14))',
+                                  }),
                                 }}
                               />
                             </Box>
@@ -890,7 +917,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                               fontFamily={currentThemeFontFamily}
                               sx={{
                                 color: currentThemeFontColor,
-                                textShadow: '1px 1px 1px rgba(0, 0, 0, 0.20)',
+                                textShadow: effectiveTheme === 'dark' && !metadata?.colorMain
+                                  ? '0 0 32px rgba(255, 255, 255, 0.28), 0 0 60px rgba(255, 255, 255, 0.16), 1px 1px 1px rgba(0, 0, 0, 0.20)'
+                                  : '1px 1px 1px rgba(0, 0, 0, 0.20)',
                                 display: 'grid',
                                 gridTemplateColumns: { xs: '26px 1fr 26px', sm: '30px 1fr 30px' },
                                 alignItems: 'center',
@@ -930,7 +959,17 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                           </Grid>
                         </Grid>
                         <Grid item xs={12} textAlign="center" color={currentThemeFontColor} marginBottom={0.8} marginTop={0.4}>
-                          <Typography component="h2" variant="h4" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' }, fontWeight: 700 }}>
+                          <Typography
+                            component="h2"
+                            variant="h4"
+                            sx={{
+                              fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.35rem' },
+                              fontWeight: 700,
+                              textShadow: effectiveTheme === 'dark' && !metadata?.colorMain
+                                ? '0 0 28px rgba(255, 255, 255, 0.22), 0 0 52px rgba(255, 255, 255, 0.14)'
+                                : 'none',
+                            }}
+                          >
                             {currentThemeBragText}
                           </Typography>
                         </Grid>
