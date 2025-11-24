@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
 import { GraphQLResult } from '@aws-amplify/api-graphql';
+import { searchFilterGroupsByOwner } from '../graphql/queries';
+import { UserContext } from '../UserContext';
 
 // Define types locally until codegen runs
 export interface SearchFilterGroup {
@@ -12,33 +14,61 @@ export interface SearchFilterGroup {
     owner?: string;
 }
 
-interface ListSearchFilterGroupsResponse {
-    listSearchFilterGroups: {
+interface SearchFilterGroupsByOwnerResponse {
+    searchFilterGroupsByOwner: {
         items: SearchFilterGroup[];
         nextToken: string | null;
     };
 }
 
-// GraphQL Operations (Inline to avoid dependency on un-generated files)
-const listSearchFilterGroups = /* GraphQL */ `
-  query ListSearchFilterGroups(
-    $filter: ModelSearchFilterGroupFilterInput
-    $limit: Int
-    $nextToken: String
-  ) {
-    listSearchFilterGroups(filter: $filter, limit: $limit, nextToken: $nextToken) {
-      items {
-        id
-        name
-        filters
-        createdAt
-        updatedAt
-        owner
-      }
-      nextToken
+const pickFirstString = (...values: Array<unknown>): string | null => {
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim().length > 0) {
+            return value;
+        }
     }
-  }
-`;
+    return null;
+};
+
+const buildOwnerIdentifier = (user: any): string | null => {
+    if (!user) {
+        return null;
+    }
+
+    const sessionPayload =
+        user?.signInUserSession?.idToken?.payload ??
+        user?.signInUserSession?.accessToken?.payload ??
+        null;
+
+    const sub = pickFirstString(
+        sessionPayload?.sub,
+        user?.sub,
+        user?.attributes?.sub,
+        user?.userDetails?.sub
+    );
+
+    const username = pickFirstString(
+        sessionPayload?.['cognito:username'],
+        user?.['cognito:username'],
+        user?.username,
+        user?.userDetails?.username,
+        sessionPayload?.preferred_username,
+        sessionPayload?.username,
+        user?.attributes?.preferred_username,
+        sessionPayload?.email,
+        user?.attributes?.email,
+        user?.email,
+        user?.userDetails?.email
+    );
+
+    if (!sub || !username) {
+        return null;
+    }
+
+    return `${sub}::${username}`;
+};
+
+// GraphQL Operations (Inline to avoid dependency on un-generated files)
 
 const createSearchFilterGroup = /* GraphQL */ `
   mutation CreateSearchFilterGroup(
@@ -92,16 +122,30 @@ export const useSearchFilterGroups = () => {
     const [groups, setGroups] = useState<SearchFilterGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<any>(null);
+    const { user: currentUser } = useContext(UserContext) as { user?: any };
 
     const fetchGroups = useCallback(async () => {
-        try {
-            setLoading(true);
-            const result = (await API.graphql(
-                graphqlOperation(listSearchFilterGroups)
-            )) as GraphQLResult<ListSearchFilterGroupsResponse>;
+        const owner = buildOwnerIdentifier(currentUser);
 
-            if (result.data?.listSearchFilterGroups?.items) {
-                setGroups(result.data.listSearchFilterGroups.items);
+        if (!owner) {
+            setGroups([]);
+            setError(null);
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            const result = (await API.graphql(
+                graphqlOperation(searchFilterGroupsByOwner, { owner })
+            )) as GraphQLResult<SearchFilterGroupsByOwnerResponse>;
+
+            if (result.data?.searchFilterGroupsByOwner?.items) {
+                setGroups(result.data.searchFilterGroupsByOwner.items);
+            } else {
+                setGroups([]);
             }
         } catch (err) {
             console.error('Error fetching search filter groups:', err);
@@ -109,7 +153,7 @@ export const useSearchFilterGroups = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentUser]);
 
     useEffect(() => {
         fetchGroups();
