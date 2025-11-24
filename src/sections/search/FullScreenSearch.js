@@ -6,11 +6,13 @@ import { Box } from '@mui/system';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
 import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
+import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
 
@@ -98,6 +100,7 @@ const defaultBackgroundColor = '#080808';
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata, persistSearchTerm }) {
   const { savedCids, cid, setCid, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
   const { setShow, setSearchQuery } = useSearchDetails();
+  const { groups } = useSearchFilterGroups();
   const isMd = useMediaQuery((theme) => theme.breakpoints.up('sm'));
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { user, shows, defaultShow, handleUpdateDefaultShow, showFeed = false } = useContext(UserContext);
@@ -928,10 +931,27 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                               }}
                             >
                               {cid && cid !== '_universal' && cid !== '_favorites' && shows.length > 0 ? (
-                                <FavoriteToggle
-                                  indexId={cid}
-                                  initialIsFavorite={shows.find((singleShow) => singleShow.id === cid)?.isFavorite || false}
-                                />
+                                groups.some(g => g.id === cid) ? (
+                                  <IconButton
+                                    component={Link}
+                                    to={`/search/filter/edit/${cid}`}
+                                    size="small"
+                                    sx={{
+                                      color: currentThemeFontColor,
+                                      mr: 1,
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                      }
+                                    }}
+                                  >
+                                    <SettingsIcon />
+                                  </IconButton>
+                                ) : (
+                                  <FavoriteToggle
+                                    indexId={cid}
+                                    initialIsFavorite={shows.find((singleShow) => singleShow.id === cid)?.isFavorite || false}
+                                  />
+                                )
                               ) : (
                                 <span />
                               )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API } from 'aws-amplify';
 import { CircularProgress } from '@mui/material';
@@ -8,10 +8,12 @@ import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import Page404 from './Page404';
 import { safeSetItem } from '../utils/storage';
 import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
+import { UserContext } from '../UserContext';
 
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
   const { groups } = useSearchFilterGroups();
+  const { shows } = useContext(UserContext); // Access shows from UserContext
   const [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState(null);
   const { loadingSavedCids } = useSearchDetailsV2();
@@ -59,12 +61,18 @@ const DynamicRouteHandler = () => {
           console.error("Error parsing filter", e);
         }
 
+        // Calculate total frame count
+        const totalFrameCount = items.reduce((acc, itemId) => {
+          const show = shows.find(s => s.id === itemId);
+          return acc + (show?.frameCount || 0);
+        }, 0);
+
         setMetadata({
           id: filter.id,
           title: filter.name,
           colorMain,
           colorSecondary,
-          frameCount: items.length,
+          frameCount: totalFrameCount,
         });
         setLoading(false);
         setError(false);
@@ -132,7 +140,7 @@ const DynamicRouteHandler = () => {
       }
     }
 
-  }, [seriesId, groups]);
+  }, [seriesId, groups, shows]);
 
   useEffect(() => {
     // console.log('LOADING: ', loading)
