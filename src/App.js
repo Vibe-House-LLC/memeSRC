@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 
 import { Backdrop, CircularProgress } from '@mui/material';
 import { SearchDetailsProvider } from './contexts/SearchDetailsProvider';
+import { SearchSettingsProvider } from './contexts/SearchSettingsContext';
 import { CollageProvider } from './contexts/CollageContext';
 // routes
 import Router from './routes';
@@ -32,15 +33,17 @@ export default function App() {
             </Backdrop>
           }>
             {/* <FeaturePopover> */}
-            <SearchDetailsProvider>
-              <CollageProvider>
-                <DesktopProcessingProvider>
-                  {/* <FeatureSectionPopover> */}
-                  <Router />
-                  {/* </FeatureSectionPopover> */}
-                </DesktopProcessingProvider>
-              </CollageProvider>
-            </SearchDetailsProvider>
+            <SearchSettingsProvider>
+              <SearchDetailsProvider>
+                <CollageProvider>
+                  <DesktopProcessingProvider>
+                    {/* <FeatureSectionPopover> */}
+                    <Router />
+                    {/* </FeatureSectionPopover> */}
+                  </DesktopProcessingProvider>
+                </CollageProvider>
+              </SearchDetailsProvider>
+            </SearchSettingsProvider>
             {/* </FeaturePopover> */}
           </Suspense>
         </StripeWatcher>

@@ -24,6 +24,7 @@ import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import { isColorNearBlack } from '../../utils/colors';
 import FeedSection, { resolveUserIdentifier } from './FeedSection';
+import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -108,6 +109,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
   const theme = useTheme();
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
+  const { effectiveTheme } = useSearchSettings();
 
   // Recent update indicator state
   const [feedSummary, setFeedSummary] = useState({ entries: [] });
@@ -483,12 +485,15 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }, [currentValueId, shows, savedCids]);
 
   const unifiedSearchAppearance = useMemo(() => {
+    if (!currentSeries) {
+      return effectiveTheme;
+    }
     const candidateColor = currentSeries?.colorSecondary || currentThemeFontColor;
     if (!candidateColor) {
-      return 'light';
+      return effectiveTheme;
     }
     return isColorNearBlack(candidateColor) ? 'dark' : 'light';
-  }, [currentSeries, currentThemeFontColor]);
+  }, [currentSeries, currentThemeFontColor, effectiveTheme]);
 
   const handleRandomSearch = useCallback(() => {
     const scope = currentValueId || '_universal';
@@ -659,10 +664,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             display: 'grid',
             gridTemplateColumns: isFeedEnabled
               ? {
-                  xs: '1fr',
-                  md: 'minmax(0, 2fr) minmax(0, 1fr)',
-                  lg: 'minmax(0, 3fr) minmax(0, 1fr)',
-                }
+                xs: '1fr',
+                md: 'minmax(0, 2fr) minmax(0, 1fr)',
+                lg: 'minmax(0, 3fr) minmax(0, 1fr)',
+              }
               : { xs: '1fr' },
             gap: isFeedEnabled ? { xs: 0.25, md: 3 } : 0,
             alignItems: 'stretch',
@@ -671,22 +676,22 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
               : { xs: 0, sm: 0 },
             paddingTop: isFeedEnabled
               ? {
-                  xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
-                  md: `${DESKTOP_CARD_PADDING}px`,
-                }
+                xs: `calc(${NAVBAR_HEIGHT}px - 40px)`,
+                md: `${DESKTOP_CARD_PADDING}px`,
+              }
               : 0,
             paddingBottom: isFeedEnabled
               ? {
-                  xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
-                  md: 0,
-                }
+                xs: `calc(${NAVBAR_HEIGHT}px - 48px)`,
+                md: 0,
+              }
               : 0,
             minHeight: isFeedEnabled
               ? undefined
               : {
-                  xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
-                  md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
-                },
+                xs: STANDALONE_CONTAINER_MIN_HEIGHT_XS,
+                md: STANDALONE_CONTAINER_MIN_HEIGHT_MD,
+              },
             backgroundColor: '#000',
           }}
         >
@@ -846,11 +851,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                       mt: 0,
                     }}
                   >
-                      <Box
-                        sx={{
-                          ...heroContentSx,
-                        }}
-                      >
+                    <Box
+                      sx={{
+                        ...heroContentSx,
+                      }}
+                    >
                       <Grid
                         container
                         justifyContent="center"
