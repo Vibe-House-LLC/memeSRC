@@ -6,6 +6,7 @@ import { V2SearchDetailsProvider } from './contexts/V2SearchDetailsProvider';
 import SiteWideMaintenance from './pages/SiteWideMaintenance';
 import { DialogProvider } from './contexts/SubscribeDialog';
 import { ShowProvider } from './contexts/useShows';
+import { SearchFilterGroupsProvider } from './hooks/useSearchFilterGroups';
 
 
 // ----------------------------------------------------------------------
@@ -86,7 +87,19 @@ export default function Router() {
   const routes = useRoutes([
     {
       path: '/',
-      element: <GuestAuth><DialogProvider><MagicPopup><V2SearchDetailsProvider><DashboardLayout /></V2SearchDetailsProvider></MagicPopup></DialogProvider></GuestAuth>,
+      element: (
+        <GuestAuth>
+          <DialogProvider>
+            <MagicPopup>
+              <V2SearchDetailsProvider>
+                <SearchFilterGroupsProvider>
+                  <DashboardLayout />
+                </SearchFilterGroupsProvider>
+              </V2SearchDetailsProvider>
+            </MagicPopup>
+          </DialogProvider>
+        </GuestAuth>
+      ),
       children: [
         { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'pro', element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
@@ -134,7 +147,17 @@ export default function Router() {
     },
     {
       path: '/dashboard',
-      element: <CheckAuth><DialogProvider><MagicPopup><DashboardLayout /></MagicPopup></DialogProvider></CheckAuth>,
+      element: (
+        <CheckAuth>
+          <DialogProvider>
+            <MagicPopup>
+              <SearchFilterGroupsProvider>
+                <DashboardLayout />
+              </SearchFilterGroupsProvider>
+            </MagicPopup>
+          </DialogProvider>
+        </CheckAuth>
+      ),
       children: [
         { element: <Navigate to="/dashboard/app" />, index: true },
         { path: 'app', element: <DashboardAppPage /> },

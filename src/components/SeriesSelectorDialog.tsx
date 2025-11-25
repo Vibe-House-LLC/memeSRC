@@ -258,7 +258,12 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [filter, setFilter] = useState<string>('');
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
-  const { groups, deleteGroup } = useSearchFilterGroups();
+  const {
+    groups,
+    deleteGroup,
+    loading: filterGroupsLoading,
+    refreshing: filterGroupsRefreshing,
+  } = useSearchFilterGroups();
   const inputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -556,6 +561,33 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
 
           {/* Custom Filters Section */}
 
+          {(filterGroupsLoading || filterGroupsRefreshing || customFilters.length > 0) && (
+            <ListSubheader
+              disableSticky
+              component="div"
+              sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}
+            >
+              Custom Filters
+            </ListSubheader>
+          )}
+
+          {filterGroupsLoading && customFilters.length === 0 && (
+            <ListItem
+              sx={(theme) => ({
+                border: '1px dashed',
+                borderColor: theme.palette.divider,
+                borderRadius: 1.5,
+                py: 1.25,
+                px: 1.5,
+                color: 'text.secondary',
+              })}
+            >
+              <ListItemText
+                primaryTypographyProps={{ fontWeight: 500 }}
+                primary="Loading custom filters..."
+              />
+            </ListItem>
+          )}
 
           {/* Custom Filters List */}
           {customFilters.map((filter) => {
