@@ -214,7 +214,7 @@ export const SearchFilterGroupsProvider = ({ children }: { children: ReactNode }
                 return [];
             }
 
-            if (inFlightRef.current && !options?.force) {
+            if (inFlightRef.current) {
                 return inFlightRef.current;
             }
 
