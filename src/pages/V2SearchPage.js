@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
-import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@emotion/react';
@@ -20,6 +20,7 @@ import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
+import Page404 from './Page404';
 
 
 
@@ -186,12 +187,11 @@ export default function SearchPage() {
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
 
   const params = useParams();
+  const location = useLocation();
 
   const { user, shows } = useContext(UserContext);
 
   const RESULTS_PER_PAGE = 8;
-
-  const [loadingCsv, setLoadingCsv] = useState(false);
 
   // ===== Upgraded Index Banner States ===== 
   const [animationsEnabled] = useState(false);
@@ -207,26 +207,37 @@ export default function SearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
   const [newResults, setNewResults] = useState();
-  const { showObj, setShowObj, cid } = useSearchDetailsV2();
-  const { groups } = useSearchFilterGroups();
+  const { setShowObj, cid } = useSearchDetailsV2();
+  const { groups, fetchGroups } = useSearchFilterGroups();
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
+  const paramsCid = params?.cid;
+  const resolvedCid = paramsCid || cid;
+  const favoritesForSearch = resolvedCid === '_favorites' ? shows : null;
+  const locationKey = location.key;
   const encodedSearchQuery = useMemo(
     () => (searchQuery ? encodeURIComponent(searchQuery) : ''),
     [searchQuery],
   );
 
   const [autoplay] = useState(true);
+  const [customFilterNotFound, setCustomFilterNotFound] = useState(false);
 
   const videoRefs = useRef([]);
+  const latestSearchKeyRef = useRef('');
+  const groupsRef = useRef(groups);
 
   const addVideoRef = (element) => {
     if (element && !videoRefs.current.includes(element)) {
       videoRefs.current.push(element);
     }
   };
+
+  useEffect(() => {
+    groupsRef.current = groups;
+  }, [groups]);
 
 
   const [videoLoadedStates, setVideoLoadedStates] = useState({});
@@ -282,7 +293,6 @@ export default function SearchPage() {
         alert("Please enter a valid CID.");
         return;
       }
-      setLoadingCsv(false);
       setShowObj([]);
 
       // checkBannerDismissed(selectedCid);
@@ -382,74 +392,132 @@ export default function SearchPage() {
   };
 
   useEffect(() => {
-    async function searchText() {
-      // const shows = await fetchShows();
-      setNewResults(null);
-      setLoadingResults(true);
-      setDisplayedResults(RESULTS_PER_PAGE / 2);
-      const searchTerm = encodeURIComponent(searchQuery.trim().toLowerCase());
-      if (searchTerm === "") {
-        console.log("Search term is empty.");
+    const activeCid = resolvedCid;
+    const normalizedSearch = (searchQuery || '').trim();
+    const encodedSearchTerm = normalizedSearch ? encodeURIComponent(normalizedSearch.toLowerCase()) : '';
+    const abortController = new AbortController();
+    let isCancelled = false;
+    const searchKey = `${activeCid}|${encodedSearchTerm}`;
+
+    const searchText = async () => {
+      setCustomFilterNotFound(false);
+
+      if (!normalizedSearch) {
+        latestSearchKeyRef.current = '';
+        setCustomFilterNotFound(false);
+        setLoadingResults(false);
+        setNewResults([]);
         return;
       }
 
-      // Block loading results when _universal is the CID and universalSearchMaintenance is true
-      if (cid === '_universal' && universalSearchMaintenance) {
+      if (!activeCid) {
         setLoadingResults(false);
         return;
       }
 
+      if (activeCid === '_universal' && universalSearchMaintenance) {
+        setLoadingResults(false);
+        return;
+      }
+
+      latestSearchKeyRef.current = searchKey;
+
+      setNewResults(null);
+      setLoadingResults(true);
+      setDisplayedResults(RESULTS_PER_PAGE / 2);
+
+      let latestGroups = [];
       try {
-        let seriesToSearch;
-        const customFilter = groups.find(g => g.id === (params?.cid || cid));
-        let customFilterItems = [];
-        if (customFilter) {
-          try {
-            const parsed = JSON.parse(customFilter.filters);
-            customFilterItems = parsed.items || [];
-          } catch (e) {
-            console.error("Error parsing custom filter", e);
-          }
+        latestGroups = await fetchGroups({ force: true });
+      } catch (err) {
+        latestGroups = groupsRef.current || [];
+      }
+
+      if (isCancelled || latestSearchKeyRef.current !== searchKey) {
+        return;
+      }
+
+      const customFilter = latestGroups.find((g) => g.id === activeCid);
+      const isCustomFilterRequest = activeCid?.startsWith('custom_') || Boolean(customFilter);
+
+      if (isCustomFilterRequest && !customFilter) {
+        setLoadingResults(false);
+        setNewResults([]);
+        setCustomFilterNotFound(true);
+        return;
+      }
+
+      let customFilterItems = [];
+      if (customFilter) {
+        try {
+          const parsed = JSON.parse(customFilter.filters);
+          customFilterItems = parsed.items || [];
+        } catch (e) {
+          console.error('Error parsing custom filter', e);
         }
+      }
 
-        if (cid === '_favorites' || params?.cid === '_favorites') {
-          // console.log(shows)
-          seriesToSearch = shows.filter(show => show.isFavorite).map(show => show.id).join(',');
-        } else if (customFilter) {
-          seriesToSearch = customFilterItems.join(',');
-        } else {
-          seriesToSearch = params?.cid || cid
-        }
+      let seriesToSearch;
+      if (activeCid === '_favorites') {
+        const favoriteShows = Array.isArray(favoritesForSearch) ? favoritesForSearch : [];
+        seriesToSearch = favoriteShows.filter((show) => show.isFavorite).map((show) => show.id).join(',');
+      } else if (customFilter) {
+        seriesToSearch = customFilterItems.join(',');
+      } else {
+        seriesToSearch = activeCid;
+      }
 
-        const response = await fetch(`https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${seriesToSearch}/${searchTerm}`);
+      if (isCustomFilterRequest && !seriesToSearch) {
+        setLoadingResults(false);
+        setNewResults([]);
+        return;
+      }
 
-        // const response = await fetch(`http://the-internet.herokuapp.com/status_codes/500`);
+      try {
+        const response = await fetch(
+          `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${seriesToSearch}/${encodedSearchTerm}`,
+          { signal: abortController.signal }
+        );
+
         if (!response.ok) {
+          if (response.status === 404 && isCustomFilterRequest) {
+            setCustomFilterNotFound(true);
+            setLoadingResults(false);
+            setNewResults([]);
+            return;
+          }
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const results = await response.json();
         const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 5 : Infinity;
         const resultsWithAds = injectAds(results.results, adInterval);
+
+        if (isCancelled || latestSearchKeyRef.current !== searchKey) {
+          return;
+        }
+
         setNewResults(resultsWithAds);
         setLoadingResults(false);
       } catch (error) {
-        console.error("Error searching:", error);
+        if (abortController.signal.aborted || isCancelled) {
+          return;
+        }
+        console.error('Error searching:', error);
         setMaintenanceDialogOpen(true);
-        // const shows = await fetchShows();
         setAvailableShows(shows);
-        setUniversalSearchMaintenance(true)
+        setUniversalSearchMaintenance(true);
+        setLoadingResults(false);
       }
-    }
+    };
 
-    // if (cid !== '_universal') {
-    if (searchQuery) {
-      searchText();
-    } else {
-      setLoadingResults(false);
-      setNewResults([]);
-    }
-    // }
-  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance, groups]);
+    searchText();
+
+    return () => {
+      isCancelled = true;
+      abortController.abort();
+      latestSearchKeyRef.current = '';
+    };
+  }, [resolvedCid, searchQuery, universalSearchMaintenance, fetchGroups, favoritesForSearch, locationKey]);
 
   // useEffect(() => {
   //   console.log(newResults);
@@ -468,6 +536,10 @@ export default function SearchPage() {
 
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+
+  if (customFilterNotFound) {
+    return <Page404 />;
+  }
 
   return (
     <>
