@@ -133,7 +133,7 @@ const quickActionButtonSx = (theme: Theme) => {
     paddingBottom: theme.spacing(1),
     paddingLeft: theme.spacing(0.92),
     paddingRight: theme.spacing(0.92),
-    minHeight: theme.spacing(5.75),
+    minHeight: theme.spacing(6.5),
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(0.6),
@@ -555,9 +555,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           )}
 
           {/* Custom Filters Section */}
-          <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'regular' })}>
-            Custom Filters
-          </ListSubheader>
+
 
           {/* Custom Filters List */}
           {customFilters.map((filter) => {
