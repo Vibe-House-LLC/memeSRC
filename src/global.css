@@ -81,3 +81,14 @@ body, #root {
 body {
     overflow-x: hidden;
 }
+
+/* Fix iOS Safari zooming on emoji-picker-react search input */
+.EmojiPickerReact input {
+    font-size: 16px !important;
+    line-height: 20px !important;
+}
+
+.EmojiPickerReact .epr-search-container input {
+    font-size: 16px !important;
+    line-height: 20px !important;
+}

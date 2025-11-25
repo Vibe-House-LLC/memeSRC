@@ -518,6 +518,7 @@ export default function EditFilterPage() {
                                     onEmojiClick={handleEmojiClick}
                                     theme={theme.palette.mode === 'dark' ? Theme.DARK : Theme.LIGHT}
                                     lazyLoadEmojis={true}
+                                    autoFocusSearch={false}
                                 />
                             </Popover>
                         </Box>
