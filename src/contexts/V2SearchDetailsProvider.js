@@ -31,11 +31,11 @@ export const V2SearchDetailsProvider = ({ children }) => {
         const match = pathname.match(/^\/(search|frame|editor|episode)\/([^/]+)/);
         if (match) {
             const urlCid = match[2];
-            if (urlCid && urlCid !== cid) {
-                setCid(urlCid);
+            if (urlCid) {
+                setCid((prevCid) => (prevCid === urlCid ? prevCid : urlCid));
             }
         }
-    }, [pathname, cid])
+    }, [pathname])
 
     // useEffect(() => {
     //     console.log('USER: ', user)
