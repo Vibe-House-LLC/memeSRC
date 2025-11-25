@@ -555,9 +555,7 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
           )}
 
           {/* Custom Filters Section */}
-          <ListSubheader disableSticky component="div" sx={(theme) => sectionHeaderSx(theme, { density: 'regular' })}>
-            Custom Filters
-          </ListSubheader>
+
 
           {/* Custom Filters List */}
           {customFilters.map((filter) => {
