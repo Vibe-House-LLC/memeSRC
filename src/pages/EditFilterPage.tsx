@@ -35,6 +35,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import CheckIcon from '@mui/icons-material/Check';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
+import SettingsIcon from '@mui/icons-material/Settings';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { alpha } from '@mui/material/styles';
 import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
@@ -358,6 +359,11 @@ export default function EditFilterPage() {
                                     }}
                                 />
 
+                                {/* Helper Text */}
+                                <Typography variant="caption" sx={{ mt: 0.5, opacity: 0.6, fontWeight: 600, display: 'block' }}>
+                                    Tap text to edit name
+                                </Typography>
+
                                 {/* Control Group (Floating at bottom) */}
                                 <Box
                                     sx={{
@@ -373,9 +379,12 @@ export default function EditFilterPage() {
                                         border: '1px solid rgba(255,255,255,0.1)'
                                     }}
                                 >
-                                    <Typography variant="caption" fontWeight={700} sx={{ color: 'white', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                        Style
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                        <SettingsIcon sx={{ color: 'white', fontSize: 16, opacity: 0.8 }} />
+                                        <Typography variant="caption" fontWeight={700} sx={{ color: 'white', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                            Style
+                                        </Typography>
+                                    </Box>
                                     <Box sx={{ display: 'flex', gap: 4 }}>
                                         {/* Icon Picker */}
                                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
@@ -480,11 +489,6 @@ export default function EditFilterPage() {
                                         </Box>
                                     </Box>
                                 </Box>
-
-                                {/* Helper Text */}
-                                <Typography variant="caption" sx={{ mt: 1, opacity: 0.6, fontWeight: 600 }}>
-                                    Tap text to edit name
-                                </Typography>
                             </Paper>
 
                             {/* Emoji Popover (kept outside to avoid clipping) */}
@@ -578,39 +582,57 @@ export default function EditFilterPage() {
                                 }}
                             >
                                 <List sx={{ p: 0 }}>
-                                    {selectedItems.size > 0 && (
-                                        <>
-                                            <ListSubheader sx={{ bgcolor: alpha(theme.palette.background.paper, 0.9), backdropFilter: 'blur(8px)', fontWeight: 700, lineHeight: '48px' }}>
-                                                Selected
-                                            </ListSubheader>
-                                            {shows
-                                                .filter(s => selectedItems.has(s.id))
-                                                .map(s => (
-                                                    <ListItemButton
-                                                        key={s.id}
-                                                        onClick={() => handleToggleItem(s.id)}
-                                                        selected
-                                                        sx={{
-                                                            borderBottom: '1px solid',
-                                                            borderColor: 'divider',
-                                                            py: 2,
-                                                            px: 3,
-                                                            '&.Mui-selected': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
-                                                            '&.Mui-selected:hover': { bgcolor: alpha(theme.palette.primary.main, 0.12) }
-                                                        }}
-                                                    >
-                                                        <Box sx={(theme) => radioIconSx(theme, true, { inverted: true })}>
-                                                            <CheckIcon color="primary" />
-                                                        </Box>
-                                                        <ListItemText
-                                                            primary={s.title}
-                                                            primaryTypographyProps={{ fontWeight: 700, fontSize: '1.1rem' }}
-                                                            sx={{ ml: 2 }}
-                                                        />
-                                                    </ListItemButton>
-                                                ))
-                                            }
-                                        </>
+                                    <ListSubheader sx={{ bgcolor: alpha(theme.palette.background.paper, 0.9), backdropFilter: 'blur(8px)', fontWeight: 700, lineHeight: '48px' }}>
+                                        Selected
+                                    </ListSubheader>
+                                    {selectedItems.size === 0 ? (
+                                        <ListItemButton disabled sx={{ py: 2, px: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
+                                            <Box sx={(theme) => ({ ...radioIconSx(theme, false, { inverted: true }), opacity: 0 })}>
+                                                <CheckIcon />
+                                            </Box>
+                                            <ListItemText
+                                                primary={
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                        <Typography sx={{ fontSize: '1.5rem', lineHeight: 1, opacity: 0 }}>📁</Typography>
+                                                        <Typography sx={{ fontStyle: 'italic', color: 'text.secondary' }}>No shows selected</Typography>
+                                                    </Box>
+                                                }
+                                                primaryTypographyProps={{ fontSize: '1.1rem' }}
+                                                sx={{ ml: 2 }}
+                                            />
+                                        </ListItemButton>
+                                    ) : (
+                                        shows
+                                            .filter(s => selectedItems.has(s.id))
+                                            .map(s => (
+                                                <ListItemButton
+                                                    key={s.id}
+                                                    onClick={() => handleToggleItem(s.id)}
+                                                    selected
+                                                    sx={{
+                                                        borderBottom: '1px solid',
+                                                        borderColor: 'divider',
+                                                        py: 2,
+                                                        px: 3,
+                                                        '&.Mui-selected': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
+                                                        '&.Mui-selected:hover': { bgcolor: alpha(theme.palette.primary.main, 0.12) }
+                                                    }}
+                                                >
+                                                    <Box sx={(theme) => radioIconSx(theme, true, { inverted: true })}>
+                                                        <CheckIcon color="primary" />
+                                                    </Box>
+                                                    <ListItemText
+                                                        primary={
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                                <Typography sx={{ fontSize: '1.5rem', lineHeight: 1 }}>{s.emoji}</Typography>
+                                                                {s.title}
+                                                            </Box>
+                                                        }
+                                                        primaryTypographyProps={{ fontWeight: 700, fontSize: '1.1rem' }}
+                                                        sx={{ ml: 2 }}
+                                                    />
+                                                </ListItemButton>
+                                            ))
                                     )}
 
                                     <ListSubheader sx={{ bgcolor: alpha(theme.palette.background.paper, 0.9), backdropFilter: 'blur(8px)', fontWeight: 700, lineHeight: '48px' }}>
@@ -634,7 +656,12 @@ export default function EditFilterPage() {
                                                     <RadioButtonUncheckedIcon color="action" />
                                                 </Box>
                                                 <ListItemText
-                                                    primary={s.title}
+                                                    primary={
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                            <Typography sx={{ fontSize: '1.5rem', lineHeight: 1 }}>{s.emoji}</Typography>
+                                                            {s.title}
+                                                        </Box>
+                                                    }
                                                     primaryTypographyProps={{ fontSize: '1.1rem', fontWeight: 500 }}
                                                     sx={{ ml: 2 }}
                                                 />
