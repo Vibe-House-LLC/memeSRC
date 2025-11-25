@@ -274,33 +274,220 @@ export default function EditFilterPage() {
 
 
 
-            <Container maxWidth="md" sx={{ mt: 6 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Container maxWidth="xl" sx={{ mt: 4, pb: 8 }}>
+                <Grid container spacing={{ xs: 3, md: 6 }}>
 
-                    {/* Identity Section */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                        <Box sx={{ position: 'relative' }}>
-                            <Box
-                                onClick={(event) => setEmojiAnchorEl(event.currentTarget)}
+                    {/* Left Sidebar: Filter Card (Implicit Editing) */}
+                    <Grid item xs={12} md={4}>
+                        <Box sx={{
+                            position: { md: 'sticky' },
+                            top: { md: 100 },
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4
+                        }}>
+                            <Typography variant="h6" fontWeight={800} sx={{ opacity: 0.7 }}>
+                                Preview & Edit
+                            </Typography>
+
+                            <Paper
+                                elevation={6}
                                 sx={{
-                                    width: 120,
-                                    height: 120,
-                                    borderRadius: '50%',
-                                    bgcolor: 'background.paper',
+                                    position: 'relative',
+                                    p: 4,
+                                    borderRadius: 6,
+                                    bgcolor: colorMain,
+                                    color: colorSecondary,
                                     display: 'flex',
+                                    flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    fontSize: '4rem',
-                                    boxShadow: theme.shadows[4],
-                                    border: '4px solid',
-                                    borderColor: 'background.paper',
-                                    cursor: 'pointer',
-                                    transition: 'transform 0.2s',
-                                    '&:hover': { transform: 'scale(1.05)' }
+                                    minHeight: 400,
+                                    transition: 'all 0.3s ease',
+                                    overflow: 'hidden',
+                                    border: '1px solid',
+                                    borderColor: 'divider'
                                 }}
                             >
-                                {emoji}
-                            </Box>
+                                {/* Emoji Display (Preview Only) */}
+                                <Box sx={{ position: 'relative', mb: 2 }}>
+                                    <Box
+                                        sx={{
+                                            fontSize: '5rem',
+                                            transition: 'transform 0.2s',
+                                            '&:hover': { transform: 'scale(1.1)' },
+                                            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))',
+                                            cursor: 'default'
+                                        }}
+                                    >
+                                        {emoji}
+                                    </Box>
+                                </Box>
+
+                                {/* Name Input */}
+                                <TextField
+                                    placeholder="Filter Name"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    variant="standard"
+                                    fullWidth
+                                    multiline
+                                    maxRows={2}
+                                    InputProps={{
+                                        disableUnderline: true,
+                                        sx: {
+                                            textAlign: 'center',
+                                            fontSize: '2.5rem',
+                                            fontWeight: 900,
+                                            color: 'inherit',
+                                            '& input': {
+                                                textAlign: 'center',
+                                                textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                            },
+                                            '& textarea': {
+                                                textAlign: 'center',
+                                                textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                            }
+                                        }
+                                    }}
+                                    sx={{
+                                        '& .MuiInputBase-input::placeholder': {
+                                            color: alpha(colorSecondary, 0.5),
+                                            opacity: 1
+                                        }
+                                    }}
+                                />
+
+                                {/* Control Group (Floating at bottom) */}
+                                <Box
+                                    sx={{
+                                        mt: 6,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        p: 2,
+                                        borderRadius: 4,
+                                        bgcolor: 'rgba(0,0,0,0.2)',
+                                        backdropFilter: 'blur(10px)',
+                                        border: '1px solid rgba(255,255,255,0.1)'
+                                    }}
+                                >
+                                    <Typography variant="caption" fontWeight={700} sx={{ color: 'white', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        Style
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', gap: 4 }}>
+                                        {/* Icon Picker */}
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                            <Box
+                                                onClick={(event) => setEmojiAnchorEl(event.currentTarget)}
+                                                sx={{
+                                                    position: 'relative',
+                                                    width: 40,
+                                                    height: 40,
+                                                    borderRadius: '50%',
+                                                    bgcolor: 'background.paper',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: '1.5rem',
+                                                    cursor: 'pointer',
+                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                                    border: '3px solid white',
+                                                    transition: 'transform 0.2s',
+                                                    '&:hover': { transform: 'scale(1.1)' }
+                                                }}
+                                            >
+                                                {emoji}
+                                            </Box>
+                                            <Typography variant="caption" sx={{ color: 'white', fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                                                Icon
+                                            </Typography>
+                                        </Box>
+
+                                        {/* Background Color Picker */}
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                            <Box sx={{ position: 'relative', width: 40, height: 40 }}>
+                                                <Box
+                                                    sx={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        borderRadius: '50%',
+                                                        bgcolor: colorMain,
+                                                        border: '3px solid white',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                                        cursor: 'pointer',
+                                                        transition: 'transform 0.2s',
+                                                        '&:hover': { transform: 'scale(1.1)' }
+                                                    }}
+                                                />
+                                                <input
+                                                    type="color"
+                                                    value={colorMain}
+                                                    onChange={(e) => setColorMain(e.target.value)}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: 0,
+                                                        left: 0,
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        opacity: 0,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Change Background Color"
+                                                />
+                                            </Box>
+                                            <Typography variant="caption" sx={{ color: 'white', fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                                                Background
+                                            </Typography>
+                                        </Box>
+
+                                        {/* Text Color Picker */}
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                            <Box sx={{ position: 'relative', width: 40, height: 40 }}>
+                                                <Box
+                                                    sx={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        borderRadius: '50%',
+                                                        bgcolor: colorSecondary,
+                                                        border: '3px solid white',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                                        cursor: 'pointer',
+                                                        transition: 'transform 0.2s',
+                                                        '&:hover': { transform: 'scale(1.1)' }
+                                                    }}
+                                                />
+                                                <input
+                                                    type="color"
+                                                    value={colorSecondary}
+                                                    onChange={(e) => setColorSecondary(e.target.value)}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: 0,
+                                                        left: 0,
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        opacity: 0,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Change Text Color"
+                                                />
+                                            </Box>
+                                            <Typography variant="caption" sx={{ color: 'white', fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                                                Text
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </Box>
+
+                                {/* Helper Text */}
+                                <Typography variant="caption" sx={{ mt: 1, opacity: 0.6, fontWeight: 600 }}>
+                                    Tap text to edit name
+                                </Typography>
+                            </Paper>
+
+                            {/* Emoji Popover (kept outside to avoid clipping) */}
                             <Popover
                                 id={emojiId}
                                 open={isEmojiOpen}
@@ -329,299 +516,143 @@ export default function EditFilterPage() {
                                     lazyLoadEmojis={true}
                                 />
                             </Popover>
-                            <Box
+                        </Box>
+                    </Grid>
+
+                    {/* Right Content: Selection List */}
+                    <Grid item xs={12} md={8}>
+                        <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                                <Box>
+                                    <Typography variant="h5" fontWeight={800} gutterBottom>
+                                        Included Shows
+                                    </Typography>
+                                    <Typography variant="body1" color="text.secondary">
+                                        Select the shows you want to include in this filter.
+                                    </Typography>
+                                </Box>
+                                <Chip
+                                    label={`${selectedItems.size} Selected`}
+                                    color="primary"
+                                    sx={{ fontWeight: 700 }}
+                                />
+                            </Box>
+
+                            <TextField
+                                fullWidth
+                                placeholder="Search available shows..."
+                                value={filterQuery}
+                                onChange={(e) => setFilterQuery(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon color="action" />
+                                        </InputAdornment>
+                                    ),
+                                    endAdornment: filterQuery ? (
+                                        <InputAdornment position="end">
+                                            <IconButton size="small" onClick={() => setFilterQuery('')}>
+                                                <CloseIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ) : null,
+                                    sx: {
+                                        borderRadius: 50,
+                                        bgcolor: 'background.paper',
+                                        boxShadow: theme.shadows[2],
+                                        pl: 2,
+                                        '& fieldset': { border: 'none' }
+                                    }
+                                }}
+                                sx={{ mb: 4 }}
+                            />
+
+                            <Paper
+                                elevation={0}
                                 sx={{
-                                    position: 'absolute',
-                                    bottom: 0,
-                                    right: 0,
-                                    bgcolor: 'primary.main',
-                                    color: 'white',
-                                    width: 32,
-                                    height: 32,
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    border: '2px solid',
-                                    borderColor: 'background.default',
-                                    pointerEvents: 'none'
+                                    borderRadius: 4,
+                                    overflow: 'hidden',
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    bgcolor: 'background.paper'
                                 }}
                             >
-                                <Typography variant="caption" fontWeight={700}>Aa</Typography>
-                            </Box>
-                        </Box>
+                                <List sx={{ p: 0 }}>
+                                    {selectedItems.size > 0 && (
+                                        <>
+                                            <ListSubheader sx={{ bgcolor: alpha(theme.palette.background.paper, 0.9), backdropFilter: 'blur(8px)', fontWeight: 700, lineHeight: '48px' }}>
+                                                Selected
+                                            </ListSubheader>
+                                            {shows
+                                                .filter(s => selectedItems.has(s.id))
+                                                .map(s => (
+                                                    <ListItemButton
+                                                        key={s.id}
+                                                        onClick={() => handleToggleItem(s.id)}
+                                                        selected
+                                                        sx={{
+                                                            borderBottom: '1px solid',
+                                                            borderColor: 'divider',
+                                                            py: 2,
+                                                            px: 3,
+                                                            '&.Mui-selected': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
+                                                            '&.Mui-selected:hover': { bgcolor: alpha(theme.palette.primary.main, 0.12) }
+                                                        }}
+                                                    >
+                                                        <Box sx={(theme) => radioIconSx(theme, true, { inverted: true })}>
+                                                            <CheckIcon color="primary" />
+                                                        </Box>
+                                                        <ListItemText
+                                                            primary={s.title}
+                                                            primaryTypographyProps={{ fontWeight: 700, fontSize: '1.1rem' }}
+                                                            sx={{ ml: 2 }}
+                                                        />
+                                                    </ListItemButton>
+                                                ))
+                                            }
+                                        </>
+                                    )}
 
-                        <TextField
-                            placeholder="Name your filter"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            variant="standard"
-                            fullWidth
-                            inputProps={{
-                                style: {
-                                    textAlign: 'center',
-                                    fontSize: '2.5rem',
-                                    fontWeight: 800,
-                                    paddingBottom: 16
-                                }
-                            }}
-                            sx={{
-                                maxWidth: 500,
-                                '& .MuiInput-underline:before': { borderBottom: '2px solid', borderColor: 'divider' },
-                                '& .MuiInput-underline:after': { borderBottom: '3px solid', borderColor: 'primary.main' }
-                            }}
-                        />
-                    </Box>
+                                    <ListSubheader sx={{ bgcolor: alpha(theme.palette.background.paper, 0.9), backdropFilter: 'blur(8px)', fontWeight: 700, lineHeight: '48px' }}>
+                                        {filterQuery ? 'Search Results' : 'All Shows'}
+                                    </ListSubheader>
 
-                    {/* Appearance Section */}
-                    <Box>
-                        <Typography variant="h6" fontWeight={800} gutterBottom sx={{ mb: 3 }}>
-                            Appearance
-                        </Typography>
-                        <Grid container spacing={4}>
-                            <Grid item xs={12} md={6}>
-                                <Paper
-                                    elevation={0}
-                                    sx={{
-                                        p: 3,
-                                        borderRadius: 4,
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        height: '100%'
-                                    }}
-                                >
-                                    <Typography variant="subtitle2" color="text.secondary" fontWeight={700} sx={{ mb: 3, textTransform: 'uppercase' }}>
-                                        Colors
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                                        <Box sx={{ textAlign: 'center' }}>
-                                            <Box sx={{ position: 'relative', width: 80, height: 80, mb: 1 }}>
-                                                <Box
-                                                    sx={{
-                                                        width: '100%',
-                                                        height: '100%',
-                                                        borderRadius: '50%',
-                                                        bgcolor: colorMain,
-                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                                        border: '2px solid',
-                                                        borderColor: 'background.paper'
-                                                    }}
+                                    {filteredSeries.map(s => {
+                                        if (selectedItems.has(s.id)) return null;
+                                        return (
+                                            <ListItemButton
+                                                key={s.id}
+                                                onClick={() => handleToggleItem(s.id)}
+                                                sx={{
+                                                    borderBottom: '1px solid',
+                                                    borderColor: 'divider',
+                                                    py: 2,
+                                                    px: 3
+                                                }}
+                                            >
+                                                <Box sx={(theme) => radioIconSx(theme, false, { inverted: true })}>
+                                                    <RadioButtonUncheckedIcon color="action" />
+                                                </Box>
+                                                <ListItemText
+                                                    primary={s.title}
+                                                    primaryTypographyProps={{ fontSize: '1.1rem', fontWeight: 500 }}
+                                                    sx={{ ml: 2 }}
                                                 />
-                                                <input
-                                                    type="color"
-                                                    value={colorMain}
-                                                    onChange={(e) => setColorMain(e.target.value)}
-                                                    style={{
-                                                        position: 'absolute',
-                                                        top: 0,
-                                                        left: 0,
-                                                        width: '100%',
-                                                        height: '100%',
-                                                        opacity: 0,
-                                                        cursor: 'pointer'
-                                                    }}
-                                                />
-                                            </Box>
-                                            <Typography variant="caption" fontWeight={600} color="text.secondary">Background</Typography>
+                                            </ListItemButton>
+                                        );
+                                    })}
+
+                                    {filteredSeries.length === 0 && (
+                                        <Box sx={{ p: 6, textAlign: 'center', color: 'text.secondary' }}>
+                                            <SearchIcon sx={{ fontSize: 48, opacity: 0.2, mb: 2 }} />
+                                            <Typography variant="body1">No shows found matching "{filterQuery}"</Typography>
                                         </Box>
-                                        <Box sx={{ textAlign: 'center' }}>
-                                            <Box sx={{ position: 'relative', width: 80, height: 80, mb: 1 }}>
-                                                <Box
-                                                    sx={{
-                                                        width: '100%',
-                                                        height: '100%',
-                                                        borderRadius: '50%',
-                                                        bgcolor: colorSecondary,
-                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                                        border: '2px solid',
-                                                        borderColor: 'background.paper'
-                                                    }}
-                                                />
-                                                <input
-                                                    type="color"
-                                                    value={colorSecondary}
-                                                    onChange={(e) => setColorSecondary(e.target.value)}
-                                                    style={{
-                                                        position: 'absolute',
-                                                        top: 0,
-                                                        left: 0,
-                                                        width: '100%',
-                                                        height: '100%',
-                                                        opacity: 0,
-                                                        cursor: 'pointer'
-                                                    }}
-                                                />
-                                            </Box>
-                                            <Typography variant="caption" fontWeight={600} color="text.secondary">Text</Typography>
-                                        </Box>
-                                    </Box>
-                                </Paper>
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                                <Paper
-                                    elevation={0}
-                                    sx={{
-                                        p: 3,
-                                        borderRadius: 4,
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        height: '100%',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        bgcolor: 'background.paper'
-                                    }}
-                                >
-                                    <Typography variant="subtitle2" color="text.secondary" fontWeight={700} sx={{ mb: 3, textTransform: 'uppercase', alignSelf: 'flex-start' }}>
-                                        Preview
-                                    </Typography>
-                                    <Chip
-                                        label={name || 'Filter Name'}
-                                        icon={<span style={{ fontSize: '1.2rem' }}>{emoji}</span>}
-                                        sx={{
-                                            bgcolor: colorMain,
-                                            color: colorSecondary,
-                                            fontWeight: 700,
-                                            fontSize: '1rem',
-                                            height: 48,
-                                            px: 2,
-                                            borderRadius: 24,
-                                            '& .MuiChip-icon': { color: 'inherit' }
-                                        }}
-                                    />
-                                </Paper>
-                            </Grid>
-                        </Grid>
-                    </Box>
-
-                    {/* Selection Section */}
-                    <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                            <Box>
-                                <Typography variant="h6" fontWeight={800}>
-                                    Included Shows
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    {selectedItems.size} selected
-                                </Typography>
-                            </Box>
+                                    )}
+                                </List>
+                            </Paper>
                         </Box>
-
-                        <TextField
-                            fullWidth
-                            placeholder="Search available shows..."
-                            value={filterQuery}
-                            onChange={(e) => setFilterQuery(e.target.value)}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon color="action" />
-                                    </InputAdornment>
-                                ),
-                                endAdornment: filterQuery ? (
-                                    <InputAdornment position="end">
-                                        <IconButton size="small" onClick={() => setFilterQuery('')}>
-                                            <CloseIcon fontSize="small" />
-                                        </IconButton>
-                                    </InputAdornment>
-                                ) : null,
-                                sx: {
-                                    borderRadius: 50,
-                                    bgcolor: 'background.paper',
-                                    boxShadow: theme.shadows[2],
-                                    pl: 2,
-                                    '& fieldset': { border: 'none' }
-                                }
-                            }}
-                            sx={{ mb: 4 }}
-                        />
-
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                borderRadius: 4,
-                                overflow: 'hidden',
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                bgcolor: 'background.paper'
-                            }}
-                        >
-                            <List sx={{ p: 0 }}>
-                                {selectedItems.size > 0 && (
-                                    <>
-                                        <ListSubheader sx={{ bgcolor: alpha(theme.palette.background.paper, 0.9), backdropFilter: 'blur(8px)', fontWeight: 700, lineHeight: '48px' }}>
-                                            Selected
-                                        </ListSubheader>
-                                        {shows
-                                            .filter(s => selectedItems.has(s.id))
-                                            .map(s => (
-                                                <ListItemButton
-                                                    key={s.id}
-                                                    onClick={() => handleToggleItem(s.id)}
-                                                    selected
-                                                    sx={{
-                                                        borderBottom: '1px solid',
-                                                        borderColor: 'divider',
-                                                        py: 2,
-                                                        px: 3,
-                                                        '&.Mui-selected': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
-                                                        '&.Mui-selected:hover': { bgcolor: alpha(theme.palette.primary.main, 0.12) }
-                                                    }}
-                                                >
-                                                    <Box sx={(theme) => radioIconSx(theme, true, { inverted: true })}>
-                                                        <CheckIcon color="primary" />
-                                                    </Box>
-                                                    <ListItemText
-                                                        primary={s.title}
-                                                        primaryTypographyProps={{ fontWeight: 700, fontSize: '1.1rem' }}
-                                                        sx={{ ml: 2 }}
-                                                    />
-                                                </ListItemButton>
-                                            ))
-                                        }
-                                    </>
-                                )}
-
-                                <ListSubheader sx={{ bgcolor: alpha(theme.palette.background.paper, 0.9), backdropFilter: 'blur(8px)', fontWeight: 700, lineHeight: '48px' }}>
-                                    {filterQuery ? 'Search Results' : 'All Shows'}
-                                </ListSubheader>
-
-                                {filteredSeries.map(s => {
-                                    if (selectedItems.has(s.id)) return null;
-                                    return (
-                                        <ListItemButton
-                                            key={s.id}
-                                            onClick={() => handleToggleItem(s.id)}
-                                            sx={{
-                                                borderBottom: '1px solid',
-                                                borderColor: 'divider',
-                                                py: 2,
-                                                px: 3
-                                            }}
-                                        >
-                                            <Box sx={(theme) => radioIconSx(theme, false, { inverted: true })}>
-                                                <RadioButtonUncheckedIcon color="action" />
-                                            </Box>
-                                            <ListItemText
-                                                primary={s.title}
-                                                primaryTypographyProps={{ fontSize: '1.1rem', fontWeight: 500 }}
-                                                sx={{ ml: 2 }}
-                                            />
-                                        </ListItemButton>
-                                    );
-                                })}
-
-                                {filteredSeries.length === 0 && (
-                                    <Box sx={{ p: 6, textAlign: 'center', color: 'text.secondary' }}>
-                                        <SearchIcon sx={{ fontSize: 48, opacity: 0.2, mb: 2 }} />
-                                        <Typography variant="body1">No shows found matching "{filterQuery}"</Typography>
-                                    </Box>
-                                )}
-                            </List>
-                        </Paper>
-                    </Box>
-                </Box>
+                    </Grid>
+                </Grid>
             </Container>
 
             <Dialog
