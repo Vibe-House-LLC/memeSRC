@@ -559,18 +559,6 @@ export default function SeriesSelectorDialog(props: SeriesSelectorDialogProps) {
             </ListItemButton>
           )}
 
-          {/* Custom Filters Section */}
-
-          {(filterGroupsLoading || filterGroupsRefreshing || customFilters.length > 0) && (
-            <ListSubheader
-              disableSticky
-              component="div"
-              sx={(theme) => sectionHeaderSx(theme, { density: 'tight' })}
-            >
-              Custom Filters
-            </ListSubheader>
-          )}
-
           {filterGroupsLoading && customFilters.length === 0 && (
             <ListItem
               sx={(theme) => ({
