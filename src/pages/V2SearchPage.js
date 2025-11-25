@@ -208,7 +208,7 @@ export default function SearchPage() {
   const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
   const [newResults, setNewResults] = useState();
   const { showObj, setShowObj, cid } = useSearchDetailsV2();
-  const { groups } = useSearchFilterGroups();
+  const { groups, loading: filterGroupsLoading } = useSearchFilterGroups();
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
   const [searchParams] = useSearchParams();
@@ -383,7 +383,6 @@ export default function SearchPage() {
 
   useEffect(() => {
     async function searchText() {
-      // const shows = await fetchShows();
       setNewResults(null);
       setLoadingResults(true);
       setDisplayedResults(RESULTS_PER_PAGE / 2);
@@ -441,6 +440,11 @@ export default function SearchPage() {
       }
     }
 
+    // Avoid firing the search until custom filters have finished loading so we have the right indexes.
+    if (filterGroupsLoading) {
+      return;
+    }
+
     // if (cid !== '_universal') {
     if (searchQuery) {
       searchText();
@@ -449,7 +453,7 @@ export default function SearchPage() {
       setNewResults([]);
     }
     // }
-  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance, groups]);
+  }, [loadingCsv, showObj, searchQuery, cid, universalSearchMaintenance, groups, filterGroupsLoading]);
 
   // useEffect(() => {
   //   console.log(newResults);
