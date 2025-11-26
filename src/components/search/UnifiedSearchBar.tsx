@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { keyframes } from '@mui/system';
-import { Box, ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography } from '@mui/material';
+import { Box, ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
-import { Shuffle as ShuffleIcon, Settings as SettingsIcon } from 'lucide-react';
+import { Shuffle as ShuffleIcon, Settings as SettingsIcon, Sun as SunIcon, Moon as MoonIcon, Minimize2 as MinimizeIcon, Maximize2 as MaximizeIcon } from 'lucide-react';
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
@@ -1068,7 +1068,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             overflow: 'visible',
             filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
             mt: 1.5,
-            minWidth: 180,
+            minWidth: 240,
+            p: 2,
             '&:before': {
               content: '""',
               display: 'block',
@@ -1084,43 +1085,51 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           },
         }}
       >
-        <MenuItem disabled sx={{ opacity: '1 !important', fontWeight: 'bold', fontSize: '0.75rem', color: 'text.secondary', py: 0.5 }}>
+        <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mb: 1 }}>
           APPEARANCE
-        </MenuItem>
-        <MenuItem onClick={() => { setThemePreference('system'); handleCloseSettings(); }} dense>
-          <ListItemIcon>
-            {themePreference === 'system' && <CheckRoundedIcon fontSize="small" />}
-          </ListItemIcon>
-          System
-        </MenuItem>
-        <MenuItem onClick={() => { setThemePreference('dark'); handleCloseSettings(); }} dense>
-          <ListItemIcon>
-            {themePreference === 'dark' && <CheckRoundedIcon fontSize="small" />}
-          </ListItemIcon>
-          Dark
-        </MenuItem>
-        <MenuItem onClick={() => { setThemePreference('light'); handleCloseSettings(); }} dense>
-          <ListItemIcon>
-            {themePreference === 'light' && <CheckRoundedIcon fontSize="small" />}
-          </ListItemIcon>
-          Light
-        </MenuItem>
-        <Divider sx={{ my: 1 }} />
-        <MenuItem disabled sx={{ opacity: '1 !important', fontWeight: 'bold', fontSize: '0.75rem', color: 'text.secondary', py: 0.5 }}>
+        </Typography>
+        <ToggleButtonGroup
+          value={themePreference}
+          exclusive
+          onChange={(_, newValue) => {
+            if (newValue) setThemePreference(newValue);
+          }}
+          aria-label="theme preference"
+          fullWidth
+          size="small"
+          sx={{ mb: 2 }}
+        >
+          <ToggleButton value="system" aria-label="system">
+            <SettingsIcon size={20} />
+          </ToggleButton>
+          <ToggleButton value="light" aria-label="light">
+            <SunIcon size={20} />
+          </ToggleButton>
+          <ToggleButton value="dark" aria-label="dark">
+            <MoonIcon size={20} />
+          </ToggleButton>
+        </ToggleButtonGroup>
+
+        <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mb: 1 }}>
           SIZE
-        </MenuItem>
-        <MenuItem onClick={() => { setSizePreference('small'); handleCloseSettings(); }} dense>
-          <ListItemIcon>
-            {sizePreference === 'small' && <CheckRoundedIcon fontSize="small" />}
-          </ListItemIcon>
-          Small
-        </MenuItem>
-        <MenuItem onClick={() => { setSizePreference('large'); handleCloseSettings(); }} dense>
-          <ListItemIcon>
-            {sizePreference === 'large' && <CheckRoundedIcon fontSize="small" />}
-          </ListItemIcon>
-          Large
-        </MenuItem>
+        </Typography>
+        <ToggleButtonGroup
+          value={sizePreference}
+          exclusive
+          onChange={(_, newValue) => {
+            if (newValue) setSizePreference(newValue);
+          }}
+          aria-label="size preference"
+          fullWidth
+          size="small"
+        >
+          <ToggleButton value="small" aria-label="small">
+            <MinimizeIcon size={20} />
+          </ToggleButton>
+          <ToggleButton value="large" aria-label="large">
+            <MaximizeIcon size={20} />
+          </ToggleButton>
+        </ToggleButtonGroup>
       </Menu>
 
       <Dialog
