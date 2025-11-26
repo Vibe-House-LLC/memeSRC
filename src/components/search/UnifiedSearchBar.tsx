@@ -753,26 +753,16 @@ const ShortcutEmpty = styled('div')(({ theme }) => ({
   },
 }));
 
-const ShortcutSwitchButton = styled(ButtonBase)(({ theme }) => ({
-  padding: theme.spacing(0.4, 1),
-  borderRadius: 999,
-  fontSize: '0.72rem',
+const ShortcutSwitchButton = styled('div')(({ theme }) => ({
+  padding: theme.spacing(0.22, 0.8),
+  borderRadius: 6,
+  fontSize: '0.64rem',
   fontWeight: 700,
   textTransform: 'uppercase',
-  letterSpacing: 0.6,
-  border: '1px solid rgba(20, 20, 20, 0.18)',
-  color: '#111',
-  background: '#f9f9f9',
-  transition: theme.transitions.create(['opacity', 'transform', 'background-color', 'border-color'], {
-    duration: theme.transitions.duration.shorter,
-  }),
-  '&:hover': {
-    background: '#fff',
-    borderColor: 'rgba(20, 20, 20, 0.28)',
-  },
-  '&:active': {
-    background: '#f0f0f0',
-  },
+  letterSpacing: 1.2,
+  border: '1px solid rgba(20, 20, 20, 0.22)',
+  color: 'rgba(10, 10, 10, 0.9)',
+  background: 'rgba(250, 250, 250, 0.9)',
   '&[data-visible="false"]': {
     opacity: 0,
     transform: 'translateX(6px)',
@@ -782,17 +772,15 @@ const ShortcutSwitchButton = styled(ButtonBase)(({ theme }) => ({
     opacity: 1,
     transform: 'translateX(0)',
   },
+  '& span': {
+    opacity: 0.68,
+    fontWeight: 600,
+    marginLeft: theme.spacing(0.4),
+  },
   '&[data-appearance="dark"]': {
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    color: '#f5f5f5',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    color: 'rgba(255, 255, 255, 0.92)',
     background: 'rgba(255, 255, 255, 0.08)',
-    '&:hover': {
-      background: 'rgba(255, 255, 255, 0.14)',
-      borderColor: 'rgba(255, 255, 255, 0.28)',
-    },
-    '&:active': {
-      background: 'rgba(255, 255, 255, 0.18)',
-    },
   },
 }));
 
@@ -894,7 +882,21 @@ const extractShortcutState = (text: string, cursor: number): ShortcutQueryState 
     }
     index -= 1;
   }
-  return null;
+  const leadingSlice = text.slice(0, safeCursor);
+  const trimmedLeading = leadingSlice.replace(/^\s+/, '');
+  if (!trimmedLeading) {
+    return null;
+  }
+  const start = safeCursor - trimmedLeading.length;
+  const prefixBeforeStart = leadingSlice.slice(0, Math.max(0, start)).replace(/\s+/g, '');
+  if (prefixBeforeStart.length > 0) {
+    return null;
+  }
+  return {
+    query: trimmedLeading,
+    start,
+    cursor: safeCursor,
+  };
 };
 
 const shortcutStateEquals = (a: ShortcutQueryState | null, b: ShortcutQueryState | null): boolean => {
@@ -1356,6 +1358,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     : `Show filter options for ${currentLabel}`;
 
   const shortcutPanelVisible = Boolean(shortcutState);
+  const shortcutHasResults = shortcutSuggestions.length > 0;
+  const shouldRenderShortcutPanel = shortcutPanelVisible && shortcutHasResults;
 
   const handleScopeClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     handleFilterClick(event.currentTarget);
@@ -1390,7 +1394,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       <FieldShell
         data-expanded={scopeExpanded ? 'true' : 'false'}
         data-appearance={appearance}
-        data-shortcut-open={shortcutPanelVisible ? 'true' : 'false'}
+        data-shortcut-open={shouldRenderShortcutPanel ? 'true' : 'false'}
       >
         <FieldRow data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
           {!scopeExpanded && (
@@ -1499,7 +1503,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             </>
           )}
         </FieldRow>
-        {shortcutState && (
+        {shouldRenderShortcutPanel && (
           <ShortcutPanel
             role="listbox"
             aria-label="Choose a scope shortcut"
@@ -1508,55 +1512,43 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             {!shortcutState.query && (
               <ShortcutHint data-appearance={appearance}>Jump to a show or filter</ShortcutHint>
             )}
-            {shortcutSuggestions.length > 0 ? (
-              shortcutSuggestions.map((option, index) => (
-                <ShortcutOptionButton
-                  key={option.id}
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyShortcutOption(option)}
-                  onMouseEnter={() => setShortcutActiveIndex(index)}
-                  data-active={index === shortcutActiveIndex ? 'true' : 'false'}
-                  data-selected={option.id === currentValueId ? 'true' : 'false'}
-                  data-appearance={appearance}
-                  role="option"
-                  aria-selected={index === shortcutActiveIndex}
-                  tabIndex={-1}
-                >
-                  <span className="shortcutEmoji" aria-hidden="true">
-                    {option.emoji ?? '∙'}
-                  </span>
-                  <span className="shortcutText">
-                    <Typography component="span" className="shortcutPrimary" noWrap>
-                      {option.primary}
+            {shortcutSuggestions.map((option, index) => (
+              <ShortcutOptionButton
+                key={option.id}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyShortcutOption(option)}
+                onMouseEnter={() => setShortcutActiveIndex(index)}
+                data-active={index === shortcutActiveIndex ? 'true' : 'false'}
+                data-selected={option.id === currentValueId ? 'true' : 'false'}
+                data-appearance={appearance}
+                role="option"
+                aria-selected={index === shortcutActiveIndex}
+                tabIndex={-1}
+              >
+                <span className="shortcutEmoji" aria-hidden="true">
+                  {option.emoji ?? '∙'}
+                </span>
+                <span className="shortcutText">
+                  <Typography component="span" className="shortcutPrimary" noWrap>
+                    {option.primary}
+                  </Typography>
+                  {option.secondary && (
+                    <Typography component="span" className="shortcutSecondary" noWrap>
+                      {option.secondary}
                     </Typography>
-                    {option.secondary && (
-                      <Typography component="span" className="shortcutSecondary" noWrap>
-                        {option.secondary}
-                      </Typography>
-                    )}
-                  </span>
-                  <ShortcutSwitchButton
-                    type="button"
-                    data-visible={index === shortcutActiveIndex ? 'true' : 'false'}
-                    data-appearance={appearance}
-                    className="shortcutSwitch"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      applyShortcutOption(option);
-                    }}
-                  >
-                    Switch
-                  </ShortcutSwitchButton>
-                  <CheckRoundedIcon className="shortcutCheck" fontSize="small" />
-                </ShortcutOptionButton>
-              ))
-            ) : (
-              <ShortcutEmpty data-appearance={appearance}>
-                No filter matches "{shortcutState.query}"
-              </ShortcutEmpty>
-            )}
+                  )}
+                </span>
+                <ShortcutSwitchButton
+                  data-visible={index === shortcutActiveIndex ? 'true' : 'false'}
+                  data-appearance={appearance}
+                  className="shortcutSwitch"
+                >
+                  TAB or ENTER
+                </ShortcutSwitchButton>
+                <CheckRoundedIcon className="shortcutCheck" fontSize="small" />
+              </ShortcutOptionButton>
+            ))}
           </ShortcutPanel>
         )}
         <Collapse in={scopeExpanded} timeout={260} unmountOnExit>
