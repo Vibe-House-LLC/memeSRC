@@ -753,6 +753,49 @@ const ShortcutEmpty = styled('div')(({ theme }) => ({
   },
 }));
 
+const ShortcutSwitchButton = styled(ButtonBase)(({ theme }) => ({
+  padding: theme.spacing(0.4, 1),
+  borderRadius: 999,
+  fontSize: '0.72rem',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: 0.6,
+  border: '1px solid rgba(20, 20, 20, 0.18)',
+  color: '#111',
+  background: '#f9f9f9',
+  transition: theme.transitions.create(['opacity', 'transform', 'background-color', 'border-color'], {
+    duration: theme.transitions.duration.shorter,
+  }),
+  '&:hover': {
+    background: '#fff',
+    borderColor: 'rgba(20, 20, 20, 0.28)',
+  },
+  '&:active': {
+    background: '#f0f0f0',
+  },
+  '&[data-visible="false"]': {
+    opacity: 0,
+    transform: 'translateX(6px)',
+    pointerEvents: 'none',
+  },
+  '&[data-visible="true"]': {
+    opacity: 1,
+    transform: 'translateX(0)',
+  },
+  '&[data-appearance="dark"]': {
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    color: '#f5f5f5',
+    background: 'rgba(255, 255, 255, 0.08)',
+    '&:hover': {
+      background: 'rgba(255, 255, 255, 0.14)',
+      borderColor: 'rgba(255, 255, 255, 0.28)',
+    },
+    '&:active': {
+      background: 'rgba(255, 255, 255, 0.18)',
+    },
+  },
+}));
+
 function findSeriesItem(currentValueId: string, shows: SeriesItem[], savedCids: SeriesItem[], customFilters: any[]): SeriesItem | undefined {
   if (!currentValueId || currentValueId.startsWith('_')) {
     return undefined;
@@ -1493,6 +1536,19 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                       </Typography>
                     )}
                   </span>
+                  <ShortcutSwitchButton
+                    type="button"
+                    data-visible={index === shortcutActiveIndex ? 'true' : 'false'}
+                    data-appearance={appearance}
+                    className="shortcutSwitch"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      applyShortcutOption(option);
+                    }}
+                  >
+                    Switch
+                  </ShortcutSwitchButton>
                   <CheckRoundedIcon className="shortcutCheck" fontSize="small" />
                 </ShortcutOptionButton>
               ))
