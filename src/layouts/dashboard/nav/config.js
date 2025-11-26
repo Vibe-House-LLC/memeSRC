@@ -47,8 +47,6 @@ const navConfig = [
         path: '/collage',
         externalLink: false,
         icon: <PhotoLibrary />,
-        chipText: 'UPDATED',
-        chipColor: 'info',
       },
       {
         title: 'edit',
@@ -125,8 +123,6 @@ const navConfig = [
         path: '/support',
         externalLink: false,
         icon: <SupportAgent />,
-        chipText: 'Pro',
-        chipColor: 'info',
       },
       {
         title: 'FAQs',
