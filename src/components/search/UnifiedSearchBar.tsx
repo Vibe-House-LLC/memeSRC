@@ -1,17 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { keyframes } from '@mui/system';
-import { ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography } from '@mui/material';
+import { Box, ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
 import { Shuffle as ShuffleIcon, Settings as SettingsIcon } from 'lucide-react';
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
-import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Menu, MenuItem, ListItemIcon, Divider } from '@mui/material';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 
 type SeriesSelectorDialogProps = React.ComponentProps<typeof SeriesSelectorDialog>;
@@ -284,6 +285,38 @@ const SettingsButton = styled(IconButton)(({ theme }) => {
   };
 });
 
+const HelpButton = styled(IconButton)(({ theme }) => ({
+  ...buildCircleButtonStyles(theme),
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  border: 'none',
+  color: '#2e2e2e',
+  opacity: 0.7,
+  background: 'transparent',
+  transition: 'opacity 160ms ease, background 160ms ease',
+  '&:hover': {
+    opacity: 1,
+    background: 'rgba(0, 0, 0, 0.05)',
+  },
+  '&:active': {
+    opacity: 1,
+    background: 'rgba(0, 0, 0, 0.08)',
+  },
+  '& .MuiSvgIcon-root': {
+    fontSize: '1.3rem',
+  },
+  '&[data-appearance="dark"]': {
+    color: '#f5f5f5',
+    '&:hover': {
+      background: 'rgba(255, 255, 255, 0.08)',
+    },
+    '&:active': {
+      background: 'rgba(255, 255, 255, 0.14)',
+    },
+  },
+}));
+
 const ScopeGlyph = styled('span')(({ theme }) => ({
   display: 'inline-flex',
   alignItems: 'center',
@@ -534,6 +567,45 @@ const SubmitButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
+type SyntaxTip = {
+  title: string;
+  description: string;
+  example?: string;
+};
+
+const ADVANCED_SYNTAX_TIPS: SyntaxTip[] = [
+  {
+    title: 'Exact phrases',
+    description: 'Wrap words in double quotes to search for the exact line.',
+    example: '"we were on a break"',
+  },
+  {
+    title: 'AND / OR / NOT',
+    description: 'Use capitalized operators (or NOT) to combine or exclude ideas.',
+    example: 'pivot AND couch OR "smelly cat" NOT lobster',
+  },
+  {
+    title: 'Group logic',
+    description: 'Parentheses control the order when mixing operators.',
+    example: '(ross OR rachel) AND "we were"',
+  },
+  {
+    title: 'Require or exclude quickly',
+    description: 'Prefix a word with + to require it, or - to exclude it entirely.',
+    example: '"+monica" -thanksgiving',
+  },
+  {
+    title: 'Target fields',
+    description: 'Focus on seasons or episodes using field filters.',
+    example: 'season:5 AND episode:8 AND "pivot"',
+  },
+  {
+    title: 'Wildcards',
+    description: 'Use * and ? to cover unknown endings or characters.',
+    example: 'transpon*   |   smel?y',
+  },
+];
+
 const ClearInputButton = styled(IconButton)(({ theme }) => ({
   width: 32,
   height: 32,
@@ -606,8 +678,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const shouldRestoreFocusRef = useRef(false);
+  const helpDialogTitleId = useId();
+  const helpDialogDescriptionId = useId();
 
   const customFilters = useMemo(() => {
     return groups.map(g => {
@@ -774,6 +849,14 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     setSettingsAnchorEl(null);
   };
 
+  const handleOpenHelpDialog = () => {
+    setHelpDialogOpen(true);
+  };
+
+  const handleCloseHelpDialog = () => {
+    setHelpDialogOpen(false);
+  };
+
   return (
     <FormRoot onSubmit={onSubmit} noValidate>
       <FieldShell data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
@@ -822,6 +905,17 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             >
               <CloseRoundedIcon fontSize="small" />
             </ClearInputButton>
+          )}
+          {!scopeExpanded && (
+            <HelpButton
+              type="button"
+              aria-label="Advanced search help"
+              title="Advanced search help"
+              onClick={handleOpenHelpDialog}
+              data-appearance={appearance}
+            >
+              <HelpOutlineRoundedIcon fontSize="small" />
+            </HelpButton>
           )}
           {!scopeExpanded && (
             <>
@@ -887,6 +981,16 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               <ArrowDropDownIcon fontSize="small" />
             </ScopeSelectorButton>
             <RailRight>
+              <HelpButton
+                type="button"
+                aria-label="Advanced search help"
+                title="Advanced search help"
+                onClick={handleOpenHelpDialog}
+                className="railButton"
+                data-appearance={appearance}
+              >
+                <HelpOutlineRoundedIcon fontSize="small" />
+              </HelpButton>
               <SettingsButton
                 type="button"
                 aria-label="Settings"
@@ -1018,6 +1122,59 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           Large
         </MenuItem>
       </Menu>
+
+      <Dialog
+        open={helpDialogOpen}
+        onClose={handleCloseHelpDialog}
+        aria-labelledby={helpDialogTitleId}
+        aria-describedby={helpDialogDescriptionId}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle id={helpDialogTitleId}>Advanced search tips</DialogTitle>
+        <DialogContent dividers>
+          <DialogContentText id={helpDialogDescriptionId} component="div">
+            <Typography variant="body2" color="text.secondary">
+              Use OpenSearch boolean syntax to chain phrases, operators, and filters for precise results.
+            </Typography>
+          </DialogContentText>
+          <Box component="ul" sx={{ mt: 2, pl: 2.6, mb: 2 }}>
+            {ADVANCED_SYNTAX_TIPS.map((tip) => (
+              <Box component="li" key={tip.title} sx={{ mb: 1.6 }}>
+                <Typography variant="subtitle2">{tip.title}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {tip.description}
+                </Typography>
+                {tip.example && (
+                  <Typography
+                    component="code"
+                    variant="body2"
+                    sx={{
+                      display: 'inline-block',
+                      mt: 0.6,
+                      px: 1,
+                      py: 0.4,
+                      borderRadius: 1,
+                      fontFamily: 'SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+                      backgroundColor: 'action.hover',
+                    }}
+                  >
+                    {tip.example}
+                  </Typography>
+                )}
+              </Box>
+            ))}
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            If you see an error, remove unmatched quotes/parentheses or simplify the query—we automatically fall back to simple search when syntax breaks.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseHelpDialog} autoFocus>
+            Got it
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </FormRoot>
   );
