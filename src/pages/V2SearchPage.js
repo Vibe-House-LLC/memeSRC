@@ -1,10 +1,7 @@
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Breadcrumbs, Link as MuiLink } from '@mui/material';
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Link as MuiLink, Collapse, Container } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -24,6 +21,43 @@ import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 import Page404 from './Page404';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+
+const ADVANCED_SYNTAX_TIPS = [
+  {
+    title: 'Exact phrases',
+    description: 'Wrap words in double quotes to search for the exact line.',
+    example: '"surely you can\'t be serious"',
+  },
+  {
+    title: 'Operators',
+    description: 'Use OR for choices. Use + for strict requirements (better than AND).',
+    example: '(shirley +serious) OR "movies about gladiators"',
+  },
+  {
+    title: 'Group logic',
+    description: 'Parentheses control the order when mixing operators.',
+    example: '(shirley OR serious) +cockpit',
+  },
+  {
+    title: 'Require or exclude',
+    description: 'Prefix a word with + to require it, or - to exclude it entirely.',
+    example: '"+shirley" -serious',
+  },
+  {
+    title: 'Target fields',
+    description: 'Focus on seasons or episodes using field filters.',
+    example: 'season:1 AND episode:1 AND "cockpit"',
+  },
+  {
+    title: 'Wildcards',
+    description: 'Use * and ? to cover unknown endings or characters.',
+    example: 'shir* OR ser?ous',
+  },
+];
 
 
 
@@ -329,6 +363,7 @@ export default function SearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
   const [newResults, setNewResults] = useState();
+  const hasResults = Array.isArray(newResults) && newResults.length > 0;
   const { setShowObj, cid } = useSearchDetailsV2();
   const { groups, fetchGroups } = useSearchFilterGroups();
   const [loadingResults, setLoadingResults] = useState(true);
@@ -343,9 +378,120 @@ export default function SearchPage() {
     () => (searchQuery ? encodeURIComponent(searchQuery) : ''),
     [searchQuery],
   );
+  const normalizedSearchTerm = useMemo(
+    () => (typeof searchQuery === 'string' ? searchQuery.trim() : ''),
+    [searchQuery],
+  );
+  const hasSearchQuery = normalizedSearchTerm.length > 0;
+  const searchScopeInfo = useMemo(() => {
+    if (!resolvedCid || resolvedCid === '_universal') {
+      return { label: 'All Shows & Movies', path: '/', emoji: '🌈' };
+    }
+    if (resolvedCid === '_favorites') {
+      return { label: 'All Favorites', path: '/_favorites', emoji: '⭐' };
+    }
+    const customFilter = Array.isArray(groups) ? groups.find((group) => group.id === resolvedCid) : undefined;
+    if (customFilter) {
+      let emoji = '📁';
+      try {
+        const parsed = JSON.parse(customFilter.filters || '{}');
+        if (parsed?.emoji) {
+          emoji = parsed.emoji;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return {
+        label: customFilter.name || 'Custom Filter',
+        path: `/${customFilter.id}`,
+        emoji,
+      };
+    }
+    const showMatch = Array.isArray(shows)
+      ? shows.find((showItem) => {
+        if (!showItem) {
+          return false;
+        }
+        const identifiers = [showItem.id, showItem.slug, showItem.cid];
+        return identifiers.some((identifier) => identifier && String(identifier) === resolvedCid);
+      })
+      : undefined;
+    if (showMatch) {
+      const routeSegment = String(showMatch.slug || showMatch.id || showMatch.cid || resolvedCid);
+      const normalizedPath = routeSegment.startsWith('/') ? routeSegment : `/${routeSegment}`;
+      return {
+        label: showMatch.title || showMatch.name || resolvedCid,
+        path: normalizedPath,
+        emoji: showMatch.emoji,
+      };
+    }
+    const fallbackPath = resolvedCid === '_universal' ? '/' : `/${resolvedCid}`;
+    return {
+      label: resolvedCid.replace(/^_/, '') || resolvedCid,
+      path: fallbackPath,
+    };
+  }, [groups, resolvedCid, shows]);
+  const scopeLabel = searchScopeInfo?.label || 'All Shows & Movies';
+  const scopePath = searchScopeInfo?.path || '/';
+  const scopeEmoji = searchScopeInfo?.emoji;
+  const highlightTermSx = {
+    color: '#ffffff',
+    fontWeight: 800,
+    fontSize: { xs: '1.02rem', md: '1.12rem' },
+  };
+  const indexLinkSx = {
+    color: '#ffffff',
+    fontWeight: 800,
+    textDecoration: 'underline',
+    textUnderlineOffset: 4,
+    textDecorationThickness: 2,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 0.4,
+    fontSize: { xs: '1.02rem', md: '1.12rem' },
+  };
+  const indexLinkNode = (
+    <Box component="span" sx={indexLinkSx} onClick={() => navigate(scopePath)} style={{ cursor: 'pointer' }}>
+      {scopeEmoji && <span style={{ fontSize: '1.2em' }}>{scopeEmoji}</span>}
+      {scopeLabel}
+    </Box>
+  );
+  const queryHighlightNode = (
+    <Box component="span" sx={highlightTermSx}>
+      {normalizedSearchTerm}
+    </Box>
+  );
+
+  const backToHome = !resolvedCid || resolvedCid === '_universal' || resolvedCid === '_favorites';
+  const backLabel = backToHome ? 'Back to Home' : `Back to ${scopeLabel}`;
+  const backPath = backToHome ? '/' : scopePath;
+
+  // Always show the back link, matching alignment of V2FramePage
+  const resultsSummary = (
+    <Container maxWidth="xl" sx={{ pt: 0 }}>
+      <Button
+        startIcon={<ArrowBackIcon />}
+        onClick={() => navigate(backPath)}
+        sx={{
+          mb: 2,
+          color: 'text.secondary',
+          textTransform: 'none',
+          fontWeight: 600,
+          fontSize: '0.95rem',
+          '&:hover': {
+            color: 'text.primary',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)'
+          }
+        }}
+      >
+        {backLabel}
+      </Button>
+    </Container>
+  );
 
   const [autoplay] = useState(true);
   const [customFilterNotFound, setCustomFilterNotFound] = useState(false);
+  const [showTips, setShowTips] = useState(false);
 
   const videoRefs = useRef([]);
   const latestSearchKeyRef = useRef('');
@@ -360,7 +506,6 @@ export default function SearchPage() {
   useEffect(() => {
     groupsRef.current = groups;
   }, [groups]);
-
 
   const [videoLoadedStates, setVideoLoadedStates] = useState({});
 
@@ -696,129 +841,6 @@ export default function SearchPage() {
       .map(({ option }) => option);
   }, [mentionState, scopeShortcutOptions]);
 
-  const activeIndexInfo = useMemo(() => {
-    if (!resolvedCid) {
-      return null;
-    }
-
-    if (resolvedCid === '_universal') {
-      return {
-        label: 'All Shows & Movies',
-        emoji: '🌈',
-        path: '/',
-      };
-    }
-
-    if (resolvedCid === '_favorites') {
-      return {
-        label: 'All Favorites',
-        emoji: '⭐',
-        path: '/_favorites',
-      };
-    }
-
-    const customFilter = Array.isArray(groups) ? groups.find((group) => group.id === resolvedCid) : undefined;
-    if (customFilter) {
-      let emoji = '📁';
-      try {
-        const parsed = JSON.parse(customFilter.filters || '{}');
-        if (parsed?.emoji) {
-          emoji = parsed.emoji;
-        }
-      } catch (error) {
-        // no-op
-      }
-      return {
-        label: customFilter.name || 'Custom Filter',
-        emoji,
-        path: `/${customFilter.id}`,
-      };
-    }
-
-    const showList = Array.isArray(shows) ? shows : [];
-    const showMatch = showList.find((showItem) => {
-      if (!showItem) {
-        return false;
-      }
-      const candidates = [showItem.id, showItem.slug, showItem.cid];
-      return candidates.some((candidate) => candidate && String(candidate) === resolvedCid);
-    });
-
-    if (showMatch) {
-      const routeSegment = String(showMatch.slug || showMatch.id || showMatch.cid || resolvedCid);
-      const normalizedPath = routeSegment.startsWith('/') ? routeSegment : `/${routeSegment}`;
-      return {
-        label: showMatch.title || showMatch.name || resolvedCid,
-        emoji: showMatch.emoji,
-        path: normalizedPath,
-      };
-    }
-
-    const fallbackPath = resolvedCid === '_universal' ? '/' : `/${resolvedCid}`;
-    return {
-      label: resolvedCid.replace(/^_/, '') || resolvedCid,
-      path: fallbackPath,
-    };
-  }, [resolvedCid, groups, shows]);
-
-  const searchCrumbLabel = useMemo(() => {
-    const normalized = typeof searchQuery === 'string' ? searchQuery.trim() : '';
-    return normalized ? `Search: "${normalized}"` : 'Search results';
-  }, [searchQuery]);
-
-  const breadcrumbLinkSx = useMemo(
-    () => ({
-      color: 'rgba(255, 255, 255, 0.92)',
-      textDecoration: 'none',
-      fontWeight: 600,
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 0.65,
-      px: 1,
-      py: 0.35,
-      borderRadius: 999,
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-      border: '1px solid rgba(255, 255, 255, 0.14)',
-      transition: 'all 120ms ease',
-      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.22)',
-      fontSize: isMobile ? '0.78rem' : '0.86rem',
-      whiteSpace: 'nowrap',
-      maxWidth: isMobile ? '65vw' : '100%',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      '&:hover': {
-        color: '#fff',
-        backgroundColor: 'rgba(255, 255, 255, 0.16)',
-        borderColor: 'rgba(255, 255, 255, 0.28)',
-      },
-    }),
-    [isMobile],
-  );
-
-  const searchCrumbSx = useMemo(
-    () => ({
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 0.65,
-      px: isMobile ? 1.1 : 1.35,
-      py: 0.35,
-      borderRadius: 999,
-      fontWeight: 700,
-      color: '#ffffff',
-      fontSize: isMobile ? '0.78rem' : '0.85rem',
-      background: 'rgba(255, 255, 255, 0.15)',
-      border: '1px solid rgba(255, 255, 255, 0.25)',
-      boxShadow: '0 10px 26px rgba(5, 5, 5, 0.35)',
-      letterSpacing: 0.3,
-      textShadow: '0 1px 2px rgba(0, 0, 0, 0.15)',
-      whiteSpace: 'nowrap',
-      maxWidth: isMobile ? '80vw' : '45vw',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-    }),
-    [isMobile],
-  );
-
   const handleMentionOptionClick = useCallback(
     (option) => {
       if (!option || !mentionState) return;
@@ -845,67 +867,6 @@ export default function SearchPage() {
 
   return (
     <>
-      <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: { xs: 2.5, md: 3.5 } }}>
-        <Box
-          sx={{
-            width: '100%',
-            borderRadius: { xs: 2.5, md: 3 },
-            background: 'linear-gradient(135deg, rgba(21,21,23,0.85), rgba(12,12,18,0.9))',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(18px)',
-            boxShadow: '0 22px 45px rgba(6, 8, 20, 0.55)',
-            px: { xs: 1.75, md: 2.5 },
-            py: { xs: 1.1, md: 1.4 },
-            overflow: 'hidden',
-          }}
-        >
-          <Breadcrumbs
-            aria-label="search trail"
-            separator={<NavigateNextIcon fontSize="small" sx={{ color: 'rgba(255, 255, 255, 0.35)' }} />}
-            sx={{
-              color: 'rgba(255, 255, 255, 0.72)',
-              fontSize: { xs: '0.82rem', md: '0.92rem' },
-              '& ol': {
-                flexWrap: isMobile ? 'nowrap' : 'wrap',
-                gap: isMobile ? 1.1 : 1.3,
-                overflowX: isMobile ? 'auto' : 'visible',
-                scrollbarWidth: 'none',
-                '&::-webkit-scrollbar': {
-                  display: 'none',
-                },
-              },
-              '& .MuiBreadcrumbs-li': {
-                display: 'flex',
-                alignItems: 'center',
-                minWidth: 0,
-              },
-            }}
-          >
-            <MuiLink component={Link} to="/" sx={breadcrumbLinkSx}>
-              <HomeRoundedIcon sx={{ fontSize: 18 }} />
-              Home
-            </MuiLink>
-            {activeIndexInfo && (
-              <MuiLink component={Link} to={activeIndexInfo.path} sx={breadcrumbLinkSx}>
-                {activeIndexInfo.emoji && (
-                  <Box component="span" sx={{ fontSize: '1rem', lineHeight: 1 }}>
-                    {activeIndexInfo.emoji}
-                  </Box>
-                )}
-                <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-                  {activeIndexInfo.label}
-                </Box>
-              </MuiLink>
-            )}
-            <Box component="span" sx={searchCrumbSx}>
-              <SearchRoundedIcon sx={{ fontSize: isMobile ? 16 : 18, opacity: 0.88, flexShrink: 0 }} />
-              <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {searchCrumbLabel}
-              </Box>
-            </Box>
-          </Breadcrumbs>
-        </Box>
-      </Box>
       {/* Add the ad section here */}
       {user?.userDetails?.subscriptionStatus !== 'active' && (
         <Grid item xs={12} mb={3}>
@@ -963,128 +924,242 @@ export default function SearchPage() {
         </Grid>
       )}
 
-      {loadingResults && (
-        <Grid item xs={12} textAlign="center" mt={4}>
-          <CircularProgress size={40} />
-          <Typography variant="h6" mt={2}>
-            Searching...
-          </Typography>
-        </Grid>
-      )}
-      {newResults && newResults.length > 0 ? (
-        <>
-          <InfiniteScroll
-            dataLength={displayedResults}
-            next={() => {
-              if (!isLoading) {
-                setIsLoading(true);
-                setTimeout(() => {
-                  setDisplayedResults((prevDisplayedResults) =>
-                    Math.min(
-                      prevDisplayedResults + RESULTS_PER_PAGE,
-                      newResults.length
-                    )
-                  );
-                  setIsLoading(false);
-                }, 1000);
-              }
-            }}
-            hasMore={displayedResults < newResults.length}
-            loader={
-              <>
-                <Grid item xs={12} textAlign="center" mt={4}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    sx={{
-                      padding: '10px',
-                      fontSize: '1rem',
-                      fontWeight: 'bold',
-                      borderRadius: '8px',
-                      maxWidth: { xs: '90%', sm: '40%', md: '25%' },
-                      margin: '0 auto',
-                      px: 3,
-                      py: 1.5,
-                      mt: 10,
-                      mb: 10,
-                    }}
-                    onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE * 2)}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <CircularProgress size={24} style={{ marginRight: '8px' }} />
-                        Loading More
-                      </>
-                    ) : (
-                      'Load More'
-                    )}
-                  </Button>
-                </Grid>
-              </>
-            }
-            scrollThreshold={0.90}
-          >
-            <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-              {newResults.slice(0, displayedResults).map((result, index) => {
-                const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
-                const isMediaLoaded = videoLoadedStates[resultId] || false;
-                const sanitizedSubtitleText = sanitizeHtml(result.subtitle_text, {
-                  allowedTags: [], // Allow no tags
-                  allowedAttributes: {}, // Allow no attributes
-                });
-
-                return (
-                  <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
-                    {result.isAd ? (
-                      <StyledCard>
-                        <SearchPageResultsAd />
-                      </StyledCard>
-                    ) : (
-                      <Link
-                        to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <StyledCard>
-                          <SearchResultMedia
-                            result={result}
-                            resultId={resultId}
-                            resultIndex={index}
-                            searchTerm={searchQuery}
-                            mediaSrc={videoUrls[resultId]}
-                            isMediaLoaded={isMediaLoaded}
-                            onMediaLoad={() => handleMediaLoad(resultId)}
-                            addVideoRef={addVideoRef}
-                            animationsEnabled={animationsEnabled}
-                          />
-                          <BottomCardCaption>{sanitizedSubtitleText}</BottomCardCaption>
-                          <BottomCardLabel>
-                            <Chip
-                              size="small"
-                              label={result.cid}
-                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                            />
-                            <Chip
-                              size="small"
-                              label={`S${result.season} E${result.episode}`}
-                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                            />
-                          </BottomCardLabel>
-                        </StyledCard>
-                      </Link>
-                    )}
-                  </Grid>
-                );
-              })}
+      {loadingResults ? (
+        <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} mt={1}>
+          {[...Array(RESULTS_PER_PAGE)].map((_, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index}>
+              <StyledCard>
+                <StyledCardImageContainer>
+                  <ImageSkeleton />
+                </StyledCardImageContainer>
+              </StyledCard>
             </Grid>
-          </InfiniteScroll>
-        </>
+          ))}
+        </Grid>
       ) : (
         <>
-          {newResults?.length <= 0 && !loadingResults && (
-            <Typography textAlign="center" fontSize={30} fontWeight={700} my={8}>
-              No Results
-            </Typography>
+          {newResults && newResults.length > 0 ? (
+            <>
+              <InfiniteScroll
+                dataLength={displayedResults}
+                next={() => {
+                  if (!isLoading) {
+                    setIsLoading(true);
+                    setTimeout(() => {
+                      setDisplayedResults((prevDisplayedResults) =>
+                        Math.min(
+                          prevDisplayedResults + RESULTS_PER_PAGE,
+                          newResults.length
+                        )
+                      );
+                      setIsLoading(false);
+                    }, 1000);
+                  }
+                }}
+                hasMore={displayedResults < newResults.length}
+                loader={
+                  <>
+                    <Grid item xs={12} textAlign="center" mt={4}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        sx={{
+                          padding: '10px',
+                          fontSize: '1rem',
+                          fontWeight: 'bold',
+                          borderRadius: '8px',
+                          maxWidth: { xs: '90%', sm: '40%', md: '25%' },
+                          margin: '0 auto',
+                          px: 3,
+                          py: 1.5,
+                          mt: 10,
+                          mb: 10,
+                        }}
+                        onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE * 2)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <>
+                            <CircularProgress size={24} style={{ marginRight: '8px' }} />
+                            Loading More
+                          </>
+                        ) : (
+                          'Load More'
+                        )}
+                      </Button>
+                    </Grid>
+                  </>
+                }
+                scrollThreshold={0.90}
+              >
+                {resultsSummary}
+                <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
+                  {newResults.slice(0, displayedResults).map((result, index) => {
+                    const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
+                    const isMediaLoaded = videoLoadedStates[resultId] || false;
+                    const sanitizedSubtitleText = sanitizeHtml(result.subtitle_text, {
+                      allowedTags: [], // Allow no tags
+                      allowedAttributes: {}, // Allow no attributes
+                    });
+
+                    return (
+                      <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
+                        {result.isAd ? (
+                          <StyledCard>
+                            <SearchPageResultsAd />
+                          </StyledCard>
+                        ) : (
+                          <Link
+                            to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
+                            style={{ textDecoration: 'none' }}
+                          >
+                            <StyledCard>
+                              <SearchResultMedia
+                                result={result}
+                                resultId={resultId}
+                                resultIndex={index}
+                                searchTerm={searchQuery}
+                                mediaSrc={videoUrls[resultId]}
+                                isMediaLoaded={isMediaLoaded}
+                                onMediaLoad={() => handleMediaLoad(resultId)}
+                                addVideoRef={addVideoRef}
+                                animationsEnabled={animationsEnabled}
+                              />
+                              <BottomCardCaption>{sanitizedSubtitleText}</BottomCardCaption>
+                              <BottomCardLabel>
+                                <Chip
+                                  size="small"
+                                  label={result.cid}
+                                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                                />
+                                <Chip
+                                  size="small"
+                                  label={`S${result.season} E${result.episode}`}
+                                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                                />
+                              </BottomCardLabel>
+                            </StyledCard>
+                          </Link>
+                        )}
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </InfiniteScroll>
+            </>
+          ) : (
+            <>
+              {newResults?.length <= 0 && !loadingResults && (
+                <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, my: 6, display: 'flex', justifyContent: 'center' }}>
+                  <Box sx={{ textAlign: 'center', maxWidth: 600 }}>
+                    {hasSearchQuery ? (
+                      <>
+                        <Typography variant="h4" fontWeight={800} sx={{ mb: 3 }}>
+                          No results found
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 400, mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 1, lineHeight: 1.5 }}>
+                          There are no results for
+                          <Chip
+                            label={normalizedSearchTerm}
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '1rem',
+                              backgroundColor: 'rgba(255, 255, 255, 0.10)',
+                              color: '#fff',
+                              height: 'auto',
+                              py: 0.5,
+                              '& .MuiChip-label': {
+                                display: 'block',
+                                whiteSpace: 'normal',
+                                maxWidth: '100%',
+                                textAlign: 'center',
+                                paddingLeft: 2,
+                                paddingRight: 2
+                              }
+                            }}
+                          />
+                          in
+                          <Chip
+                            icon={scopeEmoji ? <span style={{ fontSize: '1.1rem' }}>{scopeEmoji}</span> : undefined}
+                            label={scopeLabel}
+                            onClick={() => navigate(scopePath)}
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '1rem',
+                              backgroundColor: 'rgba(255, 255, 255, 0.10)',
+                              color: '#fff',
+                              cursor: 'pointer',
+                              height: 'auto',
+                              py: 0.5,
+                              '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.20)',
+                              },
+                              '& .MuiChip-label': {
+                                display: 'block',
+                                whiteSpace: 'normal',
+                                maxWidth: '100%',
+                                textAlign: 'center',
+                                paddingLeft: 2,
+                                paddingRight: 2
+                              }
+                            }}
+                          />
+                        </Typography>
+
+                        <Box sx={{ mt: 4 }}>
+                          <Button
+                            onClick={() => setShowTips(!showTips)}
+                            startIcon={<HelpOutlineIcon />}
+                            endIcon={showTips ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+                            sx={{
+                              color: 'rgba(255, 255, 255, 0.7)',
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              fontSize: '0.95rem',
+                              '&:hover': {
+                                color: '#fff',
+                                backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                              }
+                            }}
+                          >
+                            Search Tips
+                          </Button>
+
+                          <Collapse in={showTips}>
+                            <Box sx={{ mt: 3, p: 3, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }}>
+                              <Typography variant="subtitle1" fontWeight={700} gutterBottom sx={{ color: '#fff' }}>
+                                Advanced Search Syntax
+                              </Typography>
+                              <Grid container spacing={2}>
+                                {ADVANCED_SYNTAX_TIPS.map((tip, index) => (
+                                  <Grid item xs={12} sm={6} key={index}>
+                                    <Box sx={{ mb: 1 }}>
+                                      <Typography variant="subtitle2" sx={{ color: '#4fc3f7', fontWeight: 700 }}>
+                                        {tip.title}
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mb: 0.5 }}>
+                                        {tip.description}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ fontFamily: 'monospace', bgcolor: 'rgba(0,0,0,0.3)', px: 0.5, py: 0.25, borderRadius: 0.5, color: 'rgba(255,255,255,0.9)' }}>
+                                        {tip.example}
+                                      </Typography>
+                                    </Box>
+                                  </Grid>
+                                ))}
+                              </Grid>
+                            </Box>
+                          </Collapse>
+                        </Box>
+                      </>
+                    ) : (
+                      <Typography fontSize={30} fontWeight={700} textAlign="center">
+                        No Results
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              )}
+            </>
           )}
         </>
       )}

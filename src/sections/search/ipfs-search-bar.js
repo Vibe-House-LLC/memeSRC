@@ -13,6 +13,7 @@ import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
+import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
 
 const sanitizeSearchValue = (value) => {
   if (value === undefined || value === null) {
@@ -33,6 +34,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
   const searchTerm = searchParams.get('searchTerm');
 
   const { user, shows: contextShows, defaultShow } = useContext(UserContext);
+  const { groups } = useSearchFilterGroups();
   const {
     searchQuery,
     setSearchQuery,
@@ -162,6 +164,82 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
     loadRandomFrame(scope);
   }, [resolvedCid, loadRandomFrame, shows, showAd]);
 
+  const activeIndexInfo = useMemo(() => {
+    if (!resolvedCid) {
+      return null;
+    }
+
+    if (resolvedCid === '_universal') {
+      return {
+        label: 'All Shows & Movies',
+        emoji: '🌈',
+        path: '/',
+      };
+    }
+
+    if (resolvedCid === '_favorites') {
+      return {
+        label: 'All Favorites',
+        emoji: '⭐',
+        path: '/_favorites',
+      };
+    }
+
+    const customFilter = Array.isArray(groups) ? groups.find((group) => group.id === resolvedCid) : undefined;
+    if (customFilter) {
+      let emoji = '📁';
+      try {
+        const parsed = JSON.parse(customFilter.filters || '{}');
+        if (parsed?.emoji) {
+          emoji = parsed.emoji;
+        }
+      } catch {
+        // no-op
+      }
+      return {
+        label: customFilter.name || 'Custom Filter',
+        emoji,
+        path: `/${customFilter.id}`,
+      };
+    }
+
+    const showList = Array.isArray(shows) ? shows : [];
+    const showMatch = showList.find((showItem) => {
+      if (!showItem) {
+        return false;
+      }
+      const candidates = [showItem.id, showItem.slug, showItem.cid];
+      return candidates.some((candidate) => candidate && String(candidate) === resolvedCid);
+    });
+
+    if (showMatch) {
+      const routeSegment = String(showMatch.slug || showMatch.id || showMatch.cid || resolvedCid);
+      const normalizedPath = routeSegment.startsWith('/') ? routeSegment : `/${routeSegment}`;
+      return {
+        label: showMatch.title || showMatch.name || resolvedCid,
+        emoji: showMatch.emoji,
+        path: normalizedPath,
+      };
+    }
+
+    const fallbackPath = resolvedCid === '_universal' ? '/' : `/${resolvedCid}`;
+    return {
+      label: resolvedCid.replace(/^_/, '') || resolvedCid,
+      path: fallbackPath,
+    };
+  }, [resolvedCid, groups, shows]);
+
+  const backTargetInfo = useMemo(() => {
+    if (activeIndexInfo?.path) {
+      return activeIndexInfo;
+    }
+    return {
+      label: 'Home',
+      emoji: null,
+      path: '/',
+    };
+  }, [activeIndexInfo]);
+
   return (
     <>
       {showSearchBar && (
@@ -177,20 +255,31 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
               gap: 1.5,
             }}
           >
-            <UnifiedSearchBar
-              value={search}
-              onValueChange={handleSearchChange}
-              onSubmit={handleSubmit}
-              onClear={handleClearSearch}
-              onRandom={handleRandomSearch}
-              isRandomLoading={loadingRandom}
-              shows={shows}
-              savedCids={savedSeries}
-              currentValueId={resolvedCid}
-              includeAllFavorites={hasFavoriteShows}
-              onSelectSeries={handleSelectSeries}
-              appearance="dark"
-            />
+            <Box
+              sx={{
+                width: '100%',
+                maxWidth: 900,
+                mx: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: { xs: 1, md: 1.2 },
+              }}
+            >
+              <UnifiedSearchBar
+                value={search}
+                onValueChange={handleSearchChange}
+                onSubmit={handleSubmit}
+                onClear={handleClearSearch}
+                onRandom={handleRandomSearch}
+                isRandomLoading={loadingRandom}
+                shows={shows}
+                savedCids={savedSeries}
+                currentValueId={resolvedCid}
+                includeAllFavorites={hasFavoriteShows}
+                onSelectSeries={handleSelectSeries}
+                appearance="dark"
+              />
+            </Box>
           </Container>
         </Box>
       )}
