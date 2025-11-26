@@ -577,32 +577,32 @@ const ADVANCED_SYNTAX_TIPS: SyntaxTip[] = [
   {
     title: 'Exact phrases',
     description: 'Wrap words in double quotes to search for the exact line.',
-    example: '"we were on a break"',
+    example: '"surely you can\'t be serious"',
   },
   {
-    title: 'AND / OR / NOT',
-    description: 'Use capitalized operators (or NOT) to combine or exclude ideas.',
-    example: 'pivot AND couch OR "smelly cat" NOT lobster',
+    title: 'Operators',
+    description: 'Use OR for choices. Use + for strict requirements (better than AND).',
+    example: '(shirley +serious) OR "movies about gladiators"',
   },
   {
     title: 'Group logic',
     description: 'Parentheses control the order when mixing operators.',
-    example: '(ross OR rachel) AND "we were"',
+    example: '(shirley OR serious) +cockpit',
   },
   {
-    title: 'Require or exclude quickly',
+    title: 'Require or exclude',
     description: 'Prefix a word with + to require it, or - to exclude it entirely.',
-    example: '"+monica" -thanksgiving',
+    example: '"+shirley" -serious',
   },
   {
     title: 'Target fields',
     description: 'Focus on seasons or episodes using field filters.',
-    example: 'season:5 AND episode:8 AND "pivot"',
+    example: 'season:1 AND episode:1 AND "cockpit"',
   },
   {
     title: 'Wildcards',
     description: 'Use * and ? to cover unknown endings or characters.',
-    example: 'transpon*   |   smel?y',
+    example: 'shir* OR ser?ous',
   },
 ];
 
