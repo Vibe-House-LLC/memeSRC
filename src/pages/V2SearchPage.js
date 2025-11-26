@@ -1,7 +1,10 @@
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Breadcrumbs } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Breadcrumbs, Link as MuiLink } from '@mui/material';
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -653,6 +656,8 @@ export default function SearchPage() {
     [shows, groups, includeAllFavorites],
   );
 
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+
   const mentionState = useMemo(() => {
     if (typeof searchQuery !== 'string' || !searchQuery.includes('@')) {
       return null;
@@ -763,17 +768,55 @@ export default function SearchPage() {
 
   const breadcrumbLinkSx = useMemo(
     () => ({
-      color: 'text.secondary',
+      color: 'rgba(255, 255, 255, 0.92)',
       textDecoration: 'none',
       fontWeight: 600,
       display: 'inline-flex',
       alignItems: 'center',
-      gap: 0.5,
+      gap: 0.65,
+      px: 1,
+      py: 0.35,
+      borderRadius: 999,
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      border: '1px solid rgba(255, 255, 255, 0.14)',
+      transition: 'all 120ms ease',
+      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.22)',
+      fontSize: isMobile ? '0.78rem' : '0.86rem',
+      whiteSpace: 'nowrap',
+      maxWidth: isMobile ? '65vw' : '100%',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
       '&:hover': {
-        color: 'text.primary',
+        color: '#fff',
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
+        borderColor: 'rgba(255, 255, 255, 0.28)',
       },
     }),
-    [],
+    [isMobile],
+  );
+
+  const searchCrumbSx = useMemo(
+    () => ({
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 0.65,
+      px: isMobile ? 1.1 : 1.35,
+      py: 0.35,
+      borderRadius: 999,
+      fontWeight: 700,
+      color: '#ffffff',
+      fontSize: isMobile ? '0.78rem' : '0.85rem',
+      background: 'rgba(255, 255, 255, 0.15)',
+      border: '1px solid rgba(255, 255, 255, 0.25)',
+      boxShadow: '0 10px 26px rgba(5, 5, 5, 0.35)',
+      letterSpacing: 0.3,
+      textShadow: '0 1px 2px rgba(0, 0, 0, 0.15)',
+      whiteSpace: 'nowrap',
+      maxWidth: isMobile ? '80vw' : '45vw',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    }),
+    [isMobile],
   );
 
   const handleMentionOptionClick = useCallback(
@@ -796,31 +839,72 @@ export default function SearchPage() {
   const filteredShows = availableShows.filter(show =>
     show.title.toLowerCase().includes(indexFilterQuery.toLowerCase())
   );
-
-
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-
   if (customFilterNotFound) {
     return <Page404 />;
   }
 
   return (
     <>
-      <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: { xs: 2, md: 3 } }}>
-        <Breadcrumbs aria-label="search trail" sx={{ color: 'text.secondary', fontSize: { xs: '0.85rem', md: '0.95rem' } }}>
-          <Typography component={Link} to="/" sx={breadcrumbLinkSx}>
-            Home
-          </Typography>
-          {activeIndexInfo && (
-            <Typography component={Link} to={activeIndexInfo.path} sx={breadcrumbLinkSx}>
-              {activeIndexInfo.emoji ? `${activeIndexInfo.emoji} ` : ''}
-              {activeIndexInfo.label}
-            </Typography>
-          )}
-          <Typography color="text.primary" fontWeight={700}>
-            {searchCrumbLabel}
-          </Typography>
-        </Breadcrumbs>
+      <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: { xs: 2.5, md: 3.5 } }}>
+        <Box
+          sx={{
+            width: '100%',
+            borderRadius: { xs: 2.5, md: 3 },
+            background: 'linear-gradient(135deg, rgba(21,21,23,0.85), rgba(12,12,18,0.9))',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(18px)',
+            boxShadow: '0 22px 45px rgba(6, 8, 20, 0.55)',
+            px: { xs: 1.75, md: 2.5 },
+            py: { xs: 1.1, md: 1.4 },
+            overflow: 'hidden',
+          }}
+        >
+          <Breadcrumbs
+            aria-label="search trail"
+            separator={<NavigateNextIcon fontSize="small" sx={{ color: 'rgba(255, 255, 255, 0.35)' }} />}
+            sx={{
+              color: 'rgba(255, 255, 255, 0.72)',
+              fontSize: { xs: '0.82rem', md: '0.92rem' },
+              '& ol': {
+                flexWrap: isMobile ? 'nowrap' : 'wrap',
+                gap: isMobile ? 1.1 : 1.3,
+                overflowX: isMobile ? 'auto' : 'visible',
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': {
+                  display: 'none',
+                },
+              },
+              '& .MuiBreadcrumbs-li': {
+                display: 'flex',
+                alignItems: 'center',
+                minWidth: 0,
+              },
+            }}
+          >
+            <MuiLink component={Link} to="/" sx={breadcrumbLinkSx}>
+              <HomeRoundedIcon sx={{ fontSize: 18 }} />
+              Home
+            </MuiLink>
+            {activeIndexInfo && (
+              <MuiLink component={Link} to={activeIndexInfo.path} sx={breadcrumbLinkSx}>
+                {activeIndexInfo.emoji && (
+                  <Box component="span" sx={{ fontSize: '1rem', lineHeight: 1 }}>
+                    {activeIndexInfo.emoji}
+                  </Box>
+                )}
+                <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
+                  {activeIndexInfo.label}
+                </Box>
+              </MuiLink>
+            )}
+            <Box component="span" sx={searchCrumbSx}>
+              <SearchRoundedIcon sx={{ fontSize: isMobile ? 16 : 18, opacity: 0.88, flexShrink: 0 }} />
+              <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {searchCrumbLabel}
+              </Box>
+            </Box>
+          </Breadcrumbs>
+        </Box>
       </Box>
       {/* Add the ad section here */}
       {user?.userDetails?.subscriptionStatus !== 'active' && (
