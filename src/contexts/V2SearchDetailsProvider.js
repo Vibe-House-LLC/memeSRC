@@ -30,8 +30,9 @@ export const V2SearchDetailsProvider = ({ children }) => {
 
         const match = pathname.match(/^\/(search|frame|editor|episode)\/([^/]+)/);
         if (match) {
+            const pathType = match[1];
             const urlCid = match[2];
-            if (urlCid) {
+            if (urlCid && pathType !== 'frame') {
                 setCid((prevCid) => (prevCid === urlCid ? prevCid : urlCid));
             }
         }

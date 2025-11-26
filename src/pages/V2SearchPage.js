@@ -468,7 +468,7 @@ export default function SearchPage() {
 
   // Always show the back link, matching alignment of V2FramePage
   const resultsSummary = (
-    <Container maxWidth="xl" sx={{ pt: 0 }}>
+    <Box sx={{ width: '100%', px: { xs: 2, md: 6 } }}>
       <Button
         startIcon={<ArrowBackIcon />}
         onClick={() => navigate(backPath)}
@@ -480,13 +480,14 @@ export default function SearchPage() {
           fontSize: '0.95rem',
           '&:hover': {
             color: 'text.primary',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)'
+            backgroundColor: 'transparent',
+            textDecoration: 'underline'
           }
         }}
       >
         {backLabel}
       </Button>
-    </Container>
+    </Box>
   );
 
   const [autoplay] = useState(true);
@@ -883,6 +884,8 @@ export default function SearchPage() {
         </Grid>
       )}
 
+      {resultsSummary}
+
       {mentionSuggestions.length > 0 && (
         <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 3 }}>
           <Box
@@ -992,7 +995,6 @@ export default function SearchPage() {
                 }
                 scrollThreshold={0.90}
               >
-                {resultsSummary}
                 <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
                   {newResults.slice(0, displayedResults).map((result, index) => {
                     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
