@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { styled } from '@mui/material/styles';
+import { styled, alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { keyframes } from '@mui/system';
-import { Box, ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography, ToggleButton, ToggleButtonGroup, Stack } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
@@ -12,7 +12,7 @@ import { Shuffle as ShuffleIcon, Settings as SettingsIcon, Sun as SunIcon, Moon 
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
-import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Menu, MenuItem, ListItemIcon, Divider } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 
 type SeriesSelectorDialogProps = React.ComponentProps<typeof SeriesSelectorDialog>;
@@ -288,36 +288,43 @@ const SettingsButton = styled(IconButton)(({ theme }) => {
   };
 });
 
-const HelpButton = styled(IconButton)(({ theme }) => ({
-  ...buildCircleButtonStyles(theme),
-  width: 36,
-  height: 36,
-  borderRadius: 18,
-  border: 'none',
-  color: '#2e2e2e',
-  opacity: 0.7,
-  background: 'transparent',
-  transition: 'opacity 160ms ease, background 160ms ease',
-  '&:hover': {
-    opacity: 1,
-    background: 'rgba(0, 0, 0, 0.05)',
-  },
-  '&:active': {
-    opacity: 1,
-    background: 'rgba(0, 0, 0, 0.08)',
-  },
-  '& .MuiSvgIcon-root': {
-    fontSize: '1.3rem',
-  },
-  '&[data-appearance="dark"]': {
-    color: '#f5f5f5',
-    '&:hover': {
-      background: 'rgba(255, 255, 255, 0.08)',
-    },
-    '&:active': {
-      background: 'rgba(255, 255, 255, 0.14)',
-    },
-  },
+const TipRow = styled('div')(({ theme }) => ({
+  borderRadius: 12,
+  border: `1px solid ${alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.25 : 0.12)}`,
+  background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : theme.palette.background.paper,
+  padding: theme.spacing(1, 1.25),
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(0.5),
+}));
+
+const TipHeader = styled('div')(({ theme }) => ({
+  fontWeight: 700,
+  fontSize: '0.95rem',
+  color: theme.palette.text.primary,
+}));
+
+const TipBody = styled('p')(({ theme }) => ({
+  margin: 0,
+  fontSize: '0.9rem',
+  color: alpha(theme.palette.text.primary, 0.8),
+}));
+
+const TipExample = styled('code')(({ theme }) => ({
+  alignSelf: 'flex-start',
+  fontFamily: 'SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+  fontSize: '0.82rem',
+  borderRadius: 6,
+  padding: theme.spacing(0.3, 0.6),
+  background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : theme.palette.grey[100],
+  color: theme.palette.text.primary,
+}));
+
+const TipNote = styled('div')(({ theme }) => ({
+  borderRadius: 10,
+  padding: theme.spacing(0.9, 1.1),
+  border: `1px dashed ${alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
+  background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)',
 }));
 
 const ScopeGlyph = styled('span')(({ theme }) => ({
@@ -570,42 +577,37 @@ const SubmitButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
-type SyntaxTip = {
+type QuickTip = {
   title: string;
-  description: string;
+  body: string;
   example?: string;
 };
 
-const ADVANCED_SYNTAX_TIPS: SyntaxTip[] = [
+const QUICK_TIPS: QuickTip[] = [
   {
-    title: 'Exact phrases',
-    description: 'Wrap words in double quotes to search for the exact line.',
+    title: 'Exact phrase match',
+    body: 'Wrap the quote in double quotes to match it verbatim.',
     example: '"surely you can\'t be serious"',
   },
   {
-    title: 'Operators',
-    description: 'Use OR for choices. Use + for strict requirements (better than AND).',
-    example: '(shirley +serious) OR "movies about gladiators"',
+    title: 'Require or exclude terms',
+    body: 'Use +word to require it and -word to exclude it.',
+    example: '+shirley -serious',
   },
   {
-    title: 'Group logic',
-    description: 'Parentheses control the order when mixing operators.',
-    example: '(shirley OR serious) +cockpit',
-  },
-  {
-    title: 'Require or exclude',
-    description: 'Prefix a word with + to require it, or - to exclude it entirely.',
-    example: '"+shirley" -serious',
-  },
-  {
-    title: 'Target fields',
-    description: 'Focus on seasons or episodes using field filters.',
-    example: 'season:1 AND episode:1 AND "cockpit"',
+    title: 'Logical options',
+    body: 'Use OR or parentheses when any of several terms is valid.',
+    example: '(shirley OR serious) cockpit',
   },
   {
     title: 'Wildcards',
-    description: 'Use * and ? to cover unknown endings or characters.',
+    body: 'Use * to match endings and ? for a single character.',
     example: 'shir* OR ser?ous',
+  },
+  {
+    title: 'Field filters',
+    body: 'Filter by season, episode, or other scoped fields.',
+    example: 'season:1 episode:1 "cockpit"',
   },
 ];
 
@@ -1427,6 +1429,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   };
 
   const handleOpenHelpDialog = () => {
+    handleCloseSettings();
     setHelpDialogOpen(true);
   };
 
@@ -1495,17 +1498,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             >
               <CloseRoundedIcon fontSize="small" />
             </ClearInputButton>
-          )}
-          {!scopeExpanded && (
-            <HelpButton
-              type="button"
-              aria-label="Advanced search help"
-              title="Advanced search help"
-              onClick={handleOpenHelpDialog}
-              data-appearance={appearance}
-            >
-              <HelpOutlineRoundedIcon fontSize="small" />
-            </HelpButton>
           )}
           {!scopeExpanded && (
             <>
@@ -1619,16 +1611,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               <ArrowDropDownIcon fontSize="small" />
             </ScopeSelectorButton>
             <RailRight>
-              <HelpButton
-                type="button"
-                aria-label="Advanced search help"
-                title="Advanced search help"
-                onClick={handleOpenHelpDialog}
-                className="railButton"
-                data-appearance={appearance}
-              >
-                <HelpOutlineRoundedIcon fontSize="small" />
-              </HelpButton>
               <SettingsButton
                 type="button"
                 aria-label="Settings"
@@ -1776,6 +1758,18 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Large</Typography>
           </ToggleButton>
         </ToggleButtonGroup>
+        <Divider sx={{ my: 2 }} />
+        <MenuItem onClick={handleOpenHelpDialog} sx={{ borderRadius: 1.2 }}>
+          <ListItemIcon>
+            <HelpOutlineRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Show search tips"
+            secondary="Open the boolean cheat sheet"
+            primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
+            secondaryTypographyProps={{ variant: 'caption', color: 'text.secondary' }}
+          />
+        </MenuItem>
       </Menu>
 
       <Dialog
@@ -1786,45 +1780,38 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle id={helpDialogTitleId}>Advanced search tips</DialogTitle>
-        <DialogContent dividers>
-          <DialogContentText id={helpDialogDescriptionId} component="div">
-            <Typography variant="body2" color="text.secondary">
-              Use OpenSearch boolean syntax to chain phrases, operators, and filters for precise results.
-            </Typography>
-          </DialogContentText>
-          <Box component="ul" sx={{ mt: 2, pl: 2.6, mb: 2 }}>
-            {ADVANCED_SYNTAX_TIPS.map((tip) => (
-              <Box component="li" key={tip.title} sx={{ mb: 1.6 }}>
-                <Typography variant="subtitle2">{tip.title}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {tip.description}
-                </Typography>
-                {tip.example && (
-                  <Typography
-                    component="code"
-                    variant="body2"
-                    sx={{
-                      display: 'inline-block',
-                      mt: 0.6,
-                      px: 1,
-                      py: 0.4,
-                      borderRadius: 1,
-                      fontFamily: 'SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
-                      backgroundColor: 'action.hover',
-                    }}
-                  >
-                    {tip.example}
-                  </Typography>
-                )}
-              </Box>
-            ))}
-          </Box>
-          <Typography variant="caption" color="text.secondary">
-            If you see an error, remove unmatched quotes/parentheses or simplify the query—we automatically fall back to simple search when syntax breaks.
+        <DialogTitle id={helpDialogTitleId} sx={{ pb: 1 }}>
+          <Typography variant="h6" component="div">
+            Advanced search tips
           </Typography>
+          <Typography
+            id={helpDialogDescriptionId}
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 0.5 }}
+          >
+            Use OpenSearch boolean syntax to chain phrases, operators, and filters for precise results.
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 2, sm: 2.5 } }}>
+          <Stack spacing={1.5}>
+            {QUICK_TIPS.map((tip) => (
+              <TipRow key={tip.title}>
+                <TipHeader>{tip.title}</TipHeader>
+                <TipBody>{tip.body}</TipBody>
+                {tip.example && (
+                  <TipExample aria-label={`${tip.title} example`}>{tip.example}</TipExample>
+                )}
+              </TipRow>
+            ))}
+            <TipNote>
+              <Typography variant="caption" color="text.secondary">
+                Search errors? Remove stray quotes/parentheses or shorten the query.
+              </Typography>
+            </TipNote>
+          </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
           <Button onClick={handleCloseHelpDialog} autoFocus>
             Got it
           </Button>
