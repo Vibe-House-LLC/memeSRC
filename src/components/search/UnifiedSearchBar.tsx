@@ -8,7 +8,7 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
-import { Shuffle as ShuffleIcon, Settings as SettingsIcon, Sun as SunIcon, Moon as MoonIcon, Minimize2 as MinimizeIcon, Maximize2 as MaximizeIcon } from 'lucide-react';
+import { Shuffle as ShuffleIcon, Settings as SettingsIcon, Sun as SunIcon, Moon as MoonIcon, Minimize2 as MinimizeIcon, Maximize2 as MaximizeIcon, Monitor as MonitorIcon } from 'lucide-react';
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
@@ -1099,14 +1099,17 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           size="small"
           sx={{ mb: 2 }}
         >
-          <ToggleButton value="system" aria-label="system">
-            <SettingsIcon size={20} />
+          <ToggleButton value="system" aria-label="system" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
+            <MonitorIcon size={20} />
+            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>System</Typography>
           </ToggleButton>
-          <ToggleButton value="light" aria-label="light">
+          <ToggleButton value="light" aria-label="light" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
             <SunIcon size={20} />
+            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Light</Typography>
           </ToggleButton>
-          <ToggleButton value="dark" aria-label="dark">
+          <ToggleButton value="dark" aria-label="dark" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
             <MoonIcon size={20} />
+            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Dark</Typography>
           </ToggleButton>
         </ToggleButtonGroup>
 
@@ -1117,17 +1120,22 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           value={sizePreference}
           exclusive
           onChange={(_, newValue) => {
-            if (newValue) setSizePreference(newValue);
+            if (newValue) {
+              setSizePreference(newValue);
+              handleCloseSettings();
+            }
           }}
           aria-label="size preference"
           fullWidth
           size="small"
         >
-          <ToggleButton value="small" aria-label="small">
+          <ToggleButton value="small" aria-label="small" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
             <MinimizeIcon size={20} />
+            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Small</Typography>
           </ToggleButton>
-          <ToggleButton value="large" aria-label="large">
+          <ToggleButton value="large" aria-label="large" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
             <MaximizeIcon size={20} />
+            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Large</Typography>
           </ToggleButton>
         </ToggleButtonGroup>
       </Menu>
