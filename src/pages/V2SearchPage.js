@@ -1,7 +1,7 @@
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Breadcrumbs } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -691,6 +691,91 @@ export default function SearchPage() {
       .map(({ option }) => option);
   }, [mentionState, scopeShortcutOptions]);
 
+  const activeIndexInfo = useMemo(() => {
+    if (!resolvedCid) {
+      return null;
+    }
+
+    if (resolvedCid === '_universal') {
+      return {
+        label: 'All Shows & Movies',
+        emoji: '🌈',
+        path: '/',
+      };
+    }
+
+    if (resolvedCid === '_favorites') {
+      return {
+        label: 'All Favorites',
+        emoji: '⭐',
+        path: '/_favorites',
+      };
+    }
+
+    const customFilter = Array.isArray(groups) ? groups.find((group) => group.id === resolvedCid) : undefined;
+    if (customFilter) {
+      let emoji = '📁';
+      try {
+        const parsed = JSON.parse(customFilter.filters || '{}');
+        if (parsed?.emoji) {
+          emoji = parsed.emoji;
+        }
+      } catch (error) {
+        // no-op
+      }
+      return {
+        label: customFilter.name || 'Custom Filter',
+        emoji,
+        path: `/${customFilter.id}`,
+      };
+    }
+
+    const showList = Array.isArray(shows) ? shows : [];
+    const showMatch = showList.find((showItem) => {
+      if (!showItem) {
+        return false;
+      }
+      const candidates = [showItem.id, showItem.slug, showItem.cid];
+      return candidates.some((candidate) => candidate && String(candidate) === resolvedCid);
+    });
+
+    if (showMatch) {
+      const routeSegment = String(showMatch.slug || showMatch.id || showMatch.cid || resolvedCid);
+      const normalizedPath = routeSegment.startsWith('/') ? routeSegment : `/${routeSegment}`;
+      return {
+        label: showMatch.title || showMatch.name || resolvedCid,
+        emoji: showMatch.emoji,
+        path: normalizedPath,
+      };
+    }
+
+    const fallbackPath = resolvedCid === '_universal' ? '/' : `/${resolvedCid}`;
+    return {
+      label: resolvedCid.replace(/^_/, '') || resolvedCid,
+      path: fallbackPath,
+    };
+  }, [resolvedCid, groups, shows]);
+
+  const searchCrumbLabel = useMemo(() => {
+    const normalized = typeof searchQuery === 'string' ? searchQuery.trim() : '';
+    return normalized ? `Search: "${normalized}"` : 'Search results';
+  }, [searchQuery]);
+
+  const breadcrumbLinkSx = useMemo(
+    () => ({
+      color: 'text.secondary',
+      textDecoration: 'none',
+      fontWeight: 600,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 0.5,
+      '&:hover': {
+        color: 'text.primary',
+      },
+    }),
+    [],
+  );
+
   const handleMentionOptionClick = useCallback(
     (option) => {
       if (!option || !mentionState) return;
@@ -721,6 +806,22 @@ export default function SearchPage() {
 
   return (
     <>
+      <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: { xs: 2, md: 3 } }}>
+        <Breadcrumbs aria-label="search trail" sx={{ color: 'text.secondary', fontSize: { xs: '0.85rem', md: '0.95rem' } }}>
+          <Typography component={Link} to="/" sx={breadcrumbLinkSx}>
+            Home
+          </Typography>
+          {activeIndexInfo && (
+            <Typography component={Link} to={activeIndexInfo.path} sx={breadcrumbLinkSx}>
+              {activeIndexInfo.emoji ? `${activeIndexInfo.emoji} ` : ''}
+              {activeIndexInfo.label}
+            </Typography>
+          )}
+          <Typography color="text.primary" fontWeight={700}>
+            {searchCrumbLabel}
+          </Typography>
+        </Breadcrumbs>
+      </Box>
       {/* Add the ad section here */}
       {user?.userDetails?.subscriptionStatus !== 'active' && (
         <Grid item xs={12} mb={3}>
