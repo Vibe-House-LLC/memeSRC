@@ -394,7 +394,7 @@ export default function SearchPage() {
   useEffect(() => {
     const activeCid = resolvedCid;
     const normalizedSearch = (searchQuery || '').trim();
-    const encodedSearchTerm = normalizedSearch ? encodeURIComponent(normalizedSearch.toLowerCase()) : '';
+    const encodedSearchTerm = normalizedSearch ? encodeURIComponent(normalizedSearch) : '';
     const abortController = new AbortController();
     let isCancelled = false;
     const searchKey = `${activeCid}|${encodedSearchTerm}`;
