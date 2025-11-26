@@ -180,7 +180,8 @@ const buildScopeShortcutOptions = (shows = [], groups = [], includeAllFavorites 
       primary: label,
       secondary: 'Custom filter',
       emoji: parsed.emoji || '📁',
-      tokens: buildShortcutTokens(label, group.id, parsed.items || []),
+      // Only allow direct filter names/ids to match mentions so internal raw indexes do not trigger suggestions.
+      tokens: buildShortcutTokens(label, group.id),
       rank: 2,
     });
   });
