@@ -1165,7 +1165,15 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       setShortcutActiveIndex(0);
       return;
     }
-    setShortcutActiveIndex((prev) => Math.min(prev, shortcutSuggestions.length - 1));
+
+    if (shortcutState.mode === 'implicit') {
+      setShortcutActiveIndex(-1);
+    } else {
+      setShortcutActiveIndex((prev) => {
+        if (prev < 0) return 0;
+        return Math.min(prev, shortcutSuggestions.length - 1);
+      });
+    }
   }, [shortcutState, shortcutSuggestions.length]);
 
   const scheduleShortcutRefresh = useCallback(() => {
@@ -1270,12 +1278,18 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         const isExplicitShortcut = shortcutState.mode === 'explicit';
         if (hasResults && event.key === 'ArrowDown') {
           event.preventDefault();
-          setShortcutActiveIndex((prev) => (prev + 1) % shortcutSuggestions.length);
+          setShortcutActiveIndex((prev) => {
+            if (prev === -1) return 0;
+            return (prev + 1) % shortcutSuggestions.length;
+          });
           return;
         }
         if (hasResults && event.key === 'ArrowUp') {
           event.preventDefault();
-          setShortcutActiveIndex((prev) => (prev - 1 + shortcutSuggestions.length) % shortcutSuggestions.length);
+          setShortcutActiveIndex((prev) => {
+            if (prev === -1) return shortcutSuggestions.length - 1;
+            return (prev - 1 + shortcutSuggestions.length) % shortcutSuggestions.length;
+          });
           return;
         }
         if (event.key === 'Tab' && !event.shiftKey && hasResults) {
@@ -1296,6 +1310,14 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             return;
           }
           if (!isExplicitShortcut) {
+            if (hasResults && shortcutActiveIndex !== -1) {
+              event.preventDefault();
+              const option = shortcutSuggestions[shortcutActiveIndex];
+              if (option) {
+                applyShortcutOption(option);
+              }
+              return;
+            }
             setShortcutState(null);
             return;
           }
