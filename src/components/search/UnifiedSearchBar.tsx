@@ -64,6 +64,9 @@ const FieldShell = styled('div')(({ theme }) => ({
   transition: 'padding 260ms cubic-bezier(0.4, 0, 0.2, 1), gap 220ms cubic-bezier(0.4, 0, 0.2, 1)',
   // remove hover/box-shadow animations
   overflow: 'hidden',
+  '&[data-shortcut-open="true"]': {
+    overflow: 'visible',
+  },
   '&[data-expanded="false"]': {
     padding: theme.spacing(0.82, 1.04),
     gap: theme.spacing(0.26),
@@ -638,6 +641,118 @@ const ClearInputButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
+const ShortcutPanel = styled('div')(({ theme }) => ({
+  position: 'absolute',
+  left: theme.spacing(1),
+  right: theme.spacing(1),
+  top: '100%',
+  marginTop: theme.spacing(0.75),
+  borderRadius: 14,
+  background: theme.palette.common.white,
+  border: '1px solid rgba(20, 20, 20, 0.08)',
+  boxShadow: '0 18px 50px rgba(15, 15, 15, 0.22)',
+  padding: theme.spacing(0.5, 0.25, 0.5, 0.25),
+  display: 'flex',
+  flexDirection: 'column',
+  maxHeight: 296,
+  overflowY: 'auto',
+  zIndex: 12,
+  pointerEvents: 'auto',
+  '&[data-appearance="dark"]': {
+    background: '#1d1d1f',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    boxShadow: '0 18px 50px rgba(0, 0, 0, 0.55)',
+  },
+  [theme.breakpoints.down('sm')]: {
+    left: theme.spacing(0.6),
+    right: theme.spacing(0.6),
+    marginTop: theme.spacing(0.5),
+  },
+}));
+
+const ShortcutOptionButton = styled(ButtonBase)(({ theme }) => ({
+  borderRadius: 12,
+  padding: theme.spacing(0.8, 1),
+  display: 'flex',
+  width: '100%',
+  alignItems: 'center',
+  gap: theme.spacing(1),
+  justifyContent: 'flex-start',
+  textAlign: 'left',
+  transition: theme.transitions.create(['background-color', 'transform'], {
+    duration: theme.transitions.duration.shortest,
+  }),
+  '& .shortcutEmoji': {
+    fontSize: '1.1rem',
+    flexShrink: 0,
+  },
+  '& .shortcutText': {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  '& .shortcutPrimary': {
+    fontWeight: 600,
+    fontSize: '0.95rem',
+    color: '#161616',
+    lineHeight: 1.2,
+  },
+  '& .shortcutSecondary': {
+    fontSize: '0.78rem',
+    color: 'rgba(30, 30, 30, 0.64)',
+  },
+  '& .shortcutCheck': {
+    color: theme.palette.primary.main,
+    opacity: 0,
+    transition: theme.transitions.create('opacity', {
+      duration: theme.transitions.duration.shorter,
+    }),
+  },
+  '&[data-active="true"]': {
+    background: 'rgba(0, 0, 0, 0.04)',
+    transform: 'translateY(-1px)',
+    '& .shortcutSecondary': {
+      color: 'rgba(30, 30, 30, 0.85)',
+    },
+  },
+  '&[data-selected="true"] .shortcutCheck': {
+    opacity: 1,
+  },
+  '&[data-appearance="dark"]': {
+    '& .shortcutPrimary': {
+      color: '#f4f4f4',
+    },
+    '& .shortcutSecondary': {
+      color: 'rgba(244, 244, 244, 0.7)',
+    },
+    '&[data-active="true"]': {
+      background: 'rgba(255, 255, 255, 0.08)',
+    },
+  },
+}));
+
+const ShortcutHint = styled('div')(({ theme }) => ({
+  padding: theme.spacing(0.5, 1.25, 0.4, 1.25),
+  fontSize: '0.75rem',
+  fontWeight: 600,
+  letterSpacing: 0.4,
+  color: 'rgba(20, 20, 20, 0.5)',
+  textTransform: 'uppercase',
+  '&[data-appearance="dark"]': {
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+}));
+
+const ShortcutEmpty = styled('div')(({ theme }) => ({
+  padding: theme.spacing(1.1, 1.25),
+  fontSize: '0.88rem',
+  color: 'rgba(15, 15, 15, 0.7)',
+  '&[data-appearance="dark"]': {
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+}));
+
 function findSeriesItem(currentValueId: string, shows: SeriesItem[], savedCids: SeriesItem[], customFilters: any[]): SeriesItem | undefined {
   if (!currentValueId || currentValueId.startsWith('_')) {
     return undefined;
@@ -655,6 +770,127 @@ function buildCurrentLabel(currentValueId: string, currentSeries?: SeriesItem): 
   const emojiPrefix = emoji ? `${emoji} ` : '';
   return `${emojiPrefix}${currentSeries.title || currentSeries.name}`;
 }
+
+const SHORTCUT_TRIGGER_CHAR = '@';
+const SHORTCUT_RESULT_LIMIT = 7;
+const SEARCH_CARET_STORAGE_KEY = 'memeSRC:pendingSearchCaret';
+
+type ScopeShortcutKind = 'default' | 'series' | 'custom';
+
+type ScopeShortcutOption = {
+  id: string;
+  primary: string;
+  secondary?: string;
+  emoji?: string;
+  tokens: string[];
+  normalizedPrimary: string;
+  rank: number;
+  kind: ScopeShortcutKind;
+};
+
+type ShortcutQueryState = {
+  query: string;
+  start: number;
+  cursor: number;
+};
+
+const normalizeShortcutText = (input: string): string =>
+  String(input ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/^the\s+/, '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+
+const buildShortcutTokens = (...values: Array<string | string[] | undefined | null>): string[] => {
+  const tokens: string[] = [];
+  values.forEach((value) => {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        const normalized = normalizeShortcutText(item);
+        if (normalized) tokens.push(normalized);
+      });
+      return;
+    }
+    const normalized = normalizeShortcutText(value);
+    if (normalized) tokens.push(normalized);
+  });
+  return Array.from(new Set(tokens));
+};
+
+const isShortcutBoundary = (char?: string): boolean => {
+  if (!char) return true;
+  return /\s|[(){}\[\],;:"'`]/.test(char);
+};
+
+const extractShortcutState = (text: string, cursor: number): ShortcutQueryState | null => {
+  if (cursor == null) return null;
+  const safeCursor = Math.max(0, Math.min(text.length, cursor));
+  let index = safeCursor - 1;
+  while (index >= 0) {
+    const char = text[index];
+    if (char === SHORTCUT_TRIGGER_CHAR) {
+      const prev = text[index - 1];
+      if (!isShortcutBoundary(prev)) {
+        return null;
+      }
+      const query = text.slice(index + 1, safeCursor);
+      return {
+        query,
+        start: index,
+        cursor: safeCursor,
+      };
+    }
+    if (char === ' ') {
+      index -= 1;
+      continue;
+    }
+    if (/\s/.test(char)) {
+      return null;
+    }
+    index -= 1;
+  }
+  return null;
+};
+
+const shortcutStateEquals = (a: ShortcutQueryState | null, b: ShortcutQueryState | null): boolean => {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return a.query === b.query && a.start === b.start && a.cursor === b.cursor;
+};
+
+const evaluateShortcutScore = (tokens: string[], query: string): number => {
+  if (!query) return 0;
+  const normalizedQuery = normalizeShortcutText(query);
+  if (!normalizedQuery) return 0;
+  let best = Number.POSITIVE_INFINITY;
+  tokens.forEach((token) => {
+    if (!token) return;
+    if (token === normalizedQuery) {
+      best = Math.min(best, 0);
+      return;
+    }
+    if (token.startsWith(normalizedQuery)) {
+      best = Math.min(best, 1);
+      return;
+    }
+    const index = token.indexOf(normalizedQuery);
+    if (index >= 0) {
+      best = Math.min(best, 2 + index / 100);
+    }
+  });
+  return best;
+};
+
+const persistPendingCaret = (caret: number) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(SEARCH_CARET_STORAGE_KEY, String(caret));
+  } catch {
+    // ignore storage failures
+  }
+};
 
 export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   value,
@@ -683,8 +919,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const shouldRestoreFocusRef = useRef(false);
   const helpDialogTitleId = useId();
   const helpDialogDescriptionId = useId();
+  const lastSelectionRef = useRef<number>(value.length);
+  const [shortcutState, setShortcutState] = useState<ShortcutQueryState | null>(null);
+  const [shortcutActiveIndex, setShortcutActiveIndex] = useState(0);
 
-  const customFilters = useMemo(() => {
+  const customFilters = useMemo<SeriesItem[]>(() => {
     return groups.map(g => {
       try {
         const parsed = JSON.parse(g.filters);
@@ -740,6 +979,213 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     return glyph;
   }, [currentLabel, currentSeries, currentValueId]);
 
+  const scopeShortcutOptions = useMemo<ScopeShortcutOption[]>(() => {
+    const map = new Map<string, ScopeShortcutOption>();
+
+    const upsertOption = (option: ScopeShortcutOption) => {
+      if (!option.primary) return;
+      if (!map.has(option.id) || option.kind === 'custom') {
+        map.set(option.id, option);
+      }
+    };
+
+    const upsertSeriesOption = (series: SeriesItem, kind: ScopeShortcutKind) => {
+      if (!series?.id) return;
+      const label = series.title || series.name;
+      if (!label) return;
+      const extendedSeries = series as SeriesItem & { slug?: string; cleanTitle?: string; shortId?: string };
+      const option: ScopeShortcutOption = {
+        id: series.id,
+        primary: label,
+        secondary: kind === 'custom' ? 'Custom filter' : 'Direct index',
+        emoji: series.emoji?.trim(),
+        tokens: buildShortcutTokens(
+          label,
+          series.name,
+          series.id,
+          extendedSeries.slug,
+          extendedSeries.cleanTitle,
+          extendedSeries.shortId,
+        ),
+        normalizedPrimary: normalizeShortcutText(label),
+        rank: kind === 'custom' ? 2 : 3,
+        kind,
+      };
+      upsertOption(option);
+    };
+
+    shows?.forEach((item) => upsertSeriesOption(item, 'series'));
+    savedCids?.forEach((item) => upsertSeriesOption(item, 'series'));
+    customFilters?.forEach((item) => upsertSeriesOption(item as SeriesItem, 'custom'));
+
+    if (includeAllFavorites) {
+      upsertOption({
+        id: '_favorites',
+        primary: 'All Favorites',
+        secondary: 'Every saved favorite quote',
+        emoji: '⭐',
+        tokens: buildShortcutTokens('favorites', 'favorite', 'fav', 'all favorites'),
+        normalizedPrimary: normalizeShortcutText('All Favorites'),
+        rank: 0,
+        kind: 'default',
+      });
+    }
+
+    upsertOption({
+      id: '_universal',
+      primary: 'All Shows & Movies',
+      secondary: 'Search entire catalog',
+      emoji: '🌈',
+      tokens: buildShortcutTokens('all', 'everything', 'universal', 'global', 'movies', 'shows'),
+      normalizedPrimary: normalizeShortcutText('All Shows & Movies'),
+      rank: includeAllFavorites ? 1 : 0,
+      kind: 'default',
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return a.primary.localeCompare(b.primary);
+    });
+  }, [shows, savedCids, customFilters, includeAllFavorites]);
+
+  const updateShortcutState = useCallback(
+    (nextValue: string, selectionPosition?: number | null) => {
+      const resolvedSelection =
+        typeof selectionPosition === 'number' && Number.isFinite(selectionPosition)
+          ? selectionPosition
+          : nextValue.length;
+      const derived = extractShortcutState(nextValue, resolvedSelection);
+      setShortcutState((prev) => (shortcutStateEquals(prev, derived) ? prev : derived));
+    },
+    [],
+  );
+
+  useEffect(() => {
+    updateShortcutState(value, lastSelectionRef.current);
+  }, [updateShortcutState, value]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let storedCaret: number | null = null;
+    try {
+      const raw = window.sessionStorage.getItem(SEARCH_CARET_STORAGE_KEY);
+      if (raw !== null) {
+        window.sessionStorage.removeItem(SEARCH_CARET_STORAGE_KEY);
+        const parsed = Number(raw);
+        if (Number.isFinite(parsed)) {
+          storedCaret = parsed;
+        }
+      }
+    } catch {
+      storedCaret = null;
+    }
+    if (storedCaret === null) return;
+    requestAnimationFrame(() => {
+      const target = inputRef.current;
+      if (!target) return;
+      const length = target.value?.length ?? 0;
+      const caret = Math.max(0, Math.min(length, storedCaret ?? 0));
+      target.focus();
+      target.setSelectionRange(caret, caret);
+    });
+  }, []);
+
+  const shortcutSuggestions = useMemo(() => {
+    if (!shortcutState) return [];
+    const normalizedQuery = normalizeShortcutText(shortcutState.query);
+    if (!normalizedQuery) {
+      return scopeShortcutOptions.slice(0, SHORTCUT_RESULT_LIMIT);
+    }
+    return scopeShortcutOptions
+      .map((option) => ({
+        option,
+        score: evaluateShortcutScore(option.tokens, normalizedQuery),
+      }))
+      .filter(({ score }) => Number.isFinite(score))
+      .sort((a, b) => {
+        if (a.score !== b.score) return a.score - b.score;
+        if (a.option.rank !== b.option.rank) return a.option.rank - b.option.rank;
+        return a.option.primary.localeCompare(b.option.primary);
+      })
+      .slice(0, SHORTCUT_RESULT_LIMIT)
+      .map(({ option }) => option);
+  }, [scopeShortcutOptions, shortcutState]);
+
+  useEffect(() => {
+    if (!shortcutState || shortcutSuggestions.length === 0) {
+      setShortcutActiveIndex(0);
+      return;
+    }
+    setShortcutActiveIndex((prev) => Math.min(prev, shortcutSuggestions.length - 1));
+  }, [shortcutState, shortcutSuggestions.length]);
+
+  const scheduleShortcutRefresh = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (!inputRef.current) return;
+      const selection = inputRef.current.selectionStart ?? value.length;
+      lastSelectionRef.current = selection;
+      updateShortcutState(value, selection);
+    });
+  }, [updateShortcutState, value]);
+
+  const applyShortcutOption = useCallback(
+    (option: ScopeShortcutOption) => {
+      if (!shortcutState) return;
+      const inputEl = inputRef.current;
+      const inputValue = inputEl?.value ?? value;
+      const { start } = shortcutState;
+      const liveCursor = inputEl?.selectionEnd ?? shortcutState.cursor;
+      const cursor = Math.max(start, Math.min(liveCursor, inputValue.length));
+      const before = inputValue.slice(0, start);
+      let after = inputValue.slice(cursor);
+
+      const beforeEndsWithSpace = /\s$/.test(before);
+      const afterStartsWithSpace = /^\s/.test(after);
+
+      if (!before) {
+        after = after.replace(/^\s+/, '');
+      } else if (!after) {
+        // nothing else to normalize
+      } else if (!beforeEndsWithSpace && !afterStartsWithSpace) {
+        after = ` ${after}`;
+      } else if (beforeEndsWithSpace && afterStartsWithSpace) {
+        after = after.replace(/^\s+/, ' ');
+      } else if (!beforeEndsWithSpace && afterStartsWithSpace) {
+        after = after.replace(/^ +/, ' ');
+      }
+
+      const caret = before.length;
+      const nextValue = `${before}${after}`;
+      persistPendingCaret(caret);
+      if (inputEl) {
+        inputEl.value = nextValue;
+        inputEl.setSelectionRange(caret, caret);
+      }
+      onValueChange(nextValue);
+      onSelectSeries(option.id);
+      setShortcutState(null);
+      setShortcutActiveIndex(0);
+      lastSelectionRef.current = caret;
+      requestAnimationFrame(() => {
+        const selection = Math.max(0, Math.min(inputRef.current?.value?.length ?? caret, caret));
+        inputRef.current?.focus();
+        inputRef.current?.setSelectionRange(selection, selection);
+      });
+    },
+    [shortcutState, value, onValueChange, onSelectSeries],
+  );
+
+  const handleInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const nextValue = event.target.value;
+      const selection = event.target.selectionStart ?? nextValue.length;
+      lastSelectionRef.current = selection;
+      onValueChange(nextValue);
+      updateShortcutState(nextValue, selection);
+    },
+    [onValueChange, updateShortcutState],
+  );
+
   const handleFilterClick = useCallback((anchor: HTMLElement) => {
     // open selector without forcing expansion
     setSelectorAnchorEl(anchor);
@@ -764,16 +1210,53 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   const handleClear = useCallback(() => {
     onClear();
+    lastSelectionRef.current = 0;
+    setShortcutState(null);
   }, [onClear]);
 
   const handleInputKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (shortcutState) {
+        const hasResults = shortcutSuggestions.length > 0;
+        if (hasResults && event.key === 'ArrowDown') {
+          event.preventDefault();
+          setShortcutActiveIndex((prev) => (prev + 1) % shortcutSuggestions.length);
+          return;
+        }
+        if (hasResults && event.key === 'ArrowUp') {
+          event.preventDefault();
+          setShortcutActiveIndex((prev) => (prev - 1 + shortcutSuggestions.length) % shortcutSuggestions.length);
+          return;
+        }
+        if (event.key === 'Tab' && !event.shiftKey && hasResults) {
+          event.preventDefault();
+          const option = shortcutSuggestions[shortcutActiveIndex] ?? shortcutSuggestions[0];
+          if (option) {
+            applyShortcutOption(option);
+          }
+          return;
+        }
+        if (event.key === 'Enter' && hasResults) {
+          event.preventDefault();
+          const option = shortcutSuggestions[shortcutActiveIndex] ?? shortcutSuggestions[0];
+          if (option) {
+            applyShortcutOption(option);
+          }
+          return;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          setShortcutState(null);
+          return;
+        }
+      }
+
       if (event.key === 'Escape' && value.trim()) {
         event.preventDefault();
         handleClear();
       }
     },
-    [handleClear, value],
+    [applyShortcutOption, handleClear, shortcutActiveIndex, shortcutState, shortcutSuggestions, value],
   );
 
   const handleRandomPointerDown = useCallback(() => {
@@ -829,6 +1312,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     ? `Choose series: ${currentLabel}`
     : `Show filter options for ${currentLabel}`;
 
+  const shortcutPanelVisible = Boolean(shortcutState);
+
   const handleScopeClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     handleFilterClick(event.currentTarget);
   }, [handleFilterClick]);
@@ -859,7 +1344,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   return (
     <FormRoot onSubmit={onSubmit} noValidate>
-      <FieldShell data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
+      <FieldShell
+        data-expanded={scopeExpanded ? 'true' : 'false'}
+        data-appearance={appearance}
+        data-shortcut-open={shortcutPanelVisible ? 'true' : 'false'}
+      >
         <FieldRow data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
           {!scopeExpanded && (
             <ScopeSelectorButton
@@ -881,11 +1370,17 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             value={value}
             inputRef={inputRef}
             placeholder={placeholder}
-            onChange={(event) => onValueChange(event.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
             onBlur={() => {
               shouldRestoreFocusRef.current = false;
+              setShortcutState(null);
             }}
+            onFocus={scheduleShortcutRefresh}
+            onClick={scheduleShortcutRefresh}
+            onMouseUp={scheduleShortcutRefresh}
+            onKeyUp={scheduleShortcutRefresh}
+            onSelect={scheduleShortcutRefresh}
             data-appearance={appearance}
             sx={{
               '& input': (theme) => ({
@@ -961,6 +1456,53 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             </>
           )}
         </FieldRow>
+        {shortcutState && (
+          <ShortcutPanel
+            role="listbox"
+            aria-label="Choose a scope shortcut"
+            data-appearance={appearance}
+          >
+            {!shortcutState.query && (
+              <ShortcutHint data-appearance={appearance}>Jump to a show or filter</ShortcutHint>
+            )}
+            {shortcutSuggestions.length > 0 ? (
+              shortcutSuggestions.map((option, index) => (
+                <ShortcutOptionButton
+                  key={option.id}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => applyShortcutOption(option)}
+                  onMouseEnter={() => setShortcutActiveIndex(index)}
+                  data-active={index === shortcutActiveIndex ? 'true' : 'false'}
+                  data-selected={option.id === currentValueId ? 'true' : 'false'}
+                  data-appearance={appearance}
+                  role="option"
+                  aria-selected={index === shortcutActiveIndex}
+                  tabIndex={-1}
+                >
+                  <span className="shortcutEmoji" aria-hidden="true">
+                    {option.emoji ?? '∙'}
+                  </span>
+                  <span className="shortcutText">
+                    <Typography component="span" className="shortcutPrimary" noWrap>
+                      {option.primary}
+                    </Typography>
+                    {option.secondary && (
+                      <Typography component="span" className="shortcutSecondary" noWrap>
+                        {option.secondary}
+                      </Typography>
+                    )}
+                  </span>
+                  <CheckRoundedIcon className="shortcutCheck" fontSize="small" />
+                </ShortcutOptionButton>
+              ))
+            ) : (
+              <ShortcutEmpty data-appearance={appearance}>
+                No filter matches "{shortcutState.query}"
+              </ShortcutEmpty>
+            )}
+          </ShortcutPanel>
+        )}
         <Collapse in={scopeExpanded} timeout={260} unmountOnExit>
           <ControlsRail data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
             <ScopeSelectorButton
@@ -1101,7 +1643,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         >
           <ToggleButton value="system" aria-label="system" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
             <MonitorIcon size={20} />
-            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>System</Typography>
+            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Auto</Typography>
           </ToggleButton>
           <ToggleButton value="light" aria-label="light" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
             <SunIcon size={20} />

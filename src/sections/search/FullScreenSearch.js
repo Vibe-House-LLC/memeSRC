@@ -513,6 +513,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     return isColorNearBlack(candidateColor) ? 'dark' : 'light';
   }, [currentSeries, currentThemeFontColor, effectiveTheme]);
 
+  const latestSearchTermRef = useRef(searchTerm);
+  useEffect(() => {
+    latestSearchTermRef.current = searchTerm;
+  }, [searchTerm]);
+
   const handleRandomSearch = useCallback(() => {
     const scope = currentValueId || '_universal';
     trackUsageEvent('random_frame', {
@@ -527,7 +532,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const handleSelect = useCallback(
     (selectedId) => {
       const nextId = selectedId || '_universal';
-      persistSearchTerm(searchTerm);
+      persistSearchTerm(latestSearchTermRef.current);
       setCid(nextId);
       setSeriesTitle(nextId);
       handleChangeSeries(nextId);
@@ -536,10 +541,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       }
       navigate(nextId === '_universal' ? '/' : `/${nextId}`);
     },
-    [handleChangeSeries, handleUpdateDefaultShow, navigate, persistSearchTerm, searchTerm, setCid, setSeriesTitle]
+    [handleChangeSeries, handleUpdateDefaultShow, navigate, persistSearchTerm, setCid, setSeriesTitle]
   );
 
   const handleClearSearch = useCallback(() => {
+    latestSearchTermRef.current = '';
     setSearchTerm('');
     persistSearchTerm('');
   }, [setSearchTerm, persistSearchTerm]);
@@ -550,6 +556,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       nextValue = nextValue.replace(/[\u2018\u2019]/g, "'");
       nextValue = nextValue.replace(/[\u201C\u201D]/g, '"');
       nextValue = nextValue.replace(/[\u2013\u2014]/g, '-');
+      latestSearchTermRef.current = nextValue;
       setSearchTerm(nextValue);
     },
     [setSearchTerm],
