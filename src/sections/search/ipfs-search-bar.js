@@ -1,4 +1,4 @@
-import { Children, cloneElement, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Children, cloneElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Container, Link as MuiLink, Stack, Typography } from '@mui/material';
 import ArrowBack from '@mui/icons-material/ArrowBack';
@@ -44,6 +44,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
   } = useSearchDetailsV2();
 
   const [search, setSearch] = useState(() => sanitizeSearchValue(searchTerm));
+  const latestSearchRef = useRef(search);
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
   const encodedSearchQuery = useMemo(
@@ -73,9 +74,14 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
   useEffect(() => {
     const normalized = sanitizeSearchValue(searchTerm);
+    latestSearchRef.current = normalized;
     setSearch(normalized);
     setSearchQuery(normalized);
   }, [searchTerm, setSearchQuery]);
+
+  useEffect(() => {
+    latestSearchRef.current = search;
+  }, [search]);
 
   useEffect(() => {
     setSelectedFrameIndex(undefined);
@@ -93,7 +99,8 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       }
 
       const nextCid = selectedId;
-      const encodedSearch = search ? encodeURIComponent(search) : '';
+      const liveSearch = latestSearchRef.current || '';
+      const encodedSearch = liveSearch ? encodeURIComponent(liveSearch) : '';
 
       if (pathname.split('/')[1] === 'search') {
         navigate(`/search/${nextCid}/` + (encodedSearch ? `?searchTerm=${encodedSearch}` : ''));
@@ -105,18 +112,21 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
   );
 
   const handleClearSearch = useCallback(() => {
+    latestSearchRef.current = '';
     setSearch('');
   }, []);
 
   const handleSearchChange = useCallback((value) => {
-    setSearch(sanitizeSearchValue(value));
+    const nextValue = sanitizeSearchValue(value);
+    latestSearchRef.current = nextValue;
+    setSearch(nextValue);
   }, []);
 
   const handleSubmit = useCallback(
     (event) => {
       event?.preventDefault();
       const selectedCidValue = resolvedCid;
-      const normalizedSearch = sanitizeSearchValue(search).trim();
+      const normalizedSearch = sanitizeSearchValue(latestSearchRef.current).trim();
       const resolvedIndex = selectedCidValue === '_favorites'
         ? shows
             .filter((show) => show.isFavorite)
@@ -136,7 +146,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       navigate(`/search/${selectedCidValue}/?searchTerm=${encodedSearch}`);
       return false;
     },
-    [navigate, resolvedCid, search, setSearchQuery, shows],
+    [navigate, resolvedCid, setSearchQuery, shows],
   );
 
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
