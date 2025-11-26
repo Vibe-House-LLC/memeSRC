@@ -53,6 +53,7 @@ const ProSupportAdmin = lazy(() => import('./pages/ProSupportAdmin'));
 const AdminUsageEventsLog = lazy(() => import('./pages/AdminUsageEventsLog'));
 const AdminPopularSearchesPage = lazy(() => import('./pages/AdminPopularSearchesPage'));
 const AdminPopularFramesPage = lazy(() => import('./pages/AdminPopularFramesPage'));
+const AdminUserContentReview = lazy(() => import('./pages/AdminUserContentReview'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
@@ -166,6 +167,7 @@ export default function Router() {
         { path: 'usage-events', element: <AdminUsageEventsLog /> },
         { path: 'popular-searches', element: <AdminPopularSearchesPage /> },
         { path: 'popular-frames', element: <AdminPopularFramesPage /> },
+        { path: 'user-content-review', element: <AdminUserContentReview /> },
         { path: 'home', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },

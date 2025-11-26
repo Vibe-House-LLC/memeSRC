@@ -178,6 +178,12 @@ const navConfig = [
         icon: <Collections />,
       },
       {
+        title: 'User Content Review',
+        path: '/dashboard/user-content-review',
+        externalLink: false,
+        icon: <Shield />,
+      },
+      {
         title: 'Website Settings',
         path: '/dashboard/websiteSettings',
         externalLink: false,
