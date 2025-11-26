@@ -1,6 +1,6 @@
 // V2SearchPage.js
 
-import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
 import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
@@ -94,6 +94,124 @@ const BottomCardLabel = styled.div`
   color: ${props => props.theme.palette.common.white};
   text-align: left;
 `;
+
+const normalizeShortcutText = (input = '') =>
+  String(input ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/^the\s+/, '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+
+const buildShortcutTokens = (...values) => {
+  const tokens = [];
+  values.forEach((value) => {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        const normalized = normalizeShortcutText(item);
+        if (normalized) tokens.push(normalized);
+      });
+      return;
+    }
+    const normalized = normalizeShortcutText(value);
+    if (normalized) tokens.push(normalized);
+  });
+  return Array.from(new Set(tokens));
+};
+
+const evaluateShortcutScore = (tokens, query) => {
+  if (!Array.isArray(tokens) || tokens.length === 0) return Number.POSITIVE_INFINITY;
+  const normalizedQuery = normalizeShortcutText(query);
+  if (!normalizedQuery) return Number.POSITIVE_INFINITY;
+  let best = Number.POSITIVE_INFINITY;
+  tokens.forEach((token) => {
+    if (!token) return;
+    if (token === normalizedQuery) {
+      best = Math.min(best, 0);
+      return;
+    }
+    if (token.startsWith(normalizedQuery)) {
+      best = Math.min(best, 1);
+      return;
+    }
+    const index = token.indexOf(normalizedQuery);
+    if (index >= 0) {
+      best = Math.min(best, 2 + index / 100);
+    }
+  });
+  return best;
+};
+
+const buildScopeShortcutOptions = (shows = [], groups = [], includeAllFavorites = false) => {
+  const map = new Map();
+
+  const upsert = (option) => {
+    if (!option?.id || !option?.primary) return;
+    map.set(option.id, option);
+  };
+
+  shows.forEach((show) => {
+    if (!show?.id) return;
+    const label = show.title || show.name;
+    if (!label) return;
+    upsert({
+      id: show.id,
+      primary: label,
+      secondary: 'Show',
+      emoji: show.emoji?.trim(),
+      tokens: buildShortcutTokens(label, show.name, show.id, show.slug, show.cleanTitle),
+      rank: 3,
+    });
+  });
+
+  groups.forEach((group) => {
+    if (!group?.id) return;
+    const label = group.name;
+    if (!label) return;
+    let parsed = {};
+    try {
+      parsed = JSON.parse(group.filters || '{}');
+    } catch {
+      parsed = {};
+    }
+    upsert({
+      id: group.id,
+      primary: label,
+      secondary: 'Custom filter',
+      emoji: parsed.emoji || '📁',
+      tokens: buildShortcutTokens(label, group.id, parsed.items || []),
+      rank: 2,
+    });
+  });
+
+  if (includeAllFavorites) {
+    upsert({
+      id: '_favorites',
+      primary: 'All Favorites',
+      secondary: 'Every saved favorite quote',
+      emoji: '⭐',
+      tokens: buildShortcutTokens('favorites', 'favorite', 'fav', 'all favorites'),
+      rank: 1,
+    });
+  }
+
+  upsert({
+    id: '_universal',
+    primary: 'All Shows & Movies',
+    secondary: 'Entire catalog',
+    emoji: '🌈',
+    tokens: buildShortcutTokens('all', 'everything', 'universal', 'movies', 'shows'),
+    rank: 0,
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    return a.primary.localeCompare(b.primary);
+  });
+};
+
+const MENTION_RESULT_LIMIT = 6;
 
 const SearchResultMedia = ({
   result,
@@ -525,6 +643,65 @@ export default function SearchPage() {
 
 
   const [indexFilterQuery, setIndexFilterQuery] = useState('');
+  const includeAllFavorites = useMemo(
+    () => Array.isArray(shows) && shows.some((show) => show?.isFavorite),
+    [shows],
+  );
+  const scopeShortcutOptions = useMemo(
+    () => buildScopeShortcutOptions(shows || [], groups || [], includeAllFavorites),
+    [shows, groups, includeAllFavorites],
+  );
+
+  const mentionState = useMemo(() => {
+    if (typeof searchQuery !== 'string' || !searchQuery.includes('@')) {
+      return null;
+    }
+    const mentionRegex = /(^|\s)@([^\s]+)/g;
+    let match;
+    let latest = null;
+    while ((match = mentionRegex.exec(searchQuery)) !== null) {
+      const matchStart = match.index;
+      const matchEnd = mentionRegex.lastIndex;
+      latest = {
+        query: match[2],
+        matchStart,
+        matchEnd,
+      };
+    }
+    return latest;
+  }, [searchQuery]);
+
+  const mentionSuggestions = useMemo(() => {
+    if (!mentionState) return [];
+    const normalizedQuery = normalizeShortcutText(mentionState.query);
+    if (!normalizedQuery) return [];
+    return scopeShortcutOptions
+      .map((option) => ({
+        option,
+        score: evaluateShortcutScore(option.tokens, normalizedQuery),
+      }))
+      .filter(({ score }) => Number.isFinite(score) && score !== Number.POSITIVE_INFINITY)
+      .sort((a, b) => {
+        if (a.score !== b.score) return a.score - b.score;
+        if (a.option.rank !== b.option.rank) return a.option.rank - b.option.rank;
+        return a.option.primary.localeCompare(b.option.primary);
+      })
+      .slice(0, MENTION_RESULT_LIMIT)
+      .map(({ option }) => option);
+  }, [mentionState, scopeShortcutOptions]);
+
+  const handleMentionOptionClick = useCallback(
+    (option) => {
+      if (!option || !mentionState) return;
+      const rawSearch = searchQuery || '';
+      const before = rawSearch.slice(0, mentionState.matchStart);
+      const after = rawSearch.slice(mentionState.matchEnd);
+      const nextSearch = `${before}${after}`.replace(/\s{2,}/g, ' ').trim();
+      const searchParam = nextSearch ? `?searchTerm=${encodeURIComponent(nextSearch)}` : '';
+      navigate(`/search/${option.id}${searchParam}`);
+    },
+    [mentionState, navigate, searchQuery],
+  );
 
   const handleIndexFilterChange = (event) => {
     setIndexFilterQuery(event.target.value);
@@ -556,6 +733,47 @@ export default function SearchPage() {
               </Link>
             </Box>
           </center>
+        </Grid>
+      )}
+
+      {mentionSuggestions.length > 0 && (
+        <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 3 }}>
+          <Box
+            sx={{
+              borderRadius: 2,
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              backdropFilter: 'blur(18px)',
+              p: { xs: 1.5, md: 2 },
+            }}
+          >
+            <Typography
+              variant="overline"
+              sx={{ fontWeight: 700, letterSpacing: 1.2, color: 'text.secondary' }}
+            >
+              Filter your results
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5, mb: 1, color: 'text.secondary' }}>
+              {mentionState ? `Matches for @${mentionState.query}` : 'Jump to a show or filter'}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {mentionSuggestions.map((option) => (
+                <Chip
+                  key={option.id}
+                  label={`${option.emoji ? `${option.emoji} ` : ''}${option.primary}`}
+                  onClick={() => handleMentionOptionClick(option)}
+                  sx={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+                    color: 'rgba(255, 255, 255, 0.92)',
+                    fontWeight: 600,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    },
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
         </Grid>
       )}
 

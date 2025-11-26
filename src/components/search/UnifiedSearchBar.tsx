@@ -823,6 +823,7 @@ type ShortcutQueryState = {
   query: string;
   start: number;
   cursor: number;
+  mode: 'explicit' | 'implicit';
 };
 
 const normalizeShortcutText = (input: string): string =>
@@ -871,6 +872,7 @@ const extractShortcutState = (text: string, cursor: number): ShortcutQueryState 
         query,
         start: index,
         cursor: safeCursor,
+        mode: 'explicit',
       };
     }
     if (char === ' ') {
@@ -896,13 +898,14 @@ const extractShortcutState = (text: string, cursor: number): ShortcutQueryState 
     query: trimmedLeading,
     start,
     cursor: safeCursor,
+    mode: 'implicit',
   };
 };
 
 const shortcutStateEquals = (a: ShortcutQueryState | null, b: ShortcutQueryState | null): boolean => {
   if (!a && !b) return true;
   if (!a || !b) return false;
-  return a.query === b.query && a.start === b.start && a.cursor === b.cursor;
+  return a.query === b.query && a.start === b.start && a.cursor === b.cursor && a.mode === b.mode;
 };
 
 const evaluateShortcutScore = (tokens: string[], query: string): number => {
@@ -967,6 +970,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const lastSelectionRef = useRef<number>(value.length);
   const [shortcutState, setShortcutState] = useState<ShortcutQueryState | null>(null);
   const [shortcutActiveIndex, setShortcutActiveIndex] = useState(0);
+  const [inputFocused, setInputFocused] = useState(false);
 
   const customFilters = useMemo<SeriesItem[]>(() => {
     return groups.map(g => {
@@ -1263,6 +1267,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (shortcutState) {
         const hasResults = shortcutSuggestions.length > 0;
+        const isExplicitShortcut = shortcutState.mode === 'explicit';
         if (hasResults && event.key === 'ArrowDown') {
           event.preventDefault();
           setShortcutActiveIndex((prev) => (prev + 1) % shortcutSuggestions.length);
@@ -1281,13 +1286,19 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           }
           return;
         }
-        if (event.key === 'Enter' && hasResults) {
-          event.preventDefault();
-          const option = shortcutSuggestions[shortcutActiveIndex] ?? shortcutSuggestions[0];
-          if (option) {
-            applyShortcutOption(option);
+        if (event.key === 'Enter') {
+          if (isExplicitShortcut && hasResults) {
+            event.preventDefault();
+            const option = shortcutSuggestions[shortcutActiveIndex] ?? shortcutSuggestions[0];
+            if (option) {
+              applyShortcutOption(option);
+            }
+            return;
           }
-          return;
+          if (!isExplicitShortcut) {
+            setShortcutState(null);
+            return;
+          }
         }
         if (event.key === 'Escape') {
           event.preventDefault();
@@ -1303,6 +1314,17 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     },
     [applyShortcutOption, handleClear, shortcutActiveIndex, shortcutState, shortcutSuggestions, value],
   );
+
+  const handleInputFocus = useCallback(() => {
+    setInputFocused(true);
+    scheduleShortcutRefresh();
+  }, [scheduleShortcutRefresh]);
+
+  const handleInputBlur = useCallback(() => {
+    setInputFocused(false);
+    shouldRestoreFocusRef.current = false;
+    setShortcutState(null);
+  }, []);
 
   const handleRandomPointerDown = useCallback(() => {
     if (typeof document === 'undefined') {
@@ -1359,7 +1381,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   const shortcutPanelVisible = Boolean(shortcutState);
   const shortcutHasResults = shortcutSuggestions.length > 0;
-  const shouldRenderShortcutPanel = shortcutPanelVisible && shortcutHasResults;
+  const shouldRenderShortcutPanel = shortcutPanelVisible && shortcutHasResults && inputFocused;
+  const shouldShowShortcutHint = Boolean(!shortcutState?.query || shortcutState?.start === 0);
 
   const handleScopeClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     handleFilterClick(event.currentTarget);
@@ -1419,16 +1442,19 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             placeholder={placeholder}
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
-            onBlur={() => {
-              shouldRestoreFocusRef.current = false;
-              setShortcutState(null);
-            }}
-            onFocus={scheduleShortcutRefresh}
+            onBlur={handleInputBlur}
+            onFocus={handleInputFocus}
             onClick={scheduleShortcutRefresh}
             onMouseUp={scheduleShortcutRefresh}
             onKeyUp={scheduleShortcutRefresh}
             onSelect={scheduleShortcutRefresh}
             data-appearance={appearance}
+            inputProps={{
+              autoComplete: 'off',
+              autoCorrect: 'off',
+              spellCheck: 'false',
+              'aria-autocomplete': 'none',
+            }}
             sx={{
               '& input': (theme) => ({
                 padding: scopeExpanded ? theme.spacing(0.72, 0.66) : theme.spacing(0.9, 1),
@@ -1509,7 +1535,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             aria-label="Choose a scope shortcut"
             data-appearance={appearance}
           >
-            {!shortcutState.query && (
+            {shouldShowShortcutHint && (
               <ShortcutHint data-appearance={appearance}>Jump to a show or filter</ShortcutHint>
             )}
             {shortcutSuggestions.map((option, index) => (
@@ -1544,7 +1570,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   data-appearance={appearance}
                   className="shortcutSwitch"
                 >
-                  TAB or ENTER
+                  SWITCH
                 </ShortcutSwitchButton>
                 <CheckRoundedIcon className="shortcutCheck" fontSize="small" />
               </ShortcutOptionButton>
