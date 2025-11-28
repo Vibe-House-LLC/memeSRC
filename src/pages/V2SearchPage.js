@@ -35,12 +35,12 @@ const ADVANCED_SYNTAX_TIPS = [
   {
     title: 'Operators',
     description: 'Use OR for choices. Use + for strict requirements (better than AND).',
-    example: '(shirley +serious) OR "movies about gladiators"',
+    example: '(surely OR shirley) AND serious',
   },
   {
     title: 'Group logic',
     description: 'Parentheses control the order when mixing operators.',
-    example: '(shirley OR serious) +cockpit',
+    example: '(surely OR shirley) +cockpit',
   },
   {
     title: 'Require or exclude',
@@ -48,14 +48,24 @@ const ADVANCED_SYNTAX_TIPS = [
     example: '"+shirley" -serious',
   },
   {
-    title: 'Target fields',
-    description: 'Focus on seasons or episodes using field filters.',
-    example: 'season:1 AND episode:1 AND "cockpit"',
-  },
-  {
     title: 'Wildcards',
     description: 'Use * and ? to cover unknown endings or characters.',
     example: 'shir* OR ser?ous',
+  },
+  {
+    title: 'Fuzzy Search',
+    description: 'Use ~ to match similar terms.',
+    example: 'shirley~',
+  },
+  {
+    title: 'Proximity Search',
+    description: 'Use ~N to find words within N distance.',
+    example: '"surely serious"~5',
+  },
+  {
+    title: 'Boosting',
+    description: 'Use ^N to increase term relevance.',
+    example: 'speak jive^5',
   },
 ];
 

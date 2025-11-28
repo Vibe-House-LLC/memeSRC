@@ -597,7 +597,7 @@ const QUICK_TIPS: QuickTip[] = [
   {
     title: 'Logical options',
     body: 'Use OR or parentheses when any of several terms is valid.',
-    example: '(shirley OR serious) cockpit',
+    example: '(surely OR shirley) AND serious',
   },
   {
     title: 'Wildcards',
@@ -605,9 +605,19 @@ const QUICK_TIPS: QuickTip[] = [
     example: 'shir* OR ser?ous',
   },
   {
-    title: 'Field filters',
-    body: 'Filter by season, episode, or other scoped fields.',
-    example: 'season:1 episode:1 "cockpit"',
+    title: 'Fuzzy Search',
+    body: 'Use ~ to match similar terms.',
+    example: 'shirley~',
+  },
+  {
+    title: 'Proximity Search',
+    body: 'Use ~N to find words within N distance.',
+    example: '"surely serious"~5',
+  },
+  {
+    title: 'Boosting',
+    body: 'Use ^N to increase term relevance.',
+    example: 'speak jive^5',
   },
 ];
 
