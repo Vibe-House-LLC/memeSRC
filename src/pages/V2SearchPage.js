@@ -26,6 +26,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CancelIcon from '@mui/icons-material/Cancel';
+import Close from '@mui/icons-material/Close';
 
 const ADVANCED_SYNTAX_TIPS = [
   {
@@ -156,6 +157,16 @@ const normalizeLooseText = (input = '') =>
     .replace(/[^\p{Letter}\p{Number}\s]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
+
+const removeMatchedWords = (query, matchedWords) => {
+  if (!query || !matchedWords || matchedWords.length === 0) return query;
+  const words = query.split(/\s+/);
+  const remaining = words.filter(word => {
+    const norm = normalizeLooseText(word);
+    return !matchedWords.includes(norm);
+  });
+  return remaining.join(' ');
+};
 
 const buildShortcutTokens = (...values) => {
   const tokens = [];
@@ -395,6 +406,7 @@ export default function SearchPage() {
   const [videoUrls, setVideoUrls] = useState({});
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
+  const originalQuery = searchParams.get('originalQuery');
   const paramsCid = params?.cid;
   const resolvedCid = paramsCid || cid;
   const favoritesForSearch = resolvedCid === '_favorites' ? shows : null;
@@ -860,12 +872,15 @@ export default function SearchPage() {
             optionLooseTokens.some((token) => normalizedQueryLoose.includes(token)));
 
         const matchedWords = queryWords.filter((word) =>
-          optionLooseTokens.some(
-            (token) =>
-              token === word ||
-              token.startsWith(word) ||
-              word.startsWith(token)
-          )
+          optionLooseTokens.some((token) => {
+            const tokenWords = token.split(/\s+/);
+            return tokenWords.some(
+              (tokenWord) =>
+                tokenWord === word ||
+                tokenWord.startsWith(word) ||
+                word.startsWith(tokenWord)
+            );
+          })
         );
         const unmatchedWordsCount = Math.max(queryWords.length - matchedWords.length, 0);
 
@@ -876,6 +891,7 @@ export default function SearchPage() {
           exactNameMatch,
           containedNameMatch,
           unmatchedWordsCount,
+          matchedWords,
         };
       })
       .filter(
@@ -900,7 +916,7 @@ export default function SearchPage() {
     const featured = candidates
       .filter((c) => c.unmatchedWordsCount === 0)
       .slice(0, 3)
-      .map((c) => c.option);
+      .map((c) => ({ ...c.option, matchedWords: c.matchedWords }));
     const recommended = candidates
       .filter((c) => c.unmatchedWordsCount > 0)
       .sort((a, b) => {
@@ -908,7 +924,7 @@ export default function SearchPage() {
         return sortByPriority(a, b);
       })
       .slice(0, 4)
-      .map((c) => c.option);
+      .map((c) => ({ ...c.option, matchedWords: c.matchedWords }));
 
     return { featured, recommended };
   }, [allowFilterSuggestions, hasSearchQuery, normalizedSearchTerm, scopeShortcutOptions, resolvedCid]);
@@ -1034,7 +1050,20 @@ export default function SearchPage() {
         </Grid>
       )}
 
-      {resultsSummary}
+
+
+      {originalQuery && (
+        <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: 2 }}>
+          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+            {searchQuery ? (
+              <>Showing results for <b>{searchQuery}</b>. </>
+            ) : (
+              <>Showing all results. </>
+            )}
+            Search instead for <Link to={`/search/${resolvedCid}?searchTerm=${encodeURIComponent(originalQuery)}`} style={{ color: '#fff', textDecoration: 'underline' }}><b>{originalQuery}</b></Link>?
+          </Typography>
+        </Box>
+      )}
 
       {(featuredFilters.length > 0 || recommendedFilters.length > 0) && (
         <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 2 }}>
@@ -1115,80 +1144,116 @@ export default function SearchPage() {
               </Box>
             )}
 
-            {recommendedFilters.length > 0 && (
+            {(featuredFilters.length > 0 || recommendedFilters.length > 0 || (resolvedCid && resolvedCid !== '_universal')) && (
               <Box
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 1.25,
-                  p: 1.75,
-                  borderRadius: 3,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  gap: 1,
+                  mt: 1,
                 }}
               >
-                <Typography variant="caption" sx={{ letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.65)', fontWeight: 700 }}>
-                  Recommended filters
-                </Typography>
-                <Grid container spacing={1.5}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    overflowX: 'auto',
+                    pb: 1, // Add some padding bottom for scrollbar spacing if visible, or touch area
+                    '::-webkit-scrollbar': { display: 'none' }, // Hide scrollbar for Chrome/Safari/Opera
+                    msOverflowStyle: 'none', // Hide scrollbar for IE and Edge
+                    scrollbarWidth: 'none', // Hide scrollbar for Firefox
+                    mx: { xs: -2, md: -6 }, // Negative margin to extend scroll area to edges
+                    px: { xs: 2, md: 6 }, // Padding to align content start with other elements
+                  }}
+                >
+                  {/* Applied Filter */}
+                  {resolvedCid && resolvedCid !== '_universal' && (
+                    (() => {
+                      const appliedOption = scopeShortcutOptions.find(opt => opt.id === resolvedCid);
+                      if (!appliedOption) return null;
+
+                      const cardBg = appliedOption.colorMain || '#0f172a';
+                      const cardFg = appliedOption.colorSecondary || '#f8fafc';
+
+                      return (
+                        <Box
+                          key="applied-filter"
+                          component={Link}
+                          to={`/search/_universal?searchTerm=${encodeURIComponent(searchQuery || '')}`}
+                          sx={{
+                            textDecoration: 'none',
+                            backgroundColor: cardBg, // Use the filter's color
+                            border: `1px solid ${cardFg}`,
+                            borderRadius: 2,
+                            px: 1.5,
+                            py: 0.75,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                            transition: 'all 0.2s',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)', // Add some shadow to make it pop
+                            '&:hover': {
+                              opacity: 0.9,
+                            },
+                          }}
+                        >
+                          {appliedOption.emoji && (
+                            <Typography sx={{ fontSize: '1.1rem', lineHeight: 1 }}>
+                              {appliedOption.emoji}
+                            </Typography>
+                          )}
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: cardFg, lineHeight: 1 }}>
+                            {appliedOption.primary}
+                          </Typography>
+                          <Close sx={{ fontSize: '1.1rem', color: cardFg, opacity: 0.8 }} />
+                        </Box>
+                      );
+                    })()
+                  )}
+
+                  {/* Recommended Filters */}
                   {recommendedFilters.map((match) => {
                     const cardBg = match.colorMain || '#0f172a';
                     const cardFg = match.colorSecondary || '#f8fafc';
                     return (
-                      <Grid item xs={12} sm={6} md={3} key={match.id}>
-                        <StyledCard
-                          component={Link}
-                          to={`/search/${match.id}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
-                          sx={{
-                            textDecoration: 'none',
-                            backgroundColor: 'rgba(255,255,255,0.03)',
-                            color: cardFg,
-                            borderColor: 'rgba(255,255,255,0.10)',
-                            minHeight: 90,
-                            display: 'flex',
-                            alignItems: 'stretch',
-                          }}
-                        >
-                          <CardContent
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1.2,
-                              py: 1.6,
-                              px: 1.6,
-                              width: '100%',
-                              position: 'relative',
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                width: 6,
-                                alignSelf: 'stretch',
-                                borderRadius: 999,
-                                backgroundColor: cardBg,
-                                flexShrink: 0,
-                                mr: 1,
-                              }}
-                            />
-                            {match.emoji && (
-                              <Box sx={{ fontSize: '1.7rem', lineHeight: 1 }}>
-                                {match.emoji}
-                              </Box>
-                            )}
-                            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, color: '#e5e7eb', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {match.primary}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                                Apply filter
-                              </Typography>
-                            </Box>
-                          </CardContent>
-                        </StyledCard>
-                      </Grid>
+                      <Box
+                        key={match.id}
+                        component={Link}
+                        to={`/search/${match.id}?searchTerm=${encodeURIComponent(removeMatchedWords(searchQuery || '', match.matchedWords))}&originalQuery=${encodeURIComponent(searchQuery || '')}`}
+                        sx={{
+                          textDecoration: 'none',
+                          backgroundColor: 'rgba(255,255,255,0.05)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 2,
+                          px: 1.5,
+                          py: 0.75,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          whiteSpace: 'nowrap', // Prevent text wrapping inside the chip
+                          flexShrink: 0, // Prevent chips from shrinking
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                            borderColor: 'rgba(255,255,255,0.2)',
+                          },
+                        }}
+                      >
+                        {match.emoji && (
+                          <Typography sx={{ fontSize: '1.1rem', lineHeight: 1 }}>
+                            {match.emoji}
+                          </Typography>
+                        )}
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#e5e7eb', lineHeight: 1 }}>
+                          {match.primary}
+                        </Typography>
+                      </Box>
                     );
                   })}
-                </Grid>
+                </Box>
               </Box>
             )}
           </Box>
