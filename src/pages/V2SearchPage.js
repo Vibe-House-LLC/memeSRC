@@ -1001,7 +1001,7 @@ export default function SearchPage() {
     if (joinedIds) {
       navigate(`/search/${joinedIds}${searchParam}`);
     } else if (hasUniversal) {
-      navigate(`/${searchParam}`);
+      navigate(`/search/_universal${searchParam}`);
     }
   }, [resolvedMentions, searchQuery, shows, groups, navigate]);
 
