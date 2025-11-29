@@ -25,6 +25,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 const ADVANCED_SYNTAX_TIPS = [
   {
@@ -1185,6 +1186,53 @@ export default function SearchPage() {
                           />
                         </Typography> */}
 
+                        {resolvedCid && resolvedCid !== '_universal' && resolvedCid !== '_favorites' && (
+                          <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                            <Chip
+                              icon={scopeEmoji ? <span style={{ fontSize: '1.2em' }}>{scopeEmoji}</span> : undefined}
+                              label={scopeLabel}
+                              onDelete={() => navigate(`/search/_universal?searchTerm=${encodedSearchQuery}`)}
+                              deleteIcon={<CancelIcon style={{ color: 'white' }} />}
+                              sx={{
+                                height: 'auto',
+                                py: 1,
+                                px: 2,
+                                fontSize: '1.2rem',
+                                fontWeight: 700,
+                                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                color: 'white',
+                                borderRadius: 4,
+                                '& .MuiChip-deleteIcon': {
+                                  color: 'rgba(255, 255, 255, 0.7)',
+                                  fontSize: '1.5rem',
+                                  '&:hover': {
+                                    color: 'white'
+                                  }
+                                },
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="text"
+                              onClick={() => navigate(`/search/_universal?searchTerm=${encodedSearchQuery}`)}
+                              sx={{
+                                color: '#4fc3f7',
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                                '&:hover': {
+                                  textDecoration: 'underline',
+                                  backgroundColor: 'transparent'
+                                }
+                              }}
+                            >
+                              Search all shows instead
+                            </Button>
+                          </Box>
+                        )}
+
                         <Box sx={{ mt: 4 }}>
                           <Button
                             onClick={() => setShowTips(!showTips)}
@@ -1201,7 +1249,7 @@ export default function SearchPage() {
                               }
                             }}
                           >
-                            Search Tips
+                            Advanced Search Tips
                           </Button>
 
                           <Collapse in={showTips}>
