@@ -21,7 +21,8 @@ import {
   Description,
   Group,
   Home,
-  ManageAccounts
+  ManageAccounts,
+  Functions
 } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
 
@@ -176,6 +177,12 @@ const navConfig = [
         path: '/dashboard/popular-frames',
         externalLink: false,
         icon: <Collections />,
+      },
+      {
+        title: 'Frame Totals',
+        path: '/dashboard/frame-totals',
+        externalLink: false,
+        icon: <Functions />,
       },
       {
         title: 'Website Settings',
