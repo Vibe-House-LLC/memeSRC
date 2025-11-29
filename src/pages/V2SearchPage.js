@@ -1446,7 +1446,7 @@ export default function SearchPage() {
                           />
                         </Typography> */}
 
-                        {resolvedCid && resolvedCid !== '_universal' && resolvedCid !== '_favorites' && (
+                        {resolvedCid && resolvedCid !== '_universal' && (
                           <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                             <Chip
                               icon={scopeEmoji ? <span style={{ fontSize: '1.2em' }}>{scopeEmoji}</span> : undefined}
