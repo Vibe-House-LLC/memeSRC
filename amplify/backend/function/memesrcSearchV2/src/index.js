@@ -287,7 +287,7 @@ exports.handler = async (event) => {
                         const subtitleText = line.subtitle_text ? line.subtitle_text.toLowerCase() : '';
                         const nonSpecialSubtitle = subtitleText.replace(/[^a-zA-Z0-9\s]/g, '');
 
-                        if (subtitleText.includes(decodedQuery)) {
+                        if (subtitleText.includes(decodedQuery.toLowerCase())) {
                             score += 10;
                         }
                         if (nonSpecialSubtitle.includes(nonSpecialQuery)) {
