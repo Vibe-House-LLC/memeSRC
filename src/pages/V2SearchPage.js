@@ -151,6 +151,12 @@ const normalizeShortcutText = (input = '') =>
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '');
 
+const normalizeLooseText = (input = '') =>
+  normalizeShortcutText(input)
+    .replace(/[^\p{Letter}\p{Number}\s]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const buildShortcutTokens = (...values) => {
   const tokens = [];
   values.forEach((value) => {
@@ -208,6 +214,8 @@ const buildScopeShortcutOptions = (shows = [], groups = [], includeAllFavorites 
       primary: label,
       secondary: 'Show',
       emoji: show.emoji?.trim(),
+      colorMain: show.colorMain,
+      colorSecondary: show.colorSecondary,
       tokens: buildShortcutTokens(label, show.name, show.id, show.slug, show.cleanTitle),
       rank: 3,
     });
@@ -228,6 +236,8 @@ const buildScopeShortcutOptions = (shows = [], groups = [], includeAllFavorites 
       primary: label,
       secondary: 'Custom filter',
       emoji: parsed.emoji || '📁',
+      colorMain: parsed.colorMain,
+      colorSecondary: parsed.colorSecondary,
       // Only allow direct filter names/ids to match mentions so internal raw indexes do not trigger suggestions.
       tokens: buildShortcutTokens(label, group.id),
       rank: 2,
@@ -240,6 +250,8 @@ const buildScopeShortcutOptions = (shows = [], groups = [], includeAllFavorites 
       primary: 'All Favorites',
       secondary: 'Every saved favorite quote',
       emoji: '⭐',
+      colorMain: '#111827',
+      colorSecondary: '#fde68a',
       tokens: buildShortcutTokens('favorites', 'favorite', 'fav', 'all favorites'),
       rank: 1,
     });
@@ -250,6 +262,8 @@ const buildScopeShortcutOptions = (shows = [], groups = [], includeAllFavorites 
     primary: 'All Shows & Movies',
     secondary: 'Entire catalog',
     emoji: '🌈',
+    colorMain: '#0f172a',
+    colorSecondary: '#38bdf8',
     tokens: buildShortcutTokens('all', 'everything', 'universal', 'movies', 'shows'),
     rank: 0,
   });
@@ -812,6 +826,93 @@ export default function SearchPage() {
     () => buildScopeShortcutOptions(shows || [], groups || [], includeAllFavorites),
     [shows, groups, includeAllFavorites],
   );
+  const allowFilterSuggestions = resolvedCid === '_universal' || resolvedCid === '_favorites';
+  const filterMatchSections = useMemo(() => {
+    if (!allowFilterSuggestions || !hasSearchQuery) {
+      return { featured: [], recommended: [] };
+    }
+    const normalizedQuery = normalizeShortcutText(normalizedSearchTerm);
+    const normalizedQueryLoose = normalizeLooseText(normalizedSearchTerm);
+    if (!normalizedQueryLoose) {
+      return { featured: [], recommended: [] };
+    }
+    const queryWords = normalizedQueryLoose.split(/\s+/).filter(Boolean);
+    const excludedIds = new Set([resolvedCid, '_universal'].filter(Boolean));
+    const candidates = scopeShortcutOptions
+      .filter((option) => option?.id && !excludedIds.has(option.id))
+      .map((option) => {
+        const normalizedPrimary = normalizeShortcutText(option.primary);
+        const normalizedPrimaryLoose = normalizeLooseText(option.primary);
+        const optionTokens = Array.isArray(option.tokens) ? option.tokens : [];
+        const optionLooseTokens = [
+          normalizedPrimaryLoose,
+          ...optionTokens.map(normalizeLooseText),
+        ].filter(Boolean);
+
+        const exactNameMatch =
+          (normalizedPrimaryLoose && normalizedPrimaryLoose === normalizedQueryLoose) ||
+          optionLooseTokens.includes(normalizedQueryLoose);
+
+        const containedNameMatch =
+          !exactNameMatch &&
+          normalizedPrimaryLoose &&
+          (normalizedQueryLoose.includes(normalizedPrimaryLoose) ||
+            optionLooseTokens.some((token) => normalizedQueryLoose.includes(token)));
+
+        const matchedWords = queryWords.filter((word) =>
+          optionLooseTokens.some(
+            (token) =>
+              token === word ||
+              token.startsWith(word) ||
+              word.startsWith(token)
+          )
+        );
+        const unmatchedWordsCount = Math.max(queryWords.length - matchedWords.length, 0);
+
+        const score = evaluateShortcutScore(option.tokens, normalizedQuery);
+        return {
+          option,
+          score,
+          exactNameMatch,
+          containedNameMatch,
+          unmatchedWordsCount,
+        };
+      })
+      .filter(
+        ({ score, exactNameMatch, containedNameMatch, unmatchedWordsCount }) =>
+          exactNameMatch || containedNameMatch || unmatchedWordsCount < queryWords.length || Number.isFinite(score)
+      );
+
+    const sortByPriority = (a, b) => {
+      // Featured intent first: exact, then fewer unmatched words, then contained, then score/rank/name
+      if (a.exactNameMatch !== b.exactNameMatch) return a.exactNameMatch ? -1 : 1;
+      if (a.unmatchedWordsCount !== b.unmatchedWordsCount) return a.unmatchedWordsCount - b.unmatchedWordsCount;
+      if (a.containedNameMatch !== b.containedNameMatch) return a.containedNameMatch ? -1 : 1;
+      if (a.score !== b.score) return a.score - b.score;
+      const rankA = Number.isFinite(a.option.rank) ? a.option.rank : Number.POSITIVE_INFINITY;
+      const rankB = Number.isFinite(b.option.rank) ? b.option.rank : Number.POSITIVE_INFINITY;
+      if (rankA !== rankB) return rankA - rankB;
+      return (a.option.primary || '').localeCompare(b.option.primary || '');
+    };
+
+    candidates.sort(sortByPriority);
+
+    const featured = candidates
+      .filter((c) => c.unmatchedWordsCount === 0)
+      .slice(0, 3)
+      .map((c) => c.option);
+    const recommended = candidates
+      .filter((c) => c.unmatchedWordsCount > 0)
+      .sort((a, b) => {
+        if (a.containedNameMatch !== b.containedNameMatch) return a.containedNameMatch ? -1 : 1;
+        return sortByPriority(a, b);
+      })
+      .slice(0, 4)
+      .map((c) => c.option);
+
+    return { featured, recommended };
+  }, [allowFilterSuggestions, hasSearchQuery, normalizedSearchTerm, scopeShortcutOptions, resolvedCid]);
+  const { featured: featuredFilters, recommended: recommendedFilters } = filterMatchSections;
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
@@ -934,6 +1035,165 @@ export default function SearchPage() {
       )}
 
       {resultsSummary}
+
+      {(featuredFilters.length > 0 || recommendedFilters.length > 0) && (
+        <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {featuredFilters.length > 0 && (
+              <Box
+                sx={{
+                  p: { xs: 1.25, md: 1.75 },
+                  borderRadius: 3,
+                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                }}
+              >
+                <Typography variant="caption" sx={{ letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', fontWeight: 800, mb: 1, display: 'block' }}>
+                  Filter results
+                </Typography>
+                <Grid container spacing={1.2} alignItems="stretch">
+                  {featuredFilters.map((match) => {
+                    const cardBg = match.colorMain || '#0f172a';
+                    const cardFg = match.colorSecondary || '#f8fafc';
+                    return (
+                      <Grid item xs={12} key={match.id}>
+                        <StyledCard
+                          component={Link}
+                          to={`/${match.id}`}
+                          sx={{
+                            position: 'relative',
+                            overflow: 'hidden',
+                            textDecoration: 'none',
+                            backgroundColor: cardBg,
+                            color: cardFg,
+                            borderColor: match.colorSecondary || 'rgba(255,255,255,0.20)',
+                            minHeight: 130,
+                            display: 'flex',
+                            alignItems: 'center',
+                            boxShadow: '0 16px 42px rgba(0,0,0,0.36)',
+                          }}
+                        >
+                          <CardContent
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 2,
+                              width: '100%',
+                              py: 2.6,
+                              px: { xs: 2.4, md: 3 },
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.8, minWidth: 0 }}>
+                              {match.emoji && (
+                                <Box sx={{ fontSize: '2.4rem', lineHeight: 1, flexShrink: 0 }}>
+                                  {match.emoji}
+                                </Box>
+                              )}
+                              <Typography
+                                variant="h5"
+                                sx={{
+                                  fontWeight: 900,
+                                  lineHeight: 1.2,
+                                  color: cardFg,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  letterSpacing: 0.2,
+                                }}
+                              >
+                                {match.primary}
+                              </Typography>
+                            </Box>
+                            <ChevronRightIcon sx={{ color: cardFg, opacity: 0.9, flexShrink: 0 }} />
+                          </CardContent>
+                        </StyledCard>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </Box>
+            )}
+
+            {recommendedFilters.length > 0 && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.25,
+                  p: 1.75,
+                  borderRadius: 3,
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                }}
+              >
+                <Typography variant="caption" sx={{ letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.65)', fontWeight: 700 }}>
+                  Recommended filters
+                </Typography>
+                <Grid container spacing={1.5}>
+                  {recommendedFilters.map((match) => {
+                    const cardBg = match.colorMain || '#0f172a';
+                    const cardFg = match.colorSecondary || '#f8fafc';
+                    return (
+                      <Grid item xs={12} sm={6} md={3} key={match.id}>
+                        <StyledCard
+                          component={Link}
+                          to={`/search/${match.id}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
+                          sx={{
+                            textDecoration: 'none',
+                            backgroundColor: 'rgba(255,255,255,0.03)',
+                            color: cardFg,
+                            borderColor: 'rgba(255,255,255,0.10)',
+                            minHeight: 90,
+                            display: 'flex',
+                            alignItems: 'stretch',
+                          }}
+                        >
+                          <CardContent
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.2,
+                              py: 1.6,
+                              px: 1.6,
+                              width: '100%',
+                              position: 'relative',
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 6,
+                                alignSelf: 'stretch',
+                                borderRadius: 999,
+                                backgroundColor: cardBg,
+                                flexShrink: 0,
+                                mr: 1,
+                              }}
+                            />
+                            {match.emoji && (
+                              <Box sx={{ fontSize: '1.7rem', lineHeight: 1 }}>
+                                {match.emoji}
+                              </Box>
+                            )}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, color: '#e5e7eb', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {match.primary}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                Apply filter
+                              </Typography>
+                            </Box>
+                          </CardContent>
+                        </StyledCard>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </Box>
+            )}
+          </Box>
+        </Grid>
+      )}
 
       {resolvedMentions.length > 0 && (
         <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 3 }}>
