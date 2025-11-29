@@ -1069,7 +1069,7 @@ export default function SearchPage() {
                         <Typography variant="h4" fontWeight={800} sx={{ mb: 3 }}>
                           No results found
                         </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 400, mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 1, lineHeight: 1.5 }}>
+                        {/* <Typography variant="h6" sx={{ fontWeight: 400, mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 1, lineHeight: 1.5 }}>
                           There are no results for
                           <Chip
                             label={normalizedSearchTerm}
@@ -1116,7 +1116,7 @@ export default function SearchPage() {
                               }
                             }}
                           />
-                        </Typography>
+                        </Typography> */}
 
                         <Box sx={{ mt: 4 }}>
                           <Button
