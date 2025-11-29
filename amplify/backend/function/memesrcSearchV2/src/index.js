@@ -166,6 +166,16 @@ exports.handler = async (event) => {
                 "size": 350
             };
             opensearchResponse = await performSearch(fallbackPayload);
+
+            if (opensearchResponse.error) {
+                console.log("Simple search failed.", opensearchResponse.error);
+                throw new Error("OpenSearch query error");
+            }
+
+            if (!opensearchResponse.hits || !opensearchResponse.hits.hits) {
+                console.log("Simple search returned invalid structure.");
+                throw new Error("Invalid OpenSearch response");
+            }
         }
 
         const sources = opensearchResponse.hits.hits.map(hit => ({
