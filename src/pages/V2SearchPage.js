@@ -814,56 +814,94 @@ export default function SearchPage() {
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
-  const mentionState = useMemo(() => {
+  const mentionMatches = useMemo(() => {
     if (typeof searchQuery !== 'string' || !searchQuery.includes('@')) {
-      return null;
+      return [];
     }
     const mentionRegex = /(^|\s)@([^\s]+)/g;
+    const matches = [];
     let match;
-    let latest = null;
     while ((match = mentionRegex.exec(searchQuery)) !== null) {
-      const matchStart = match.index;
-      const matchEnd = mentionRegex.lastIndex;
-      latest = {
+      matches.push({
+        fullMatch: match[0],
         query: match[2],
-        matchStart,
-        matchEnd,
-      };
+        index: match.index,
+        length: match[0].length
+      });
     }
-    return latest;
+    return matches;
   }, [searchQuery]);
 
-  const mentionSuggestions = useMemo(() => {
-    if (!mentionState) return [];
-    const normalizedQuery = normalizeShortcutText(mentionState.query);
-    if (!normalizedQuery) return [];
-    return scopeShortcutOptions
-      .map((option) => ({
-        option,
-        score: evaluateShortcutScore(option.tokens, normalizedQuery),
-      }))
-      .filter(({ score }) => Number.isFinite(score) && score !== Number.POSITIVE_INFINITY)
-      .sort((a, b) => {
-        if (a.score !== b.score) return a.score - b.score;
-        if (a.option.rank !== b.option.rank) return a.option.rank - b.option.rank;
-        return a.option.primary.localeCompare(b.option.primary);
-      })
-      .slice(0, MENTION_RESULT_LIMIT)
-      .map(({ option }) => option);
-  }, [mentionState, scopeShortcutOptions]);
+  const resolvedMentions = useMemo(() => {
+    if (mentionMatches.length === 0) return [];
 
-  const handleMentionOptionClick = useCallback(
-    (option) => {
-      if (!option || !mentionState) return;
-      const rawSearch = searchQuery || '';
-      const before = rawSearch.slice(0, mentionState.matchStart);
-      const after = rawSearch.slice(mentionState.matchEnd);
-      const nextSearch = `${before}${after}`.replace(/\s{2,}/g, ' ').trim();
-      const searchParam = nextSearch ? `?searchTerm=${encodeURIComponent(nextSearch)}` : '';
-      navigate(`/search/${option.id}${searchParam}`);
-    },
-    [mentionState, navigate, searchQuery],
-  );
+    const resolved = [];
+    mentionMatches.forEach((match) => {
+      const normalizedQuery = normalizeShortcutText(match.query);
+      if (!normalizedQuery) return;
+
+      const bestMatch = scopeShortcutOptions
+        .map((option) => ({
+          option,
+          score: evaluateShortcutScore(option.tokens, normalizedQuery),
+        }))
+        .filter(({ score }) => Number.isFinite(score) && score < 2)
+        .sort((a, b) => {
+          if (a.score !== b.score) return a.score - b.score;
+          return a.option.rank - b.option.rank;
+        })[0];
+
+      if (bestMatch) {
+        resolved.push({
+          match,
+          option: bestMatch.option,
+        });
+      }
+    });
+    return resolved;
+  }, [mentionMatches, scopeShortcutOptions]);
+
+  const handleApplyFilters = useCallback(() => {
+    const ids = new Set();
+    let hasUniversal = false;
+    resolvedMentions.forEach(({ option }) => {
+      if (option.id === '_favorites') {
+        if (Array.isArray(shows)) {
+          shows.filter((s) => s.isFavorite).forEach((s) => ids.add(s.id));
+        }
+      } else if (option.secondary === 'Custom filter') {
+        const group = groups.find((g) => g.id === option.id);
+        if (group) {
+          try {
+            const parsed = JSON.parse(group.filters || '{}');
+            if (Array.isArray(parsed.items)) {
+              parsed.items.forEach((id) => ids.add(id));
+            }
+          } catch (e) {
+            console.error('Error parsing group filters', e);
+          }
+        }
+      } else if (option.id === '_universal') {
+        hasUniversal = true;
+      } else {
+        ids.add(option.id);
+      }
+    });
+
+    let nextQuery = searchQuery;
+    resolvedMentions.forEach(({ match }) => {
+      nextQuery = nextQuery.replace(match.fullMatch, '');
+    });
+    nextQuery = nextQuery.replace(/\s{2,}/g, ' ').trim();
+
+    const joinedIds = Array.from(ids).join(',');
+    const searchParam = nextQuery ? `?searchTerm=${encodeURIComponent(nextQuery)}` : '';
+    if (joinedIds) {
+      navigate(`/search/${joinedIds}${searchParam}`);
+    } else if (hasUniversal) {
+      navigate(`/${searchParam}`);
+    }
+  }, [resolvedMentions, searchQuery, shows, groups, navigate]);
 
   const handleIndexFilterChange = (event) => {
     setIndexFilterQuery(event.target.value);
@@ -896,43 +934,72 @@ export default function SearchPage() {
 
       {resultsSummary}
 
-      {mentionSuggestions.length > 0 && (
+      {resolvedMentions.length > 0 && (
         <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 3 }}>
           <Box
             sx={{
-              borderRadius: 2,
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              backdropFilter: 'blur(18px)',
-              p: { xs: 1.5, md: 2 },
+              borderRadius: 4,
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+              backdropFilter: 'blur(20px)',
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 2,
+              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
+              flexWrap: 'wrap',
             }}
           >
-            <Typography
-              variant="overline"
-              sx={{ fontWeight: 700, letterSpacing: 1.2, color: 'text.secondary' }}
-            >
-              Filter your results
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5, mb: 1, color: 'text.secondary' }}>
-              {mentionState ? `Matches for @${mentionState.query}` : 'Jump to a show or filter'}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {mentionSuggestions.map((option) => (
-                <Chip
-                  key={option.id}
-                  label={`${option.emoji ? `${option.emoji} ` : ''}${option.primary}`}
-                  onClick={() => handleMentionOptionClick(option)}
-                  sx={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.14)',
-                    color: 'rgba(255, 255, 255, 0.92)',
-                    fontWeight: 600,
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    },
-                  }}
-                />
-              ))}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  letterSpacing: 1.5,
+                  color: 'rgba(255,255,255,0.6)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Filter Results To
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                {resolvedMentions.map(({ option }, index) => (
+                  <React.Fragment key={index}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {option.emoji && <span>{option.emoji}</span>}
+                      {option.primary}
+                    </Typography>
+                    {index < resolvedMentions.length - 1 && (
+                      <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.3)' }}>+</Typography>
+                    )}
+                  </React.Fragment>
+                ))}
+              </Box>
             </Box>
+            <Button
+              onClick={handleApplyFilters}
+              variant="contained"
+              sx={{
+                background: 'linear-gradient(90deg, #00C9FF 0%, #92FE9D 100%)',
+                color: '#000',
+                fontWeight: 800,
+                textTransform: 'none',
+                fontSize: '1rem',
+                px: 4,
+                py: 1,
+                borderRadius: 10,
+                boxShadow: '0 4px 15px rgba(0, 201, 255, 0.4)',
+                '&:hover': {
+                  background: 'linear-gradient(90deg, #00C9FF 0%, #92FE9D 100%)',
+                  opacity: 0.9,
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 6px 20px rgba(0, 201, 255, 0.6)',
+                },
+              }}
+            >
+              Apply Filter
+            </Button>
           </Box>
         </Grid>
       )}
