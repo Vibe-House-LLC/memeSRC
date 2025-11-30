@@ -809,15 +809,40 @@ const ScrollableFiltersBox = styled(Box)(({ theme }) => ({
   WebkitOverflowScrolling: 'touch',
   scrollbarWidth: 'none',
   msOverflowStyle: 'none',
-  maskImage: 'linear-gradient(90deg, black 0%, black calc(100% - 80px), transparent 100%)',
-  WebkitMaskImage: 'linear-gradient(90deg, black 0%, black calc(100% - 80px), transparent 100%)',
+  maskImage: 'linear-gradient(90deg, black 0%, black 10px, black calc(100% - 35px), rgba(0,0,0,0.6) calc(100% - 20px), transparent 100%)',
+  WebkitMaskImage: 'linear-gradient(90deg, black 0%, black 10px, black calc(100% - 35px), rgba(0,0,0,0.6) calc(100% - 20px), transparent 100%)',
+  transition: 'mask-image 0.35s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
   '&::-webkit-scrollbar': {
     display: 'none',
   },
+  '&[data-scroll-start="false"]': {
+    maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.6) 10px, black 25px, black calc(100% - 35px), rgba(0,0,0,0.6) calc(100% - 20px), transparent 100%)',
+    WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.6) 10px, black 25px, black calc(100% - 35px), rgba(0,0,0,0.6) calc(100% - 20px), transparent 100%)',
+  },
+  '&[data-scroll-end="true"]': {
+    maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.6) 10px, black 25px, black 100%)',
+    WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.6) 10px, black 25px, black 100%)',
+  },
+  '&[data-scroll-start="true"][data-scroll-end="true"]': {
+    maskImage: 'linear-gradient(90deg, black 0%, black 100%)',
+    WebkitMaskImage: 'linear-gradient(90deg, black 0%, black 100%)',
+  },
   [theme.breakpoints.down('sm')]: {
     gap: theme.spacing(0.5),
-    maskImage: 'linear-gradient(90deg, black 0%, black calc(100% - 60px), transparent 100%)',
-    WebkitMaskImage: 'linear-gradient(90deg, black 0%, black calc(100% - 60px), transparent 100%)',
+    maskImage: 'linear-gradient(90deg, black 0%, black 8px, black calc(100% - 28px), rgba(0,0,0,0.6) calc(100% - 16px), transparent 100%)',
+    WebkitMaskImage: 'linear-gradient(90deg, black 0%, black 8px, black calc(100% - 28px), rgba(0,0,0,0.6) calc(100% - 16px), transparent 100%)',
+    '&[data-scroll-start="false"]': {
+      maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.6) 8px, black 20px, black calc(100% - 28px), rgba(0,0,0,0.6) calc(100% - 16px), transparent 100%)',
+      WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.6) 8px, black 20px, black calc(100% - 28px), rgba(0,0,0,0.6) calc(100% - 16px), transparent 100%)',
+    },
+    '&[data-scroll-end="true"]': {
+      maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.6) 8px, black 20px, black 100%)',
+      WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.6) 8px, black 20px, black 100%)',
+    },
+    '&[data-scroll-start="true"][data-scroll-end="true"]': {
+      maskImage: 'linear-gradient(90deg, black 0%, black 100%)',
+      WebkitMaskImage: 'linear-gradient(90deg, black 0%, black 100%)',
+    },
   },
 }));
 
@@ -1126,6 +1151,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const lastChangeWasTypingRef = useRef(false);
   const lastFilterIdRef = useRef(currentValueId);
   const filtersScrollRef = useRef<HTMLDivElement | null>(null);
+  const [scrollState, setScrollState] = useState({ atStart: true, atEnd: false });
 
   const customFilters = useMemo<SeriesItem[]>(() => {
     return groups.map(g => {
@@ -1457,18 +1483,53 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     }
   }, []);
 
+  const updateScrollState = useCallback(() => {
+    const el = filtersScrollRef.current;
+    if (!el) return;
+
+    const scrollLeft = el.scrollLeft;
+    const scrollWidth = el.scrollWidth;
+    const clientWidth = el.clientWidth;
+    const threshold = 10;
+
+    setScrollState({
+      atStart: scrollLeft <= threshold,
+      atEnd: scrollLeft >= scrollWidth - clientWidth - threshold,
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = filtersScrollRef.current;
+    if (!el) return;
+
+    updateScrollState();
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+    };
+  }, [updateScrollState]);
+
   useEffect(() => {
     const inSyncWithInput = value === stableQuery;
     if (inSyncWithInput) {
       appliedRecommendationVersionRef.current = recommendationVersion;
       setDisplayedRecommendations(recommendedFilters);
+      // Update scroll state after recommendations change
+      requestAnimationFrame(() => {
+        updateScrollState();
+      });
       return;
     }
     if (recommendationVersion !== appliedRecommendationVersionRef.current) {
       appliedRecommendationVersionRef.current = recommendationVersion;
       setDisplayedRecommendations(recommendedFilters);
+      // Update scroll state after recommendations change
+      requestAnimationFrame(() => {
+        updateScrollState();
+      });
     }
-  }, [recommendationVersion, recommendedFilters, stableQuery, value]);
+  }, [recommendationVersion, recommendedFilters, stableQuery, value, updateScrollState]);
 
   useEffect(() => {
     if (currentValueId !== lastFilterIdRef.current) {
@@ -1479,7 +1540,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   useEffect(() => {
     resetFilterScroll();
-  }, [currentValueId, resetFilterScroll]);
+    // Update scroll state after reset
+    requestAnimationFrame(() => {
+      updateScrollState();
+    });
+  }, [currentValueId, resetFilterScroll, updateScrollState]);
 
   useEffect(() => {
     if (lastChangeWasTypingRef.current) {
@@ -2105,7 +2170,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
               {/* Scrollable area - includes current filter on mobile */}
               <ScrollableFiltersWrapper data-appearance={appearance}>
-                <ScrollableFiltersBox ref={filtersScrollRef}>
+                <ScrollableFiltersBox
+                  ref={filtersScrollRef}
+                  data-scroll-start={scrollState.atStart ? 'true' : 'false'}
+                  data-scroll-end={scrollState.atEnd ? 'true' : 'false'}
+                >
                 {/* Current filter on mobile only */}
                 <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
                   {currentValueId && currentValueId !== '_universal' && currentSeriesOption ? (
