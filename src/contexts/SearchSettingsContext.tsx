@@ -2,13 +2,12 @@ import React, { createContext, useContext, useEffect, useState, useMemo } from '
 import { useMediaQuery } from '@mui/material';
 
 type ThemePreference = 'system' | 'light' | 'dark';
-type SizePreference = 'small' | 'large';
 
 interface SearchSettingsContextType {
     themePreference: ThemePreference;
     setThemePreference: (theme: ThemePreference) => void;
-    sizePreference: SizePreference;
-    setSizePreference: (size: SizePreference) => void;
+    compactMode: boolean;
+    setCompactMode: (compact: boolean) => void;
     effectiveTheme: 'light' | 'dark';
 }
 
@@ -31,12 +30,12 @@ export const SearchSettingsProvider: React.FC<{ children: React.ReactNode }> = (
         return 'system';
     });
 
-    const [sizePreference, setSizePreferenceState] = useState<SizePreference>(() => {
+    const [compactMode, setCompactModeState] = useState<boolean>(() => {
         if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('searchSizePreference');
-            return (stored as SizePreference) || 'small';
+            const stored = localStorage.getItem('searchCompactMode');
+            return stored === 'true';
         }
-        return 'small';
+        return false;
     });
 
     const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
@@ -46,9 +45,9 @@ export const SearchSettingsProvider: React.FC<{ children: React.ReactNode }> = (
         localStorage.setItem('searchThemePreference', theme);
     };
 
-    const setSizePreference = (size: SizePreference) => {
-        setSizePreferenceState(size);
-        localStorage.setItem('searchSizePreference', size);
+    const setCompactMode = (compact: boolean) => {
+        setCompactModeState(compact);
+        localStorage.setItem('searchCompactMode', String(compact));
     };
 
     const effectiveTheme = useMemo(() => {
@@ -62,11 +61,11 @@ export const SearchSettingsProvider: React.FC<{ children: React.ReactNode }> = (
         () => ({
             themePreference,
             setThemePreference,
-            sizePreference,
-            setSizePreference,
+            compactMode,
+            setCompactMode,
             effectiveTheme,
         }),
-        [themePreference, sizePreference, effectiveTheme]
+        [themePreference, compactMode, effectiveTheme]
     );
 
     return (

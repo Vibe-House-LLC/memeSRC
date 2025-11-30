@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { styled, alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { keyframes } from '@mui/system';
-import { Box, ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography, ToggleButton, ToggleButtonGroup, Stack } from '@mui/material';
+import { Box, ButtonBase, CircularProgress, Collapse, IconButton, InputBase, Typography, ToggleButton, ToggleButtonGroup, Stack, Switch, FormControlLabel } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
 import CloseIcon from '@mui/icons-material/Close';
-import { Shuffle as ShuffleIcon, Settings as SettingsIcon, Sun as SunIcon, Moon as MoonIcon, Minimize2 as MinimizeIcon, Maximize2 as MaximizeIcon, Monitor as MonitorIcon } from 'lucide-react';
+import { Shuffle as ShuffleIcon, Settings as SettingsIcon, Sun as SunIcon, Moon as MoonIcon, Monitor as MonitorIcon } from 'lucide-react';
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
@@ -51,7 +51,7 @@ const FormRoot = styled('form')(({ theme }) => ({
 }));
 
 const FieldShell = styled('div')(({ theme }) => ({
-  '--scope-button-size': '44px',
+  '--scope-button-size': '36px',
   '--scope-gap': theme.spacing(0.92),
   '--search-shell-shadow': 'none',
   position: 'relative',
@@ -74,6 +74,7 @@ const FieldShell = styled('div')(({ theme }) => ({
     padding: theme.spacing(0.82, 1.04),
     gap: theme.spacing(0.26),
     '--scope-gap': theme.spacing(0.6),
+    '--scope-button-size': '34px',
   },
   '&[data-expanded="true"]': {
     padding: theme.spacing(1.28, 1.52),
@@ -92,7 +93,7 @@ const FieldShell = styled('div')(({ theme }) => ({
     background: 'linear-gradient(180deg, rgba(36, 36, 38, 0.96), rgba(24, 24, 26, 0.98))',
   },
   [theme.breakpoints.down('sm')]: {
-    '--scope-button-size': '37px',
+    '--scope-button-size': '34px',
     '--scope-gap': theme.spacing(0.74),
     '--search-shell-shadow': '0 10px 24px rgba(0, 0, 0, 0.14)',
     padding: theme.spacing(0.86, 1.06),
@@ -102,6 +103,7 @@ const FieldShell = styled('div')(({ theme }) => ({
       padding: theme.spacing(0.68, 0.92),
       gap: theme.spacing(0.18),
       '--scope-gap': theme.spacing(0.5),
+      '--scope-button-size': '32px',
     },
     '&[data-expanded="true"]': {
       padding: theme.spacing(1.04, 1.26),
@@ -336,12 +338,12 @@ const ScopeGlyph = styled('span')(({ theme }) => ({
   justifyContent: 'center',
   fontFamily: FONT_FAMILY,
   fontWeight: 600,
-  fontSize: '1.06rem',
+  fontSize: '0.98rem',
   lineHeight: 1,
   color: 'inherit',
   flexShrink: 0,
   [theme.breakpoints.down('sm')]: {
-    fontSize: '0.98rem',
+    fontSize: '0.92rem',
   },
 }));
 
@@ -389,7 +391,7 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
     '& .scopeLabel': {
       fontFamily: FONT_FAMILY,
       fontWeight: 600,
-      fontSize: '0.94rem',
+      fontSize: '0.88rem',
       color: '#2f2f2f',
       display: 'inline-flex',
       alignItems: 'center',
@@ -401,13 +403,13 @@ const ScopeSelectorButton = styled(ButtonBase)(({ theme }) => {
       minWidth: 0,
       maxWidth: '100%',
       [theme.breakpoints.down('sm')]: {
-        fontSize: '0.9rem',
+        fontSize: '0.84rem',
       },
     },
     '& svg': {
       flexShrink: 0,
       color: '#4a4a4a',
-      fontSize: '1.26rem',
+      fontSize: '1.1rem',
     },
     '& .collapsedIcon': {
       marginLeft: 0,
@@ -1093,7 +1095,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   inputRef: externalInputRef,
 }) => {
   const { groups } = useSearchFilterGroups();
-  const { themePreference, setThemePreference, sizePreference, setSizePreference, effectiveTheme } = useSearchSettings();
+  const { themePreference, setThemePreference, compactMode, setCompactMode, effectiveTheme } = useSearchSettings();
   const navigate = useNavigate();
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
@@ -1785,7 +1787,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   );
 
   // Expansion is now controlled by preference, not input
-  const scopeExpanded = sizePreference === 'large';
+  const scopeExpanded = !compactMode;
 
   // Controls move to second line when expanded
   // SubmitButton now uses consistent black styling; disabled state is dark grey
@@ -1913,7 +1915,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   title="Search"
                   data-appearance={appearance}
                 >
-                  <ArrowForwardRoundedIcon fontSize="small" />
+                  <ArrowForwardRoundedIcon sx={{ fontSize: '16px' }} />
                 </SubmitButton>
               ) : (
                 <>
@@ -1924,7 +1926,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     title="Settings"
                     data-appearance={appearance}
                   >
-                    <SettingsIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                    <SettingsIcon size={16} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                   </SettingsButton>
                   <SubmitButton
                     type="button"
@@ -1937,9 +1939,9 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     data-appearance={appearance}
                   >
                     {randomLoading ? (
-                      <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
+                      <CircularProgress size={16} thickness={5} sx={{ color: 'currentColor' }} />
                     ) : (
-                      <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                      <ShuffleIcon size={16} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                     )}
                   </SubmitButton>
                 </>
@@ -2282,8 +2284,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             overflow: 'visible',
             filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
             mt: 1.5,
-            minWidth: 240,
-            p: 2,
+            minWidth: 200,
+            p: 1.5,
             '&:before': {
               content: '""',
               display: 'block',
@@ -2299,7 +2301,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           },
         }}
       >
-        <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mb: 1 }}>
+        <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mb: 0.75, px: 0.5 }}>
           APPEARANCE
         </Typography>
         <ToggleButtonGroup
@@ -2311,57 +2313,48 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           aria-label="theme preference"
           fullWidth
           size="small"
-          sx={{ mb: 2 }}
+          sx={{ mb: 1.5 }}
         >
-          <ToggleButton value="system" aria-label="system" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
-            <MonitorIcon size={20} />
-            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Auto</Typography>
+          <ToggleButton value="system" aria-label="system" sx={{ flexDirection: 'column', gap: 0.25, py: 0.5 }}>
+            <MonitorIcon size={16} />
+            <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Auto</Typography>
           </ToggleButton>
-          <ToggleButton value="light" aria-label="light" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
-            <SunIcon size={20} />
-            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Light</Typography>
+          <ToggleButton value="light" aria-label="light" sx={{ flexDirection: 'column', gap: 0.25, py: 0.5 }}>
+            <SunIcon size={16} />
+            <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Light</Typography>
           </ToggleButton>
-          <ToggleButton value="dark" aria-label="dark" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
-            <MoonIcon size={20} />
-            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Dark</Typography>
+          <ToggleButton value="dark" aria-label="dark" sx={{ flexDirection: 'column', gap: 0.25, py: 0.5 }}>
+            <MoonIcon size={16} />
+            <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Dark</Typography>
           </ToggleButton>
         </ToggleButtonGroup>
 
-        <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mb: 1 }}>
-          SIZE
-        </Typography>
-        <ToggleButtonGroup
-          value={sizePreference}
-          exclusive
-          onChange={(_, newValue) => {
-            if (newValue) {
-              setSizePreference(newValue);
-              handleCloseSettings();
-            }
-          }}
-          aria-label="size preference"
-          fullWidth
-          size="small"
-        >
-          <ToggleButton value="small" aria-label="small" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
-            <MinimizeIcon size={20} />
-            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Small</Typography>
-          </ToggleButton>
-          <ToggleButton value="large" aria-label="large" sx={{ flexDirection: 'column', gap: 0.5, py: 1 }}>
-            <MaximizeIcon size={20} />
-            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Large</Typography>
-          </ToggleButton>
-        </ToggleButtonGroup>
-        <Divider sx={{ my: 2 }} />
-        <MenuItem onClick={handleOpenHelpDialog} sx={{ borderRadius: 1.2 }}>
-          <ListItemIcon>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={compactMode}
+              onChange={(e) => {
+                setCompactMode(e.target.checked);
+                handleCloseSettings();
+              }}
+              size="small"
+            />
+          }
+          label={
+            <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
+              Compact mode
+            </Typography>
+          }
+          sx={{ ml: 0, mb: 1 }}
+        />
+        <Divider sx={{ my: 1 }} />
+        <MenuItem onClick={handleOpenHelpDialog} sx={{ borderRadius: 1, px: 1, py: 0.75 }}>
+          <ListItemIcon sx={{ minWidth: 32 }}>
             <HelpOutlineRoundedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText
-            primary="Show search tips"
-            secondary="Open the boolean cheat sheet"
-            primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
-            secondaryTypographyProps={{ variant: 'caption', color: 'text.secondary' }}
+            primary="Search tips"
+            primaryTypographyProps={{ variant: 'body2', fontWeight: 600, fontSize: '0.875rem' }}
           />
         </MenuItem>
       </Menu>

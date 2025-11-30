@@ -233,9 +233,9 @@ export default function SearchPage() {
   const location = useLocation();
 
   const { user, shows } = useContext(UserContext);
-  const { sizePreference, setSizePreference } = useSearchSettings();
-  const initialSizePreferenceRef = useRef(sizePreference);
-  const latestSizePreferenceRef = useRef(sizePreference);
+  const { compactMode, setCompactMode } = useSearchSettings();
+  const initialCompactModeRef = useRef(compactMode);
+  const latestCompactModeRef = useRef(compactMode);
 
   const RESULTS_PER_PAGE = 8;
 
@@ -333,23 +333,23 @@ export default function SearchPage() {
   const [customFilterNotFound, setCustomFilterNotFound] = useState(false);
   const [showTips, setShowTips] = useState(false);
   useEffect(() => {
-    latestSizePreferenceRef.current = sizePreference;
-  }, [sizePreference]);
+    latestCompactModeRef.current = compactMode;
+  }, [compactMode]);
 
-  // Keep the unified search bar large on the search page and restore the previous preference on exit if unchanged.
+  // Keep the unified search bar large (not compact) on the search page and restore the previous preference on exit if unchanged.
   useEffect(() => {
-    if (initialSizePreferenceRef.current !== 'large') {
-      setSizePreference('large');
+    if (initialCompactModeRef.current !== false) {
+      setCompactMode(false);
     }
     return () => {
       if (
-        initialSizePreferenceRef.current !== 'large' &&
-        latestSizePreferenceRef.current === 'large'
+        initialCompactModeRef.current !== false &&
+        latestCompactModeRef.current === false
       ) {
-        setSizePreference(initialSizePreferenceRef.current);
+        setCompactMode(initialCompactModeRef.current);
       }
     };
-  }, [setSizePreference]);
+  }, [setCompactMode]);
 
   const videoRefs = useRef([]);
   const latestSearchKeyRef = useRef('');
