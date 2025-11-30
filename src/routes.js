@@ -102,7 +102,6 @@ export default function Router() {
         </GuestAuth>
       ),
       children: [
-        { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'pro', element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
@@ -138,7 +137,7 @@ export default function Router() {
         { path: '/vote', element: <SiteWideMaintenance><ShowProvider><VotingPage /></ShowProvider></SiteWideMaintenance> },
         { path: '/contribute', element: <SiteWideMaintenance><ContributorRequest /></SiteWideMaintenance> },
         { path: '/pricing', element: <SiteWideMaintenance><PricingPage /></SiteWideMaintenance> },
-        { path: '/:seriesId', element: <SiteWideMaintenance><DynamicRouteHandler /></SiteWideMaintenance> },
+        { path: '/:seriesId?', element: <SiteWideMaintenance><DynamicRouteHandler /></SiteWideMaintenance> },
         { path: '/server', element: <SiteWideMaintenance><ServerPage /></SiteWideMaintenance> },
         { path: '/desktop/process', element: <SiteWideMaintenance><DesktopProcessingPage /></SiteWideMaintenance> },
         { path: '/facebook', element: <SiteWideMaintenance><FacebookAuthDemo /></SiteWideMaintenance> },

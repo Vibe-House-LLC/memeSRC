@@ -445,6 +445,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           ? { backgroundColor: `${metadata.colorMain}` }
           : { backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor }
       );
+    } else {
+      setCurrentThemeTitleText(defaultTitleText);
+      setCurrentThemeBragText(defaultBragText);
+      setCurrentThemeFontFamily(theme?.typography?.fontFamily);
+      setCurrentThemeFontColor(defaultFontColor);
+      setCurrentThemeBackground({ backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor });
     }
   }, [metadata, theme]);
 
