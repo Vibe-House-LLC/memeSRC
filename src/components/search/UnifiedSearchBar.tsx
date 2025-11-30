@@ -83,14 +83,14 @@ const FieldShell = styled('div')(({ theme }) => ({
   },
   '&[data-appearance="dark"]': {
     border: '1px solid rgba(255, 255, 255, 0.16)',
-    background: 'linear-gradient(180deg, rgba(32, 32, 34, 0.96), rgba(20, 20, 22, 0.98))',
+    background: 'rgba(30, 30, 32, 0.96)',
     color: 'rgba(245, 245, 245, 0.95)',
   },
   '&[data-appearance="dark"][data-expanded="false"]': {
-    background: 'linear-gradient(180deg, rgba(28, 28, 30, 0.94), rgba(18, 18, 20, 0.98))',
+    background: 'rgba(30, 30, 32, 0.96)',
   },
   '&[data-appearance="dark"][data-expanded="true"]': {
-    background: 'linear-gradient(180deg, rgba(36, 36, 38, 0.96), rgba(24, 24, 26, 0.98))',
+    background: 'rgba(30, 30, 32, 0.96)',
   },
   [theme.breakpoints.down('sm')]: {
     '--scope-button-size': '34px',
@@ -111,14 +111,14 @@ const FieldShell = styled('div')(({ theme }) => ({
       '--scope-gap': theme.spacing(1),
     },
     '&[data-appearance="dark"]': {
-      background: 'linear-gradient(180deg, rgba(30, 30, 32, 0.95), rgba(18, 18, 20, 0.98))',
+      background: 'rgba(28, 28, 30, 0.96)',
       '--search-shell-shadow': '0 14px 36px rgba(0, 0, 0, 0.52)',
     },
     '&[data-appearance="dark"][data-expanded="false"]': {
-      background: 'linear-gradient(180deg, rgba(26, 26, 28, 0.95), rgba(16, 16, 18, 0.98))',
+      background: 'rgba(28, 28, 30, 0.96)',
     },
     '&[data-appearance="dark"][data-expanded="true"]': {
-      background: 'linear-gradient(180deg, rgba(34, 34, 36, 0.96), rgba(22, 22, 24, 0.98))',
+      background: 'rgba(28, 28, 30, 0.96)',
     },
   },
 }));
@@ -802,6 +802,7 @@ const ShortcutSwitchButton = styled('div')(({ theme }) => ({
 }));
 
 const ScrollableFiltersBox = styled(Box)(({ theme }) => ({
+  position: 'relative',
   display: 'flex',
   gap: theme.spacing(0.75),
   overflowX: 'auto',
@@ -812,8 +813,28 @@ const ScrollableFiltersBox = styled(Box)(({ theme }) => ({
   '&::-webkit-scrollbar': {
     display: 'none',
   },
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '40px',
+    background: 'linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(242, 242, 242, 0.94) 100%)',
+    pointerEvents: 'none',
+    zIndex: 1,
+  },
+  '&[data-appearance="dark"]::after': {
+    background: 'linear-gradient(90deg, rgba(30, 30, 32, 0) 0%, rgba(30, 30, 32, 0.96) 100%)',
+  },
   [theme.breakpoints.down('sm')]: {
     gap: theme.spacing(0.5),
+    '&::after': {
+      width: '30px',
+    },
+    '&[data-appearance="dark"]::after': {
+      background: 'linear-gradient(90deg, rgba(28, 28, 30, 0) 0%, rgba(28, 28, 30, 0.96) 100%)',
+    },
   },
 }));
 
@@ -2095,7 +2116,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               </Box>
 
               {/* Scrollable area - includes current filter on mobile */}
-              <ScrollableFiltersBox ref={filtersScrollRef}>
+              <ScrollableFiltersBox ref={filtersScrollRef} data-appearance={appearance}>
                 {/* Current filter on mobile only */}
                 <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
                   {currentValueId && currentValueId !== '_universal' && currentSeriesOption ? (
