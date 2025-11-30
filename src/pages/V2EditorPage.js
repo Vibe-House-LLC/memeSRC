@@ -56,10 +56,6 @@ const StyledCard = styled(Card)`
   
   border: 3px solid transparent;
   box-sizing: border-box;
-
-  &:hover {
-    border: 3px solid orange;
-  }
 `;
 
 const StyledLayerControlCard = styled(Card)`

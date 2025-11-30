@@ -825,9 +825,6 @@ const CurrentFilterChip = styled(ButtonBase)(({ theme }) => ({
   whiteSpace: 'nowrap',
   flexShrink: 0,
   cursor: 'pointer',
-  '&:hover': {
-    filter: 'brightness(1.05)',
-  },
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(0.5, 0.9),
     gap: theme.spacing(0.4),
@@ -861,10 +858,10 @@ const RecommendedFilterChip = styled(ButtonBase)(({ theme }) => ({
     opacity: 0.92,
   },
   '&:hover': {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderColor: 'rgba(0, 0, 0, 0.24)',
-    color: 'rgba(20, 20, 20, 0.82)',
-    opacity: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.01)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    color: 'rgba(20, 20, 20, 0.58)',
+    opacity: 0.78,
   },
   '&.Mui-focusVisible': {
     outline: `2px solid ${alpha(theme.palette.primary.main, 0.32)}`,
@@ -878,9 +875,9 @@ const RecommendedFilterChip = styled(ButtonBase)(({ theme }) => ({
       opacity: 0.68,
     },
     '&:hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.07)',
-      borderColor: 'rgba(255, 255, 255, 0.24)',
-      color: 'rgba(250, 250, 250, 0.9)',
+      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+      borderColor: 'rgba(255, 255, 255, 0.12)',
+      color: 'rgba(245, 245, 245, 0.64)',
     },
   },
   [theme.breakpoints.down('sm')]: {
@@ -1115,6 +1112,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const appliedRecommendationVersionRef = useRef(0);
   const lastChangeWasTypingRef = useRef(false);
   const lastFilterIdRef = useRef(currentValueId);
+  const filtersScrollRef = useRef<HTMLDivElement | null>(null);
 
   const customFilters = useMemo<SeriesItem[]>(() => {
     return groups.map(g => {
@@ -1440,6 +1438,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     setStableQuery(normalized);
     setRecommendationVersion((prev) => prev + 1);
   }, [value]);
+  const resetFilterScroll = useCallback(() => {
+    if (filtersScrollRef.current) {
+      filtersScrollRef.current.scrollTo({ left: 0, behavior: 'auto' });
+    }
+  }, []);
 
   useEffect(() => {
     const inSyncWithInput = value === stableQuery;
@@ -1460,6 +1463,10 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       commitRecommendations();
     }
   }, [commitRecommendations, currentValueId]);
+
+  useEffect(() => {
+    resetFilterScroll();
+  }, [currentValueId, resetFilterScroll]);
 
   useEffect(() => {
     if (lastChangeWasTypingRef.current) {
@@ -1632,12 +1639,13 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const handleSelect: OnSelectSeries = useCallback(
     (selectedId) => {
       onSelectSeries(selectedId);
+      resetFilterScroll();
       handleCloseSelector();
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
     },
-    [handleCloseSelector, onSelectSeries],
+    [handleCloseSelector, onSelectSeries, resetFilterScroll],
   );
 
   const handleClear = useCallback(() => {
@@ -1826,7 +1834,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       }
     }
     onSelectSeries(filterId);
-  }, [onClarifySearch, onSelectSeries, onValueChange, value]);
+    resetFilterScroll();
+  }, [onClarifySearch, onSelectSeries, onValueChange, resetFilterScroll, value]);
 
   const currentSeriesOption = scopeShortcutOptions.find(opt => opt.id === currentValueId);
 
@@ -2006,7 +2015,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                       backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
                       border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
                       '&:hover': {
-                        backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
+                        backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                        borderColor: appearance === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)',
                       },
                     }}
                   >
@@ -2041,8 +2051,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                         padding: 0,
                         color: appearance === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
                         '&:hover': {
-                          color: appearance === 'dark' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
                           backgroundColor: 'transparent',
+                          color: appearance === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
                         },
                       }}
                     >
@@ -2056,7 +2066,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                       backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
                       border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
                       '&:hover': {
-                        backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
+                        backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                        borderColor: appearance === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)',
                       },
                     }}
                   >
@@ -2080,20 +2091,21 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               </Box>
 
               {/* Scrollable area - includes current filter on mobile */}
-              <ScrollableFiltersBox>
+              <ScrollableFiltersBox ref={filtersScrollRef}>
                 {/* Current filter on mobile only */}
                 <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
                   {currentValueId && currentValueId !== '_universal' && currentSeriesOption ? (
                     <CurrentFilterChip
-                      onClick={handleScopeClick}
-                      sx={{
+                    onClick={handleScopeClick}
+                    sx={{
+                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                      border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
+                      '&:hover': {
                         backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
-                        border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
-                        '&:hover': {
-                          backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
-                        },
-                      }}
-                    >
+                        borderColor: appearance === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)',
+                      },
+                    }}
+                  >
                       {currentSeriesOption.emoji && (
                         <Typography sx={{ fontSize: { xs: '0.9rem', sm: '0.95rem' }, lineHeight: 1 }}>
                           {currentSeriesOption.emoji}
@@ -2120,30 +2132,31 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                         sx={{
                           ml: -0.5,
                           mr: -0.5,
-                          width: { xs: 18, sm: 20 },
-                          height: { xs: 18, sm: 20 },
-                          padding: 0,
+                        width: { xs: 18, sm: 20 },
+                        height: { xs: 18, sm: 20 },
+                        padding: 0,
+                        color: appearance === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
+                        '&:hover': {
+                          backgroundColor: 'transparent',
                           color: appearance === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
-                          '&:hover': {
-                            color: appearance === 'dark' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
-                            backgroundColor: 'transparent',
-                          },
-                        }}
-                      >
+                        },
+                      }}
+                    >
                         <CloseIcon sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }} />
                       </IconButton>
                     </CurrentFilterChip>
                   ) : (
                     <CurrentFilterChip
-                      onClick={handleScopeClick}
-                      sx={{
+                    onClick={handleScopeClick}
+                    sx={{
+                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                      border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
+                      '&:hover': {
                         backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
-                        border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
-                        '&:hover': {
-                          backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
-                        },
-                      }}
-                    >
+                        borderColor: appearance === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)',
+                      },
+                    }}
+                  >
                       <Typography sx={{ fontSize: { xs: '0.9rem', sm: '0.95rem' }, lineHeight: 1 }}>
                         🌈
                       </Typography>

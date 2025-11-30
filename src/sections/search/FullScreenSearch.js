@@ -544,7 +544,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     if (favoriteStats.titleCount <= 0 || favoriteStats.totalFrames <= 0) {
       return universalBragText;
     }
-    return `Search ${favoriteStats.totalFrames.toLocaleString('en-US')} templates from your ${favoriteStats.titleCount.toLocaleString('en-US')} favorites`;
+    return `Search ${favoriteStats.totalFrames.toLocaleString('en-US')} templates from favorites`;
   }, [favoriteStats, universalBragText]);
 
   useEffect(() => {

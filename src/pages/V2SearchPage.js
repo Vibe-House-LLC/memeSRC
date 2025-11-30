@@ -75,11 +75,6 @@ const ADVANCED_SYNTAX_TIPS = [
 const StyledCard = styled(Card)`
   box-sizing: border-box;
   position: relative;
-  transition: all 0.2s ease;
-
-  &:hover {
-    box-shadow: 0 0 0 3px orange, 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
 `;
 
 const StyledCardVideoContainer = styled.div`
