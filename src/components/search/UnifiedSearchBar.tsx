@@ -945,16 +945,6 @@ const normalizeLooseText = (input: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const removeMatchedWords = (query: string, matchedWords: string[]): string => {
-  if (!query || !matchedWords || matchedWords.length === 0) return query;
-  const words = query.split(/\s+/);
-  const remaining = words.filter(word => {
-    const norm = normalizeLooseText(word);
-    return !matchedWords.includes(norm);
-  });
-  return remaining.join(' ');
-};
-
 const coerceTimestamp = (value: unknown): number => {
   if (!value) return 0;
   const date = new Date(value as any);
@@ -1225,165 +1215,100 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     });
   }, [shows, savedCids, customFilters, includeAllFavorites]);
 
-  // Filter recommendations based on search query
-  const trimmedValue = value.trim();
-  const hasInput = trimmedValue.length > 0;
-  const allowFilterSuggestions = currentValueId === '_universal' || currentValueId === '_favorites';
-
   const filterMatchSections = useMemo(() => {
     const excludedIds = new Set([currentValueId].filter(Boolean));
+    const results: ScopeShortcutOption[] = [];
 
-    // Build context-aware suggestions
-    const buildContextSuggestions = () => {
-      const suggestions: any[] = [];
-
-      // Custom filter group - show items within the group
-      if (currentValueId && currentValueId.startsWith('custom_')) {
-        const customFilter = customFilters.find(f => f.id === currentValueId);
-        if (customFilter?.items) {
-          const groupItems = customFilter.items
-            .map((itemId: string) => scopeShortcutOptions.find(opt => opt.id === itemId))
-            .filter((opt): opt is NonNullable<typeof opt> => Boolean(opt) && !excludedIds.has(opt.id));
-          suggestions.push(...groupItems);
-        }
-      }
-
-      // Favorites - show favorite items (no "All" needed since X button provides that)
-      if (currentValueId === '_favorites') {
-        const favoriteShows = shows?.filter(show => show.isFavorite) || [];
-        const sortedFavorites = [...favoriteShows]
-          .sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''))
-          .map(show => scopeShortcutOptions.find(opt => opt.id === show.id))
-          .filter((opt): opt is NonNullable<typeof opt> => Boolean(opt) && !excludedIds.has(opt.id));
-        suggestions.push(...sortedFavorites);
-      }
-
-      // Everything - show Favorites first if they have any
-      if (currentValueId === '_universal') {
-        if (includeAllFavorites) {
-          const favorites = scopeShortcutOptions.find(opt => opt.id === '_favorites');
-          if (favorites) suggestions.push(favorites);
-        } else {
-          const recentShows = (shows || [])
-            .slice()
-            .sort((a, b) => coerceTimestamp(b?.updatedAt || (b as any)?.createdAt) - coerceTimestamp(a?.updatedAt || (a as any)?.createdAt))
-            .slice(0, 10)
-            .map(show => scopeShortcutOptions.find(opt => opt.id === show.id))
-            .filter((opt): opt is NonNullable<typeof opt> => Boolean(opt) && !excludedIds.has(opt.id));
-          suggestions.push(...recentShows);
-        }
-      }
-
-      // Specific show - show Favorites toggle (no "All" needed since X button provides that)
-      if (currentValueId && !currentValueId.startsWith('_') && !currentValueId.startsWith('custom_')) {
-        if (includeAllFavorites) {
-          const favorites = scopeShortcutOptions.find(opt => opt.id === '_favorites');
-          if (favorites) suggestions.push(favorites);
-        }
-      }
-
-      return suggestions;
+    const addOption = (option?: ScopeShortcutOption | null) => {
+      if (!option || !option.id || excludedIds.has(option.id)) return;
+      if (results.some((existing) => existing.id === option.id)) return;
+      results.push(option);
     };
 
-    // Only show filter suggestions when in universal/favorites scope or custom filters
-    const isCustomFilter = currentValueId?.startsWith('custom_');
-    const isSpecificShow = currentValueId && !currentValueId.startsWith('_') && !isCustomFilter;
-
-    if (!allowFilterSuggestions && !isCustomFilter && !isSpecificShow) {
-      return { recommended: [] };
-    }
-
-    // If no search query, show context suggestions
-    if (!hasInput) {
-      return { recommended: buildContextSuggestions() };
-    }
-
-    const normalizedQuery = normalizeShortcutText(trimmedValue);
-    const normalizedQueryLoose = normalizeLooseText(trimmedValue);
-    if (!normalizedQueryLoose) {
-      return { recommended: buildContextSuggestions() };
-    }
-
-    const queryWords = normalizedQueryLoose.split(/\s+/).filter(Boolean);
-    const candidates = scopeShortcutOptions
-      .filter((option) => option?.id && !excludedIds.has(option.id))
-      .map((option) => {
-        const normalizedPrimary = normalizeShortcutText(option.primary);
-        const normalizedPrimaryLoose = normalizeLooseText(option.primary);
-        const optionTokens = Array.isArray(option.tokens) ? option.tokens : [];
-        const optionLooseTokens = [
-          normalizedPrimaryLoose,
-          ...optionTokens.map(normalizeLooseText),
-        ].filter(Boolean);
-
-        const exactNameMatch =
-          (normalizedPrimaryLoose && normalizedPrimaryLoose === normalizedQueryLoose) ||
-          optionLooseTokens.includes(normalizedQueryLoose);
-
-        const containedNameMatch =
-          !exactNameMatch &&
-          normalizedPrimaryLoose &&
-          (normalizedQueryLoose.includes(normalizedPrimaryLoose) ||
-            optionLooseTokens.some((token) => normalizedQueryLoose.includes(token)));
-
-        const matchedWords = queryWords.filter((word) =>
-          optionLooseTokens.some((token) => {
-            const tokenWords = token.split(/\s+/);
-            return tokenWords.some(
-              (tokenWord) =>
-                tokenWord === word ||
-                tokenWord.startsWith(word) ||
-                word.startsWith(tokenWord)
-            );
-          })
-        );
-        const unmatchedWordsCount = Math.max(queryWords.length - matchedWords.length, 0);
-
-        const score = evaluateShortcutScore(option.tokens, normalizedQuery);
-        return {
-          option,
-          score,
-          exactNameMatch,
-          containedNameMatch,
-          unmatchedWordsCount,
-          matchedWords,
-        };
-      })
-      .filter(
-        ({ score, exactNameMatch, containedNameMatch, unmatchedWordsCount }) =>
-          exactNameMatch || containedNameMatch || unmatchedWordsCount < queryWords.length || Number.isFinite(score)
-      );
-
-    const sortByPriority = (a: any, b: any) => {
-      if (a.exactNameMatch !== b.exactNameMatch) return a.exactNameMatch ? -1 : 1;
-      if (a.unmatchedWordsCount !== b.unmatchedWordsCount) return a.unmatchedWordsCount - b.unmatchedWordsCount;
-      if (a.containedNameMatch !== b.containedNameMatch) return a.containedNameMatch ? -1 : 1;
-      if (a.score !== b.score) return a.score - b.score;
-      const rankA = Number.isFinite(a.option.rank) ? a.option.rank : Number.POSITIVE_INFINITY;
-      const rankB = Number.isFinite(b.option.rank) ? b.option.rank : Number.POSITIVE_INFINITY;
-      if (rankA !== rankB) return rankA - rankB;
-      return (a.option.primary || '').localeCompare(b.option.primary || '');
+    const addOptions = (options: Array<ScopeShortcutOption | undefined | null>) => {
+      options.forEach(addOption);
     };
 
-    candidates.sort(sortByPriority);
+    const getOptionById = (id?: string | null) => scopeShortcutOptions.find((opt) => opt.id === id);
 
-    const recommended = candidates
-      .filter((c) => c.unmatchedWordsCount > 0)
-      .sort((a, b) => {
-        if (a.containedNameMatch !== b.containedNameMatch) return a.containedNameMatch ? -1 : 1;
-        return sortByPriority(a, b);
-      })
-      .slice(0, 4)
-      .map((c) => ({ ...c.option, matchedWords: c.matchedWords }));
+    const getOptionsForIds = (ids: Array<string | undefined>) =>
+      ids
+        .map((id) => getOptionById(id))
+        .filter((opt): opt is ScopeShortcutOption => Boolean(opt) && !excludedIds.has(opt!.id));
 
-    // If no smart recommendations, show context suggestions
-    if (recommended.length === 0) {
-      return { recommended: buildContextSuggestions() };
+    const favoriteShows = (shows || []).filter((show) => show.isFavorite);
+    const favoritesByUpdated = [...favoriteShows].sort(
+      (a, b) =>
+        coerceTimestamp(b?.updatedAt || (b as any)?.createdAt) - coerceTimestamp(a?.updatedAt || (a as any)?.createdAt)
+    );
+    const favoriteOptions = favoritesByUpdated
+      .map((show) => getOptionById(show.id))
+      .filter((opt): opt is ScopeShortcutOption => Boolean(opt) && !excludedIds.has(opt!.id));
+
+    const recentShowOptions = (shows || [])
+      .slice()
+      .sort(
+        (a, b) =>
+          coerceTimestamp(b?.updatedAt || (b as any)?.createdAt) -
+          coerceTimestamp(a?.updatedAt || (a as any)?.createdAt)
+      )
+      .map((show) => getOptionById(show.id))
+      .filter((opt): opt is ScopeShortcutOption => Boolean(opt) && !excludedIds.has(opt!.id));
+
+    const addRecentUntil = (limit: number) => {
+      for (let i = 0; i < recentShowOptions.length && results.length < limit; i += 1) {
+        addOption(recentShowOptions[i]);
+      }
+    };
+
+    // Custom filter group - show items within the group
+    if (currentValueId && currentValueId.startsWith('custom_')) {
+      const customFilter = customFilters.find((f) => f.id === currentValueId);
+      if (customFilter?.items) {
+        const groupItems = getOptionsForIds(customFilter.items);
+        addOptions(groupItems);
+      }
     }
 
-    return { recommended };
-  }, [allowFilterSuggestions, hasInput, trimmedValue, scopeShortcutOptions, currentValueId, includeAllFavorites, shows, customFilters]);
+    // Favorites scope
+    if (currentValueId === '_favorites') {
+      addOptions(favoriteOptions);
+    }
 
+    // Universal scope
+    if (currentValueId === '_universal') {
+      if (includeAllFavorites) {
+        addOption(getOptionById('_favorites'));
+        addOptions(favoriteOptions);
+      }
+      addRecentUntil(10);
+    }
+
+    // Specific show - still offer favorites toggle if applicable
+    const isSpecificShow = currentValueId && !currentValueId.startsWith('_') && !currentValueId.startsWith('custom_');
+    if (isSpecificShow && includeAllFavorites) {
+      addOption(getOptionById('_favorites'));
+    }
+
+    // Backfill with favorites/recent to hit ~10 items
+    if (results.length < 10) {
+      addOptions(favoriteOptions);
+    }
+    addRecentUntil(10);
+
+    // Final fallback: any remaining options to avoid empties
+    if (results.length < 10) {
+      scopeShortcutOptions.forEach((opt) => addOption(opt));
+    }
+
+    if (results.length === 0) {
+      addOption(getOptionById(currentValueId));
+    }
+
+    return { recommended: results.slice(0, 10) };
+  }, [currentValueId, customFilters, includeAllFavorites, scopeShortcutOptions, shows]);
+
+  const hasInput = value.trim().length > 0;
   const { recommended: recommendedFilters } = filterMatchSections;
 
   const updateShortcutState = useCallback(
@@ -1722,14 +1647,9 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     setHelpDialogOpen(false);
   };
 
-  const handleSwitchToFilter = useCallback((filterId: string, matchedWords?: string[]) => {
-    // Remove matched words from current search query
-    if (matchedWords && matchedWords.length > 0) {
-      const newQuery = removeMatchedWords(value, matchedWords);
-      onValueChange(newQuery);
-    }
+  const handleSwitchToFilter = useCallback((filterId: string) => {
     onSelectSeries(filterId);
-  }, [onSelectSeries, onValueChange, value]);
+  }, [onSelectSeries]);
 
   const currentSeriesOption = scopeShortcutOptions.find(opt => opt.id === currentValueId);
 
@@ -2081,7 +2001,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                 {recommendedFilters.map((match: any) => (
                   <RecommendedFilterChip
                     key={match.id}
-                    onClick={() => handleSwitchToFilter(match.id, match.matchedWords)}
+                    onClick={() => handleSwitchToFilter(match.id)}
                     data-appearance={appearance}
                   >
                     {match.emoji && (
