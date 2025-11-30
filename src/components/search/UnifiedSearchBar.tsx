@@ -1216,6 +1216,13 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   }, [shows, savedCids, customFilters, includeAllFavorites]);
 
   const filterMatchSections = useMemo(() => {
+    const trimmedValue = value.trim();
+    const normalizedQueryLoose = normalizeLooseText(trimmedValue);
+    const queryTokens = normalizedQueryLoose
+      ? normalizedQueryLoose.split(/\s+/).filter((token) => token.length >= 2)
+      : [];
+    const shouldBoostWithQuery = queryTokens.length > 0;
+
     const excludedIds = new Set([currentValueId].filter(Boolean));
     const results: ScopeShortcutOption[] = [];
 
@@ -1305,8 +1312,69 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       addOption(getOptionById(currentValueId));
     }
 
-    return { recommended: results.slice(0, 10) };
-  }, [currentValueId, customFilters, includeAllFavorites, scopeShortcutOptions, shows]);
+    const baseOrdered = results.slice(0, 10);
+    const baseIndexMap = new Map<string, number>();
+    baseOrdered.forEach((opt, idx) => {
+      baseIndexMap.set(opt.id, idx);
+    });
+
+    let prioritized: ScopeShortcutOption[] = [];
+
+    if (shouldBoostWithQuery) {
+      const queryMatches = scopeShortcutOptions
+        .filter((option) => option?.id && !excludedIds.has(option.id))
+        .map((option) => {
+          const primaryTokens = normalizeLooseText(option.primary).split(/\s+/).filter(Boolean);
+          const tokenSet = new Set<string>(
+            [
+              ...primaryTokens,
+              ...(Array.isArray(option.tokens) ? option.tokens.map(normalizeLooseText) : []),
+            ].filter((token) => Boolean(token) && token.length >= 2)
+          );
+
+          const matches = queryTokens.filter((queryToken) => {
+            return Array.from(tokenSet).some(
+              (token) =>
+                token === queryToken ||
+                token.startsWith(queryToken) ||
+                queryToken.startsWith(token)
+            );
+          });
+
+          const matchScore = matches.length > 0 ? 0 : Number.POSITIVE_INFINITY;
+          const baseIndex = baseIndexMap.has(option.id) ? baseIndexMap.get(option.id)! : Number.POSITIVE_INFINITY;
+
+          return {
+            option,
+            matches,
+            matchScore,
+            baseIndex,
+          };
+        })
+        .filter(({ matchScore, matches }) => matches.length > 0 && Number.isFinite(matchScore))
+        .sort((a, b) => {
+          if (a.matchScore !== b.matchScore) return a.matchScore - b.matchScore;
+          if (a.matches.length !== b.matches.length) return b.matches.length - a.matches.length;
+          return a.baseIndex - b.baseIndex;
+        })
+        .map(({ option }) => option);
+
+      prioritized = queryMatches;
+    }
+
+    const final: ScopeShortcutOption[] = [];
+    const pushUnique = (option?: ScopeShortcutOption | null) => {
+      if (!option || !option.id) return;
+      if (final.some((existing) => existing.id === option.id)) return;
+      final.push(option);
+    };
+
+    prioritized.forEach(pushUnique);
+    baseOrdered.forEach(pushUnique);
+    scopeShortcutOptions.forEach(pushUnique);
+
+    return { recommended: final.slice(0, 10) };
+  }, [currentValueId, customFilters, includeAllFavorites, scopeShortcutOptions, shows, value]);
 
   const hasInput = value.trim().length > 0;
   const { recommended: recommendedFilters } = filterMatchSections;
