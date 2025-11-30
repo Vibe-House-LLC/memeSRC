@@ -809,6 +809,9 @@ const ScrollableFiltersBox = styled(Box)(({ theme }) => ({
   '&::-webkit-scrollbar': {
     display: 'none',
   },
+  [theme.breakpoints.down('sm')]: {
+    gap: theme.spacing(0.5),
+  },
 }));
 
 const CurrentFilterChip = styled(ButtonBase)(({ theme }) => ({
@@ -823,6 +826,11 @@ const CurrentFilterChip = styled(ButtonBase)(({ theme }) => ({
   cursor: 'pointer',
   '&:hover': {
     filter: 'brightness(1.05)',
+  },
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(0.5, 0.9),
+    gap: theme.spacing(0.4),
+    borderRadius: '10px',
   },
 }));
 
@@ -847,6 +855,11 @@ const RecommendedFilterChip = styled(ButtonBase)(({ theme }) => ({
     '&:hover': {
       backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
+  },
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(0.5, 0.9),
+    gap: theme.spacing(0.4),
+    borderRadius: '10px',
   },
 }));
 
@@ -1202,11 +1215,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         }
       }
 
-      // Favorites - show Everything first, then favorite items
+      // Favorites - show favorite items (no "All" needed since X button provides that)
       if (currentValueId === '_favorites') {
-        const universal = scopeShortcutOptions.find(opt => opt.id === '_universal');
-        if (universal) suggestions.push(universal);
-
         const favoriteShows = shows?.filter(show => show.isFavorite) || [];
         const sortedFavorites = [...favoriteShows]
           .sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''))
@@ -1223,14 +1233,12 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         }
       }
 
-      // Specific show - show Everything or Favorites toggle
+      // Specific show - show Favorites toggle (no "All" needed since X button provides that)
       if (currentValueId && !currentValueId.startsWith('_') && !currentValueId.startsWith('custom_')) {
         if (includeAllFavorites) {
           const favorites = scopeShortcutOptions.find(opt => opt.id === '_favorites');
           if (favorites) suggestions.push(favorites);
         }
-        const universal = scopeShortcutOptions.find(opt => opt.id === '_universal');
-        if (universal) suggestions.push(universal);
       }
 
       return suggestions;
@@ -1841,68 +1849,183 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         <Collapse in={scopeExpanded} timeout={260} unmountOnExit>
           <ControlsRail data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
             {/* Filter indicator with current filter and recommendations - fills left side */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
-              {/* Current filter - static on left, clickable to open selector */}
-              {currentValueId && currentValueId !== '_universal' && currentSeriesOption ? (
-                <CurrentFilterChip
-                  onClick={handleScopeClick}
-                  sx={{
-                    backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
-                    border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
-                    '&:hover': {
-                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
-                    },
-                  }}
-                >
-                  {currentSeriesOption.emoji && (
-                    <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
-                      {currentSeriesOption.emoji}
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: { xs: 0.5, sm: 1 },
+              flex: 1,
+              minWidth: 0
+            }}>
+              {/* Current filter - static on desktop, scrollable on mobile */}
+              <Box sx={{
+                display: { xs: 'none', sm: 'flex' },
+                flexShrink: 0
+              }}>
+                {currentValueId && currentValueId !== '_universal' && currentSeriesOption ? (
+                  <CurrentFilterChip
+                    onClick={handleScopeClick}
+                    sx={{
+                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                      border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
+                      '&:hover': {
+                        backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
+                      },
+                    }}
+                  >
+                    {currentSeriesOption.emoji && (
+                      <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
+                        {currentSeriesOption.emoji}
+                      </Typography>
+                    )}
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 700,
+                        color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
+                        lineHeight: 1,
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      {currentSeriesOption.primary}
                     </Typography>
-                  )}
-                  <Typography
-                    variant="body2"
+                    <ArrowDropDownIcon sx={{ fontSize: '1.1rem', ml: -0.2, opacity: 0.7 }} />
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectSeries('_universal');
+                      }}
+                      sx={{
+                        ml: -0.5,
+                        mr: -0.5,
+                        width: 20,
+                        height: 20,
+                        padding: 0,
+                        color: appearance === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
+                        '&:hover': {
+                          color: appearance === 'dark' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
+                          backgroundColor: 'transparent',
+                        },
+                      }}
+                    >
+                      <CloseIcon sx={{ fontSize: '0.9rem' }} />
+                    </IconButton>
+                  </CurrentFilterChip>
+                ) : (
+                  <CurrentFilterChip
+                    onClick={handleScopeClick}
                     sx={{
-                      fontWeight: 700,
-                      color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
-                      lineHeight: 1,
-                      fontSize: '0.85rem'
+                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                      border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
+                      '&:hover': {
+                        backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
+                      },
                     }}
                   >
-                    {currentSeriesOption.primary}
-                  </Typography>
-                  <ArrowDropDownIcon sx={{ fontSize: '1.1rem', ml: -0.5 }} />
-                </CurrentFilterChip>
-              ) : (
-                <CurrentFilterChip
-                  onClick={handleScopeClick}
-                  sx={{
-                    backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
-                    border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
-                    '&:hover': {
-                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
-                    },
-                  }}
-                >
-                  <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
-                    🌈
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 700,
-                      color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
-                      lineHeight: 1,
-                      fontSize: '0.85rem'
-                    }}
-                  >
-                    Everything
-                  </Typography>
-                  <ArrowDropDownIcon sx={{ fontSize: '1.1rem', ml: -0.5 }} />
-                </CurrentFilterChip>
-              )}
+                    <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
+                      🌈
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 700,
+                        color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
+                        lineHeight: 1,
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      All
+                    </Typography>
+                    <ArrowDropDownIcon sx={{ fontSize: '1.1rem', ml: -0.5 }} />
+                  </CurrentFilterChip>
+                )}
+              </Box>
 
-              {/* Scrollable recommendations */}
+              {/* Scrollable area - includes current filter on mobile */}
               <ScrollableFiltersBox>
+                {/* Current filter on mobile only */}
+                <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                  {currentValueId && currentValueId !== '_universal' && currentSeriesOption ? (
+                    <CurrentFilterChip
+                      onClick={handleScopeClick}
+                      sx={{
+                        backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                        border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
+                        '&:hover': {
+                          backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
+                        },
+                      }}
+                    >
+                      {currentSeriesOption.emoji && (
+                        <Typography sx={{ fontSize: { xs: '0.9rem', sm: '0.95rem' }, lineHeight: 1 }}>
+                          {currentSeriesOption.emoji}
+                        </Typography>
+                      )}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 700,
+                          color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
+                          lineHeight: 1,
+                          fontSize: { xs: '0.75rem', sm: '0.85rem' }
+                        }}
+                      >
+                        {currentSeriesOption.primary}
+                      </Typography>
+                      <ArrowDropDownIcon sx={{ fontSize: { xs: '1rem', sm: '1.1rem' }, ml: -0.2, opacity: 0.7 }} />
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectSeries('_universal');
+                        }}
+                        sx={{
+                          ml: -0.5,
+                          mr: -0.5,
+                          width: { xs: 18, sm: 20 },
+                          height: { xs: 18, sm: 20 },
+                          padding: 0,
+                          color: appearance === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
+                          '&:hover': {
+                            color: appearance === 'dark' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
+                            backgroundColor: 'transparent',
+                          },
+                        }}
+                      >
+                        <CloseIcon sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }} />
+                      </IconButton>
+                    </CurrentFilterChip>
+                  ) : (
+                    <CurrentFilterChip
+                      onClick={handleScopeClick}
+                      sx={{
+                        backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                        border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
+                        '&:hover': {
+                          backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
+                        },
+                      }}
+                    >
+                      <Typography sx={{ fontSize: { xs: '0.9rem', sm: '0.95rem' }, lineHeight: 1 }}>
+                        🌈
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 700,
+                          color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
+                          lineHeight: 1,
+                          fontSize: { xs: '0.75rem', sm: '0.85rem' }
+                        }}
+                      >
+                        All
+                      </Typography>
+                      <ArrowDropDownIcon sx={{ fontSize: { xs: '1rem', sm: '1.1rem' }, ml: -0.5 }} />
+                    </CurrentFilterChip>
+                  )}
+                </Box>
+
+                {/* Recommended filters */}
                 {recommendedFilters.map((match: any) => (
                   <RecommendedFilterChip
                     key={match.id}
@@ -1910,7 +2033,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     data-appearance={appearance}
                   >
                     {match.emoji && (
-                      <Typography sx={{ fontSize: '0.9rem', lineHeight: 1, opacity: 0.8 }}>
+                      <Typography sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem' }, lineHeight: 1, opacity: 0.8 }}>
                         {match.emoji}
                       </Typography>
                     )}
@@ -1920,7 +2043,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                         fontWeight: 500,
                         color: appearance === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
                         lineHeight: 1,
-                        fontSize: '0.8rem'
+                        fontSize: { xs: '0.72rem', sm: '0.8rem' }
                       }}
                     >
                       {match.primary}
