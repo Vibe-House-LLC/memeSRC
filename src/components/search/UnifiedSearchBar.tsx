@@ -35,6 +35,7 @@ export interface UnifiedSearchBarProps {
   includeAllFavorites: boolean;
   onSelectSeries: OnSelectSeries;
   appearance?: 'light' | 'dark';
+  onClarifySearch?: (details: { original: string; stripped: string }) => void;
 }
 
 const FONT_FAMILY = 'Roboto, sans-serif';
@@ -945,6 +946,25 @@ const normalizeLooseText = (input: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const removeMatchedWords = (query: string, matchedWords: string[]): string => {
+  if (!query || !matchedWords || matchedWords.length === 0) return query;
+  const removalSet = new Set(
+    matchedWords
+      .map((word) => normalizeLooseText(word))
+      .filter((word) => Boolean(word))
+  );
+  if (removalSet.size === 0) return query;
+  const removals = Array.from(removalSet);
+
+  const words = query.split(/\s+/);
+  const remaining = words.filter((word) => {
+    const norm = normalizeLooseText(word);
+    if (!norm) return false;
+    return !removals.some((remove) => norm === remove || norm.startsWith(remove) || remove.startsWith(norm));
+  });
+  return remaining.join(' ');
+};
+
 const coerceTimestamp = (value: unknown): number => {
   if (!value) return 0;
   const date = new Date(value as any);
@@ -1071,6 +1091,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   currentValueId,
   includeAllFavorites,
   onSelectSeries,
+  onClarifySearch,
   appearance: propAppearance = 'light',
 }) => {
   const { groups } = useSearchFilterGroups();
@@ -1089,6 +1110,10 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [shortcutState, setShortcutState] = useState<ShortcutQueryState | null>(null);
   const [shortcutActiveIndex, setShortcutActiveIndex] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
+  const [stableQuery, setStableQuery] = useState(value);
+  const stableQueryTimeoutRef = useRef<number | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<number | null>(null);
 
   const customFilters = useMemo<SeriesItem[]>(() => {
     return groups.map(g => {
@@ -1216,24 +1241,33 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   }, [shows, savedCids, customFilters, includeAllFavorites]);
 
   const filterMatchSections = useMemo(() => {
-    const trimmedValue = value.trim();
+    const trimmedValue = stableQuery.trim();
     const normalizedQueryLoose = normalizeLooseText(trimmedValue);
     const queryTokens = normalizedQueryLoose
       ? normalizedQueryLoose.split(/\s+/).filter((token) => token.length >= 2)
       : [];
-    const shouldBoostWithQuery = queryTokens.length > 0;
+    const boundaryTokens = queryTokens.length > 0
+      ? Array.from(new Set([queryTokens[0], queryTokens[queryTokens.length - 1]].filter(Boolean)))
+      : [];
+    const shouldBoostWithQuery = boundaryTokens.length > 0;
 
     const excludedIds = new Set([currentValueId].filter(Boolean));
-    const results: ScopeShortcutOption[] = [];
+    const entryMap = new Map<string, { option: ScopeShortcutOption; matchedWords: Set<string> }>();
+    const baseOrder: string[] = [];
 
-    const addOption = (option?: ScopeShortcutOption | null) => {
+    const addOption = (option?: ScopeShortcutOption | null, matchedWords: string[] = []) => {
       if (!option || !option.id || excludedIds.has(option.id)) return;
-      if (results.some((existing) => existing.id === option.id)) return;
-      results.push(option);
+      let entry = entryMap.get(option.id);
+      if (!entry) {
+        entry = { option, matchedWords: new Set<string>() };
+        entryMap.set(option.id, entry);
+        baseOrder.push(option.id);
+      }
+      matchedWords.filter(Boolean).forEach((word) => entry!.matchedWords.add(normalizeLooseText(word)));
     };
 
     const addOptions = (options: Array<ScopeShortcutOption | undefined | null>) => {
-      options.forEach(addOption);
+      options.forEach((opt) => addOption(opt));
     };
 
     const getOptionById = (id?: string | null) => scopeShortcutOptions.find((opt) => opt.id === id);
@@ -1263,7 +1297,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       .filter((opt): opt is ScopeShortcutOption => Boolean(opt) && !excludedIds.has(opt!.id));
 
     const addRecentUntil = (limit: number) => {
-      for (let i = 0; i < recentShowOptions.length && results.length < limit; i += 1) {
+      for (let i = 0; i < recentShowOptions.length && entryMap.size < limit; i += 1) {
         addOption(recentShowOptions[i]);
       }
     };
@@ -1298,27 +1332,29 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     }
 
     // Backfill with favorites/recent to hit ~10 items
-    if (results.length < 10) {
+    if (entryMap.size < 10) {
       addOptions(favoriteOptions);
     }
     addRecentUntil(10);
 
     // Final fallback: any remaining options to avoid empties
-    if (results.length < 10) {
+    if (entryMap.size < 10) {
       scopeShortcutOptions.forEach((opt) => addOption(opt));
     }
 
-    if (results.length === 0) {
+    if (entryMap.size === 0) {
       addOption(getOptionById(currentValueId));
     }
 
-    const baseOrdered = results.slice(0, 10);
+    const baseOrdered = baseOrder
+      .map((id) => entryMap.get(id))
+      .filter((entry): entry is { option: ScopeShortcutOption; matchedWords: Set<string> } => Boolean(entry));
     const baseIndexMap = new Map<string, number>();
     baseOrdered.forEach((opt, idx) => {
-      baseIndexMap.set(opt.id, idx);
+      baseIndexMap.set(opt.option.id, idx);
     });
 
-    let prioritized: ScopeShortcutOption[] = [];
+    let prioritized: Array<{ option: ScopeShortcutOption; matchedWords: Set<string> }> = [];
 
     if (shouldBoostWithQuery) {
       const queryMatches = scopeShortcutOptions
@@ -1332,7 +1368,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             ].filter((token) => Boolean(token) && token.length >= 2)
           );
 
-          const matches = queryTokens.filter((queryToken) => {
+          const allMatches = queryTokens.filter((queryToken) => {
             return Array.from(tokenSet).some(
               (token) =>
                 token === queryToken ||
@@ -1341,43 +1377,68 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             );
           });
 
-          const matchScore = matches.length > 0 ? 0 : Number.POSITIVE_INFINITY;
+          const boundaryMatches = boundaryTokens.filter((queryToken) => {
+            return Array.from(tokenSet).some(
+              (token) =>
+                token === queryToken ||
+                token.startsWith(queryToken) ||
+                queryToken.startsWith(token)
+            );
+          });
+
+          const matchScore = boundaryMatches.length > 0 ? 0 : Number.POSITIVE_INFINITY;
           const baseIndex = baseIndexMap.has(option.id) ? baseIndexMap.get(option.id)! : Number.POSITIVE_INFINITY;
 
           return {
             option,
-            matches,
+            matches: allMatches,
+            boundaryMatches,
             matchScore,
             baseIndex,
           };
         })
-        .filter(({ matchScore, matches }) => matches.length > 0 && Number.isFinite(matchScore))
+        .filter(({ matchScore, boundaryMatches }) => boundaryMatches.length > 0 && Number.isFinite(matchScore))
         .sort((a, b) => {
           if (a.matchScore !== b.matchScore) return a.matchScore - b.matchScore;
           if (a.matches.length !== b.matches.length) return b.matches.length - a.matches.length;
           return a.baseIndex - b.baseIndex;
         })
-        .map(({ option }) => option);
+        .map(({ option, matches }) => {
+          addOption(option, matches);
+          return entryMap.get(option.id)!;
+        });
 
       prioritized = queryMatches;
     }
 
-    const final: ScopeShortcutOption[] = [];
-    const pushUnique = (option?: ScopeShortcutOption | null) => {
-      if (!option || !option.id) return;
-      if (final.some((existing) => existing.id === option.id)) return;
-      final.push(option);
+    const final: Array<{ option: ScopeShortcutOption; matchedWords: Set<string> }> = [];
+    const pushUnique = (entry?: { option: ScopeShortcutOption; matchedWords: Set<string> } | null) => {
+      if (!entry || !entry.option?.id) return;
+      if (final.some((existing) => existing.option.id === entry.option.id)) return;
+      final.push(entry);
     };
 
-    prioritized.forEach(pushUnique);
-    baseOrdered.forEach(pushUnique);
-    scopeShortcutOptions.forEach(pushUnique);
+    prioritized.forEach((entry) => pushUnique(entry));
+    baseOrdered.forEach((entry) => pushUnique(entry));
+    scopeShortcutOptions.forEach((opt) => pushUnique(entryMap.get(opt.id)));
 
-    return { recommended: final.slice(0, 10) };
-  }, [currentValueId, customFilters, includeAllFavorites, scopeShortcutOptions, shows, value]);
+    return {
+      recommended: final.slice(0, 10).map((entry) => ({
+        ...entry.option,
+        matchedWords: Array.from(entry.matchedWords),
+      })),
+    };
+  }, [currentValueId, customFilters, includeAllFavorites, scopeShortcutOptions, shows, stableQuery]);
 
   const hasInput = value.trim().length > 0;
   const { recommended: recommendedFilters } = filterMatchSections;
+  const [displayedRecommendations, setDisplayedRecommendations] = useState(recommendedFilters);
+
+  useEffect(() => {
+    if (isTyping && inputFocused) return;
+    if (inputFocused && value !== stableQuery) return;
+    setDisplayedRecommendations(recommendedFilters);
+  }, [inputFocused, isTyping, recommendedFilters, stableQuery, value]);
 
   const updateShortcutState = useCallback(
     (nextValue: string, selectionPosition?: number | null) => {
@@ -1394,6 +1455,33 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   useEffect(() => {
     updateShortcutState(value, lastSelectionRef.current);
   }, [updateShortcutState, value]);
+
+  useEffect(() => {
+    if (stableQueryTimeoutRef.current) {
+      clearTimeout(stableQueryTimeoutRef.current);
+    }
+    if (isTyping && inputFocused) {
+      return undefined;
+    }
+    const delay = inputFocused ? 1200 : 300;
+    stableQueryTimeoutRef.current = window.setTimeout(() => {
+      setStableQuery((prev) => (prev === value ? prev : value));
+    }, delay);
+    return () => {
+      if (stableQueryTimeoutRef.current) {
+        clearTimeout(stableQueryTimeoutRef.current);
+      }
+    };
+  }, [inputFocused, isTyping, value]);
+
+  useEffect(() => () => {
+    if (stableQueryTimeoutRef.current) {
+      clearTimeout(stableQueryTimeoutRef.current);
+    }
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1521,6 +1609,13 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       lastSelectionRef.current = selection;
       onValueChange(nextValue);
       updateShortcutState(nextValue, selection);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      setIsTyping(true);
+      typingTimeoutRef.current = window.setTimeout(() => {
+        setIsTyping(false);
+      }, 1200);
     },
     [onValueChange, updateShortcutState],
   );
@@ -1628,6 +1723,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     setInputFocused(false);
     shouldRestoreFocusRef.current = false;
     setShortcutState(null);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    setIsTyping(false);
   }, []);
 
   const handleRandomPointerDown = useCallback(() => {
@@ -1715,9 +1815,16 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     setHelpDialogOpen(false);
   };
 
-  const handleSwitchToFilter = useCallback((filterId: string) => {
+  const handleSwitchToFilter = useCallback((filterId: string, matchedWords?: string[]) => {
+    if (matchedWords && matchedWords.length > 0) {
+      const stripped = removeMatchedWords(value, matchedWords).trim();
+      if (stripped !== value) {
+        onValueChange(stripped);
+        onClarifySearch?.({ original: value, stripped });
+      }
+    }
     onSelectSeries(filterId);
-  }, [onSelectSeries]);
+  }, [onClarifySearch, onSelectSeries, onValueChange, value]);
 
   const currentSeriesOption = scopeShortcutOptions.find(opt => opt.id === currentValueId);
 
@@ -2066,10 +2173,10 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                 />
 
                 {/* Recommended filters */}
-                {recommendedFilters.map((match: any) => (
+                {displayedRecommendations.map((match: any) => (
                   <RecommendedFilterChip
                     key={match.id}
-                    onClick={() => handleSwitchToFilter(match.id)}
+                    onClick={() => handleSwitchToFilter(match.id, match.matchedWords)}
                     data-appearance={appearance}
                   >
                     {match.emoji && (

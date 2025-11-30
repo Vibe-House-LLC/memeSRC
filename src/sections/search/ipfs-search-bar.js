@@ -47,6 +47,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
   const [search, setSearch] = useState(() => sanitizeSearchValue(searchTerm));
   const latestSearchRef = useRef(search);
+  const latestOriginalQueryRef = useRef(sanitizeSearchValue(searchParams.get('originalQuery')).trim());
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
   const encodedSearchQuery = useMemo(
@@ -76,10 +77,12 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
   useEffect(() => {
     const normalized = sanitizeSearchValue(searchTerm);
+    const normalizedOriginal = sanitizeSearchValue(searchParams.get('originalQuery'));
     latestSearchRef.current = normalized;
+    latestOriginalQueryRef.current = normalizedOriginal.trim();
     setSearch(normalized);
     setSearchQuery(normalized);
-  }, [searchTerm, setSearchQuery]);
+  }, [searchParams, searchTerm, setSearchQuery]);
 
   useEffect(() => {
     latestSearchRef.current = search;
@@ -88,6 +91,23 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
   useEffect(() => {
     setSelectedFrameIndex(undefined);
   }, [params?.subtitleIndex, setSelectedFrameIndex]);
+
+  const buildSearchUrl = useCallback(
+    (cidValue, normalizedSearch) => {
+      const params = new URLSearchParams();
+      const trimmedSearch = sanitizeSearchValue(normalizedSearch).trim();
+      const effectiveOriginal = sanitizeSearchValue(latestOriginalQueryRef.current).trim();
+
+      if (trimmedSearch) params.set('searchTerm', trimmedSearch);
+      if (effectiveOriginal && effectiveOriginal !== trimmedSearch) {
+        params.set('originalQuery', effectiveOriginal);
+      }
+
+      const searchPart = params.toString();
+      return `/search/${cidValue}` + (searchPart ? `?${searchPart}` : '');
+    },
+    [],
+  );
 
   const handleSelectSeries = useCallback(
     (selectedId) => {
@@ -101,28 +121,44 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       }
 
       const nextCid = selectedId;
-      const liveSearch = latestSearchRef.current || '';
-      const encodedSearch = liveSearch ? encodeURIComponent(liveSearch) : '';
+      const liveSearch = sanitizeSearchValue(latestSearchRef.current || '').trim();
 
       if (pathname.split('/')[1] === 'search') {
-        navigate(`/search/${nextCid}/` + (encodedSearch ? `?searchTerm=${encodedSearch}` : ''));
+        navigate(buildSearchUrl(nextCid, liveSearch));
       }
 
       setCid(nextCid);
     },
-    [navigate, pathname, search, setCid],
+    [buildSearchUrl, navigate, pathname, setCid],
   );
 
   const handleClearSearch = useCallback(() => {
     latestSearchRef.current = '';
+    latestOriginalQueryRef.current = '';
     setSearch('');
   }, []);
 
   const handleSearchChange = useCallback((value) => {
     const nextValue = sanitizeSearchValue(value);
     latestSearchRef.current = nextValue;
+    latestOriginalQueryRef.current = '';
     setSearch(nextValue);
   }, []);
+
+  const handleClarifySearch = useCallback(
+    ({ original, stripped }) => {
+      const normalizedOriginal = sanitizeSearchValue(original).trim();
+      const normalizedStripped = sanitizeSearchValue(stripped).trim();
+
+      latestOriginalQueryRef.current = normalizedOriginal;
+      latestSearchRef.current = normalizedStripped;
+      setSearch(normalizedStripped);
+      setSearchQuery(normalizedStripped);
+
+      navigate(buildSearchUrl(resolvedCid, normalizedStripped));
+    },
+    [buildSearchUrl, navigate, resolvedCid, setSearchQuery],
+  );
 
   const handleSubmit = useCallback(
     (event) => {
@@ -144,11 +180,10 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       });
 
       setSearchQuery(normalizedSearch);
-      const encodedSearch = encodeURIComponent(normalizedSearch);
-      navigate(`/search/${selectedCidValue}/?searchTerm=${encodedSearch}`);
+      navigate(buildSearchUrl(selectedCidValue, normalizedSearch));
       return false;
     },
-    [navigate, resolvedCid, setSearchQuery, shows],
+    [buildSearchUrl, navigate, resolvedCid, setSearchQuery, shows],
   );
 
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
@@ -278,6 +313,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
                 includeAllFavorites={hasFavoriteShows}
                 onSelectSeries={handleSelectSeries}
                 appearance="dark"
+                onClarifySearch={handleClarifySearch}
               />
             </Box>
           </Container>
