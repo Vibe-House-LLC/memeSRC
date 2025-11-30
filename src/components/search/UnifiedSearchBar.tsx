@@ -848,7 +848,7 @@ const RecommendedFilterChip = styled(ButtonBase)(({ theme }) => ({
   cursor: 'pointer',
   color: 'rgba(20, 20, 20, 0.58)',
   opacity: 0.78,
-  transition: theme.transitions.create(['background-color', 'border-color', 'opacity', 'color', 'transform'], {
+  transition: theme.transitions.create(['background-color', 'border-color', 'opacity', 'color'], {
     duration: theme.transitions.duration.shorter,
   }),
   '& .suggestionEmoji': {
@@ -864,10 +864,6 @@ const RecommendedFilterChip = styled(ButtonBase)(({ theme }) => ({
     borderColor: 'rgba(0, 0, 0, 0.24)',
     color: 'rgba(20, 20, 20, 0.82)',
     opacity: 1,
-    transform: 'translateY(-1px)',
-  },
-  '&:active': {
-    transform: 'translateY(0)',
   },
   '&.Mui-focusVisible': {
     outline: `2px solid ${alpha(theme.palette.primary.main, 0.32)}`,

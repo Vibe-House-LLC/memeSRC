@@ -44,6 +44,8 @@ export interface SeriesItem {
   items?: string[]; // For custom filters
   emoji?: string;
   isFavorite?: boolean;
+  updatedAt?: string | null;
+  createdAt?: string | null;
   colorMain?: string;
   colorSecondary?: string;
 }
