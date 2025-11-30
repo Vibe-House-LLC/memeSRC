@@ -75,12 +75,12 @@ const ADVANCED_SYNTAX_TIPS = [
 
 
 const StyledCard = styled(Card)`
-  border: 3px solid transparent;
   box-sizing: border-box;
   position: relative;
+  transition: all 0.2s ease;
 
   &:hover {
-    border: 3px solid orange;
+    box-shadow: 0 0 0 3px orange, 0 4px 12px rgba(0, 0, 0, 0.2);
   }
 `;
 
@@ -789,16 +789,22 @@ export default function SearchPage() {
   );
   const allowFilterSuggestions = resolvedCid === '_universal' || resolvedCid === '_favorites';
   const filterMatchSections = useMemo(() => {
+    const excludedIds = new Set([resolvedCid].filter(Boolean));
+
+    // Only show filter suggestions when in universal/favorites scope AND has search query
     if (!allowFilterSuggestions || !hasSearchQuery) {
-      return { featured: [], recommended: [] };
+      return {
+        featured: [],
+        recommended: []
+      };
     }
+
     const normalizedQuery = normalizeShortcutText(normalizedSearchTerm);
     const normalizedQueryLoose = normalizeLooseText(normalizedSearchTerm);
     if (!normalizedQueryLoose) {
       return { featured: [], recommended: [] };
     }
     const queryWords = normalizedQueryLoose.split(/\s+/).filter(Boolean);
-    const excludedIds = new Set([resolvedCid, '_universal'].filter(Boolean));
     const candidates = scopeShortcutOptions
       .filter((option) => option?.id && !excludedIds.has(option.id))
       .map((option) => {
@@ -999,40 +1005,6 @@ export default function SearchPage() {
         </Grid>
       )}
 
-      {/* Back button */}
-      <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: 2 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(backPath)}
-          sx={{
-            color: 'rgba(255,255,255,0.5)',
-            textTransform: 'none',
-            fontWeight: 500,
-            fontSize: '0.85rem',
-            p: 0,
-            minWidth: 'auto',
-            '&:hover': {
-              color: 'rgba(255,255,255,0.8)',
-              backgroundColor: 'transparent',
-            }
-          }}
-        >
-          {backLabel}
-        </Button>
-      </Box>
-
-      {originalQuery && (
-        <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: 2 }}>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
-            {searchQuery ? (
-              <>Showing results for <b>{searchQuery}</b>. </>
-            ) : (
-              <>Showing all results. </>
-            )}
-            Search instead for <Link to={`/search/${resolvedCid}?searchTerm=${encodeURIComponent(originalQuery)}`} style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}><b>{originalQuery}</b></Link>?
-          </Typography>
-        </Box>
-      )}
 
       {/* Unified filter section - single scrollable line */}
       <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 2 }}>
@@ -1091,7 +1063,6 @@ export default function SearchPage() {
                     sx={{
                       textDecoration: 'none',
                       backgroundColor: cardBg,
-                      border: `2px solid ${cardFg}`,
                       borderRadius: '12px',
                       px: 1.5,
                       py: 0.6,
@@ -1101,10 +1072,9 @@ export default function SearchPage() {
                       whiteSpace: 'nowrap',
                       flexShrink: 0,
                       transition: 'all 0.2s',
-                      boxShadow: `0 2px 8px ${cardFg}20`,
+                      cursor: 'pointer',
                       '&:hover': {
-                        boxShadow: `0 2px 12px ${cardFg}30`,
-                        transform: 'translateY(-1px)',
+                        filter: 'brightness(1.1)',
                       },
                     }}
                   >
@@ -1116,7 +1086,7 @@ export default function SearchPage() {
                     <Typography variant="body2" sx={{ fontWeight: 700, color: cardFg, lineHeight: 1, fontSize: '0.85rem' }}>
                       {appliedOption.primary}
                     </Typography>
-                    <Close sx={{ fontSize: '0.9rem', color: cardFg, opacity: 0.8 }} />
+                    <Close sx={{ fontSize: '0.9rem', color: cardFg, opacity: 0.9 }} />
                   </Box>
                 );
               })()
@@ -1171,7 +1141,6 @@ export default function SearchPage() {
                       borderColor: 'rgba(255,255,255,0.3)',
                       borderStyle: 'solid',
                       opacity: 1,
-                      transform: 'translateY(-1px)',
                     },
                   }}
                 >
@@ -1190,28 +1159,38 @@ export default function SearchPage() {
         </Box>
       </Grid>
 
+      {originalQuery && (
+        <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: 2 }}>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
+            {searchQuery ? (
+              <>Showing results for <b>{searchQuery}</b>. </>
+            ) : (
+              <>Showing all results. </>
+            )}
+            Search instead for <Link to={`/search/${resolvedCid}?searchTerm=${encodeURIComponent(originalQuery)}`} style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}><b>{originalQuery}</b></Link>?
+          </Typography>
+        </Box>
+      )}
+
       {/* Featured filter suggestions as search-themed cards */}
       {featuredFilters.length > 0 && (
-        <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} mb={{ xs: 2, md: 0 }}>
+        <Grid container spacing={3} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} py={2} mb={3}>
           {featuredFilters.map((match) => {
             const cardBg = match.colorMain || '#0f172a';
             const cardFg = match.colorSecondary || '#f8fafc';
             const isLightText = cardFg && (cardFg.toLowerCase() === '#ffffff' || cardFg.toLowerCase() === '#fff' || cardFg.toLowerCase().includes('f8f') || cardFg.toLowerCase().includes('faf'));
 
             return (
-              <Grid item xs={12} sm={6} md={3} key={match.id}>
-                <Link to={`/${match.id}`} style={{ textDecoration: 'none' }}>
+              <Grid item xs={6} sm={6} md={3} key={match.id}>
+                <Link to={`/${match.id}`} style={{ textDecoration: 'none', display: 'block' }}>
                   <StyledCard sx={{
                     backgroundColor: cardBg,
-                    border: `1px solid ${cardFg}20`,
-                    '&:hover': {
-                      border: `3px solid ${cardFg}`,
-                    }
+                    height: '100%',
                   }}>
                     <Box sx={{
                       position: 'relative',
                       width: '100%',
-                      paddingBottom: { xs: '35%', md: '56.25%' },
+                      paddingBottom: { xs: '100%', sm: '75%', md: '56.25%' },
                       backgroundColor: cardBg,
                       display: 'flex',
                       alignItems: 'center',
@@ -1228,11 +1207,11 @@ export default function SearchPage() {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: { xs: 0.75, md: 1.5 },
-                        p: { xs: 1.5, md: 2 },
+                        gap: { xs: 1, md: 1.5 },
+                        p: 2,
                       }}>
                         <Typography sx={{
-                          fontSize: { xs: '2rem', md: '3.5rem' },
+                          fontSize: { xs: '2.5rem', sm: '3rem', md: '3.5rem' },
                           lineHeight: 1,
                           filter: isLightText ? 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))' : 'none',
                         }}>
@@ -1244,17 +1223,18 @@ export default function SearchPage() {
                             fontWeight: 800,
                             color: cardFg,
                             textAlign: 'center',
-                            fontSize: { xs: '0.85rem', md: '1.15rem' },
-                            lineHeight: { xs: 1.1, md: 1.2 },
+                            fontSize: { xs: '0.75rem', sm: '0.9rem', md: '1.05rem' },
+                            lineHeight: 1.2,
                             textShadow: isLightText
                               ? '0 1px 3px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2)'
                               : 'none',
-                            px: 0.5,
+                            px: 1,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             display: '-webkit-box',
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical',
+                            wordBreak: 'break-word',
                           }}
                         >
                           {match.primary}
@@ -1353,7 +1333,7 @@ export default function SearchPage() {
       )}
 
       {loadingResults ? (
-        <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} mt={1}>
+        <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} py={2}>
           {[...Array(RESULTS_PER_PAGE)].map((_, index) => (
             <Grid item xs={12} sm={6} md={3} key={index}>
               <StyledCard>
@@ -1420,7 +1400,7 @@ export default function SearchPage() {
                 }
                 scrollThreshold={0.90}
               >
-                <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
+                <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} py={2}>
                   {newResults.slice(0, displayedResults).map((result, index) => {
                     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
                     const isMediaLoaded = videoLoadedStates[resultId] || false;
