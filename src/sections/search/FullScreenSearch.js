@@ -129,6 +129,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const theme = useTheme();
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
   const { effectiveTheme } = useSearchSettings();
+  const searchInputRef = useRef(null);
 
   // Recent update indicator state
   const [feedSummary, setFeedSummary] = useState({ entries: [] });
@@ -409,6 +410,54 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   // Scroll to top when arriving at this page
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, [])
+
+  // Capture typing behavior - focus search input when user starts typing
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Skip if already focused on an input element
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement?.tagName === 'INPUT' ||
+        activeElement?.tagName === 'TEXTAREA' ||
+        activeElement?.isContentEditable;
+
+      if (isInputFocused) return;
+
+      // Skip modifier keys, special keys, and shortcuts
+      if (
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.key === 'Tab' ||
+        event.key === 'Escape' ||
+        event.key === 'Enter' ||
+        event.key === 'ArrowUp' ||
+        event.key === 'ArrowDown' ||
+        event.key === 'ArrowLeft' ||
+        event.key === 'ArrowRight' ||
+        event.key === 'Shift' ||
+        event.key === 'Control' ||
+        event.key === 'Alt' ||
+        event.key === 'Meta' ||
+        event.key.startsWith('F') // Function keys like F1, F2, etc.
+      ) {
+        return;
+      }
+
+      // Check if it's a typeable character (length of 1 for regular chars)
+      // This covers letters, numbers, symbols, etc.
+      if (event.key.length === 1) {
+        // Focus the search input
+        searchInputRef.current?.focus();
+        // Let the key event propagate naturally so it appears in the input
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [])
 
   // Theme States
@@ -1093,6 +1142,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                               includeAllFavorites={includeAllFavorites}
                               onSelectSeries={handleSelect}
                               appearance={unifiedSearchAppearance}
+                              inputRef={searchInputRef}
                             />
                           </Grid>
                         </Grid>

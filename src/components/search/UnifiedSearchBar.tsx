@@ -35,6 +35,7 @@ export interface UnifiedSearchBarProps {
   onSelectSeries: OnSelectSeries;
   appearance?: 'light' | 'dark';
   onClarifySearch?: (details: { original: string; stripped: string }) => void;
+  inputRef?: React.RefObject<HTMLInputElement>;
 }
 
 const FONT_FAMILY = 'Roboto, sans-serif';
@@ -1089,6 +1090,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   onSelectSeries,
   onClarifySearch,
   appearance: propAppearance = 'light',
+  inputRef: externalInputRef,
 }) => {
   const { groups } = useSearchFilterGroups();
   const { themePreference, setThemePreference, sizePreference, setSizePreference, effectiveTheme } = useSearchSettings();
@@ -1098,7 +1100,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const internalInputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = externalInputRef || internalInputRef;
   const shouldRestoreFocusRef = useRef(false);
   const helpDialogTitleId = useId();
   const helpDialogDescriptionId = useId();
