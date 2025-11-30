@@ -8,7 +8,6 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
-import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import CloseIcon from '@mui/icons-material/Close';
 import { Shuffle as ShuffleIcon, Settings as SettingsIcon, Sun as SunIcon, Moon as MoonIcon, Minimize2 as MinimizeIcon, Maximize2 as MaximizeIcon, Monitor as MonitorIcon } from 'lucide-react';
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
@@ -2175,17 +2174,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     </CurrentFilterChip>
                   )}
                 </Box>
-
-                <SwapHorizRoundedIcon
-                  aria-hidden
-                  sx={{
-                    fontSize: 18,
-                    color: appearance === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)',
-                    opacity: 0.8,
-                    flexShrink: 0,
-                    alignSelf: 'center',
-                  }}
-                />
 
                 {/* Recommended filters */}
                 {displayedRecommendations.map((match: any) => (
