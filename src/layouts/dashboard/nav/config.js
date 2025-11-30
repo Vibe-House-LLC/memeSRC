@@ -48,8 +48,6 @@ const navConfig = [
         path: '/collage',
         externalLink: false,
         icon: <PhotoLibrary />,
-        chipText: 'UPDATED',
-        chipColor: 'info',
       },
       {
         title: 'edit',
@@ -126,8 +124,6 @@ const navConfig = [
         path: '/support',
         externalLink: false,
         icon: <SupportAgent />,
-        chipText: 'Pro',
-        chipColor: 'info',
       },
       {
         title: 'FAQs',
@@ -183,6 +179,10 @@ const navConfig = [
         path: '/dashboard/frame-totals',
         externalLink: false,
         icon: <Functions />,
+        title: 'User Content Review',
+        path: '/dashboard/user-content-review',
+        externalLink: false,
+        icon: <Shield />,
       },
       {
         title: 'Website Settings',
