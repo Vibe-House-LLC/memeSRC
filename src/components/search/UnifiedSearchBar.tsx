@@ -802,7 +802,6 @@ const ShortcutSwitchButton = styled('div')(({ theme }) => ({
 }));
 
 const ScrollableFiltersBox = styled(Box)(({ theme }) => ({
-  position: 'relative',
   display: 'flex',
   gap: theme.spacing(0.75),
   overflowX: 'auto',
@@ -810,32 +809,21 @@ const ScrollableFiltersBox = styled(Box)(({ theme }) => ({
   WebkitOverflowScrolling: 'touch',
   scrollbarWidth: 'none',
   msOverflowStyle: 'none',
+  maskImage: 'linear-gradient(90deg, black 0%, black calc(100% - 80px), transparent 100%)',
+  WebkitMaskImage: 'linear-gradient(90deg, black 0%, black calc(100% - 80px), transparent 100%)',
   '&::-webkit-scrollbar': {
     display: 'none',
   },
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: '40px',
-    background: 'linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(242, 242, 242, 0.94) 100%)',
-    pointerEvents: 'none',
-    zIndex: 1,
-  },
-  '&[data-appearance="dark"]::after': {
-    background: 'linear-gradient(90deg, rgba(30, 30, 32, 0) 0%, rgba(30, 30, 32, 0.96) 100%)',
-  },
   [theme.breakpoints.down('sm')]: {
     gap: theme.spacing(0.5),
-    '&::after': {
-      width: '30px',
-    },
-    '&[data-appearance="dark"]::after': {
-      background: 'linear-gradient(90deg, rgba(28, 28, 30, 0) 0%, rgba(28, 28, 30, 0.96) 100%)',
-    },
+    maskImage: 'linear-gradient(90deg, black 0%, black calc(100% - 60px), transparent 100%)',
+    WebkitMaskImage: 'linear-gradient(90deg, black 0%, black calc(100% - 60px), transparent 100%)',
   },
+}));
+
+const ScrollableFiltersWrapper = styled(Box)(({ theme }) => ({
+  flex: 1,
+  minWidth: 0,
 }));
 
 const CurrentFilterChip = styled(ButtonBase)(({ theme }) => ({
@@ -2116,7 +2104,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
               </Box>
 
               {/* Scrollable area - includes current filter on mobile */}
-              <ScrollableFiltersBox ref={filtersScrollRef} data-appearance={appearance}>
+              <ScrollableFiltersWrapper data-appearance={appearance}>
+                <ScrollableFiltersBox ref={filtersScrollRef}>
                 {/* Current filter on mobile only */}
                 <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
                   {currentValueId && currentValueId !== '_universal' && currentSeriesOption ? (
@@ -2229,7 +2218,8 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     </Typography>
                   </RecommendedFilterChip>
                 ))}
-              </ScrollableFiltersBox>
+                </ScrollableFiltersBox>
+              </ScrollableFiltersWrapper>
             </Box>
 
             <RailRight>
