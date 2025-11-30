@@ -1,7 +1,7 @@
 // V2SearchPage.js
 
-import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Link as MuiLink, Collapse, Container } from '@mui/material';
+import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Collapse } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -21,13 +21,11 @@ import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 import Page404 from './Page404';
+import { useSearchSettings } from '../contexts/SearchSettingsContext';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CancelIcon from '@mui/icons-material/Cancel';
-import Close from '@mui/icons-material/Close';
-import FilterList from '@mui/icons-material/FilterList';
 
 const ADVANCED_SYNTAX_TIPS = [
   {
@@ -145,149 +143,6 @@ const BottomCardLabel = styled.div`
   text-align: left;
 `;
 
-const normalizeShortcutText = (input = '') =>
-  String(input ?? '')
-    .toLowerCase()
-    .trim()
-    .replace(/^the\s+/, '')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '');
-
-const normalizeLooseText = (input = '') =>
-  normalizeShortcutText(input)
-    .replace(/[^\p{Letter}\p{Number}\s]/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const removeMatchedWords = (query, matchedWords) => {
-  if (!query || !matchedWords || matchedWords.length === 0) return query;
-  const words = query.split(/\s+/);
-  const remaining = words.filter(word => {
-    const norm = normalizeLooseText(word);
-    return !matchedWords.includes(norm);
-  });
-  return remaining.join(' ');
-};
-
-const buildShortcutTokens = (...values) => {
-  const tokens = [];
-  values.forEach((value) => {
-    if (!value) return;
-    if (Array.isArray(value)) {
-      value.forEach((item) => {
-        const normalized = normalizeShortcutText(item);
-        if (normalized) tokens.push(normalized);
-      });
-      return;
-    }
-    const normalized = normalizeShortcutText(value);
-    if (normalized) tokens.push(normalized);
-  });
-  return Array.from(new Set(tokens));
-};
-
-const evaluateShortcutScore = (tokens, query) => {
-  if (!Array.isArray(tokens) || tokens.length === 0) return Number.POSITIVE_INFINITY;
-  const normalizedQuery = normalizeShortcutText(query);
-  if (!normalizedQuery) return Number.POSITIVE_INFINITY;
-  let best = Number.POSITIVE_INFINITY;
-  tokens.forEach((token) => {
-    if (!token) return;
-    if (token === normalizedQuery) {
-      best = Math.min(best, 0);
-      return;
-    }
-    if (token.startsWith(normalizedQuery)) {
-      best = Math.min(best, 1);
-      return;
-    }
-    const index = token.indexOf(normalizedQuery);
-    if (index >= 0) {
-      best = Math.min(best, 2 + index / 100);
-    }
-  });
-  return best;
-};
-
-const buildScopeShortcutOptions = (shows = [], groups = [], includeAllFavorites = false) => {
-  const map = new Map();
-
-  const upsert = (option) => {
-    if (!option?.id || !option?.primary) return;
-    map.set(option.id, option);
-  };
-
-  shows.forEach((show) => {
-    if (!show?.id) return;
-    const label = show.title || show.name;
-    if (!label) return;
-    upsert({
-      id: show.id,
-      primary: label,
-      secondary: 'Show',
-      emoji: show.emoji?.trim(),
-      colorMain: show.colorMain,
-      colorSecondary: show.colorSecondary,
-      tokens: buildShortcutTokens(label, show.name, show.id, show.slug, show.cleanTitle),
-      rank: 3,
-    });
-  });
-
-  groups.forEach((group) => {
-    if (!group?.id) return;
-    const label = group.name;
-    if (!label) return;
-    let parsed = {};
-    try {
-      parsed = JSON.parse(group.filters || '{}');
-    } catch {
-      parsed = {};
-    }
-    upsert({
-      id: group.id,
-      primary: label,
-      secondary: 'Custom filter',
-      emoji: parsed.emoji || '📁',
-      colorMain: parsed.colorMain,
-      colorSecondary: parsed.colorSecondary,
-      // Only allow direct filter names/ids to match mentions so internal raw indexes do not trigger suggestions.
-      tokens: buildShortcutTokens(label, group.id),
-      rank: 2,
-    });
-  });
-
-  if (includeAllFavorites) {
-    upsert({
-      id: '_favorites',
-      primary: 'All Favorites',
-      secondary: 'Every saved favorite quote',
-      emoji: '⭐',
-      colorMain: '#111827',
-      colorSecondary: '#fde68a',
-      tokens: buildShortcutTokens('favorites', 'favorite', 'fav', 'all favorites'),
-      rank: 1,
-    });
-  }
-
-  upsert({
-    id: '_universal',
-    primary: 'All Shows & Movies',
-    secondary: 'Entire catalog',
-    emoji: '🌈',
-    colorMain: '#0f172a',
-    colorSecondary: '#38bdf8',
-    tokens: buildShortcutTokens('all', 'everything', 'universal', 'movies', 'shows'),
-    rank: 0,
-  });
-
-  return Array.from(map.values()).sort((a, b) => {
-    if (a.rank !== b.rank) return a.rank - b.rank;
-    return a.primary.localeCompare(b.primary);
-  });
-};
-
-const MENTION_RESULT_LIMIT = 6;
-
 const SearchResultMedia = ({
   result,
   resultId,
@@ -383,6 +238,9 @@ export default function SearchPage() {
   const location = useLocation();
 
   const { user, shows } = useContext(UserContext);
+  const { sizePreference, setSizePreference } = useSearchSettings();
+  const initialSizePreferenceRef = useRef(sizePreference);
+  const latestSizePreferenceRef = useRef(sizePreference);
 
   const RESULTS_PER_PAGE = 8;
 
@@ -479,6 +337,24 @@ export default function SearchPage() {
   const [autoplay] = useState(true);
   const [customFilterNotFound, setCustomFilterNotFound] = useState(false);
   const [showTips, setShowTips] = useState(false);
+  useEffect(() => {
+    latestSizePreferenceRef.current = sizePreference;
+  }, [sizePreference]);
+
+  // Keep the unified search bar large on the search page and restore the previous preference on exit if unchanged.
+  useEffect(() => {
+    if (initialSizePreferenceRef.current !== 'large') {
+      setSizePreference('large');
+    }
+    return () => {
+      if (
+        initialSizePreferenceRef.current !== 'large' &&
+        latestSizePreferenceRef.current === 'large'
+      ) {
+        setSizePreference(initialSizePreferenceRef.current);
+      }
+    };
+  }, [setSizePreference]);
 
   const videoRefs = useRef([]);
   const latestSearchKeyRef = useRef('');
@@ -779,202 +655,7 @@ export default function SearchPage() {
 
 
   const [indexFilterQuery, setIndexFilterQuery] = useState('');
-  const includeAllFavorites = useMemo(
-    () => Array.isArray(shows) && shows.some((show) => show?.isFavorite),
-    [shows],
-  );
-  const scopeShortcutOptions = useMemo(
-    () => buildScopeShortcutOptions(shows || [], groups || [], includeAllFavorites),
-    [shows, groups, includeAllFavorites],
-  );
-  const allowFilterSuggestions = resolvedCid === '_universal' || resolvedCid === '_favorites';
-  const filterMatchSections = useMemo(() => {
-    const excludedIds = new Set([resolvedCid].filter(Boolean));
-
-    // Only show filter suggestions when in universal/favorites scope AND has search query
-    if (!allowFilterSuggestions || !hasSearchQuery) {
-      return {
-        featured: [],
-        recommended: []
-      };
-    }
-
-    const normalizedQuery = normalizeShortcutText(normalizedSearchTerm);
-    const normalizedQueryLoose = normalizeLooseText(normalizedSearchTerm);
-    if (!normalizedQueryLoose) {
-      return { featured: [], recommended: [] };
-    }
-    const queryWords = normalizedQueryLoose.split(/\s+/).filter(Boolean);
-    const candidates = scopeShortcutOptions
-      .filter((option) => option?.id && !excludedIds.has(option.id))
-      .map((option) => {
-        const normalizedPrimary = normalizeShortcutText(option.primary);
-        const normalizedPrimaryLoose = normalizeLooseText(option.primary);
-        const optionTokens = Array.isArray(option.tokens) ? option.tokens : [];
-        const optionLooseTokens = [
-          normalizedPrimaryLoose,
-          ...optionTokens.map(normalizeLooseText),
-        ].filter(Boolean);
-
-        const exactNameMatch =
-          (normalizedPrimaryLoose && normalizedPrimaryLoose === normalizedQueryLoose) ||
-          optionLooseTokens.includes(normalizedQueryLoose);
-
-        const containedNameMatch =
-          !exactNameMatch &&
-          normalizedPrimaryLoose &&
-          (normalizedQueryLoose.includes(normalizedPrimaryLoose) ||
-            optionLooseTokens.some((token) => normalizedQueryLoose.includes(token)));
-
-        const matchedWords = queryWords.filter((word) =>
-          optionLooseTokens.some((token) => {
-            const tokenWords = token.split(/\s+/);
-            return tokenWords.some(
-              (tokenWord) =>
-                tokenWord === word ||
-                tokenWord.startsWith(word) ||
-                word.startsWith(tokenWord)
-            );
-          })
-        );
-        const unmatchedWordsCount = Math.max(queryWords.length - matchedWords.length, 0);
-
-        const score = evaluateShortcutScore(option.tokens, normalizedQuery);
-        return {
-          option,
-          score,
-          exactNameMatch,
-          containedNameMatch,
-          unmatchedWordsCount,
-          matchedWords,
-        };
-      })
-      .filter(
-        ({ score, exactNameMatch, containedNameMatch, unmatchedWordsCount }) =>
-          exactNameMatch || containedNameMatch || unmatchedWordsCount < queryWords.length || Number.isFinite(score)
-      );
-
-    const sortByPriority = (a, b) => {
-      // Featured intent first: exact, then fewer unmatched words, then contained, then score/rank/name
-      if (a.exactNameMatch !== b.exactNameMatch) return a.exactNameMatch ? -1 : 1;
-      if (a.unmatchedWordsCount !== b.unmatchedWordsCount) return a.unmatchedWordsCount - b.unmatchedWordsCount;
-      if (a.containedNameMatch !== b.containedNameMatch) return a.containedNameMatch ? -1 : 1;
-      if (a.score !== b.score) return a.score - b.score;
-      const rankA = Number.isFinite(a.option.rank) ? a.option.rank : Number.POSITIVE_INFINITY;
-      const rankB = Number.isFinite(b.option.rank) ? b.option.rank : Number.POSITIVE_INFINITY;
-      if (rankA !== rankB) return rankA - rankB;
-      return (a.option.primary || '').localeCompare(b.option.primary || '');
-    };
-
-    candidates.sort(sortByPriority);
-
-    const featured = candidates
-      .filter((c) => c.unmatchedWordsCount === 0)
-      .slice(0, 3)
-      .map((c) => ({ ...c.option, matchedWords: c.matchedWords }));
-    const recommended = candidates
-      .filter((c) => c.unmatchedWordsCount > 0)
-      .sort((a, b) => {
-        if (a.containedNameMatch !== b.containedNameMatch) return a.containedNameMatch ? -1 : 1;
-        return sortByPriority(a, b);
-      })
-      .slice(0, 4)
-      .map((c) => ({ ...c.option, matchedWords: c.matchedWords }));
-
-    return { featured, recommended };
-  }, [allowFilterSuggestions, hasSearchQuery, normalizedSearchTerm, scopeShortcutOptions, resolvedCid]);
-  const { featured: featuredFilters, recommended: recommendedFilters } = filterMatchSections;
-
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-
-  const mentionMatches = useMemo(() => {
-    if (typeof searchQuery !== 'string' || !searchQuery.includes('@')) {
-      return [];
-    }
-    const mentionRegex = /(^|\s)@([^\s]+)/g;
-    const matches = [];
-    let match;
-    while ((match = mentionRegex.exec(searchQuery)) !== null) {
-      matches.push({
-        fullMatch: match[0],
-        query: match[2],
-        index: match.index,
-        length: match[0].length
-      });
-    }
-    return matches;
-  }, [searchQuery]);
-
-  const resolvedMentions = useMemo(() => {
-    if (mentionMatches.length === 0) return [];
-
-    const resolved = [];
-    mentionMatches.forEach((match) => {
-      const normalizedQuery = normalizeShortcutText(match.query);
-      if (!normalizedQuery) return;
-
-      const bestMatch = scopeShortcutOptions
-        .map((option) => ({
-          option,
-          score: evaluateShortcutScore(option.tokens, normalizedQuery),
-        }))
-        .filter(({ score }) => Number.isFinite(score) && score < 2)
-        .sort((a, b) => {
-          if (a.score !== b.score) return a.score - b.score;
-          return a.option.rank - b.option.rank;
-        })[0];
-
-      if (bestMatch) {
-        resolved.push({
-          match,
-          option: bestMatch.option,
-        });
-      }
-    });
-    return resolved;
-  }, [mentionMatches, scopeShortcutOptions]);
-
-  const handleApplyFilters = useCallback(() => {
-    const ids = new Set();
-    let hasUniversal = false;
-    resolvedMentions.forEach(({ option }) => {
-      if (option.id === '_favorites') {
-        if (Array.isArray(shows)) {
-          shows.filter((s) => s.isFavorite).forEach((s) => ids.add(s.id));
-        }
-      } else if (option.secondary === 'Custom filter') {
-        const group = groups.find((g) => g.id === option.id);
-        if (group) {
-          try {
-            const parsed = JSON.parse(group.filters || '{}');
-            if (Array.isArray(parsed.items)) {
-              parsed.items.forEach((id) => ids.add(id));
-            }
-          } catch (e) {
-            console.error('Error parsing group filters', e);
-          }
-        }
-      } else if (option.id === '_universal') {
-        hasUniversal = true;
-      } else {
-        ids.add(option.id);
-      }
-    });
-
-    let nextQuery = searchQuery;
-    resolvedMentions.forEach(({ match }) => {
-      nextQuery = nextQuery.replace(match.fullMatch, '');
-    });
-    nextQuery = nextQuery.replace(/\s{2,}/g, ' ').trim();
-
-    const joinedIds = Array.from(ids).join(',');
-    const searchParam = nextQuery ? `?searchTerm=${encodeURIComponent(nextQuery)}` : '';
-    if (joinedIds) {
-      navigate(`/search/${joinedIds}${searchParam}`);
-    } else if (hasUniversal) {
-      navigate(`/search/_universal${searchParam}`);
-    }
-  }, [resolvedMentions, searchQuery, shows, groups, navigate]);
 
   const handleIndexFilterChange = (event) => {
     setIndexFilterQuery(event.target.value);
@@ -1006,159 +687,6 @@ export default function SearchPage() {
       )}
 
 
-      {/* Unified filter section - single scrollable line */}
-      <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 2 }}>
-        <Box sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          borderRadius: 1.5,
-          border: '1px solid rgba(255,255,255,0.08)',
-          backgroundColor: 'rgba(255,255,255,0.02)',
-          px: 1.5,
-          py: 1.25,
-        }}>
-          {/* Icon indicator - fixed */}
-          <Box sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 28,
-            height: 28,
-            borderRadius: 1,
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            flexShrink: 0,
-          }}>
-            <FilterList sx={{ fontSize: '1rem', color: 'rgba(255,255,255,0.6)' }} />
-          </Box>
-
-          {/* Scrollable filter chips */}
-          <Box sx={{
-            display: 'flex',
-            gap: 0.75,
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
-            scrollbarWidth: 'none', // Firefox
-            msOverflowStyle: 'none', // IE/Edge
-            '&::-webkit-scrollbar': {
-              display: 'none', // Chrome, Safari, Opera
-            },
-          }}>
-            {/* Current filter - prominent styling */}
-            {resolvedCid && resolvedCid !== '_universal' ? (
-              (() => {
-                const appliedOption = scopeShortcutOptions.find(opt => opt.id === resolvedCid);
-                if (!appliedOption) return null;
-
-                const cardBg = appliedOption.colorMain || '#0f172a';
-                const cardFg = appliedOption.colorSecondary || '#f8fafc';
-
-                return (
-                  <Box
-                    key="applied-filter"
-                    component={Link}
-                    to={`/search/_universal?searchTerm=${encodeURIComponent(searchQuery || '')}`}
-                    sx={{
-                      textDecoration: 'none',
-                      backgroundColor: cardBg,
-                      borderRadius: '12px',
-                      px: 1.5,
-                      py: 0.6,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.6,
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      transition: 'all 0.2s',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        filter: 'brightness(1.1)',
-                      },
-                    }}
-                  >
-                    {appliedOption.emoji && (
-                      <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
-                        {appliedOption.emoji}
-                      </Typography>
-                    )}
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: cardFg, lineHeight: 1, fontSize: '0.85rem' }}>
-                      {appliedOption.primary}
-                    </Typography>
-                    <Close sx={{ fontSize: '0.9rem', color: cardFg, opacity: 0.9 }} />
-                  </Box>
-                );
-              })()
-            ) : (
-              <Box
-                sx={{
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  border: '2px solid rgba(255,255,255,0.2)',
-                  borderRadius: '12px',
-                  px: 1.5,
-                  py: 0.6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.6,
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                }}
-              >
-                <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
-                  🌈
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.9)', lineHeight: 1, fontSize: '0.85rem' }}>
-                  All Shows & Movies
-                </Typography>
-              </Box>
-            )}
-
-            {/* Recommended filters - subtle styling */}
-            {recommendedFilters.map((match) => {
-              return (
-                <Box
-                  key={match.id}
-                  component={Link}
-                  to={`/search/${match.id}?searchTerm=${encodeURIComponent(removeMatchedWords(searchQuery || '', match.matchedWords))}&originalQuery=${encodeURIComponent(searchQuery || '')}`}
-                  sx={{
-                    textDecoration: 'none',
-                    backgroundColor: 'rgba(255,255,255,0.03)',
-                    border: '1px dashed rgba(255,255,255,0.15)',
-                    borderRadius: '12px',
-                    px: 1.5,
-                    py: 0.6,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.6,
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    transition: 'all 0.2s',
-                    opacity: 0.7,
-                    '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.06)',
-                      borderColor: 'rgba(255,255,255,0.3)',
-                      borderStyle: 'solid',
-                      opacity: 1,
-                    },
-                  }}
-                >
-                  {match.emoji && (
-                    <Typography sx={{ fontSize: '0.9rem', lineHeight: 1, opacity: 0.8 }}>
-                      {match.emoji}
-                    </Typography>
-                  )}
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: 'rgba(255,255,255,0.7)', lineHeight: 1, fontSize: '0.8rem' }}>
-                    {match.primary}
-                  </Typography>
-                </Box>
-              );
-            })}
-          </Box>
-        </Box>
-      </Grid>
-
       {originalQuery && (
         <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: 2 }}>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
@@ -1170,166 +698,6 @@ export default function SearchPage() {
             Search instead for <Link to={`/search/${resolvedCid}?searchTerm=${encodeURIComponent(originalQuery)}`} style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}><b>{originalQuery}</b></Link>?
           </Typography>
         </Box>
-      )}
-
-      {/* Featured filter suggestions as search-themed cards */}
-      {featuredFilters.length > 0 && (
-        <Grid container spacing={3} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} py={2} mb={3}>
-          {featuredFilters.map((match) => {
-            const cardBg = match.colorMain || '#0f172a';
-            const cardFg = match.colorSecondary || '#f8fafc';
-            const isLightText = cardFg && (cardFg.toLowerCase() === '#ffffff' || cardFg.toLowerCase() === '#fff' || cardFg.toLowerCase().includes('f8f') || cardFg.toLowerCase().includes('faf'));
-
-            return (
-              <Grid item xs={6} sm={6} md={3} key={match.id}>
-                <Link to={`/${match.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                  <StyledCard sx={{
-                    backgroundColor: cardBg,
-                    height: '100%',
-                  }}>
-                    <Box sx={{
-                      position: 'relative',
-                      width: '100%',
-                      paddingBottom: { xs: '100%', sm: '75%', md: '56.25%' },
-                      backgroundColor: cardBg,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden',
-                    }}>
-                      <Box sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: { xs: 1, md: 1.5 },
-                        p: 2,
-                      }}>
-                        <Typography sx={{
-                          fontSize: { xs: '2.5rem', sm: '3rem', md: '3.5rem' },
-                          lineHeight: 1,
-                          filter: isLightText ? 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))' : 'none',
-                        }}>
-                          {match.emoji || '📁'}
-                        </Typography>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontWeight: 800,
-                            color: cardFg,
-                            textAlign: 'center',
-                            fontSize: { xs: '0.75rem', sm: '0.9rem', md: '1.05rem' },
-                            lineHeight: 1.2,
-                            textShadow: isLightText
-                              ? '0 1px 3px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2)'
-                              : 'none',
-                            px: 1,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {match.primary}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <BottomCardLabel>
-                      <Chip
-                        size="small"
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                            <span style={{ fontSize: '0.7rem' }}>{match.emoji || '📁'}</span>
-                            <span style={{ fontSize: '0.7rem' }}>{match.primary}</span>
-                          </Box>
-                        }
-                        sx={{
-                          backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                          color: 'white',
-                          fontWeight: 'bold',
-                          backdropFilter: 'blur(4px)',
-                          maxWidth: '100%',
-                          height: 'auto',
-                          minHeight: 18,
-                          '& .MuiChip-label': {
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            px: 0.5,
-                            py: 0.2,
-                          }
-                        }}
-                      />
-                    </BottomCardLabel>
-                  </StyledCard>
-                </Link>
-              </Grid>
-            );
-          })}
-        </Grid>
-      )}
-
-      {resolvedMentions.length > 0 && (
-        <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 2 }}>
-          <Box
-            sx={{
-              borderRadius: 1.5,
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              p: 1.5,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 1.5,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 600, fontSize: '0.8rem' }}>
-                Filter to:
-              </Typography>
-              {resolvedMentions.map(({ option }, index) => (
-                <React.Fragment key={index}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.9rem' }}>
-                    {option.emoji && <span>{option.emoji}</span>}
-                    {option.primary}
-                  </Typography>
-                  {index < resolvedMentions.length - 1 && (
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem' }}>+</Typography>
-                  )}
-                </React.Fragment>
-              ))}
-            </Box>
-            <Button
-              onClick={handleApplyFilters}
-              variant="outlined"
-              size="small"
-              sx={{
-                borderColor: 'rgba(255,255,255,0.3)',
-                color: '#fff',
-                fontWeight: 600,
-                textTransform: 'none',
-                fontSize: '0.85rem',
-                px: 2,
-                py: 0.5,
-                borderRadius: 1,
-                '&:hover': {
-                  borderColor: 'rgba(255,255,255,0.5)',
-                  backgroundColor: 'rgba(255,255,255,0.05)',
-                },
-              }}
-            >
-              Apply
-            </Button>
-          </Box>
-        </Grid>
       )}
 
       {loadingResults ? (

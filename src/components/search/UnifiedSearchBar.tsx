@@ -8,7 +8,7 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
-import FilterListIcon from '@mui/icons-material/FilterList';
+import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import CloseIcon from '@mui/icons-material/Close';
 import { Shuffle as ShuffleIcon, Settings as SettingsIcon, Sun as SunIcon, Moon as MoonIcon, Minimize2 as MinimizeIcon, Maximize2 as MaximizeIcon, Monitor as MonitorIcon } from 'lucide-react';
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
@@ -836,28 +836,58 @@ const CurrentFilterChip = styled(ButtonBase)(({ theme }) => ({
 
 const RecommendedFilterChip = styled(ButtonBase)(({ theme }) => ({
   textDecoration: 'none',
-  backgroundColor: 'rgba(0, 0, 0, 0.03)',
-  border: '1px dashed rgba(0, 0, 0, 0.15)',
+  backgroundColor: 'rgba(0, 0, 0, 0.01)',
+  border: '1px dashed rgba(0, 0, 0, 0.1)',
   borderRadius: '12px',
-  padding: theme.spacing(0.6, 1.5),
+  padding: theme.spacing(0.55, 1.25),
   display: 'inline-flex',
   alignItems: 'center',
   gap: theme.spacing(0.6),
   whiteSpace: 'nowrap',
   flexShrink: 0,
   cursor: 'pointer',
+  color: 'rgba(20, 20, 20, 0.58)',
+  opacity: 0.78,
+  transition: theme.transitions.create(['background-color', 'border-color', 'opacity', 'color', 'transform'], {
+    duration: theme.transitions.duration.shorter,
+  }),
+  '& .suggestionEmoji': {
+    opacity: 0.58,
+    color: 'inherit',
+  },
+  '& .suggestionLabel': {
+    color: 'inherit',
+    opacity: 0.92,
+  },
   '&:hover': {
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.24)',
+    color: 'rgba(20, 20, 20, 0.82)',
+    opacity: 1,
+    transform: 'translateY(-1px)',
+  },
+  '&:active': {
+    transform: 'translateY(0)',
+  },
+  '&.Mui-focusVisible': {
+    outline: `2px solid ${alpha(theme.palette.primary.main, 0.32)}`,
+    outlineOffset: 2,
   },
   '&[data-appearance="dark"]': {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    border: '1px dashed rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    border: '1px dashed rgba(255, 255, 255, 0.12)',
+    color: 'rgba(245, 245, 245, 0.64)',
+    '& .suggestionEmoji': {
+      opacity: 0.68,
+    },
     '&:hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: 'rgba(255, 255, 255, 0.07)',
+      borderColor: 'rgba(255, 255, 255, 0.24)',
+      color: 'rgba(250, 250, 250, 0.9)',
     },
   },
   [theme.breakpoints.down('sm')]: {
-    padding: theme.spacing(0.5, 0.9),
+    padding: theme.spacing(0.45, 0.85),
     gap: theme.spacing(0.4),
     borderRadius: '10px',
   },
@@ -927,6 +957,13 @@ const removeMatchedWords = (query: string, matchedWords: string[]): string => {
     return !matchedWords.includes(norm);
   });
   return remaining.join(' ');
+};
+
+const coerceTimestamp = (value: unknown): number => {
+  if (!value) return 0;
+  const date = new Date(value as any);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : 0;
 };
 
 const buildShortcutTokens = (...values: Array<string | string[] | undefined | null>): string[] => {
@@ -1230,6 +1267,14 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         if (includeAllFavorites) {
           const favorites = scopeShortcutOptions.find(opt => opt.id === '_favorites');
           if (favorites) suggestions.push(favorites);
+        } else {
+          const recentShows = (shows || [])
+            .slice()
+            .sort((a, b) => coerceTimestamp(b?.updatedAt || (b as any)?.createdAt) - coerceTimestamp(a?.updatedAt || (a as any)?.createdAt))
+            .slice(0, 10)
+            .map(show => scopeShortcutOptions.find(opt => opt.id === show.id))
+            .filter((opt): opt is NonNullable<typeof opt> => Boolean(opt) && !excludedIds.has(opt.id));
+          suggestions.push(...recentShows);
         }
       }
 
@@ -2025,6 +2070,17 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   )}
                 </Box>
 
+                <SwapHorizRoundedIcon
+                  aria-hidden
+                  sx={{
+                    fontSize: 18,
+                    color: appearance === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)',
+                    opacity: 0.8,
+                    flexShrink: 0,
+                    alignSelf: 'center',
+                  }}
+                />
+
                 {/* Recommended filters */}
                 {recommendedFilters.map((match: any) => (
                   <RecommendedFilterChip
@@ -2033,15 +2089,18 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     data-appearance={appearance}
                   >
                     {match.emoji && (
-                      <Typography sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem' }, lineHeight: 1, opacity: 0.8 }}>
+                      <Typography
+                        className="suggestionEmoji"
+                        sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem' }, lineHeight: 1 }}
+                      >
                         {match.emoji}
                       </Typography>
                     )}
                     <Typography
                       variant="body2"
+                      className="suggestionLabel"
                       sx={{
                         fontWeight: 500,
-                        color: appearance === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
                         lineHeight: 1,
                         fontSize: { xs: '0.72rem', sm: '0.8rem' }
                       }}
