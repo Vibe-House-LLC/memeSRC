@@ -27,6 +27,7 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CancelIcon from '@mui/icons-material/Cancel';
 import Close from '@mui/icons-material/Close';
+import FilterList from '@mui/icons-material/FilterList';
 
 const ADVANCED_SYNTAX_TIPS = [
   {
@@ -1033,149 +1034,159 @@ export default function SearchPage() {
         </Box>
       )}
 
-      {/* Unified filter section */}
+      {/* Unified filter section - single scrollable line */}
       <Grid item xs={12} sx={{ px: { xs: 2, md: 6 }, mb: 2 }}>
         <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
           borderRadius: 1.5,
           border: '1px solid rgba(255,255,255,0.08)',
           backgroundColor: 'rgba(255,255,255,0.02)',
-          overflow: 'hidden',
+          px: 1.5,
+          py: 1.25,
         }}>
-          {/* Current filter */}
+          {/* Icon indicator - fixed */}
           <Box sx={{
-            px: 1.5,
-            py: 1.25,
-            backgroundColor: 'rgba(255,255,255,0.03)',
-            borderBottom: recommendedFilters.length > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 28,
+            height: 28,
+            borderRadius: 1,
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            flexShrink: 0,
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Box sx={{
-                backgroundColor: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 1.5,
-                px: 1.25,
-                py: 0.5,
-              }}>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1 }}>
-                  {resolvedCid && resolvedCid !== '_universal' && resolvedCid !== '_favorites' ? 'Filtering' : 'Searching'}
+            <FilterList sx={{ fontSize: '1rem', color: 'rgba(255,255,255,0.6)' }} />
+          </Box>
+
+          {/* Scrollable filter chips */}
+          <Box sx={{
+            display: 'flex',
+            gap: 0.75,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+            scrollbarWidth: 'none', // Firefox
+            msOverflowStyle: 'none', // IE/Edge
+            '&::-webkit-scrollbar': {
+              display: 'none', // Chrome, Safari, Opera
+            },
+          }}>
+            {/* Current filter - prominent styling */}
+            {resolvedCid && resolvedCid !== '_universal' ? (
+              (() => {
+                const appliedOption = scopeShortcutOptions.find(opt => opt.id === resolvedCid);
+                if (!appliedOption) return null;
+
+                const cardBg = appliedOption.colorMain || '#0f172a';
+                const cardFg = appliedOption.colorSecondary || '#f8fafc';
+
+                return (
+                  <Box
+                    key="applied-filter"
+                    component={Link}
+                    to={`/search/_universal?searchTerm=${encodeURIComponent(searchQuery || '')}`}
+                    sx={{
+                      textDecoration: 'none',
+                      backgroundColor: cardBg,
+                      border: `2px solid ${cardFg}`,
+                      borderRadius: '12px',
+                      px: 1.5,
+                      py: 0.6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.6,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      transition: 'all 0.2s',
+                      boxShadow: `0 2px 8px ${cardFg}20`,
+                      '&:hover': {
+                        boxShadow: `0 2px 12px ${cardFg}30`,
+                        transform: 'translateY(-1px)',
+                      },
+                    }}
+                  >
+                    {appliedOption.emoji && (
+                      <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
+                        {appliedOption.emoji}
+                      </Typography>
+                    )}
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: cardFg, lineHeight: 1, fontSize: '0.85rem' }}>
+                      {appliedOption.primary}
+                    </Typography>
+                    <Close sx={{ fontSize: '0.9rem', color: cardFg, opacity: 0.8 }} />
+                  </Box>
+                );
+              })()
+            ) : (
+              <Box
+                sx={{
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px',
+                  px: 1.5,
+                  py: 0.6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.6,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+              >
+                <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
+                  🌈
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.9)', lineHeight: 1, fontSize: '0.85rem' }}>
+                  All Shows & Movies
                 </Typography>
               </Box>
-              {resolvedCid && resolvedCid !== '_universal' ? (
-                (() => {
-                  const appliedOption = scopeShortcutOptions.find(opt => opt.id === resolvedCid);
-                  if (!appliedOption) return null;
+            )}
 
-                  const cardBg = appliedOption.colorMain || '#0f172a';
-                  const cardFg = appliedOption.colorSecondary || '#f8fafc';
-
-                  return (
-                    <Box
-                      key="applied-filter"
-                      component={Link}
-                      to={`/search/_universal?searchTerm=${encodeURIComponent(searchQuery || '')}`}
-                      sx={{
-                        textDecoration: 'none',
-                        backgroundColor: cardBg,
-                        border: `1px solid ${cardFg}50`,
-                        borderRadius: 1.5,
-                        px: 1.25,
-                        py: 0.5,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.6,
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          borderColor: `${cardFg}80`,
-                        },
-                      }}
-                    >
-                      {appliedOption.emoji && (
-                        <Typography sx={{ fontSize: '0.85rem', lineHeight: 1 }}>
-                          {appliedOption.emoji}
-                        </Typography>
-                      )}
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: cardFg, lineHeight: 1, fontSize: '0.8rem' }}>
-                        {appliedOption.primary}
-                      </Typography>
-                      <Close sx={{ fontSize: '0.85rem', color: cardFg, opacity: 0.6 }} />
-                    </Box>
-                  );
-                })()
-              ) : (
+            {/* Recommended filters - subtle styling */}
+            {recommendedFilters.map((match) => {
+              return (
                 <Box
+                  key={match.id}
+                  component={Link}
+                  to={`/search/${match.id}?searchTerm=${encodeURIComponent(removeMatchedWords(searchQuery || '', match.matchedWords))}&originalQuery=${encodeURIComponent(searchQuery || '')}`}
                   sx={{
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 1.5,
-                    px: 1.25,
-                    py: 0.5,
+                    textDecoration: 'none',
+                    backgroundColor: 'rgba(255,255,255,0.03)',
+                    border: '1px dashed rgba(255,255,255,0.15)',
+                    borderRadius: '12px',
+                    px: 1.5,
+                    py: 0.6,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 0.6,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    transition: 'all 0.2s',
+                    opacity: 0.7,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      borderColor: 'rgba(255,255,255,0.3)',
+                      borderStyle: 'solid',
+                      opacity: 1,
+                      transform: 'translateY(-1px)',
+                    },
                   }}
                 >
-                  <Typography sx={{ fontSize: '0.85rem', lineHeight: 1 }}>
-                    🌈
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(255,255,255,0.7)', lineHeight: 1, fontSize: '0.8rem' }}>
-                    All Shows & Movies
+                  {match.emoji && (
+                    <Typography sx={{ fontSize: '0.9rem', lineHeight: 1, opacity: 0.8 }}>
+                      {match.emoji}
+                    </Typography>
+                  )}
+                  <Typography variant="body2" sx={{ fontWeight: 500, color: 'rgba(255,255,255,0.7)', lineHeight: 1, fontSize: '0.8rem' }}>
+                    {match.primary}
                   </Typography>
                 </Box>
-              )}
-            </Box>
+              );
+            })}
           </Box>
-
-          {/* Recommended filters */}
-          {recommendedFilters.length > 0 && (
-            <Box sx={{ px: 1.5, py: 1.25 }}>
-              <Typography variant="caption" sx={{ letterSpacing: 0.5, textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', fontWeight: 600, mb: 1, display: 'block', fontSize: '0.7rem' }}>
-                Quick switch
-              </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: 0.75,
-                  flexWrap: 'wrap',
-                }}
-              >
-                {recommendedFilters.map((match) => {
-                  return (
-                    <Box
-                      key={match.id}
-                      component={Link}
-                      to={`/search/${match.id}?searchTerm=${encodeURIComponent(removeMatchedWords(searchQuery || '', match.matchedWords))}&originalQuery=${encodeURIComponent(searchQuery || '')}`}
-                      sx={{
-                        textDecoration: 'none',
-                        backgroundColor: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 1.5,
-                        px: 1.5,
-                        py: 0.6,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.75,
-                        whiteSpace: 'nowrap',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          backgroundColor: 'rgba(255,255,255,0.08)',
-                          borderColor: 'rgba(255,255,255,0.2)',
-                        },
-                      }}
-                    >
-                      {match.emoji && (
-                        <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
-                          {match.emoji}
-                        </Typography>
-                      )}
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(255,255,255,0.8)', lineHeight: 1, fontSize: '0.85rem' }}>
-                        {match.primary}
-                      </Typography>
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Box>
-          )}
         </Box>
       </Grid>
 
