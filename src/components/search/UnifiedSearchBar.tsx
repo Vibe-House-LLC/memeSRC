@@ -1111,9 +1111,10 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const [shortcutActiveIndex, setShortcutActiveIndex] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
   const [stableQuery, setStableQuery] = useState(value);
-  const stableQueryTimeoutRef = useRef<number | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
-  const typingTimeoutRef = useRef<number | null>(null);
+  const [recommendationVersion, setRecommendationVersion] = useState(0);
+  const appliedRecommendationVersionRef = useRef(0);
+  const lastChangeWasTypingRef = useRef(false);
+  const lastFilterIdRef = useRef(currentValueId);
 
   const customFilters = useMemo<SeriesItem[]>(() => {
     return groups.map(g => {
@@ -1434,11 +1435,41 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const { recommended: recommendedFilters } = filterMatchSections;
   const [displayedRecommendations, setDisplayedRecommendations] = useState(recommendedFilters);
 
+  const commitRecommendations = useCallback((nextQuery?: string) => {
+    const normalized = typeof nextQuery === 'string' ? nextQuery : value;
+    setStableQuery(normalized);
+    setRecommendationVersion((prev) => prev + 1);
+  }, [value]);
+
   useEffect(() => {
-    if (isTyping && inputFocused) return;
-    if (inputFocused && value !== stableQuery) return;
-    setDisplayedRecommendations(recommendedFilters);
-  }, [inputFocused, isTyping, recommendedFilters, stableQuery, value]);
+    const inSyncWithInput = value === stableQuery;
+    if (inSyncWithInput) {
+      appliedRecommendationVersionRef.current = recommendationVersion;
+      setDisplayedRecommendations(recommendedFilters);
+      return;
+    }
+    if (recommendationVersion !== appliedRecommendationVersionRef.current) {
+      appliedRecommendationVersionRef.current = recommendationVersion;
+      setDisplayedRecommendations(recommendedFilters);
+    }
+  }, [recommendationVersion, recommendedFilters, stableQuery, value]);
+
+  useEffect(() => {
+    if (currentValueId !== lastFilterIdRef.current) {
+      lastFilterIdRef.current = currentValueId;
+      commitRecommendations();
+    }
+  }, [commitRecommendations, currentValueId]);
+
+  useEffect(() => {
+    if (lastChangeWasTypingRef.current) {
+      lastChangeWasTypingRef.current = false;
+      return;
+    }
+    if (value !== stableQuery) {
+      commitRecommendations(value);
+    }
+  }, [commitRecommendations, stableQuery, value]);
 
   const updateShortcutState = useCallback(
     (nextValue: string, selectionPosition?: number | null) => {
@@ -1455,33 +1486,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   useEffect(() => {
     updateShortcutState(value, lastSelectionRef.current);
   }, [updateShortcutState, value]);
-
-  useEffect(() => {
-    if (stableQueryTimeoutRef.current) {
-      clearTimeout(stableQueryTimeoutRef.current);
-    }
-    if (isTyping && inputFocused) {
-      return undefined;
-    }
-    const delay = inputFocused ? 1200 : 300;
-    stableQueryTimeoutRef.current = window.setTimeout(() => {
-      setStableQuery((prev) => (prev === value ? prev : value));
-    }, delay);
-    return () => {
-      if (stableQueryTimeoutRef.current) {
-        clearTimeout(stableQueryTimeoutRef.current);
-      }
-    };
-  }, [inputFocused, isTyping, value]);
-
-  useEffect(() => () => {
-    if (stableQueryTimeoutRef.current) {
-      clearTimeout(stableQueryTimeoutRef.current);
-    }
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1607,15 +1611,9 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       const nextValue = event.target.value;
       const selection = event.target.selectionStart ?? nextValue.length;
       lastSelectionRef.current = selection;
+      lastChangeWasTypingRef.current = true;
       onValueChange(nextValue);
       updateShortcutState(nextValue, selection);
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      setIsTyping(true);
-      typingTimeoutRef.current = window.setTimeout(() => {
-        setIsTyping(false);
-      }, 1200);
     },
     [onValueChange, updateShortcutState],
   );
@@ -1723,11 +1721,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     setInputFocused(false);
     shouldRestoreFocusRef.current = false;
     setShortcutState(null);
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
-    setIsTyping(false);
   }, []);
 
   const handleRandomPointerDown = useCallback(() => {
@@ -1771,6 +1764,15 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
     restoreFocus();
   }, [onRandom, randomLoading, isRandomLoading]);
+
+  const handleFormSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      const result = onSubmit(event);
+      commitRecommendations(value);
+      return result;
+    },
+    [commitRecommendations, onSubmit, value],
+  );
 
   // Expansion is now controlled by preference, not input
   const scopeExpanded = sizePreference === 'large';
@@ -1829,7 +1831,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const currentSeriesOption = scopeShortcutOptions.find(opt => opt.id === currentValueId);
 
   return (
-    <FormRoot onSubmit={onSubmit} noValidate>
+    <FormRoot onSubmit={handleFormSubmit} noValidate>
       <FieldShell
         data-expanded={scopeExpanded ? 'true' : 'false'}
         data-appearance={appearance}
