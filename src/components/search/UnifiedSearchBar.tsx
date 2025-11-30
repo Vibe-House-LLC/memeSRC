@@ -798,27 +798,6 @@ const ShortcutSwitchButton = styled('div')(({ theme }) => ({
   },
 }));
 
-const FilterIconBox = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 28,
-  height: 28,
-  borderRadius: 8,
-  backgroundColor: 'transparent',
-  border: '1px solid transparent',
-  flexShrink: 0,
-  cursor: 'pointer',
-  '&:hover': {
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-  },
-  '&[data-appearance="dark"]': {
-    '&:hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    },
-  },
-}));
-
 const ScrollableFiltersBox = styled(Box)(({ theme }) => ({
   display: 'flex',
   gap: theme.spacing(0.75),
@@ -1173,11 +1152,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     if (includeAllFavorites) {
       upsertOption({
         id: '_favorites',
-        primary: 'All Favorites',
+        primary: 'Favorites',
         secondary: 'Every saved favorite quote',
         emoji: '⭐',
         tokens: buildShortcutTokens('favorites', 'favorite', 'fav', 'all favorites'),
-        normalizedPrimary: normalizeShortcutText('All Favorites'),
+        normalizedPrimary: normalizeShortcutText('Favorites'),
         rank: 0,
         kind: 'default',
       });
@@ -1185,11 +1164,11 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
     upsertOption({
       id: '_universal',
-      primary: 'All Shows & Movies',
+      primary: 'Everything',
       secondary: 'Search entire catalog',
       emoji: '🌈',
       tokens: buildShortcutTokens('all', 'everything', 'universal', 'global', 'movies', 'shows'),
-      normalizedPrimary: normalizeShortcutText('All Shows & Movies'),
+      normalizedPrimary: normalizeShortcutText('Everything'),
       rank: includeAllFavorites ? 1 : 0,
       kind: 'default',
     });
@@ -1208,18 +1187,74 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const filterMatchSections = useMemo(() => {
     const excludedIds = new Set([currentValueId].filter(Boolean));
 
-    // Only show filter suggestions when in universal/favorites scope AND has search query
-    if (!allowFilterSuggestions || !hasInput) {
-      return {
-        recommended: []
-      };
+    // Build context-aware suggestions
+    const buildContextSuggestions = () => {
+      const suggestions: any[] = [];
+
+      // Custom filter group - show items within the group
+      if (currentValueId && currentValueId.startsWith('custom_')) {
+        const customFilter = customFilters.find(f => f.id === currentValueId);
+        if (customFilter?.items) {
+          const groupItems = customFilter.items
+            .map((itemId: string) => scopeShortcutOptions.find(opt => opt.id === itemId))
+            .filter((opt): opt is NonNullable<typeof opt> => Boolean(opt) && !excludedIds.has(opt.id));
+          suggestions.push(...groupItems);
+        }
+      }
+
+      // Favorites - show Everything first, then favorite items
+      if (currentValueId === '_favorites') {
+        const universal = scopeShortcutOptions.find(opt => opt.id === '_universal');
+        if (universal) suggestions.push(universal);
+
+        const favoriteShows = shows?.filter(show => show.isFavorite) || [];
+        const sortedFavorites = [...favoriteShows]
+          .sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''))
+          .map(show => scopeShortcutOptions.find(opt => opt.id === show.id))
+          .filter((opt): opt is NonNullable<typeof opt> => Boolean(opt) && !excludedIds.has(opt.id));
+        suggestions.push(...sortedFavorites);
+      }
+
+      // Everything - show Favorites first if they have any
+      if (currentValueId === '_universal') {
+        if (includeAllFavorites) {
+          const favorites = scopeShortcutOptions.find(opt => opt.id === '_favorites');
+          if (favorites) suggestions.push(favorites);
+        }
+      }
+
+      // Specific show - show Everything or Favorites toggle
+      if (currentValueId && !currentValueId.startsWith('_') && !currentValueId.startsWith('custom_')) {
+        if (includeAllFavorites) {
+          const favorites = scopeShortcutOptions.find(opt => opt.id === '_favorites');
+          if (favorites) suggestions.push(favorites);
+        }
+        const universal = scopeShortcutOptions.find(opt => opt.id === '_universal');
+        if (universal) suggestions.push(universal);
+      }
+
+      return suggestions;
+    };
+
+    // Only show filter suggestions when in universal/favorites scope or custom filters
+    const isCustomFilter = currentValueId?.startsWith('custom_');
+    const isSpecificShow = currentValueId && !currentValueId.startsWith('_') && !isCustomFilter;
+
+    if (!allowFilterSuggestions && !isCustomFilter && !isSpecificShow) {
+      return { recommended: [] };
+    }
+
+    // If no search query, show context suggestions
+    if (!hasInput) {
+      return { recommended: buildContextSuggestions() };
     }
 
     const normalizedQuery = normalizeShortcutText(trimmedValue);
     const normalizedQueryLoose = normalizeLooseText(trimmedValue);
     if (!normalizedQueryLoose) {
-      return { recommended: [] };
+      return { recommended: buildContextSuggestions() };
     }
+
     const queryWords = normalizedQueryLoose.split(/\s+/).filter(Boolean);
     const candidates = scopeShortcutOptions
       .filter((option) => option?.id && !excludedIds.has(option.id))
@@ -1292,8 +1327,13 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       .slice(0, 4)
       .map((c) => ({ ...c.option, matchedWords: c.matchedWords }));
 
+    // If no smart recommendations, show context suggestions
+    if (recommended.length === 0) {
+      return { recommended: buildContextSuggestions() };
+    }
+
     return { recommended };
-  }, [allowFilterSuggestions, hasInput, trimmedValue, scopeShortcutOptions, currentValueId]);
+  }, [allowFilterSuggestions, hasInput, trimmedValue, scopeShortcutOptions, currentValueId, includeAllFavorites, shows, customFilters]);
 
   const { recommended: recommendedFilters } = filterMatchSections;
 
@@ -1633,14 +1673,6 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
     setHelpDialogOpen(false);
   };
 
-  const handleFilterIconClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
-    handleFilterClick(event.currentTarget);
-  }, [handleFilterClick]);
-
-  const handleSwitchToUniversal = useCallback(() => {
-    onSelectSeries('_universal');
-  }, [onSelectSeries]);
-
   const handleSwitchToFilter = useCallback((filterId: string, matchedWords?: string[]) => {
     // Remove matched words from current search query
     if (matchedWords && matchedWords.length > 0) {
@@ -1810,82 +1842,67 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
           <ControlsRail data-expanded={scopeExpanded ? 'true' : 'false'} data-appearance={appearance}>
             {/* Filter indicator with current filter and recommendations - fills left side */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
-              <FilterIconBox
-                data-appearance={appearance}
-                onClick={handleFilterIconClick}
-                title="Change filter"
-              >
-                <FilterListIcon sx={{ fontSize: '1rem', color: appearance === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }} />
-              </FilterIconBox>
-
-              <ScrollableFiltersBox>
-                {/* Current filter - prominent styling */}
-                {currentValueId && currentValueId !== '_universal' && currentSeriesOption ? (
-                  <CurrentFilterChip
-                    onClick={handleSwitchToUniversal}
-                    sx={{
-                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
-                      border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
-                      '&:hover': {
-                        backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
-                      },
-                    }}
-                  >
-                    {currentSeriesOption.emoji && (
-                      <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
-                        {currentSeriesOption.emoji}
-                      </Typography>
-                    )}
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 700,
-                        color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
-                        lineHeight: 1,
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      {currentSeriesOption.primary}
-                    </Typography>
-                    <CloseIcon sx={{
-                      fontSize: '0.9rem',
-                      color: appearance === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
-                      opacity: 0.9
-                    }} />
-                  </CurrentFilterChip>
-                ) : (
-                  <Box
-                    sx={{
-                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
-                      border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
-                      borderRadius: '12px',
-                      px: 1.5,
-                      py: 0.6,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.6,
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                    }}
-                  >
+              {/* Current filter - static on left, clickable to open selector */}
+              {currentValueId && currentValueId !== '_universal' && currentSeriesOption ? (
+                <CurrentFilterChip
+                  onClick={handleScopeClick}
+                  sx={{
+                    backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                    border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
+                    '&:hover': {
+                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
+                    },
+                  }}
+                >
+                  {currentSeriesOption.emoji && (
                     <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
-                      🌈
+                      {currentSeriesOption.emoji}
                     </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 700,
-                        color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
-                        lineHeight: 1,
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      All Shows & Movies
-                    </Typography>
-                  </Box>
-                )}
+                  )}
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 700,
+                      color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
+                      lineHeight: 1,
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    {currentSeriesOption.primary}
+                  </Typography>
+                  <ArrowDropDownIcon sx={{ fontSize: '1.1rem', ml: -0.5 }} />
+                </CurrentFilterChip>
+              ) : (
+                <CurrentFilterChip
+                  onClick={handleScopeClick}
+                  sx={{
+                    backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+                    border: appearance === 'dark' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(0,0,0,0.25)',
+                    '&:hover': {
+                      backgroundColor: appearance === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
+                    },
+                  }}
+                >
+                  <Typography sx={{ fontSize: '0.95rem', lineHeight: 1 }}>
+                    🌈
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 700,
+                      color: appearance === 'dark' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.9)',
+                      lineHeight: 1,
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    Everything
+                  </Typography>
+                  <ArrowDropDownIcon sx={{ fontSize: '1.1rem', ml: -0.5 }} />
+                </CurrentFilterChip>
+              )}
 
-                {/* Recommended filters - subtle styling */}
+              {/* Scrollable recommendations */}
+              <ScrollableFiltersBox>
                 {recommendedFilters.map((match: any) => (
                   <RecommendedFilterChip
                     key={match.id}
@@ -1921,26 +1938,24 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                 title="Settings"
                 className="railButton"
                 data-appearance={appearance}
+                sx={{ width: 32, height: 32 }}
               >
-                <SettingsIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                <SettingsIcon size={16} strokeWidth={2.4} aria-hidden="true" focusable="false" />
               </SettingsButton>
               {hasInput ? (
-                <LabeledSubmitButton
+                <SubmitButton
                   type="submit"
                   aria-label="Search"
                   disabled={!hasInput}
                   className="railButton"
                   data-appearance={appearance}
-                  sx={(theme) => ({
-                    padding: theme.spacing(0.66, 1.2, 0.66, 1.0),
-                    gap: theme.spacing(0.5),
-                  })}
+                  title="Search"
+                  sx={{ width: 32, height: 32 }}
                 >
-                  <ArrowForwardRoundedIcon sx={{ fontSize: '18px' }} aria-hidden="true" />
-                  <span className="actionLabel">Search</span>
-                </LabeledSubmitButton>
+                  <ArrowForwardRoundedIcon sx={{ fontSize: '16px' }} />
+                </SubmitButton>
               ) : (
-                <LabeledSubmitButton
+                <SubmitButton
                   type="button"
                   aria-label="Show something random"
                   onClick={handleRandomClick}
@@ -1949,18 +1964,15 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                   aria-busy={randomLoading}
                   className="railButton"
                   data-appearance={appearance}
-                  sx={(theme) => ({
-                    padding: theme.spacing(0.66, 1.2, 0.66, 1.0),
-                    gap: theme.spacing(0.5),
-                  })}
+                  title="Random"
+                  sx={{ width: 32, height: 32 }}
                 >
                   {randomLoading ? (
-                    <CircularProgress size={18} thickness={5} sx={{ color: 'currentColor' }} />
+                    <CircularProgress size={16} thickness={5} sx={{ color: 'currentColor' }} />
                   ) : (
-                    <ShuffleIcon size={18} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                    <ShuffleIcon size={16} strokeWidth={2.4} aria-hidden="true" focusable="false" />
                   )}
-                  <span className="actionLabel">Random</span>
-                </LabeledSubmitButton>
+                </SubmitButton>
               )}
             </RailRight>
           </ControlsRail>
