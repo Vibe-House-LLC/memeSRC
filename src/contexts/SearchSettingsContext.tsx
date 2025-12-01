@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { useMediaQuery } from '@mui/material';
 
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -40,15 +40,15 @@ export const SearchSettingsProvider: React.FC<{ children: React.ReactNode }> = (
 
     const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
 
-    const setThemePreference = (theme: ThemePreference) => {
+    const setThemePreference = useCallback((theme: ThemePreference) => {
         setThemePreferenceState(theme);
         localStorage.setItem('searchThemePreference', theme);
-    };
+    }, []);
 
-    const setCompactMode = (compact: boolean) => {
+    const setCompactMode = useCallback((compact: boolean) => {
         setCompactModeState(compact);
         localStorage.setItem('searchCompactMode', String(compact));
-    };
+    }, []);
 
     const effectiveTheme = useMemo(() => {
         if (themePreference === 'system') {
@@ -65,7 +65,7 @@ export const SearchSettingsProvider: React.FC<{ children: React.ReactNode }> = (
             setCompactMode,
             effectiveTheme,
         }),
-        [themePreference, compactMode, effectiveTheme]
+        [themePreference, setThemePreference, compactMode, setCompactMode, effectiveTheme]
     );
 
     return (
