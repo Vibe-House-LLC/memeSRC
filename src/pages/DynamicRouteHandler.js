@@ -1,8 +1,8 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API } from 'aws-amplify';
 import { CircularProgress } from '@mui/material';
-import { getAlias, getContentMetadata, getV2ContentMetadata } from '../graphql/queries'; // Import the getContentMetadata
+import { getAlias, getContentMetadata, getV2ContentMetadata } from '../graphql/queries';
 import HomePage from './HomePage';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import Page404 from './Page404';
@@ -13,40 +13,23 @@ import { UserContext } from '../UserContext';
 const DynamicRouteHandler = () => {
   const { seriesId } = useParams();
   const { groups } = useSearchFilterGroups();
-  const { shows } = useContext(UserContext); // Access shows from UserContext
-  const [loading, setLoading] = useState(true);
-  const [metadata, setMetadata] = useState(null);
-  const { loadingSavedCids } = useSearchDetailsV2();
-  const [error, setError] = useState(false);
-  const [favorites, setFavorites] = useState(false);
-
+  const { shows } = useContext(UserContext);
   const navigate = useNavigate();
+  const fetchedIdRef = useRef(null);
 
-  useEffect(() => {
+  const [asyncState, setAsyncState] = useState({
+    metadata: null,
+    loading: false,
+    error: false,
+    fetchedId: null
+  });
 
-    // const fetchContentMetadata = async () => {
-    //   try {
-    //     const response = await API.graphql({
-    //       query: getContentMetadata,
-    //       variables: { id: seriesId },
-    //       authMode: 'API_KEY',
-    //     });
+  // Resolve metadata synchronously from Context (Shows or Groups)
+  const syncMetadata = useMemo(() => {
+    if (!seriesId || seriesId === '_favorites') return null;
 
-    //     setMetadata(response.data.getContentMetadata);
-    //   } catch (error) {
-    //     console.error('Failed to fetch GraphQL content metadata:', error);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-
-    // fetchContentMetadata();
-
-    // First lets try to grab the metadata from v2
-    if (seriesId === '_favorites') {
-      setFavorites(true)
-      setLoading(false)
-    } else if (seriesId?.startsWith('custom_') || groups.some(g => g.id === seriesId)) {
+    // Check groups
+    if (seriesId.startsWith('custom_') || groups.some(g => g.id === seriesId)) {
       const filter = groups.find(g => g.id === seriesId);
       if (filter) {
         let items = [];
@@ -61,107 +44,164 @@ const DynamicRouteHandler = () => {
           console.error("Error parsing filter", e);
         }
 
-        // Calculate total frame count
         const totalFrameCount = items.reduce((acc, itemId) => {
           const show = shows.find(s => s.id === itemId);
           return acc + (show?.frameCount || 0);
         }, 0);
 
-        setMetadata({
+        return {
           id: filter.id,
           title: filter.name,
           colorMain,
           colorSecondary,
           frameCount: totalFrameCount,
-        });
-        setLoading(false);
-        setError(false);
-      } else {
-        setLoading(false);
-        setError(true);
-      }
-    } else {
-      setFavorites(false)
-      console.log(seriesId)
-      if (seriesId) {
-        setLoading(true)
-        setError(false)
-        API.graphql({
-          query: getAlias,
-          variables: { id: seriesId },
-          authMode: 'API_KEY'
-        }).then(aliasResponse => {
-          if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
-            console.log('METADATA LOADED FROM ALIAS')
-            setMetadata(aliasResponse?.data?.getAlias?.v2ContentMetadata)
-            setLoading(false)
-          } else {
-            API.graphql({
-              query: getV2ContentMetadata,
-              variables: { id: seriesId },
-              authMode: 'API_KEY',
-            }).then(response => {
-              if (response?.data?.getV2ContentMetadata) {
-                console.log('METADATA LOADED FROM CID')
-                setMetadata(response?.data?.getV2ContentMetadata)
-                setLoading(false)
-              } else {
-                // That wasn't there, so lets check V2
-                API.graphql({
-                  query: getContentMetadata,
-                  variables: { id: seriesId },
-                  authMode: 'API_KEY',
-                }).then(response => {
-                  if (response?.data?.getContentMetadata) {
-                    console.log('METADATA LOADED FROM V1 METADATA')
-                    setMetadata(response?.data?.getContentMetadata)
-                    setLoading(false)
-                  } else {
-                    setLoading(false)
-                    setError(true)
-                  }
-                }).catch(error => {
-                  console.log(error)
-                  setLoading(false)
-                  setError(true)
-                })
-              }
-            }).catch(error => {
-              console.log(error)
-              setLoading(false)
-              setError(true)
-            })
-          }
-        }).catch(error => {
-          console.log(error)
-          setLoading(false)
-          setError(true)
-        })
+        };
       }
     }
 
+    // Check shows
+    const show = shows.find(s => s.id === seriesId);
+    if (show) {
+      return {
+        id: show.id,
+        title: show.title || show.name,
+        colorMain: show.colorMain,
+        colorSecondary: show.colorSecondary,
+        frameCount: show.frameCount,
+      };
+    }
+
+    return null;
   }, [seriesId, groups, shows]);
 
+  // Handle side effects (Fetching data or Redirecting)
   useEffect(() => {
-    // console.log('LOADING: ', loading)
-    // console.log('LOADING SAVED CIDS', loadingSavedCids)
-    // console.log('METADATA: ', metadata)
-  }, [loading, loadingSavedCids, metadata]);
+    if (!seriesId) return;
 
-  if (loading) {
-    return <div>Loading...</div>;
+    if (seriesId === '_favorites') {
+      safeSetItem('memeSRCDefaultIndex', '_favorites');
+      navigate('/');
+      return;
+    }
+
+    // If we have sync metadata, no need to fetch
+    if (syncMetadata) return;
+
+    // If we already have the data for this ID, don't refetch
+    if (fetchedIdRef.current === seriesId) return;
+
+    fetchedIdRef.current = seriesId; // cache to prevent duplicate fetches without retriggering effect
+    setAsyncState({ metadata: null, loading: true, error: false, fetchedId: seriesId });
+
+    let isMounted = true;
+
+    const fetchMetadata = async () => {
+      try {
+        // 1. Try Alias
+        const aliasResponse = await API.graphql({
+          query: getAlias,
+          variables: { id: seriesId },
+          authMode: 'API_KEY'
+        });
+
+        if (aliasResponse?.data?.getAlias?.v2ContentMetadata) {
+          if (isMounted) {
+            setAsyncState({
+              metadata: aliasResponse.data.getAlias.v2ContentMetadata,
+              loading: false,
+              error: false,
+              fetchedId: seriesId
+            });
+          }
+          return;
+        }
+
+        // 2. Try V2 Metadata
+        const v2Response = await API.graphql({
+          query: getV2ContentMetadata,
+          variables: { id: seriesId },
+          authMode: 'API_KEY',
+        });
+
+        if (v2Response?.data?.getV2ContentMetadata) {
+          if (isMounted) {
+            setAsyncState({
+              metadata: v2Response.data.getV2ContentMetadata,
+              loading: false,
+              error: false,
+              fetchedId: seriesId
+            });
+          }
+          return;
+        }
+
+        // 3. Try V1 Metadata
+        const v1Response = await API.graphql({
+          query: getContentMetadata,
+          variables: { id: seriesId },
+          authMode: 'API_KEY',
+        });
+
+        if (v1Response?.data?.getContentMetadata) {
+          if (isMounted) {
+            setAsyncState({
+              metadata: v1Response.data.getContentMetadata,
+              loading: false,
+              error: false,
+              fetchedId: seriesId
+            });
+          }
+          return;
+        }
+
+        // 4. Not Found
+        if (isMounted) {
+          setAsyncState({
+            metadata: null,
+            loading: false,
+            error: true,
+            fetchedId: seriesId
+          });
+        }
+
+      } catch (error) {
+        console.error(error);
+        if (isMounted) {
+          setAsyncState({
+            metadata: null,
+            loading: false,
+            error: true,
+            fetchedId: seriesId
+          });
+        }
+      }
+    };
+
+    fetchMetadata();
+
+    return () => { isMounted = false; };
+  }, [seriesId, syncMetadata, navigate]);
+
+  // Render Logic
+  if (!seriesId) {
+    return <HomePage />;
   }
 
-  if (metadata) {
-    return <HomePage metadata={metadata} />
+  if (seriesId === '_favorites') {
+    return <center><CircularProgress /></center>; // Show loading while redirecting
   }
 
-  if (favorites) {
-    safeSetItem('memeSRCDefaultIndex', '_favorites')
-    navigate('/')
+  const activeMetadata = syncMetadata || (asyncState.fetchedId === seriesId ? asyncState.metadata : null);
+
+  if (activeMetadata) {
+    return <HomePage metadata={activeMetadata} />;
   }
 
-  return error ? <Page404 /> : <center><CircularProgress /></center>;
+  if (asyncState.error && asyncState.fetchedId === seriesId) {
+    return <Page404 />;
+  }
+
+  return <center><CircularProgress /></center>;
 };
 
 export default DynamicRouteHandler;

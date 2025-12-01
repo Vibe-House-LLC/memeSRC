@@ -40,7 +40,7 @@ import SubmissionStatusIndicator from '../../../components/SubmissionStatusIndic
 // Detect if running in Electron
 const isElectron = () => typeof window !== 'undefined' && window.process && window.process.type;
 
-const StyledRoot = styled(AppBar)(({ theme }) => ({
+const StyledRoot = styled(AppBar)(({ theme, isHomepageRoute }) => ({
   backgroundColor: '#000000',
   borderBottom: '1px solid rgba(255,255,255,0.04)',
   boxShadow: 'none',
@@ -55,14 +55,20 @@ const StyledRoot = styled(AppBar)(({ theme }) => ({
   }),
   [theme.breakpoints.down('sm')]: {
     boxShadow: '0 2px 12px rgba(0, 0, 0, 0.65)',
-    // Keep static on mobile for Electron
+    // Keep static on mobile for Electron and always static on mobile for homepage routes
     ...(isElectron() && {
       position: 'static',
     }),
   },
   [theme.breakpoints.up('md')]: {
-    // Only apply sticky on web, Electron handles it above
-    ...(!isElectron() && {
+    // Homepage routes - Make header sticky on desktop web only
+    ...(!isElectron() && isHomepageRoute && {
+      position: 'sticky',
+      top: 0,
+      zIndex: theme.zIndex.appBar + 1,
+    }),
+    // Other routes - Keep static
+    ...(!isElectron() && !isHomepageRoute && {
       position: 'static',
     }),
   },
@@ -105,6 +111,36 @@ export default function Header({ onOpenNav }) {
   const { openSubscriptionDialog } = useContext(SubscribeDialogContext);
   const [proChipEl, setProChipEl] = useState(null);
   const [showProTip, setShowProTip] = useState(false);
+
+  // Detect if we're on a homepage-style route that should have sticky header
+  const isHomepageRoute = location.pathname === '/' ||
+    location.pathname === '/_favorites' ||
+    // Match routes like /:seriesId (but not /search, /editor, etc.)
+    (location.pathname.split('/').length === 2 &&
+     location.pathname.split('/')[1] &&
+     !location.pathname.startsWith('/search') &&
+     !location.pathname.startsWith('/editor') &&
+     !location.pathname.startsWith('/frame') &&
+     !location.pathname.startsWith('/episode') &&
+     !location.pathname.startsWith('/dashboard') &&
+     !location.pathname.startsWith('/pro') &&
+     !location.pathname.startsWith('/favorites') &&
+     !location.pathname.startsWith('/magic') &&
+     !location.pathname.startsWith('/library') &&
+     !location.pathname.startsWith('/support') &&
+     !location.pathname.startsWith('/faq') &&
+     !location.pathname.startsWith('/releases') &&
+     !location.pathname.startsWith('/vote') &&
+     !location.pathname.startsWith('/contribute') &&
+     !location.pathname.startsWith('/pricing') &&
+     !location.pathname.startsWith('/server') &&
+     !location.pathname.startsWith('/desktop') &&
+     !location.pathname.startsWith('/collage') &&
+     !location.pathname.startsWith('/projects') &&
+     !location.pathname.startsWith('/edit') &&
+     !location.pathname.startsWith('/manageSubscription') &&
+     !location.pathname.startsWith('/account') &&
+     !location.pathname.startsWith('/subscription-portal'));
 
   // Electron-specific styles for making elements clickable (not draggable)
   const electronNoDragStyle = isElectron() ? { WebkitAppRegion: 'no-drag' } : {};
@@ -179,7 +215,7 @@ export default function Header({ onOpenNav }) {
 
   return (
     <>
-      <StyledRoot>
+      <StyledRoot isHomepageRoute={isHomepageRoute}>
         <StyledToolbar sx={{ position: 'relative' }}>
           <IconButton
             onClick={(event) => onOpenNav(event)}

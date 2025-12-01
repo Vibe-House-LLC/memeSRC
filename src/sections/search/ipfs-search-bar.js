@@ -1,4 +1,4 @@
-import { Children, cloneElement, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Children, cloneElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Container, Link as MuiLink, Stack, Typography } from '@mui/material';
 import ArrowBack from '@mui/icons-material/ArrowBack';
@@ -13,6 +13,7 @@ import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
 import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
+import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
 
 const sanitizeSearchValue = (value) => {
   if (value === undefined || value === null) {
@@ -33,6 +34,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
   const searchTerm = searchParams.get('searchTerm');
 
   const { user, shows: contextShows, defaultShow } = useContext(UserContext);
+  const { groups } = useSearchFilterGroups();
   const {
     searchQuery,
     setSearchQuery,
@@ -44,6 +46,8 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
   } = useSearchDetailsV2();
 
   const [search, setSearch] = useState(() => sanitizeSearchValue(searchTerm));
+  const latestSearchRef = useRef(search);
+  const latestOriginalQueryRef = useRef(sanitizeSearchValue(searchParams.get('originalQuery')).trim());
   const [addNewCidOpen, setAddNewCidOpen] = useState(false);
   const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
   const encodedSearchQuery = useMemo(
@@ -73,13 +77,37 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
   useEffect(() => {
     const normalized = sanitizeSearchValue(searchTerm);
+    const normalizedOriginal = sanitizeSearchValue(searchParams.get('originalQuery'));
+    latestSearchRef.current = normalized;
+    latestOriginalQueryRef.current = normalizedOriginal.trim();
     setSearch(normalized);
     setSearchQuery(normalized);
-  }, [searchTerm, setSearchQuery]);
+  }, [searchParams, searchTerm, setSearchQuery]);
+
+  useEffect(() => {
+    latestSearchRef.current = search;
+  }, [search]);
 
   useEffect(() => {
     setSelectedFrameIndex(undefined);
   }, [params?.subtitleIndex, setSelectedFrameIndex]);
+
+  const buildSearchUrl = useCallback(
+    (cidValue, normalizedSearch) => {
+      const params = new URLSearchParams();
+      const trimmedSearch = sanitizeSearchValue(normalizedSearch).trim();
+      const effectiveOriginal = sanitizeSearchValue(latestOriginalQueryRef.current).trim();
+
+      if (trimmedSearch) params.set('searchTerm', trimmedSearch);
+      if (effectiveOriginal && effectiveOriginal !== trimmedSearch) {
+        params.set('originalQuery', effectiveOriginal);
+      }
+
+      const searchPart = params.toString();
+      return `/search/${cidValue}` + (searchPart ? `?${searchPart}` : '');
+    },
+    [],
+  );
 
   const handleSelectSeries = useCallback(
     (selectedId) => {
@@ -93,30 +121,50 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       }
 
       const nextCid = selectedId;
-      const encodedSearch = search ? encodeURIComponent(search) : '';
+      const liveSearch = sanitizeSearchValue(latestSearchRef.current || '').trim();
 
       if (pathname.split('/')[1] === 'search') {
-        navigate(`/search/${nextCid}/` + (encodedSearch ? `?searchTerm=${encodedSearch}` : ''));
+        navigate(buildSearchUrl(nextCid, liveSearch));
       }
 
       setCid(nextCid);
     },
-    [navigate, pathname, search, setCid],
+    [buildSearchUrl, navigate, pathname, setCid],
   );
 
   const handleClearSearch = useCallback(() => {
+    latestSearchRef.current = '';
+    latestOriginalQueryRef.current = '';
     setSearch('');
   }, []);
 
   const handleSearchChange = useCallback((value) => {
-    setSearch(sanitizeSearchValue(value));
+    const nextValue = sanitizeSearchValue(value);
+    latestSearchRef.current = nextValue;
+    latestOriginalQueryRef.current = '';
+    setSearch(nextValue);
   }, []);
+
+  const handleClarifySearch = useCallback(
+    ({ original, stripped }) => {
+      const normalizedOriginal = sanitizeSearchValue(original).trim();
+      const normalizedStripped = sanitizeSearchValue(stripped).trim();
+
+      latestOriginalQueryRef.current = normalizedOriginal;
+      latestSearchRef.current = normalizedStripped;
+      setSearch(normalizedStripped);
+      setSearchQuery(normalizedStripped);
+
+      navigate(buildSearchUrl(resolvedCid, normalizedStripped));
+    },
+    [buildSearchUrl, navigate, resolvedCid, setSearchQuery],
+  );
 
   const handleSubmit = useCallback(
     (event) => {
       event?.preventDefault();
       const selectedCidValue = resolvedCid;
-      const normalizedSearch = sanitizeSearchValue(search).trim();
+      const normalizedSearch = sanitizeSearchValue(latestSearchRef.current).trim();
       const resolvedIndex = selectedCidValue === '_favorites'
         ? shows
             .filter((show) => show.isFavorite)
@@ -132,11 +180,10 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       });
 
       setSearchQuery(normalizedSearch);
-      const encodedSearch = encodeURIComponent(normalizedSearch);
-      navigate(`/search/${selectedCidValue}/?searchTerm=${encodedSearch}`);
+      navigate(buildSearchUrl(selectedCidValue, normalizedSearch));
       return false;
     },
-    [navigate, resolvedCid, search, setSearchQuery, shows],
+    [buildSearchUrl, navigate, resolvedCid, setSearchQuery, shows],
   );
 
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
@@ -151,6 +198,82 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
     });
     loadRandomFrame(scope);
   }, [resolvedCid, loadRandomFrame, shows, showAd]);
+
+  const activeIndexInfo = useMemo(() => {
+    if (!resolvedCid) {
+      return null;
+    }
+
+    if (resolvedCid === '_universal') {
+      return {
+        label: 'All Shows & Movies',
+        emoji: '🌈',
+        path: '/',
+      };
+    }
+
+    if (resolvedCid === '_favorites') {
+      return {
+        label: 'All Favorites',
+        emoji: '⭐',
+        path: '/_favorites',
+      };
+    }
+
+    const customFilter = Array.isArray(groups) ? groups.find((group) => group.id === resolvedCid) : undefined;
+    if (customFilter) {
+      let emoji = '📁';
+      try {
+        const parsed = JSON.parse(customFilter.filters || '{}');
+        if (parsed?.emoji) {
+          emoji = parsed.emoji;
+        }
+      } catch {
+        // no-op
+      }
+      return {
+        label: customFilter.name || 'Custom Filter',
+        emoji,
+        path: `/${customFilter.id}`,
+      };
+    }
+
+    const showList = Array.isArray(shows) ? shows : [];
+    const showMatch = showList.find((showItem) => {
+      if (!showItem) {
+        return false;
+      }
+      const candidates = [showItem.id, showItem.slug, showItem.cid];
+      return candidates.some((candidate) => candidate && String(candidate) === resolvedCid);
+    });
+
+    if (showMatch) {
+      const routeSegment = String(showMatch.slug || showMatch.id || showMatch.cid || resolvedCid);
+      const normalizedPath = routeSegment.startsWith('/') ? routeSegment : `/${routeSegment}`;
+      return {
+        label: showMatch.title || showMatch.name || resolvedCid,
+        emoji: showMatch.emoji,
+        path: normalizedPath,
+      };
+    }
+
+    const fallbackPath = resolvedCid === '_universal' ? '/' : `/${resolvedCid}`;
+    return {
+      label: resolvedCid.replace(/^_/, '') || resolvedCid,
+      path: fallbackPath,
+    };
+  }, [resolvedCid, groups, shows]);
+
+  const backTargetInfo = useMemo(() => {
+    if (activeIndexInfo?.path) {
+      return activeIndexInfo;
+    }
+    return {
+      label: 'Home',
+      emoji: null,
+      path: '/',
+    };
+  }, [activeIndexInfo]);
 
   return (
     <>
@@ -167,20 +290,32 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
               gap: 1.5,
             }}
           >
-            <UnifiedSearchBar
-              value={search}
-              onValueChange={handleSearchChange}
-              onSubmit={handleSubmit}
-              onClear={handleClearSearch}
-              onRandom={handleRandomSearch}
-              isRandomLoading={loadingRandom}
-              shows={shows}
-              savedCids={savedSeries}
-              currentValueId={resolvedCid}
-              includeAllFavorites={hasFavoriteShows}
-              onSelectSeries={handleSelectSeries}
-              appearance="dark"
-            />
+            <Box
+              sx={{
+                width: '100%',
+                maxWidth: 900,
+                mx: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: { xs: 1, md: 1.2 },
+              }}
+            >
+              <UnifiedSearchBar
+                value={search}
+                onValueChange={handleSearchChange}
+                onSubmit={handleSubmit}
+                onClear={handleClearSearch}
+                onRandom={handleRandomSearch}
+                isRandomLoading={loadingRandom}
+                shows={shows}
+                savedCids={savedSeries}
+                currentValueId={resolvedCid}
+                includeAllFavorites={hasFavoriteShows}
+                onSelectSeries={handleSelectSeries}
+                appearance="dark"
+                onClarifySearch={handleClarifySearch}
+              />
+            </Box>
           </Container>
         </Box>
       )}

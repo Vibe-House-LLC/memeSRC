@@ -84,7 +84,7 @@ FullScreenSearch.propTypes = searchPropTypes;
 
 // Theme Defaults
 const defaultTitleText = 'memeSRC';
-const defaultBragText = 'Search 85 million+ templates';
+const defaultBragText = 'Search the entire memeSRC library';
 const defaultFontColor = '#FFFFFF';
 const defaultBackground = `linear-gradient(45deg,
   #5461c8 12.5%,
@@ -96,6 +96,22 @@ const defaultBackground = `linear-gradient(45deg,
   #00ab84 0, #00ab84 87.5%,
   #00a3e0 0)`;
 const defaultBackgroundColor = '#080808';
+const formatMillionTemplates = (count) => {
+  const millions = count / 1_000_000;
+  if (millions < 1) {
+    return count.toLocaleString('en-US');
+  }
+  const display =
+    millions >= 10
+      ? Math.round(millions).toLocaleString('en-US')
+      : Number(millions.toFixed(1)).toLocaleString('en-US');
+  return `${display} million+`;
+};
+
+const normalizeFrameCount = (value) => {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
 
 export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitle, setSeriesTitle, searchFunction, metadata, persistSearchTerm }) {
   const { savedCids, cid, setCid, setSearchQuery: setCidSearchQuery, setShowObj } = useSearchDetailsV2()
@@ -113,6 +129,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const theme = useTheme();
   const showAd = user?.userDetails?.subscriptionStatus !== 'active';
   const { effectiveTheme } = useSearchSettings();
+  const searchInputRef = useRef(null);
 
   // Recent update indicator state
   const [feedSummary, setFeedSummary] = useState({ entries: [] });
@@ -395,8 +412,62 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     window.scrollTo(0, 0);
   }, [])
 
+  // Capture typing behavior - focus search input when user starts typing
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Skip if already focused on an input element
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement?.tagName === 'INPUT' ||
+        activeElement?.tagName === 'TEXTAREA' ||
+        activeElement?.isContentEditable;
+
+      if (isInputFocused) return;
+
+      // Skip modifier keys, special keys, and shortcuts
+      if (
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.key === 'Tab' ||
+        event.key === 'Escape' ||
+        event.key === 'Enter' ||
+        event.key === 'ArrowUp' ||
+        event.key === 'ArrowDown' ||
+        event.key === 'ArrowLeft' ||
+        event.key === 'ArrowRight' ||
+        event.key === 'Shift' ||
+        event.key === 'Control' ||
+        event.key === 'Alt' ||
+        event.key === 'Meta' ||
+        event.key.startsWith('F') // Function keys like F1, F2, etc.
+      ) {
+        return;
+      }
+
+      // Check if it's a typeable character (length of 1 for regular chars)
+      // This covers letters, numbers, symbols, etc.
+      if (event.key.length === 1) {
+        // Focus the search input
+        searchInputRef.current?.focus();
+        // Let the key event propagate naturally so it appears in the input
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [])
+
   // Theme States
-  const [currentThemeBragText, setCurrentThemeBragText] = useState(metadata?.frameCount ? `Search over ${metadata?.frameCount.toLocaleString('en-US')} meme templates from ${metadata?.title}` : defaultBragText);
+  const [currentThemeBragText, setCurrentThemeBragText] = useState(() => {
+    const initialCount = normalizeFrameCount(metadata?.frameCount);
+    if (metadata?.title && initialCount > 0) {
+      return `Search over ${initialCount.toLocaleString('en-US')} meme templates from ${metadata.title}`;
+    }
+    return defaultBragText;
+  });
   const [currentThemeTitleText, setCurrentThemeTitleText] = useState(metadata?.title || defaultTitleText);
   const [currentThemeFontFamily, setCurrentThemeFontFamily] = useState(metadata?.fontFamily || theme?.typography?.fontFamily);
   const [currentThemeFontColor, setCurrentThemeFontColor] = useState(metadata?.colorSecondary || defaultFontColor);
@@ -410,7 +481,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   useEffect(() => {
     if (metadata) {
       setCurrentThemeTitleText(metadata.title || defaultTitleText);
-      setCurrentThemeBragText(metadata.frameCount ? `Search over ${metadata.frameCount.toLocaleString('en-US')} meme templates from ${metadata.title}` : defaultBragText);
+      const metadataCount = normalizeFrameCount(metadata.frameCount);
+      setCurrentThemeBragText(
+        metadataCount > 0
+          ? `Search over ${metadataCount.toLocaleString('en-US')} meme templates from ${metadata.title}`
+          : defaultBragText
+      );
       setCurrentThemeFontFamily(metadata.fontFamily || theme?.typography?.fontFamily);
       setCurrentThemeFontColor(metadata.colorSecondary || defaultFontColor);
       setCurrentThemeBackground(
@@ -418,6 +494,12 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
           ? { backgroundColor: `${metadata.colorMain}` }
           : { backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor }
       );
+    } else {
+      setCurrentThemeTitleText(defaultTitleText);
+      setCurrentThemeBragText(defaultBragText);
+      setCurrentThemeFontFamily(theme?.typography?.fontFamily);
+      setCurrentThemeFontColor(defaultFontColor);
+      setCurrentThemeBackground({ backgroundImage: defaultBackground, backgroundColor: defaultBackgroundColor });
     }
   }, [metadata, theme]);
 
@@ -454,19 +536,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   }, [seriesId, seriesTitle, shows, handleChangeSeries, navigate, defaultShow, setSeriesTitle, setShow]);
 
   useEffect(() => {
-    if (pathname === '/_favorites') {
-      setCurrentThemeBragText(defaultBragText)
-      setCurrentThemeTitleText(defaultTitleText)
-      setCurrentThemeFontColor(defaultFontColor)
-      setCurrentThemeFontFamily(theme?.typography?.fontFamily)
-      setCurrentThemeBackground({
-        backgroundImage: defaultBackground,
-        backgroundColor: defaultBackgroundColor,
-      })
-    }
-  }, [pathname, theme?.typography?.fontFamily])
-
-  useEffect(() => {
 
     setCid(seriesId || metadata?.id || (shows.some(show => show.isFavorite) ? defaultShow : '_universal'))
 
@@ -479,7 +548,66 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     }
   }, [pathname, defaultShow, metadata?.id, seriesId, setCid, setCidSearchQuery, setSearchQuery, setShowObj, shows]);
 
-  const hasFavoriteShows = useMemo(() => shows.some((s) => s.isFavorite), [shows]);
+  const hasFavoriteShows = useMemo(() => Array.isArray(shows) && shows.some((s) => s.isFavorite), [shows]);
+
+  const catalogStats = useMemo(() => {
+    const sourceShows = Array.isArray(shows) ? shows : [];
+    const uniqueShows = new Map();
+    sourceShows.forEach((show) => {
+      const key = show?.cid || show?.id;
+      if (!key || uniqueShows.has(key)) {
+        return;
+      }
+      uniqueShows.set(key, normalizeFrameCount(show.frameCount));
+    });
+
+    const totalFrames = Array.from(uniqueShows.values()).reduce((acc, count) => acc + count, 0);
+    return { totalFrames, titleCount: uniqueShows.size };
+  }, [shows]);
+
+  const favoriteStats = useMemo(() => {
+    const sourceShows = Array.isArray(shows) ? shows : [];
+    const favorites = sourceShows.filter((show) => show?.isFavorite);
+    const uniqueFavorites = new Map();
+
+    favorites.forEach((show) => {
+      const key = show?.cid || show?.id;
+      if (!key || uniqueFavorites.has(key)) {
+        return;
+      }
+      uniqueFavorites.set(key, normalizeFrameCount(show.frameCount));
+    });
+
+    const totalFrames = Array.from(uniqueFavorites.values()).reduce((acc, count) => acc + count, 0);
+    return { totalFrames, titleCount: uniqueFavorites.size };
+  }, [shows]);
+
+  const universalBragText = useMemo(() => {
+    if (catalogStats.titleCount <= 0 || catalogStats.totalFrames <= 0) {
+      return defaultBragText;
+    }
+    return `Search ${formatMillionTemplates(catalogStats.totalFrames)} templates`;
+  }, [catalogStats]);
+
+  const favoritesBragText = useMemo(() => {
+    if (favoriteStats.titleCount <= 0 || favoriteStats.totalFrames <= 0) {
+      return universalBragText;
+    }
+    return `Search ${favoriteStats.totalFrames.toLocaleString('en-US')} templates from favorites`;
+  }, [favoriteStats, universalBragText]);
+
+  useEffect(() => {
+    if (pathname === '/_favorites') {
+      setCurrentThemeBragText(favoritesBragText);
+      setCurrentThemeTitleText(defaultTitleText);
+      setCurrentThemeFontColor(defaultFontColor);
+      setCurrentThemeFontFamily(theme?.typography?.fontFamily);
+      setCurrentThemeBackground({
+        backgroundImage: defaultBackground,
+        backgroundColor: defaultBackgroundColor,
+      });
+    }
+  }, [favoritesBragText, pathname, theme?.typography?.fontFamily]);
 
   const currentValueId = useMemo(() => {
     const fallback = cid || seriesTitle || (hasFavoriteShows ? defaultShow : '_universal');
@@ -513,6 +641,11 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
     return isColorNearBlack(candidateColor) ? 'dark' : 'light';
   }, [currentSeries, currentThemeFontColor, effectiveTheme]);
 
+  const latestSearchTermRef = useRef(searchTerm);
+  useEffect(() => {
+    latestSearchTermRef.current = searchTerm;
+  }, [searchTerm]);
+
   const handleRandomSearch = useCallback(() => {
     const scope = currentValueId || '_universal';
     trackUsageEvent('random_frame', {
@@ -527,7 +660,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const handleSelect = useCallback(
     (selectedId) => {
       const nextId = selectedId || '_universal';
-      persistSearchTerm(searchTerm);
+      persistSearchTerm(latestSearchTermRef.current);
       setCid(nextId);
       setSeriesTitle(nextId);
       handleChangeSeries(nextId);
@@ -536,10 +669,28 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       }
       navigate(nextId === '_universal' ? '/' : `/${nextId}`);
     },
-    [handleChangeSeries, handleUpdateDefaultShow, navigate, persistSearchTerm, searchTerm, setCid, setSeriesTitle]
+    [handleChangeSeries, handleUpdateDefaultShow, navigate, persistSearchTerm, setCid, setSeriesTitle]
   );
 
+  useEffect(() => {
+    const metadataCount = normalizeFrameCount(metadata?.frameCount);
+    if (metadata?.title && metadataCount > 0) {
+      setCurrentThemeBragText(`Search over ${metadataCount.toLocaleString('en-US')} meme templates from ${metadata.title}`);
+      return;
+    }
+
+    const isFavoritesScope = currentValueId === '_favorites' || pathname === '/_favorites';
+
+    if (isFavoritesScope) {
+      setCurrentThemeBragText(favoritesBragText);
+      return;
+    }
+
+    setCurrentThemeBragText(universalBragText);
+  }, [metadata, currentValueId, favoritesBragText, universalBragText, pathname]);
+
   const handleClearSearch = useCallback(() => {
+    latestSearchTermRef.current = '';
     setSearchTerm('');
     persistSearchTerm('');
   }, [setSearchTerm, persistSearchTerm]);
@@ -550,6 +701,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       nextValue = nextValue.replace(/[\u2018\u2019]/g, "'");
       nextValue = nextValue.replace(/[\u201C\u201D]/g, '"');
       nextValue = nextValue.replace(/[\u2013\u2014]/g, '-');
+      latestSearchTermRef.current = nextValue;
       setSearchTerm(nextValue);
     },
     [setSearchTerm],
@@ -990,6 +1142,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                               includeAllFavorites={includeAllFavorites}
                               onSelectSeries={handleSelect}
                               appearance={unifiedSearchAppearance}
+                              inputRef={searchInputRef}
                             />
                           </Grid>
                         </Grid>

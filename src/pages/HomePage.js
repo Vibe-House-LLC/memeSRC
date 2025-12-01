@@ -93,7 +93,14 @@ export default function SearchPage({ metadata }) {
     setV2SearchQuery(rawSearchTerm)
 
     const favoritesList = Array.isArray(shows)
-      ? shows.filter((show) => show?.isFavorite).map((show) => show?.id).filter(Boolean)
+      ? Array.from(
+          new Set(
+            shows
+              .filter((show) => show?.isFavorite)
+              .map((show) => show?.id)
+              .filter(Boolean)
+          )
+        )
       : [];
     let resolvedIndex = seriesTitle;
     if (seriesTitle === '_favorites') {

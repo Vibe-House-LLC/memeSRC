@@ -53,6 +53,7 @@ const ProSupportAdmin = lazy(() => import('./pages/ProSupportAdmin'));
 const AdminUsageEventsLog = lazy(() => import('./pages/AdminUsageEventsLog'));
 const AdminPopularSearchesPage = lazy(() => import('./pages/AdminPopularSearchesPage'));
 const AdminPopularFramesPage = lazy(() => import('./pages/AdminPopularFramesPage'));
+const AdminFrameTotalsPage = lazy(() => import('./pages/AdminFrameTotalsPage'));
 const AdminUserContentReview = lazy(() => import('./pages/AdminUserContentReview'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
@@ -102,7 +103,6 @@ export default function Router() {
         </GuestAuth>
       ),
       children: [
-        { element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'pro', element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
@@ -138,7 +138,7 @@ export default function Router() {
         { path: '/vote', element: <SiteWideMaintenance><ShowProvider><VotingPage /></ShowProvider></SiteWideMaintenance> },
         { path: '/contribute', element: <SiteWideMaintenance><ContributorRequest /></SiteWideMaintenance> },
         { path: '/pricing', element: <SiteWideMaintenance><PricingPage /></SiteWideMaintenance> },
-        { path: '/:seriesId', element: <SiteWideMaintenance><DynamicRouteHandler /></SiteWideMaintenance> },
+        { path: '/:seriesId?', element: <SiteWideMaintenance><DynamicRouteHandler /></SiteWideMaintenance> },
         { path: '/server', element: <SiteWideMaintenance><ServerPage /></SiteWideMaintenance> },
         { path: '/desktop/process', element: <SiteWideMaintenance><DesktopProcessingPage /></SiteWideMaintenance> },
         { path: '/facebook', element: <SiteWideMaintenance><FacebookAuthDemo /></SiteWideMaintenance> },
@@ -167,6 +167,7 @@ export default function Router() {
         { path: 'usage-events', element: <AdminUsageEventsLog /> },
         { path: 'popular-searches', element: <AdminPopularSearchesPage /> },
         { path: 'popular-frames', element: <AdminPopularFramesPage /> },
+        { path: 'frame-totals', element: <AdminFrameTotalsPage /> },
         { path: 'user-content-review', element: <AdminUserContentReview /> },
         { path: 'home', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },

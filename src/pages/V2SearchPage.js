@@ -1,7 +1,7 @@
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Collapse } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -21,17 +21,60 @@ import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 import Page404 from './Page404';
+import { useSearchSettings } from '../contexts/SearchSettingsContext';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import CancelIcon from '@mui/icons-material/Cancel';
+
+const ADVANCED_SYNTAX_TIPS = [
+  {
+    title: 'Exact phrases',
+    description: 'Wrap words in double quotes to search for the exact line.',
+    example: '"surely you can\'t be serious"',
+  },
+  {
+    title: 'Operators',
+    description: 'Use OR for choices. Use + for strict requirements (better than AND).',
+    example: '(surely OR shirley) AND serious',
+  },
+  {
+    title: 'Group logic',
+    description: 'Parentheses control the order when mixing operators.',
+    example: '(surely OR shirley) +cockpit',
+  },
+  {
+    title: 'Require or exclude',
+    description: 'Prefix a word with + to require it, or - to exclude it entirely.',
+    example: '"+shirley" -serious',
+  },
+  {
+    title: 'Wildcards',
+    description: 'Use * and ? to cover unknown endings or characters.',
+    example: 'shir* OR ser?ous',
+  },
+  {
+    title: 'Fuzzy Search',
+    description: 'Use ~ to match similar terms.',
+    example: 'shirley~',
+  },
+  {
+    title: 'Proximity Search',
+    description: 'Use ~N to find words within N distance.',
+    example: '"surely serious"~5',
+  },
+  {
+    title: 'Boosting',
+    description: 'Use ^N to increase term relevance.',
+    example: 'speak jive^5',
+  },
+];
 
 
 
 const StyledCard = styled(Card)`
-  border: 3px solid transparent;
   box-sizing: border-box;
   position: relative;
-
-  &:hover {
-    border: 3px solid orange;
-  }
 `;
 
 const StyledCardVideoContainer = styled.div`
@@ -190,6 +233,9 @@ export default function SearchPage() {
   const location = useLocation();
 
   const { user, shows } = useContext(UserContext);
+  const { compactMode, setCompactMode } = useSearchSettings();
+  const initialCompactModeRef = useRef(compactMode);
+  const latestCompactModeRef = useRef(compactMode);
 
   const RESULTS_PER_PAGE = 8;
 
@@ -207,12 +253,14 @@ export default function SearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
   const [newResults, setNewResults] = useState();
+  const hasResults = Array.isArray(newResults) && newResults.length > 0;
   const { setShowObj, cid } = useSearchDetailsV2();
   const { groups, fetchGroups } = useSearchFilterGroups();
   const [loadingResults, setLoadingResults] = useState(true);
   const [videoUrls, setVideoUrls] = useState({});
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('searchTerm');
+  const originalQuery = searchParams.get('originalQuery');
   const paramsCid = params?.cid;
   const resolvedCid = paramsCid || cid;
   const favoritesForSearch = resolvedCid === '_favorites' ? shows : null;
@@ -221,9 +269,87 @@ export default function SearchPage() {
     () => (searchQuery ? encodeURIComponent(searchQuery) : ''),
     [searchQuery],
   );
+  const normalizedSearchTerm = useMemo(
+    () => (typeof searchQuery === 'string' ? searchQuery.trim() : ''),
+    [searchQuery],
+  );
+  const hasSearchQuery = normalizedSearchTerm.length > 0;
+  const searchScopeInfo = useMemo(() => {
+    if (!resolvedCid || resolvedCid === '_universal') {
+      return { label: 'All Shows & Movies', path: '/', emoji: '🌈' };
+    }
+    if (resolvedCid === '_favorites') {
+      return { label: 'All Favorites', path: '/_favorites', emoji: '⭐' };
+    }
+    const customFilter = Array.isArray(groups) ? groups.find((group) => group.id === resolvedCid) : undefined;
+    if (customFilter) {
+      let emoji = '📁';
+      try {
+        const parsed = JSON.parse(customFilter.filters || '{}');
+        if (parsed?.emoji) {
+          emoji = parsed.emoji;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return {
+        label: customFilter.name || 'Custom Filter',
+        path: `/${customFilter.id}`,
+        emoji,
+      };
+    }
+    const showMatch = Array.isArray(shows)
+      ? shows.find((showItem) => {
+        if (!showItem) {
+          return false;
+        }
+        const identifiers = [showItem.id, showItem.slug, showItem.cid];
+        return identifiers.some((identifier) => identifier && String(identifier) === resolvedCid);
+      })
+      : undefined;
+    if (showMatch) {
+      const routeSegment = String(showMatch.slug || showMatch.id || showMatch.cid || resolvedCid);
+      const normalizedPath = routeSegment.startsWith('/') ? routeSegment : `/${routeSegment}`;
+      return {
+        label: showMatch.title || showMatch.name || resolvedCid,
+        path: normalizedPath,
+        emoji: showMatch.emoji,
+      };
+    }
+    const fallbackPath = resolvedCid === '_universal' ? '/' : `/${resolvedCid}`;
+    return {
+      label: resolvedCid.replace(/^_/, '') || resolvedCid,
+      path: fallbackPath,
+    };
+  }, [groups, resolvedCid, shows]);
+  const scopeLabel = searchScopeInfo?.label || 'All Shows & Movies';
+  const scopePath = searchScopeInfo?.path || '/';
+  const scopeEmoji = searchScopeInfo?.emoji;
+  const backToHome = !resolvedCid || resolvedCid === '_universal' || resolvedCid === '_favorites';
+  const backLabel = backToHome ? 'Back to Home' : `Back to ${scopeLabel}`;
+  const backPath = backToHome ? '/' : scopePath;
 
   const [autoplay] = useState(true);
   const [customFilterNotFound, setCustomFilterNotFound] = useState(false);
+  const [showTips, setShowTips] = useState(false);
+  useEffect(() => {
+    latestCompactModeRef.current = compactMode;
+  }, [compactMode]);
+
+  // Keep the unified search bar large (not compact) on the search page and restore the previous preference on exit if unchanged.
+  useEffect(() => {
+    if (initialCompactModeRef.current !== false) {
+      setCompactMode(false);
+    }
+    return () => {
+      if (
+        initialCompactModeRef.current !== false &&
+        latestCompactModeRef.current === false
+      ) {
+        setCompactMode(initialCompactModeRef.current);
+      }
+    };
+  }, [setCompactMode]);
 
   const videoRefs = useRef([]);
   const latestSearchKeyRef = useRef('');
@@ -238,7 +364,6 @@ export default function SearchPage() {
   useEffect(() => {
     groupsRef.current = groups;
   }, [groups]);
-
 
   const [videoLoadedStates, setVideoLoadedStates] = useState({});
 
@@ -394,7 +519,7 @@ export default function SearchPage() {
   useEffect(() => {
     const activeCid = resolvedCid;
     const normalizedSearch = (searchQuery || '').trim();
-    const encodedSearchTerm = normalizedSearch ? encodeURIComponent(normalizedSearch.toLowerCase()) : '';
+    const encodedSearchTerm = normalizedSearch ? encodeURIComponent(normalizedSearch) : '';
     const abortController = new AbortController();
     let isCancelled = false;
     const searchKey = `${activeCid}|${encodedSearchTerm}`;
@@ -525,6 +650,7 @@ export default function SearchPage() {
 
 
   const [indexFilterQuery, setIndexFilterQuery] = useState('');
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
   const handleIndexFilterChange = (event) => {
     setIndexFilterQuery(event.target.value);
@@ -533,10 +659,6 @@ export default function SearchPage() {
   const filteredShows = availableShows.filter(show =>
     show.title.toLowerCase().includes(indexFilterQuery.toLowerCase())
   );
-
-
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-
   if (customFilterNotFound) {
     return <Page404 />;
   }
@@ -545,7 +667,7 @@ export default function SearchPage() {
     <>
       {/* Add the ad section here */}
       {user?.userDetails?.subscriptionStatus !== 'active' && (
-        <Grid item xs={12} mb={3}>
+        <Grid item xs={12} mb={2}>
           <center>
             <Box>
               {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
@@ -559,128 +681,308 @@ export default function SearchPage() {
         </Grid>
       )}
 
-      {loadingResults && (
-        <Grid item xs={12} textAlign="center" mt={4}>
-          <CircularProgress size={40} />
-          <Typography variant="h6" mt={2}>
-            Searching...
-          </Typography>
-        </Grid>
-      )}
-      {newResults && newResults.length > 0 ? (
-        <>
-          <InfiniteScroll
-            dataLength={displayedResults}
-            next={() => {
-              if (!isLoading) {
-                setIsLoading(true);
-                setTimeout(() => {
-                  setDisplayedResults((prevDisplayedResults) =>
-                    Math.min(
-                      prevDisplayedResults + RESULTS_PER_PAGE,
-                      newResults.length
-                    )
-                  );
-                  setIsLoading(false);
-                }, 1000);
-              }
-            }}
-            hasMore={displayedResults < newResults.length}
-            loader={
-              <>
-                <Grid item xs={12} textAlign="center" mt={4}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    sx={{
-                      padding: '10px',
-                      fontSize: '1rem',
-                      fontWeight: 'bold',
-                      borderRadius: '8px',
-                      maxWidth: { xs: '90%', sm: '40%', md: '25%' },
-                      margin: '0 auto',
-                      px: 3,
-                      py: 1.5,
-                      mt: 10,
-                      mb: 10,
-                    }}
-                    onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE * 2)}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <CircularProgress size={24} style={{ marginRight: '8px' }} />
-                        Loading More
-                      </>
-                    ) : (
-                      'Load More'
-                    )}
-                  </Button>
-                </Grid>
-              </>
-            }
-            scrollThreshold={0.90}
-          >
-            <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }}>
-              {newResults.slice(0, displayedResults).map((result, index) => {
-                const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
-                const isMediaLoaded = videoLoadedStates[resultId] || false;
-                const sanitizedSubtitleText = sanitizeHtml(result.subtitle_text, {
-                  allowedTags: [], // Allow no tags
-                  allowedAttributes: {}, // Allow no attributes
-                });
 
-                return (
-                  <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
-                    {result.isAd ? (
-                      <StyledCard>
-                        <SearchPageResultsAd />
-                      </StyledCard>
-                    ) : (
-                      <Link
-                        to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <StyledCard>
-                          <SearchResultMedia
-                            result={result}
-                            resultId={resultId}
-                            resultIndex={index}
-                            searchTerm={searchQuery}
-                            mediaSrc={videoUrls[resultId]}
-                            isMediaLoaded={isMediaLoaded}
-                            onMediaLoad={() => handleMediaLoad(resultId)}
-                            addVideoRef={addVideoRef}
-                            animationsEnabled={animationsEnabled}
-                          />
-                          <BottomCardCaption>{sanitizedSubtitleText}</BottomCardCaption>
-                          <BottomCardLabel>
-                            <Chip
-                              size="small"
-                              label={result.cid}
-                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                            />
-                            <Chip
-                              size="small"
-                              label={`S${result.season} E${result.episode}`}
-                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                            />
-                          </BottomCardLabel>
-                        </StyledCard>
-                      </Link>
-                    )}
-                  </Grid>
-                );
-              })}
+      {originalQuery && (
+        <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: 2 }}>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
+            {searchQuery ? (
+              <>Showing results for <b>{searchQuery}</b>. </>
+            ) : (
+              <>Showing all results. </>
+            )}
+            Search instead for <Link to={`/search/${resolvedCid}?searchTerm=${encodeURIComponent(originalQuery)}`} style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}><b>{originalQuery}</b></Link>?
+          </Typography>
+        </Box>
+      )}
+
+      {loadingResults ? (
+        <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} py={2}>
+          {[...Array(RESULTS_PER_PAGE)].map((_, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index}>
+              <StyledCard>
+                <StyledCardImageContainer>
+                  <ImageSkeleton />
+                </StyledCardImageContainer>
+              </StyledCard>
             </Grid>
-          </InfiniteScroll>
-        </>
+          ))}
+        </Grid>
       ) : (
         <>
-          {newResults?.length <= 0 && !loadingResults && (
-            <Typography textAlign="center" fontSize={30} fontWeight={700} my={8}>
-              No Results
-            </Typography>
+          {newResults && newResults.length > 0 ? (
+            <>
+              <InfiniteScroll
+                dataLength={displayedResults}
+                next={() => {
+                  if (!isLoading) {
+                    setIsLoading(true);
+                    setTimeout(() => {
+                      setDisplayedResults((prevDisplayedResults) =>
+                        Math.min(
+                          prevDisplayedResults + RESULTS_PER_PAGE,
+                          newResults.length
+                        )
+                      );
+                      setIsLoading(false);
+                    }, 1000);
+                  }
+                }}
+                hasMore={displayedResults < newResults.length}
+                loader={
+                  <>
+                    <Grid item xs={12} textAlign="center" mt={4}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        sx={{
+                          padding: '10px',
+                          fontSize: '1rem',
+                          fontWeight: 'bold',
+                          borderRadius: '8px',
+                          maxWidth: { xs: '90%', sm: '40%', md: '25%' },
+                          margin: '0 auto',
+                          px: 3,
+                          py: 1.5,
+                          mt: 10,
+                          mb: 10,
+                        }}
+                        onClick={() => setDisplayedResults(displayedResults + RESULTS_PER_PAGE * 2)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <>
+                            <CircularProgress size={24} style={{ marginRight: '8px' }} />
+                            Loading More
+                          </>
+                        ) : (
+                          'Load More'
+                        )}
+                      </Button>
+                    </Grid>
+                  </>
+                }
+                scrollThreshold={0.90}
+              >
+                <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} py={2}>
+                  {newResults.slice(0, displayedResults).map((result, index) => {
+                    const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
+                    const isMediaLoaded = videoLoadedStates[resultId] || false;
+                    const sanitizedSubtitleText = sanitizeHtml(result.subtitle_text, {
+                      allowedTags: [], // Allow no tags
+                      allowedAttributes: {}, // Allow no attributes
+                    });
+
+                    return (
+                      <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
+                        {result.isAd ? (
+                          <StyledCard>
+                            <SearchPageResultsAd />
+                          </StyledCard>
+                        ) : (
+                          <Link
+                            to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
+                            style={{ textDecoration: 'none' }}
+                          >
+                            <StyledCard>
+                              <SearchResultMedia
+                                result={result}
+                                resultId={resultId}
+                                resultIndex={index}
+                                searchTerm={searchQuery}
+                                mediaSrc={videoUrls[resultId]}
+                                isMediaLoaded={isMediaLoaded}
+                                onMediaLoad={() => handleMediaLoad(resultId)}
+                                addVideoRef={addVideoRef}
+                                animationsEnabled={animationsEnabled}
+                              />
+                              <BottomCardCaption>{sanitizedSubtitleText}</BottomCardCaption>
+                              <BottomCardLabel>
+                                <Chip
+                                  size="small"
+                                  label={result.cid}
+                                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                                />
+                                <Chip
+                                  size="small"
+                                  label={`S${result.season} E${result.episode}`}
+                                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                                />
+                              </BottomCardLabel>
+                            </StyledCard>
+                          </Link>
+                        )}
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </InfiniteScroll>
+            </>
+          ) : (
+            <>
+              {newResults?.length <= 0 && !loadingResults && (
+                <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, my: 6, display: 'flex', justifyContent: 'center' }}>
+                  <Box sx={{ textAlign: 'center', maxWidth: 600 }}>
+                    {hasSearchQuery ? (
+                      <>
+                        <Typography variant="h4" fontWeight={800} sx={{ mb: 3 }}>
+                          No results found
+                        </Typography>
+                        {/* <Typography variant="h6" sx={{ fontWeight: 400, mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 1, lineHeight: 1.5 }}>
+                          There are no results for
+                          <Chip
+                            label={normalizedSearchTerm}
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '1rem',
+                              backgroundColor: 'rgba(255, 255, 255, 0.10)',
+                              color: '#fff',
+                              height: 'auto',
+                              py: 0.5,
+                              '& .MuiChip-label': {
+                                display: 'block',
+                                whiteSpace: 'normal',
+                                maxWidth: '100%',
+                                textAlign: 'center',
+                                paddingLeft: 2,
+                                paddingRight: 2
+                              }
+                            }}
+                          />
+                          in
+                          <Chip
+                            icon={scopeEmoji ? <span style={{ fontSize: '1.1rem' }}>{scopeEmoji}</span> : undefined}
+                            label={scopeLabel}
+                            onClick={() => navigate(scopePath)}
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '1rem',
+                              backgroundColor: 'rgba(255, 255, 255, 0.10)',
+                              color: '#fff',
+                              cursor: 'pointer',
+                              height: 'auto',
+                              py: 0.5,
+                              '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.20)',
+                              },
+                              '& .MuiChip-label': {
+                                display: 'block',
+                                whiteSpace: 'normal',
+                                maxWidth: '100%',
+                                textAlign: 'center',
+                                paddingLeft: 2,
+                                paddingRight: 2
+                              }
+                            }}
+                          />
+                        </Typography> */}
+
+                        {resolvedCid && resolvedCid !== '_universal' && (
+                          <Box sx={{ mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>
+                              Currently filtering to:
+                            </Typography>
+                            <Chip
+                              icon={scopeEmoji ? <span style={{ fontSize: '1em' }}>{scopeEmoji}</span> : undefined}
+                              label={scopeLabel}
+                              onDelete={() => navigate(`/search/_universal?searchTerm=${encodedSearchQuery}`)}
+                              deleteIcon={<CancelIcon style={{ color: 'rgba(255,255,255,0.7)' }} />}
+                              sx={{
+                                height: 'auto',
+                                py: 0.75,
+                                px: 1.5,
+                                fontSize: '0.95rem',
+                                fontWeight: 600,
+                                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                color: 'white',
+                                borderRadius: 1.5,
+                                border: '1px solid rgba(255,255,255,0.15)',
+                                '& .MuiChip-deleteIcon': {
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  fontSize: '1.1rem',
+                                  '&:hover': {
+                                    color: 'rgba(255, 255, 255, 0.8)'
+                                  }
+                                },
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="text"
+                              size="small"
+                              onClick={() => navigate(`/search/_universal?searchTerm=${encodedSearchQuery}`)}
+                              sx={{
+                                color: 'rgba(255,255,255,0.6)',
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                fontSize: '0.85rem',
+                                '&:hover': {
+                                  color: 'rgba(255,255,255,0.9)',
+                                  backgroundColor: 'transparent'
+                                }
+                              }}
+                            >
+                              Search all shows instead
+                            </Button>
+                          </Box>
+                        )}
+
+                        <Box sx={{ mt: 3 }}>
+                          <Button
+                            onClick={() => setShowTips(!showTips)}
+                            startIcon={<HelpOutlineIcon sx={{ fontSize: '1rem' }} />}
+                            endIcon={showTips ? <ExpandMoreIcon sx={{ fontSize: '1rem' }} /> : <ChevronRightIcon sx={{ fontSize: '1rem' }} />}
+                            size="small"
+                            sx={{
+                              color: 'rgba(255, 255, 255, 0.5)',
+                              textTransform: 'none',
+                              fontWeight: 500,
+                              fontSize: '0.85rem',
+                              '&:hover': {
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                backgroundColor: 'rgba(255, 255, 255, 0.03)'
+                              }
+                            }}
+                          >
+                            Advanced Search Tips
+                          </Button>
+
+                          <Collapse in={showTips}>
+                            <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0,0,0,0.15)', borderRadius: 1.5, border: '1px solid rgba(255,255,255,0.08)', textAlign: 'left' }}>
+                              <Typography variant="body2" fontWeight={600} gutterBottom sx={{ color: 'rgba(255,255,255,0.8)', mb: 1.5, fontSize: '0.9rem' }}>
+                                Advanced Search Syntax
+                              </Typography>
+                              <Grid container spacing={1.5}>
+                                {ADVANCED_SYNTAX_TIPS.map((tip, index) => (
+                                  <Grid item xs={12} sm={6} key={index}>
+                                    <Box>
+                                      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 600, fontSize: '0.85rem' }}>
+                                        {tip.title}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', mb: 0.5, display: 'block', fontSize: '0.75rem' }}>
+                                        {tip.description}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ fontFamily: 'monospace', bgcolor: 'rgba(0,0,0,0.25)', px: 0.75, py: 0.4, borderRadius: 0.5, color: 'rgba(255,255,255,0.85)', fontSize: '0.7rem', display: 'inline-block' }}>
+                                        {tip.example}
+                                      </Typography>
+                                    </Box>
+                                  </Grid>
+                                ))}
+                              </Grid>
+                            </Box>
+                          </Collapse>
+                        </Box>
+                      </>
+                    ) : (
+                      <Typography fontSize={30} fontWeight={700} textAlign="center">
+                        No Results
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              )}
+            </>
           )}
         </>
       )}
