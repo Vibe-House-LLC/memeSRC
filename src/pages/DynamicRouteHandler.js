@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useMemo } from 'react';
+import { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API } from 'aws-amplify';
 import { CircularProgress } from '@mui/material';
@@ -15,6 +15,7 @@ const DynamicRouteHandler = () => {
   const { groups } = useSearchFilterGroups();
   const { shows } = useContext(UserContext);
   const navigate = useNavigate();
+  const fetchedIdRef = useRef(null);
 
   const [asyncState, setAsyncState] = useState({
     metadata: null,
@@ -87,8 +88,9 @@ const DynamicRouteHandler = () => {
     if (syncMetadata) return;
 
     // If we already have the data for this ID, don't refetch
-    if (asyncState.fetchedId === seriesId) return;
+    if (fetchedIdRef.current === seriesId) return;
 
+    fetchedIdRef.current = seriesId; // cache to prevent duplicate fetches without retriggering effect
     setAsyncState({ metadata: null, loading: true, error: false, fetchedId: seriesId });
 
     let isMounted = true;
@@ -178,7 +180,7 @@ const DynamicRouteHandler = () => {
     fetchMetadata();
 
     return () => { isMounted = false; };
-  }, [seriesId, syncMetadata, asyncState.fetchedId, navigate]);
+  }, [seriesId, syncMetadata, navigate]);
 
   // Render Logic
   if (!seriesId) {
