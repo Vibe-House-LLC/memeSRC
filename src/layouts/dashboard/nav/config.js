@@ -179,6 +179,8 @@ const navConfig = [
         path: '/dashboard/frame-totals',
         externalLink: false,
         icon: <Functions />,
+      },
+      {
         title: 'User Content Review',
         path: '/dashboard/user-content-review',
         externalLink: false,
