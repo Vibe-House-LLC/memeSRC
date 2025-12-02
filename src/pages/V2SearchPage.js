@@ -340,6 +340,11 @@ export default function SearchPage() {
   const backLabel = backToHome ? 'Back to Home' : `Back to ${scopeLabel}`;
   const backPath = backToHome ? '/' : scopePath;
 
+  useEffect(() => {
+    // Reset scroll so new searches always start at the top of the page
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [resolvedCid, searchQuery, locationKey]);
+
   const [autoplay] = useState(true);
   const [customFilterNotFound, setCustomFilterNotFound] = useState(false);
   const [showTips, setShowTips] = useState(false);
