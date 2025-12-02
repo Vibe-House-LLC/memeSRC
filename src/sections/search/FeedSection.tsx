@@ -19,6 +19,7 @@ import { FeedCardSurface } from './cards/CardSurface';
 import { AdFreeDecemberCard } from './cards/AdFreeDecemberCard';
 import { Search } from '@mui/icons-material';
 import { isAdPauseActive, isSubscribedUser, type UserCtx } from '../../utils/adsenseLoader';
+import { hasDismissedAdFreeDecember, persistAdFreeDecemberDismissal } from '../../contexts/AdFreeDecemberContext';
 
 const FEED_CARD_WRAPPER_SX = {
   px: { xs: 0, md: 0 },
@@ -34,7 +35,6 @@ const CARD_EXIT_DURATION_MS = 360;
 const FEED_CLEAR_ALL_KEY_PREFIX = 'memesrcFeedClearAll';
 const FEED_CLEAR_SINGLE_KEY_PREFIX = 'memesrcFeedClear';
 const FEED_UPDATE_DISMISSED_VERSION_KEY = 'feedUpdateBannerDismissedVersion';
-const AD_FREE_DECEMBER_DISMISSED_KEY = 'adFreeDecember2025Dismissed';
 const FEED_RECENCY_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000;
 
 interface ShowRecord {
@@ -390,10 +390,7 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
     setFeedDismissedVersion(stored || '');
   }, [feedDismissedStorageKey]);
   const [isReleaseRemoving, setIsReleaseRemoving] = useState(false);
-  const [adFreeDecemberDismissed, setAdFreeDecemberDismissed] = useState<boolean>(() => {
-    const stored = safeGetItem(AD_FREE_DECEMBER_DISMISSED_KEY);
-    return stored === 'true';
-  });
+  const [adFreeDecemberDismissed, setAdFreeDecemberDismissed] = useState<boolean>(() => hasDismissedAdFreeDecember());
   const [isAdFreeCardRemoving, setIsAdFreeCardRemoving] = useState(false);
   const hasRecentUndismissedUpdate = useMemo(() => {
     if (!latestRelease?.tag_name || !latestRelease?.published_at) {
@@ -464,6 +461,12 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
   }, [adFreeDecemberDismissed, contextValue.user]);
 
   useEffect(() => {
+    if (!adFreeDecemberDismissed && hasDismissedAdFreeDecember()) {
+      setAdFreeDecemberDismissed(true);
+    }
+  });
+
+  useEffect(() => {
     let didCancel = false;
 
     const load = async () => {
@@ -521,7 +524,7 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
 
     const finalizeTimeout = window.setTimeout(() => {
       try {
-        safeSetItem(AD_FREE_DECEMBER_DISMISSED_KEY, 'true');
+        persistAdFreeDecemberDismissal();
       } catch (error) {
         // no-op
       } finally {
@@ -531,7 +534,7 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
     }, CARD_EXIT_DURATION_MS);
 
     timeoutsRef.current.push(finalizeTimeout);
-  }, [isAdFreeCardRemoving]);
+  }, [isAdFreeCardRemoving, persistAdFreeDecemberDismissal]);
 
   useEffect(() => {
     const stored = safeGetItem(buildClearAllKey(userIdentifier));

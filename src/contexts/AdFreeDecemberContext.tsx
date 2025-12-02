@@ -1,9 +1,26 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { UserContext } from '../UserContext';
 import { safeGetItem, safeSetItem } from '../utils/storage';
 import { isAdPauseActive, isSubscribedUser, type UserCtx } from '../utils/adsenseLoader';
 
-const AD_FREE_DECEMBER_DIALOG_DISMISSED_KEY = 'adFreeDecemberDialog2025Dismissed';
+export const AD_FREE_DECEMBER_DISMISSED_KEY = 'adFreeDecember2025Dismissed';
+const LEGACY_AD_FREE_DECEMBER_DIALOG_DISMISSED_KEY = 'adFreeDecemberDialog2025Dismissed';
+
+export const hasDismissedAdFreeDecember = (): boolean => {
+  const canonicalDismissed = safeGetItem(AD_FREE_DECEMBER_DISMISSED_KEY) === 'true';
+  const legacyDismissed = safeGetItem(LEGACY_AD_FREE_DECEMBER_DIALOG_DISMISSED_KEY) === 'true';
+
+  if (legacyDismissed && !canonicalDismissed) {
+    safeSetItem(AD_FREE_DECEMBER_DISMISSED_KEY, 'true');
+  }
+
+  return canonicalDismissed || legacyDismissed;
+};
+
+export const persistAdFreeDecemberDismissal = (): void => {
+  safeSetItem(AD_FREE_DECEMBER_DISMISSED_KEY, 'true');
+  safeSetItem(LEGACY_AD_FREE_DECEMBER_DIALOG_DISMISSED_KEY, 'true');
+};
 
 interface AdFreeDecemberContextType {
   triggerDialog: () => void;
@@ -20,15 +37,14 @@ export function AdFreeDecemberProvider({ children }: { children: ReactNode }) {
 
   const shouldShow = useCallback(() => {
     // Check if already dismissed
-    const dismissed = safeGetItem(AD_FREE_DECEMBER_DIALOG_DISMISSED_KEY) === 'true';
-    if (dismissed) return false;
+    if (hasDismissedAdFreeDecember()) return false;
 
     // Don't show to users who already shouldn't see ads (pro/subscribed)
     if (isSubscribedUser(user as UserCtx['user'])) return false;
 
     // Only show during the ad pause window (December 2024/2025)
     return isAdPauseActive();
-  }, [user]);
+  }, [user, hasDismissedAdFreeDecember]);
 
   const triggerDialog = useCallback(() => {
     // Only trigger once per session
@@ -42,8 +58,8 @@ export function AdFreeDecemberProvider({ children }: { children: ReactNode }) {
 
   const closeDialog = useCallback(() => {
     setShowDialog(false);
-    safeSetItem(AD_FREE_DECEMBER_DIALOG_DISMISSED_KEY, 'true');
-  }, []);
+    persistAdFreeDecemberDismissal();
+  }, [persistAdFreeDecemberDismissal]);
 
   return (
     <AdFreeDecemberContext.Provider value={{ triggerDialog, showDialog, closeDialog }}>
