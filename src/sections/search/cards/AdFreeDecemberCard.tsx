@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -12,6 +13,138 @@ interface AdFreeDecemberCardProps {
 const CARD_EXIT_DURATION_MS = 360;
 
 export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCardProps) {
+  const [showSecondChance, setShowSecondChance] = useState(false);
+
+  if (showSecondChance) {
+    return (
+      <FeedCardSurface
+        tone="info"
+        gradient="linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #2563eb 50%, #3b82f6 75%, #60a5fa 100%)"
+        sx={{
+          border: '1px solid rgba(96, 165, 250, 0.4)',
+          boxShadow: '0 32px 64px rgba(37, 99, 235, 0.35), 0 0 120px rgba(59, 130, 246, 0.15)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          opacity: isRemoving ? 0 : 1,
+          transform: isRemoving ? 'translateY(-28px)' : 'translateY(0)',
+          transition: `opacity ${CARD_EXIT_DURATION_MS}ms ease, transform ${CARD_EXIT_DURATION_MS}ms ease`,
+          pointerEvents: isRemoving ? 'none' : 'auto',
+          position: 'relative',
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2.5 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 48,
+                height: 48,
+                borderRadius: 2.5,
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              }}
+            >
+              <Logo color="#ffffff" sx={{ width: 36 }} />
+            </Box>
+            <Typography
+              component="h3"
+              variant="h4"
+              sx={{
+                fontWeight: 800,
+                fontSize: { xs: '1.4rem', sm: '1.5rem' },
+                lineHeight: 1.1,
+                letterSpacing: -0.5,
+                color: '#ffffff',
+                textShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+              }}
+            >
+              One More Thing...
+            </Typography>
+          </Stack>
+          <IconButton
+            aria-label="Dismiss ad-free announcement"
+            onClick={onDismiss}
+            size="small"
+            sx={{
+              color: '#ffffff',
+              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              backdropFilter: 'blur(8px)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.25)',
+              },
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+
+        <Typography
+          variant="body1"
+          sx={{
+            color: 'rgba(255, 255, 255, 0.9)',
+            fontWeight: 500,
+            fontSize: { xs: '1rem', sm: '1.05rem' },
+            lineHeight: 1.6,
+            mb: 2.5,
+            textAlign: 'center',
+          }}
+        >
+          No worries! Just remember—every bit helps keep memeSRC free and ad-light for everyone.
+        </Typography>
+
+        <Stack spacing={{ xs: 1.2, sm: 1.3 }} sx={{ width: '100%' }}>
+          <Button
+            variant="contained"
+            href="/pro"
+            sx={{
+              borderRadius: 999,
+              px: { xs: 3, sm: 3.5 },
+              py: { xs: 1.2, sm: 1.3 },
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: { xs: '1rem', sm: '1.05rem' },
+              color: '#1e3a8a',
+              backgroundColor: '#ffffff',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25), 0 0 50px rgba(255, 255, 255, 0.4)',
+              border: '2px solid rgba(255, 255, 255, 0.9)',
+              '&:hover': {
+                backgroundColor: '#dbeafe',
+                transform: 'translateY(-2px) scale(1.01)',
+                boxShadow: '0 12px 36px rgba(0, 0, 0, 0.35), 0 0 80px rgba(255, 255, 255, 0.5)',
+              },
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Box component="span" sx={{ mr: 1, fontSize: '1.2em' }}>⭐</Box>
+            Check out Pro
+          </Button>
+          <Button
+            variant="text"
+            onClick={onDismiss}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: { xs: '0.9rem', sm: '0.95rem' },
+              color: 'rgba(255, 255, 255, 0.7)',
+              py: 0.8,
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 0.9)',
+              },
+              transition: 'all 0.2s ease',
+            }}
+          >
+            No thanks
+          </Button>
+        </Stack>
+      </FeedCardSurface>
+    );
+  }
+
   return (
     <FeedCardSurface
       tone="info"
@@ -178,7 +311,7 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
         </Button>
         <Button
           variant="text"
-          onClick={onDismiss}
+          onClick={() => setShowSecondChance(true)}
           sx={{
             textTransform: 'none',
             fontWeight: 600,
