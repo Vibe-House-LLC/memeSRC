@@ -455,9 +455,15 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
     if (adFreeDecemberDismissed) {
       return false;
     }
+    // Don't show to pro users
+    const user = contextValue.user;
+    const isPro = user && typeof user === 'object' && user.userDetails?.magicSubscription === 'true';
+    if (isPro) {
+      return false;
+    }
     const now = new Date();
     return now.getMonth() === 11 && now.getFullYear() === 2025; // December 2025 (month is 0-indexed)
-  }, [adFreeDecemberDismissed]);
+  }, [adFreeDecemberDismissed, contextValue.user]);
 
   useEffect(() => {
     let didCancel = false;

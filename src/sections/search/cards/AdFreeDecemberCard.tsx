@@ -100,8 +100,8 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
           fontSize: { xs: '1rem', sm: '1.05rem' },
           lineHeight: 1.6,
           mb: 2.5,
+          textAlign: 'center',
           textShadow: '0 1px 4px rgba(0, 0, 0, 0.2)',
-          maxWidth: '95%',
         }}
       >
         We know ads suck, but they help keep the site running.{' '}
@@ -113,9 +113,7 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
       <Stack spacing={{ xs: 1.2, sm: 1.3 }} sx={{ width: '100%' }}>
         <Button
           variant="contained"
-          href="https://ko-fi.com/memesrc"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="/donate"
           sx={{
             borderRadius: 999,
             px: { xs: 3, sm: 3.5 },
