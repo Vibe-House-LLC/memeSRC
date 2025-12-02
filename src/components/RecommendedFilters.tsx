@@ -13,25 +13,7 @@ const MAX_RECOMMENDATIONS = 3;
 
 const RecommendedFiltersContainer = styled(Box)(({ theme }) => ({
   width: '100%',
-  paddingLeft: theme.spacing(2),
-  paddingRight: theme.spacing(2),
   marginBottom: theme.spacing(2.5),
-  [theme.breakpoints.up('sm')]: {
-    paddingLeft: theme.spacing(3),
-    paddingRight: theme.spacing(3),
-  },
-  [theme.breakpoints.up('md')]: {
-    paddingLeft: theme.spacing(6),
-    paddingRight: theme.spacing(6),
-  },
-  [theme.breakpoints.up('lg')]: {
-    paddingLeft: theme.spacing(8),
-    paddingRight: theme.spacing(8),
-  },
-  [theme.breakpoints.up('xl')]: {
-    paddingLeft: theme.spacing(12),
-    paddingRight: theme.spacing(12),
-  },
 }));
 
 const SuggestionBanner = styled(Box)(({ theme }) => ({

@@ -1,7 +1,7 @@
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Collapse } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Collapse, Container } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -675,10 +675,10 @@ export default function SearchPage() {
   }
 
   return (
-    <>
+    <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 } }}>
       {/* Add the ad section here */}
       {user?.userDetails?.subscriptionStatus !== 'active' && (
-        <Box sx={{ width: '100%', px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 }, mb: 2 }}>
+        <Box sx={{ width: '100%', mb: 2 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
             <Link to="/pro" style={{ textDecoration: 'none' }}>
@@ -692,7 +692,7 @@ export default function SearchPage() {
 
 
       {originalQuery && (
-        <Box sx={{ width: '100%', px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 }, mb: 2 }}>
+        <Box sx={{ width: '100%', mb: 2 }}>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
             {searchQuery ? (
               <>Showing results for <b>{searchQuery}</b>. </>
@@ -714,7 +714,7 @@ export default function SearchPage() {
       )}
 
       {loadingResults ? (
-        <Box sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 }, py: 2 }}>
+        <Box sx={{ py: 2 }}>
           <Grid container spacing={2} alignItems="stretch">
             {[...Array(RESULTS_PER_PAGE)].map((_, index) => (
               <Grid item xs={12} sm={6} md={3} key={index}>
@@ -783,7 +783,7 @@ export default function SearchPage() {
                 }
                 scrollThreshold={0.90}
               >
-                <Box sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 }, py: 2 }}>
+                <Box sx={{ py: 2 }}>
                   <Grid container spacing={2} alignItems="stretch">
                     {newResults.slice(0, displayedResults).map((result, index) => {
                     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
@@ -842,7 +842,7 @@ export default function SearchPage() {
           ) : (
             <>
               {newResults?.length <= 0 && !loadingResults && (
-                <Box sx={{ width: '100%', px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 }, my: 6, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ width: '100%', my: 6, display: 'flex', justifyContent: 'center' }}>
                   <Box sx={{ textAlign: 'center', maxWidth: 600 }}>
                     {hasSearchQuery ? (
                       <>
@@ -1090,6 +1090,6 @@ export default function SearchPage() {
           <Button onClick={() => navigate('/')} sx={{ color: "white" }}>Return to home</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </Container>
   );
 }
