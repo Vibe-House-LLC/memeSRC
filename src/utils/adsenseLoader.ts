@@ -9,6 +9,7 @@ type UserCtx = {
   user?: {
     userDetails?: {
       subscriptionStatus?: string | null;
+      magicSubscription?: string | null;
     };
   } | null | undefined;
 };
@@ -37,19 +38,26 @@ export const isAdPauseActive = (): boolean => {
   return month === 11 && (year === 2024 || year === 2025);
 };
 
+export const shouldShowAds = (user?: UserCtx['user']): boolean => {
+  if (isAdPauseActive()) return false;
+  const isSubscribed =
+    user?.userDetails?.subscriptionStatus === 'active' || user?.userDetails?.magicSubscription === 'true';
+  return !isSubscribed;
+};
+
 export const useAdsenseLoader = (): void => {
   const { user } = useContext(UserContext) as unknown as UserCtx;
-  const adsPaused = isAdPauseActive();
+  const adsEnabled = shouldShowAds(user);
 
   useEffect(() => {
-    if (adsPaused) {
+    if (!adsEnabled) {
       if (adsenseLoaded) {
         removeAdsenseArtifacts();
       }
       return undefined;
     }
 
-    if (!adsenseLoaded && (!user || user?.userDetails?.subscriptionStatus !== 'active')) {
+    if (!adsenseLoaded) {
       const script = document.createElement('script');
       script.src = ADSENSE_SRC;
       script.async = true;
@@ -71,11 +79,11 @@ export const useAdsenseLoader = (): void => {
         } else {
           clearTimeout(idleId);
         }
-        if (adsenseLoaded && user?.userDetails?.subscriptionStatus === 'active') {
+        if (adsenseLoaded && !adsEnabled) {
           removeAdsenseArtifacts();
         }
       };
     }
     return undefined;
-  }, [adsPaused, user]);
+  }, [adsEnabled, user]);
 };

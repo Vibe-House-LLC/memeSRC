@@ -53,7 +53,7 @@ import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
-import { isAdPauseActive } from '../utils/adsenseLoader';
+import { shouldShowAds } from '../utils/adsenseLoader';
 // Removed collage collector usage
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
@@ -1125,8 +1125,7 @@ useEffect(() => {
 
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-  const adsPaused = isAdPauseActive();
-  const showAds = !adsPaused && user?.userDetails?.subscriptionStatus !== 'active';
+  const showAds = shouldShowAds(user);
 
   return (
     <>

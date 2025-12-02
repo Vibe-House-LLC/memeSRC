@@ -21,7 +21,7 @@ import ImageSkeleton from '../components/ImageSkeleton.tsx';
 import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
-import { isAdPauseActive } from '../utils/adsenseLoader';
+import { shouldShowAds } from '../utils/adsenseLoader';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 import Page404 from './Page404';
 import { useSearchSettings } from '../contexts/SearchSettingsContext';
@@ -668,8 +668,7 @@ export default function SearchPage() {
 
   const [indexFilterQuery, setIndexFilterQuery] = useState('');
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-  const adsPaused = isAdPauseActive();
-  const showAds = !adsPaused && user?.userDetails?.subscriptionStatus !== 'active';
+  const showAds = shouldShowAds(user);
 
   const handleIndexFilterChange = (event) => {
     setIndexFilterQuery(event.target.value);

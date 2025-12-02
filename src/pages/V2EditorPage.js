@@ -33,6 +33,7 @@ import HomePageBannerAd from '../ads/HomePageBannerAd';
 
 import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from '../utils/editorFunctions';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+import { shouldShowAds } from '../utils/adsenseLoader';
 import { isAdPauseActive } from '../utils/adsenseLoader';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
@@ -1995,8 +1996,7 @@ const EditorPage = ({ shows }) => {
 
   // Add this state near other useState declarations
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-  const adsPaused = isAdPauseActive();
-  const showAds = !adsPaused && user?.userDetails?.subscriptionStatus !== 'active';
+  const showAds = shouldShowAds(user);
 
   return (
     <>
