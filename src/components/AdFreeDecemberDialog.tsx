@@ -1,5 +1,6 @@
 import { Box, Dialog, useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import { useEffect, useState } from 'react';
 import { AdFreeDecemberContent } from './AdFreeDecemberContent';
 
 interface AdFreeDecemberDialogProps {
@@ -9,11 +10,36 @@ interface AdFreeDecemberDialogProps {
 
 export function AdFreeDecemberDialog({ open, onClose }: AdFreeDecemberDialogProps) {
   const theme = useTheme();
+  const [showSecondChance, setShowSecondChance] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setShowSecondChance(false);
+    }
+  }, [open]);
+
+  const handleShowSecondChance = () => {
+    setShowSecondChance(true);
+  };
+
+  const handleFinalClose = () => {
+    setShowSecondChance(false);
+    onClose();
+  };
+
+  const handleDialogClose = (_event: object, _reason: 'backdropClick' | 'escapeKeyDown') => {
+    if (!showSecondChance) {
+      handleShowSecondChance();
+      return;
+    }
+
+    handleFinalClose();
+  };
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleDialogClose}
       maxWidth="sm"
       fullWidth
       BackdropProps={{
@@ -35,7 +61,11 @@ export function AdFreeDecemberDialog({ open, onClose }: AdFreeDecemberDialogProp
       }}
     >
       <Box sx={{ p: 3 }}>
-        <AdFreeDecemberContent onClose={onClose} />
+        <AdFreeDecemberContent
+          onClose={handleFinalClose}
+          onShowSecondChance={handleShowSecondChance}
+          showSecondChance={showSecondChance}
+        />
       </Box>
     </Dialog>
   );

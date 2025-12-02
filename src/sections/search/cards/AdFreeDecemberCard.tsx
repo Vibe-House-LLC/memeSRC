@@ -1,5 +1,6 @@
 import { useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import { useState } from 'react';
 import { FeedCardSurface } from './CardSurface';
 import { AdFreeDecemberContent } from '../../../components/AdFreeDecemberContent';
 
@@ -12,6 +13,13 @@ const CARD_EXIT_DURATION_MS = 360;
 
 export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCardProps) {
   const theme = useTheme();
+  const [showSecondChance, setShowSecondChance] = useState(false);
+
+  const handleShowSecondChance = () => setShowSecondChance(true);
+  const handleDismiss = () => {
+    setShowSecondChance(false);
+    onDismiss();
+  };
 
   return (
     <FeedCardSurface
@@ -32,7 +40,11 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
         position: 'relative',
       }}
     >
-      <AdFreeDecemberContent onClose={onDismiss} />
+      <AdFreeDecemberContent
+        onClose={handleDismiss}
+        onShowSecondChance={handleShowSecondChance}
+        showSecondChance={showSecondChance}
+      />
     </FeedCardSurface>
   );
 }
