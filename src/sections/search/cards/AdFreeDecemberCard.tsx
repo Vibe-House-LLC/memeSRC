@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
+import { Box, Button, IconButton, Stack, Typography, useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import Logo from '../../../components/logo/Logo';
@@ -14,15 +14,20 @@ const CARD_EXIT_DURATION_MS = 360;
 
 export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCardProps) {
   const [showSecondChance, setShowSecondChance] = useState(false);
+  const theme = useTheme();
 
   if (showSecondChance) {
     return (
       <FeedCardSurface
         tone="info"
-        gradient="linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #2563eb 50%, #3b82f6 75%, #60a5fa 100%)"
+        gradient={theme.palette.mode === 'dark'
+          ? 'linear-gradient(135deg, #0d3b1f 0%, #165b33 100%)'
+          : 'linear-gradient(135deg, #c41e3a 0%, #dc143c 100%)'}
         sx={{
-          border: '1px solid rgba(96, 165, 250, 0.4)',
-          boxShadow: '0 32px 64px rgba(37, 99, 235, 0.35), 0 0 120px rgba(59, 130, 246, 0.15)',
+          border: `1px solid ${alpha('#FFD700', 0.4)}`,
+          boxShadow: theme.palette.mode === 'dark'
+            ? '0 20px 40px rgba(0, 0, 0, 0.5), 0 0 60px rgba(255, 215, 0, 0.15)'
+            : '0 20px 40px rgba(196, 30, 58, 0.4), 0 0 40px rgba(255, 215, 0, 0.2)',
           backdropFilter: 'blur(20px) saturate(180%)',
           opacity: isRemoving ? 0 : 1,
           transform: isRemoving ? 'translateY(-28px)' : 'translateY(0)',
@@ -148,10 +153,14 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
   return (
     <FeedCardSurface
       tone="info"
-      gradient="linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #2563eb 50%, #3b82f6 75%, #60a5fa 100%)"
+      gradient={theme.palette.mode === 'dark'
+        ? 'linear-gradient(135deg, #0d3b1f 0%, #165b33 100%)'
+        : 'linear-gradient(135deg, #c41e3a 0%, #dc143c 100%)'}
       sx={{
-        border: '1px solid rgba(96, 165, 250, 0.4)',
-        boxShadow: '0 32px 64px rgba(37, 99, 235, 0.35), 0 0 120px rgba(59, 130, 246, 0.15)',
+        border: `1px solid ${alpha('#FFD700', 0.4)}`,
+        boxShadow: theme.palette.mode === 'dark'
+          ? '0 20px 40px rgba(0, 0, 0, 0.5), 0 0 60px rgba(255, 215, 0, 0.15)'
+          : '0 20px 40px rgba(196, 30, 58, 0.4), 0 0 40px rgba(255, 215, 0, 0.2)',
         backdropFilter: 'blur(20px) saturate(180%)',
         opacity: isRemoving ? 0 : 1,
         transform: isRemoving ? 'translateY(-28px)' : 'translateY(0)',
@@ -189,7 +198,7 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
                 lineHeight: 1,
               }}
             >
-              Ad-Free for all
+              🎄 Happy Holidays
             </Typography>
             <Typography
               component="h3"
@@ -203,7 +212,7 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
                 textShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
               }}
             >
-              No Ads in Dec
+              No Ads in Dec ❄️
             </Typography>
           </Stack>
         </Stack>
@@ -269,14 +278,14 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
             textTransform: 'none',
             fontWeight: 700,
             fontSize: { xs: '1rem', sm: '1.05rem' },
-            color: '#1e3a8a',
-            backgroundColor: '#ffffff',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25), 0 0 50px rgba(255, 255, 255, 0.4)',
-            border: '2px solid rgba(255, 255, 255, 0.9)',
+            color: theme.palette.common.black,
+            backgroundColor: theme.palette.common.white,
+            boxShadow: `0 8px 24px ${alpha(theme.palette.common.black, 0.25)}`,
+            border: `2px solid ${theme.palette.common.white}`,
             '&:hover': {
-              backgroundColor: '#dbeafe',
+              backgroundColor: theme.palette.grey[200],
               transform: 'translateY(-2px) scale(1.01)',
-              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.35), 0 0 80px rgba(255, 255, 255, 0.5)',
+              boxShadow: `0 12px 36px ${alpha(theme.palette.common.black, 0.35)}`,
             },
             transition: 'all 0.2s ease',
           }}
@@ -294,14 +303,14 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
             textTransform: 'none',
             fontWeight: 700,
             fontSize: { xs: '1rem', sm: '1.05rem' },
-            color: '#1e3a8a',
-            backgroundColor: '#ffffff',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25), 0 0 50px rgba(255, 255, 255, 0.4)',
-            border: '2px solid rgba(255, 255, 255, 0.9)',
+            color: theme.palette.common.black,
+            backgroundColor: theme.palette.common.white,
+            boxShadow: `0 8px 24px ${alpha(theme.palette.common.black, 0.25)}`,
+            border: `2px solid ${theme.palette.common.white}`,
             '&:hover': {
-              backgroundColor: '#fef3c7',
+              backgroundColor: theme.palette.grey[200],
               transform: 'translateY(-2px) scale(1.01)',
-              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.35), 0 0 80px rgba(255, 255, 255, 0.5)',
+              boxShadow: `0 12px 36px ${alpha(theme.palette.common.black, 0.35)}`,
             },
             transition: 'all 0.2s ease',
           }}
