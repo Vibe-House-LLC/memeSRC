@@ -28,6 +28,7 @@ import { isColorNearBlack } from '../../utils/colors';
 import FeedSection, { resolveUserIdentifier } from './FeedSection';
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
 import { shouldShowAds } from '../../utils/adsenseLoader';
+import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -124,6 +125,7 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const isFeedEnabled = Boolean(showFeed);
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { triggerDialog } = useAdFreeDecember();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
@@ -655,8 +657,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       showCount: Array.isArray(shows) ? shows.length : 0,
       hasAd: showAd,
     });
+    // Trigger ad-free dialog after random click
+    triggerDialog();
     loadRandomFrame(scope);
-  }, [currentValueId, loadRandomFrame, shows, showAd]);
+  }, [currentValueId, loadRandomFrame, shows, showAd, triggerDialog]);
 
   const handleSelect = useCallback(
     (selectedId) => {
