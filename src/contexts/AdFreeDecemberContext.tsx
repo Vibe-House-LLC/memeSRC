@@ -23,7 +23,9 @@ export function AdFreeDecemberProvider({ children }: { children: ReactNode }) {
     if (dismissed) return false;
 
     // Don't show to pro users
-    const isPro = (user as any)?.userDetails?.magicSubscription === 'true';
+    const isPro =
+      (user as any)?.userDetails?.subscriptionStatus === 'active' ||
+      (user as any)?.userDetails?.magicSubscription === 'true';
     if (isPro) return false;
 
     // Only show in December 2025

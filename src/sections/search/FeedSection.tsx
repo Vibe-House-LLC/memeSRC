@@ -457,7 +457,10 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
     }
     // Don't show to pro users
     const user = contextValue.user;
-    const isPro = user && typeof user === 'object' && user.userDetails?.magicSubscription === 'true';
+    const isPro =
+      user &&
+      typeof user === 'object' &&
+      (user.userDetails?.subscriptionStatus === 'active' || user.userDetails?.magicSubscription === 'true');
     if (isPro) {
       return false;
     }
