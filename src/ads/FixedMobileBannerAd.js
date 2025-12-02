@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import styled from '@emotion/styled';
 import Box from '@mui/material/Box';
-import { useAdsenseLoader } from '../utils/adsenseLoader';
+import { isAdPauseActive, useAdsenseLoader } from '../utils/adsenseLoader';
 
 const FixedSizeAdContainer = styled(Box)`
   display: flex;
@@ -16,12 +16,20 @@ const FixedSizeAdContainer = styled(Box)`
 `;
 
 const FixedMobileBannerAd = () => {
+    const adsPaused = isAdPauseActive();
     useAdsenseLoader();
 
     useEffect(() => {
+        if (adsPaused) {
+            return;
+        }
         window.adsbygoogle = window.adsbygoogle || [];
         window.adsbygoogle.push({});
-    }, []);
+    }, [adsPaused]);
+
+    if (adsPaused) {
+        return null;
+    }
 
     return (
         <FixedSizeAdContainer>

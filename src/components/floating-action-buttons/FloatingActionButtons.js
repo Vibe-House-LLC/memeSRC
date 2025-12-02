@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
+import { isAdPauseActive } from '../../utils/adsenseLoader';
 
 // Define constants for colors and fonts
 const BUTTON_BASE_COLOR = '#0f0f0f';
@@ -77,6 +78,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const navigate = useNavigate();
     const { user, shows: availableShows = [] } = useContext(UserContext);
     const theme = useTheme();
+    const adsVisible = showAd && !isAdPauseActive();
     const isAdmin = user?.['cognito:groups']?.includes('admins');
     const isPro = user?.userDetails?.magicSubscription === 'true';
     const hasCollageAccess = Boolean(isAdmin || isPro);
@@ -123,7 +125,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         const payload = {
             source: 'FloatingActionButtons',
             showCount,
-            hasAd: showAd,
+            hasAd: adsVisible,
         };
 
         trackUsageEvent('random_frame', payload);
@@ -244,7 +246,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             md: 56,
         };
 
-        const resolveHeight = (key) => baseHeights[key] + (showAd ? adExtraHeights[key] : 0);
+        const resolveHeight = (key) => baseHeights[key] + (adsVisible ? adExtraHeights[key] : 0);
 
         return {
             width: '100%',
@@ -259,7 +261,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 height: `${resolveHeight('md')}px`,
             },
         };
-    }, [showAd, theme]);
+    }, [adsVisible, theme]);
 
     if (variant === 'inline') {
         return (
@@ -286,10 +288,10 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     return (
         <>
             <Box aria-hidden sx={safeAreaSpacerSx} />
-            <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
+            <StyledLeftFooter className="bottomBtn" hasAd={adsVisible}>
                 {primaryButton}
             </StyledLeftFooter>
-            <StyledRightFooter className="bottomBtn" hasAd={showAd}>
+            <StyledRightFooter className="bottomBtn" hasAd={adsVisible}>
                 {randomButton}
             </StyledRightFooter>
         </>

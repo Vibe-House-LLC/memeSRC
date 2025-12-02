@@ -3,6 +3,7 @@ import { useContext, useEffect } from 'react';
 import { UserContext } from '../UserContext';
 
 let adsenseLoaded = false;
+const ADSENSE_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1307598869123774';
 
 type UserCtx = {
   user?: {
@@ -18,13 +19,39 @@ type IdleWindow = Window &
     cancelIdleCallback?: (id: number) => void;
   };
 
+const removeAdsenseArtifacts = () => {
+  const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${ADSENSE_SRC}"]`);
+  if (existingScript?.parentElement) {
+    existingScript.parentElement.removeChild(existingScript);
+  }
+  const ads = document.getElementsByClassName('adsbygoogle');
+  Array.from(ads).forEach((ad) => (ad as Element).remove());
+  adsenseLoaded = false;
+};
+
+// Disable ads for everyone during December 2024 and December 2025.
+export const isAdPauseActive = (): boolean => {
+  const now = new Date();
+  const month = now.getUTCMonth();
+  const year = now.getUTCFullYear();
+  return month === 11 && (year === 2024 || year === 2025);
+};
+
 export const useAdsenseLoader = (): void => {
   const { user } = useContext(UserContext) as unknown as UserCtx;
+  const adsPaused = isAdPauseActive();
 
   useEffect(() => {
+    if (adsPaused) {
+      if (adsenseLoaded) {
+        removeAdsenseArtifacts();
+      }
+      return undefined;
+    }
+
     if (!adsenseLoaded && (!user || user?.userDetails?.subscriptionStatus !== 'active')) {
       const script = document.createElement('script');
-      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1307598869123774';
+      script.src = ADSENSE_SRC;
       script.async = true;
       script.crossOrigin = 'anonymous';
 
@@ -45,13 +72,10 @@ export const useAdsenseLoader = (): void => {
           clearTimeout(idleId);
         }
         if (adsenseLoaded && user?.userDetails?.subscriptionStatus === 'active') {
-          document.body.removeChild(script);
-          adsenseLoaded = false;
-          const ads = document.getElementsByClassName('adsbygoogle');
-          Array.from(ads).forEach((ad) => (ad as Element).remove());
+          removeAdsenseArtifacts();
         }
       };
     }
     return undefined;
-  }, [user]);
+  }, [adsPaused, user]);
 };

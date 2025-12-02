@@ -14,6 +14,7 @@ import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
+import { isAdPauseActive } from '../../utils/adsenseLoader';
 
 const sanitizeSearchValue = (value) => {
   if (value === undefined || value === null) {
@@ -186,7 +187,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
     [buildSearchUrl, navigate, resolvedCid, setSearchQuery, shows],
   );
 
-  const showAd = user?.userDetails?.subscriptionStatus !== 'active';
+  const showAd = !isAdPauseActive() && user?.userDetails?.subscriptionStatus !== 'active';
 
   const handleRandomSearch = useCallback(() => {
     const scope = resolvedCid || '_universal';
