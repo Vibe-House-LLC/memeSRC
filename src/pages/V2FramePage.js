@@ -1131,7 +1131,7 @@ useEffect(() => {
         <title> Frame Details | memeSRC 2.0 </title>
       </Helmet>
 
-      <Container maxWidth="xl" sx={{ pt: 0 }}>
+      <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 }, pt: 0 }}>
         {user?.userDetails?.subscriptionStatus !== 'active' && (
           <Grid item xs={12} mb={3}>
             <center>

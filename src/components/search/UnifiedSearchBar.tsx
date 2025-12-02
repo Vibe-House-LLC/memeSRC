@@ -42,8 +42,6 @@ const FONT_FAMILY = 'Roboto, sans-serif';
 
 const FormRoot = styled('form')(({ theme }) => ({
   width: '100%',
-  maxWidth: 820,
-  margin: '0 auto',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',

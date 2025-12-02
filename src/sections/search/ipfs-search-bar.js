@@ -283,46 +283,35 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
             maxWidth="xl"
             disableGutters
             sx={{
-              px: { xs: 2, sm: 3, md: 4 },
+              px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 },
               pt: { xs: 2, sm: 3 },
               display: 'flex',
               flexDirection: 'column',
               gap: 1.5,
             }}
           >
-            <Box
-              sx={{
-                width: '100%',
-                maxWidth: 900,
-                mx: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: { xs: 1, md: 1.2 },
-              }}
-            >
-              <UnifiedSearchBar
-                value={search}
-                onValueChange={handleSearchChange}
-                onSubmit={handleSubmit}
-                onClear={handleClearSearch}
-                onRandom={handleRandomSearch}
-                isRandomLoading={loadingRandom}
-                shows={shows}
-                savedCids={savedSeries}
-                currentValueId={resolvedCid}
-                includeAllFavorites={hasFavoriteShows}
-                onSelectSeries={handleSelectSeries}
-                appearance="dark"
-                onClarifySearch={handleClarifySearch}
-              />
-            </Box>
+            <UnifiedSearchBar
+              value={search}
+              onValueChange={handleSearchChange}
+              onSubmit={handleSubmit}
+              onClear={handleClearSearch}
+              onRandom={handleRandomSearch}
+              isRandomLoading={loadingRandom}
+              shows={shows}
+              savedCids={savedSeries}
+              currentValueId={resolvedCid}
+              includeAllFavorites={hasFavoriteShows}
+              onSelectSeries={handleSelectSeries}
+              appearance="dark"
+              onClarifySearch={handleClarifySearch}
+            />
           </Container>
         </Box>
       )}
 
       {pathname.startsWith('/frame') && (
-        <Container maxWidth="xl" disableGutters sx={{ px: 1 }}>
-          <Box sx={{ width: '100%', px: 2 }}>
+        <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 } }}>
+          <Box sx={{ width: '100%' }}>
             <MuiLink
               component={RouterLink}
               to={searchQuery
@@ -344,7 +333,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
               </Stack>
             </MuiLink>
           </Box>
-          <Typography variant="h2" mt={1} pl={2}>
+          <Typography variant="h2" mt={1}>
             {savedSeries
               ? `${
                   shows.find((obj) => obj.id === params?.cid)?.emoji
@@ -361,8 +350,8 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       )}
 
       {pathname.startsWith('/editor') && (
-        <Container maxWidth="xl" disableGutters sx={{ px: 1 }}>
-          <Box sx={{ width: '100%', px: 2 }}>
+        <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 } }}>
+          <Box sx={{ width: '100%' }}>
             <MuiLink
               component={RouterLink}
               to={`/frame/${params?.cid}/${params?.season}/${params?.episode}/${params?.frame}${
