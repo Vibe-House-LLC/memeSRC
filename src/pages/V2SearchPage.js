@@ -12,6 +12,8 @@ import sanitizeHtml from 'sanitize-html';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
 import { UserContext } from '../UserContext';
+import { useFilterRecommendations } from '../hooks/useFilterRecommendations';
+import RecommendedFilters from '../components/RecommendedFilters';
 
 import { getWebsiteSetting } from '../graphql/queries';
 
@@ -274,6 +276,15 @@ export default function SearchPage() {
     [searchQuery],
   );
   const hasSearchQuery = normalizedSearchTerm.length > 0;
+
+  // Get filter recommendations based on the search query
+  const recommendedFilters = useFilterRecommendations({
+    query: normalizedSearchTerm,
+    shows,
+    customFilters: groups,
+    currentValueId: resolvedCid,
+    includeAllFavorites: true,
+  });
   const searchScopeInfo = useMemo(() => {
     if (!resolvedCid || resolvedCid === '_universal') {
       return { label: 'All Shows & Movies', path: '/', emoji: '🌈' };
@@ -693,6 +704,15 @@ export default function SearchPage() {
             Search instead for <Link to={`/search/${resolvedCid}?searchTerm=${encodeURIComponent(originalQuery)}`} style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}><b>{originalQuery}</b></Link>?
           </Typography>
         </Box>
+      )}
+
+      {hasSearchQuery && recommendedFilters && recommendedFilters.length > 0 && (
+        <RecommendedFilters
+          recommendations={recommendedFilters}
+          currentSearchQuery={searchQuery}
+          currentFilterId={resolvedCid}
+          userId={user?.id}
+        />
       )}
 
       {loadingResults ? (

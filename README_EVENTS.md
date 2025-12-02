@@ -15,6 +15,48 @@ Example event data:
 ```
 Optional fields: `resolvedIndex` (shows the comma-separated list backing the `_favorites` filter).
 
+## filter_recommendation_impression
+Fired when a filter recommendation is displayed to a user on the search results page. A recommendation appears when the search query matches a specific show or filter name.
+
+```json
+{
+  "source": "V2SearchPage",
+  "recommendedFilterId": "the-office",
+  "recommendedFilterName": "The Office",
+  "searchTerm": "michael scott",
+  "currentFilterId": "_universal",
+  "matchedWords": ["office"]
+}
+```
+
+## filter_recommendation_accept
+Logged when a user clicks on a recommended filter to apply it to their search results.
+
+```json
+{
+  "source": "V2SearchPage",
+  "recommendedFilterId": "the-office",
+  "recommendedFilterName": "The Office",
+  "searchTerm": "michael scott",
+  "currentFilterId": "_universal",
+  "matchedWords": ["office"]
+}
+```
+
+## filter_recommendation_deny
+Dispatched when a user dismisses a filter recommendation by clicking the close button.
+
+```json
+{
+  "source": "V2SearchPage",
+  "recommendedFilterId": "the-office",
+  "recommendedFilterName": "The Office",
+  "searchTerm": "michael scott",
+  "currentFilterId": "_universal",
+  "matchedWords": ["office"]
+}
+```
+
 ## view_image
 Logged when a frame renders on the V2 frame page, including navigation between frames.
 
