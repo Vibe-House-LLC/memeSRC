@@ -241,33 +241,18 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
           fontWeight: 500,
           fontSize: { xs: '1rem', sm: '1.05rem' },
           lineHeight: 1.6,
-          mb: 2.5,
+          mb: 1.5,
           textAlign: 'center',
           textShadow: '0 1px 4px rgba(0, 0, 0, 0.2)',
         }}
       >
-        We know ads suck, but they help keep the site running.{' '}
+        We know ads suck, but they help keep memeSRC alive.{' '}
         <Box component="span" sx={{ fontWeight: 700 }}>
           We're turning them off for the holidays.
         </Box>
       </Typography>
 
-      <Typography
-        variant="overline"
-        sx={{
-          display: 'block',
-          textAlign: 'center',
-          color: 'rgba(255, 255, 255, 0.65)',
-          fontWeight: 600,
-          fontSize: { xs: '0.7rem', sm: '0.75rem' },
-          letterSpacing: 1.5,
-          mb: 1.5,
-        }}
-      >
-        Other ways to support
-      </Typography>
-
-      <Stack spacing={{ xs: 1.2, sm: 1.3 }} sx={{ width: '100%' }}>
+      <Stack spacing={{ xs: 1, sm: 1 }} sx={{ width: '100%' }}>
         <Button
           variant="contained"
           href="/pro"
@@ -290,7 +275,7 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
             transition: 'all 0.2s ease',
           }}
         >
-          <Box component="span" sx={{ mr: 1, fontSize: '1.2em' }}>⭐</Box>
+          <Box component="span" sx={{ mr: 1, fontSize: '1.2em' }}>⬆️</Box>
           Support with Pro
         </Button>
         <Button
