@@ -16,6 +16,14 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
   const [showSecondChance, setShowSecondChance] = useState(false);
   const theme = useTheme();
 
+  const handleDismiss = () => {
+    if (!showSecondChance) {
+      setShowSecondChance(true);
+    } else {
+      onDismiss();
+    }
+  };
+
   if (showSecondChance) {
     return (
       <FeedCardSurface
@@ -218,7 +226,7 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
         </Stack>
         <IconButton
           aria-label="Dismiss ad-free announcement"
-          onClick={onDismiss}
+          onClick={handleDismiss}
           size="small"
           sx={{
             color: '#ffffff',

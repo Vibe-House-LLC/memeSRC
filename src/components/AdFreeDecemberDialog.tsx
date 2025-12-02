@@ -14,8 +14,12 @@ export function AdFreeDecemberDialog({ open, onClose }: AdFreeDecemberDialogProp
   const theme = useTheme();
 
   const handleClose = () => {
-    setShowSecondChance(false);
-    onClose();
+    if (!showSecondChance) {
+      setShowSecondChance(true);
+    } else {
+      setShowSecondChance(false);
+      onClose();
+    }
   };
 
   if (showSecondChance) {
