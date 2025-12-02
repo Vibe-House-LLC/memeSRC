@@ -7,7 +7,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import FeedbackIcon from '@mui/icons-material/Feedback';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { Box, Button, Card, Chip, CircularProgress, Collapse, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, Typography, useMediaQuery, Stack } from '@mui/material';
+import { Box, Button, Card, Chip, CircularProgress, Dialog, DialogContent, DialogTitle, Divider, Fade, Grid, IconButton, Typography, useMediaQuery, Stack } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { createContext, useState, useRef, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
@@ -55,8 +55,6 @@ export const DialogProvider = ({ children }) => {
 
   const { countryCode } = useUserLocation();
 
-  const [creditOptionsExpanded, setCreditOptionsExpanded] = useState(!isCompact);
-
   useEffect(() => {
     if (location.pathname === '/pro' && user !== null) {
       if (user.userDetails?.subscriptionStatus === 'active') {
@@ -80,17 +78,10 @@ export const DialogProvider = ({ children }) => {
     }
   }, [user?.userDetails?.subscriptionStatus, subscriptionDialogOpen, navigate]);
 
-  useEffect(() => {
-    setCreditOptionsExpanded(!isCompact);
-  }, [isCompact]);
-
   const subscribeButtonRef = useRef(null);
 
   const setSelectedPlanAndScroll = (plan) => {
     setSelectedPlan(plan);
-    if (isCompact) {
-      setCreditOptionsExpanded(false);
-    }
     subscribeButtonRef.current.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -214,12 +205,6 @@ export const DialogProvider = ({ children }) => {
     const absAmount = Math.abs(amount);
     const formattedPrice = absAmount % 1 === 0 ? absAmount.toFixed(0) : absAmount.toFixed(2);
     return `${sign}$${formattedPrice}`;
-  };
-
-  const toggleCreditOptions = () => {
-    if (isCompact) {
-      setCreditOptionsExpanded(!creditOptionsExpanded);
-    }
   };
 
   return (
@@ -413,12 +398,10 @@ export const DialogProvider = ({ children }) => {
                         Exclusive Features
                       </Typography>
                     </Box>
-                    <Box 
-                      display="flex" 
-                      alignItems="center" 
-                      ml={2} 
-                      onClick={isCompact ? toggleCreditOptions : undefined}
-                      sx={{ cursor: isCompact ? 'pointer' : 'default' }}
+                    <Box
+                      display="flex"
+                      alignItems="center"
+                      ml={2}
                     >
                       <Box
                         sx={{
@@ -434,37 +417,12 @@ export const DialogProvider = ({ children }) => {
                       >
                         <AutoFixHighRoundedIcon sx={{ color: getTextColor(), fontSize: isCompact ? 20 : 24 }} />
                       </Box>
-                      <Typography fontSize={isCompact ? 16 : 18} fontWeight={500} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography fontSize={isCompact ? 16 : 18} fontWeight={500}>
                         {getCreditCount()} Magic Credits
-                        {isCompact && !creditOptionsExpanded && (
-                          <Box
-                            component="span"
-                            sx={{
-                              color: 'rgba(255, 255, 255, 0.5)',
-                              cursor: 'pointer',
-                              ml: 1,
-                              fontSize: '0.75em',
-                              fontWeight: 600,
-                              userSelect: 'none',
-                              transition: 'all 0.2s',
-                              textDecoration: 'underline',
-                              '&:hover': {
-                                color: 'rgba(255, 255, 255, 0.8)',
-                              }
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleCreditOptions();
-                            }}
-                          >
-                            change
-                          </Box>
-                        )}
                       </Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={12} sm={isCompact ? 12 : 7}>
-                    <Collapse in={creditOptionsExpanded} timeout={300}>
                       {!isCompact ? (
                         <Box sx={{ px: 2 }}>
                           {[
@@ -599,10 +557,9 @@ export const DialogProvider = ({ children }) => {
                           ))}
                         </Stack>
                       )}
-                    </Collapse>
                   </Grid>
                 </Grid>
-                <Box mt={creditOptionsExpanded || isCompact ? 2 : 4} textAlign="center">
+                <Box mt={2} textAlign="center">
                   {/* {console.log(user)} */}
                   {user?.userDetails ? (
                     <Button
