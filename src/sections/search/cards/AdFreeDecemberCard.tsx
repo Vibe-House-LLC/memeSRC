@@ -110,7 +110,47 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
         </Box>
       </Typography>
 
+      <Typography
+        variant="overline"
+        sx={{
+          display: 'block',
+          textAlign: 'center',
+          color: 'rgba(255, 255, 255, 0.65)',
+          fontWeight: 600,
+          fontSize: { xs: '0.7rem', sm: '0.75rem' },
+          letterSpacing: 1.5,
+          mb: 1.5,
+        }}
+      >
+        Other ways to support
+      </Typography>
+
       <Stack spacing={{ xs: 1.2, sm: 1.3 }} sx={{ width: '100%' }}>
+        <Button
+          variant="contained"
+          href="/pro"
+          sx={{
+            borderRadius: 999,
+            px: { xs: 3, sm: 3.5 },
+            py: { xs: 1.2, sm: 1.3 },
+            textTransform: 'none',
+            fontWeight: 700,
+            fontSize: { xs: '1rem', sm: '1.05rem' },
+            color: '#1e3a8a',
+            backgroundColor: '#ffffff',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25), 0 0 50px rgba(255, 255, 255, 0.4)',
+            border: '2px solid rgba(255, 255, 255, 0.9)',
+            '&:hover': {
+              backgroundColor: '#dbeafe',
+              transform: 'translateY(-2px) scale(1.01)',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.35), 0 0 80px rgba(255, 255, 255, 0.5)',
+            },
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <Box component="span" sx={{ mr: 1, fontSize: '1.2em' }}>⭐</Box>
+          Support with Pro
+        </Button>
         <Button
           variant="contained"
           href="/donate"
@@ -134,7 +174,7 @@ export function AdFreeDecemberCard({ onDismiss, isRemoving }: AdFreeDecemberCard
           }}
         >
           <Box component="span" sx={{ mr: 1, fontSize: '1.2em' }}>🎁</Box>
-          Support with a Donation
+          Support with Gift
         </Button>
         <Button
           variant="text"
