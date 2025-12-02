@@ -170,9 +170,12 @@ export const RecommendedFilters: React.FC<RecommendedFiltersProps> = ({
 
         wordsToRemove.push(...atMentionPattern);
 
-        // Build regex pattern to remove matched words
+        // Build regex pattern to remove matched words (sort by length so longer prefixes win)
         const pattern = new RegExp(
-          wordsToRemove.map((word) => `@?${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).join('|'),
+          [...new Set(wordsToRemove)]
+            .sort((a, b) => b.length - a.length)
+            .map((word) => `@?${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
+            .join('|'),
           'gi'
         );
 
