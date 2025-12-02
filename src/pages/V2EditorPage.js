@@ -2000,8 +2000,8 @@ const EditorPage = ({ shows }) => {
       <Helmet>
         <title>Edit • memeSRC</title>
       </Helmet>
-      <Container maxWidth='xl' disableGutters>
-        <ParentContainer sx={{ padding: { xs: 1.5, md: 2 } }} id="parent-container">
+      <Container maxWidth='xl' disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 } }}>
+        <ParentContainer sx={{ pt: { xs: 1.5, md: 2 } }} id="parent-container">
 
           {user?.userDetails?.subscriptionStatus !== 'active' && (
             <Grid container>

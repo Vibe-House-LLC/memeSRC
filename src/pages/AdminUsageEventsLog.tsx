@@ -323,6 +323,9 @@ const EVENT_COLOR_MAP: Record<string, ChipColor> = {
   view_image_advanced: 'primary',
   advanced_editor_save: 'success',
   advanced_editor_add_text_layer: 'info',
+  filter_recommendation_impression: 'info',
+  filter_recommendation_accept: 'success',
+  filter_recommendation_deny: 'warning',
 };
 
 const normalizeEventType = (value: string | null | undefined) => {
@@ -354,6 +357,71 @@ const EVENT_SPECIFIC_FIELD_RENDERERS: Record<string, EventSpecificFieldRenderer>
     const resolvedIndex = typeof data.resolvedIndex === 'string' ? data.resolvedIndex.trim() : '';
     if (resolvedIndex) {
       fields.push({ key: 'Resolved index', value: resolvedIndex });
+    }
+
+    return fields;
+  },
+  filter_recommendation_impression: (entry) => {
+    if (!entry.parsedEventData || typeof entry.parsedEventData !== 'object') {
+      return [];
+    }
+
+    const data = entry.parsedEventData as Record<string, unknown>;
+    const fields: StringEntry[] = [];
+
+    const recommendedFilterName = typeof data.recommendedFilterName === 'string' ? data.recommendedFilterName.trim() : '';
+    if (recommendedFilterName) {
+      fields.push({ key: 'Recommended', value: recommendedFilterName });
+    }
+
+    const searchTerm = typeof data.searchTerm === 'string' ? data.searchTerm.trim() : '';
+    if (searchTerm) {
+      fields.push({ key: 'Search term', value: searchTerm });
+    }
+
+    const currentFilterId = typeof data.currentFilterId === 'string' ? data.currentFilterId.trim() : '';
+    if (currentFilterId) {
+      fields.push({ key: 'Current filter', value: currentFilterId });
+    }
+
+    return fields;
+  },
+  filter_recommendation_accept: (entry) => {
+    if (!entry.parsedEventData || typeof entry.parsedEventData !== 'object') {
+      return [];
+    }
+
+    const data = entry.parsedEventData as Record<string, unknown>;
+    const fields: StringEntry[] = [];
+
+    const recommendedFilterName = typeof data.recommendedFilterName === 'string' ? data.recommendedFilterName.trim() : '';
+    if (recommendedFilterName) {
+      fields.push({ key: 'Accepted', value: recommendedFilterName });
+    }
+
+    const searchTerm = typeof data.searchTerm === 'string' ? data.searchTerm.trim() : '';
+    if (searchTerm) {
+      fields.push({ key: 'Search term', value: searchTerm });
+    }
+
+    return fields;
+  },
+  filter_recommendation_deny: (entry) => {
+    if (!entry.parsedEventData || typeof entry.parsedEventData !== 'object') {
+      return [];
+    }
+
+    const data = entry.parsedEventData as Record<string, unknown>;
+    const fields: StringEntry[] = [];
+
+    const recommendedFilterName = typeof data.recommendedFilterName === 'string' ? data.recommendedFilterName.trim() : '';
+    if (recommendedFilterName) {
+      fields.push({ key: 'Dismissed', value: recommendedFilterName });
+    }
+
+    const searchTerm = typeof data.searchTerm === 'string' ? data.searchTerm.trim() : '';
+    if (searchTerm) {
+      fields.push({ key: 'Search term', value: searchTerm });
     }
 
     return fields;

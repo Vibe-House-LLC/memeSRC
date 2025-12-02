@@ -1,7 +1,7 @@
 // V2SearchPage.js
 
 import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
-import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Collapse } from '@mui/material';
+import { Grid, CircularProgress, Card, Chip, Typography, Button, Dialog, DialogContent, DialogActions, Box, CardContent, TextField, Collapse, Container } from '@mui/material';
 import styled from '@emotion/styled';
 import { API, graphqlOperation } from 'aws-amplify';
 import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -12,6 +12,8 @@ import sanitizeHtml from 'sanitize-html';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
 import { UserContext } from '../UserContext';
+import { useFilterRecommendations } from '../hooks/useFilterRecommendations';
+import RecommendedFilters from '../components/RecommendedFilters';
 
 import { getWebsiteSetting } from '../graphql/queries';
 
@@ -274,6 +276,15 @@ export default function SearchPage() {
     [searchQuery],
   );
   const hasSearchQuery = normalizedSearchTerm.length > 0;
+
+  // Get filter recommendations based on the search query
+  const recommendedFilters = useFilterRecommendations({
+    query: normalizedSearchTerm,
+    shows,
+    customFilters: groups,
+    currentValueId: resolvedCid,
+    includeAllFavorites: true,
+  });
   const searchScopeInfo = useMemo(() => {
     if (!resolvedCid || resolvedCid === '_universal') {
       return { label: 'All Shows & Movies', path: '/', emoji: '🌈' };
@@ -664,26 +675,24 @@ export default function SearchPage() {
   }
 
   return (
-    <>
+    <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 } }}>
       {/* Add the ad section here */}
       {user?.userDetails?.subscriptionStatus !== 'active' && (
-        <Grid item xs={12} mb={2}>
-          <center>
-            <Box>
-              {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-              <Link to="/pro" style={{ textDecoration: 'none' }}>
-                <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                  ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                </Typography>
-              </Link>
-            </Box>
-          </center>
-        </Grid>
+        <Box sx={{ width: '100%', mb: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
+            <Link to="/pro" style={{ textDecoration: 'none' }}>
+              <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
+                ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
+              </Typography>
+            </Link>
+          </Box>
+        </Box>
       )}
 
 
       {originalQuery && (
-        <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, mb: 2 }}>
+        <Box sx={{ width: '100%', mb: 2 }}>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
             {searchQuery ? (
               <>Showing results for <b>{searchQuery}</b>. </>
@@ -695,18 +704,29 @@ export default function SearchPage() {
         </Box>
       )}
 
+      {hasSearchQuery && recommendedFilters && recommendedFilters.length > 0 && (
+        <RecommendedFilters
+          recommendations={recommendedFilters}
+          currentSearchQuery={searchQuery}
+          currentFilterId={resolvedCid}
+          userId={user?.id}
+        />
+      )}
+
       {loadingResults ? (
-        <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} py={2}>
-          {[...Array(RESULTS_PER_PAGE)].map((_, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
-              <StyledCard>
-                <StyledCardImageContainer>
-                  <ImageSkeleton />
-                </StyledCardImageContainer>
-              </StyledCard>
-            </Grid>
-          ))}
-        </Grid>
+        <Box sx={{ py: 2 }}>
+          <Grid container spacing={2} alignItems="stretch">
+            {[...Array(RESULTS_PER_PAGE)].map((_, index) => (
+              <Grid item xs={12} sm={6} md={3} key={index}>
+                <StyledCard>
+                  <StyledCardImageContainer>
+                    <ImageSkeleton />
+                  </StyledCardImageContainer>
+                </StyledCard>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       ) : (
         <>
           {newResults && newResults.length > 0 ? (
@@ -763,8 +783,9 @@ export default function SearchPage() {
                 }
                 scrollThreshold={0.90}
               >
-                <Grid container spacing={2} alignItems="stretch" paddingX={{ xs: 2, md: 6 }} py={2}>
-                  {newResults.slice(0, displayedResults).map((result, index) => {
+                <Box sx={{ py: 2 }}>
+                  <Grid container spacing={2} alignItems="stretch">
+                    {newResults.slice(0, displayedResults).map((result, index) => {
                     const resultId = `${result.season}-${result.episode}-${result.subtitle_index}`;
                     const isMediaLoaded = videoLoadedStates[resultId] || false;
                     const sanitizedSubtitleText = sanitizeHtml(result.subtitle_text, {
@@ -814,13 +835,14 @@ export default function SearchPage() {
                       </Grid>
                     );
                   })}
-                </Grid>
+                  </Grid>
+                </Box>
               </InfiniteScroll>
             </>
           ) : (
             <>
               {newResults?.length <= 0 && !loadingResults && (
-                <Box sx={{ width: '100%', px: { xs: 2, md: 6 }, my: 6, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ width: '100%', my: 6, display: 'flex', justifyContent: 'center' }}>
                   <Box sx={{ textAlign: 'center', maxWidth: 600 }}>
                     {hasSearchQuery ? (
                       <>
@@ -1068,6 +1090,6 @@ export default function SearchPage() {
           <Button onClick={() => navigate('/')} sx={{ color: "white" }}>Return to home</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </Container>
   );
 }
