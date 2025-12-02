@@ -33,8 +33,9 @@ const removeAdsenseArtifacts = () => {
 // Disable ads for everyone during December 2024 and December 2025.
 export const isAdPauseActive = (): boolean => {
   const now = new Date();
-  const month = now.getUTCMonth();
-  const year = now.getUTCFullYear();
+  // Use local time so the pause window matches what users see in the UI
+  const month = now.getMonth();
+  const year = now.getFullYear();
   return month === 11 && (year === 2024 || year === 2025);
 };
 
