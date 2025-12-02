@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
 import styled from '@emotion/styled';
 import Box from '@mui/material/Box';
+import { UserContext } from '../UserContext';
 import { shouldShowAds, useAdsenseLoader } from '../utils/adsenseLoader';
 
 const FixedSizeAdContainer = styled(Box)`
@@ -16,7 +17,8 @@ const FixedSizeAdContainer = styled(Box)`
 `;
 
 const FixedMobileBannerAd = () => {
-    const showAds = shouldShowAds();
+    const { user } = useContext(UserContext);
+    const showAds = shouldShowAds(user);
     useAdsenseLoader();
 
     useEffect(() => {
