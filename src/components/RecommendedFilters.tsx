@@ -97,6 +97,12 @@ export const RecommendedFilters: React.FC<RecommendedFiltersProps> = ({
     : '';
 
   useEffect(() => {
+    // Reset dismissal state and impression tracking when the query/filter context changes
+    setIsDismissed(false);
+    hasTrackedImpressionRef.current = false;
+  }, [dismissalKey]);
+
+  useEffect(() => {
     if (queryMatchedFilters.length === 0 || !dismissalKey) return;
 
     // Check if dismissed
