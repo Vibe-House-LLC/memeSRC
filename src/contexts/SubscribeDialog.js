@@ -22,22 +22,13 @@ import { CURRENT_SALE } from '../constants/sales';
 export const SubscribeDialogContext = createContext();
 
 const getInitialPlan = () => {
+  const lowestPlan = 'pro5';
   const savedPlan = localStorage.getItem('defaultProPlan');
-  if (savedPlan) return savedPlan;
 
-  const random = Math.random();
-  let selectedPlan;
-  
-  if (random < 0.2) {
-    selectedPlan = 'pro5';  // 20% probability
-  } else if (random < 0.75) {
-    selectedPlan = 'pro25'; // 55% probability
-  } else {
-    selectedPlan = 'pro69'; // 25% probability
-  }
+  if (savedPlan === lowestPlan) return lowestPlan;
 
-  localStorage.setItem('defaultProPlan', selectedPlan);
-  return selectedPlan;
+  localStorage.setItem('defaultProPlan', lowestPlan);
+  return lowestPlan;
 };
 
 export const DialogProvider = ({ children }) => {
