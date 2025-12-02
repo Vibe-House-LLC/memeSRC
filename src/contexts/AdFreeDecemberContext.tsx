@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { UserContext } from '../UserContext';
 import { safeGetItem, safeSetItem } from '../utils/storage';
+import { isAdPauseActive, isSubscribedUser, type UserCtx } from '../utils/adsenseLoader';
 
 const AD_FREE_DECEMBER_DIALOG_DISMISSED_KEY = 'adFreeDecemberDialog2025Dismissed';
 
@@ -22,17 +23,11 @@ export function AdFreeDecemberProvider({ children }: { children: ReactNode }) {
     const dismissed = safeGetItem(AD_FREE_DECEMBER_DIALOG_DISMISSED_KEY) === 'true';
     if (dismissed) return false;
 
-    // Don't show to pro users
-    const isPro =
-      (user as any)?.userDetails?.subscriptionStatus === 'active' ||
-      (user as any)?.userDetails?.magicSubscription === 'true';
-    if (isPro) return false;
+    // Don't show to users who already shouldn't see ads (pro/subscribed)
+    if (isSubscribedUser(user as UserCtx['user'])) return false;
 
-    // Only show in December 2025
-    const now = new Date();
-    const isDecember2025 = now.getMonth() === 11 && now.getFullYear() === 2025;
-
-    return isDecember2025;
+    // Only show during the ad pause window (December 2024/2025)
+    return isAdPauseActive();
   }, [user]);
 
   const triggerDialog = useCallback(() => {

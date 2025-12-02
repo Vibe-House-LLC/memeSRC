@@ -18,6 +18,7 @@ import {
 import { FeedCardSurface } from './cards/CardSurface';
 import { AdFreeDecemberCard } from './cards/AdFreeDecemberCard';
 import { Search } from '@mui/icons-material';
+import { isAdPauseActive, isSubscribedUser, type UserCtx } from '../../utils/adsenseLoader';
 
 const FEED_CARD_WRAPPER_SX = {
   px: { xs: 0, md: 0 },
@@ -455,17 +456,11 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
     if (adFreeDecemberDismissed) {
       return false;
     }
-    // Don't show to pro users
-    const user = contextValue.user;
-    const isPro =
-      user &&
-      typeof user === 'object' &&
-      (user.userDetails?.subscriptionStatus === 'active' || user.userDetails?.magicSubscription === 'true');
-    if (isPro) {
+    const user = contextValue.user as UserCtx['user'];
+    if (isSubscribedUser(user)) {
       return false;
     }
-    const now = new Date();
-    return now.getMonth() === 11 && now.getFullYear() === 2025; // December 2025 (month is 0-indexed)
+    return isAdPauseActive();
   }, [adFreeDecemberDismissed, contextValue.user]);
 
   useEffect(() => {

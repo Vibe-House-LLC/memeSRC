@@ -4,7 +4,6 @@ import { Backdrop, CircularProgress } from '@mui/material';
 import { SearchDetailsProvider } from './contexts/SearchDetailsProvider';
 import { SearchSettingsProvider } from './contexts/SearchSettingsContext';
 import { CollageProvider } from './contexts/CollageContext';
-import { AdFreeDecemberProvider } from './contexts/AdFreeDecemberContext';
 // routes
 import Router from './routes';
 // theme
@@ -38,11 +37,9 @@ export default function App() {
               <SearchDetailsProvider>
                 <CollageProvider>
                   <DesktopProcessingProvider>
-                    <AdFreeDecemberProvider>
-                      {/* <FeatureSectionPopover> */}
-                      <Router />
-                      {/* </FeatureSectionPopover> */}
-                    </AdFreeDecemberProvider>
+                    {/* <FeatureSectionPopover> */}
+                    <Router />
+                    {/* </FeatureSectionPopover> */}
                   </DesktopProcessingProvider>
                 </CollageProvider>
               </SearchDetailsProvider>

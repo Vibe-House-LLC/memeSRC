@@ -5,13 +5,13 @@ import { UserContext } from '../UserContext';
 let adsenseLoaded = false;
 const ADSENSE_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1307598869123774';
 
-type UserCtx = {
+export type UserCtx = {
   user?: {
     userDetails?: {
       subscriptionStatus?: string | null;
       magicSubscription?: string | null;
     };
-  } | null | undefined;
+  } | null | false | undefined;
 };
 
 type IdleWindow = Window &
@@ -39,11 +39,18 @@ export const isAdPauseActive = (): boolean => {
   return month === 11 && (year === 2024 || year === 2025);
 };
 
+export const isSubscribedUser = (user?: UserCtx['user']): boolean => {
+  if (!user || typeof user !== 'object') {
+    return false;
+  }
+  const subscriptionStatus = user.userDetails?.subscriptionStatus;
+  const magicSubscription = user.userDetails?.magicSubscription;
+  return subscriptionStatus === 'active' || magicSubscription === 'true';
+};
+
 export const shouldShowAds = (user?: UserCtx['user']): boolean => {
   if (isAdPauseActive()) return false;
-  const isSubscribed =
-    user?.userDetails?.subscriptionStatus === 'active' || user?.userDetails?.magicSubscription === 'true';
-  return !isSubscribed;
+  return !isSubscribedUser(user);
 };
 
 export const useAdsenseLoader = (): void => {
