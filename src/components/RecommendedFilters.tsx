@@ -182,17 +182,25 @@ export const RecommendedFilters: React.FC<RecommendedFiltersProps> = ({
           .trim();
       }
 
-      // Build URL with both original and stripped query
-      const params = new URLSearchParams();
-      if (strippedQuery) {
+      // If query is blank after stripping, navigate to filter homepage
+      if (!strippedQuery) {
+        // Navigate to homepage for universal/favorites, or filter page for specific filters
+        if (filter.id === '_universal' || filter.id === '_favorites') {
+          navigate('/');
+        } else {
+          navigate(`/${filter.id}`);
+        }
+      } else {
+        // Build URL with both original and stripped query
+        const params = new URLSearchParams();
         params.set('searchTerm', strippedQuery);
-      }
-      if (currentSearchQuery && strippedQuery !== currentSearchQuery) {
-        params.set('originalQuery', currentSearchQuery);
-      }
+        if (currentSearchQuery && strippedQuery !== currentSearchQuery) {
+          params.set('originalQuery', currentSearchQuery);
+        }
 
-      const searchParam = params.toString() ? `?${params.toString()}` : '';
-      navigate(`/search/${filter.id}${searchParam}`);
+        const searchParam = params.toString() ? `?${params.toString()}` : '';
+        navigate(`/search/${filter.id}${searchParam}`);
+      }
     }
   };
 
