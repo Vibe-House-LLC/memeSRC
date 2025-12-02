@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCallback and useRef
 import { unstable_batchedUpdates } from 'react-dom';
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
+import { trackCollageSeedEvent } from '../../../utils/analytics/collageEvents';
 
 // Debug flag - opt-in via localStorage while in development
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
@@ -267,8 +268,17 @@ const [borderThickness, setBorderThickness] = useState(() => {
     }
 
     setSelectedImages(prev => [...prev, newImageObject]);
+    if (newImageObject?.metadata?.frameRef) {
+      trackCollageSeedEvent({
+        eventType: 'collage_seed_add',
+        frameRef: newImageObject.metadata.frameRef,
+        templateId: selectedTemplate?.id || null,
+        source: newImageObject?.metadata?.source || 'collage_editor',
+        sessionContext: newImageObject?.metadata?.sessionContext,
+      });
+    }
     if (DEBUG_MODE) console.log("Added image:", newImageObject);
-  }, [saveToLibraryIfEnabled]);
+  }, [saveToLibraryIfEnabled, selectedTemplate]);
 
   /**
    * Add multiple images to the collection at once.
@@ -320,32 +330,96 @@ const [borderThickness, setBorderThickness] = useState(() => {
 
     if (newImageObjects.length > 0) {
       setSelectedImages(prev => [...prev, ...newImageObjects]);
+      newImageObjects.forEach(obj => {
+        if (obj?.metadata?.frameRef) {
+          trackCollageSeedEvent({
+            eventType: 'collage_seed_add',
+            frameRef: obj.metadata.frameRef,
+            templateId: selectedTemplate?.id || null,
+            source: obj?.metadata?.source || 'collage_editor',
+            sessionContext: obj?.metadata?.sessionContext,
+          });
+        }
+      });
       if (DEBUG_MODE) console.log("Added multiple images:", newImageObjects);
     }
-  }, [saveToLibraryIfEnabled]);
+  }, [saveToLibraryIfEnabled, selectedTemplate]);
+
+  const getPanelIndexForImage = useCallback((imageIndex) => {
+    if (typeof imageIndex !== 'number' || imageIndex < 0) return null;
+    if (!panelImageMapping || typeof panelImageMapping !== 'object') return null;
+
+    let matchedPanelId = null;
+
+    Object.entries(panelImageMapping).some(([panelId, mappedIndex]) => {
+      if (mappedIndex === imageIndex) {
+        matchedPanelId = panelId;
+        return true;
+      }
+      return false;
+    });
+
+    if (!matchedPanelId) return null;
+
+    const panelDefinitions = selectedTemplate?.layout?.panels || selectedTemplate?.panels || [];
+    const matchedIndex = Array.isArray(panelDefinitions)
+      ? panelDefinitions.findIndex(panel => panel?.id === matchedPanelId)
+      : -1;
+
+    if (matchedIndex >= 0) {
+      return matchedIndex;
+    }
+
+    const numericMatch = Number(String(matchedPanelId).split('-')[1]);
+    if (!Number.isNaN(numericMatch)) {
+      return numericMatch - 1;
+    }
+
+    return null;
+  }, [panelImageMapping, selectedTemplate]);
 
   /**
    * Remove an image object by index and update panel mapping.
    * @param {number} indexToRemove - The index of the image object to remove
    */
-  const removeImage = useCallback((indexToRemove) => {
+  const removeImage = useCallback((indexToRemove, options = {}) => {
     if (indexToRemove < 0 || indexToRemove >= selectedImages.length) return;
+
+    const normalizedOptions = (options && typeof options === 'object') ? options : {};
+    const {
+      userFeedbackReason,
+      userFeedbackNote,
+      source: overrideSource,
+      skipTracking,
+      sessionContext,
+    } = normalizedOptions;
 
     const newImages = [...selectedImages];
     const removedImageObj = newImages.splice(indexToRemove, 1)[0];
+    const removedFrameRef = removedImageObj?.metadata?.frameRef || null;
+    const panelIndexForEvent = getPanelIndexForImage(indexToRemove);
+    const analyticsSource = overrideSource || removedImageObj?.metadata?.source || 'collage_editor';
 
     // Clean up blobs
     if (removedImageObj) {
-        if (removedImageObj.originalUrl && removedImageObj.originalUrl.startsWith('blob:')) URL.revokeObjectURL(removedImageObj.originalUrl);
-        if (removedImageObj.displayUrl && removedImageObj.displayUrl.startsWith('blob:') && removedImageObj.displayUrl !== removedImageObj.originalUrl) URL.revokeObjectURL(removedImageObj.displayUrl);
+      if (removedImageObj.originalUrl && removedImageObj.originalUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(removedImageObj.originalUrl);
+      }
+      if (
+        removedImageObj.displayUrl &&
+        removedImageObj.displayUrl.startsWith('blob:') &&
+        removedImageObj.displayUrl !== removedImageObj.originalUrl
+      ) {
+        URL.revokeObjectURL(removedImageObj.displayUrl);
+      }
     }
 
     setSelectedImages(newImages);
 
     // Find the panelId(s) that used this image index
     const panelsToRemoveTransform = Object.entries(panelImageMapping)
-        .filter(([, mappedIndex]) => mappedIndex === indexToRemove)
-        .map(([panelId]) => panelId);
+      .filter(([, mappedIndex]) => mappedIndex === indexToRemove)
+      .map(([panelId]) => panelId);
 
     // Update panel mapping
     const newMapping = {};
@@ -389,7 +463,19 @@ const [borderThickness, setBorderThickness] = useState(() => {
 
     if (DEBUG_MODE) console.log(`Removed image at index ${indexToRemove}, updated mapping`, newMapping);
 
-  }, [selectedImages, panelImageMapping]);
+    if (!skipTracking && removedFrameRef) {
+      trackCollageSeedEvent({
+        eventType: 'collage_seed_remove',
+        frameRef: removedFrameRef,
+        templateId: selectedTemplate?.id || null,
+        panelIndex: typeof panelIndexForEvent === 'number' ? panelIndexForEvent : null,
+        source: analyticsSource,
+        userFeedbackReason,
+        userFeedbackNote,
+        sessionContext,
+      });
+    }
+  }, [selectedImages, panelImageMapping, getPanelIndexForImage, selectedTemplate]);
 
   /**
    * Update only the displayUrl for an image at a specific index (after cropping).
@@ -456,6 +542,11 @@ const [borderThickness, setBorderThickness] = useState(() => {
           return;
         }
 
+        const panelIndexForEvent = getPanelIndexForImage(index);
+        const replacedFrameRef = oldImageObj?.metadata?.frameRef || null;
+        const nextFrameRef = nextImageObj?.metadata?.frameRef || null;
+        const analyticsSource = nextImageObj?.metadata?.source || oldImageObj?.metadata?.source || 'collage_editor';
+
         const newImages = [...selectedImages];
         newImages[index] = nextImageObj;
         setSelectedImages(newImages);
@@ -480,10 +571,21 @@ const [borderThickness, setBorderThickness] = useState(() => {
         }
 
         if (DEBUG_MODE) console.log(`Replaced image at index ${index} with new file.`, nextImageObj?.metadata);
+        if (nextFrameRef) {
+          trackCollageSeedEvent({
+            eventType: 'collage_seed_replace',
+            frameRef: nextFrameRef,
+            templateId: selectedTemplate?.id || null,
+            panelIndex: typeof panelIndexForEvent === 'number' ? panelIndexForEvent : null,
+            source: analyticsSource,
+            replacedFrameRef,
+            sessionContext: nextImageObj?.metadata?.sessionContext || oldImageObj?.metadata?.sessionContext,
+          });
+        }
     } else if (DEBUG_MODE) {
       console.warn(`Failed to replace image at index ${index}`);
     }
-  }, [selectedImages, panelImageMapping, saveToLibraryIfEnabled]);
+  }, [selectedImages, panelImageMapping, saveToLibraryIfEnabled, getPanelIndexForImage, selectedTemplate]);
 
 
   /**

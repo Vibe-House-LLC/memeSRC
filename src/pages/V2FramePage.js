@@ -233,15 +233,31 @@ export default function FramePage() {
       const showTitleSafe = (showTitle || frameData?.showTitle || 'frame').replace(/[^a-zA-Z0-9]/g, '-');
       const filename = `${showTitleSafe}-S${season}E${episode}-${frameToTimeCode(frame).replace(/:/g, '-')}`;
       
-      // Save to library with metadata (default caption + show tag)
-      const showName = (showTitle || frameData?.showTitle || '').toString();
+      const showTag = (showTitle || frameData?.showTitle || '').toString().trim();
       const defaultCaption = (loadedSubtitle || '').toString();
+      const resolvedCid = confirmedCid || cid;
+      const coerceNumberOrString = (value) => {
+        if (value === undefined || value === null) return undefined;
+        const num = Number(value);
+        return Number.isFinite(num) ? num : String(value);
+      };
+      const frameRef = resolvedCid ? {
+        cid: resolvedCid,
+        season: coerceNumberOrString(season),
+        episode: coerceNumberOrString(episode),
+        frame: coerceNumberOrString(frame),
+        ...(fineTuningIndex !== undefined && fineTuningIndex !== null
+          ? { fineTuningIndex: coerceNumberOrString(fineTuningIndex) }
+          : {}),
+      } : null;
+
       await saveImageToLibrary(blob, filename, {
         level: 'private',
         metadata: {
-          tags: showName ? [showName] : [],
+          tags: showTag ? [showTag] : [],
           description: '',
           defaultCaption,
+          frameRef,
         },
       });
 
@@ -253,6 +269,9 @@ export default function FramePage() {
         fineTuningIndex,
         source: 'V2FramePage',
       };
+      if (frameRef) {
+        eventPayload.frameRef = frameRef;
+      }
 
       const resolvedSearchTerm = resolveSearchTerm();
       if (resolvedSearchTerm !== undefined) {
