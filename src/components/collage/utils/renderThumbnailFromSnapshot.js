@@ -6,6 +6,7 @@
 
 import { layoutDefinitions } from '../config/layouts';
 import { get as getFromLibrary } from '../../../utils/library/storage';
+import { parseFormattedText } from '../../../utils/inlineFormatting';
 
 // Determine if a persisted custom layout is compatible with the requested panel count
 function isCustomLayoutCompatible(customLayout, panelCount) {
@@ -410,8 +411,11 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       }
     }
 
+    const rawCaption = panelText.rawContent ?? panelText.content ?? '';
+    const { cleanText } = parseFormattedText(String(rawCaption));
+
     // Draw actual text (if present), matching export logic
-    if (hasImage && panelText.content && String(panelText.content).trim()) {
+    if (hasImage && cleanText && cleanText.trim()) {
       ctx.save();
       // Clip to frame bounds
       ctx.beginPath();
@@ -429,7 +433,7 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
         const probe = document.createElement('canvas').getContext('2d');
         for (let size = reasonableMax; size >= 8; size -= 2) {
           probe.font = `700 ${size}px Arial`;
-          const words = String(panelText.content).split(' ');
+          const words = String(cleanText).split(' ');
           const lines = [];
           let currentLine = '';
           words.forEach((word) => {
@@ -475,7 +479,7 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       const maxTextWidth = w - textPadding * 2;
       const textX = x + (w / 2) + (textPositionX / 100) * (w / 2 - textPadding);
       const lineHeight = fontSize * 1.2;
-      const lines = wrapText(ctx, String(panelText.content), maxTextWidth);
+      const lines = wrapText(ctx, String(cleanText), maxTextWidth);
       const totalTextHeight = lines.length * lineHeight;
 
       let textAnchorY;

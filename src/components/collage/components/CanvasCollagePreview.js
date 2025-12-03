@@ -6,6 +6,7 @@ import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveA
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
+import { parseFormattedText } from '../../../utils/inlineFormatting';
 
 
 
@@ -83,6 +84,160 @@ const getContrastingMonoStroke = (textColor) => {
 };
 
 const rgbaString = (r, g, b, a = 1) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
+
+const normalizeFontWeightValue = (fontWeight) => {
+  if (fontWeight === undefined || fontWeight === null) return '400';
+  if (typeof fontWeight === 'number') return String(fontWeight);
+  if (fontWeight === 'normal') return '400';
+  if (fontWeight === 'bold') return '700';
+  return String(fontWeight);
+};
+
+const resolveInlineSegmentStyle = (baseStyle, inlineStyle = {}) => ({
+  fontWeight: inlineStyle.bold ? '700' : normalizeFontWeightValue(baseStyle.fontWeight),
+  fontStyle: inlineStyle.italic ? 'italic' : baseStyle.fontStyle || 'normal',
+  underline: inlineStyle.underline ?? Boolean(baseStyle.underline),
+});
+
+const measureStyledWidth = (ctx, text, ranges, start, end, baseStyle, fontSize, fontFamily) => {
+  if (!ctx || start >= end) return 0;
+  const effectiveRanges = ranges && ranges.length ? ranges : [{ start: 0, end: text.length, style: {} }];
+  let width = 0;
+
+  effectiveRanges.forEach((range) => {
+    const overlapStart = Math.max(start, range.start);
+    const overlapEnd = Math.min(end, range.end);
+    if (overlapEnd > overlapStart) {
+      const style = resolveInlineSegmentStyle(baseStyle, range.style);
+      ctx.font = `${style.fontStyle || 'normal'} ${style.fontWeight} ${fontSize}px ${fontFamily}`;
+      width += ctx.measureText(text.slice(overlapStart, overlapEnd)).width;
+    }
+  });
+
+  return width;
+};
+
+const getSegmentsForLine = (ranges, lineStart, lineEnd, baseStyle) => {
+  const effectiveRanges = ranges && ranges.length ? ranges : [{ start: lineStart, end: lineEnd, style: {} }];
+  const segments = effectiveRanges
+    .map((range) => {
+      const start = Math.max(lineStart, range.start);
+      const end = Math.min(lineEnd, range.end);
+      if (end <= start) return null;
+      return { start, end, style: resolveInlineSegmentStyle(baseStyle, range.style) };
+    })
+    .filter(Boolean);
+
+  if (!segments.length) {
+    return [{ start: lineStart, end: lineEnd, style: resolveInlineSegmentStyle(baseStyle, {}) }];
+  }
+
+  return segments;
+};
+
+const buildWrappedLines = (ctx, text, ranges, maxWidth, baseStyle, fontSize, fontFamily) => {
+  if (!text) {
+    return [{ text: '', start: 0, end: 0, width: 0 }];
+  }
+
+  const lines = [];
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    if (text[cursor] === '\n') {
+      lines.push({ text: '', start: cursor, end: cursor, width: 0 });
+      cursor += 1;
+      continue;
+    }
+
+    const lineStart = cursor;
+    let lineEnd = cursor;
+    let lastSpace = -1;
+    let currentWidth = 0;
+
+    while (lineEnd < text.length && text[lineEnd] !== '\n') {
+      const nextEnd = lineEnd + 1;
+      const nextWidth = measureStyledWidth(ctx, text, ranges, lineStart, nextEnd, baseStyle, fontSize, fontFamily);
+
+      if (text[lineEnd] === ' ') {
+        lastSpace = lineEnd;
+      }
+
+      if (nextWidth > maxWidth) {
+        if (lastSpace >= lineStart) {
+          const breakEnd = lastSpace;
+          const breakWidth = measureStyledWidth(
+            ctx,
+            text,
+            ranges,
+            lineStart,
+            breakEnd,
+            baseStyle,
+            fontSize,
+            fontFamily,
+          );
+          lines.push({
+            text: text.slice(lineStart, breakEnd),
+            start: lineStart,
+            end: breakEnd,
+            width: breakWidth,
+          });
+          cursor = breakEnd + 1;
+        } else {
+          const forcedEnd = Math.max(lineStart + 1, lineEnd);
+          const forcedWidth = measureStyledWidth(
+            ctx,
+            text,
+            ranges,
+            lineStart,
+            forcedEnd,
+            baseStyle,
+            fontSize,
+            fontFamily,
+          );
+          lines.push({
+            text: text.slice(lineStart, forcedEnd),
+            start: lineStart,
+            end: forcedEnd,
+            width: forcedWidth,
+          });
+          cursor = forcedEnd;
+        }
+        break;
+      }
+
+      currentWidth = nextWidth;
+      lineEnd = nextEnd;
+    }
+
+    if (lineEnd >= text.length || text[lineEnd] === '\n') {
+      const end = lineEnd;
+      const width = measureStyledWidth(
+        ctx,
+        text,
+        ranges,
+        lineStart,
+        end,
+        baseStyle,
+        fontSize,
+        fontFamily,
+      );
+      lines.push({
+        text: text.slice(lineStart, end),
+        start: lineStart,
+        end,
+        width,
+      });
+      cursor = end + 1;
+    }
+  }
+
+  if (!lines.length) {
+    lines.push({ text: '', start: 0, end: 0, width: 0 });
+  }
+
+  return lines;
+};
 
 /**
  * Helper function to create layout config from template
@@ -922,7 +1077,7 @@ const CanvasCollagePreview = ({
     } else {
       setLoadedImages({});
     }
-  }, [images, panelImageMapping, panelRects, updatePanelText, panelTexts, lastUsedTextSettings]);
+  }, [images, panelImageMapping]);
 
   // Update component dimensions and panel rectangles
   useEffect(() => {
@@ -1171,8 +1326,12 @@ const CanvasCollagePreview = ({
       
       // Draw text at the bottom of the panel (or placeholder if no text and has image)
       if (hasImage) {
-        const hasActualText = panelText.content && panelText.content.trim();
+        const rawCaption = panelText.rawContent ?? panelText.content ?? '';
+        const { cleanText, ranges } = parseFormattedText(rawCaption);
+        const hasActualText = cleanText && cleanText.trim();
         const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
+        const displayText = hasActualText ? cleanText : 'Add Caption';
+        const activeRanges = hasActualText ? ranges : [];
         
         // Hide all captions when any panel is in transform mode or reorder mode
         if ((hasActualText || shouldShowPlaceholder) && !shouldHideCaptions) {
@@ -1188,7 +1347,7 @@ const CanvasCollagePreview = ({
           
           // Auto-calculate optimal font size if no explicit size is set and there's actual text
           if (hasActualText && !panelText.fontSize) {
-            const optimalSize = calculateOptimalFontSize(panelText.content, width, height);
+            const optimalSize = calculateOptimalFontSize(cleanText, width, height);
             baseFontSize = optimalSize;
           }
           
@@ -1198,6 +1357,11 @@ const CanvasCollagePreview = ({
           const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
           const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
           const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
+          const baseInlineStyle = {
+            fontWeight,
+            fontStyle,
+            underline: false,
+          };
           // Respect explicit 0 to disable stroke; fall back only when undefined
           const requestedStrokeWidth =
             (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
@@ -1247,7 +1411,7 @@ const CanvasCollagePreview = ({
           
           ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
           ctx.fillStyle = textColor;
-          ctx.textAlign = 'center';
+          ctx.textAlign = 'left';
           ctx.textBaseline = 'middle'; // Change to middle for better positioning control
           
           // Set stroke properties for both actual text and placeholder
@@ -1282,87 +1446,15 @@ const CanvasCollagePreview = ({
           const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
           
           const lineHeight = fontSize * 1.2;
-          
-          // Use actual text or placeholder text
-          const displayText = hasActualText ? panelText.content : 'Add Caption';
-          
-          // Helper function to wrap text with aggressive character-level fallback
-          const wrapText = (text, maxWidth) => {
-            const lines = [];
-            const manualLines = text.split('\n'); // Handle manual line breaks first
-            
-            manualLines.forEach(line => {
-              if (ctx.measureText(line).width <= maxWidth) {
-                // Line fits within width
-                lines.push(line);
-              } else {
-                // Line needs to be wrapped
-                const words = line.split(' ');
-                let currentLine = '';
-                
-                words.forEach(word => {
-                  const testLine = currentLine ? `${currentLine} ${word}` : word;
-                  const testWidth = ctx.measureText(testLine).width;
-                  
-                  if (testWidth <= maxWidth) {
-                    currentLine = testLine;
-                  } else if (currentLine) {
-                    // Current line is full, start a new line
-                    lines.push(currentLine);
-                    currentLine = word;
-                    
-                    // Check if the single word is still too long
-                    if (ctx.measureText(word).width > maxWidth) {
-                      // Break the word character by character
-                      let charLine = '';
-                      for (let i = 0; i < word.length; i += 1) {
-                        const testChar = charLine + word[i];
-                        if (ctx.measureText(testChar).width <= maxWidth) {
-                          charLine = testChar;
-                        } else {
-                          if (charLine) {
-                            lines.push(charLine);
-                          }
-                          charLine = word[i];
-                        }
-                      }
-                      if (charLine) {
-                        lines.push(charLine);
-                      }
-                      currentLine = '';
-                    }
-                  } else {
-                    // Single word is too long, break it character by character
-                    let charLine = '';
-                    for (let i = 0; i < word.length; i += 1) {
-                      const testChar = charLine + word[i];
-                      if (ctx.measureText(testChar).width <= maxWidth) {
-                        charLine = testChar;
-                      } else {
-                        if (charLine) {
-                          lines.push(charLine);
-                        }
-                        charLine = word[i];
-                      }
-                    }
-                    if (charLine) {
-                      lines.push(charLine);
-                    }
-                  }
-                });
-                
-                // Add the last line if it has content
-                if (currentLine) {
-                  lines.push(currentLine);
-                }
-              }
-            });
-            
-            return lines;
-          };
-          
-          // Get wrapped lines
-          const wrappedLines = wrapText(displayText, maxTextWidth);
+          const wrappedLines = buildWrappedLines(
+            ctx,
+            displayText,
+            activeRanges,
+            maxTextWidth,
+            baseInlineStyle,
+            fontSize,
+            fontFamily,
+          );
           
           // Calculate text block positioning with proper anchoring
           const totalTextHeight = wrappedLines.length * lineHeight;
@@ -1405,14 +1497,38 @@ const CanvasCollagePreview = ({
           
           wrappedLines.forEach((line, lineIndex) => {
             const lineY = startY + lineIndex * lineHeight;
-            
-            // Draw stroke first if stroke width > 0 (for both actual text and placeholder)
-            if (ctx.lineWidth > 0) {
-              ctx.strokeText(line, textX, lineY);
-            }
-            
-            // Then draw the fill text on top
-            ctx.fillText(line, textX, lineY);
+            const lineX = textX - (line.width / 2);
+            const segments = getSegmentsForLine(activeRanges, line.start, line.end, baseInlineStyle);
+            let cursorX = lineX;
+
+            segments.forEach((segment) => {
+              const segmentText = displayText.slice(segment.start, segment.end);
+              const resolvedStyle = segment.style;
+              ctx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
+              const segmentWidth = ctx.measureText(segmentText).width;
+
+              if (ctx.lineWidth > 0) {
+                ctx.strokeText(segmentText, cursorX, lineY);
+              }
+
+              ctx.fillText(segmentText, cursorX, lineY);
+
+              if (resolvedStyle.underline) {
+                ctx.save();
+                ctx.shadowColor = 'transparent';
+                ctx.strokeStyle = textColor;
+                ctx.lineWidth = Math.max(1, fontSize * 0.08);
+                const underlineY = lineY + fontSize * 0.35;
+                ctx.beginPath();
+                ctx.moveTo(cursorX, underlineY);
+                ctx.lineTo(cursorX + segmentWidth, underlineY);
+                ctx.stroke();
+                ctx.restore();
+                ctx.shadowColor = shadowColor;
+              }
+
+              cursorX += segmentWidth;
+            });
           });
           
           // Restore transformation if rotation was applied
@@ -1459,9 +1575,11 @@ const CanvasCollagePreview = ({
     const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
     const textRotation = panelText?.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
     
-    // Determine display text (actual text or placeholder)
-    const hasActualText = panelText?.content && panelText.content.trim();
-    const displayText = hasActualText ? panelText.content : 'Add Caption';
+    const rawCaption = panelText?.rawContent ?? panelText?.content ?? '';
+    const { cleanText, ranges } = parseFormattedText(rawCaption);
+    const hasActualText = cleanText && cleanText.trim();
+    const displayText = hasActualText ? cleanText : 'Add Caption';
+    const activeRanges = hasActualText ? ranges : [];
     
     // Use the same accurate text measurement logic as drawCanvas
     const maxTextWidth = panel.width - (textPadding * 2);
@@ -1474,89 +1592,25 @@ const CanvasCollagePreview = ({
     const fontWeight = panelText?.fontWeight || lastUsedTextSettings.fontWeight || 400;
     const fontStyle = panelText?.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
     const fontFamily = panelText?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
-    tempCtx.font = `${fontStyle} ${fontWeight} ${scaledFontSize}px ${fontFamily}`;
-    
-    // Helper function to wrap text with the same logic as drawCanvas
-    const wrapText = (text, maxWidth) => {
-      const lines = [];
-      const manualLines = text.split('\n'); // Handle manual line breaks first
-      
-      manualLines.forEach(line => {
-        if (tempCtx.measureText(line).width <= maxWidth) {
-          // Line fits within width
-          lines.push(line);
-        } else {
-          // Line needs to be wrapped
-          const words = line.split(' ');
-          let currentLine = '';
-          
-          words.forEach(word => {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const testWidth = tempCtx.measureText(testLine).width;
-            
-            if (testWidth <= maxWidth) {
-              currentLine = testLine;
-            } else if (currentLine) {
-              // Current line is full, start a new line
-              lines.push(currentLine);
-              currentLine = word;
-              
-              // Check if the single word is still too long
-              if (tempCtx.measureText(word).width > maxWidth) {
-                // Break the word character by character
-                let charLine = '';
-                for (let i = 0; i < word.length; i += 1) {
-                  const testChar = charLine + word[i];
-                  if (tempCtx.measureText(testChar).width <= maxWidth) {
-                    charLine = testChar;
-                  } else {
-                    if (charLine) {
-                      lines.push(charLine);
-                    }
-                    charLine = word[i];
-                  }
-                }
-                if (charLine) {
-                  lines.push(charLine);
-                }
-                currentLine = '';
-              }
-            } else {
-              // Single word is too long, break it character by character
-              let charLine = '';
-              for (let i = 0; i < word.length; i += 1) {
-                const testChar = charLine + word[i];
-                if (tempCtx.measureText(testChar).width <= maxWidth) {
-                  charLine = testChar;
-                } else {
-                  if (charLine) {
-                    lines.push(charLine);
-                  }
-                  charLine = word[i];
-                }
-              }
-              if (charLine) {
-                lines.push(charLine);
-              }
-            }
-          });
-          
-          // Add the last line if it has content
-          if (currentLine) {
-            lines.push(currentLine);
-          }
-        }
-      });
-      
-      return lines;
+    const baseInlineStyle = {
+      fontWeight,
+      fontStyle,
+      underline: false,
     };
     
-    // Get wrapped lines using accurate measurement
-    const wrappedLines = wrapText(displayText, maxTextWidth);
+    const wrappedLines = buildWrappedLines(
+      tempCtx,
+      displayText,
+      activeRanges,
+      maxTextWidth,
+      baseInlineStyle,
+      scaledFontSize,
+      fontFamily,
+    );
     const actualLines = wrappedLines.length;
     
     // Calculate actual text width from the wrapped lines
-    const actualTextWidth = Math.max(...wrappedLines.map(line => tempCtx.measureText(line).width));
+    const actualTextWidth = Math.max(...wrappedLines.map(line => line.width), 0);
     
     // Calculate actual text dimensions
     const actualTextHeight = actualLines * lineHeight;
@@ -1653,7 +1707,9 @@ const CanvasCollagePreview = ({
     // If opening the editor on a panel without existing text, try to prefill from Library metadata
     if (isOpening) {
       try {
-        const existing = (panelTexts[panelId]?.content || '').trim();
+        const existing = parseFormattedText(
+          panelTexts[panelId]?.rawContent ?? panelTexts[panelId]?.content ?? '',
+        ).cleanText.trim();
         if (!existing) {
           const imageIndex = panelImageMapping?.[panelId];
           if (typeof imageIndex === 'number') {
@@ -1662,7 +1718,9 @@ const CanvasCollagePreview = ({
             if (libraryKey) {
               const cached = defaultCaptionCacheRef.current[libraryKey];
               const applyCaption = (caption) => {
-                if (caption && !(panelTexts[panelId]?.content || '').trim()) {
+                const currentRaw = panelTexts[panelId]?.rawContent ?? panelTexts[panelId]?.content ?? '';
+                const hasExistingText = parseFormattedText(currentRaw).cleanText.trim();
+                if (caption && !hasExistingText) {
                   if (typeof updatePanelText === 'function') {
                     const previous = panelTexts[panelId] || {};
                     const hadPrevContent = Boolean(previous.content && previous.content.trim());
@@ -1670,6 +1728,7 @@ const CanvasCollagePreview = ({
                     const next = {
                       ...previous,
                       content: caption,
+                      rawContent: caption,
                       ...(hadPrevContent || hasExplicitFontSize ? {} : { fontSize: lastUsedTextSettings.fontSize || 26 })
                     };
                     updatePanelText(panelId, next);
@@ -1697,6 +1756,8 @@ const CanvasCollagePreview = ({
     
     // Auto-scroll to show the caption editor after it opens
     if (isOpening) {
+      // Keep this effect scoped to layout/open-state changes only; running it on each
+      // keystroke creates focus/scroll thrash in the caption text field.
       setTimeout(() => {
         const panel = panelRects.find(p => p.panelId === panelId);
         if (panel && containerRef.current) {
@@ -1835,7 +1896,7 @@ const CanvasCollagePreview = ({
         }
       }, 100); // Small delay to ensure editor is rendered
     }
-  }, [textEditingPanel, panelRects, isReorderMode, panelTexts, panelImageMapping, images, updatePanelText, lastUsedTextSettings]);
+  }, [textEditingPanel, panelRects, isReorderMode]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
@@ -3322,8 +3383,12 @@ const CanvasCollagePreview = ({
             exportCtx.stroke();
           }
           
+          const rawCaption = panelText.rawContent ?? panelText.content ?? '';
+          const { cleanText, ranges } = parseFormattedText(rawCaption);
+          const hasActualText = cleanText && cleanText.trim();
+
           // Draw only actual text (not placeholder) for export
-          if (hasImage && panelText.content && panelText.content.trim()) {
+          if (hasImage && hasActualText) {
             exportCtx.save();
             
             // Clip text to frame boundaries in export - text beyond frame is hidden (window effect)
@@ -3334,8 +3399,8 @@ const CanvasCollagePreview = ({
             let baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
             
             // Auto-calculate optimal font size if no explicit size is set and there's actual text
-            if (panelText.content && panelText.content.trim() && !panelText.fontSize) {
-              const optimalSize = calculateOptimalFontSize(panelText.content, width, height);
+            if (hasActualText && !panelText.fontSize) {
+              const optimalSize = calculateOptimalFontSize(cleanText, width, height);
               baseFontSize = optimalSize;
             }
             
@@ -3345,6 +3410,11 @@ const CanvasCollagePreview = ({
             const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
             const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
             const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
+            const baseInlineStyle = {
+              fontWeight,
+              fontStyle,
+              underline: false,
+            };
             // Respect explicit 0 to disable stroke; fall back only when undefined
             const requestedStrokeWidth =
               (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
@@ -3354,7 +3424,7 @@ const CanvasCollagePreview = ({
             
             exportCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
             exportCtx.fillStyle = baseTextColor;
-            exportCtx.textAlign = 'center';
+            exportCtx.textAlign = 'left';
             exportCtx.textBaseline = 'middle';
             exportCtx.strokeStyle = getContrastingMonoStroke(baseTextColor);
             // Use a font-relative stroke by default for readability in exports,
@@ -3381,83 +3451,15 @@ const CanvasCollagePreview = ({
             
             const lineHeight = fontSize * 1.2;
             
-            // Use the same text wrapping logic as the preview to ensure consistency
-            const wrapText = (text, maxWidth) => {
-              const lines = [];
-              const manualLines = text.split('\n'); // Handle manual line breaks first
-              
-              manualLines.forEach(line => {
-                if (exportCtx.measureText(line).width <= maxWidth) {
-                  // Line fits within width
-                  lines.push(line);
-                } else {
-                  // Line needs to be wrapped
-                  const words = line.split(' ');
-                  let currentLine = '';
-                  
-                  words.forEach(word => {
-                    const testLine = currentLine ? `${currentLine} ${word}` : word;
-                    const testWidth = exportCtx.measureText(testLine).width;
-                    
-                    if (testWidth <= maxWidth) {
-                      currentLine = testLine;
-                    } else if (currentLine) {
-                      // Current line is full, start a new line
-                      lines.push(currentLine);
-                      currentLine = word;
-                      
-                      // Check if the single word is still too long
-                      if (exportCtx.measureText(word).width > maxWidth) {
-                        // Break the word character by character
-                        let charLine = '';
-                        for (let i = 0; i < word.length; i += 1) {
-                          const testChar = charLine + word[i];
-                          if (exportCtx.measureText(testChar).width <= maxWidth) {
-                            charLine = testChar;
-                          } else {
-                            if (charLine) {
-                              lines.push(charLine);
-                            }
-                            charLine = word[i];
-                          }
-                        }
-                        if (charLine) {
-                          lines.push(charLine);
-                        }
-                        currentLine = '';
-                      }
-                    } else {
-                      // Single word is too long, break it character by character
-                      let charLine = '';
-                      for (let i = 0; i < word.length; i += 1) {
-                        const testChar = charLine + word[i];
-                        if (exportCtx.measureText(testChar).width <= maxWidth) {
-                          charLine = testChar;
-                        } else {
-                          if (charLine) {
-                            lines.push(charLine);
-                          }
-                          charLine = word[i];
-                        }
-                      }
-                      if (charLine) {
-                        lines.push(charLine);
-                      }
-                    }
-                  });
-                  
-                  // Add the last line if it has content
-                  if (currentLine) {
-                    lines.push(currentLine);
-                  }
-                }
-              });
-              
-              return lines;
-            };
-            
-            // Get wrapped lines using the same logic as preview
-            const lines = wrapText(panelText.content, maxTextWidth);
+            const lines = buildWrappedLines(
+              exportCtx,
+              cleanText,
+              ranges,
+              maxTextWidth,
+              baseInlineStyle,
+              fontSize,
+              fontFamily,
+            );
             
             // Calculate text block positioning with proper anchoring (same as drawCanvas)
             const totalTextHeight = lines.length * lineHeight;
@@ -3493,10 +3495,37 @@ const CanvasCollagePreview = ({
             
             lines.forEach((line, lineIndex) => {
               const lineY = startY + lineIndex * lineHeight;
-              if (exportCtx.lineWidth > 0) {
-                exportCtx.strokeText(line, textX, lineY);
-              }
-              exportCtx.fillText(line, textX, lineY);
+              const lineX = textX - (line.width / 2);
+              const segments = getSegmentsForLine(ranges, line.start, line.end, baseInlineStyle);
+              let cursorX = lineX;
+
+              segments.forEach((segment) => {
+                const segmentText = cleanText.slice(segment.start, segment.end);
+                const resolvedStyle = segment.style;
+                exportCtx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
+                const segmentWidth = exportCtx.measureText(segmentText).width;
+
+                if (exportCtx.lineWidth > 0) {
+                  exportCtx.strokeText(segmentText, cursorX, lineY);
+                }
+                exportCtx.fillText(segmentText, cursorX, lineY);
+
+                if (resolvedStyle.underline) {
+                  exportCtx.save();
+                  exportCtx.shadowColor = 'transparent';
+                  exportCtx.strokeStyle = baseTextColor;
+                  exportCtx.lineWidth = Math.max(1, fontSize * 0.08);
+                  const underlineY = lineY + fontSize * 0.35;
+                  exportCtx.beginPath();
+                  exportCtx.moveTo(cursorX, underlineY);
+                  exportCtx.lineTo(cursorX + segmentWidth, underlineY);
+                  exportCtx.stroke();
+                  exportCtx.restore();
+                  exportCtx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+                }
+
+                cursorX += segmentWidth;
+              });
             });
             
             // Restore transformation if rotation was applied

@@ -87,7 +87,10 @@ export default function TextEditorControls(props) {
 
   React.useEffect(() => {
     if (props.activeFormats) {
-      setFormats(props.activeFormats);
+      const normalized = props.activeFormats.map((format) => (
+        format === 'underlined' ? 'underline' : format
+      ));
+      setFormats(normalized);
     }
   }, [props.activeFormats]);
 

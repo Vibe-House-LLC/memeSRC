@@ -23,6 +23,7 @@ import {
   FormatSize, 
   FormatBold, 
   FormatItalic, 
+  FormatUnderlined,
   Palette,
   SwapHoriz, 
   SwapVert, 
@@ -34,6 +35,15 @@ import {
   ControlCamera,
 } from '@mui/icons-material';
 import fonts from '../../../utils/fonts';
+import {
+  buildIndexMaps,
+  getActiveFormatsFromRanges,
+  parseFormattedText,
+  resolveSelectionBounds,
+  serializeRangesToMarkup,
+  toggleStyleInRanges,
+  SELECTION_CACHE_TTL_MS,
+} from '../../../utils/inlineFormatting';
 
 // Color presets for text colors
 const TEXT_COLOR_PRESETS = [
@@ -182,6 +192,8 @@ const CaptionEditor = ({
   const [showInlineColor, setShowInlineColor] = useState(false);
   
   const textFieldRefs = useRef({});
+  const selectionCacheRef = useRef({});
+  const [activeInlineFormats, setActiveInlineFormats] = useState([]);
 
   // State for text color scroll indicators
   const [textColorLeftScroll, setTextColorLeftScroll] = useState(false);
@@ -196,6 +208,16 @@ const CaptionEditor = ({
     const storedColor = localStorage.getItem('memeTextCustomColor');
     return storedColor || '#ffffff';
   });
+
+  const getRawTextValue = useCallback(() => (
+    panelTexts[panelId]?.rawContent ?? panelTexts[panelId]?.content ?? ''
+  ), [panelTexts, panelId]);
+
+  const getParsedText = useCallback(() => {
+    const rawValue = getRawTextValue();
+    const parsed = parseFormattedText(rawValue);
+    return { rawValue, ...parsed };
+  }, [getRawTextValue]);
 
   // Check if there's a saved custom color that's different from preset colors
   const hasSavedCustomTextColor = savedCustomTextColor && !TEXT_COLOR_PRESETS.some(c => c.color === savedCustomTextColor);
@@ -236,14 +258,36 @@ const CaptionEditor = ({
     setShowInlineColor(false);
   };
 
-  const handleTextChange = useCallback((property, value) => {
-    if (updatePanelText) {
-      const currentText = panelTexts[panelId] || {};
-      let updatedText = {
-        ...currentText,
-        [property]: value
+  const handleTextChange = useCallback((property, value, rawValueOverride) => {
+    if (!updatePanelText) return;
+
+    const currentText = panelTexts[panelId] || {};
+    let updatedText = { ...currentText };
+
+    if (property === 'content') {
+      const rawValue = rawValueOverride ?? value ?? '';
+      const { cleanText } = parseFormattedText(rawValue);
+      const cleanValue = value ?? cleanText ?? '';
+      const previousParsed = parseFormattedText(currentText.rawContent ?? currentText.content ?? '');
+
+      updatedText = {
+        ...updatedText,
+        content: cleanValue,
+        rawContent: rawValue,
       };
-      
+
+      const hadPreviousContent = previousParsed.cleanText && previousParsed.cleanText.trim();
+      const hasExplicitFontSize = currentText.fontSize !== undefined;
+
+      if (cleanValue && cleanValue.trim() && !hadPreviousContent && !hasExplicitFontSize) {
+        updatedText = {
+          ...updatedText,
+          fontSize: lastUsedTextSettings.fontSize || 26
+        };
+      }
+    } else {
+      updatedText[property] = value;
+
       // Normalize font weight to numbers for better canvas compatibility
       if (property === 'fontWeight') {
         if (value === 'normal' || value === '400') {
@@ -257,22 +301,9 @@ const CaptionEditor = ({
           updatedText[property] = value;
         }
       }
-      
-      // Set default font size only when first adding content to an empty text field
-      if (property === 'content' && value && value.trim()) {
-        const hadPreviousContent = currentText.content && currentText.content.trim();
-        const hasExplicitFontSize = currentText.fontSize !== undefined;
-        
-        if (!hadPreviousContent && !hasExplicitFontSize) {
-          updatedText = {
-            ...updatedText,
-            fontSize: lastUsedTextSettings.fontSize || 26
-          };
-        }
-      }
-      
-      updatePanelText(panelId, updatedText);
     }
+
+    updatePanelText(panelId, updatedText);
   }, [panelTexts, updatePanelText, panelId, lastUsedTextSettings]);
 
   // Reset dialog handlers
@@ -286,7 +317,8 @@ const CaptionEditor = ({
     
     if (propertyName === 'fontSize') {
       const currentText = panelTexts[panelId] || {};
-      const hasActualText = currentText.content && currentText.content.trim();
+      const currentRaw = currentText.rawContent ?? currentText.content ?? '';
+      const hasActualText = parseFormattedText(currentRaw).cleanText.trim();
       
       if (hasActualText) {
         handleTextChange(propertyName, undefined);
@@ -343,13 +375,14 @@ const CaptionEditor = ({
     
     if (propertyName === 'fontSize') {
       const panelText = panelTexts[panelId] || {};
-      const hasActualText = panelText.content && panelText.content.trim();
+      const { cleanText } = getParsedText();
+      const hasActualText = cleanText && cleanText.trim();
       
       let baseFontSize;
       if (hasActualText && !panelText.fontSize) {
         const panel = panelRects.find(p => p.panelId === panelId);
         if (panel && calculateOptimalFontSize) {
-          baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+          baseFontSize = calculateOptimalFontSize(cleanText, panel.width, panel.height);
         } else {
           baseFontSize = lastUsedTextSettings.fontSize || 26;
         }
@@ -381,7 +414,141 @@ const CaptionEditor = ({
     }
     
     return currentValue || 0;
-  }, [panelTexts, panelId, lastUsedTextSettings, panelRects, calculateOptimalFontSize, textScaleFactor]);
+  }, [panelTexts, panelId, lastUsedTextSettings, panelRects, calculateOptimalFontSize, textScaleFactor, getParsedText]);
+
+  const syncActiveFormatsFromSelection = useCallback((overrideSelection) => {
+    const inputEl = textFieldRefs.current[panelId];
+    if (!inputEl) return;
+
+    const { rawValue, cleanText, ranges } = getParsedText();
+
+    if (cleanText.length === 0) {
+      setActiveInlineFormats([]);
+      return;
+    }
+
+    const selectionStart = overrideSelection ? overrideSelection.start : inputEl.selectionStart ?? 0;
+    const selectionEnd = overrideSelection ? overrideSelection.end : inputEl.selectionEnd ?? selectionStart;
+
+    selectionCacheRef.current = {
+      start: selectionStart,
+      end: selectionEnd,
+      timestamp: Date.now(),
+      hadFocus: true,
+    };
+
+    const { rawToPlain } = buildIndexMaps(rawValue);
+    const { start, end } = resolveSelectionBounds(
+      ranges,
+      cleanText.length,
+      selectionStart,
+      selectionEnd,
+      rawToPlain,
+    );
+
+    const activeFormats = getActiveFormatsFromRanges(ranges, start, end);
+    setActiveInlineFormats(activeFormats);
+  }, [getParsedText, panelId]);
+
+  const syncActiveFormatsRef = React.useRef(syncActiveFormatsFromSelection);
+  React.useEffect(() => {
+    syncActiveFormatsRef.current = syncActiveFormatsFromSelection;
+  }, [syncActiveFormatsFromSelection]);
+
+  const applyInlineStyleToggle = useCallback((styleKey) => {
+    const inputEl = textFieldRefs.current[panelId];
+    if (!inputEl) return false;
+
+    const { rawValue, cleanText, ranges } = getParsedText();
+
+    if (cleanText.length === 0) {
+      return false;
+    }
+
+    const hadFocus = document.activeElement === inputEl;
+    const cache = selectionCacheRef.current || {};
+    const now = Date.now();
+    const cacheIsUsable = cache && typeof cache.start === 'number' && typeof cache.end === 'number';
+    const cacheIsFresh = cacheIsUsable && now - cache.timestamp < SELECTION_CACHE_TTL_MS;
+    const cacheIsMeaningful = cacheIsUsable && (cache.start !== 0 || cache.end !== rawValue.length);
+    const usedCachedSelection = !hadFocus && (cacheIsFresh || cacheIsMeaningful);
+
+    const selectionStart = hadFocus && inputEl.selectionStart !== null
+      ? inputEl.selectionStart
+      : usedCachedSelection
+        ? cache.start
+        : 0;
+    const selectionEnd = hadFocus && inputEl.selectionEnd !== null
+      ? inputEl.selectionEnd
+      : usedCachedSelection
+        ? cache.end
+        : rawValue.length;
+    const { rawToPlain } = buildIndexMaps(rawValue);
+    const selectionIsCollapsed = selectionStart === selectionEnd;
+    const originalPlainStart = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
+    const originalPlainEnd = rawToPlain[Math.min(selectionEnd, rawToPlain.length - 1)] ?? originalPlainStart;
+    const caretPlain = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
+    const resolved = resolveSelectionBounds(
+      ranges,
+      cleanText.length,
+      selectionStart,
+      selectionEnd,
+      rawToPlain,
+    );
+
+    let selectionStartPlain = resolved.start;
+    let selectionEndPlain = resolved.end;
+
+    if (selectionIsCollapsed) {
+      const caretRange = ranges.find(
+        (range) => caretPlain >= range.start && caretPlain < range.end,
+      );
+      if (caretRange) {
+        selectionStartPlain = caretRange.start;
+        selectionEndPlain = caretRange.end;
+      }
+    }
+
+    if (selectionEndPlain <= selectionStartPlain) {
+      return false;
+    }
+
+    const updatedRanges = toggleStyleInRanges(
+      ranges,
+      selectionStartPlain,
+      selectionEndPlain,
+      styleKey,
+    );
+    const nextValue = serializeRangesToMarkup(cleanText, updatedRanges);
+    const nextIndexMaps = buildIndexMaps(nextValue);
+    const finalPlainStart = selectionIsCollapsed ? caretPlain : originalPlainStart;
+    const finalPlainEnd = selectionIsCollapsed ? caretPlain : originalPlainEnd;
+    const nextSelectionStart = nextIndexMaps.plainToRaw[finalPlainStart] ?? nextValue.length;
+    const nextSelectionEnd = nextIndexMaps.plainToRaw[finalPlainEnd] ?? nextValue.length;
+    const activeFormats = getActiveFormatsFromRanges(
+      updatedRanges,
+      selectionStartPlain,
+      selectionEndPlain,
+    );
+
+    handleTextChange('content', cleanText, nextValue);
+
+    requestAnimationFrame(() => {
+      if (hadFocus) {
+        inputEl.focus();
+        inputEl.setSelectionRange(nextSelectionStart, nextSelectionEnd);
+      }
+      selectionCacheRef.current = {
+        start: nextSelectionStart,
+        end: nextSelectionEnd,
+        timestamp: Date.now(),
+        hadFocus: hadFocus || usedCachedSelection,
+      };
+      setActiveInlineFormats(activeFormats);
+    });
+
+    return true;
+  }, [getParsedText, panelId, handleTextChange]);
 
   // Slider interaction handlers
   const handleSliderMouseDown = useCallback((propertyName) => {
@@ -391,6 +558,36 @@ const CaptionEditor = ({
   const handleSliderMouseUp = useCallback(() => {
     setActiveSlider(null);
   }, []);
+
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const activeEl = document.activeElement;
+      const inputEl = textFieldRefs.current[panelId];
+      if (!activeEl || activeEl !== inputEl || !inputEl) {
+        return;
+      }
+
+      if (inputEl.selectionStart == null || inputEl.selectionEnd == null) {
+        return;
+      }
+
+      selectionCacheRef.current = {
+        start: inputEl.selectionStart,
+        end: inputEl.selectionEnd,
+        timestamp: Date.now(),
+        hadFocus: true,
+      };
+      syncActiveFormatsFromSelection({
+        start: inputEl.selectionStart,
+        end: inputEl.selectionEnd,
+      });
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [panelId, syncActiveFormatsFromSelection]);
 
   // Text color scroll event handling
   useEffect(() => {
@@ -445,23 +642,41 @@ const CaptionEditor = ({
 
   // Focus text field when caption editor opens
   useEffect(() => {
-    setTimeout(() => {
+    let focusTimeout;
+    let selectionTimeout;
+    let touchTimeout;
+
+    focusTimeout = setTimeout(() => {
       const inputElement = textFieldRefs.current[panelId];
       if (inputElement) {
         inputElement.focus();
         const textLength = inputElement.value.length;
-        setTimeout(() => {
+        selectionTimeout = setTimeout(() => {
           inputElement.setSelectionRange(textLength, textLength);
+          syncActiveFormatsRef.current?.({
+            start: textLength,
+            end: textLength,
+          });
           if ('ontouchstart' in window) {
             inputElement.click();
-            setTimeout(() => {
+            touchTimeout = setTimeout(() => {
               inputElement.setSelectionRange(textLength, textLength);
             }, 100);
           }
         }, 50);
       }
     }, 300);
+
+    return () => {
+      clearTimeout(focusTimeout);
+      clearTimeout(selectionTimeout);
+      clearTimeout(touchTimeout);
+    };
   }, [panelId]);
+
+  const parsedText = getParsedText();
+  const rawTextValue = parsedText.rawValue;
+  const cleanTextValue = parsedText.cleanText;
 
   return (
     <Box
@@ -495,13 +710,20 @@ const CaptionEditor = ({
                 multiline
                 rows={2}
                 placeholder="Add Caption"
-                value={panelTexts[panelId]?.content || ''}
-                onChange={(e) => handleTextChange('content', e.target.value)}
+                value={rawTextValue}
+                onChange={(e) => {
+                  handleTextChange('content', e.target.value);
+                  syncActiveFormatsFromSelection();
+                }}
                 inputRef={(el) => {
                   if (el) {
                     textFieldRefs.current[panelId] = el;
                   }
                 }}
+                onFocus={() => syncActiveFormatsFromSelection()}
+                onSelect={() => syncActiveFormatsFromSelection()}
+                onKeyUp={() => syncActiveFormatsFromSelection()}
+                onMouseUp={() => syncActiveFormatsFromSelection()}
                 size="small"
                 sx={{
                   mb: 1,
@@ -526,25 +748,7 @@ const CaptionEditor = ({
                 <>
               <ToggleButtonGroup
                 value={(() => {
-                  const currentWeightRaw = panelTexts[panelId]?.fontWeight || lastUsedTextSettings.fontWeight || 400;
-                  let currentWeight;
-                  if (currentWeightRaw === 'normal') {
-                    currentWeight = 400;
-                  } else if (currentWeightRaw === 'bold') {
-                    currentWeight = 700;
-                  } else if (typeof currentWeightRaw === 'string') {
-                    currentWeight = parseInt(currentWeightRaw, 10) || 400;
-                  } else {
-                    currentWeight = currentWeightRaw;
-                  }
-                  const currentStyle = panelTexts[panelId]?.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
-                  const result = [];
-                  if (currentWeight >= 500) {
-                    result.push('bold');
-                  }
-                  if (currentStyle === 'italic') {
-                    result.push('italic');
-                  }
+                  const result = [...activeInlineFormats];
                   // Mark color toggle as selected when non-default color is active
                   const defaultColor = (lastUsedTextSettings.color || '#ffffff').toLowerCase();
                   if (currentTextColor && currentTextColor.toLowerCase() !== defaultColor) {
@@ -552,17 +756,12 @@ const CaptionEditor = ({
                   }
                   return result;
                 })()}
-                onChange={(event, newFormats) => {
-                  const isBold = newFormats.includes('bold');
-                  const isItalic = newFormats.includes('italic');
-                  const currentText = panelTexts[panelId] || {};
-                  const updatedText = {
-                    ...currentText,
-                    fontWeight: isBold ? 700 : 400,
-                    fontStyle: isItalic ? 'italic' : 'normal'
-                  };
-                  if (updatePanelText) {
-                    updatePanelText(panelId, updatedText);
+                onChange={(event) => {
+                  const clicked = event?.currentTarget?.value;
+                  if (clicked === 'bold' || clicked === 'italic' || clicked === 'underline') {
+                    applyInlineStyleToggle(clicked === 'underline' ? 'underline' : clicked);
+                  } else if (clicked === 'color') {
+                    setShowInlineColor(true);
                   }
                 }}
                 aria-label="text formatting"
@@ -589,6 +788,9 @@ const CaptionEditor = ({
                 </ToggleButton>
                 <ToggleButton size='small' value="italic" aria-label="italic">
                   <FormatItalic />
+                </ToggleButton>
+                <ToggleButton size='small' value="underline" aria-label="underline">
+                  <FormatUnderlined />
                 </ToggleButton>
                 {/* Inline color toggle within the group */}
                 <ToggleButton
@@ -775,12 +977,12 @@ const CaptionEditor = ({
               <Slider
                 value={(() => {
                   const panelText = panelTexts[panelId] || {};
-                  const hasActualText = panelText.content && panelText.content.trim();
+                  const hasActualText = cleanTextValue && cleanTextValue.trim();
                   let baseFontSize;
                   if (hasActualText && !panelText.fontSize) {
                     const panel = panelRects.find(p => p.panelId === panelId);
                     if (panel && calculateOptimalFontSize) {
-                      baseFontSize = calculateOptimalFontSize(panelText.content, panel.width, panel.height);
+                      baseFontSize = calculateOptimalFontSize(cleanTextValue, panel.width, panel.height);
                     } else {
                       baseFontSize = lastUsedTextSettings.fontSize || 26;
                     }
