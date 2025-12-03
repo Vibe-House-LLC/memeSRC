@@ -1898,7 +1898,7 @@ const CanvasCollagePreview = ({
         }
       }, 100); // Small delay to ensure editor is rendered
     }
-  }, [textEditingPanel, panelRects, isReorderMode]);
+  }, [textEditingPanel, panelRects, isReorderMode, panelTexts, panelImageMapping, images, updatePanelText, lastUsedTextSettings]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
