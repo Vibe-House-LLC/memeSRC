@@ -9,6 +9,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { FontDownloadOutlined, FormatSizeRounded, Settings } from '@mui/icons-material';
+import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
 import IconButton from '@mui/material/IconButton';
 import { MenuItem, Select, Typography, Menu, InputAdornment } from '@mui/material';
 import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
@@ -31,6 +32,7 @@ TextEditorControls.propTypes = {
   handleAlignment: PropTypes.func,
   layerFonts: PropTypes.object.isRequired,
   setLayerFonts: PropTypes.func.isRequired,
+  activeFormats: PropTypes.arrayOf(PropTypes.string),
 };
 
 const FontSelector = ({ selectedFont, onSelectFont, index }) => (
@@ -76,9 +78,21 @@ export default function TextEditorControls(props) {
   const [colorAnchorEl, setColorAnchorEl] = React.useState(null);
 
   const handleFormat = (event, newFormats) => {
+    const clickedFormat = event?.currentTarget?.value;
+    if (props.handleStyle) {
+      props.handleStyle(props.index, newFormats, clickedFormat);
+    }
     setFormats(newFormats);
-    props.handleStyle(props.index, newFormats);
   };
+
+  React.useEffect(() => {
+    if (props.activeFormats) {
+      const normalized = props.activeFormats.map((format) => (
+        format === 'underlined' ? 'underline' : format
+      ));
+      setFormats(normalized);
+    }
+  }, [props.activeFormats]);
 
   const handleAlignmentClick = (event) => {
     setAlignmentAnchorEl(event.currentTarget);
@@ -131,6 +145,9 @@ export default function TextEditorControls(props) {
             </ToggleButton>
             <ToggleButton value="italic" aria-label="italic">
               <FormatItalicIcon />
+            </ToggleButton>
+            <ToggleButton value="underline" aria-label="underline">
+              <FormatUnderlinedIcon />
             </ToggleButton>
             <ToggleButton
               value="fontsize"

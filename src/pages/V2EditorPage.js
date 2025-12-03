@@ -263,6 +263,8 @@ const EditorPage = ({ shows }) => {
   const [selectedFontSize, setSelectedFontSize] = useState(100);
 
   const [currentColorType, setCurrentColorType] = useState('text');
+  const [layerRawText, setLayerRawText] = useState({});
+  const [layerActiveFormats, setLayerActiveFormats] = useState({});
 
   const [editorAspectRatio, setEditorAspectRatio] = useState(1);
 
@@ -314,6 +316,10 @@ const EditorPage = ({ shows }) => {
   const [returnedImages, setReturnedImages] = useState([]);
 
   const magicToolsButtonRef = useRef();
+  const textFieldRefs = useRef({});
+  const selectionCacheRef = useRef({});
+
+  const SELECTION_CACHE_TTL_MS = 15000;
 
   const handleSubtitlesExpand = () => {
     setSubtitlesExpanded(!subtitlesExpanded);
@@ -555,6 +561,13 @@ const EditorPage = ({ shows }) => {
       }
       addToHistory();
     }
+    setLayerRawText((prev) => {
+      if (append) {
+        const newIndex = editor?.canvas?._objects?.length ? editor.canvas._objects.length - 1 : 0;
+        return { ...prev, [newIndex]: updatedText };
+      }
+      return { 0: updatedText };
+    });
   }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -615,6 +628,54 @@ const EditorPage = ({ shows }) => {
 
   const handleDeleteLayer = (index) => {
     deleteLayer(editor.canvas, index, setLayerFonts, setCanvasObjects);
+    const remappedRefs = {};
+    Object.entries(textFieldRefs.current).forEach(([key, ref]) => {
+      const refIndex = Number(key);
+      if (Number.isNaN(refIndex)) return;
+      if (refIndex < index) {
+        remappedRefs[refIndex] = ref;
+      } else if (refIndex > index) {
+        remappedRefs[refIndex - 1] = ref;
+      }
+    });
+    textFieldRefs.current = remappedRefs;
+    const remappedSelectionCache = {};
+    Object.entries(selectionCacheRef.current).forEach(([key, cache]) => {
+      const refIndex = Number(key);
+      if (Number.isNaN(refIndex)) return;
+      if (refIndex < index) {
+        remappedSelectionCache[refIndex] = cache;
+      } else if (refIndex > index) {
+        remappedSelectionCache[refIndex - 1] = cache;
+      }
+    });
+    selectionCacheRef.current = remappedSelectionCache;
+    setLayerRawText((prev) => {
+      const updated = {};
+      Object.entries(prev || {}).forEach(([key, value]) => {
+        const refIndex = Number(key);
+        if (Number.isNaN(refIndex)) return;
+        if (refIndex < index) {
+          updated[refIndex] = value;
+        } else if (refIndex > index) {
+          updated[refIndex - 1] = value;
+        }
+      });
+      return updated;
+    });
+    setLayerActiveFormats((prev) => {
+      const updated = {};
+      Object.entries(prev || {}).forEach(([key, value]) => {
+        const refIndex = Number(key);
+        if (Number.isNaN(refIndex)) return;
+        if (refIndex < index) {
+          updated[refIndex] = value;
+        } else if (refIndex > index) {
+          updated[refIndex - 1] = value;
+        }
+      });
+      return updated;
+    });
     addToHistory();
   };
 
@@ -857,15 +918,470 @@ const EditorPage = ({ shows }) => {
     addToHistory();
   }
 
-  const handleEdit = (event, index) => {
-    editor.canvas.item(index).set('text', event.target.value);
-    setCanvasObjects([...editor.canvas._objects])
+  const INLINE_TAG_ORDER = ['bold', 'italic', 'underline'];
+  const STYLE_TO_TAG = { bold: 'b', italic: 'i', underline: 'u' };
+
+  const normalizeStyle = (style = {}) => ({
+    bold: Boolean(style.bold),
+    italic: Boolean(style.italic),
+    underline: Boolean(style.underline),
+  });
+
+  const mergeAdjacentRanges = (ranges = []) => {
+    if (!ranges.length) return [];
+
+    const merged = [];
+    ranges.forEach((range) => {
+      const safeStyle = normalizeStyle(range.style);
+      if (merged.length === 0) {
+        merged.push({ ...range, style: safeStyle });
+        return;
+      }
+
+      const last = merged[merged.length - 1];
+      const lastStyle = normalizeStyle(last.style);
+
+      if (
+        last.end === range.start &&
+        lastStyle.bold === safeStyle.bold &&
+        lastStyle.italic === safeStyle.italic &&
+        lastStyle.underline === safeStyle.underline
+      ) {
+        last.end = range.end;
+      } else {
+        merged.push({ ...range, style: safeStyle });
+      }
+    });
+
+    return merged;
+  };
+
+  const parseFormattedText = (rawText = '') => {
+    const tagRegex = /<\/?(b|i|u)>/ig;
+    const styleCounts = { b: 0, i: 0, u: 0 };
+    const segments = [];
+    let cleanText = '';
+    let cursor = 0;
+
+    const buildStyle = () => ({
+      bold: styleCounts.b > 0,
+      italic: styleCounts.i > 0,
+      underline: styleCounts.u > 0,
+    });
+
+    let match;
+    while ((match = tagRegex.exec(rawText)) !== null) {
+      const textChunk = rawText.slice(cursor, match.index);
+      if (textChunk.length > 0) {
+        segments.push({ text: textChunk, style: buildStyle() });
+        cleanText += textChunk;
+      }
+
+      const tagKey = match[1]?.toLowerCase();
+      const isClosing = match[0].startsWith('</');
+      if (tagKey && typeof styleCounts[tagKey] === 'number') {
+        const delta = isClosing ? -1 : 1;
+        styleCounts[tagKey] = Math.max(0, styleCounts[tagKey] + delta);
+      }
+
+      cursor = match.index + match[0].length;
+    }
+
+    const tail = rawText.slice(cursor);
+    if (tail.length > 0) {
+      segments.push({ text: tail, style: buildStyle() });
+      cleanText += tail;
+    }
+
+    let pointer = 0;
+    const ranges = segments
+      .filter((segment) => segment.text.length > 0)
+      .map((segment) => {
+        const start = pointer;
+        const end = start + segment.text.length;
+        pointer = end;
+        return { start, end, style: normalizeStyle(segment.style) };
+      });
+
+    return { cleanText, ranges: mergeAdjacentRanges(ranges) };
+  };
+
+  const buildIndexMaps = (rawText = '') => {
+    const rawToPlain = new Array(rawText.length + 1).fill(0);
+    const plainToRaw = [];
+    let plainIndex = 0;
+    let rawIndex = 0;
+
+    while (rawIndex < rawText.length) {
+      const char = rawText[rawIndex];
+      rawToPlain[rawIndex] = plainIndex;
+
+      if (char === '<') {
+        const closingIdx = rawText.indexOf('>', rawIndex);
+        if (closingIdx !== -1) {
+          for (let i = rawIndex + 1; i <= closingIdx; i += 1) {
+            rawToPlain[i] = plainIndex;
+          }
+          rawIndex = closingIdx + 1;
+          continue;
+        }
+      }
+
+      plainToRaw[plainIndex] = rawIndex;
+      plainIndex += 1;
+      rawIndex += 1;
+    }
+
+    rawToPlain[rawText.length] = plainIndex;
+    plainToRaw[plainIndex] = rawText.length;
+
+    return { rawToPlain, plainToRaw };
+  };
+
+  const resolveSelectionBounds = (ranges, textLength, rawStart = 0, rawEnd = 0, rawToPlain = []) => {
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const safeStart = clamp(rawStart ?? 0, 0, rawToPlain.length - 1);
+    const safeEnd = clamp(rawEnd ?? safeStart, 0, rawToPlain.length - 1);
+
+    const plainStart = clamp(rawToPlain[safeStart] ?? 0, 0, textLength);
+    const plainEnd = clamp(rawToPlain[safeEnd] ?? plainStart, 0, textLength);
+
+    if (plainStart !== plainEnd) {
+      return { start: Math.min(plainStart, plainEnd), end: Math.max(plainStart, plainEnd) };
+    }
+
+    if (!ranges.length) {
+      return { start: 0, end: 0 };
+    }
+
+    const caret = Math.min(plainStart, textLength);
+    const activeRange = ranges.find((range) => caret >= range.start && caret < range.end);
+    if (activeRange) {
+      return { start: activeRange.start, end: activeRange.end };
+    }
+
+    const lastRange = ranges[ranges.length - 1];
+    if (textLength > 0) {
+      return { start: lastRange.start, end: lastRange.end };
+    }
+
+    return { start: 0, end: 0 };
+  };
+
+  const toggleStyleInRanges = (ranges, selectionStart, selectionEnd, styleKey) => {
+    if (!ranges.length || selectionEnd <= selectionStart) {
+      return ranges;
+    }
+
+    const overlapping = ranges.filter(
+      (range) => range.end > selectionStart && range.start < selectionEnd,
+    );
+    const isFullyActive = overlapping.length > 0 && overlapping.every(
+      (range) => normalizeStyle(range.style)[styleKey],
+    );
+    const targetValue = !isFullyActive;
+
+    const nextRanges = [];
+
+    ranges.forEach((range) => {
+      const { start, end } = range;
+      const safeStyle = normalizeStyle(range.style);
+
+      if (end <= selectionStart || start >= selectionEnd) {
+        nextRanges.push({ ...range, style: safeStyle });
+        return;
+      }
+
+      if (start < selectionStart) {
+        nextRanges.push({ start, end: selectionStart, style: safeStyle });
+      }
+
+      const middleStart = Math.max(start, selectionStart);
+      const middleEnd = Math.min(end, selectionEnd);
+      nextRanges.push({
+        start: middleStart,
+        end: middleEnd,
+        style: { ...safeStyle, [styleKey]: targetValue },
+      });
+
+      if (end > selectionEnd) {
+        nextRanges.push({ start: selectionEnd, end, style: safeStyle });
+      }
+    });
+
+    return mergeAdjacentRanges(nextRanges);
+  };
+
+  const getActiveFormatsFromRanges = (ranges, selectionStart, selectionEnd) => {
+    if (!ranges.length || selectionEnd <= selectionStart) {
+      return [];
+    }
+
+    const overlapping = ranges.filter(
+      (range) => range.end > selectionStart && range.start < selectionEnd,
+    );
+
+    if (!overlapping.length) {
+      return [];
+    }
+
+    return INLINE_TAG_ORDER.filter((key) => overlapping.every(
+      (range) => normalizeStyle(range.style)[key],
+    ));
+  };
+
+  const serializeRangesToMarkup = (text = '', ranges = []) => {
+    if (text.length === 0) {
+      return '';
+    }
+
+    let output = '';
+    let activeStyle = { bold: false, italic: false, underline: false };
+    let rangeIndex = 0;
+
+    for (let i = 0; i < text.length; i += 1) {
+      while (rangeIndex < ranges.length && ranges[rangeIndex].end <= i) {
+        rangeIndex += 1;
+      }
+
+      const currentRange = ranges[rangeIndex] || { style: activeStyle };
+      const nextStyle = normalizeStyle(currentRange.style);
+
+      for (let j = INLINE_TAG_ORDER.length - 1; j >= 0; j -= 1) {
+        const key = INLINE_TAG_ORDER[j];
+        if (activeStyle[key] && !nextStyle[key]) {
+          output += `</${STYLE_TO_TAG[key]}>`;
+        }
+      }
+
+      for (let j = 0; j < INLINE_TAG_ORDER.length; j += 1) {
+        const key = INLINE_TAG_ORDER[j];
+        if (!activeStyle[key] && nextStyle[key]) {
+          output += `<${STYLE_TO_TAG[key]}>`;
+        }
+      }
+
+      output += text[i];
+      activeStyle = nextStyle;
+    }
+
+    for (let i = INLINE_TAG_ORDER.length - 1; i >= 0; i -= 1) {
+      const key = INLINE_TAG_ORDER[i];
+      if (activeStyle[key]) {
+        output += `</${STYLE_TO_TAG[key]}>`;
+      }
+    }
+
+    return output;
+  };
+
+  const applyFormattedTextToCanvas = useCallback((index, rawValue) => {
+    if (!editor?.canvas) return;
+    const textObject = editor.canvas.item(index);
+    if (!textObject) return;
+
+    const { cleanText, ranges } = parseFormattedText(rawValue);
+
+    textObject.set({ text: cleanText });
+    textObject.styles = {};
+
+    ranges.forEach(({ start, end, style }) => {
+      const selectionStyle = {
+        fontWeight: style.bold ? 'bold' : textObject.fontWeight || 'normal',
+        fontStyle: style.italic ? 'italic' : textObject.fontStyle || 'normal',
+        underline: style.underline === undefined ? Boolean(textObject.underline) : style.underline,
+      };
+      textObject.setSelectionStyles(selectionStyle, start, end);
+    });
+
+    textObject.initDimensions();
+    textObject.setCoords();
+    textObject.dirty = true;
+    setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
-  }
+  }, [editor]);
+
+  const syncActiveFormatsFromSelection = useCallback((index, overrideSelection) => {
+    const inputEl = textFieldRefs.current[index];
+    const textObject = editor?.canvas?.item(index);
+    if (!inputEl || !textObject) return;
+
+    const rawValue = inputEl.value ?? layerRawText[index] ?? textObject.text ?? '';
+    const { cleanText, ranges } = parseFormattedText(rawValue);
+
+    if (cleanText.length === 0) {
+      setLayerActiveFormats((prev) => ({ ...prev, [index]: [] }));
+      return;
+    }
+
+    const selectionStart = overrideSelection ? overrideSelection.start : inputEl.selectionStart ?? 0;
+    const selectionEnd = overrideSelection ? overrideSelection.end : inputEl.selectionEnd ?? selectionStart;
+
+    selectionCacheRef.current[index] = {
+      start: selectionStart,
+      end: selectionEnd,
+      timestamp: Date.now(),
+      hadFocus: true,
+    };
+
+    const { rawToPlain } = buildIndexMaps(rawValue);
+    const { start, end } = resolveSelectionBounds(
+      ranges,
+      cleanText.length,
+      selectionStart,
+      selectionEnd,
+      rawToPlain,
+    );
+
+    const activeFormats = getActiveFormatsFromRanges(ranges, start, end);
+    setLayerActiveFormats((prev) => ({ ...prev, [index]: activeFormats }));
+  }, [editor, layerRawText]);
+
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const activeEl = document.activeElement;
+      if (!activeEl) return;
+      const entries = Object.entries(textFieldRefs.current);
+      const matched = entries.find(([, el]) => el === activeEl);
+      if (!matched) return;
+
+      const [matchedIndex, matchedEl] = matched;
+      if (matchedEl.selectionStart == null || matchedEl.selectionEnd == null) {
+        return;
+      }
+
+      selectionCacheRef.current[matchedIndex] = {
+        start: matchedEl.selectionStart,
+        end: matchedEl.selectionEnd,
+        timestamp: Date.now(),
+        hadFocus: true,
+      };
+      syncActiveFormatsFromSelection(Number(matchedIndex), {
+        start: matchedEl.selectionStart,
+        end: matchedEl.selectionEnd,
+      });
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [syncActiveFormatsFromSelection]);
+
+  const applyInlineStyleToggle = useCallback((index, styleKey) => {
+    const inputEl = textFieldRefs.current[index];
+    const textObject = editor?.canvas?.item(index);
+    if (!inputEl || !textObject) return false;
+
+    const rawValue = inputEl.value ?? layerRawText[index] ?? textObject.text ?? '';
+    const { cleanText, ranges } = parseFormattedText(rawValue);
+
+    if (cleanText.length === 0) {
+      return false;
+    }
+
+    const hadFocus = document.activeElement === inputEl;
+    const cache = selectionCacheRef.current[index];
+    const now = Date.now();
+    const cacheIsUsable = Boolean(
+      cache &&
+      typeof cache.start === 'number' &&
+      typeof cache.end === 'number',
+    );
+    const cacheIsFresh = cacheIsUsable && now - cache.timestamp < SELECTION_CACHE_TTL_MS;
+    const cacheIsMeaningful = cacheIsUsable && (cache.start !== 0 || cache.end !== rawValue.length);
+    const usedCachedSelection = !hadFocus && (cacheIsFresh || cacheIsMeaningful);
+
+    const selectionStart = hadFocus && inputEl.selectionStart !== null
+      ? inputEl.selectionStart
+      : usedCachedSelection
+        ? cache.start
+        : 0;
+    const selectionEnd = hadFocus && inputEl.selectionEnd !== null
+      ? inputEl.selectionEnd
+      : usedCachedSelection
+        ? cache.end
+        : rawValue.length;
+    const { rawToPlain, plainToRaw } = buildIndexMaps(rawValue);
+    const selectionIsCollapsed = selectionStart === selectionEnd;
+    const originalPlainStart = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
+    const originalPlainEnd = rawToPlain[Math.min(selectionEnd, rawToPlain.length - 1)] ?? originalPlainStart;
+    const caretPlain = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
+    const resolved = resolveSelectionBounds(
+      ranges,
+      cleanText.length,
+      selectionStart,
+      selectionEnd,
+      rawToPlain,
+    );
+
+    let selectionStartPlain = resolved.start;
+    let selectionEndPlain = resolved.end;
+
+    if (selectionIsCollapsed) {
+      const caretPlain = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
+      const caretRange = ranges.find(
+        (range) => caretPlain >= range.start && caretPlain < range.end,
+      );
+      if (caretRange) {
+        selectionStartPlain = caretRange.start;
+        selectionEndPlain = caretRange.end;
+      }
+    }
+
+    if (selectionEndPlain <= selectionStartPlain) {
+      return false;
+    }
+
+    const updatedRanges = toggleStyleInRanges(
+      ranges,
+      selectionStartPlain,
+      selectionEndPlain,
+      styleKey,
+    );
+    const nextValue = serializeRangesToMarkup(cleanText, updatedRanges);
+    const nextIndexMaps = buildIndexMaps(nextValue);
+    const finalPlainStart = selectionIsCollapsed ? caretPlain : originalPlainStart;
+    const finalPlainEnd = selectionIsCollapsed ? caretPlain : originalPlainEnd;
+    const nextSelectionStart = nextIndexMaps.plainToRaw[finalPlainStart] ?? nextValue.length;
+    const nextSelectionEnd = nextIndexMaps.plainToRaw[finalPlainEnd] ?? nextValue.length;
+    const activeFormats = getActiveFormatsFromRanges(
+      updatedRanges,
+      selectionStartPlain,
+      selectionEndPlain,
+    );
+
+    setLayerRawText((prev) => ({ ...prev, [index]: nextValue }));
+    applyFormattedTextToCanvas(index, nextValue);
+
+    requestAnimationFrame(() => {
+      if (hadFocus) {
+        inputEl.focus();
+        inputEl.setSelectionRange(nextSelectionStart, nextSelectionEnd);
+      }
+      selectionCacheRef.current[index] = {
+        start: nextSelectionStart,
+        end: nextSelectionEnd,
+        timestamp: Date.now(),
+        hadFocus: hadFocus || usedCachedSelection,
+      };
+      setLayerActiveFormats((prev) => ({ ...prev, [index]: activeFormats }));
+    });
+
+    return true;
+  }, [applyFormattedTextToCanvas, editor, layerRawText]);
+
+  const handleEdit = (event, index) => {
+    const rawValue = event.target.value;
+    setLayerRawText((prev) => ({ ...prev, [index]: rawValue }));
+    applyFormattedTextToCanvas(index, rawValue);
+    syncActiveFormatsFromSelection(index);
+  };
 
   const handleFocus = (index) => {
     editor.canvas.setActiveObject(editor.canvas.item(index));
     editor?.canvas.renderAll();
+    syncActiveFormatsFromSelection(index);
   }
 
   const handleFontSize = (event, index) => {
@@ -873,7 +1389,28 @@ const EditorPage = ({ shows }) => {
     editor.canvas.item(index).fontSize = defaultFontSize * (event.target.value / 100);
     setCanvasObjects([...editor.canvas._objects])
     editor?.canvas.renderAll();
+    syncActiveFormatsFromSelection(index);
   }
+
+  const addToHistory = async () => {
+    try {
+      // Save the current state of the canvas for local undo/redo before any scaling or modifications
+      const serializedCanvas = JSON.stringify(editor.canvas);
+      const currentCanvasSize = {
+        width: editor.canvas.width,
+        height: editor.canvas.height
+      };
+
+      setFutureStates([]);
+      setFutureCanvasSizes([]);
+
+      setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
+      setCanvasSizes(prevSizes => [...prevSizes, currentCanvasSize]);
+
+    } catch (error) {
+      console.error('Failed to update editor state or canvas image in S3:', error);
+    }
+  };
 
   const handleFineTuning = (value) => {
     // console.log(fineTuningFrames[value]);
@@ -890,21 +1427,42 @@ const EditorPage = ({ shows }) => {
     setBgEditorStates(prevHistory => [...prevHistory, oImg]);
   }
 
-
-  const handleStyle = (index, customStyles) => {
+  const handleStyle = (index, customStyles, clickedFormat) => {
+    if (!editor?.canvas) {
+      return false;
+    }
+    const styles = customStyles || [];
+    if (clickedFormat) {
+      const styleKeyMap = { bold: 'bold', italic: 'italic', underline: 'underline', underlined: 'underline' };
+      const styleKey = styleKeyMap[clickedFormat];
+      if (styleKey) {
+        const handledWithInline = applyInlineStyleToggle(index, styleKey);
+        if (handledWithInline) {
+          return true;
+        }
+      }
+    }
     // Select the item
     const item = editor.canvas.item(index);
+    if (!item) {
+      return false;
+    }
     // Update the style
     item.set({
-      fontWeight: customStyles.includes('bold') ? 'bold' : 'normal',
-      fontStyle: customStyles.includes('italic') ? 'italic' : 'normal',
-      underline: customStyles.includes('underlined')
+      fontWeight: styles.includes('bold') ? 'bold' : 'normal',
+      fontStyle: styles.includes('italic') ? 'italic' : 'normal',
+      underline: styles.includes('underline') || styles.includes('underlined')
     });
     // Update the canvas
     item.dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
     addToHistory();
+    const inlineStyles = styles
+      .filter((style) => ['bold', 'italic', 'underline', 'underlined'].includes(style))
+      .map((style) => (style === 'underlined' ? 'underline' : style));
+    setLayerActiveFormats((prev) => ({ ...prev, [index]: inlineStyles }));
+    return false;
   }
 
   const handleFontChange = (index, font) => {
@@ -1188,27 +1746,6 @@ const EditorPage = ({ shows }) => {
   //     </Tooltip>
   //   );
   // }
-  const addToHistory = async () => {
-    try {
-      // Save the current state of the canvas for local undo/redo before any scaling or modifications
-      const serializedCanvas = JSON.stringify(editor.canvas);
-      const currentCanvasSize = {
-        width: editor.canvas.width,
-        height: editor.canvas.height
-      };
-
-      setFutureStates([]);
-      setFutureCanvasSizes([]);
-
-      setEditorStates(prevHistory => [...prevHistory, serializedCanvas]);
-      setCanvasSizes(prevSizes => [...prevSizes, currentCanvasSize]);
-
-    } catch (error) {
-      console.error('Failed to update editor state or canvas image in S3:', error);
-    }
-  };
-
-
   function dataURLtoBlob(dataurl) {
     const arr = dataurl.split(',');
     const mimeMatch = arr[0].match(/:(.*?);/);
@@ -2218,32 +2755,41 @@ const EditorPage = ({ shows }) => {
                             {'text' in object && (
                               <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
                                 <div style={{ display: 'inline', position: 'relative' }}>
-                                  <TextEditorControls
-                                    showColorPicker={(colorType, index, event) => showColorPicker(colorType, index, event)}
-                                    colorPickerShowing={colorPickerShowing}
-                                    index={index}
-                                    showFontSizePicker={(event) => showFontSizePicker(event, index)}
+                              <TextEditorControls
+                                showColorPicker={(colorType, index, event) => showColorPicker(colorType, index, event)}
+                                colorPickerShowing={colorPickerShowing}
+                                index={index}
+                                showFontSizePicker={(event) => showFontSizePicker(event, index)}
                                     fontSizePickerShowing={fontSizePickerShowing}
                                     handleStyle={handleStyle}
                                     handleFontChange={handleFontChange}
                                     layerFonts={layerFonts}
                                     setLayerFonts={setLayerFonts}
-                                    layerColor={object.fill}
-                                    layerStrokeColor={object.stroke}
-                                    handleAlignment={handleAlignment}
-                                  />
-                                </div>
+                                layerColor={object.fill}
+                                layerStrokeColor={object.stroke}
+                                handleAlignment={handleAlignment}
+                                activeFormats={layerActiveFormats[index] || []}
+                              />
+                            </div>
                                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                                   <TextField
                                     size="small"
                                     multiline
                                     type="text"
-                                    value={object.text}
+                                    value={layerRawText[index] ?? object.text}
                                     fullWidth
                                     onFocus={() => handleFocus(index)}
                                     onBlur={addToHistory}
                                     onChange={(event) => handleEdit(event, index)}
+                                    onSelect={() => syncActiveFormatsFromSelection(index)}
+                                    onKeyUp={() => syncActiveFormatsFromSelection(index)}
+                                    onMouseUp={() => syncActiveFormatsFromSelection(index)}
                                     placeholder='(type your caption)'
+                                    inputRef={(el) => {
+                                      if (el) {
+                                        textFieldRefs.current[index] = el;
+                                      }
+                                    }}
                                     InputProps={{
                                       style: {
                                         fontFamily: layerFonts[index] || 'Arial',
