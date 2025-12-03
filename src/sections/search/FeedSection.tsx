@@ -460,11 +460,13 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
     return isAdPauseActive();
   }, [adFreeDecemberDismissed, contextValue.user]);
 
+  const hasDismissedAdFreeDecemberInStorage = hasDismissedAdFreeDecember();
+
   useEffect(() => {
-    if (!adFreeDecemberDismissed && hasDismissedAdFreeDecember()) {
+    if (!adFreeDecemberDismissed && hasDismissedAdFreeDecemberInStorage) {
       setAdFreeDecemberDismissed(true);
     }
-  }, [adFreeDecemberDismissed]);
+  }, [adFreeDecemberDismissed, hasDismissedAdFreeDecemberInStorage]);
 
   useEffect(() => {
     let didCancel = false;
