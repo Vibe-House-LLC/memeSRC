@@ -1273,7 +1273,9 @@ const CaptionEditor = ({
               aria-label="Clear caption"
               onClick={() => {
                 const currentText = panelTexts[panelId] || {};
-                if (updatePanelText) updatePanelText(panelId, { ...currentText, content: '' });
+                if (updatePanelText) {
+                  updatePanelText(panelId, { ...currentText, content: '', rawContent: '' });
+                }
                 if (typeof onClose === 'function') onClose();
               }}
               sx={{
