@@ -1213,6 +1213,37 @@ const EditorPage = ({ shows }) => {
     setLayerActiveFormats((prev) => ({ ...prev, [index]: activeFormats }));
   }, [editor, layerRawText]);
 
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const activeEl = document.activeElement;
+      if (!activeEl) return;
+      const entries = Object.entries(textFieldRefs.current);
+      const matched = entries.find(([, el]) => el === activeEl);
+      if (!matched) return;
+
+      const [matchedIndex, matchedEl] = matched;
+      if (matchedEl.selectionStart == null || matchedEl.selectionEnd == null) {
+        return;
+      }
+
+      selectionCacheRef.current[matchedIndex] = {
+        start: matchedEl.selectionStart,
+        end: matchedEl.selectionEnd,
+        timestamp: Date.now(),
+        hadFocus: true,
+      };
+      syncActiveFormatsFromSelection(Number(matchedIndex), {
+        start: matchedEl.selectionStart,
+        end: matchedEl.selectionEnd,
+      });
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [syncActiveFormatsFromSelection]);
+
   const applyInlineStyleToggle = useCallback((index, styleKey) => {
     const inputEl = textFieldRefs.current[index];
     const textObject = editor?.canvas?.item(index);
@@ -1230,7 +1261,6 @@ const EditorPage = ({ shows }) => {
     const now = Date.now();
     const cacheIsUsable = Boolean(
       cache &&
-      cache.hadFocus &&
       typeof cache.start === 'number' &&
       typeof cache.end === 'number',
     );
