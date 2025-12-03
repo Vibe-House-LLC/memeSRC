@@ -20,23 +20,19 @@
     }
   },
   "Resources": {
-    "LambdaLayerVersion0dcc04c8": {
+    "LambdaLayerVersion38839adf": {
       "Type": "AWS::Lambda::LayerVersion",
       "Properties": {
-        "CompatibleRuntimes": {
-          "Ref": "runtimes"
-        },
+        "CompatibleRuntimes": [
+          "nodejs22.x"
+        ],
         "Content": {
           "S3Bucket": {
             "Ref": "deploymentBucketName"
           },
-          "S3Key": {
-            "Ref": "s3Key"
-          }
+          "S3Key": "amplify-builds/memesrcOpenSearchLayer-LambdaLayerVersion38839adf-build.zip"
         },
-        "Description": {
-          "Ref": "description"
-        },
+        "Description": "Updated layer version 2025-12-03T19:54:59.550Z",
         "LayerName": {
           "Fn::Sub": [
             "memesrcOpenSearchLayer-${env}",
@@ -51,13 +47,11 @@
       "DeletionPolicy": "Delete",
       "UpdateReplacePolicy": "Retain"
     },
-    "LambdaLayerPermissionPrivate0dcc04c8": {
+    "LambdaLayerPermissionPrivate38839adf": {
       "Type": "AWS::Lambda::LayerVersionPermission",
       "Properties": {
         "Action": "lambda:GetLayerVersion",
-        "LayerVersionArn": {
-          "Ref": "LambdaLayerVersion0dcc04c8"
-        },
+        "LayerVersionArn": "arn:aws:lambda:us-east-1:458585755494:layer:memesrcOpenSearchLayer-dev:77",
         "Principal": {
           "Ref": "AWS::AccountId"
         }
@@ -67,7 +61,7 @@
   "Outputs": {
     "Arn": {
       "Value": {
-        "Ref": "LambdaLayerVersion0dcc04c8"
+        "Ref": "LambdaLayerVersion38839adf"
       }
     }
   }
