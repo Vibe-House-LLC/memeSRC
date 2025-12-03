@@ -722,6 +722,13 @@ const CanvasCollagePreview = ({
   const hoverTimeoutRef = useRef(null);
   const touchStartInfo = useRef(null);
   const defaultCaptionCacheRef = useRef({});
+  const panelTextsRef = useRef(panelTexts);
+
+  // Keep panelTextsRef in sync with panelTexts state
+  useEffect(() => {
+    panelTextsRef.current = panelTexts;
+  }, [panelTexts]);
+
   // Notify parent when caption editor visibility changes
   useEffect(() => {
     if (typeof onCaptionEditorVisibleChange === 'function') {
@@ -1710,7 +1717,7 @@ const CanvasCollagePreview = ({
     if (isOpening) {
       try {
         const existing = parseFormattedText(
-          panelTexts[panelId]?.rawContent ?? panelTexts[panelId]?.content ?? '',
+          panelTextsRef.current[panelId]?.rawContent ?? panelTextsRef.current[panelId]?.content ?? '',
         ).cleanText.trim();
         if (!existing) {
           const imageIndex = panelImageMapping?.[panelId];
@@ -1720,11 +1727,11 @@ const CanvasCollagePreview = ({
             if (libraryKey) {
               const cached = defaultCaptionCacheRef.current[libraryKey];
               const applyCaption = (caption) => {
-                const currentRaw = panelTexts[panelId]?.rawContent ?? panelTexts[panelId]?.content ?? '';
+                const currentRaw = panelTextsRef.current[panelId]?.rawContent ?? panelTextsRef.current[panelId]?.content ?? '';
                 const hasExistingText = parseFormattedText(currentRaw).cleanText.trim();
                 if (caption && !hasExistingText) {
                   if (typeof updatePanelText === 'function') {
-                    const previous = panelTexts[panelId] || {};
+                    const previous = panelTextsRef.current[panelId] || {};
                     const hadPrevContent = Boolean(previous.content && previous.content.trim());
                     const hasExplicitFontSize = previous.fontSize !== undefined;
                     const next = {
@@ -1898,7 +1905,7 @@ const CanvasCollagePreview = ({
         }
       }, 100); // Small delay to ensure editor is rendered
     }
-  }, [textEditingPanel, panelRects, isReorderMode, panelTexts, panelImageMapping, images, updatePanelText, lastUsedTextSettings]);
+  }, [textEditingPanel, panelRects, isReorderMode, panelImageMapping, images, updatePanelText, lastUsedTextSettings]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
