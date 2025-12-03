@@ -38,7 +38,7 @@ export const updateTextStyle = (
   textObject.set({
     fontWeight: customStyles.includes('bold') ? 'bold' : 'normal',
     fontStyle: customStyles.includes('italic') ? 'italic' : 'normal',
-    underline: customStyles.includes('underlined'),
+    underline: customStyles.includes('underline') || customStyles.includes('underlined'),
   });
   canvas.renderAll();
 };

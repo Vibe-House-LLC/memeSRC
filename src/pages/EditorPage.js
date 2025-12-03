@@ -664,7 +664,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // Update the style
     item.fontWeight = customStyles.includes('bold') ? 900 : 400
     item.fontStyle = customStyles.includes('italic') ? 'italic' : 'normal'
-    item.underline = customStyles.includes('underlined')
+    item.underline = customStyles.includes('underline') || customStyles.includes('underlined')
     // Update the canvas
     editor.canvas.item(index).dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
