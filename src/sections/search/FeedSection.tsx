@@ -605,8 +605,8 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
   }, [eligibleShows, retainedSet, showsInput]);
 
   useEffect(() => {
-    setShowFeed?.(eligibleShows.length > 0 || shouldShowReleaseCard);
-  }, [eligibleShows, shouldShowReleaseCard, setShowFeed]);
+    setShowFeed?.(eligibleShows.length > 0 || shouldShowReleaseCard || shouldShowAdFreeCard);
+  }, [eligibleShows, shouldShowAdFreeCard, shouldShowReleaseCard, setShowFeed]);
 
   useEffect(
     () => () => {
