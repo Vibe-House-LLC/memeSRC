@@ -968,12 +968,15 @@ useEffect(() => {
   const [, setLoadedEpisode] = useState('');
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
   const [mainImageLoaded, setMainImageLoaded] = useState(false);
+  const [activeFormats, setActiveFormats] = useState([]);
+  const selectionCacheRef = useRef({});
+  const SELECTION_CACHE_TTL_MS = 15000;
 
   const [isBold, setIsBold] = useState(() => {
     const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
     return storedValue ? JSON.parse(storedValue).isBold : false;
   });
-  
+
   const [isItalic, setIsItalic] = useState(() => {
     const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
     return storedValue ? JSON.parse(storedValue).isItalic : false;
@@ -1057,6 +1060,399 @@ useEffect(() => {
     return true;
   };
 
+  // Inline formatting helpers (ported from V2EditorPage)
+  const INLINE_TAG_ORDER = ['bold', 'italic', 'underline'];
+  const STYLE_TO_TAG = { bold: 'b', italic: 'i', underline: 'u' };
+
+  const normalizeStyle = (style = {}) => ({
+    bold: Boolean(style.bold),
+    italic: Boolean(style.italic),
+    underline: Boolean(style.underline),
+  });
+
+  const mergeAdjacentRanges = (ranges = []) => {
+    if (!ranges.length) return [];
+
+    const merged = [];
+    ranges.forEach((range) => {
+      const safeStyle = normalizeStyle(range.style);
+      if (merged.length === 0) {
+        merged.push({ ...range, style: safeStyle });
+        return;
+      }
+
+      const last = merged[merged.length - 1];
+      const lastStyle = normalizeStyle(last.style);
+
+      if (
+        last.end === range.start &&
+        lastStyle.bold === safeStyle.bold &&
+        lastStyle.italic === safeStyle.italic &&
+        lastStyle.underline === safeStyle.underline
+      ) {
+        last.end = range.end;
+      } else {
+        merged.push({ ...range, style: safeStyle });
+      }
+    });
+
+    return merged;
+  };
+
+  const parseFormattedTextForInlineEditing = (rawText = '') => {
+    const tagRegex = /<\/?(b|i|u)>/ig;
+    const styleCounts = { b: 0, i: 0, u: 0 };
+    const segments = [];
+    let cleanText = '';
+    let cursor = 0;
+
+    const buildStyle = () => ({
+      bold: styleCounts.b > 0,
+      italic: styleCounts.i > 0,
+      underline: styleCounts.u > 0,
+    });
+
+    let match;
+    while ((match = tagRegex.exec(rawText)) !== null) {
+      const textChunk = rawText.slice(cursor, match.index);
+      if (textChunk.length > 0) {
+        segments.push({ text: textChunk, style: buildStyle() });
+        cleanText += textChunk;
+      }
+
+      const tagKey = match[1]?.toLowerCase();
+      const isClosing = match[0].startsWith('</');
+      if (tagKey && typeof styleCounts[tagKey] === 'number') {
+        const delta = isClosing ? -1 : 1;
+        styleCounts[tagKey] = Math.max(0, styleCounts[tagKey] + delta);
+      }
+
+      cursor = match.index + match[0].length;
+    }
+
+    const tail = rawText.slice(cursor);
+    if (tail.length > 0) {
+      segments.push({ text: tail, style: buildStyle() });
+      cleanText += tail;
+    }
+
+    let pointer = 0;
+    const ranges = segments
+      .filter((segment) => segment.text.length > 0)
+      .map((segment) => {
+        const start = pointer;
+        const end = start + segment.text.length;
+        pointer = end;
+        return { start, end, style: normalizeStyle(segment.style) };
+      });
+
+    return { cleanText, ranges: mergeAdjacentRanges(ranges) };
+  };
+
+  const buildIndexMaps = (rawText = '') => {
+    const rawToPlain = new Array(rawText.length + 1).fill(0);
+    const plainToRaw = [];
+    let plainIndex = 0;
+    let rawIndex = 0;
+
+    while (rawIndex < rawText.length) {
+      const char = rawText[rawIndex];
+      rawToPlain[rawIndex] = plainIndex;
+
+      if (char === '<') {
+        const closingIdx = rawText.indexOf('>', rawIndex);
+        if (closingIdx !== -1) {
+          for (let i = rawIndex + 1; i <= closingIdx; i += 1) {
+            rawToPlain[i] = plainIndex;
+          }
+          rawIndex = closingIdx + 1;
+          continue;
+        }
+      }
+
+      plainToRaw[plainIndex] = rawIndex;
+      plainIndex += 1;
+      rawIndex += 1;
+    }
+
+    rawToPlain[rawText.length] = plainIndex;
+    plainToRaw[plainIndex] = rawText.length;
+
+    return { rawToPlain, plainToRaw };
+  };
+
+  const resolveSelectionBounds = (ranges, textLength, rawStart = 0, rawEnd = 0, rawToPlain = []) => {
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const safeStart = clamp(rawStart ?? 0, 0, rawToPlain.length - 1);
+    const safeEnd = clamp(rawEnd ?? safeStart, 0, rawToPlain.length - 1);
+
+    const plainStart = clamp(rawToPlain[safeStart] ?? 0, 0, textLength);
+    const plainEnd = clamp(rawToPlain[safeEnd] ?? plainStart, 0, textLength);
+
+    if (plainStart !== plainEnd) {
+      return { start: Math.min(plainStart, plainEnd), end: Math.max(plainStart, plainEnd) };
+    }
+
+    if (!ranges.length) {
+      return { start: 0, end: 0 };
+    }
+
+    const caret = Math.min(plainStart, textLength);
+    const activeRange = ranges.find((range) => caret >= range.start && caret < range.end);
+    if (activeRange) {
+      return { start: activeRange.start, end: activeRange.end };
+    }
+
+    const lastRange = ranges[ranges.length - 1];
+    if (textLength > 0) {
+      return { start: lastRange.start, end: lastRange.end };
+    }
+
+    return { start: 0, end: 0 };
+  };
+
+  const toggleStyleInRanges = (ranges, selectionStart, selectionEnd, styleKey) => {
+    if (!ranges.length || selectionEnd <= selectionStart) {
+      return ranges;
+    }
+
+    const overlapping = ranges.filter(
+      (range) => range.end > selectionStart && range.start < selectionEnd,
+    );
+    const isFullyActive = overlapping.length > 0 && overlapping.every(
+      (range) => normalizeStyle(range.style)[styleKey],
+    );
+    const targetValue = !isFullyActive;
+
+    const nextRanges = [];
+
+    ranges.forEach((range) => {
+      const { start, end } = range;
+      const safeStyle = normalizeStyle(range.style);
+
+      if (end <= selectionStart || start >= selectionEnd) {
+        nextRanges.push({ ...range, style: safeStyle });
+        return;
+      }
+
+      if (start < selectionStart) {
+        nextRanges.push({ start, end: selectionStart, style: safeStyle });
+      }
+
+      const middleStart = Math.max(start, selectionStart);
+      const middleEnd = Math.min(end, selectionEnd);
+      nextRanges.push({
+        start: middleStart,
+        end: middleEnd,
+        style: { ...safeStyle, [styleKey]: targetValue },
+      });
+
+      if (end > selectionEnd) {
+        nextRanges.push({ start: selectionEnd, end, style: safeStyle });
+      }
+    });
+
+    return mergeAdjacentRanges(nextRanges);
+  };
+
+  const getActiveFormatsFromRanges = (ranges, selectionStart, selectionEnd) => {
+    if (!ranges.length || selectionEnd <= selectionStart) {
+      return [];
+    }
+
+    const overlapping = ranges.filter(
+      (range) => range.end > selectionStart && range.start < selectionEnd,
+    );
+
+    if (!overlapping.length) {
+      return [];
+    }
+
+    return INLINE_TAG_ORDER.filter((key) => overlapping.every(
+      (range) => normalizeStyle(range.style)[key],
+    ));
+  };
+
+  const serializeRangesToMarkup = (text = '', ranges = []) => {
+    if (text.length === 0) {
+      return '';
+    }
+
+    let output = '';
+    let activeStyle = { bold: false, italic: false, underline: false };
+    let rangeIndex = 0;
+
+    for (let i = 0; i < text.length; i += 1) {
+      while (rangeIndex < ranges.length && ranges[rangeIndex].end <= i) {
+        rangeIndex += 1;
+      }
+
+      const currentRange = ranges[rangeIndex] || { style: activeStyle };
+      const nextStyle = normalizeStyle(currentRange.style);
+
+      for (let j = INLINE_TAG_ORDER.length - 1; j >= 0; j -= 1) {
+        const key = INLINE_TAG_ORDER[j];
+        if (activeStyle[key] && !nextStyle[key]) {
+          output += `</${STYLE_TO_TAG[key]}>`;
+        }
+      }
+
+      for (let j = 0; j < INLINE_TAG_ORDER.length; j += 1) {
+        const key = INLINE_TAG_ORDER[j];
+        if (!activeStyle[key] && nextStyle[key]) {
+          output += `<${STYLE_TO_TAG[key]}>`;
+        }
+      }
+
+      output += text[i];
+      activeStyle = nextStyle;
+    }
+
+    for (let i = INLINE_TAG_ORDER.length - 1; i >= 0; i -= 1) {
+      const key = INLINE_TAG_ORDER[i];
+      if (activeStyle[key]) {
+        output += `</${STYLE_TO_TAG[key]}>`;
+      }
+    }
+
+    return output;
+  };
+
+  const syncActiveFormatsFromSelection = useCallback((overrideSelection) => {
+    const inputEl = textFieldRef.current;
+    if (!inputEl) return;
+
+    const rawValue = inputEl.value ?? loadedSubtitle ?? '';
+    const { cleanText, ranges } = parseFormattedTextForInlineEditing(rawValue);
+
+    if (cleanText.length === 0) {
+      setActiveFormats([]);
+      return;
+    }
+
+    const selectionStart = overrideSelection ? overrideSelection.start : inputEl.selectionStart ?? 0;
+    const selectionEnd = overrideSelection ? overrideSelection.end : inputEl.selectionEnd ?? selectionStart;
+
+    selectionCacheRef.current = {
+      start: selectionStart,
+      end: selectionEnd,
+      timestamp: Date.now(),
+      hadFocus: true,
+    };
+
+    const { rawToPlain } = buildIndexMaps(rawValue);
+    const { start, end } = resolveSelectionBounds(
+      ranges,
+      cleanText.length,
+      selectionStart,
+      selectionEnd,
+      rawToPlain,
+    );
+
+    const activeFormats = getActiveFormatsFromRanges(ranges, start, end);
+    setActiveFormats(activeFormats);
+  }, [loadedSubtitle]);
+
+  const applyInlineStyleToggle = useCallback((styleKey) => {
+    const inputEl = textFieldRef.current;
+    if (!inputEl) return false;
+
+    const rawValue = inputEl.value ?? loadedSubtitle ?? '';
+    const { cleanText, ranges } = parseFormattedTextForInlineEditing(rawValue);
+
+    if (cleanText.length === 0) {
+      return false;
+    }
+
+    const hadFocus = document.activeElement === inputEl;
+    const cache = selectionCacheRef.current;
+    const now = Date.now();
+    const cacheIsUsable = Boolean(
+      cache &&
+      typeof cache.start === 'number' &&
+      typeof cache.end === 'number',
+    );
+    const cacheIsFresh = cacheIsUsable && now - cache.timestamp < SELECTION_CACHE_TTL_MS;
+    const cacheIsMeaningful = cacheIsUsable && (cache.start !== 0 || cache.end !== rawValue.length);
+    const usedCachedSelection = !hadFocus && (cacheIsFresh || cacheIsMeaningful);
+
+    const selectionStart = hadFocus && inputEl.selectionStart !== null
+      ? inputEl.selectionStart
+      : usedCachedSelection
+        ? cache.start
+        : 0;
+    const selectionEnd = hadFocus && inputEl.selectionEnd !== null
+      ? inputEl.selectionEnd
+      : usedCachedSelection
+        ? cache.end
+        : rawValue.length;
+    const { rawToPlain, plainToRaw } = buildIndexMaps(rawValue);
+    const selectionIsCollapsed = selectionStart === selectionEnd;
+    const originalPlainStart = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
+    const originalPlainEnd = rawToPlain[Math.min(selectionEnd, rawToPlain.length - 1)] ?? originalPlainStart;
+    const caretPlain = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
+    const resolved = resolveSelectionBounds(
+      ranges,
+      cleanText.length,
+      selectionStart,
+      selectionEnd,
+      rawToPlain,
+    );
+
+    let selectionStartPlain = resolved.start;
+    let selectionEndPlain = resolved.end;
+
+    if (selectionIsCollapsed) {
+      const caretPlain = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
+      const caretRange = ranges.find(
+        (range) => caretPlain >= range.start && caretPlain < range.end,
+      );
+      if (caretRange) {
+        selectionStartPlain = caretRange.start;
+        selectionEndPlain = caretRange.end;
+      }
+    }
+
+    if (selectionEndPlain <= selectionStartPlain) {
+      return false;
+    }
+
+    const updatedRanges = toggleStyleInRanges(
+      ranges,
+      selectionStartPlain,
+      selectionEndPlain,
+      styleKey,
+    );
+    const nextValue = serializeRangesToMarkup(cleanText, updatedRanges);
+    const nextIndexMaps = buildIndexMaps(nextValue);
+    const finalPlainStart = selectionIsCollapsed ? caretPlain : originalPlainStart;
+    const finalPlainEnd = selectionIsCollapsed ? caretPlain : originalPlainEnd;
+    const nextSelectionStart = nextIndexMaps.plainToRaw[finalPlainStart] ?? nextValue.length;
+    const nextSelectionEnd = nextIndexMaps.plainToRaw[finalPlainEnd] ?? nextValue.length;
+    const activeFormats = getActiveFormatsFromRanges(
+      updatedRanges,
+      selectionStartPlain,
+      selectionEndPlain,
+    );
+
+    setLoadedSubtitle(nextValue);
+
+    requestAnimationFrame(() => {
+      if (hadFocus) {
+        inputEl.focus();
+        inputEl.setSelectionRange(nextSelectionStart, nextSelectionEnd);
+      }
+      selectionCacheRef.current = {
+        start: nextSelectionStart,
+        end: nextSelectionEnd,
+        timestamp: Date.now(),
+        hadFocus: hadFocus || usedCachedSelection,
+      };
+      setActiveFormats(activeFormats);
+    });
+
+    return true;
+  }, [loadedSubtitle]);
 
   useEffect(() => {
     const moveCursorToEnd = () => {
@@ -1065,12 +1461,39 @@ useEffect(() => {
         input.setSelectionRange(input.value.length, input.value.length);
       }
     };
-  
+
     if (showText && textFieldRef.current) {
       moveCursorToEnd();
     }
   }, [showText]);
-  
+
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const activeEl = document.activeElement;
+      if (!activeEl || activeEl !== textFieldRef.current) return;
+
+      const inputEl = textFieldRef.current;
+      if (inputEl.selectionStart == null || inputEl.selectionEnd == null) {
+        return;
+      }
+
+      selectionCacheRef.current = {
+        start: inputEl.selectionStart,
+        end: inputEl.selectionEnd,
+        timestamp: Date.now(),
+        hadFocus: true,
+      };
+      syncActiveFormatsFromSelection({
+        start: inputEl.selectionStart,
+        end: inputEl.selectionEnd,
+      });
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [syncActiveFormatsFromSelection]);
 
   const colorPicker = useRef();
 
@@ -1451,13 +1874,13 @@ useEffect(() => {
                   {showText &&
                     <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                     <ToggleButtonGroup
-                      value={[isBold && 'bold', isItalic && 'italic', isUnderline && 'underline'].filter(Boolean)}
+                      value={activeFormats}
                       onChange={(event, newFormats) => {
                         const clickedFormat = event.currentTarget?.value;
-                        const tagMap = { bold: 'b', italic: 'i', underline: 'u' };
-                        if (clickedFormat && tagMap[clickedFormat]) {
-                          const handled = applyTagToSelection(tagMap[clickedFormat]);
-                          if (handled) {
+                        const styleKeyMap = { bold: 'bold', italic: 'italic', underline: 'underline' };
+                        if (clickedFormat && styleKeyMap[clickedFormat]) {
+                          const handledWithInline = applyInlineStyleToggle(styleKeyMap[clickedFormat]);
+                          if (handledWithInline) {
                             setShowText(true);
                             return;
                           }
@@ -1550,10 +1973,14 @@ useEffect(() => {
                             setShowText(true);
                             setSubtitleUserInteracted(true);
                           }}
-                          onChange={(e) => setLoadedSubtitle(e.target.value)}
+                          onChange={(e) => {
+                            setLoadedSubtitle(e.target.value);
+                            syncActiveFormatsFromSelection();
+                          }}
                           onFocus={() => {
                             setTextFieldFocused(true);
                             setSubtitleUserInteracted(true);
+                            syncActiveFormatsFromSelection();
                           }}
                           onBlur={() => setTextFieldFocused(false)}
                           InputProps={{
