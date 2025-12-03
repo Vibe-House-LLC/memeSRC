@@ -1886,6 +1886,7 @@ useEffect(() => {
                           }
                         }
 
+                        setActiveFormats(newFormats);
                         setIsBold(newFormats.includes('bold'));
                         setIsItalic(newFormats.includes('italic'));
                         setIsUnderline(newFormats.includes('underline'));
