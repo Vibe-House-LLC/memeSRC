@@ -968,24 +968,16 @@ useEffect(() => {
   const [, setLoadedEpisode] = useState('');
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
   const [mainImageLoaded, setMainImageLoaded] = useState(false);
+
+  // Base styles always default to false - formatting is markup-based only
+  const [isBold] = useState(false);
+  const [isItalic] = useState(false);
+  const [isUnderline] = useState(false);
+
   const [activeFormats, setActiveFormats] = useState([]);
+
   const selectionCacheRef = useRef({});
   const SELECTION_CACHE_TTL_MS = 15000;
-
-  const [isBold, setIsBold] = useState(() => {
-    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
-    return storedValue ? JSON.parse(storedValue).isBold : false;
-  });
-
-  const [isItalic, setIsItalic] = useState(() => {
-    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
-    return storedValue ? JSON.parse(storedValue).isItalic : false;
-  });
-
-  const [isUnderline, setIsUnderline] = useState(() => {
-    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
-    return storedValue ? Boolean(JSON.parse(storedValue).isUnderline) : false;
-  });
   
   const [colorPickerColor, setColorPickerColor] = useState(() => {
     const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
@@ -1009,9 +1001,6 @@ useEffect(() => {
 
   const updateLocalStorage = () => {
     const formattingOptions = {
-      isBold,
-      isItalic,
-      isUnderline,
       colorPickerColor,
       fontFamily,
     };
@@ -1520,11 +1509,11 @@ useEffect(() => {
 
   useEffect(() => {
     updateCanvasUnthrottled();
-  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily, isBold, isItalic, isUnderline, colorPickerColor]);
+  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily, colorPickerColor]);
 
   useEffect(() => {
     updateLocalStorage();
-  }, [isBold, isItalic, isUnderline, colorPickerColor, fontFamily]);
+  }, [colorPickerColor, fontFamily]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
@@ -1886,10 +1875,8 @@ useEffect(() => {
                           }
                         }
 
+                        // If no text to format, just update UI state (don't persist to base styles)
                         setActiveFormats(newFormats);
-                        setIsBold(newFormats.includes('bold'));
-                        setIsItalic(newFormats.includes('italic'));
-                        setIsUnderline(newFormats.includes('underline'));
                         setShowText(true);
                       }}
                       aria-label="text formatting"
@@ -1986,10 +1973,7 @@ useEffect(() => {
                           onBlur={() => setTextFieldFocused(false)}
                           InputProps={{
                             style: {
-                              fontWeight: isBold ? 'bold' : 'normal',
-                              fontStyle: isItalic ? 'italic' : 'normal',
                               fontFamily,
-                              textDecoration: isUnderline ? 'underline' : 'none',
                             },
                           }}
                           inputProps={{
