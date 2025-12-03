@@ -94,9 +94,11 @@ const normalizeFontWeightValue = (fontWeight) => {
 };
 
 const resolveInlineSegmentStyle = (baseStyle, inlineStyle = {}) => ({
-  fontWeight: inlineStyle.bold ? '700' : normalizeFontWeightValue(baseStyle.fontWeight),
-  fontStyle: inlineStyle.italic ? 'italic' : baseStyle.fontStyle || 'normal',
-  underline: inlineStyle.underline ?? Boolean(baseStyle.underline),
+  // Inline formatting is absolute, not relative to base style
+  // bold: true -> 700, bold: false -> 400 (ignore baseStyle.fontWeight)
+  fontWeight: inlineStyle.bold ? '700' : '400',
+  fontStyle: inlineStyle.italic ? 'italic' : 'normal',
+  underline: Boolean(inlineStyle.underline),
 });
 
 const measureStyledWidth = (ctx, text, ranges, start, end, baseStyle, fontSize, fontFamily) => {
@@ -1332,7 +1334,7 @@ const CanvasCollagePreview = ({
         const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
         const displayText = hasActualText ? cleanText : 'Add Caption';
         const activeRanges = hasActualText ? ranges : [];
-        
+
         // Hide all captions when any panel is in transform mode or reorder mode
         if ((hasActualText || shouldShowPlaceholder) && !shouldHideCaptions) {
           ctx.save();
