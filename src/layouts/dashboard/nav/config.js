@@ -217,6 +217,12 @@ const navConfig = [
         icon: <Collections />
       },
       {
+        title: 'Episode Collages',
+        path: '/dashboard/episode-collage',
+        externalLink: false,
+        icon: <PhotoLibrary />,
+      },
+      {
         title: 'Alias Management',
         path: '/dashboard/aliasmanagement',
         externalLink: false,
