@@ -42,7 +42,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, Check, Add } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, Check, Add } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -452,51 +452,162 @@ export default function FramePage() {
     updateCanvas();
   };
 
-  function wrapText(context, text, x, y, maxWidth, lineHeight, shouldDraw = true) {
-    // Split text into paragraphs (on new lines)
-    const paragraphs = text.split('\n');
-    let totalLines = 0;
+  const buildFontString = (style, fontSize, fontFamily) => {
+    const fontStyle = style.italic ? 'italic' : 'normal';
+    const fontWeight = style.bold ? 'bold' : 'normal';
+    return `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+  };
 
-    paragraphs.forEach((paragraph) => {
-      if (paragraph.trim() === '') {
-        // If the paragraph is just a new line
-        if (shouldDraw) {
-          y += lineHeight;
+  function parseFormattedText(text, baseStyle) {
+    const tagRegex = /<\/?(b|i|u)>/gi;
+    const segments = [];
+    const styleStack = [{ tag: null, style: { ...baseStyle } }];
+
+    let lastIndex = 0;
+    let match;
+
+    const currentStyle = () => styleStack[styleStack.length - 1].style;
+
+    while ((match = tagRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({
+          text: text.slice(lastIndex, match.index),
+          style: { ...currentStyle() },
+        });
+      }
+
+      const tag = match[1].toLowerCase();
+      const isClosing = match[0].startsWith('</');
+
+      if (isClosing) {
+        if (styleStack[styleStack.length - 1].tag === tag) {
+          styleStack.pop();
         }
-        totalLines += 1;
       } else {
-        // Process each paragraph
-        const words = paragraph.split(' ');
-        let line = '';
+        const nextStyle = { ...currentStyle() };
+        if (tag === 'b') nextStyle.bold = true;
+        if (tag === 'i') nextStyle.italic = true;
+        if (tag === 'u') nextStyle.underline = true;
+        styleStack.push({ tag, style: nextStyle });
+      }
 
-        words.forEach((word, n) => {
-          const testLine = `${line}${word} `;
-          const metrics = context.measureText(testLine);
-          const testWidth = metrics.width;
+      lastIndex = match.index + match[0].length;
+    }
 
-          if (testWidth > maxWidth && n > 0) {
-            if (shouldDraw) {
-              context.strokeText(line, x, y);
-              context.fillText(line, x, y);
-            }
-            y += lineHeight;
-            totalLines += 1;
-            line = `${word} `;
-          } else {
-            line = testLine;
+    if (lastIndex < text.length) {
+      segments.push({
+        text: text.slice(lastIndex),
+        style: { ...currentStyle() },
+      });
+    }
+
+    return segments;
+  }
+
+  function wrapFormattedText(context, text, x, y, maxWidth, lineHeight, fontSize, fontFamily, baseStyle, shouldDraw = true) {
+    const segments = parseFormattedText(text, baseStyle);
+    if (segments.length === 0) {
+      return 0;
+    }
+
+    const newlineAwareSegments = [];
+    segments.forEach((segment) => {
+      const parts = segment.text.split('\n');
+      parts.forEach((part, index) => {
+        if (part) {
+          newlineAwareSegments.push({ type: 'text', text: part, style: segment.style });
+        }
+        if (index < parts.length - 1) {
+          newlineAwareSegments.push({ type: 'newline' });
+        }
+      });
+    });
+
+    const getSegmentWidth = (segmentText, style) => {
+      context.font = buildFontString(style, fontSize, fontFamily);
+      return context.measureText(segmentText).width;
+    };
+
+    let totalLines = 0;
+    let currentLineSegments = [];
+    let currentLineWidth = 0;
+
+    const drawLine = () => {
+      const totalWidth = currentLineSegments.reduce((sum, segment) => sum + segment.width, 0);
+      const startX = x - totalWidth / 2;
+
+      if (shouldDraw) {
+        const previousAlignment = context.textAlign;
+        context.textAlign = 'left';
+        let cursorX = startX;
+
+        currentLineSegments.forEach((segment) => {
+          context.font = buildFontString(segment.style, fontSize, fontFamily);
+
+          if (segment.style.underline) {
+            const underlineY = y + Math.max(fontSize * 0.18, context.lineWidth * 1.25);
+            const previousStrokeStyle = context.strokeStyle;
+            const previousFillStyle = context.fillStyle;
+            const previousLineWidth = context.lineWidth;
+
+            // Draw underline stroke to match text outline and sit behind the text
+            context.strokeStyle = previousStrokeStyle;
+            context.lineWidth = previousLineWidth;
+            context.beginPath();
+            context.moveTo(cursorX, underlineY);
+            context.lineTo(cursorX + segment.width, underlineY);
+            context.stroke();
+
+            // Fill pass for the underline
+            context.strokeStyle = previousFillStyle;
+            context.lineWidth = Math.max(previousLineWidth - 1, 1);
+            context.beginPath();
+            context.moveTo(cursorX, underlineY);
+            context.lineTo(cursorX + segment.width, underlineY);
+            context.stroke();
+
+            context.strokeStyle = previousStrokeStyle;
+            context.lineWidth = previousLineWidth;
           }
+
+          context.strokeText(segment.text, cursorX, y);
+          context.fillText(segment.text, cursorX, y);
+
+          cursorX += segment.width;
         });
 
-        if (line.trim() !== '') {
-          if (shouldDraw) {
-            context.strokeText(line, x, y);
-            context.fillText(line, x, y);
-          }
-          y += lineHeight;
-          totalLines += 1;
-        }
+        context.textAlign = previousAlignment;
       }
+
+      totalLines += 1;
+      y += lineHeight;
+      currentLineSegments = [];
+      currentLineWidth = 0;
+    };
+
+    newlineAwareSegments.forEach((segment) => {
+      if (segment.type === 'newline') {
+        drawLine();
+        return;
+      }
+
+      const words = segment.text.split(/(\s+)/).filter((word) => word !== '');
+      words.forEach((word) => {
+        const width = getSegmentWidth(word, segment.style);
+        const exceedsMaxWidth = currentLineWidth + width > maxWidth;
+
+        if (exceedsMaxWidth && currentLineSegments.length > 0) {
+          drawLine();
+        }
+
+        currentLineSegments.push({ text: word, style: segment.style, width });
+        currentLineWidth += width;
+      });
     });
+
+    if (currentLineSegments.length > 0) {
+      drawLine();
+    }
 
     return totalLines;
   }
@@ -578,15 +689,39 @@ export default function FramePage() {
 
           const text = isLowercaseFont ? loadedSubtitle.toLowerCase() : loadedSubtitle;
 
+          const baseStyle = { bold: isBold, italic: isItalic, underline: isUnderline };
+          const appliedFontSize = isMd ? scaledFontSizeDesktop : scaledFontSizeMobile;
+
           // Calculate number of lines without drawing
-          const numOfLines = wrapText(ctx, text, x, startY, maxWidth, scaledLineHeight, false);
+          const numOfLines = wrapFormattedText(
+            ctx,
+            text,
+            x,
+            startY,
+            maxWidth,
+            scaledLineHeight,
+            appliedFontSize,
+            fontFamily,
+            baseStyle,
+            false,
+          );
           const totalTextHeight = numOfLines * scaledLineHeight;  // Use scaled line height
 
           // Adjust startY to anchor the text a scaled distance from the bottom
           const startYAdjusted = offScreenCanvas.height - totalTextHeight - scaledBottomAnch + 40;
 
           // Draw the text using the adjusted startY
-          wrapText(ctx, text, x, startYAdjusted, maxWidth, scaledLineHeight);
+          wrapFormattedText(
+            ctx,
+            text,
+            x,
+            startYAdjusted,
+            maxWidth,
+            scaledLineHeight,
+            appliedFontSize,
+            fontFamily,
+            baseStyle,
+          );
         }
 
         if (scaleDown) {
@@ -843,6 +978,11 @@ useEffect(() => {
     const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
     return storedValue ? JSON.parse(storedValue).isItalic : false;
   });
+
+  const [isUnderline, setIsUnderline] = useState(() => {
+    const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
+    return storedValue ? Boolean(JSON.parse(storedValue).isUnderline) : false;
+  });
   
   const [colorPickerColor, setColorPickerColor] = useState(() => {
     const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
@@ -868,6 +1008,7 @@ useEffect(() => {
     const formattingOptions = {
       isBold,
       isItalic,
+      isUnderline,
       colorPickerColor,
       fontFamily,
     };
@@ -879,6 +1020,42 @@ useEffect(() => {
   };
 
   const textFieldRef = useRef(null);
+
+  const applyTagToSelection = (tag) => {
+    const input = textFieldRef.current;
+    if (!input || input.selectionStart === null || input.selectionEnd === null) {
+      return false;
+    }
+
+    const { selectionStart, selectionEnd, value } = input;
+    if (selectionStart === selectionEnd) {
+      return false;
+    }
+
+    const openTag = `<${tag}>`;
+    const closeTag = `</${tag}>`;
+
+    const before = value.slice(0, selectionStart);
+    const selectedText = value.slice(selectionStart, selectionEnd);
+    const after = value.slice(selectionEnd);
+
+    const hasWrapping = before.endsWith(openTag) && after.startsWith(closeTag);
+    const newValue = hasWrapping
+      ? `${before.slice(0, before.length - openTag.length)}${selectedText}${after.slice(closeTag.length)}`
+      : `${before}${openTag}${selectedText}${closeTag}${after}`;
+
+    const selectionAdjustment = hasWrapping ? -openTag.length : openTag.length;
+    const newSelectionStart = selectionStart + selectionAdjustment;
+    const newSelectionEnd = selectionEnd + selectionAdjustment;
+
+    setLoadedSubtitle(newValue);
+    requestAnimationFrame(() => {
+      input.focus();
+      input.setSelectionRange(newSelectionStart, newSelectionEnd);
+    });
+
+    return true;
+  };
 
 
   useEffect(() => {
@@ -920,11 +1097,11 @@ useEffect(() => {
 
   useEffect(() => {
     updateCanvasUnthrottled();
-  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily, isBold, isItalic, colorPickerColor]);
+  }, [displayImage, loadedSubtitle, frame, fineTuningBlobs, selectedFrameIndex, fontFamily, isBold, isItalic, isUnderline, colorPickerColor]);
 
   useEffect(() => {
     updateLocalStorage();
-  }, [isBold, isItalic, colorPickerColor, fontFamily]);
+  }, [isBold, isItalic, isUnderline, colorPickerColor, fontFamily]);
 
   useEffect(() => {
     if (frames && frames.length > 0) {
@@ -1274,11 +1451,22 @@ useEffect(() => {
                   {showText &&
                     <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                     <ToggleButtonGroup
-                      value={[isBold && 'bold', isItalic && 'italic'].filter(Boolean)}
+                      value={[isBold && 'bold', isItalic && 'italic', isUnderline && 'underline'].filter(Boolean)}
                       onChange={(event, newFormats) => {
+                        const clickedFormat = event.currentTarget?.value;
+                        const tagMap = { bold: 'b', italic: 'i', underline: 'u' };
+                        if (clickedFormat && tagMap[clickedFormat]) {
+                          const handled = applyTagToSelection(tagMap[clickedFormat]);
+                          if (handled) {
+                            setShowText(true);
+                            return;
+                          }
+                        }
+
                         setIsBold(newFormats.includes('bold'));
                         setIsItalic(newFormats.includes('italic'));
-                        setShowText(true)
+                        setIsUnderline(newFormats.includes('underline'));
+                        setShowText(true);
                       }}
                       aria-label="text formatting"
                       sx={{ flexShrink: 0 }}
@@ -1289,10 +1477,13 @@ useEffect(() => {
                       <ToggleButton size='small' value="italic" aria-label="italic">
                         <FormatItalic />
                       </ToggleButton>
+                      <ToggleButton size='small' value="underline" aria-label="underline">
+                        <FormatUnderlined />
+                      </ToggleButton>
                     </ToggleButtonGroup>
                     <ToggleButtonGroup
                       sx={{ mx: 1, flexShrink: 0 }}
-                      value={[isBold && 'bold', isItalic && 'italic'].filter(Boolean)}
+                      value={[colorPickerShowing && 'fontColor'].filter(Boolean)}
                       onChange={(event, newFormats) => {
                         setColorPickerShowing(newFormats.includes('fontColor'))
                         setShowText(true)
@@ -1370,6 +1561,7 @@ useEffect(() => {
                               fontWeight: isBold ? 'bold' : 'normal',
                               fontStyle: isItalic ? 'italic' : 'normal',
                               fontFamily,
+                              textDecoration: isUnderline ? 'underline' : 'none',
                             },
                           }}
                           inputProps={{
