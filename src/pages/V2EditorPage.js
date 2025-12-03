@@ -639,7 +639,31 @@ const EditorPage = ({ shows }) => {
       }
     });
     textFieldRefs.current = remappedRefs;
+    const remappedSelectionCache = {};
+    Object.entries(selectionCacheRef.current).forEach(([key, cache]) => {
+      const refIndex = Number(key);
+      if (Number.isNaN(refIndex)) return;
+      if (refIndex < index) {
+        remappedSelectionCache[refIndex] = cache;
+      } else if (refIndex > index) {
+        remappedSelectionCache[refIndex - 1] = cache;
+      }
+    });
+    selectionCacheRef.current = remappedSelectionCache;
     setLayerRawText((prev) => {
+      const updated = {};
+      Object.entries(prev || {}).forEach(([key, value]) => {
+        const refIndex = Number(key);
+        if (Number.isNaN(refIndex)) return;
+        if (refIndex < index) {
+          updated[refIndex] = value;
+        } else if (refIndex > index) {
+          updated[refIndex - 1] = value;
+        }
+      });
+      return updated;
+    });
+    setLayerActiveFormats((prev) => {
       const updated = {};
       Object.entries(prev || {}).forEach(([key, value]) => {
         const refIndex = Number(key);
