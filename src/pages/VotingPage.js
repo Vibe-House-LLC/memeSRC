@@ -58,6 +58,7 @@ import { SnackbarContext } from '../SnackbarContext';
 import { useShows } from '../contexts/useShows';  // Add this import if not already present
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+import { shouldShowAds } from '../utils/adsenseLoader';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -302,6 +303,7 @@ export default function VotingPage() {
 
   // Add these state variables after other state declarations
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const showAds = shouldShowAds(user);
 
   // Add this debounced search function after other function declarations
   const debouncedSearch = useMemo(
@@ -1367,7 +1369,7 @@ export default function VotingPage() {
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
-          {user?.userDetails?.subscriptionStatus !== 'active' && (
+          {showAds && (
             <Grid item xs={12} mb={3}>
               <center>
                 <Box>

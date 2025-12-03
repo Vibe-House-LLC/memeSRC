@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
 import styled from '@emotion/styled';
 import Box from '@mui/material/Box';
-import { useAdsenseLoader } from '../utils/adsenseLoader';
+import { UserContext } from '../UserContext';
+import { shouldShowAds, useAdsenseLoader } from '../utils/adsenseLoader';
 
 const FixedSizeAdContainer = styled(Box)`
   display: flex;
@@ -16,12 +17,21 @@ const FixedSizeAdContainer = styled(Box)`
 `;
 
 const FixedMobileBannerAd = () => {
+    const { user } = useContext(UserContext);
+    const showAds = shouldShowAds(user);
     useAdsenseLoader();
 
     useEffect(() => {
+        if (!showAds) {
+            return;
+        }
         window.adsbygoogle = window.adsbygoogle || [];
         window.adsbygoogle.push({});
-    }, []);
+    }, [showAds]);
+
+    if (!showAds) {
+        return null;
+    }
 
     return (
         <FixedSizeAdContainer>

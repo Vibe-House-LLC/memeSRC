@@ -7,6 +7,7 @@ import SiteWideMaintenance from './pages/SiteWideMaintenance';
 import { DialogProvider } from './contexts/SubscribeDialog';
 import { ShowProvider } from './contexts/useShows';
 import { SearchFilterGroupsProvider } from './hooks/useSearchFilterGroups';
+import { AdFreeDecemberProvider } from './contexts/AdFreeDecemberContext';
 
 
 // ----------------------------------------------------------------------
@@ -47,6 +48,8 @@ const IpfsSearchBar = lazy(() => import('./sections/search/ipfs-search-bar'));
 const V2FramePage = lazy(() => import('./pages/V2FramePage'));
 const V2EditorPage = lazy(() => import('./pages/V2EditorPage'));
 const V2EpisodePage = lazy(() => import('./pages/V2EpisodePage'));
+const AdminEpisodeCollageLauncher = lazy(() => import('./pages/AdminEpisodeCollageLauncher'));
+const V2EpisodeCollagePage = lazy(() => import('./pages/V2EpisodeCollagePage'));
 const WebsiteSettings = lazy(() => import('./pages/WebsiteSettings'))
 const ProSupport = lazy(() => import('./pages/ProSupport'));
 const ProSupportAdmin = lazy(() => import('./pages/ProSupportAdmin'));
@@ -91,15 +94,17 @@ export default function Router() {
       path: '/',
       element: (
         <GuestAuth>
-          <DialogProvider>
-            <MagicPopup>
-              <V2SearchDetailsProvider>
-                <SearchFilterGroupsProvider>
-                  <DashboardLayout />
-                </SearchFilterGroupsProvider>
-              </V2SearchDetailsProvider>
-            </MagicPopup>
-          </DialogProvider>
+          <AdFreeDecemberProvider>
+            <DialogProvider>
+              <MagicPopup>
+                <V2SearchDetailsProvider>
+                  <SearchFilterGroupsProvider>
+                    <DashboardLayout />
+                  </SearchFilterGroupsProvider>
+                </V2SearchDetailsProvider>
+              </MagicPopup>
+            </DialogProvider>
+          </AdFreeDecemberProvider>
         </GuestAuth>
       ),
       children: [
@@ -127,6 +132,7 @@ export default function Router() {
         { path: 'frame/:cid/:season/:episode/:frame/:fineTuningIndex', element: <SiteWideMaintenance><IpfsSearchBar><V2FramePage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'editor/:cid/:season/:episode/:frame/:fineTuningIndex', element: <SiteWideMaintenance><IpfsSearchBar><V2EditorPage /></IpfsSearchBar></SiteWideMaintenance> },
         { path: 'episode/:cid/:season/:episode/:frame', element: <SiteWideMaintenance><IpfsSearchBar><V2EpisodePage /></IpfsSearchBar></SiteWideMaintenance> },
+        { path: 'episode-collage/:cid/:season/:episode', element: <SiteWideMaintenance><IpfsSearchBar><V2EpisodeCollagePage /></IpfsSearchBar></SiteWideMaintenance> },
 
         { path: 'favorites', element: <SiteWideMaintenance><FavoritesPage /></SiteWideMaintenance> },
         { path: 'magic', element: <SiteWideMaintenance><MagicPage /></SiteWideMaintenance> },
@@ -150,13 +156,15 @@ export default function Router() {
       path: '/dashboard',
       element: (
         <CheckAuth>
-          <DialogProvider>
-            <MagicPopup>
-              <SearchFilterGroupsProvider>
-                <DashboardLayout />
-              </SearchFilterGroupsProvider>
-            </MagicPopup>
-          </DialogProvider>
+          <AdFreeDecemberProvider>
+            <DialogProvider>
+              <MagicPopup>
+                <SearchFilterGroupsProvider>
+                  <DashboardLayout />
+                </SearchFilterGroupsProvider>
+              </MagicPopup>
+            </DialogProvider>
+          </AdFreeDecemberProvider>
         </CheckAuth>
       ),
       children: [
@@ -173,6 +181,7 @@ export default function Router() {
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
         { path: 'metadata', element: <MetadataPage /> },
+        { path: 'episode-collage', element: <AdminEpisodeCollageLauncher /> },
         { path: 'series', element: <DashboardSeriesPage /> },
         { path: 'cidmanagement', element: <DashboardCidPage /> },
         { path: 'aliasmanagement', element: <DashboardAliasPageRevised /> },

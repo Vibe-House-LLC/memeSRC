@@ -33,6 +33,8 @@ import HomePageBannerAd from '../ads/HomePageBannerAd';
 
 import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from '../utils/editorFunctions';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+import { shouldShowAds } from '../utils/adsenseLoader';
+import { isAdPauseActive } from '../utils/adsenseLoader';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -1994,6 +1996,7 @@ const EditorPage = ({ shows }) => {
 
   // Add this state near other useState declarations
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const showAds = shouldShowAds(user);
 
   return (
     <>
@@ -2003,7 +2006,7 @@ const EditorPage = ({ shows }) => {
       <Container maxWidth='xl' disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 } }}>
         <ParentContainer sx={{ pt: { xs: 1.5, md: 2 } }} id="parent-container">
 
-          {user?.userDetails?.subscriptionStatus !== 'active' && (
+          {showAds && (
             <Grid container>
               <Grid item xs={12} mb={3}>
                 <center>

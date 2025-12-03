@@ -21,6 +21,7 @@ import ImageSkeleton from '../components/ImageSkeleton.tsx';
 import SearchPageResultsAd from '../ads/SearchPageResultsAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
+import { shouldShowAds } from '../utils/adsenseLoader';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 import Page404 from './Page404';
 import { useSearchSettings } from '../contexts/SearchSettingsContext';
@@ -339,6 +340,11 @@ export default function SearchPage() {
   const backToHome = !resolvedCid || resolvedCid === '_universal' || resolvedCid === '_favorites';
   const backLabel = backToHome ? 'Back to Home' : `Back to ${scopeLabel}`;
   const backPath = backToHome ? '/' : scopePath;
+
+  useEffect(() => {
+    // Reset scroll so new searches always start at the top of the page
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [resolvedCid, searchQuery, locationKey]);
 
   const [autoplay] = useState(true);
   const [customFilterNotFound, setCustomFilterNotFound] = useState(false);
@@ -662,6 +668,7 @@ export default function SearchPage() {
 
   const [indexFilterQuery, setIndexFilterQuery] = useState('');
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const showAds = shouldShowAds(user);
 
   const handleIndexFilterChange = (event) => {
     setIndexFilterQuery(event.target.value);
@@ -677,7 +684,7 @@ export default function SearchPage() {
   return (
     <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 } }}>
       {/* Add the ad section here */}
-      {user?.userDetails?.subscriptionStatus !== 'active' && (
+      {showAds && (
         <Box sx={{ width: '100%', mb: 2 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}

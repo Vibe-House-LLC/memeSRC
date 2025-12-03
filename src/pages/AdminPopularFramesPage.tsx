@@ -128,6 +128,44 @@ const sanitizeString = (value: unknown): string | null => {
 const readStringField = (payload: Record<string, unknown>, key: string): string | null =>
   sanitizeString(payload[key]);
 
+const createEmptyCounts = (): Record<FrameEventType, number> => ({
+  view_image: 0,
+  view_image_advanced: 0,
+  save_intent_image: 0,
+  add_to_library: 0,
+  advanced_editor_save: 0,
+});
+
+const createEmptyUserSets = (): Record<FrameEventType, Set<string>> => ({
+  view_image: new Set<string>(),
+  view_image_advanced: new Set<string>(),
+  save_intent_image: new Set<string>(),
+  add_to_library: new Set<string>(),
+  advanced_editor_save: new Set<string>(),
+});
+
+const resolveUserIdentifier = (
+  record: UsageEventRecord,
+  payload: Record<string, unknown>
+): string | null => {
+  const identity = sanitizeString(record.identityId);
+  if (identity) {
+    return identity;
+  }
+
+  const anonymousUserId = readStringField(payload, 'anonymousUserId');
+  if (anonymousUserId) {
+    return anonymousUserId;
+  }
+
+  const sessionId = sanitizeString(record.sessionId);
+  if (sessionId) {
+    return sessionId;
+  }
+
+  return null;
+};
+
 const buildFrameKey = (
   cid: string,
   season: string,
@@ -138,14 +176,6 @@ const buildFrameKey = (
   const finePart = fineTuningIndex && fineTuningIndex.length ? fineTuningIndex : 'base';
   return `${cid}::${season}::${episode}::${frame}::${finePart}`;
 };
-
-const createEmptyCounts = (): Record<FrameEventType, number> => ({
-  view_image: 0,
-  view_image_advanced: 0,
-  save_intent_image: 0,
-  add_to_library: 0,
-  advanced_editor_save: 0,
-});
 
 type SearchTermSummary = {
   term: string;
@@ -164,10 +194,10 @@ type FrameSummary = {
   episode: string;
   frame: string;
   fineTuningIndex?: string;
-  totalEvents: number;
+  uniqueUsers: number;
   score: number;
-  scorePerEvent: number;
-  countsByType: Record<FrameEventType, number>;
+  scorePerUser: number;
+  uniqueUsersByType: Record<FrameEventType, number>;
   lastSeen?: number;
   topSearchTerms: SearchTermSummary[];
   topSources: SourceSummary[];
@@ -176,9 +206,9 @@ type FrameSummary = {
 type CidSummary = {
   cid: string;
   totalFrames: number;
-  totalEvents: number;
+  totalUniqueUsers: number;
   totalScore: number;
-  countsByType: Record<FrameEventType, number>;
+  usersByType: Record<FrameEventType, number>;
   topFrames: FrameSummary[];
 };
 
@@ -189,7 +219,7 @@ type AggregatedFrameSummary = {
   skippedRecords: number;
   uniqueFrameCount: number;
   uniqueCidCount: number;
-  eventTypeTotals: Record<FrameEventType, number>;
+  eventTypeUserTotals: Record<FrameEventType, number>;
   frameSummaries: FrameSummary[];
   cidSummaries: CidSummary[];
 };
@@ -201,9 +231,8 @@ type FrameCollector = {
   episode: string;
   frame: string;
   fineTuningIndex?: string;
-  totalEvents: number;
-  score: number;
-  countsByType: Record<FrameEventType, number>;
+  uniqueUserIds: Set<string>;
+  userIdsByType: Record<FrameEventType, Set<string>>;
   lastSeen?: number;
   searchTermCounts: Map<string, number>;
   sourceCounts: Map<string, number>;
@@ -216,8 +245,9 @@ const aggregateFrameEvents = (
   cutoffIso: string
 ): AggregatedFrameSummary => {
   const frameCollectors = new Map<string, FrameCollector>();
-  const typeTotals = createEmptyCounts();
-  const uniqueCidSet = new Set<string>();
+  const eventTypeUserSets = createEmptyUserSets();
+  const cidUserSets = new Map<string, Set<string>>();
+  const cidEventTypeUserSets = new Map<string, Record<FrameEventType, Set<string>>>();
   const cutoffTimestamp = Date.parse(cutoffIso);
 
   let processedRecords = 0;
@@ -262,7 +292,27 @@ const aggregateFrameEvents = (
         ? fineTuningIndexRaw
         : undefined;
 
+    const userIdentifier = resolveUserIdentifier(record, eventPayload);
+    if (!userIdentifier) {
+      skippedRecords += 1;
+      return;
+    }
+
     const key = buildFrameKey(cid, season, episode, frame, fineTuningIndex);
+
+    let cidUserSet = cidUserSets.get(cid);
+    if (!cidUserSet) {
+      cidUserSet = new Set<string>();
+      cidUserSets.set(cid, cidUserSet);
+    }
+    cidUserSet.add(userIdentifier);
+
+    let cidEventTypeSets = cidEventTypeUserSets.get(cid);
+    if (!cidEventTypeSets) {
+      cidEventTypeSets = createEmptyUserSets();
+      cidEventTypeUserSets.set(cid, cidEventTypeSets);
+    }
+    cidEventTypeSets[eventType].add(userIdentifier);
 
     let collector = frameCollectors.get(key);
     if (!collector) {
@@ -273,18 +323,16 @@ const aggregateFrameEvents = (
         episode,
         frame,
         fineTuningIndex,
-        totalEvents: 0,
-        score: 0,
-        countsByType: createEmptyCounts(),
+        uniqueUserIds: new Set<string>(),
+        userIdsByType: createEmptyUserSets(),
         searchTermCounts: new Map<string, number>(),
         sourceCounts: new Map<string, number>(),
       };
       frameCollectors.set(key, collector);
     }
 
-    collector.totalEvents += 1;
-    collector.score += EVENT_WEIGHT_MAP[eventType];
-    collector.countsByType[eventType] += 1;
+    collector.uniqueUserIds.add(userIdentifier);
+    collector.userIdsByType[eventType].add(userIdentifier);
     if (Number.isFinite(createdAt)) {
       collector.lastSeen = collector.lastSeen ? Math.max(collector.lastSeen, createdAt) : createdAt;
     }
@@ -306,8 +354,7 @@ const aggregateFrameEvents = (
       );
     }
 
-    typeTotals[eventType] += 1;
-    uniqueCidSet.add(cid);
+    eventTypeUserSets[eventType].add(userIdentifier);
     processedRecords += 1;
   });
 
@@ -325,16 +372,22 @@ const aggregateFrameEvents = (
         .slice(0, MAX_CONTEXT_ITEMS)
         .map(({ value, count }) => ({ source: value, count }));
 
-      const countsByType = EVENT_TYPES.reduce(
+      const uniqueUsersByType = EVENT_TYPES.reduce(
         (accumulator, type) => {
-          accumulator[type] = collector.countsByType[type];
+          accumulator[type] = collector.userIdsByType[type].size;
           return accumulator;
         },
         createEmptyCounts()
       );
 
-      const scorePerEvent =
-        collector.totalEvents > 0 ? collector.score / collector.totalEvents : 0;
+      const uniqueUsers = collector.uniqueUserIds.size;
+
+      const score = EVENT_TYPES.reduce(
+        (total, type) => total + EVENT_WEIGHT_MAP[type] * uniqueUsersByType[type],
+        0
+      );
+
+      const scorePerUser = uniqueUsers > 0 ? score / uniqueUsers : 0;
 
       return {
         key: collector.key,
@@ -343,10 +396,10 @@ const aggregateFrameEvents = (
         episode: collector.episode,
         frame: collector.frame,
         fineTuningIndex: collector.fineTuningIndex,
-        totalEvents: collector.totalEvents,
-        score: collector.score,
-        scorePerEvent,
-        countsByType,
+        uniqueUsers,
+        score,
+        scorePerUser,
+        uniqueUsersByType,
         lastSeen: collector.lastSeen,
         topSearchTerms,
         topSources,
@@ -357,8 +410,8 @@ const aggregateFrameEvents = (
         return b.score - a.score;
       }
 
-      if (b.totalEvents !== a.totalEvents) {
-        return b.totalEvents - a.totalEvents;
+      if (b.uniqueUsers !== a.uniqueUsers) {
+        return b.uniqueUsers - a.uniqueUsers;
       }
 
       return (b.lastSeen ?? 0) - (a.lastSeen ?? 0);
@@ -368,10 +421,6 @@ const aggregateFrameEvents = (
     string,
     {
       cid: string;
-      totalFrames: number;
-      totalEvents: number;
-      totalScore: number;
-      countsByType: Record<FrameEventType, number>;
       frames: FrameSummary[];
     }
   >();
@@ -381,33 +430,42 @@ const aggregateFrameEvents = (
     if (!bucket) {
       bucket = {
         cid: frameSummary.cid,
-        totalFrames: 0,
-        totalEvents: 0,
-        totalScore: 0,
-        countsByType: createEmptyCounts(),
         frames: [],
       };
       cidAggregates.set(frameSummary.cid, bucket);
     }
 
-    bucket.totalFrames += 1;
-    bucket.totalEvents += frameSummary.totalEvents;
-    bucket.totalScore += frameSummary.score;
-    EVENT_TYPES.forEach((type) => {
-      bucket.countsByType[type] += frameSummary.countsByType[type];
-    });
     bucket.frames.push(frameSummary);
   });
 
   const cidSummaries: CidSummary[] = Array.from(cidAggregates.values())
-    .map((bucket) => ({
-      cid: bucket.cid,
-      totalFrames: bucket.totalFrames,
-      totalEvents: bucket.totalEvents,
-      totalScore: bucket.totalScore,
-      countsByType: bucket.countsByType,
-      topFrames: bucket.frames.slice(0, MAX_TOP_FRAMES_PER_CID),
-    }))
+    .map((bucket) => {
+      const cidUserSet = cidUserSets.get(bucket.cid) ?? new Set<string>();
+      const cidEventTypeSets = cidEventTypeUserSets.get(bucket.cid) ?? createEmptyUserSets();
+
+      const usersByType = EVENT_TYPES.reduce(
+        (accumulator, type) => {
+          accumulator[type] = cidEventTypeSets[type].size;
+          return accumulator;
+        },
+        createEmptyCounts()
+      );
+
+      const totalUniqueUsers = cidUserSet.size;
+      const totalScore = EVENT_TYPES.reduce(
+        (total, type) => total + EVENT_WEIGHT_MAP[type] * usersByType[type],
+        0
+      );
+
+      return {
+        cid: bucket.cid,
+        totalFrames: bucket.frames.length,
+        totalUniqueUsers,
+        totalScore,
+        usersByType,
+        topFrames: bucket.frames.slice(0, MAX_TOP_FRAMES_PER_CID),
+      };
+    })
     .sort((a, b) => b.totalScore - a.totalScore);
 
   return {
@@ -417,7 +475,13 @@ const aggregateFrameEvents = (
     skippedRecords,
     uniqueFrameCount: frameSummaries.length,
     uniqueCidCount: cidSummaries.length,
-    eventTypeTotals: typeTotals,
+    eventTypeUserTotals: EVENT_TYPES.reduce(
+      (accumulator, type) => {
+        accumulator[type] = eventTypeUserSets[type].size;
+        return accumulator;
+      },
+      createEmptyCounts()
+    ),
     frameSummaries,
     cidSummaries,
   };
@@ -578,7 +642,7 @@ const AdminPopularFramesPage: React.FC = () => {
       const formattedScore = formatScore(item.totalScore);
       return {
         value: item.cid,
-        label: `${labelBase} — score ${formattedScore}, frames ${item.totalFrames}`,
+        label: `${labelBase} — score ${formattedScore}, users ${item.totalUniqueUsers}, frames ${item.totalFrames}`,
       };
     });
   }, [summary, showLabelMap]);
@@ -629,8 +693,9 @@ const AdminPopularFramesPage: React.FC = () => {
             Popular frames (7-day window)
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Fetches frame-related usage events for the last 7 days, weights stronger engagement
-            signals higher, and aggregates the results per frame to highlight trending content.
+            Fetches frame-related usage events for the last 7 days, counts unique users per action,
+            weights stronger engagement signals higher, and aggregates the results per frame to highlight
+            trending content.
           </Typography>
         </Box>
 
@@ -692,14 +757,14 @@ const AdminPopularFramesPage: React.FC = () => {
 
               <Box>
                 <Typography variant="subtitle1" gutterBottom>
-                  Event totals
+                  Unique users by action
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {EVENT_TYPES.map((type) => (
                     <Chip
                       key={type}
                       size="small"
-                      label={`${EVENT_TYPE_LABELS[type]}: ${summary.eventTypeTotals[type]}`}
+                      label={`${EVENT_TYPE_LABELS[type]}: ${summary.eventTypeUserTotals[type]} users`}
                     />
                   ))}
                 </Stack>
@@ -716,7 +781,7 @@ const AdminPopularFramesPage: React.FC = () => {
                       return (
                         <Tooltip
                           key={item.cid}
-                          title={`Score ${formatScore(item.totalScore)} · Frames ${item.totalFrames} · Events ${item.totalEvents}`}
+                          title={`Score ${formatScore(item.totalScore)} · Frames ${item.totalFrames} · Users ${item.totalUniqueUsers}`}
                         >
                           <Chip
                             size="small"
@@ -773,8 +838,8 @@ const AdminPopularFramesPage: React.FC = () => {
                         : 'Top frames by weighted engagement'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Click any card to jump into the frame or editor. Scores blend all weighted
-                      signals from the last 7 days.
+                      Click any card to jump into the frame or editor. Scores blend weighted signals
+                      from unique users over the last 7 days.
                     </Typography>
                   </Box>
                   <Chip
@@ -849,24 +914,24 @@ const AdminPopularFramesPage: React.FC = () => {
 
                               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                 <Chip size="small" color="primary" label={`Score ${formatScore(frame.score)}`} />
-                                <Chip size="small" label={`Signals ${frame.totalEvents}`} />
+                                <Chip size="small" label={`Users ${frame.uniqueUsers}`} />
                                 <Chip
                                   size="small"
-                                  label={`Avg weight ×${frame.scorePerEvent.toFixed(2)}`}
+                                  label={`Avg weight ×${frame.scorePerUser.toFixed(2)}`}
                                 />
                               </Stack>
 
                               <Stack spacing={1}>
                                 <Typography variant="caption" color="text.secondary">
-                                  Signal mix
+                                  Signal mix (unique users)
                                 </Typography>
                                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                   {EVENT_TYPES.map((type) =>
-                                    frame.countsByType[type] ? (
+                                    frame.uniqueUsersByType[type] ? (
                                       <Chip
                                         key={`${frame.key}-${type}`}
                                         size="small"
-                                        label={`${frame.countsByType[type]} ${EVENT_TYPE_LABELS[type].toLowerCase()}`}
+                                        label={`${frame.uniqueUsersByType[type]} ${EVENT_TYPE_LABELS[type].toLowerCase()}`}
                                       />
                                     ) : null
                                   )}

@@ -3,13 +3,15 @@ import { useContext, useEffect } from 'react';
 import { UserContext } from '../UserContext';
 
 let adsenseLoaded = false;
+const ADSENSE_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1307598869123774';
 
-type UserCtx = {
+export type UserCtx = {
   user?: {
     userDetails?: {
       subscriptionStatus?: string | null;
+      magicSubscription?: string | null;
     };
-  } | null | undefined;
+  } | null | false | undefined;
 };
 
 type IdleWindow = Window &
@@ -18,13 +20,54 @@ type IdleWindow = Window &
     cancelIdleCallback?: (id: number) => void;
   };
 
+const removeAdsenseArtifacts = () => {
+  const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${ADSENSE_SRC}"]`);
+  if (existingScript?.parentElement) {
+    existingScript.parentElement.removeChild(existingScript);
+  }
+  const ads = document.getElementsByClassName('adsbygoogle');
+  Array.from(ads).forEach((ad) => (ad as Element).remove());
+  adsenseLoaded = false;
+};
+
+// Disable ads for everyone during December 2024 and December 2025.
+export const isAdPauseActive = (): boolean => {
+  const now = new Date();
+  // Use local time so the pause window matches what users see in the UI
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  return month === 11 && (year === 2024 || year === 2025);
+};
+
+export const isSubscribedUser = (user?: UserCtx['user']): boolean => {
+  if (!user || typeof user !== 'object') {
+    return false;
+  }
+  const subscriptionStatus = user.userDetails?.subscriptionStatus;
+  const magicSubscription = user.userDetails?.magicSubscription;
+  return subscriptionStatus === 'active' || magicSubscription === 'true';
+};
+
+export const shouldShowAds = (user?: UserCtx['user']): boolean => {
+  if (isAdPauseActive()) return false;
+  return !isSubscribedUser(user);
+};
+
 export const useAdsenseLoader = (): void => {
   const { user } = useContext(UserContext) as unknown as UserCtx;
+  const adsEnabled = shouldShowAds(user);
 
   useEffect(() => {
-    if (!adsenseLoaded && (!user || user?.userDetails?.subscriptionStatus !== 'active')) {
+    if (!adsEnabled) {
+      if (adsenseLoaded) {
+        removeAdsenseArtifacts();
+      }
+      return undefined;
+    }
+
+    if (!adsenseLoaded) {
       const script = document.createElement('script');
-      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1307598869123774';
+      script.src = ADSENSE_SRC;
       script.async = true;
       script.crossOrigin = 'anonymous';
 
@@ -44,14 +87,11 @@ export const useAdsenseLoader = (): void => {
         } else {
           clearTimeout(idleId);
         }
-        if (adsenseLoaded && user?.userDetails?.subscriptionStatus === 'active') {
-          document.body.removeChild(script);
-          adsenseLoaded = false;
-          const ads = document.getElementsByClassName('adsbygoogle');
-          Array.from(ads).forEach((ad) => (ad as Element).remove());
+        if (adsenseLoaded && !adsEnabled) {
+          removeAdsenseArtifacts();
         }
       };
     }
     return undefined;
-  }, [user]);
+  }, [adsEnabled, user]);
 };

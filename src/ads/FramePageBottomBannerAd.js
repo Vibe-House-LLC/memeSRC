@@ -3,19 +3,23 @@ import { Link, Typography, Box } from '@mui/material';
 import { Close } from '@mui/icons-material';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { UserContext } from '../UserContext';
-import { useAdsenseLoader } from '../utils/adsenseLoader';
+import { shouldShowAds, useAdsenseLoader } from '../utils/adsenseLoader';
 
 const FramePageBottomBannerAd = () => {
     const { user } = useContext(UserContext);
+    const showAds = shouldShowAds(user);
     const { openSubscriptionDialog } = useSubscribeDialog();
     useAdsenseLoader();
 
     useEffect(() => {
+        if (!showAds) {
+            return;
+        }
         window.adsbygoogle = window.adsbygoogle || [];
         window.adsbygoogle.push({});
-    }, []);
+    }, [showAds]);
 
-    if (user?.userDetails?.subscriptionStatus === 'active') {
+    if (!showAds) {
         return null;
     }
 

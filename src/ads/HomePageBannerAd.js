@@ -1,17 +1,21 @@
 import { useContext, useEffect } from 'react';
 import { UserContext } from '../UserContext';
-import { useAdsenseLoader } from '../utils/adsenseLoader';
+import { shouldShowAds, useAdsenseLoader } from '../utils/adsenseLoader';
 
 const HomePageBannerAd = () => {
     const { user } = useContext(UserContext);
+    const showAds = shouldShowAds(user);
     useAdsenseLoader();
 
     useEffect(() => {
+        if (!showAds) {
+            return;
+        }
         window.adsbygoogle = window.adsbygoogle || [];
         window.adsbygoogle.push({});
-    }, []);
+    }, [showAds]);
 
-    if (user?.userDetails?.subscriptionStatus === 'active') {
+    if (!showAds) {
         return null;
     }
 

@@ -53,6 +53,7 @@ import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
+import { shouldShowAds } from '../utils/adsenseLoader';
 // Removed collage collector usage
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
@@ -1124,6 +1125,7 @@ useEffect(() => {
 
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const showAds = shouldShowAds(user);
 
   return (
     <>
@@ -1132,7 +1134,7 @@ useEffect(() => {
       </Helmet>
 
       <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 }, pt: 0 }}>
-        {user?.userDetails?.subscriptionStatus !== 'active' && (
+        {showAds && (
           <Grid item xs={12} mb={3}>
             <center>
               <Box>
@@ -1409,7 +1411,7 @@ useEffect(() => {
                           Clear Caption
                         </Button>
                       )}
-                      {textFieldFocused && user?.userDetails?.subscriptionStatus !== 'active' && (
+                      {textFieldFocused && showAds && (
                         <Box sx={{ mt: 2 }}>
                           <FixedMobileBannerAd />
                         </Box>

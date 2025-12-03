@@ -16,7 +16,10 @@ import {
   type GitHubRelease,
 } from '../../utils/githubReleases';
 import { FeedCardSurface } from './cards/CardSurface';
+import { AdFreeDecemberCard } from './cards/AdFreeDecemberCard';
 import { Search } from '@mui/icons-material';
+import { isAdPauseActive, isSubscribedUser, type UserCtx } from '../../utils/adsenseLoader';
+import { hasDismissedAdFreeDecember, persistAdFreeDecemberDismissal } from '../../contexts/AdFreeDecemberContext';
 
 const FEED_CARD_WRAPPER_SX = {
   px: { xs: 0, md: 0 },
@@ -387,6 +390,8 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
     setFeedDismissedVersion(stored || '');
   }, [feedDismissedStorageKey]);
   const [isReleaseRemoving, setIsReleaseRemoving] = useState(false);
+  const [adFreeDecemberDismissed, setAdFreeDecemberDismissed] = useState<boolean>(() => hasDismissedAdFreeDecember());
+  const [isAdFreeCardRemoving, setIsAdFreeCardRemoving] = useState(false);
   const hasRecentUndismissedUpdate = useMemo(() => {
     if (!latestRelease?.tag_name || !latestRelease?.published_at) {
       return false;
@@ -444,6 +449,25 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
   }, [latestRelease?.published_at]);
   const shouldShowReleaseCard = Boolean(latestRelease?.tag_name && hasRecentUndismissedUpdate && releaseTimestamp !== null);
 
+  const shouldShowAdFreeCard = useMemo(() => {
+    if (adFreeDecemberDismissed) {
+      return false;
+    }
+    const user = contextValue.user as UserCtx['user'];
+    if (isSubscribedUser(user)) {
+      return false;
+    }
+    return isAdPauseActive();
+  }, [adFreeDecemberDismissed, contextValue.user]);
+
+  const hasDismissedAdFreeDecemberInStorage = hasDismissedAdFreeDecember();
+
+  useEffect(() => {
+    if (!adFreeDecemberDismissed && hasDismissedAdFreeDecemberInStorage) {
+      setAdFreeDecemberDismissed(true);
+    }
+  }, [adFreeDecemberDismissed, hasDismissedAdFreeDecemberInStorage]);
+
   useEffect(() => {
     let didCancel = false;
 
@@ -492,6 +516,27 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
 
     timeoutsRef.current.push(finalizeTimeout);
   }, [feedDismissedStorageKey, isReleaseRemoving, latestRelease]);
+
+  const handleDismissAdFreeCard = useCallback(() => {
+    if (isAdFreeCardRemoving) {
+      return;
+    }
+
+    setIsAdFreeCardRemoving(true);
+
+    const finalizeTimeout = window.setTimeout(() => {
+      try {
+        persistAdFreeDecemberDismissal();
+      } catch (error) {
+        // no-op
+      } finally {
+        setAdFreeDecemberDismissed(true);
+        setIsAdFreeCardRemoving(false);
+      }
+    }, CARD_EXIT_DURATION_MS);
+
+    timeoutsRef.current.push(finalizeTimeout);
+  }, [isAdFreeCardRemoving, persistAdFreeDecemberDismissal]);
 
   useEffect(() => {
     const stored = safeGetItem(buildClearAllKey(userIdentifier));
@@ -560,8 +605,8 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
   }, [eligibleShows, retainedSet, showsInput]);
 
   useEffect(() => {
-    setShowFeed?.(eligibleShows.length > 0 || shouldShowReleaseCard);
-  }, [eligibleShows, shouldShowReleaseCard, setShowFeed]);
+    setShowFeed?.(eligibleShows.length > 0 || shouldShowReleaseCard || shouldShowAdFreeCard);
+  }, [eligibleShows, shouldShowAdFreeCard, shouldShowReleaseCard, setShowFeed]);
 
   useEffect(
     () => () => {
@@ -643,7 +688,19 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
   }, [renderedShows, scheduleRemoval, userIdentifier]);
 
   const hasShows = renderedShows.length > 0;
-const hasFeedContent = hasShows || shouldShowReleaseCard;
+const hasFeedContent = hasShows || shouldShowReleaseCard || shouldShowAdFreeCard;
+
+  const adFreeCardElement = shouldShowAdFreeCard ? (
+    <Box
+      key="adFreeDecemberCard"
+      sx={{
+        ...FEED_CARD_WRAPPER_SX,
+        px: { xs: 0, sm: 0 },
+      }}
+    >
+      <AdFreeDecemberCard onDismiss={handleDismissAdFreeCard} isRemoving={isAdFreeCardRemoving} />
+    </Box>
+  ) : null;
 
   const releaseCardElement = shouldShowReleaseCard && latestRelease ? (
     <Box
@@ -777,6 +834,12 @@ const hasFeedContent = hasShows || shouldShowReleaseCard;
   ) : null;
 
   const feedItems: ReactElement[] = [];
+
+  // Add ad-free card at the top if it should be shown
+  if (adFreeCardElement) {
+    feedItems.push(adFreeCardElement);
+  }
+
   let releaseInserted = !releaseCardElement || releaseTimestamp === null;
 
   renderedShows.forEach((show) => {

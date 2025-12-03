@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
+import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 
 // Define constants for colors and fonts
 const BUTTON_BASE_COLOR = '#0f0f0f';
@@ -77,6 +78,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const navigate = useNavigate();
     const { user, shows: availableShows = [] } = useContext(UserContext);
     const theme = useTheme();
+    const { triggerDialog } = useAdFreeDecember();
     const isAdmin = user?.['cognito:groups']?.includes('admins');
     const isPro = user?.userDetails?.magicSubscription === 'true';
     const hasCollageAccess = Boolean(isAdmin || isPro);
@@ -127,6 +129,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         };
 
         trackUsageEvent('random_frame', payload);
+        triggerDialog();
         loadRandomFrame(targetShow);
     };
 

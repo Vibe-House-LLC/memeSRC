@@ -14,6 +14,8 @@ import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
+import { shouldShowAds } from '../../utils/adsenseLoader';
+import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 
 const sanitizeSearchValue = (value) => {
   if (value === undefined || value === null) {
@@ -57,6 +59,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
   const shows = useMemo(() => (Array.isArray(contextShows) ? contextShows : []), [contextShows]);
   const savedSeries = useMemo(() => (Array.isArray(savedCids) ? savedCids : []), [savedCids]);
+  const { triggerDialog } = useAdFreeDecember();
 
   const hasFavoriteShows = useMemo(() => shows.some((show) => show.isFavorite), [shows]);
   const resolvedCid = useMemo(() => {
@@ -186,7 +189,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
     [buildSearchUrl, navigate, resolvedCid, setSearchQuery, shows],
   );
 
-  const showAd = user?.userDetails?.subscriptionStatus !== 'active';
+  const showAd = shouldShowAds(user);
 
   const handleRandomSearch = useCallback(() => {
     const scope = resolvedCid || '_universal';
@@ -196,8 +199,9 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
       showCount: Array.isArray(shows) ? shows.length : 0,
       hasAd: showAd,
     });
+    triggerDialog();
     loadRandomFrame(scope);
-  }, [resolvedCid, loadRandomFrame, shows, showAd]);
+  }, [resolvedCid, loadRandomFrame, shows, showAd, triggerDialog]);
 
   const activeIndexInfo = useMemo(() => {
     if (!resolvedCid) {
