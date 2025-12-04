@@ -144,6 +144,9 @@ export interface MagicEditorProps {
   onPromptStateChange?: (state: { value: string; focused: boolean }) => void; // notify parent about prompt text/focus
   saving?: boolean; // external save-in-progress
   defaultPrompt?: string;
+  variationCount?: number;
+  autoStart?: boolean;
+  autoStartKey?: string | number;
   className?: string;
   style?: React.CSSProperties;
   // Allow parent to hide the internal header when rendering an external header
@@ -166,6 +169,9 @@ export default function MagicEditor({
   onPromptStateChange,
   saving = false,
   defaultPrompt = '',
+  variationCount = 2,
+  autoStart = false,
+  autoStartKey,
   className,
   style,
   showHeader = true,
@@ -182,12 +188,12 @@ export default function MagicEditor({
   const [messageIndex, setMessageIndex] = useState(0);
   const [hasJobStarted, setHasJobStarted] = useState(false);
   const messages = useMemo(() => [
-    'Generating 2 results...',
+    `Generating ${variationCount === 1 ? '1 result' : `${variationCount} results`}...`,
     'This will take a few seconds...',
     'Magic is hard work, you know?',
     'Just about done!',
     'Hang tight, wrapping up...',
-  ], []);
+  ], [variationCount]);
   const messagePercentages = useMemo(() =>
     Array.from({ length: Math.max(0, messages.length - 2) }, (_, index) => (index + 1) * (100 / (messages.length - 1))),
   [messages.length]);
@@ -214,6 +220,7 @@ export default function MagicEditor({
   const initialRecordedRef = useRef(false);
   const originalSrcRef = useRef<string>(imageSrc);
   const progressTimerRef = useRef<number | null>(null);
+  const autoStartTriggerRef = useRef<string | number | boolean | null>(null);
 
   // Elegant, subtle glow around the progress card
   const accentColor = '#8b5cc7';
@@ -373,6 +380,10 @@ export default function MagicEditor({
 
   const canSend = useMemo(() => Boolean(internalSrc) && !processing && prompt.trim().length > 0, [internalSrc, processing, prompt]);
 
+  useEffect(() => {
+    setPrompt(defaultPrompt || '');
+  }, [defaultPrompt]);
+
   const blurPromptInputs = useCallback(() => {
     try { mobileInputRef.current?.blur(); } catch {}
     try { desktopInputRef.current?.blur(); } catch {}
@@ -505,6 +516,22 @@ export default function MagicEditor({
       setPrompt('');
     }
   }, [addPendingEdit, internalSrc, onResult, processing, prompt, setImage, updateHistoryEntry]);
+
+  useEffect(() => {
+    if (!autoStart) return;
+    const token = autoStartKey ?? defaultPrompt ?? true;
+    if (autoStartTriggerRef.current === token) return;
+    if (!canSend) return;
+    autoStartTriggerRef.current = token;
+    blurPromptInputs();
+    void handleApply();
+  }, [autoStart, autoStartKey, canSend, defaultPrompt, blurPromptInputs, handleApply]);
+
+  useEffect(() => {
+    if (!autoStart) {
+      autoStartTriggerRef.current = null;
+    }
+  }, [autoStart]);
 
   return (
     <Box

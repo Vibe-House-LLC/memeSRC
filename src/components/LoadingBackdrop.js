@@ -5,20 +5,20 @@ import Logo from './logo';
 import MagicToolsLoadingAd from '../ads/MagicToolsLoadingAd';
 import { UserContext } from '../UserContext';
 
-function LoadingBackdrop({ open, duration = 20 }) {
+function LoadingBackdrop({ open, duration = 20, variationCount = 2 }) {
     const { user } = useContext(UserContext)
     const [progress, setProgress] = useState(0);
     const [progressVariant, setProgressVariant] = useState('determinate');
     const [messageIndex, setMessageIndex] = useState(0);
     
     const messages = useMemo(() => [
-        "Generating 2 results...",
+        `Generating ${variationCount === 1 ? '1 result' : `${variationCount} results`}...`,
         "This will take a few seconds...",
         "Magic is hard work, you know?",
         "Just about done!",
         // "I'm gettin' too old for this shit.",
         "Hang tight, wrapping up...",
-    ], []);
+    ], [variationCount]);
 
     // Calculate the percentage intervals at which to change messages, excluding the last message
     const messagePercentages = useMemo(() => 
@@ -118,6 +118,7 @@ function LoadingBackdrop({ open, duration = 20 }) {
 LoadingBackdrop.propTypes = {
     open: PropTypes.bool,
     duration: PropTypes.number,
+    variationCount: PropTypes.number,
 };
 
 export default LoadingBackdrop;

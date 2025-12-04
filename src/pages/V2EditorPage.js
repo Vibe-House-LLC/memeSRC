@@ -10,7 +10,7 @@ import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'reac
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, Edit, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -18,6 +18,7 @@ import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
 import { MagicPopupContext } from '../MagicPopupContext';
+import MagicEditor from '../components/magic-editor/MagicEditor';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
@@ -72,6 +73,8 @@ const StyledCardMedia = styled('img')`
   height: auto;
   background-color: black;
 `;
+
+const MAGIC_IMAGE_SIZE = 1024;
 
 
 const EditorSurroundingFrameThumbnail = ({
@@ -304,9 +307,12 @@ const EditorPage = ({ shows }) => {
   // const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
 
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
-  const [promptEnabled, setPromptEnabled] = useState('erase');
+  const [promptEnabled, setPromptEnabled] = useState('edit');
   // const buttonRef = useRef(null);
   const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
+  const [magicEditorOpen, setMagicEditorOpen] = useState(false);
+  const [magicEditorImage, setMagicEditorImage] = useState('');
+  const [magicEditorSessionKey, setMagicEditorSessionKey] = useState(0);
 
   // Image selection stuff
   const [selectedImage, setSelectedImage] = useState(null);
@@ -1502,6 +1508,17 @@ const EditorPage = ({ shows }) => {
   const QUERY_INTERVAL = 1000; // Every second
   const TIMEOUT = 60 * 1000;   // 1 minute
 
+  const spendMagicCredit = useCallback(async () => {
+    try {
+      const currentCredits = user?.userDetails?.credits ?? 0;
+      const newCreditAmount = Math.max(0, currentCredits - 1);
+      setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+      await forceTokenRefresh();
+    } catch (err) {
+      console.error('Failed to refresh credits after magic edit:', err);
+    }
+  }, [forceTokenRefresh, setUser, user]);
+
   async function checkMagicResult(id) {
     try {
       const result = await API.graphql(graphqlOperation(`query MyQuery {
@@ -1536,6 +1553,98 @@ const EditorPage = ({ shows }) => {
     // setDrawingMode((tool === 'magicEraser'))
   }
 
+  const buildBackgroundDataUrl = () => {
+    if (!editor?.canvas?.backgroundImage) {
+      throw new Error('No background image available for magic edits.');
+    }
+
+    const tempCanvas = new fabric.Canvas();
+    tempCanvas.setWidth(MAGIC_IMAGE_SIZE);
+    tempCanvas.setHeight(MAGIC_IMAGE_SIZE);
+    tempCanvas.backgroundColor = 'black';
+
+    const backgroundImage = { ...editor.canvas.backgroundImage };
+    const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement());
+
+    const imageWidth = backgroundImage.width;
+    const imageHeight = backgroundImage.height;
+    const imageScale = Math.min(MAGIC_IMAGE_SIZE / imageWidth, MAGIC_IMAGE_SIZE / imageHeight);
+    const imageOffsetX = (MAGIC_IMAGE_SIZE - imageWidth * imageScale) / 2;
+    const imageOffsetY = (MAGIC_IMAGE_SIZE - imageHeight * imageScale) / 2;
+
+    newBackgroundImage.scale(imageScale);
+    newBackgroundImage.set({ left: imageOffsetX, top: imageOffsetY });
+    tempCanvas.add(newBackgroundImage);
+
+    return tempCanvas.toDataURL('image/png');
+  };
+
+  const buildMaskDataUrl = () => {
+    if (!editor?.canvas) {
+      throw new Error('Editor not ready for magic erase.');
+    }
+
+    const tempCanvasDrawing = new fabric.Canvas();
+    tempCanvasDrawing.setWidth(MAGIC_IMAGE_SIZE);
+    tempCanvasDrawing.setHeight(MAGIC_IMAGE_SIZE);
+
+    tempCanvasDrawing.backgroundColor = 'black';
+
+    const originalHeight = editor.canvas.height;
+    const originalWidth = editor.canvas.width;
+
+    const scale = Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight);
+    const offsetX = (MAGIC_IMAGE_SIZE - originalWidth * scale) / 2;
+    const offsetY = (MAGIC_IMAGE_SIZE - originalHeight * scale) / 2;
+
+    editor.canvas.getObjects().forEach((obj) => {
+      if (obj instanceof fabric.Path) {
+        const path = obj.toObject();
+        const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
+        newPath.scale(scale);
+        newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
+        tempCanvasDrawing.add(newPath);
+      }
+    });
+
+    return tempCanvasDrawing.toDataURL({
+      format: 'png',
+      left: 0,
+      top: 0,
+      width: tempCanvasDrawing.getWidth(),
+      height: tempCanvasDrawing.getHeight(),
+    });
+  };
+
+  const pollMagicResults = (magicResultId) => {
+    const startTime = Date.now();
+
+    const pollInterval = setInterval(async () => {
+      const results = await checkMagicResult(magicResultId);
+      if (results || (Date.now() - startTime) >= TIMEOUT) {
+        clearInterval(pollInterval);
+        setLoadingInpaintingResult(false);  // Stop the loading spinner
+
+        if (results) {
+          try {
+            const imageUrls = JSON.parse(results);
+            setReturnedImages((prev) => [...prev, ...imageUrls]);
+            setOpenSelectResult(true);
+            await spendMagicCredit();
+          } catch (err) {
+            console.error('Error parsing magic results:', err);
+            alert('Error: Unable to parse magic results. Please try again.');
+          }
+        } else {
+          console.error("Timeout reached without fetching magic results.");
+          alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
+        }
+      }
+    }, QUERY_INTERVAL);
+
+    return pollInterval;
+  };
+
   const downloadDataURL = (dataURL, fileName) => {
     const link = document.createElement('a');
     link.href = dataURL;
@@ -1545,125 +1654,97 @@ const EditorPage = ({ shows }) => {
   };
 
   const exportDrawing = async () => {
-    setLoadingInpaintingResult(true)
+    if (!editor?.canvas?.backgroundImage) {
+      setSeverity('error');
+      setMessage('Load an image before using Magic Eraser.');
+      setOpen(true);
+      return;
+    }
+
+    setLoadingInpaintingResult(true);
     window.scrollTo(0, 0);
     const originalCanvas = editor.canvas;
 
-    // let fabricImage = null;
+    try {
+      const dataURLDrawing = buildMaskDataUrl();
+      const dataURLBgImage = buildBackgroundDataUrl();
 
-    const tempCanvasDrawing = new fabric.Canvas();
-    tempCanvasDrawing.setWidth(1024);
-    tempCanvasDrawing.setHeight(1024);
+      if (dataURLBgImage && dataURLDrawing) {
+        const data = {
+          image: dataURLBgImage,
+          mask: dataURLDrawing,
+          prompt: magicPrompt,
+        };
 
-    tempCanvasDrawing.backgroundColor = 'black'
-
-    // tempCanvasDrawing.add(solidRect);
-
-    const originalHeight = editor.canvas.height
-    const originalWidth = editor.canvas.width
-
-    const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-    const offsetX = (1024 - originalWidth * scale) / 2;
-    const offsetY = (1024 - originalHeight * scale) / 2;
-
-    originalCanvas.getObjects().forEach((obj) => {
-      if (obj instanceof fabric.Path) {
-        const path = obj.toObject();
-        const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
-        newPath.scale(scale);
-        newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
-        tempCanvasDrawing.add(newPath);
-      }
-
-      // if (obj instanceof fabric.Image) {
-      //     fabricImage = obj;
-      // }
-
-
-    });
-
-    const dataURLDrawing = tempCanvasDrawing.toDataURL({
-      format: 'png',
-      left: 0,
-      top: 0,
-      width: tempCanvasDrawing.getWidth(),
-      height: tempCanvasDrawing.getHeight(),
-    });
-    const backgroundImage = { ...editor.canvas.backgroundImage };
-
-    const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement())
-
-    const imageWidth = backgroundImage.width
-    const imageHeight = backgroundImage.height
-    const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
-    const imageOffsetX = (1024 - imageWidth * imageScale) / 2;
-    const imageOffsetY = (1024 - imageHeight * imageScale) / 2;
-
-    tempCanvasDrawing.clear();
-
-    tempCanvasDrawing.backgroundColor = 'black'
-
-    newBackgroundImage.scale(imageScale)
-    newBackgroundImage.set({ left: imageOffsetX, top: imageOffsetY });
-    tempCanvasDrawing.add(newBackgroundImage)
-    const dataURLBgImage = tempCanvasDrawing.toDataURL('image/png');
-
-
-    if (dataURLBgImage && dataURLDrawing) {
-      //   const dataURLBgImage = fabricImage.toDataURL('image/png');
-
-      const data = {
-        image: dataURLBgImage,
-        mask: dataURLDrawing,
-        prompt: magicPrompt,
-      };
-
-      try {
-        const response = await API.post('publicapi', '/inpaint', {
-          body: data
-        });
-
-        const {magicResultId} = response;
-
-        const startTime = Date.now();
-
-        const pollInterval = setInterval(async () => {
-          const results = await checkMagicResult(magicResultId);
-          if (results || (Date.now() - startTime) >= TIMEOUT) {
-            clearInterval(pollInterval);
-            setLoadingInpaintingResult(false);  // Stop the loading spinner
-
-            if (results) {
-              const imageUrls = JSON.parse(results);
-              setReturnedImages([...returnedImages, ...imageUrls]);
-              setLoadingInpaintingResult(false);
-              setOpenSelectResult(true);
-              const newCreditAmount = user?.userDetails.credits - 1;
-              setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
-              await forceTokenRefresh();
-            } else {
-              console.error("Timeout reached without fetching magic results.");
-              alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
-            }
-          }
-        }, QUERY_INTERVAL);
-
-      } catch (error) {
-        setLoadingInpaintingResult(false);
-        if (error.response?.data?.error?.name === "InsufficientCredits") {
-          setSeverity('error');
-          setMessage('Insufficient Credits');
-          setOpen(true);
-          originalCanvas.getObjects().forEach((obj) => {
-            if (obj instanceof fabric.Path) {
-              editor.canvas.remove(obj);
-            }
+        try {
+          const response = await API.post('publicapi', '/inpaint', {
+            body: data
           });
-          setHasFabricPaths(false);
+
+          const {magicResultId} = response;
+
+          if (!magicResultId) {
+            throw new Error('Unable to start magic edit.');
+          }
+
+          pollMagicResults(magicResultId);
+        } catch (error) {
+          setLoadingInpaintingResult(false);
+          if (error.response?.data?.error?.name === "InsufficientCredits") {
+            setSeverity('error');
+            setMessage('Insufficient Credits');
+            setOpen(true);
+            originalCanvas.getObjects().forEach((obj) => {
+              if (obj instanceof fabric.Path) {
+                editor.canvas.remove(obj);
+              }
+            });
+            setHasFabricPaths(false);
+          } else {
+            console.error(error);
+            setSeverity('error');
+            setMessage(error.message || 'An error occurred while applying magic erase.');
+            setOpen(true);
+          }
+          if (error.response?.data) {
+            console.log(error.response.data);
+            alert(`Error: ${JSON.stringify(error.response.data)}`);
+          }
         }
-        console.log(error.response.data);
-        alert(`Error: ${JSON.stringify(error.response.data)}`);
       }
+    } catch (error) {
+      setLoadingInpaintingResult(false);
+      setSeverity('error');
+      setMessage(error.message || 'An error occurred while preparing the magic edit.');
+      setOpen(true);
+    }
+  };
+
+  const handleMagicEdit = async () => {
+    if (!magicPrompt || magicPrompt.trim().length === 0) {
+      setSeverity('error');
+      setMessage('Add a prompt to describe the magic edit.');
+      setOpen(true);
+      return;
+    }
+
+    if (!editor?.canvas?.backgroundImage) {
+      setSeverity('error');
+      setMessage('Load an image before using Magic Edit.');
+      setOpen(true);
+      return;
+    }
+
+    try {
+      const dataURLBgImage = buildBackgroundDataUrl();
+      setMagicEditorImage(dataURLBgImage);
+      setMagicEditorSessionKey(Date.now());
+      setMagicEditorOpen(true);
+    } catch (error) {
+      console.error(error);
+      setSeverity('error');
+      setMessage(error.message || 'An error occurred while preparing the magic edit.');
+      setOpen(true);
     }
   };
 
@@ -1689,7 +1770,7 @@ const EditorPage = ({ shows }) => {
 
         const originalHeight = editor.canvas.height;
         const originalWidth = editor.canvas.width;
-        const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+        const scale = Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight);
         returnedImage.scale(1 / scale);
         editor.canvas.setBackgroundImage(returnedImage);
         setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
@@ -1698,7 +1779,7 @@ const EditorPage = ({ shows }) => {
 
         setEditorTool('captions');
         toggleDrawingMode('captions');
-        setMagicPrompt('Everyday scene as cinematic cinestill sample');
+        setMagicPrompt(promptEnabled === 'edit' ? '' : 'Everyday scene as cinematic cinestill sample');
         // setPromptEnabled('erase');
         addToHistory();
       }, {
@@ -1713,6 +1794,22 @@ const EditorPage = ({ shows }) => {
   };
 
 
+
+  const handleMagicEditorResult = async (imgUrl) => {
+    if (!imgUrl) return;
+    await spendMagicCredit();
+  };
+
+  const handleMagicEditorSave = (imgUrl) => {
+    if (imgUrl) {
+      handleAddCanvasBackground(imgUrl);
+    }
+    setMagicEditorOpen(false);
+  };
+
+  const handleMagicEditorClose = () => {
+    setMagicEditorOpen(false);
+  };
 
   const handleSelectResultCancel = () => {
     setSelectedImage()
@@ -1906,7 +2003,7 @@ const EditorPage = ({ shows }) => {
 
   // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
   useEffect(() => {
-    if (promptEnabled === "fill") {
+    if (promptEnabled === "fill" || promptEnabled === 'edit') {
       setMagicPrompt('')
     } else {
       setMagicPrompt('Everyday scene as cinematic cinestill sample')
@@ -1924,12 +2021,24 @@ const EditorPage = ({ shows }) => {
   }, []);
 
   useEffect(() => {
-    setPromptEnabled('erase')
-    setMagicPrompt('Everyday scene as cinematic cinestill sample')
+    if (editorTool === 'magicEraser') {
+      setPromptEnabled('edit');
+      setMagicPrompt('');
+    }
     if (editorTool === 'fineTuning') {
       loadFineTuningImages()
     }
   }, [editorTool])
+
+  useEffect(() => {
+    if (editorTool === 'magicEraser') {
+      if (promptEnabled === 'edit') {
+        toggleDrawingMode('captions');
+      } else {
+        toggleDrawingMode('magicEraser');
+      }
+    }
+  }, [editorTool, promptEnabled])
 
   useEffect(() => {
     if (editorLoaded) {
@@ -2925,6 +3034,12 @@ const EditorPage = ({ shows }) => {
                         }}
                       >
                         <Tab
+                          icon={<Edit fontSize='small' />}
+                          label="Edit"
+                          value="edit"
+                          style={{ color: promptEnabled === 'edit' ? 'limegreen' : undefined }}
+                        />
+                        <Tab
                           icon={<AutoFixHigh fontSize='small' />}
                           label="Eraser"
                           value="erase"
@@ -2938,63 +3053,105 @@ const EditorPage = ({ shows }) => {
                         />
                       </Tabs>
 
-                      <Stack direction='row' alignItems='center' spacing={2}>
-                        <Slider
-                          size="small"
-                          min={1}
-                          max={100}
-                          value={brushToolSize}
-                          aria-label="Small"
-                          valueLabelDisplay='auto'
-                          sx={{ marginRight: 0.5 }}
-                          onChange={(event, value) => {
-                            setShowBrushSize(true);
-                            handleBrushToolSize(value);
-                          }}
-                          onChangeCommitted={() => {
-                            setShowBrushSize(false);
-                          }}
-                          track={false}
-                        />
-                        <Button variant='contained' onClick={() => {
-                          setEditorTool('captions');
-                          toggleDrawingMode('captions');
-                        }}>Cancel</Button>
-                        <Button
-                          variant='contained'
-                          style={{
-                            backgroundColor: hasFabricPaths ? 'limegreen' : 'grey',
-                            color: 'white',
-                            opacity: hasFabricPaths ? 1 : 0.5
-                          }}
-                          onClick={() => {
-                            exportDrawing();
-                            // toggleDrawingMode('fineTuning');
-                          }}
-                          disabled={!hasFabricPaths} // Button is disabled if there are no fabric.Path instances
-                        >
-                          Apply
-                        </Button>
-                      </Stack>
+                      {promptEnabled === 'edit' ? (
+                        <>
+                          <TextField
+                            value={magicPrompt}
+                            onChange={(event) => {
+                              setMagicPrompt(event.target.value);
+                            }}
+                            fullWidth
+                            sx={{
+                              mt: 3,
+                              '& .MuiInputLabel-root.Mui-focused': {
+                                color: 'limegreen',
+                              },
+                              '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'limegreen',
+                              },
+                            }}
+                            label='Magic Edit Prompt'
+                            placeholder='Ask for an edit in plain English'
+                          />
+                          <Stack direction='row' spacing={2} sx={{ mt: 1 }}>
+                            <Button variant='contained' onClick={() => {
+                              setEditorTool('captions');
+                              toggleDrawingMode('captions');
+                            }}>Cancel</Button>
+                            <Button
+                              variant='contained'
+                              style={{
+                                backgroundColor: magicPrompt?.trim() && !loadingInpaintingResult ? 'limegreen' : 'grey',
+                                color: 'white',
+                                opacity: magicPrompt?.trim() && !loadingInpaintingResult ? 1 : 0.5
+                              }}
+                              onClick={() => handleMagicEdit()}
+                              disabled={!magicPrompt?.trim() || loadingInpaintingResult}
+                            >
+                              Apply
+                            </Button>
+                          </Stack>
+                        </>
+                      ) : (
+                        <>
+                          <Stack direction='row' alignItems='center' spacing={2}>
+                            <Slider
+                              size="small"
+                              min={1}
+                              max={100}
+                              value={brushToolSize}
+                              aria-label="Small"
+                              valueLabelDisplay='auto'
+                              sx={{ marginRight: 0.5 }}
+                              onChange={(event, value) => {
+                                setShowBrushSize(true);
+                                handleBrushToolSize(value);
+                              }}
+                              onChangeCommitted={() => {
+                                setShowBrushSize(false);
+                              }}
+                              track={false}
+                            />
+                            <Button variant='contained' onClick={() => {
+                              setEditorTool('captions');
+                              toggleDrawingMode('captions');
+                            }}>Cancel</Button>
+                            <Button
+                              variant='contained'
+                              style={{
+                                backgroundColor: hasFabricPaths ? 'limegreen' : 'grey',
+                                color: 'white',
+                                opacity: hasFabricPaths ? 1 : 0.5
+                              }}
+                              onClick={() => {
+                                exportDrawing();
+                              }}
+                              disabled={!hasFabricPaths || loadingInpaintingResult} // Button is disabled if there are no fabric.Path instances
+                            >
+                              Apply
+                            </Button>
+                          </Stack>
 
-                      {promptEnabled === "fill" && (
-                        <TextField
-                          value={magicPrompt}
-                          onChange={(event) => {
-                            setMagicPrompt(event.target.value);
-                          }}
-                          fullWidth
-                          sx={{
-                            mt: 3,
-                            '& .MuiInputLabel-root.Mui-focused': {
-                              color: 'limegreen',
-                            },
-                            '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                              borderColor: 'limegreen',
-                            },
-                          }}
-                          label='Magic Fill Prompt'
-                        />
+                          {promptEnabled === "fill" && (
+                            <TextField
+                              value={magicPrompt}
+                              onChange={(event) => {
+                                setMagicPrompt(event.target.value);
+                              }}
+                              fullWidth
+                              sx={{
+                                mt: 3,
+                                '& .MuiInputLabel-root.Mui-focused': {
+                                  color: 'limegreen',
+                                },
+                                '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: 'limegreen',
+                                },
+                              }}
+                              label='Magic Fill Prompt'
+                            />
+                          )}
+                        </>
                       )}
                     </>
                   )}
@@ -3459,7 +3616,36 @@ const EditorPage = ({ shows }) => {
         </Alert>
       </Snackbar>
 
-      <LoadingBackdrop open={loadingInpaintingResult} />
+      <Dialog
+        fullScreen
+        open={magicEditorOpen}
+        onClose={handleMagicEditorClose}
+        PaperProps={{ sx: { backgroundColor: '#0b0b0b' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          Magic Edit
+          <IconButton onClick={handleMagicEditorClose} aria-label="Close magic editor">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          {magicEditorImage && (
+            <MagicEditor
+              imageSrc={magicEditorImage}
+              defaultPrompt={magicPrompt}
+              autoStart
+              autoStartKey={magicEditorSessionKey}
+              variationCount={1}
+              saveLabel="Use in Editor"
+              onSave={handleMagicEditorSave}
+              onCancel={handleMagicEditorClose}
+              onResult={handleMagicEditorResult}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <LoadingBackdrop open={loadingInpaintingResult} variationCount={promptEnabled === 'edit' ? 1 : 2} />
 
       <Dialog
         open={openSelectResult}
