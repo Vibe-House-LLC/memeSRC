@@ -3514,10 +3514,14 @@ const EditorPage = ({ shows }) => {
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
                               {[
                                 "Remove the text",
+                                "Zoom in",
+                                "Zoom out",
                                 "Add a tophat",
-                                "Make it black and white",
-                                "Zoom in on the face",
-                                "Add sunglasses"
+                                "Add sunglasses",
+                                "Censor the faces",
+                                "Add a beard",
+                                "Add a mustache",
+                                "Make it black and white"           
                               ].map((suggestion) => (
                                 <Chip
                                   key={suggestion}
