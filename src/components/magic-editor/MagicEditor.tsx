@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -23,6 +23,7 @@ import { API, graphqlOperation } from 'aws-amplify';
 import { getMagicResult } from '../../graphql/queries';
 import { resizeImage } from '../../utils/library/resizeImage';
 import { EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
+import { UserContext } from '../../UserContext';
 
 // Utilities to ensure the image payload is a browser-safe data URL in a format
 // the backend (and Gemini) can process reliably across subsequent edits.
@@ -228,6 +229,49 @@ export default function MagicEditor({
   // Elegant, subtle glow around the progress card
   const accentColor = '#8b5cc7';
 
+  // User + credit management
+  const { setUser, forceTokenRefresh } = useContext(UserContext) as any;
+
+  const applyCreditPatch = useCallback((credits: number) => {
+    if (typeof setUser !== 'function') return;
+    setUser((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        userDetails: {
+          ...(prev.userDetails || {}),
+          credits,
+        },
+      };
+    });
+  }, [setUser]);
+
+  const optimisticSpendCredit = useCallback(() => {
+    if (typeof setUser !== 'function') return;
+    setUser((prev: any) => {
+      if (!prev) return prev;
+      const currentCredits = prev?.userDetails?.credits;
+      if (typeof currentCredits !== 'number') return prev;
+      const newCreditAmount = Math.max(0, currentCredits - 1);
+      return {
+        ...prev,
+        userDetails: {
+          ...(prev.userDetails || {}),
+          credits: newCreditAmount,
+        },
+      };
+    });
+  }, [setUser]);
+
+  const refreshCreditsFromBackend = useCallback(async () => {
+    if (typeof forceTokenRefresh !== 'function') return;
+    try {
+      await forceTokenRefresh();
+    } catch (err) {
+      console.error('Failed to refresh credits after magic edit:', err);
+    }
+  }, [forceTokenRefresh]);
+
   // Animated placeholder examples
   const examples = useMemo(
     () => [
@@ -422,6 +466,8 @@ export default function MagicEditor({
     setMessageIndex(0);
     const currentPrompt = prompt;
     const pendingId = addPendingEdit(currentPrompt);
+    // Optimistically assume a credit will be spent for this edit
+    optimisticSpendCredit();
     // Keep prompt visible while processing so users see what's loading
     try {
       // Normalize current image into a PNG/JPEG data URL, then enforce max dimensions
@@ -440,6 +486,10 @@ export default function MagicEditor({
         body: { image: payloadImage, prompt: currentPrompt },
       });
       const magicResultId: string = resp?.magicResultId;
+      const updatedCredits = Number(resp?.credits);
+      if (Number.isFinite(updatedCredits)) {
+        applyCreditPatch(updatedCredits);
+      }
       if (!magicResultId) throw new Error('Failed to start edit');
       // Switch from initial indeterminate to determinate once job has started
       setHasJobStarted(true);
@@ -535,8 +585,10 @@ export default function MagicEditor({
       setHasJobStarted(false);
       // Now clear the prompt after processing completes
       setPrompt('');
+      // In case of early failures or mismatched optimistic updates, refresh balance
+      void refreshCreditsFromBackend();
     }
-  }, [addPendingEdit, internalSrc, onResult, processing, prompt, setImage, updateHistoryEntry]);
+  }, [addPendingEdit, applyCreditPatch, internalSrc, onResult, optimisticSpendCredit, processing, prompt, refreshCreditsFromBackend, setImage, updateHistoryEntry]);
 
   useEffect(() => {
     if (!autoStart) return;
