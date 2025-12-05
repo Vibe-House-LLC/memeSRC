@@ -3411,64 +3411,11 @@ const EditorPage = ({ shows }) => {
 
                   {editorTool === 'magicEraser' && (
                     <>
-                      {/* Mode Toggle */}
-                      <ButtonGroup variant="outlined" fullWidth sx={{ mb: 2.5 }}>
-                        <Button
-                          onClick={() => {
-                            setPromptEnabled('edit');
-                            toggleDrawingMode('captions');
-                          }}
-                          sx={{
-                            flex: 1,
-                            py: 1.25,
-                            borderColor: promptEnabled === 'edit' ? 'primary.main' : 'rgba(0,0,0,0.12)',
-                            backgroundColor: promptEnabled === 'edit' ? 'primary.main' : 'transparent',
-                            color: promptEnabled === 'edit' ? '#fff' : 'text.secondary',
-                            fontWeight: promptEnabled === 'edit' ? 600 : 500,
-                            '&:hover': {
-                              borderColor: 'primary.main',
-                              backgroundColor: promptEnabled === 'edit' ? 'primary.dark' : 'rgba(25, 118, 210, 0.04)',
-                            },
-                          }}
-                        >
-                          <Stack direction="row" spacing={0.75} alignItems="center">
-                            <AutoFixHighRounded fontSize='small' />
-                            <Typography variant="body2" sx={{ fontWeight: 'inherit', fontSize: '0.875rem' }}>Magic Edit</Typography>
-                          </Stack>
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            if (promptEnabled === 'edit') {
-                              setPromptEnabled('erase');
-                            }
-                          }}
-                          sx={{
-                            flex: 1,
-                            py: 1.25,
-                            borderColor: (promptEnabled === 'erase' || promptEnabled === 'fill') ? 'primary.main' : 'rgba(0,0,0,0.12)',
-                            backgroundColor: (promptEnabled === 'erase' || promptEnabled === 'fill') ? 'primary.main' : 'transparent',
-                            color: (promptEnabled === 'erase' || promptEnabled === 'fill') ? '#fff' : 'text.secondary',
-                            fontWeight: (promptEnabled === 'erase' || promptEnabled === 'fill') ? 600 : 500,
-                            '&:hover': {
-                              borderColor: 'primary.main',
-                              backgroundColor: (promptEnabled === 'erase' || promptEnabled === 'fill') ? 'primary.dark' : 'rgba(25, 118, 210, 0.04)',
-                            },
-                          }}
-                        >
-                          <Stack direction="row" spacing={0.75} alignItems="center">
-                            <Edit fontSize='small' />
-                            <Typography variant="body2" sx={{ fontWeight: 'inherit', fontSize: '0.875rem' }}>Classic Tools</Typography>
-                          </Stack>
-                        </Button>
-                      </ButtonGroup>
-
                       {promptEnabled === 'edit' ? (
                         <>
                           {/* Main Magic Edit Interface */}
                           <Box>
-                            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: '0.875rem' }}>
-                              Describe your edits in plain English and let magic do the work
-                            </Typography>
+                            {/* Input field comes first */}
                             <TextField
                               fullWidth
                               placeholder={magicPlaceholder}
@@ -3531,6 +3478,7 @@ const EditorPage = ({ shows }) => {
                               }}
                               inputProps={{ 'aria-label': 'Magic edit prompt' }}
                               sx={{
+                                mb: 1.5,
                                 '& .MuiOutlinedInput-root': {
                                   borderRadius: 2,
                                   backgroundColor: '#fff',
@@ -3557,8 +3505,13 @@ const EditorPage = ({ shows }) => {
                               }}
                             />
 
+                            {/* Label that leads into suggestions */}
+                            <Typography variant="body2" sx={{ mb: 1.5, color: 'text.secondary', fontSize: '0.875rem' }}>
+                              Or tap a suggestion to try it:
+                            </Typography>
+
                             {/* Suggestion Chips */}
-                            <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
                               {[
                                 "Remove the text",
                                 "Add a tophat",
@@ -3597,12 +3550,93 @@ const EditorPage = ({ shows }) => {
                                 />
                               ))}
                             </Box>
+
+                            {/* Small link to switch to classic */}
+                            <Box sx={{ textAlign: 'center', pt: 2, pb: 1 }}>
+                              <Button
+                                variant="text"
+                                size="small"
+                                onClick={() => {
+                                  setPromptEnabled('erase');
+                                }}
+                                sx={{
+                                  color: 'text.secondary',
+                                  fontSize: '0.75rem',
+                                  textTransform: 'none',
+                                  textDecoration: 'underline',
+                                  '&:hover': {
+                                    color: 'primary.main',
+                                    backgroundColor: 'transparent',
+                                    textDecoration: 'underline',
+                                  },
+                                }}
+                              >
+                                Switch to classic Erase & Fill
+                              </Button>
+                            </Box>
                           </Box>
                         </>
                       ) : (
                         <>
                           {/* Classic Tools Interface */}
                           <Box sx={{ mb: 2 }}>
+                            {/* Back to Magic Edit button */}
+                            <Button
+                              variant="outlined"
+                              fullWidth
+                              onClick={() => {
+                                setPromptEnabled('edit');
+                                toggleDrawingMode('captions');
+                              }}
+                              startIcon={<AutoFixHighRounded />}
+                              sx={{
+                                mb: 2,
+                                py: 1.25,
+                                borderColor: 'primary.main',
+                                color: 'primary.main',
+                                fontWeight: 600,
+                                '&:hover': {
+                                  borderColor: 'primary.dark',
+                                  backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                                },
+                              }}
+                            >
+                              Back to Magic Edit
+                            </Button>
+
+                            {/* Login prompt for unauthenticated users */}
+                            {(!user || user?.userDetails?.credits <= 0) && (
+                              <Box sx={{
+                                p: 2,
+                                borderRadius: 2,
+                                bgcolor: 'rgba(76, 175, 80, 0.08)',
+                                border: '1px solid rgba(76, 175, 80, 0.3)',
+                                mb: 2,
+                                textAlign: 'center'
+                              }}>
+                                <Typography variant="body2" sx={{ mb: 1.5, color: 'rgb(46, 125, 50)', fontWeight: 600 }}>
+                                  {!user ? 'Sign in to use Magic Tools' : 'Get more credits for Magic Tools'}
+                                </Typography>
+                                <Button
+                                  variant="contained"
+                                  fullWidth
+                                  component={Link}
+                                  to="/pro"
+                                  sx={{
+                                    bgcolor: 'rgb(76, 175, 80)',
+                                    color: '#fff',
+                                    fontWeight: 600,
+                                    py: 1,
+                                    '&:hover': {
+                                      bgcolor: 'rgb(56, 142, 60)',
+                                    }
+                                  }}
+                                >
+                                  {!user ? 'Sign In / Sign Up' : 'Get More Credits'}
+                                </Button>
+                              </Box>
+                            )}
+
                             <Box sx={{
                               p: 1.5,
                               borderRadius: 1,
