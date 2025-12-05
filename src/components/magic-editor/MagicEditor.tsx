@@ -673,7 +673,15 @@ export default function MagicEditor({
             </Box>
 
             {/* Prompt inside the combined unit on mobile */}
-            <Box sx={{ display: { xs: 'block', md: 'none' }, p: 0, mt: 1.5, order: { xs: 3, md: 'initial' }, flexShrink: 0 }}>
+          <Box
+            sx={{
+              display: { xs: 'block', md: 'none' },
+              p: 0,
+              mt: 1.5,
+              order: { xs: 3, md: 'initial' },
+              flexShrink: 0,
+            }}
+          >
               <TextField
                 fullWidth
                 placeholder={placeholderText}
@@ -837,7 +845,12 @@ export default function MagicEditor({
           }}
         >
           {/* Prompt input - chat-style */}
-          <Box sx={{ display: { xs: 'none', md: 'block' }, mb: 2 }}>
+          <Box
+            sx={{
+              display: { xs: 'none', md: 'block' },
+              mb: 2,
+            }}
+          >
             <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.5, mb: 0.75, display: 'block' }}>
               New Edit
             </Typography>
@@ -969,9 +982,21 @@ export default function MagicEditor({
                   }}
                 >
                   {[...history].slice().reverse().map((h, idx, arr) => {
-                    const isCurrent = internalSrc === h.src;
+                    const isCurrent = internalSrc === h.src && !h.pending;
                     const canSelect = !processing && !h.pending && !isCurrent;
                     const versionNum = arr.length - idx;
+                    const background = h.pending
+                      ? 'rgba(139,92,199,0.08)'
+                      : isCurrent
+                        ? 'primary.main'
+                        : 'rgba(0,0,0,0.02)';
+                    const borderColor = h.pending
+                      ? 'primary.light'
+                      : isCurrent
+                        ? 'primary.main'
+                        : 'divider';
+                    const borderStyle = h.pending ? 'dotted' : 'solid';
+                    const borderWidth = h.pending ? 2 : 1;
                     return (
                       <Box
                         key={h.id}
@@ -985,15 +1010,18 @@ export default function MagicEditor({
                           alignItems: 'center',
                           p: 1,
                           borderRadius: 2,
-                          bgcolor: isCurrent ? 'primary.main' : 'background.paper',
+                          bgcolor: background,
+                          border: `${borderWidth}px`,
+                          borderStyle,
+                          borderColor,
                           boxShadow: isCurrent
                             ? '0 4px 14px rgba(139,92,199,0.35)'
-                            : '0 1px 4px rgba(0,0,0,0.06)',
+                            : '0 1px 4px rgba(0,0,0,0.08)',
                           cursor: canSelect ? 'pointer' : 'default',
                           transition: 'all 0.2s ease',
                           transform: isCurrent ? 'scale(1)' : 'scale(1)',
                           '&:hover': canSelect ? {
-                            bgcolor: 'background.paper',
+                            bgcolor: 'rgba(0,0,0,0.04)',
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                             transform: 'translateY(-1px)',
                           } : {},
@@ -1054,7 +1082,11 @@ export default function MagicEditor({
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
-                              color: isCurrent ? 'primary.contrastText' : 'text.primary',
+                                  color: h.pending
+                                    ? 'primary.main'
+                                    : isCurrent
+                                      ? 'primary.contrastText'
+                                      : 'text.primary',
                               lineHeight: 1.3,
                             }}
                           >
