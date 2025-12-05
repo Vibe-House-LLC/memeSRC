@@ -2452,6 +2452,60 @@ export const onDeleteSearchFilterGroup = /* GraphQL */ `
     }
   }
 `;
+export const onCreateMagicEditHistory = /* GraphQL */ `
+  subscription OnCreateMagicEditHistory(
+    $filter: ModelSubscriptionMagicEditHistoryFilterInput
+    $owner: String
+  ) {
+    onCreateMagicEditHistory(filter: $filter, owner: $owner) {
+      id
+      prompt
+      imageKey
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateMagicEditHistory = /* GraphQL */ `
+  subscription OnUpdateMagicEditHistory(
+    $filter: ModelSubscriptionMagicEditHistoryFilterInput
+    $owner: String
+  ) {
+    onUpdateMagicEditHistory(filter: $filter, owner: $owner) {
+      id
+      prompt
+      imageKey
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteMagicEditHistory = /* GraphQL */ `
+  subscription OnDeleteMagicEditHistory(
+    $filter: ModelSubscriptionMagicEditHistoryFilterInput
+    $owner: String
+  ) {
+    onDeleteMagicEditHistory(filter: $filter, owner: $owner) {
+      id
+      prompt
+      imageKey
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const onCreateSeriesContributors = /* GraphQL */ `
   subscription OnCreateSeriesContributors(
     $filter: ModelSubscriptionSeriesContributorsFilterInput

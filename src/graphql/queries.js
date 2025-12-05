@@ -1629,6 +1629,114 @@ export const searchFilterGroupsByOwner = /* GraphQL */ `
     }
   }
 `;
+export const getMagicEditHistory = /* GraphQL */ `
+  query GetMagicEditHistory($id: ID!) {
+    getMagicEditHistory(id: $id) {
+      id
+      prompt
+      imageKey
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listMagicEditHistories = /* GraphQL */ `
+  query ListMagicEditHistories(
+    $filter: ModelMagicEditHistoryFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listMagicEditHistories(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        prompt
+        imageKey
+        metadata
+        status
+        createdAt
+        owner
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const magicEditHistoriesByStatus = /* GraphQL */ `
+  query MagicEditHistoriesByStatus(
+    $status: String!
+    $createdAt: ModelStringKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelMagicEditHistoryFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    magicEditHistoriesByStatus(
+      status: $status
+      createdAt: $createdAt
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        prompt
+        imageKey
+        metadata
+        status
+        createdAt
+        owner
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const magicEditHistoriesByOwner = /* GraphQL */ `
+  query MagicEditHistoriesByOwner(
+    $owner: String!
+    $createdAt: ModelStringKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelMagicEditHistoryFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    magicEditHistoriesByOwner(
+      owner: $owner
+      createdAt: $createdAt
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        prompt
+        imageKey
+        metadata
+        status
+        createdAt
+        owner
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getSeriesContributors = /* GraphQL */ `
   query GetSeriesContributors($id: ID!) {
     getSeriesContributors(id: $id) {

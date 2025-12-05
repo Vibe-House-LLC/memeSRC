@@ -432,3 +432,21 @@ type SearchFilterGroup @model @auth(
     @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
     @index(name: "byOwner", queryField: "searchFilterGroupsByOwner")
 }
+
+type MagicEditHistory @model @auth(
+  rules: [
+    { allow: owner },
+    { allow: groups, groups: ["admins"], operations: [create, read, delete] }
+  ]
+) {
+  id: ID!
+  prompt: String,
+  imageKey: String,
+  metadata: AWSJSON,
+  status: String @default(value: "unreviewed") @index(name: "byStatus", sortKeyFields: ["createdAt"], queryField: "magicEditHistoriesByStatus")
+  createdAt: AWSDateTime!
+  owner: String
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
+    @index(name: "byOwner", sortKeyFields: ["createdAt"], queryField: "magicEditHistoriesByOwner")
+}
+

@@ -2545,6 +2545,60 @@ export const deleteSearchFilterGroup = /* GraphQL */ `
     }
   }
 `;
+export const createMagicEditHistory = /* GraphQL */ `
+  mutation CreateMagicEditHistory(
+    $input: CreateMagicEditHistoryInput!
+    $condition: ModelMagicEditHistoryConditionInput
+  ) {
+    createMagicEditHistory(input: $input, condition: $condition) {
+      id
+      prompt
+      imageKey
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateMagicEditHistory = /* GraphQL */ `
+  mutation UpdateMagicEditHistory(
+    $input: UpdateMagicEditHistoryInput!
+    $condition: ModelMagicEditHistoryConditionInput
+  ) {
+    updateMagicEditHistory(input: $input, condition: $condition) {
+      id
+      prompt
+      imageKey
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteMagicEditHistory = /* GraphQL */ `
+  mutation DeleteMagicEditHistory(
+    $input: DeleteMagicEditHistoryInput!
+    $condition: ModelMagicEditHistoryConditionInput
+  ) {
+    deleteMagicEditHistory(input: $input, condition: $condition) {
+      id
+      prompt
+      imageKey
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const createSeriesContributors = /* GraphQL */ `
   mutation CreateSeriesContributors(
     $input: CreateSeriesContributorsInput!
