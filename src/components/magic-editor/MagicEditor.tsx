@@ -215,7 +215,9 @@ export default function MagicEditor({
   };
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen] = useState(true);
-  const [nextId, setNextId] = useState(1);
+  // Use a ref for ID counter to ensure synchronous, unique IDs even when
+  // multiple functions (commitImage, addPendingEdit) run in the same render cycle
+  const nextIdRef = useRef(1);
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null);
   const initialRecordedRef = useRef(false);
   const originalSrcRef = useRef<string>(imageSrc);
@@ -293,6 +295,7 @@ export default function MagicEditor({
     originalSrcRef.current = imageSrc;
     // reset history when a new image arrives
     setHistory([]);
+    nextIdRef.current = 1; // Reset ID counter along with history
     initialRecordedRef.current = false;
     setHasCompletedEdit(false);
   }, [imageSrc]);
@@ -313,11 +316,14 @@ export default function MagicEditor({
   }, [prompt, promptFocused, onPromptStateChange]);
 
   const commitImage = useCallback((src: string, label: string, source: HistoryEntry['source'], extra?: { prompt?: string; pending?: boolean; progress?: number }) => {
+    // Get a unique ID synchronously from the ref
+    const id = nextIdRef.current;
+    nextIdRef.current += 1;
     setImage(src);
     setHistory((prev) => {
       const isFirst = prev.length === 0 && (source === 'upload' || source === 'library' || source === 'original');
       const entry: HistoryEntry = {
-        id: nextId,
+        id,
         src,
         label: isFirst ? 'ORIGINAL PHOTO' : label,
         source: isFirst ? 'original' : source,
@@ -331,12 +337,14 @@ export default function MagicEditor({
       // cap history to last max entries
       return list.length > max ? list.slice(list.length - max) : list;
     });
-    setNextId((n) => n + 1);
-  }, [nextId, setImage]);
+  }, [setImage]);
 
   // Add a pending edit entry and return its id
   const addPendingEdit = useCallback((promptText: string): number => {
-    const id = nextId;
+    // Get a unique ID synchronously from the ref to avoid duplicate IDs
+    // when multiple functions run in the same React render cycle
+    const id = nextIdRef.current;
+    nextIdRef.current += 1;
     const baseSrc = internalSrc ?? '';
     setHistory((prev) => [
       ...prev,
@@ -351,9 +359,8 @@ export default function MagicEditor({
         createdAt: Date.now(),
       },
     ]);
-    setNextId((n) => n + 1);
     return id;
-  }, [internalSrc, nextId]);
+  }, [internalSrc]);
 
   // Update a history entry by id
   const updateHistoryEntry = useCallback((id: number, patch: Partial<HistoryEntry>) => {
