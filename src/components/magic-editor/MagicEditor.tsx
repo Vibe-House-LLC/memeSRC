@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Send, AutoFixHighRounded, Close, Check } from '@mui/icons-material';
+import { Send, AutoFixHighRounded, Close, Check, AddPhotoAlternate } from '@mui/icons-material';
 import { API, graphqlOperation } from 'aws-amplify';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - generated JS module
@@ -135,6 +135,8 @@ async function ensureImageDataUrl(src: string): Promise<string> {
   }
 }
 
+const MAX_REFERENCE_IMAGES = 4;
+
 export interface MagicEditorProps {
   imageSrc: string; // required input photo
   onSave?: (finalSrc: string) => void; // commit edited image
@@ -158,6 +160,7 @@ export interface MagicEditorProps {
   showActions?: boolean;
   showEditor?: boolean;
   showHistory?: boolean;
+  initialReferences?: string[];
 }
 
 export default function MagicEditor({
@@ -180,6 +183,7 @@ export default function MagicEditor({
   showActions = true,
   showEditor = true,
   showHistory = true,
+  initialReferences = [],
 }: MagicEditorProps) {
   const [internalSrc, setInternalSrc] = useState<string | null>(imageSrc ?? null);
   const [prompt, setPrompt] = useState<string>(defaultPrompt);
@@ -203,8 +207,10 @@ export default function MagicEditor({
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const [hasCompletedEdit, setHasCompletedEdit] = useState(false);
   const [originalAspectRatio, setOriginalAspectRatio] = useState<number | null>(null);
+  const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const mobileInputRef = useRef<HTMLInputElement | null>(null);
   const desktopInputRef = useRef<HTMLInputElement | null>(null);
+  const referenceInputRef = useRef<HTMLInputElement | null>(null);
   type HistoryEntry = {
     id: number;
     src: string;
@@ -344,7 +350,8 @@ export default function MagicEditor({
     initialRecordedRef.current = false;
     setHasCompletedEdit(false);
     setOriginalAspectRatio(null); // Reset aspect ratio for new image
-  }, [imageSrc]);
+    setReferenceImages((initialReferences || []).slice(0, MAX_REFERENCE_IMAGES));
+  }, [imageSrc, initialReferences]);
 
   // Capture original image aspect ratio to prevent layout shift when switching versions
   useEffect(() => {
@@ -455,6 +462,40 @@ export default function MagicEditor({
     setPromptFocused(false);
   }, []);
 
+  const normalizeImageForApi = useCallback(async (src: string): Promise<string> => {
+    const normalized = await ensureImageDataUrl(src);
+    try {
+      const fetched = await fetch(normalized as string);
+      const srcBlob = await fetched.blob();
+      const resizedBlob = await resizeImage(srcBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
+      return await blobToDataUrl(resizedBlob);
+    } catch {
+      return normalized;
+    }
+  }, []);
+
+  const handleReferenceFiles = useCallback(async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList).slice(0, MAX_REFERENCE_IMAGES);
+    const newImages: string[] = [];
+    for (const file of files) {
+      try {
+        newImages.push(await blobToDataUrl(file));
+      } catch (err) {
+        console.error('Failed to read reference image', err);
+      }
+    }
+    if (newImages.length === 0) return;
+    setReferenceImages((prev) => {
+      const merged = [...prev, ...newImages];
+      return merged.slice(0, MAX_REFERENCE_IMAGES);
+    });
+  }, []);
+
+  const removeReferenceImage = useCallback((index: number) => {
+    setReferenceImages((prev) => prev.filter((_, idx) => idx !== index));
+  }, []);
+
   // No upload or library selection inside the editor
 
   const handleApply = useCallback(async () => {
@@ -470,20 +511,26 @@ export default function MagicEditor({
     optimisticSpendCredit();
     // Keep prompt visible while processing so users see what's loading
     try {
-      // Normalize current image into a PNG/JPEG data URL, then enforce max dimensions
-      const imageForApi = await ensureImageDataUrl(internalSrc);
-      let payloadImage = imageForApi;
-      try {
-        const fetched = await fetch(imageForApi as string);
-        const srcBlob = await fetched.blob();
-        const resizedBlob = await resizeImage(srcBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-        payloadImage = await blobToDataUrl(resizedBlob);
-      } catch {
-        // If resizing fails for any reason, fall back to normalized image
+      const payloadImage = await normalizeImageForApi(internalSrc);
+      let referencePayloads: string[] = [];
+      if (referenceImages.length > 0) {
+        const prepared: string[] = [];
+        for (const ref of referenceImages.slice(0, MAX_REFERENCE_IMAGES)) {
+          try {
+            prepared.push(await normalizeImageForApi(ref));
+          } catch (err) {
+            console.error('Failed to prepare reference image', err);
+          }
+        }
+        referencePayloads = prepared;
       }
       // 1) Kick off backend job via existing /inpaint route, maskless
       const resp: any = await API.post('publicapi', '/inpaint', {
-        body: { image: payloadImage, prompt: currentPrompt },
+        body: {
+          image: payloadImage,
+          prompt: currentPrompt,
+          ...(referencePayloads.length ? { references: referencePayloads } : {}),
+        },
       });
       const magicResultId: string = resp?.magicResultId;
       const updatedCredits = Number(resp?.credits);
@@ -588,7 +635,7 @@ export default function MagicEditor({
       // In case of early failures or mismatched optimistic updates, refresh balance
       void refreshCreditsFromBackend();
     }
-  }, [addPendingEdit, applyCreditPatch, internalSrc, onResult, optimisticSpendCredit, processing, prompt, refreshCreditsFromBackend, setImage, updateHistoryEntry]);
+  }, [addPendingEdit, applyCreditPatch, internalSrc, normalizeImageForApi, onResult, optimisticSpendCredit, processing, prompt, referenceImages, refreshCreditsFromBackend, setImage, updateHistoryEntry]);
 
   useEffect(() => {
     if (!autoStart) return;
@@ -620,6 +667,19 @@ export default function MagicEditor({
         overflowX: 'hidden',
       }}
     >
+      <input
+        ref={referenceInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          void handleReferenceFiles(e.target.files);
+          if (referenceInputRef.current) {
+            referenceInputRef.current.value = '';
+          }
+        }}
+      />
       {/* Magic Editor subtitle; can be hidden by parent
       {showHeader && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -828,6 +888,60 @@ export default function MagicEditor({
                 }}
               />
             </Box>
+            <Box
+              sx={{
+                display: { xs: 'flex', md: 'none' },
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 1,
+                mt: 0.75,
+              }}
+            >
+              {referenceImages.map((src, idx) => (
+                <Box key={`${src}-${idx}`} sx={{ position: 'relative' }}>
+                  <Box
+                    component="img"
+                    src={src}
+                    alt={`Ref ${idx + 1}`}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      objectFit: 'cover',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  />
+                  <IconButton
+                    size="small"
+                    aria-label="Remove reference"
+                    onClick={() => removeReferenceImage(idx)}
+                    sx={{
+                      position: 'absolute',
+                      top: -10,
+                      right: -10,
+                      bgcolor: 'background.paper',
+                      boxShadow: 1,
+                      '&:hover': { bgcolor: 'grey.100' },
+                    }}
+                  >
+                    <Close fontSize="small" />
+                  </IconButton>
+                </Box>
+              ))}
+              {referenceImages.length < MAX_REFERENCE_IMAGES && (
+                <Button
+                  variant="text"
+                  size="small"
+                  startIcon={<AddPhotoAlternate />}
+                  onClick={() => referenceInputRef.current?.click()}
+                  disabled={processing}
+                  sx={{ minWidth: 0, p: 0.5 }}
+                >
+                  Add ref
+                </Button>
+              )}
+            </Box>
 
             {/* Save/Cancel inside the combined unit on mobile */}
             {showActions && (
@@ -1006,6 +1120,56 @@ export default function MagicEditor({
               inputProps={{ 'aria-label': 'Magic edit prompt' }}
             />
           </Box>
+
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
+            {referenceImages.map((src, idx) => (
+              <Box key={`${src}-${idx}`} sx={{ position: 'relative' }}>
+                <Box
+                  component="img"
+                  src={src}
+                  alt={`Ref ${idx + 1}`}
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    objectFit: 'cover',
+                    borderRadius: 1.5,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                />
+                <IconButton
+                  size="small"
+                  aria-label="Remove reference"
+                  onClick={() => removeReferenceImage(idx)}
+                  sx={{
+                    position: 'absolute',
+                    top: -10,
+                    right: -10,
+                    bgcolor: 'background.paper',
+                    boxShadow: 1,
+                    '&:hover': { bgcolor: 'grey.100' },
+                  }}
+                >
+                  <Close fontSize="small" />
+                </IconButton>
+              </Box>
+            ))}
+            {referenceImages.length < MAX_REFERENCE_IMAGES && (
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<AddPhotoAlternate />}
+                onClick={() => referenceInputRef.current?.click()}
+                disabled={processing}
+                sx={{ minWidth: 0, px: 0.5 }}
+              >
+                Add ref
+              </Button>
+            )}
+            <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+              Optional refs stay secondary to the main image.
+            </Typography>
+          </Stack>
 
           {/* Versions list */}
           {showHistory && history.length > 0 && (

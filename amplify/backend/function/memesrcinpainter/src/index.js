@@ -32,6 +32,8 @@ const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const uuid = require('uuid');
 
+const MAX_REFERENCE_IMAGES = 4;
+
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
@@ -44,6 +46,7 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body);
     const prompt = body.prompt;
     const hasMask = Boolean(body.mask);
+    const references = Array.isArray(body.references) ? body.references.filter((src) => typeof src === 'string' && src) : [];
 
     console.log(JSON.stringify(process.env))
 
@@ -89,6 +92,21 @@ exports.handler = async (event) => {
         ContentType: 'image/png',
     }));
 
+    const referenceKeys = [];
+    if (!hasMask && references.length) {
+        const referencesToUpload = references.slice(0, MAX_REFERENCE_IMAGES);
+        for (const ref of referencesToUpload) {
+            const key = `tmp/${uuid.v4()}.png`;
+            await s3Client.send(new PutObjectCommand({
+                Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+                Key: key,
+                Body: Buffer.from(String(ref).split(",")[1] || '', 'base64'),
+                ContentType: 'image/png',
+            }));
+            referenceKeys.push(key);
+        }
+    }
+
     let maskKey = undefined;
     if (hasMask) {
         maskKey = `tmp/${uuid.v4()}.png`;
@@ -124,6 +142,7 @@ exports.handler = async (event) => {
             imageKey,
             // Only include maskKey if present; background will branch accordingly
             ...(maskKey ? { maskKey } : {}),
+            ...(referenceKeys.length ? { referenceKeys } : {}),
             prompt
         })
     }));

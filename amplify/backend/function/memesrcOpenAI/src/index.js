@@ -28,6 +28,7 @@ const uuid = require('uuid');
 const axios = require('axios');
 const FormData = require('form-data');
 const { Buffer } = require('buffer');
+const MAX_REFERENCE_IMAGES = 4;
 // Gemini client (lazy dependency; only used when no mask is provided)
 let GoogleGenerativeAI;
 try {
@@ -76,11 +77,12 @@ exports.handler = async (event) => {
         bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
     });
 
-    const { magicResultId, imageKey, maskKey, prompt } = event || {};
+    const { magicResultId, imageKey, maskKey, prompt, referenceKeys } = event || {};
     console.log('[Magic] Params', {
         magicResultId,
         hasImageKey: Boolean(imageKey),
         hasMaskKey: Boolean(maskKey),
+        referenceCount: Array.isArray(referenceKeys) ? referenceKeys.length : 0,
         promptLength: (prompt || '').length,
     });
 
@@ -134,20 +136,54 @@ exports.handler = async (event) => {
 
         // Generate
         const promptText = prompt || 'Enhance this image';
+        const referencesToLoad = Array.isArray(referenceKeys) ? referenceKeys.slice(0, MAX_REFERENCE_IMAGES) : [];
+        const referenceImages = [];
+        for (const key of referencesToLoad) {
+            try {
+                const refObj = await s3Client.send(new GetObjectCommand({
+                    Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+                    Key: key,
+                }));
+                if (!refObj?.Body) continue;
+                const refBuffer = await streamToBuffer(refObj.Body);
+                referenceImages.push({
+                    key,
+                    data: refBuffer.toString('base64'),
+                    mimeType: refObj.ContentType || 'image/png',
+                    size: refBuffer.length,
+                });
+            } catch (err) {
+                console.warn('[Gemini] Failed to load reference image', { key, message: err?.message });
+            }
+        }
+
+        const contentParts = [
+            { text: 'Base image to edit. Keep core subjects unless instructions say otherwise.' },
+            { inlineData: { data: imageBase64, mimeType } },
+        ];
+
+        if (referenceImages.length) {
+            contentParts.push({ text: `Reference photos (${referenceImages.length}). Use them for style/context; do not overwrite the base content unless requested.` });
+            referenceImages.forEach((ref, idx) => {
+                contentParts.push({ text: `Reference ${idx + 1}` });
+                contentParts.push({ inlineData: { data: ref.data, mimeType: ref.mimeType || 'image/png' } });
+            });
+        }
+
+        contentParts.push({ text: `User instructions: ${promptText}` });
+
         console.log('[Gemini] Invoking model', {
             model: 'gemini-2.5-flash-image-preview',
             promptPreview: String(promptText).slice(0, 120),
             generationConfig: { responseModalities: ['IMAGE'], temperature: 0 },
+            referenceCount: referenceImages.length,
         });
         let response;
         try {
             response = await model.generateContent({
                 contents: [{
                     role: 'user',
-                    parts: [
-                        { text: promptText },
-                        { inlineData: { data: imageBase64, mimeType } },
-                    ],
+                    parts: contentParts,
                 }],
                 generationConfig: {
                     responseModalities: ['IMAGE'],

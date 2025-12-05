@@ -76,6 +76,7 @@ const StyledCardMedia = styled('img')`
 const MAGIC_IMAGE_SIZE = 1024;
 const MAGIC_RESUME_STORAGE_KEY = 'v2-editor-magic-resume';
 const MAGIC_RESUME_MAX_AGE_MS = 10 * 60 * 1000;
+const MAGIC_MAX_REFERENCES = 4;
 
 
 const EditorSurroundingFrameThumbnail = ({
@@ -285,6 +286,7 @@ const EditorPage = ({ shows }) => {
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   // const [drawingMode, setDrawingMode] = useState(false);
   const [magicPrompt, setMagicPrompt] = useState('')
+  const [magicReferences, setMagicReferences] = useState([])
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -322,6 +324,7 @@ const EditorPage = ({ shows }) => {
 
   const magicToolsButtonRef = useRef();
   const magicPromptInputRef = useRef();
+  const magicReferenceInputRef = useRef();
   const textFieldRefs = useRef({});
   const selectionCacheRef = useRef({});
   const pendingMagicResumeRef = useRef(null);
@@ -1884,6 +1887,36 @@ const EditorPage = ({ shows }) => {
     }
   };
 
+  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleMagicReferenceFiles = useCallback(async (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList).slice(0, MAGIC_MAX_REFERENCES);
+    const reads = await Promise.all(files.map(async (file) => {
+      try {
+        return await readFileAsDataUrl(file);
+      } catch (err) {
+        console.error('Failed to read reference image', err);
+        return null;
+      }
+    }));
+    const filtered = reads.filter(Boolean);
+    if (!filtered.length) return;
+    setMagicReferences((prev) => {
+      const merged = [...prev, ...filtered];
+      return merged.slice(0, MAGIC_MAX_REFERENCES);
+    });
+  }, []);
+
+  const removeMagicReference = useCallback((index) => {
+    setMagicReferences((prev) => prev.filter((_, idx) => idx !== index));
+  }, []);
+
   const handleMagicEdit = async () => {
     if (!magicPrompt || magicPrompt.trim().length === 0) {
       setSeverity('error');
@@ -1922,6 +1955,7 @@ const EditorPage = ({ shows }) => {
           layerRawText,
           layerActiveFormats,
           magicPrompt,
+          magicReferences,
           sourceScale: scale,
         };
         pendingMagicResumeRef.current = snapshot;
@@ -1943,6 +1977,7 @@ const EditorPage = ({ shows }) => {
             resumeKey,
             sourceScale: scale,
           },
+          references: magicReferences,
         },
       });
     } catch (error) {
@@ -3502,6 +3537,68 @@ const EditorPage = ({ shows }) => {
                                   opacity: 1,
                                   fontWeight: 500,
                                 },
+                              }}
+                            />
+                            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 0.75 }}>
+                              {magicReferences.map((src, idx) => (
+                                <Box key={`${src}-${idx}`} sx={{ position: 'relative' }}>
+                                  <Box
+                                    component="img"
+                                    src={src}
+                                    alt={`Ref ${idx + 1}`}
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      objectFit: 'cover',
+                                      borderRadius: 1,
+                                      border: '1px solid',
+                                      borderColor: 'divider',
+                                    }}
+                                  />
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Remove reference"
+                                    onClick={() => removeMagicReference(idx)}
+                                    sx={{
+                                      position: 'absolute',
+                                      top: -10,
+                                      right: -10,
+                                      bgcolor: 'background.paper',
+                                      boxShadow: 1,
+                                      '&:hover': { bgcolor: 'grey.100' },
+                                    }}
+                                  >
+                                    <Close fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              ))}
+                              {magicReferences.length < MAGIC_MAX_REFERENCES && (
+                                <Button
+                                  variant="text"
+                                  size="small"
+                                  startIcon={<AddPhotoAlternate />}
+                                  onClick={() => magicReferenceInputRef.current?.click()}
+                                  disabled={loadingInpaintingResult}
+                                  sx={{ minWidth: 0, px: 0.5 }}
+                                >
+                                  Add ref
+                                </Button>
+                              )}
+                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                Optional refs; main image stays primary.
+                              </Typography>
+                            </Box>
+                            <input
+                              ref={magicReferenceInputRef}
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              hidden
+                              onChange={(e) => {
+                                void handleMagicReferenceFiles(e.target.files);
+                                if (magicReferenceInputRef.current) {
+                                  magicReferenceInputRef.current.value = '';
+                                }
                               }}
                             />
 

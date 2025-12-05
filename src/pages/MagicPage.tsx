@@ -36,6 +36,7 @@ export default function MagicPage() {
   const [hasCompletedEdit, setHasCompletedEdit] = useState(false);
   const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
   const magicEditContext = useMemo(() => location?.state?.magicEditContext || location?.state?.collageEditContext, [location?.state]);
+  const MAGIC_MAX_REFERENCES = 4;
 
   // Gate this page to admins only
   useEffect(() => {
@@ -64,6 +65,14 @@ export default function MagicPage() {
   const autoStartKeyFromState = useMemo(
     () => location?.state?.magicAutoStartKey ?? magicEditContext?.resumeKey,
     [location?.state, magicEditContext]
+  );
+  const initialReferencesFromState = useMemo(
+    () => {
+      const refs = location?.state?.references as unknown;
+      if (!Array.isArray(refs)) return [];
+      return refs.filter((r) => typeof r === 'string').slice(0, MAGIC_MAX_REFERENCES);
+    },
+    [location?.state, MAGIC_MAX_REFERENCES]
   );
 
   const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
@@ -516,6 +525,7 @@ export default function MagicPage() {
           variationCount={variationCountFromState}
           autoStart={autoStartFromState}
           autoStartKey={autoStartKeyFromState}
+          initialReferences={initialReferencesFromState}
           onImageChange={setCurrentSrc}
           onProcessingChange={setProcessing}
           onPromptStateChange={setPromptState}
