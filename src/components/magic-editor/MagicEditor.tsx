@@ -208,6 +208,8 @@ export default function MagicEditor({
   const [hasCompletedEdit, setHasCompletedEdit] = useState(false);
   const [originalAspectRatio, setOriginalAspectRatio] = useState<number | null>(null);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const referenceImagesRef = useRef<string[]>([]);
+  const [referencesHydrated, setReferencesHydrated] = useState((initialReferences || []).length === 0);
   const mobileInputRef = useRef<HTMLInputElement | null>(null);
   const desktopInputRef = useRef<HTMLInputElement | null>(null);
   const referenceInputRef = useRef<HTMLInputElement | null>(null);
@@ -352,6 +354,13 @@ export default function MagicEditor({
     setOriginalAspectRatio(null); // Reset aspect ratio for new image
     setReferenceImages((initialReferences || []).slice(0, MAX_REFERENCE_IMAGES));
   }, [imageSrc, initialReferences]);
+
+  // Keep a live ref of references for immediate use in callbacks and track hydration
+  useEffect(() => {
+    referenceImagesRef.current = referenceImages;
+    const hasInitialRefs = (initialReferences || []).length > 0;
+    setReferencesHydrated(hasInitialRefs ? referenceImages.length > 0 : true);
+  }, [referenceImages, initialReferences]);
 
   // Capture original image aspect ratio to prevent layout shift when switching versions
   useEffect(() => {
@@ -513,9 +522,10 @@ export default function MagicEditor({
     try {
       const payloadImage = await normalizeImageForApi(internalSrc);
       let referencePayloads: string[] = [];
-      if (referenceImages.length > 0) {
+      const currentReferenceImages = referenceImagesRef.current || [];
+      if (currentReferenceImages.length > 0) {
         const prepared: string[] = [];
-        for (const ref of referenceImages.slice(0, MAX_REFERENCE_IMAGES)) {
+        for (const ref of currentReferenceImages.slice(0, MAX_REFERENCE_IMAGES)) {
           try {
             prepared.push(await normalizeImageForApi(ref));
           } catch (err) {
@@ -639,13 +649,14 @@ export default function MagicEditor({
 
   useEffect(() => {
     if (!autoStart) return;
+    if (!referencesHydrated) return;
     const token = autoStartKey ?? defaultPrompt ?? true;
     if (autoStartTriggerRef.current === token) return;
     if (!canSend) return;
     autoStartTriggerRef.current = token;
     blurPromptInputs();
     void handleApply();
-  }, [autoStart, autoStartKey, canSend, defaultPrompt, blurPromptInputs, handleApply]);
+  }, [autoStart, autoStartKey, canSend, defaultPrompt, blurPromptInputs, handleApply, referencesHydrated]);
 
   useEffect(() => {
     if (!autoStart) {
