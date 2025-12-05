@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Typography, CardActionArea, Grid, Paper, Input, Chip, Alert } from '@mui/material';
+import { Container, Typography, CardActionArea, Grid, Paper, Input, Chip, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -8,43 +9,43 @@ import BasePage from './BasePage';
 
 export default function EditorNewProjectPage() {
   const navigate = useNavigate();
+  const [uploadChoiceOpen, setUploadChoiceOpen] = useState(false);
+  const [pendingUpload, setPendingUpload] = useState(null);
+
+  const resetUploadState = () => {
+    setUploadChoiceOpen(false);
+    setPendingUpload(null);
+  };
 
   const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
+    const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
+      const inputEl = event.target;
       reader.onloadend = async () => {
         const base64data = reader.result;
-  
-        // Create an EditorProject object in GraphQL with an empty state value
-        try {
-          // TODO: consider uploading to S3 and doing the project loading/saving stuff. 
-          // const projectInput = {
-          //   title: "Same Project Saving",
-          //   state: JSON.stringify({}) // empty state value
-          // };
-  
-          // const result = await API.graphql(graphqlOperation(createEditorProject, { input: projectInput }));
-          // const newProjectId = result.data.createEditorProject.id;
-
-          // // Upload 'preview' to Storage
-          // const key = `projects/${newProjectId}-preview.jpg`;
-          // await Storage.put(key, file, {
-          //   level: 'protected', 
-          //   contentType: file.type
-          // });
-
-          // // Navigate to the editor with the newProjectId while passing the uploaded image data
-          // navigate(`/editor/project/${newProjectId}`, { state: { uploadedImage: base64data } });
-
-          navigate(`/editor/project/new`, { state: { uploadedImage: base64data } });
-  
-        } catch (error) {
-          console.error('Failed to create an EditorProject or upload to Storage:', error);
+        if (typeof base64data === 'string') {
+          setPendingUpload(base64data);
+          setUploadChoiceOpen(true);
+          if (inputEl?.value) {
+            inputEl.value = '';
+          }
         }
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleOpenAdvancedEditor = () => {
+    if (!pendingUpload) return;
+    navigate('/editor/project/new', { state: { uploadedImage: pendingUpload } });
+    resetUploadState();
+  };
+
+  const handleOpenMagicEditor = () => {
+    if (!pendingUpload) return;
+    navigate('/magic', { state: { initialSrc: pendingUpload } });
+    resetUploadState();
   };
 
   // Rest of your component rendering logic remains the same...
@@ -185,6 +186,43 @@ export default function EditorNewProjectPage() {
             </Paper>
           </Grid>
         </Grid>
+        <Dialog
+          open={uploadChoiceOpen}
+          onClose={resetUploadState}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle sx={{ fontWeight: 800 }}>
+            Open image in…
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary">
+              Choose where to edit your uploaded image.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Stack spacing={1.25} sx={{ width: '100%' }}>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={handleOpenAdvancedEditor}
+              >
+                Advanced Editor
+              </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                size="large"
+                onClick={handleOpenMagicEditor}
+              >
+                Magic Editor
+              </Button>
+              <Button onClick={resetUploadState} size="large" color="inherit">
+                Cancel
+              </Button>
+            </Stack>
+          </DialogActions>
+        </Dialog>
         </BasePage>
   );
 }
