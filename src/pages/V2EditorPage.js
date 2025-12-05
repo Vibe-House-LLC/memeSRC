@@ -1648,6 +1648,24 @@ const EditorPage = ({ shows }) => {
     const targetWidth = forceSquare ? MAGIC_IMAGE_SIZE : Math.max(1, Math.round(visibleWidth * exportScale));
     const targetHeight = forceSquare ? MAGIC_IMAGE_SIZE : Math.max(1, Math.round(visibleHeight * exportScale));
 
+    console.log('[Magic Edit Export Debug]', {
+      forceSquare,
+      canvasSize: { width: canvasWidth, height: canvasHeight },
+      canvasZoom: editor.canvas.getZoom(),
+      logicalCanvasSize: {
+        width: canvasWidth / (editor.canvas.getZoom() || 1),
+        height: canvasHeight / (editor.canvas.getZoom() || 1)
+      },
+      backgroundImage: {
+        natural: { width: naturalWidth, height: naturalHeight },
+        visible: { width: visibleWidth, height: visibleHeight },
+        position: { left: backgroundImage.left, top: backgroundImage.top },
+        scale: { x: backgroundImage.scaleX, y: backgroundImage.scaleY }
+      },
+      exportScale,
+      exportedSize: { width: targetWidth, height: targetHeight }
+    });
+
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = targetWidth;
     tempCanvas.height = targetHeight;
@@ -1882,49 +1900,6 @@ const EditorPage = ({ shows }) => {
     try {
       setOpenSelectResult(false);
 
-      const resolveBackgroundBounds = () => {
-        if (!editor?.canvas) {
-          return null;
-        }
-
-        const bg = editor.canvas.backgroundImage;
-        if (bg) {
-          try {
-            const width = typeof bg.getScaledWidth === 'function'
-              ? bg.getScaledWidth()
-              : (bg.width || editor.canvas.getWidth());
-            const height = typeof bg.getScaledHeight === 'function'
-              ? bg.getScaledHeight()
-              : (bg.height || editor.canvas.getHeight());
-            return {
-              width: width || editor.canvas.getWidth(),
-              height: height || editor.canvas.getHeight(),
-              left: typeof bg.left === 'number' ? bg.left : 0,
-              top: typeof bg.top === 'number' ? bg.top : 0,
-              originX: bg.originX || 'left',
-              originY: bg.originY || 'top',
-            };
-          } catch (err) {
-            console.warn('Unable to read existing background bounds', err);
-          }
-        }
-
-        if (editor.canvas) {
-          return {
-            width: editor.canvas.getWidth(),
-            height: editor.canvas.getHeight(),
-            left: 0,
-            top: 0,
-            originX: 'left',
-            originY: 'top',
-          };
-        }
-
-        return null;
-      };
-
-      const targetBounds = resolveBackgroundBounds();
-
       fabric.Image.fromURL(imgUrl, (returnedImage) => {
         if (!returnedImage) {
           throw new Error('Failed to load image from URL');
@@ -1941,37 +1916,69 @@ const EditorPage = ({ shows }) => {
         setSelectedImage();
         setReturnedImages([]);
 
-        const originalHeight = editor.canvas.getHeight();
-        const originalWidth = editor.canvas.getWidth();
-        const bounds = targetBounds || {
-          width: originalWidth,
-          height: originalHeight,
-          left: 0,
-          top: 0,
-          originX: 'left',
-          originY: 'top',
-        };
+        const bg = editor.canvas.backgroundImage;
+        const naturalWidth = returnedImage.width || MAGIC_IMAGE_SIZE;
+        const naturalHeight = returnedImage.height || MAGIC_IMAGE_SIZE;
 
-        const naturalWidth = returnedImage.width || returnedImage.getScaledWidth() || MAGIC_IMAGE_SIZE;
-        const naturalHeight = returnedImage.height || returnedImage.getScaledHeight() || MAGIC_IMAGE_SIZE;
+        let appliedScale;
+        let left = 0;
+        let top = 0;
+        let originX = 'left';
+        let originY = 'top';
 
-        const coverScale = Math.max(
-          bounds.width / Math.max(1, naturalWidth),
-          bounds.height / Math.max(1, naturalHeight),
-        );
-        const sourceScale = options?.sourceScale ? (1 / options.sourceScale) : null;
-        const appliedScale = sourceScale ? Math.max(coverScale, sourceScale) : coverScale;
+        if (options?.sourceScale) {
+          const targetWidth = editor.canvas.getWidth() / (editor.canvas.getZoom() || 1);
+          const targetHeight = editor.canvas.getHeight() / (editor.canvas.getZoom() || 1);
+
+          const sourceBasedScale = 1 / options.sourceScale;
+          const minCoverScale = Math.max(
+            targetWidth / naturalWidth,
+            targetHeight / naturalHeight
+          );
+
+          appliedScale = Math.max(sourceBasedScale, minCoverScale);
+
+          console.log('[Magic Edit Debug]', {
+            sourceScale: options.sourceScale,
+            sourceBasedScale,
+            minCoverScale,
+            appliedScale,
+            returnedImageSize: { width: naturalWidth, height: naturalHeight },
+            canvasZoom: editor.canvas.getZoom(),
+            canvasSize: {
+              width: editor.canvas.getWidth(),
+              height: editor.canvas.getHeight()
+            },
+            logicalSize: { width: targetWidth, height: targetHeight },
+            finalImageSize: {
+              width: naturalWidth * appliedScale,
+              height: naturalHeight * appliedScale
+            },
+            bgPosition: bg ? { left: bg.left, top: bg.top, width: bg.width, height: bg.height, scaleX: bg.scaleX, scaleY: bg.scaleY, originX: bg.originX, originY: bg.originY } : null
+          });
+
+          if (bg) {
+            left = typeof bg.left === 'number' ? bg.left : 0;
+            top = typeof bg.top === 'number' ? bg.top : 0;
+            originX = bg.originX || 'left';
+            originY = bg.originY || 'top';
+          }
+        } else {
+          const targetWidth = editor.canvas.getWidth() / (editor.canvas.getZoom() || 1);
+          const targetHeight = editor.canvas.getHeight() / (editor.canvas.getZoom() || 1);
+
+          appliedScale = Math.max(
+            targetWidth / naturalWidth,
+            targetHeight / naturalHeight
+          );
+        }
 
         returnedImage.scale(appliedScale);
-        const scaledWidth = returnedImage.getScaledWidth();
-        const scaledHeight = returnedImage.getScaledHeight();
-        const offsetX = bounds.left + (bounds.width - scaledWidth) / 2;
-        const offsetY = bounds.top + (bounds.height - scaledHeight) / 2;
         returnedImage.set({
-          left: offsetX,
-          top: offsetY,
-          originX: bounds.originX || 'left',
-          originY: bounds.originY || 'top',
+          left,
+          top,
+          originX,
+          originY,
         });
         editor.canvas.setBackgroundImage(returnedImage);
         setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
@@ -2143,22 +2150,46 @@ const EditorPage = ({ shows }) => {
     setEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
     setCanvasSizes(prevSizes => prevSizes.slice(0, prevSizes.length - 1));
 
+    const restoredSize = canvasSizes[canvasSizes.length - 2];
+
     // Load the previous state into the canvas
     editor.canvas.loadFromJSON(editorStates[editorStates.length - 2], () => {
-      editor.canvas.setWidth(canvasSizes[canvasSizes.length - 2].width);
-      editor.canvas.setHeight(canvasSizes[canvasSizes.length - 2].height);
+      const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
+      const scaleFactorX = desiredWidth / restoredSize.width;
+      const scaleFactorY = desiredHeight / restoredSize.height;
+      const scaleFactor = Math.min(scaleFactorX, scaleFactorY);
+
+      editor.canvas.setZoom(scaleFactor);
+      editor.canvas.setWidth(desiredWidth);
+      editor.canvas.setHeight(desiredHeight);
+
+      // Ensure background image fills the canvas
+      const bg = editor.canvas.backgroundImage;
+      if (bg) {
+        const bgNaturalWidth = bg.width || bg.getOriginalSize?.().width || 1;
+        const bgNaturalHeight = bg.height || bg.getOriginalSize?.().height || 1;
+        const requiredScaleX = restoredSize.width / bgNaturalWidth;
+        const requiredScaleY = restoredSize.height / bgNaturalHeight;
+        const requiredScale = Math.max(requiredScaleX, requiredScaleY);
+
+        bg.scaleX = requiredScale;
+        bg.scaleY = requiredScale;
+      }
+
       editor.canvas.renderAll();
       setCanvasObjects([...editor.canvas._objects]);
-      setWhiteSpaceHeight(canvasSizes[canvasSizes.length - 2].height - canvasSize.height);
+      setWhiteSpaceHeight(restoredSize.height - canvasSize.height);
     });
   }
 
   const redo = () => {
     if (futureStates.length === 0) return; // Ensure there's at least one state to go forward to
 
+    const restoredSize = futureCanvasSizes[0];
+
     // Move the first future state back to editorStates
     setEditorStates(prevHistory => [...prevHistory, futureStates[0]]);
-    setCanvasSizes(prevSizes => [...prevSizes, futureCanvasSizes[0]]);
+    setCanvasSizes(prevSizes => [...prevSizes, restoredSize]);
 
     // Remove the state we've just moved from futureStates
     setFutureStates(prevFuture => prevFuture.slice(1));
@@ -2166,11 +2197,31 @@ const EditorPage = ({ shows }) => {
 
     // Load the restored state into the canvas
     editor.canvas.loadFromJSON(futureStates[0], () => {
-      editor.canvas.setWidth(futureCanvasSizes[0].width);
-      editor.canvas.setHeight(futureCanvasSizes[0].height);
+      const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
+      const scaleFactorX = desiredWidth / restoredSize.width;
+      const scaleFactorY = desiredHeight / restoredSize.height;
+      const scaleFactor = Math.min(scaleFactorX, scaleFactorY);
+
+      editor.canvas.setZoom(scaleFactor);
+      editor.canvas.setWidth(desiredWidth);
+      editor.canvas.setHeight(desiredHeight);
+
+      // Ensure background image fills the canvas
+      const bg = editor.canvas.backgroundImage;
+      if (bg) {
+        const bgNaturalWidth = bg.width || bg.getOriginalSize?.().width || 1;
+        const bgNaturalHeight = bg.height || bg.getOriginalSize?.().height || 1;
+        const requiredScaleX = restoredSize.width / bgNaturalWidth;
+        const requiredScaleY = restoredSize.height / bgNaturalHeight;
+        const requiredScale = Math.max(requiredScaleX, requiredScaleY);
+
+        bg.scaleX = requiredScale;
+        bg.scaleY = requiredScale;
+      }
+
       editor.canvas.renderAll();
       setCanvasObjects([...editor.canvas._objects]);
-      setWhiteSpaceHeight(futureCanvasSizes[0].height - canvasSize.height);
+      setWhiteSpaceHeight(restoredSize.height - canvasSize.height);
     });
   }
 
