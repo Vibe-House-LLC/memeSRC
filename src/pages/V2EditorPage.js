@@ -9,8 +9,8 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, Edit, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, Chip, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, InputAdornment, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, Edit, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Send, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -284,7 +284,7 @@ const EditorPage = ({ shows }) => {
   // const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   // const [drawingMode, setDrawingMode] = useState(false);
-  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinematic cinestill sample')  // , Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred
+  const [magicPrompt, setMagicPrompt] = useState('')
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -309,6 +309,7 @@ const EditorPage = ({ shows }) => {
 
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
   const [promptEnabled, setPromptEnabled] = useState('edit');
+  const [showLegacyTools, setShowLegacyTools] = useState(false);
   // const buttonRef = useRef(null);
   const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
 
@@ -320,13 +321,69 @@ const EditorPage = ({ shows }) => {
   const [returnedImages, setReturnedImages] = useState([]);
 
   const magicToolsButtonRef = useRef();
+  const magicPromptInputRef = useRef();
   const textFieldRefs = useRef({});
   const selectionCacheRef = useRef({});
   const pendingMagicResumeRef = useRef(null);
   const skipNextDefaultFrameRef = useRef(false);
   const skipNextDefaultSubtitleRef = useRef(false);
 
+  // Animated placeholder for magic prompt
+  const magicExamples = useMemo(
+    () => [
+      'Remove the text…',
+      'Add a tophat…',
+      'Make him laugh…',
+      'Add an angry cat…',
+      'Change background to sunset…',
+    ],
+    []
+  );
+  const [magicExampleIndex, setMagicExampleIndex] = useState(0);
+  const [magicPlaceholder, setMagicPlaceholder] = useState('');
+  const [magicTypingPhase, setMagicTypingPhase] = useState('typing');
+  const [magicCharIndex, setMagicCharIndex] = useState(0);
+  const [magicPromptFocused, setMagicPromptFocused] = useState(false);
+
   const SELECTION_CACHE_TTL_MS = 15000;
+
+  // Animated placeholder effect for magic prompt
+  useEffect(() => {
+    let timeout;
+    // If user is typing, keep placeholder empty
+    if ((magicPrompt && magicPrompt.length > 0) || loadingInpaintingResult || magicPromptFocused) {
+      setMagicPlaceholder('');
+      return () => {
+        if (timeout) window.clearTimeout(timeout);
+      };
+    }
+    const full = magicExamples[magicExampleIndex] || '';
+    if (magicTypingPhase === 'typing') {
+      if (magicCharIndex < full.length) {
+        timeout = window.setTimeout(() => {
+          setMagicCharIndex((c) => c + 1);
+          setMagicPlaceholder(full.slice(0, magicCharIndex + 1));
+        }, 60);
+      } else {
+        setMagicTypingPhase('pausing');
+      }
+    } else if (magicTypingPhase === 'pausing') {
+      timeout = window.setTimeout(() => setMagicTypingPhase('deleting'), 1000);
+    } else if (magicTypingPhase === 'deleting') {
+      if (magicCharIndex > 0) {
+        timeout = window.setTimeout(() => {
+          setMagicCharIndex((c) => c - 1);
+          setMagicPlaceholder(full.slice(0, Math.max(0, magicCharIndex - 1)));
+        }, 35);
+      } else {
+        setMagicTypingPhase('typing');
+        setMagicExampleIndex((i) => (i + 1) % magicExamples.length);
+      }
+    }
+    return () => {
+      if (timeout) window.clearTimeout(timeout);
+    };
+  }, [magicPrompt, loadingInpaintingResult, magicPromptFocused, magicExamples, magicExampleIndex, magicTypingPhase, magicCharIndex]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -1965,13 +2022,11 @@ const EditorPage = ({ shows }) => {
             originY = bg.originY || 'top';
           }
         } else {
-          const targetWidth = editor.canvas.getWidth() / (editor.canvas.getZoom() || 1);
-          const targetHeight = editor.canvas.getHeight() / (editor.canvas.getZoom() || 1);
-
-          appliedScale = Math.max(
-            targetWidth / naturalWidth,
-            targetHeight / naturalHeight
-          );
+          // Classic tools logic: simple scale and center
+          const originalHeight = editor.canvas.height;
+          const originalWidth = editor.canvas.width;
+          const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+          appliedScale = 1 / scale;
         }
 
         returnedImage.scale(appliedScale);
@@ -1982,6 +2037,12 @@ const EditorPage = ({ shows }) => {
           originY,
         });
         editor.canvas.setBackgroundImage(returnedImage);
+
+        // For classic tools (no sourceScale), center the image
+        if (!options?.sourceScale) {
+          editor.canvas.backgroundImage.center();
+        }
+
         setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
         editor.canvas.renderAll();
 
@@ -2331,11 +2392,11 @@ const EditorPage = ({ shows }) => {
     setLoadingFineTuningFrames(false)
   }
 
-  // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
+  // This is going to handle toggling our default prompt when the user switches between modes.
   useEffect(() => {
     if (promptEnabled === "fill" || promptEnabled === 'edit') {
       setMagicPrompt('')
-    } else {
+    } else if (promptEnabled === 'erase') {
       setMagicPrompt('Everyday scene as cinematic cinestill sample')
     }
   }, [promptEnabled])
@@ -3350,137 +3411,372 @@ const EditorPage = ({ shows }) => {
 
                   {editorTool === 'magicEraser' && (
                     <>
-                      <Tabs
-                        value={promptEnabled}
-                        onChange={(event, value) => {
-                          setPromptEnabled(value);
-                        }}
-                        centered
-                        TabIndicatorProps={{
-                          style: {
-                            backgroundColor: 'limegreen',
-                            height: '3px'
-                          }
-                        }}
-                      >
-                        <Tab
-                          icon={<Edit fontSize='small' />}
-                          label="Edit"
-                          value="edit"
-                          style={{ color: promptEnabled === 'edit' ? 'limegreen' : undefined }}
-                        />
-                        <Tab
-                          icon={<AutoFixHigh fontSize='small' />}
-                          label="Eraser"
-                          value="erase"
-                          style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }}
-                        />
-                        <Tab
-                          icon={<FormatColorFill fontSize='small' />}
-                          label="Fill"
-                          value="fill"
-                          style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }}
-                        />
-                      </Tabs>
+                      {/* Mode Toggle */}
+                      <ButtonGroup variant="outlined" fullWidth sx={{ mb: 2.5 }}>
+                        <Button
+                          onClick={() => {
+                            setPromptEnabled('edit');
+                            toggleDrawingMode('captions');
+                          }}
+                          sx={{
+                            flex: 1,
+                            py: 1.25,
+                            borderColor: promptEnabled === 'edit' ? 'primary.main' : 'rgba(0,0,0,0.12)',
+                            backgroundColor: promptEnabled === 'edit' ? 'primary.main' : 'transparent',
+                            color: promptEnabled === 'edit' ? '#fff' : 'text.secondary',
+                            fontWeight: promptEnabled === 'edit' ? 600 : 500,
+                            '&:hover': {
+                              borderColor: 'primary.main',
+                              backgroundColor: promptEnabled === 'edit' ? 'primary.dark' : 'rgba(25, 118, 210, 0.04)',
+                            },
+                          }}
+                        >
+                          <Stack direction="row" spacing={0.75} alignItems="center">
+                            <AutoFixHighRounded fontSize='small' />
+                            <Typography variant="body2" sx={{ fontWeight: 'inherit', fontSize: '0.875rem' }}>Magic Edit</Typography>
+                          </Stack>
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            if (promptEnabled === 'edit') {
+                              setPromptEnabled('erase');
+                            }
+                          }}
+                          sx={{
+                            flex: 1,
+                            py: 1.25,
+                            borderColor: (promptEnabled === 'erase' || promptEnabled === 'fill') ? 'primary.main' : 'rgba(0,0,0,0.12)',
+                            backgroundColor: (promptEnabled === 'erase' || promptEnabled === 'fill') ? 'primary.main' : 'transparent',
+                            color: (promptEnabled === 'erase' || promptEnabled === 'fill') ? '#fff' : 'text.secondary',
+                            fontWeight: (promptEnabled === 'erase' || promptEnabled === 'fill') ? 600 : 500,
+                            '&:hover': {
+                              borderColor: 'primary.main',
+                              backgroundColor: (promptEnabled === 'erase' || promptEnabled === 'fill') ? 'primary.dark' : 'rgba(25, 118, 210, 0.04)',
+                            },
+                          }}
+                        >
+                          <Stack direction="row" spacing={0.75} alignItems="center">
+                            <Edit fontSize='small' />
+                            <Typography variant="body2" sx={{ fontWeight: 'inherit', fontSize: '0.875rem' }}>Classic Tools</Typography>
+                          </Stack>
+                        </Button>
+                      </ButtonGroup>
 
                       {promptEnabled === 'edit' ? (
                         <>
-                          <TextField
-                            value={magicPrompt}
-                            onChange={(event) => {
-                              setMagicPrompt(event.target.value);
-                            }}
-                            fullWidth
-                            sx={{
-                              mt: 3,
-                              '& .MuiInputLabel-root.Mui-focused': {
-                                color: 'limegreen',
-                              },
-                              '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'limegreen',
-                              },
-                            }}
-                            label='Magic Edit Prompt'
-                            placeholder='Ask for an edit in plain English'
-                          />
-                          <Stack direction='row' spacing={2} sx={{ mt: 1 }}>
-                            <Button variant='contained' onClick={() => {
-                              setEditorTool('captions');
-                              toggleDrawingMode('captions');
-                            }}>Cancel</Button>
-                            <Button
-                              variant='contained'
-                              style={{
-                                backgroundColor: magicPrompt?.trim() && !loadingInpaintingResult ? 'limegreen' : 'grey',
-                                color: 'white',
-                                opacity: magicPrompt?.trim() && !loadingInpaintingResult ? 1 : 0.5
+                          {/* Main Magic Edit Interface */}
+                          <Box>
+                            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: '0.875rem' }}>
+                              Describe your edits in plain English and let magic do the work
+                            </Typography>
+                            <TextField
+                              fullWidth
+                              placeholder={magicPlaceholder}
+                              value={magicPrompt}
+                              onChange={(event) => setMagicPrompt(event.target.value)}
+                              onFocus={() => setMagicPromptFocused(true)}
+                              onBlur={() => setMagicPromptFocused(false)}
+                              disabled={loadingInpaintingResult}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (magicPrompt?.trim() && !loadingInpaintingResult) {
+                                    magicPromptInputRef.current?.blur();
+                                    handleMagicEdit();
+                                  }
+                                }
                               }}
-                              onClick={() => handleMagicEdit()}
-                              disabled={!magicPrompt?.trim() || loadingInpaintingResult}
-                            >
-                              Apply
-                            </Button>
-                          </Stack>
+                              inputRef={magicPromptInputRef}
+                              InputProps={{
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    <AutoFixHighRounded sx={{ color: loadingInpaintingResult ? 'grey.500' : 'primary.main' }} />
+                                  </InputAdornment>
+                                ),
+                                endAdornment: (
+                                  <InputAdornment position="end">
+                                    {magicPrompt?.length && !loadingInpaintingResult ? (
+                                      <IconButton
+                                        aria-label="clear prompt"
+                                        size="small"
+                                        onClick={() => setMagicPrompt('')}
+                                        edge="end"
+                                        sx={{ mr: 0.5 }}
+                                      >
+                                        <Close fontSize="small" />
+                                      </IconButton>
+                                    ) : null}
+                                    {loadingInpaintingResult ? (
+                                      <CircularProgress size={18} thickness={5} sx={{ ml: 0.5 }} />
+                                    ) : (
+                                      <IconButton
+                                        aria-label="send prompt"
+                                        size="small"
+                                        onClick={() => {
+                                          if (magicPrompt?.trim() && !loadingInpaintingResult) {
+                                            magicPromptInputRef.current?.blur();
+                                            handleMagicEdit();
+                                          }
+                                        }}
+                                        disabled={!magicPrompt?.trim() || loadingInpaintingResult}
+                                        edge="end"
+                                        color={magicPrompt?.trim() && !loadingInpaintingResult ? 'primary' : 'default'}
+                                        sx={{ ml: 0.5, color: magicPrompt?.trim() && !loadingInpaintingResult ? 'primary.main' : undefined }}
+                                      >
+                                        <Send />
+                                      </IconButton>
+                                    )}
+                                  </InputAdornment>
+                                ),
+                              }}
+                              inputProps={{ 'aria-label': 'Magic edit prompt' }}
+                              sx={{
+                                '& .MuiOutlinedInput-root': {
+                                  borderRadius: 2,
+                                  backgroundColor: '#fff',
+                                },
+                                '& .MuiOutlinedInput-root.Mui-disabled': {
+                                  backgroundColor: '#f5f5f5',
+                                },
+                                '& .MuiOutlinedInput-input': {
+                                  color: 'rgba(0,0,0,0.9)',
+                                  fontWeight: 600,
+                                },
+                                '& .MuiOutlinedInput-input.Mui-disabled': {
+                                  color: 'rgba(0,0,0,0.55)',
+                                  WebkitTextFillColor: 'rgba(0,0,0,0.55)',
+                                },
+                                '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: 'rgba(0,0,0,0.12)',
+                                },
+                                '& .MuiInputBase-input::placeholder': {
+                                  color: 'rgba(0,0,0,0.5)',
+                                  opacity: 1,
+                                  fontWeight: 500,
+                                },
+                              }}
+                            />
+
+                            {/* Suggestion Chips */}
+                            <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                              {[
+                                "Remove the text",
+                                "Add a tophat",
+                                "Make it black and white",
+                                "Zoom in on the face",
+                                "Add sunglasses"
+                              ].map((suggestion) => (
+                                <Chip
+                                  key={suggestion}
+                                  label={suggestion}
+                                  onClick={() => {
+                                    setMagicPrompt(suggestion);
+                                    magicPromptInputRef.current?.focus();
+                                  }}
+                                  disabled={loadingInpaintingResult}
+                                  sx={{
+                                    borderRadius: 2,
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    bgcolor: 'rgba(25, 118, 210, 0.08)',
+                                    color: 'primary.main',
+                                    border: '1px solid rgba(25, 118, 210, 0.2)',
+                                    '&:hover': {
+                                      bgcolor: 'rgba(25, 118, 210, 0.15)',
+                                      borderColor: 'primary.main',
+                                      transform: 'translateY(-1px)',
+                                    },
+                                    '&.Mui-disabled': {
+                                      bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                      color: 'rgba(0, 0, 0, 0.26)',
+                                      borderColor: 'rgba(0, 0, 0, 0.12)',
+                                    },
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
                         </>
                       ) : (
                         <>
-                          <Stack direction='row' alignItems='center' spacing={2}>
-                            <Slider
-                              size="small"
-                              min={1}
-                              max={100}
-                              value={brushToolSize}
-                              aria-label="Small"
-                              valueLabelDisplay='auto'
-                              sx={{ marginRight: 0.5 }}
-                              onChange={(event, value) => {
-                                setShowBrushSize(true);
-                                handleBrushToolSize(value);
-                              }}
-                              onChangeCommitted={() => {
-                                setShowBrushSize(false);
-                              }}
-                              track={false}
-                            />
-                            <Button variant='contained' onClick={() => {
-                              setEditorTool('captions');
-                              toggleDrawingMode('captions');
-                            }}>Cancel</Button>
+                          {/* Classic Tools Interface */}
+                          <Box sx={{ mb: 2 }}>
+                            <Box sx={{
+                              p: 1.5,
+                              borderRadius: 1,
+                              bgcolor: 'rgba(255, 152, 0, 0.08)',
+                              border: '1px solid rgba(255, 152, 0, 0.2)',
+                              mb: 2
+                            }}>
+                              <Typography variant="caption" sx={{ display: 'block', color: 'rgb(230, 81, 0)', lineHeight: 1.4, fontSize: '0.75rem', fontWeight: 600 }}>
+                                ⚠️ Classic magic tools may produce lower quality results.{' '}
+                                <Typography
+                                  component="span"
+                                  variant="caption"
+                                  onClick={() => {
+                                    setPromptEnabled('edit');
+                                    toggleDrawingMode('captions');
+                                  }}
+                                  sx={{
+                                    color: 'rgb(230, 81, 0)',
+                                    textDecoration: 'underline',
+                                    cursor: 'pointer',
+                                    fontWeight: 700,
+                                    '&:hover': {
+                                      color: 'rgb(200, 61, 0)',
+                                    }
+                                  }}
+                                >
+                                  Try the new editor
+                                </Typography>
+                              </Typography>
+                            </Box>
+
+                            <ButtonGroup variant="outlined" fullWidth sx={{ mb: 2.5 }}>
+                              <Button
+                                onClick={() => {
+                                  setPromptEnabled('erase');
+                                  toggleDrawingMode('magicEraser');
+                                }}
+                                sx={{
+                                  flex: 1,
+                                  py: 1.25,
+                                  borderColor: promptEnabled === 'erase' ? 'primary.main' : 'rgba(0,0,0,0.12)',
+                                  backgroundColor: promptEnabled === 'erase' ? 'primary.main' : 'transparent',
+                                  color: promptEnabled === 'erase' ? '#fff' : 'text.secondary',
+                                  fontWeight: promptEnabled === 'erase' ? 600 : 500,
+                                  '&:hover': {
+                                    borderColor: 'primary.main',
+                                    backgroundColor: promptEnabled === 'erase' ? 'primary.dark' : 'rgba(25, 118, 210, 0.04)',
+                                  },
+                                }}
+                              >
+                                <Stack direction="column" spacing={0.25} alignItems="center">
+                                  <AutoFixHigh fontSize='small' />
+                                  <Typography variant="caption" sx={{ fontWeight: 'inherit', fontSize: '0.75rem' }}>Erase</Typography>
+                                </Stack>
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setPromptEnabled('fill');
+                                  toggleDrawingMode('magicEraser');
+                                }}
+                                sx={{
+                                  flex: 1,
+                                  py: 1.25,
+                                  borderColor: promptEnabled === 'fill' ? 'primary.main' : 'rgba(0,0,0,0.12)',
+                                  backgroundColor: promptEnabled === 'fill' ? 'primary.main' : 'transparent',
+                                  color: promptEnabled === 'fill' ? '#fff' : 'text.secondary',
+                                  fontWeight: promptEnabled === 'fill' ? 600 : 500,
+                                  '&:hover': {
+                                    borderColor: 'primary.main',
+                                    backgroundColor: promptEnabled === 'fill' ? 'primary.dark' : 'rgba(25, 118, 210, 0.04)',
+                                  },
+                                }}
+                              >
+                                <Stack direction="column" spacing={0.25} alignItems="center">
+                                  <FormatColorFill fontSize='small' />
+                                  <Typography variant="caption" sx={{ fontWeight: 'inherit', fontSize: '0.75rem' }}>Fill</Typography>
+                                </Stack>
+                              </Button>
+                            </ButtonGroup>
+
+                            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: '0.8125rem', lineHeight: 1.5 }}>
+                              {promptEnabled === 'erase' ? (
+                                'Paint over unwanted areas, then click Apply.'
+                              ) : (
+                                'Paint areas to modify and describe what to add below, then click Apply.'
+                              )}
+                            </Typography>
+
+                            {promptEnabled === "fill" && (
+                              <TextField
+                                value={magicPrompt}
+                                onChange={(event) => {
+                                  setMagicPrompt(event.target.value);
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="Describe what to fill with..."
+                                sx={{
+                                  mb: 2,
+                                  '& .MuiOutlinedInput-root': {
+                                    backgroundColor: '#fff',
+                                  },
+                                  '& .MuiOutlinedInput-input': {
+                                    color: 'rgba(0,0,0,0.87)',
+                                  },
+                                  '& .MuiInputLabel-root': {
+                                    color: 'rgba(0,0,0,0.6)',
+                                  },
+                                  '& .MuiInputLabel-root.Mui-focused': {
+                                    color: 'primary.main',
+                                  },
+                                  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'primary.main',
+                                  },
+                                }}
+                                label='What to fill with'
+                              />
+                            )}
+
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="caption" sx={{ display: 'block', mb: 1, fontWeight: 600, color: 'text.secondary' }}>
+                                Brush Size
+                              </Typography>
+                              <Slider
+                                size="medium"
+                                min={1}
+                                max={100}
+                                value={brushToolSize}
+                                aria-label="Brush size"
+                                valueLabelDisplay='auto'
+                                onChange={(event, value) => {
+                                  setShowBrushSize(true);
+                                  handleBrushToolSize(value);
+                                }}
+                                onChangeCommitted={() => {
+                                  setShowBrushSize(false);
+                                }}
+                                sx={{
+                                  color: 'primary.main',
+                                  '& .MuiSlider-thumb': {
+                                    backgroundColor: 'primary.main',
+                                  },
+                                  '& .MuiSlider-track': {
+                                    backgroundColor: 'primary.main',
+                                  },
+                                }}
+                              />
+                            </Box>
+
                             <Button
                               variant='contained'
-                              style={{
-                                backgroundColor: hasFabricPaths ? 'limegreen' : 'grey',
-                                color: 'white',
-                                opacity: hasFabricPaths ? 1 : 0.5
-                              }}
+                              fullWidth
+                              size="large"
+                              disabled={!hasFabricPaths || loadingInpaintingResult}
                               onClick={() => {
                                 exportDrawing();
                               }}
-                              disabled={!hasFabricPaths || loadingInpaintingResult} // Button is disabled if there are no fabric.Path instances
-                            >
-                              Apply
-                            </Button>
-                          </Stack>
-
-                          {promptEnabled === "fill" && (
-                            <TextField
-                              value={magicPrompt}
-                              onChange={(event) => {
-                                setMagicPrompt(event.target.value);
-                              }}
-                              fullWidth
+                              startIcon={loadingInpaintingResult ? <CircularProgress size={18} color="inherit" /> : <AutoFixHighRounded />}
                               sx={{
-                                mt: 3,
-                                '& .MuiInputLabel-root.Mui-focused': {
-                                  color: 'limegreen',
+                                py: 1.5,
+                                fontWeight: 600,
+                                backgroundColor: hasFabricPaths ? 'primary.main' : 'grey.400',
+                                '&:hover': {
+                                  backgroundColor: hasFabricPaths ? 'primary.dark' : 'grey.400',
                                 },
-                                '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                  borderColor: 'limegreen',
+                                '&.Mui-disabled': {
+                                  backgroundColor: 'grey.300',
+                                  color: 'rgba(0,0,0,0.26)',
                                 },
                               }}
-                              label='Magic Fill Prompt'
-                            />
-                          )}
+                            >
+                              {loadingInpaintingResult ? 'Processing...' : hasFabricPaths ? 'Apply Changes' : 'Paint on canvas to start'}
+                            </Button>
+                          </Box>
                         </>
                       )}
                     </>
