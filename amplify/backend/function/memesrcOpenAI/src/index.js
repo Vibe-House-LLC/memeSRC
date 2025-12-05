@@ -135,7 +135,7 @@ exports.handler = async (event) => {
         });
 
         // Generate
-        const promptText = prompt || 'Enhance this image';
+        const userPrompt = prompt || 'Enhance this image';
         const referencesToLoad = Array.isArray(referenceKeys) ? referenceKeys.slice(0, MAX_REFERENCE_IMAGES) : [];
         const referenceImages = [];
         for (const key of referencesToLoad) {
@@ -170,7 +170,17 @@ exports.handler = async (event) => {
             });
         }
 
-        contentParts.push({ text: `User instructions: ${promptText}` });
+        const promptPreface = referenceImages.length
+            ? 'Edit the original base photo without changing its dimensions. Use the reference photos only as guidance for style/placement/content.'
+            : '';
+        const promptText = referenceImages.length
+            ? `${promptPreface}\nUser instructions: ${userPrompt}`
+            : userPrompt;
+
+        if (promptPreface) {
+            contentParts.push({ text: promptPreface });
+        }
+        contentParts.push({ text: `User instructions: ${userPrompt}` });
 
         console.log('[Gemini] Invoking model', {
             model: 'gemini-2.5-flash-image-preview',
