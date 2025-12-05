@@ -1897,6 +1897,7 @@ const EditorPage = ({ shows }) => {
   };
 
   const handleAddCanvasBackground = (imgUrl, options = {}) => {
+    const { skipHistory = false } = options;
     try {
       setOpenSelectResult(false);
 
@@ -1988,7 +1989,9 @@ const EditorPage = ({ shows }) => {
         toggleDrawingMode('captions');
         setMagicPrompt(promptEnabled === 'edit' ? '' : 'Everyday scene as cinematic cinestill sample');
         // setPromptEnabled('erase');
-        addToHistory();
+        if (!skipHistory) {
+          addToHistory();
+        }
       }, {
         crossOrigin: "anonymous"
       });
@@ -2079,7 +2082,12 @@ const EditorPage = ({ shows }) => {
       const resultUrl = pending.magicResult?.displayUrl || pending.magicResult?.originalUrl;
       if (resultUrl) {
         const sourceScale = pending.magicContext?.sourceScale || pending.sourceScale;
-        handleAddCanvasBackground(resultUrl, { sourceScale });
+        handleAddCanvasBackground(resultUrl, { sourceScale, skipHistory: true });
+
+        // Add single history entry after magic result is applied
+        setTimeout(() => {
+          addToHistory();
+        }, 100);
       }
 
       clearMagicResumeSnapshot();
