@@ -18,7 +18,6 @@ import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
 import { MagicPopupContext } from '../MagicPopupContext';
-import MagicEditor from '../components/magic-editor/MagicEditor';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
@@ -75,6 +74,8 @@ const StyledCardMedia = styled('img')`
 `;
 
 const MAGIC_IMAGE_SIZE = 1024;
+const MAGIC_RESUME_STORAGE_KEY = 'v2-editor-magic-resume';
+const MAGIC_RESUME_MAX_AGE_MS = 10 * 60 * 1000;
 
 
 const EditorSurroundingFrameThumbnail = ({
@@ -310,9 +311,6 @@ const EditorPage = ({ shows }) => {
   const [promptEnabled, setPromptEnabled] = useState('edit');
   // const buttonRef = useRef(null);
   const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
-  const [magicEditorOpen, setMagicEditorOpen] = useState(false);
-  const [magicEditorImage, setMagicEditorImage] = useState('');
-  const [magicEditorSessionKey, setMagicEditorSessionKey] = useState(0);
 
   // Image selection stuff
   const [selectedImage, setSelectedImage] = useState(null);
@@ -324,8 +322,47 @@ const EditorPage = ({ shows }) => {
   const magicToolsButtonRef = useRef();
   const textFieldRefs = useRef({});
   const selectionCacheRef = useRef({});
+  const pendingMagicResumeRef = useRef(null);
+  const skipNextDefaultFrameRef = useRef(false);
+  const skipNextDefaultSubtitleRef = useRef(false);
 
   const SELECTION_CACHE_TTL_MS = 15000;
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const fromCollage = Boolean(location.state?.collageState);
+  const uploadedImageSource = location.state?.uploadedImage || null;
+
+  const readMagicResumeSnapshot = useCallback(() => {
+    try {
+      const raw = sessionStorage.getItem(MAGIC_RESUME_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const isForPath = parsed?.path === `${location.pathname}${location.search}`;
+      const isFresh = !parsed?.timestamp || (Math.abs(Date.now() - parsed.timestamp) <= MAGIC_RESUME_MAX_AGE_MS);
+      if (!isForPath || !isFresh) {
+        sessionStorage.removeItem(MAGIC_RESUME_STORAGE_KEY);
+        return null;
+      }
+      return parsed;
+    } catch (err) {
+      console.error('Failed to read magic resume snapshot', err);
+      try { sessionStorage.removeItem(MAGIC_RESUME_STORAGE_KEY); } catch (_) {}
+      return null;
+    }
+  }, [location.pathname, location.search]);
+
+  const persistMagicResumeSnapshot = useCallback((snapshot) => {
+    try {
+      sessionStorage.setItem(MAGIC_RESUME_STORAGE_KEY, JSON.stringify(snapshot));
+    } catch (err) {
+      console.error('Failed to store magic resume snapshot', err);
+    }
+  }, []);
+
+  const clearMagicResumeSnapshot = useCallback(() => {
+    try { sessionStorage.removeItem(MAGIC_RESUME_STORAGE_KEY); } catch (_) {}
+  }, []);
 
   const handleSubtitlesExpand = () => {
     setSubtitlesExpanded(!subtitlesExpanded);
@@ -366,10 +403,33 @@ const EditorPage = ({ shows }) => {
 
   const TwitterPickerWrapper = memo(StyledTwitterPicker);
 
-  const navigate = useNavigate();
-  const location = useLocation();
-  const fromCollage = Boolean(location.state?.collageState);
-  const uploadedImageSource = location.state?.uploadedImage || null;
+  useEffect(() => {
+    const storedResume = readMagicResumeSnapshot();
+    if (storedResume) {
+      pendingMagicResumeRef.current = storedResume;
+    }
+  }, [readMagicResumeSnapshot]);
+
+  useEffect(() => {
+    const navState = location.state;
+    if (!navState || !navState.magicResult) {
+      return;
+    }
+
+    const { magicResult, magicContext } = navState;
+    const cleanState = { ...navState };
+    delete cleanState.magicResult;
+    delete cleanState.magicContext;
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: cleanState });
+
+    const storedResume = readMagicResumeSnapshot();
+    const resumeKey = magicContext?.resumeKey;
+    if (storedResume && resumeKey && storedResume.key && storedResume.key !== resumeKey) {
+      console.warn('Magic resume key mismatch; continuing with stored snapshot.');
+    }
+
+    pendingMagicResumeRef.current = { ...(storedResume || {}), magicResult, magicContext };
+  }, [location.pathname, location.search, location.state, navigate, readMagicResumeSnapshot]);
 
   const saveCollageImage = () => {
     const resultImage = editor.canvas.toDataURL({
@@ -820,6 +880,11 @@ const EditorPage = ({ shows }) => {
 
   useEffect(() => {
     if (defaultFrame) {
+      if (skipNextDefaultFrameRef.current) {
+        skipNextDefaultFrameRef.current = false;
+        return;
+      }
+
       const oImg = defaultFrame
       const imageAspectRatio = oImg.width / oImg.height;
       setEditorAspectRatio(imageAspectRatio);
@@ -843,6 +908,10 @@ const EditorPage = ({ shows }) => {
 
   useEffect(() => {
     if (defaultSubtitle) {
+      if (skipNextDefaultSubtitleRef.current) {
+        skipNextDefaultSubtitleRef.current = false;
+        return;
+      }
       addText(defaultSubtitle || '')
     }
   }, [defaultSubtitle]);
@@ -1553,30 +1622,46 @@ const EditorPage = ({ shows }) => {
     // setDrawingMode((tool === 'magicEraser'))
   }
 
-  const buildBackgroundDataUrl = () => {
+  const buildBackgroundDataUrl = ({ forceSquare = true } = {}) => {
     if (!editor?.canvas?.backgroundImage) {
       throw new Error('No background image available for magic edits.');
     }
 
-    const tempCanvas = new fabric.Canvas();
-    tempCanvas.setWidth(MAGIC_IMAGE_SIZE);
-    tempCanvas.setHeight(MAGIC_IMAGE_SIZE);
-    tempCanvas.backgroundColor = 'black';
+    const canvasWidth = editor.canvas.getWidth() || MAGIC_IMAGE_SIZE;
+    const canvasHeight = editor.canvas.getHeight() || MAGIC_IMAGE_SIZE;
+    const backgroundImage = editor.canvas.backgroundImage;
+    const imageElement = backgroundImage.getElement();
+    if (!imageElement) {
+      throw new Error('Unable to access background image for magic edit.');
+    }
 
-    const backgroundImage = { ...editor.canvas.backgroundImage };
-    const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement());
+    const naturalWidth = backgroundImage.width || imageElement.naturalWidth || imageElement.width || canvasWidth;
+    const naturalHeight = backgroundImage.height || imageElement.naturalHeight || imageElement.height || canvasHeight;
+    const visibleWidth = naturalWidth * (backgroundImage.scaleX || 1);
+    const visibleHeight = naturalHeight * (backgroundImage.scaleY || 1);
 
-    const imageWidth = backgroundImage.width;
-    const imageHeight = backgroundImage.height;
-    const imageScale = Math.min(MAGIC_IMAGE_SIZE / imageWidth, MAGIC_IMAGE_SIZE / imageHeight);
-    const imageOffsetX = (MAGIC_IMAGE_SIZE - imageWidth * imageScale) / 2;
-    const imageOffsetY = (MAGIC_IMAGE_SIZE - imageHeight * imageScale) / 2;
+    const exportScale = MAGIC_IMAGE_SIZE / Math.max(visibleWidth, visibleHeight);
+    const targetWidth = forceSquare ? MAGIC_IMAGE_SIZE : Math.max(1, Math.round(visibleWidth * exportScale));
+    const targetHeight = forceSquare ? MAGIC_IMAGE_SIZE : Math.max(1, Math.round(visibleHeight * exportScale));
 
-    newBackgroundImage.scale(imageScale);
-    newBackgroundImage.set({ left: imageOffsetX, top: imageOffsetY });
-    tempCanvas.add(newBackgroundImage);
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = targetWidth;
+    tempCanvas.height = targetHeight;
+    const ctx = tempCanvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Unable to prepare magic edit image.');
+    }
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
 
-    return tempCanvas.toDataURL('image/png');
+    const drawWidth = visibleWidth * exportScale;
+    const drawHeight = visibleHeight * exportScale;
+    const offsetX = (targetWidth - drawWidth) / 2;
+    const offsetY = (targetHeight - drawHeight) / 2;
+
+    ctx.drawImage(imageElement, offsetX, offsetY, drawWidth, drawHeight);
+
+    return { dataUrl: tempCanvas.toDataURL('image/png'), scale: exportScale };
   };
 
   const buildMaskDataUrl = () => {
@@ -1667,7 +1752,7 @@ const EditorPage = ({ shows }) => {
 
     try {
       const dataURLDrawing = buildMaskDataUrl();
-      const dataURLBgImage = buildBackgroundDataUrl();
+      const { dataUrl: dataURLBgImage } = buildBackgroundDataUrl();
 
       if (dataURLBgImage && dataURLDrawing) {
         const data = {
@@ -1736,10 +1821,51 @@ const EditorPage = ({ shows }) => {
     }
 
     try {
-      const dataURLBgImage = buildBackgroundDataUrl();
-      setMagicEditorImage(dataURLBgImage);
-      setMagicEditorSessionKey(Date.now());
-      setMagicEditorOpen(true);
+      const { dataUrl, scale } = buildBackgroundDataUrl({ forceSquare: false });
+      const resumeKey = `${Date.now()}`;
+      try {
+        const canvasWidth = typeof editor.canvas.getWidth === 'function' ? editor.canvas.getWidth() : editor.canvas.width;
+        const canvasHeight = typeof editor.canvas.getHeight === 'function' ? editor.canvas.getHeight() : editor.canvas.height;
+        const snapshot = {
+          key: resumeKey,
+          path: `${location.pathname}${location.search}`,
+          timestamp: Date.now(),
+          canvasJSON: JSON.stringify(editor.canvas),
+          canvasWidth,
+          canvasHeight,
+          canvasSize,
+          editorAspectRatio,
+          whiteSpaceHeight,
+          whiteSpaceValue,
+          showWhiteSpaceSlider,
+          imageScale,
+          layerFonts,
+          layerRawText,
+          layerActiveFormats,
+          magicPrompt,
+          sourceScale: scale,
+        };
+        pendingMagicResumeRef.current = snapshot;
+        persistMagicResumeSnapshot(snapshot);
+      } catch (snapshotError) {
+        console.error('Failed to preserve editor state for magic edit:', snapshotError);
+      }
+
+      navigate('/magic', {
+        state: {
+          initialSrc: dataUrl,
+          returnTo: `${location.pathname}${location.search}`,
+          magicPrompt,
+          magicAutoStart: true,
+          magicAutoStartKey: resumeKey,
+          magicVariationCount: 1,
+          magicEditContext: {
+            source: 'v2editor',
+            resumeKey,
+            sourceScale: scale,
+          },
+        },
+      });
     } catch (error) {
       console.error(error);
       setSeverity('error');
@@ -1748,7 +1874,7 @@ const EditorPage = ({ shows }) => {
     }
   };
 
-  const handleAddCanvasBackground = (imgUrl) => {
+  const handleAddCanvasBackground = (imgUrl, options = {}) => {
     try {
       setOpenSelectResult(false);
 
@@ -1768,13 +1894,23 @@ const EditorPage = ({ shows }) => {
         setSelectedImage();
         setReturnedImages([]);
 
-        const originalHeight = editor.canvas.height;
-        const originalWidth = editor.canvas.width;
-        const scale = Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight);
-        returnedImage.scale(1 / scale);
+        const originalHeight = editor.canvas.getHeight();
+        const originalWidth = editor.canvas.getWidth();
+        const baseScale = options?.sourceScale || Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight);
+        const appliedScale = baseScale ? (1 / baseScale) : 1;
+        returnedImage.scale(appliedScale);
+        const scaledWidth = returnedImage.getScaledWidth();
+        const scaledHeight = returnedImage.getScaledHeight();
+        const offsetX = (originalWidth - scaledWidth) / 2;
+        const offsetY = (originalHeight - scaledHeight) / 2;
+        returnedImage.set({
+          left: offsetX,
+          top: offsetY,
+          originX: 'left',
+          originY: 'top',
+        });
         editor.canvas.setBackgroundImage(returnedImage);
         setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-        editor.canvas.backgroundImage.center();
         editor.canvas.renderAll();
 
         setEditorTool('captions');
@@ -1795,21 +1931,92 @@ const EditorPage = ({ shows }) => {
 
 
 
-  const handleMagicEditorResult = async (imgUrl) => {
-    if (!imgUrl) return;
-    await spendMagicCredit();
-  };
-
-  const handleMagicEditorSave = (imgUrl) => {
-    if (imgUrl) {
-      handleAddCanvasBackground(imgUrl);
+  const restoreMagicResume = async (resume) => {
+    if (!resume || !resume.canvasJSON || !editor?.canvas) {
+      return false;
     }
-    setMagicEditorOpen(false);
+
+    return new Promise((resolve) => {
+      try {
+        skipNextDefaultFrameRef.current = true;
+        skipNextDefaultSubtitleRef.current = true;
+        const width = resume.canvasWidth || (typeof editor.canvas.getWidth === 'function' ? editor.canvas.getWidth() : editor.canvas.width) || canvasSize.width;
+        const height = resume.canvasHeight || (typeof editor.canvas.getHeight === 'function' ? editor.canvas.getHeight() : editor.canvas.height) || canvasSize.height;
+
+        editor.canvas.loadFromJSON(resume.canvasJSON, () => {
+          editor.canvas.setWidth(width);
+          editor.canvas.setHeight(height);
+          editor.canvas.renderAll();
+
+          const nextCanvasSize = (resume.canvasSize && resume.canvasSize.width && resume.canvasSize.height)
+            ? resume.canvasSize
+            : { width, height };
+
+          setCanvasSize(nextCanvasSize);
+          setEditorAspectRatio(resume.editorAspectRatio || ((width && height) ? width / height : editorAspectRatio));
+          setWhiteSpaceHeight(resume.whiteSpaceHeight ?? 0);
+          setWhiteSpaceValue(resume.whiteSpaceValue ?? 0);
+          setShowWhiteSpaceSlider(Boolean(resume.showWhiteSpaceSlider));
+          setImageScale(resume.imageScale || imageScale);
+
+          const rawText = resume.layerRawText ? { ...resume.layerRawText } : {};
+          if (!resume.layerRawText) {
+            editor.canvas.getObjects().forEach((obj, idx) => {
+              if (obj && typeof obj.text === 'string') {
+                rawText[idx] = obj.text;
+              }
+            });
+          }
+
+          setLayerRawText(rawText);
+          setLayerActiveFormats(resume.layerActiveFormats || {});
+          setLayerFonts(resume.layerFonts || {});
+          setCanvasObjects([...editor.canvas._objects]);
+          setEditorStates([resume.canvasJSON]);
+          setCanvasSizes([{ width: nextCanvasSize.width, height: nextCanvasSize.height }]);
+          setFutureStates([]);
+          setFutureCanvasSizes([]);
+          setHasFabricPaths(editor.canvas.getObjects().some((obj) => obj instanceof fabric.Path));
+          setBgEditorStates([editor.canvas.backgroundImage]);
+          setBgFutureStates([]);
+          setEditorTool('captions');
+          toggleDrawingMode('captions');
+          setMagicPrompt(resume.magicPrompt ?? magicPrompt);
+          setLoading(false);
+          setImageLoaded(true);
+          resolve(true);
+        });
+      } catch (err) {
+        console.error('Failed to restore magic edit session', err);
+        resolve(false);
+      }
+    });
   };
 
-  const handleMagicEditorClose = () => {
-    setMagicEditorOpen(false);
-  };
+  useEffect(() => {
+    if (!editor?.canvas) {
+      return;
+    }
+
+    const applyPendingMagic = async () => {
+      const pending = pendingMagicResumeRef.current || readMagicResumeSnapshot();
+      if (!pending) {
+        return;
+      }
+
+      const applied = await restoreMagicResume(pending);
+      const resultUrl = pending.magicResult?.displayUrl || pending.magicResult?.originalUrl;
+      if (resultUrl) {
+        const sourceScale = pending.magicContext?.sourceScale || pending.sourceScale;
+        handleAddCanvasBackground(resultUrl, { sourceScale });
+      }
+
+      clearMagicResumeSnapshot();
+      pendingMagicResumeRef.current = null;
+    };
+
+    applyPendingMagic();
+  }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectResultCancel = () => {
     setSelectedImage()
@@ -3615,35 +3822,6 @@ const EditorPage = ({ shows }) => {
           Copied to clipboard!
         </Alert>
       </Snackbar>
-
-      <Dialog
-        fullScreen
-        open={magicEditorOpen}
-        onClose={handleMagicEditorClose}
-        PaperProps={{ sx: { backgroundColor: '#0b0b0b' } }}
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          Magic Edit
-          <IconButton onClick={handleMagicEditorClose} aria-label="Close magic editor">
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-          {magicEditorImage && (
-            <MagicEditor
-              imageSrc={magicEditorImage}
-              defaultPrompt={magicPrompt}
-              autoStart
-              autoStartKey={magicEditorSessionKey}
-              variationCount={1}
-              saveLabel="Use in Editor"
-              onSave={handleMagicEditorSave}
-              onCancel={handleMagicEditorClose}
-              onResult={handleMagicEditorResult}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       <LoadingBackdrop open={loadingInpaintingResult} variationCount={promptEnabled === 'edit' ? 1 : 2} />
 

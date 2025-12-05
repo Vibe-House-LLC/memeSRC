@@ -35,6 +35,7 @@ export default function MagicPage() {
   const [versionChoice, setVersionChoice] = useState<'frame' | 'original' | null>(null);
   const [hasCompletedEdit, setHasCompletedEdit] = useState(false);
   const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
+  const magicEditContext = useMemo(() => location?.state?.magicEditContext || location?.state?.collageEditContext, [location?.state]);
 
   // Gate this page to admins only
   useEffect(() => {
@@ -49,6 +50,21 @@ export default function MagicPage() {
   }, [isAdmin, navigate, location?.state]);
 
   const chooseFrom = useMemo(() => location?.state?.chooseFrom as undefined | { originalSrc?: string; frameSrc?: string }, [location?.state]);
+  const defaultPromptFromState = useMemo(
+    () => location?.state?.magicPrompt || magicEditContext?.prompt || '',
+    [location?.state, magicEditContext]
+  );
+  const variationCountFromState = useMemo(
+    () => (typeof location?.state?.magicVariationCount === 'number'
+      ? location.state.magicVariationCount
+      : (typeof magicEditContext?.variationCount === 'number' ? magicEditContext.variationCount : 2)),
+    [location?.state, magicEditContext]
+  );
+  const autoStartFromState = Boolean(location?.state?.magicAutoStart);
+  const autoStartKeyFromState = useMemo(
+    () => location?.state?.magicAutoStartKey ?? magicEditContext?.resumeKey,
+    [location?.state, magicEditContext]
+  );
 
   const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -96,7 +112,7 @@ export default function MagicPage() {
 
   const handleReturnToCaller = async (src: string) => {
     const returnTo: string | undefined = location?.state?.returnTo;
-    const context: any = location?.state?.collageEditContext;
+    const context: any = magicEditContext;
     if (!returnTo) return;
     try {
       // Persist + normalize like inline editor flow
@@ -496,6 +512,10 @@ export default function MagicPage() {
       {stage === 'edit' && chosen && (
         <MagicEditor
           imageSrc={chosen}
+          defaultPrompt={defaultPromptFromState}
+          variationCount={variationCountFromState}
+          autoStart={autoStartFromState}
+          autoStartKey={autoStartKeyFromState}
           onImageChange={setCurrentSrc}
           onProcessingChange={setProcessing}
           onPromptStateChange={setPromptState}
