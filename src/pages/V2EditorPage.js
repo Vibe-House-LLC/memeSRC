@@ -1637,8 +1637,12 @@ const EditorPage = ({ shows }) => {
 
     const naturalWidth = backgroundImage.width || imageElement.naturalWidth || imageElement.width || canvasWidth;
     const naturalHeight = backgroundImage.height || imageElement.naturalHeight || imageElement.height || canvasHeight;
-    const visibleWidth = naturalWidth * (backgroundImage.scaleX || 1);
-    const visibleHeight = naturalHeight * (backgroundImage.scaleY || 1);
+    const visibleWidth = typeof backgroundImage.getScaledWidth === 'function'
+      ? backgroundImage.getScaledWidth()
+      : naturalWidth * (backgroundImage.scaleX || 1);
+    const visibleHeight = typeof backgroundImage.getScaledHeight === 'function'
+      ? backgroundImage.getScaledHeight()
+      : naturalHeight * (backgroundImage.scaleY || 1);
 
     const exportScale = MAGIC_IMAGE_SIZE / Math.max(visibleWidth, visibleHeight);
     const targetWidth = forceSquare ? MAGIC_IMAGE_SIZE : Math.max(1, Math.round(visibleWidth * exportScale));
@@ -1878,6 +1882,49 @@ const EditorPage = ({ shows }) => {
     try {
       setOpenSelectResult(false);
 
+      const resolveBackgroundBounds = () => {
+        if (!editor?.canvas) {
+          return null;
+        }
+
+        const bg = editor.canvas.backgroundImage;
+        if (bg) {
+          try {
+            const width = typeof bg.getScaledWidth === 'function'
+              ? bg.getScaledWidth()
+              : (bg.width || editor.canvas.getWidth());
+            const height = typeof bg.getScaledHeight === 'function'
+              ? bg.getScaledHeight()
+              : (bg.height || editor.canvas.getHeight());
+            return {
+              width: width || editor.canvas.getWidth(),
+              height: height || editor.canvas.getHeight(),
+              left: typeof bg.left === 'number' ? bg.left : 0,
+              top: typeof bg.top === 'number' ? bg.top : 0,
+              originX: bg.originX || 'left',
+              originY: bg.originY || 'top',
+            };
+          } catch (err) {
+            console.warn('Unable to read existing background bounds', err);
+          }
+        }
+
+        if (editor.canvas) {
+          return {
+            width: editor.canvas.getWidth(),
+            height: editor.canvas.getHeight(),
+            left: 0,
+            top: 0,
+            originX: 'left',
+            originY: 'top',
+          };
+        }
+
+        return null;
+      };
+
+      const targetBounds = resolveBackgroundBounds();
+
       fabric.Image.fromURL(imgUrl, (returnedImage) => {
         if (!returnedImage) {
           throw new Error('Failed to load image from URL');
@@ -1896,18 +1943,35 @@ const EditorPage = ({ shows }) => {
 
         const originalHeight = editor.canvas.getHeight();
         const originalWidth = editor.canvas.getWidth();
-        const baseScale = options?.sourceScale || Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight);
-        const appliedScale = baseScale ? (1 / baseScale) : 1;
+        const bounds = targetBounds || {
+          width: originalWidth,
+          height: originalHeight,
+          left: 0,
+          top: 0,
+          originX: 'left',
+          originY: 'top',
+        };
+
+        const naturalWidth = returnedImage.width || returnedImage.getScaledWidth() || MAGIC_IMAGE_SIZE;
+        const naturalHeight = returnedImage.height || returnedImage.getScaledHeight() || MAGIC_IMAGE_SIZE;
+
+        const coverScale = Math.max(
+          bounds.width / Math.max(1, naturalWidth),
+          bounds.height / Math.max(1, naturalHeight),
+        );
+        const sourceScale = options?.sourceScale ? (1 / options.sourceScale) : null;
+        const appliedScale = sourceScale ? Math.max(coverScale, sourceScale) : coverScale;
+
         returnedImage.scale(appliedScale);
         const scaledWidth = returnedImage.getScaledWidth();
         const scaledHeight = returnedImage.getScaledHeight();
-        const offsetX = (originalWidth - scaledWidth) / 2;
-        const offsetY = (originalHeight - scaledHeight) / 2;
+        const offsetX = bounds.left + (bounds.width - scaledWidth) / 2;
+        const offsetY = bounds.top + (bounds.height - scaledHeight) / 2;
         returnedImage.set({
           left: offsetX,
           top: offsetY,
-          originX: 'left',
-          originY: 'top',
+          originX: bounds.originX || 'left',
+          originY: bounds.originY || 'top',
         });
         editor.canvas.setBackgroundImage(returnedImage);
         setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
