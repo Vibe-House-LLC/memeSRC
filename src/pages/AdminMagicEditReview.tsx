@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Masonry from '@mui/lab/Masonry';
 import {
   Alert,
@@ -34,68 +34,25 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
+import {
+  MagicEditReviewItem,
+  MagicEditReviewStatus,
+  magicEditReviewApi,
+} from '../api/magicEditReview';
 import { UserContext } from '../UserContext';
 
-type ReviewStatus = 'pending' | 'approved' | 'needs_changes';
-
 type ViewMode = 'grid' | 'list';
-
-type MagicEditResult = {
-  id: string;
-  imageUrl: string;
-  prompt: string;
-  createdAt: string;
-  status: ReviewStatus;
-  seed: string;
-  width?: number;
-  height?: number;
-  notes?: string;
-};
 
 type StatusConfig = {
   label: string;
   color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
 };
 
-const STATUS_CONFIG: Record<ReviewStatus, StatusConfig> = {
+const STATUS_CONFIG: Record<MagicEditReviewStatus, StatusConfig> = {
   pending: { label: 'Pending', color: 'warning' },
   approved: { label: 'Approved', color: 'success' },
   needs_changes: { label: 'Needs changes', color: 'error' },
 };
-
-const PROMPTS = [
-  'Refine lighting and add subtle rim highlights to the subject.',
-  'Tighten the edges and remove stray pixels around the silhouette.',
-  'Warm up the color balance and soften the background noise.',
-  'Sharpen facial details while keeping skin tones natural.',
-  'Enhance shadows for depth; avoid over-saturating the midtones.',
-  'Remove watermark artifacts and smooth gradients in the sky.',
-  'Nudge the crop to keep key elements centered and readable.',
-  'Match contrast with the reference set; avoid crushed blacks.',
-];
-
-const randomBetween = (min: number, max: number): number =>
-  Math.floor(Math.random() * (max - min + 1)) + min;
-
-const createMockResult = (index: number): MagicEditResult => {
-  const seed = `magic-${Date.now()}-${index}-${Math.random().toString(16).slice(2, 8)}`;
-  const width = randomBetween(520, 780);
-  const height = randomBetween(640, 1040);
-
-  return {
-    id: `${seed}-${index}`,
-    imageUrl: `https://picsum.photos/seed/${seed}/${width}/${height}`,
-    prompt: PROMPTS[index % PROMPTS.length],
-    createdAt: new Date(Date.now() - randomBetween(1, 36) * 60 * 60 * 1000).toISOString(),
-    status: 'pending',
-    seed,
-    width,
-    height,
-  };
-};
-
-const createMockBatch = (count: number): MagicEditResult[] =>
-  Array.from({ length: count }, (_, index) => createMockResult(index));
 
 const formatTimestamp = (value: string): string => {
   const date = new Date(value);
@@ -110,7 +67,7 @@ const truncateSeed = (seed: string): string => {
   return `${start}…${end}`;
 };
 
-const clampAspectRatio = (item: MagicEditResult): number => {
+const clampAspectRatio = (item: MagicEditReviewItem): number => {
   const ratio = item.width && item.height ? item.height / item.width : 1.25;
   return Math.min(Math.max(ratio, 0.75), 1.45);
 };
@@ -119,38 +76,52 @@ const AdminMagicEditReview: React.FC = () => {
   const { user } = useContext(UserContext);
   const isAdmin = Boolean(user?.['cognito:groups']?.includes('admins'));
 
-  const [results, setResults] = useState<MagicEditResult[]>([]);
+  const apiClient = magicEditReviewApi; // TODO: replace with real magic-edit review API client
+  const requestIdRef = useRef(0);
+
+  const [results, setResults] = useState<MagicEditReviewItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [filter, setFilter] = useState<'all' | ReviewStatus>('all');
+  const [filter, setFilter] = useState<'all' | MagicEditReviewStatus>('all');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
-  const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const clearLoadingTimer = () => {
-    if (loadingTimer.current) {
-      clearTimeout(loadingTimer.current);
-      loadingTimer.current = null;
-    }
-  };
+  const loadBatch = useCallback(
+    async (count: number, delayMs = 420) => {
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
 
-  const primeMockBatch = (count: number, delay = 420) => {
-    clearLoadingTimer();
-    setIsLoading(true);
-    setLoadedIds(new Set());
-    loadingTimer.current = setTimeout(() => {
-      setResults(createMockBatch(count));
-      setIsLoading(false);
-      loadingTimer.current = null;
-    }, delay);
-  };
+      setIsLoading(true);
+      setLoadError(null);
+      setLoadedIds(new Set());
+
+      try {
+        const data = await apiClient.fetchBatch({ limit: count, delayMs });
+        if (requestId !== requestIdRef.current) return;
+        setResults(data);
+      } catch (error) {
+        if (requestId !== requestIdRef.current) return;
+        const message = error instanceof Error ? error.message : 'Unable to load magic edits';
+        setLoadError(message);
+        setResults([]);
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [apiClient]
+  );
 
   useEffect(() => {
-    primeMockBatch(28);
-    return () => clearLoadingTimer();
-  }, []);
+    loadBatch(28); // TODO: switch to real fetch call when backend is ready
+    return () => {
+      requestIdRef.current += 1;
+    };
+  }, [loadBatch]);
 
   const activeResult = useMemo(
     () => results.find((item) => item.id === activeId) ?? null,
@@ -173,18 +144,26 @@ const AdminMagicEditReview: React.FC = () => {
           pending: 0,
           approved: 0,
           needs_changes: 0,
-        } as Record<ReviewStatus, number>
+        } as Record<MagicEditReviewStatus, number>
       ),
     [results]
   );
 
-  const setStatusForIds = (ids: Set<string> | string[], status: ReviewStatus, notes?: string) => {
+  const setStatusForIds = (
+    ids: Set<string> | string[],
+    status: MagicEditReviewStatus,
+    notes?: string
+  ) => {
     const idSet = ids instanceof Set ? ids : new Set(ids);
     const trimmedNotes = notes?.trim() || undefined;
 
     setResults((prev) =>
       prev.map((item) => (idSet.has(item.id) ? { ...item, status, notes: trimmedNotes } : item))
     );
+
+    apiClient.updateStatus(Array.from(idSet), status, trimmedNotes).catch((error) => {
+      console.error('Failed to sync magic edit status (demo only)', error);
+    });
   };
 
   const handleApproveSelected = () => {
@@ -203,7 +182,7 @@ const AdminMagicEditReview: React.FC = () => {
     setSelectedIds(new Set());
     setActiveId(null);
     setNoteDraft('');
-    primeMockBatch(30, 520);
+    loadBatch(30, 520);
   };
 
   const handleSelectVisible = () => {
@@ -233,7 +212,7 @@ const AdminMagicEditReview: React.FC = () => {
     setNoteDraft(result.notes || '');
   };
 
-  const handleUpdateFromDialog = (status: ReviewStatus) => {
+  const handleUpdateFromDialog = (status: MagicEditReviewStatus) => {
     if (!activeResult) return;
     setStatusForIds([activeResult.id], status, noteDraft);
     setActiveId(null);
@@ -246,7 +225,10 @@ const AdminMagicEditReview: React.FC = () => {
     });
   };
 
-  const handleFilterChange = (_event: React.SyntheticEvent, value: 'all' | ReviewStatus | null) => {
+  const handleFilterChange = (
+    _event: React.SyntheticEvent,
+    value: 'all' | MagicEditReviewStatus | null
+  ) => {
     if (!value) return;
     setFilter(value);
     setSelectedIds(new Set());
@@ -621,6 +603,12 @@ const AdminMagicEditReview: React.FC = () => {
             Images come from Picsum for now; actions stay local until the backend API lands.
           </Typography>
         </Stack>
+
+      {loadError && (
+        <Alert severity="warning" variant="outlined">
+          Demo API wrapper could not refresh items. Try again or reload. ({loadError})
+        </Alert>
+      )}
 
         <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
           <Stack spacing={2}>
