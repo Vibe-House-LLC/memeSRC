@@ -22,6 +22,7 @@ import {
   Group,
   Home,
   ManageAccounts,
+  AutoFixHigh,
   Functions
 } from '@mui/icons-material';
 import SvgColor from '../../../components/svg-color';
@@ -185,6 +186,12 @@ const navConfig = [
         path: '/dashboard/user-content-review',
         externalLink: false,
         icon: <Shield />,
+      },
+      {
+        title: 'Magic Edit Review',
+        path: '/dashboard/magic-edit-review',
+        externalLink: false,
+        icon: <AutoFixHigh />,
       },
       {
         title: 'Website Settings',
