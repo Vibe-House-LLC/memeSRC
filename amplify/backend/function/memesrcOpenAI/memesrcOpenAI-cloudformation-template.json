@@ -86,6 +86,16 @@
                 "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:MagicResultTable:Name"
               }
             },
+            "API_MEMESRC_WEBSITESETTINGTABLE_NAME": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:WebsiteSettingTable:Name"
+              }
+            },
+            "API_MEMESRC_RATELIMITTABLE_NAME": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:RateLimitTable:Name"
+              }
+            },
             "API_MEMESRC_MAGICRESULTTABLE_ARN": {
               "Fn::Join": [
                 "",
@@ -361,6 +371,92 @@
                       {
                         "Fn::ImportValue": {
                           "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:MagicResultTable:Name"
+                        }
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:WebsiteSettingTable:Name"
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:WebsiteSettingTable:Name"
+                        }
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:RateLimitTable:Name"
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${apimemesrcGraphQLAPIIdOutput}:GetAtt:RateLimitTable:Name"
                         }
                       },
                       "/index/*"

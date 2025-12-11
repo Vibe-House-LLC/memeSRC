@@ -23,12 +23,21 @@ Amplify Params - DO NOT EDIT */
 
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
 const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
-const { DynamoDBClient, UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, UpdateItemCommand, GetItemCommand } = require("@aws-sdk/client-dynamodb");
 const uuid = require('uuid');
 const axios = require('axios');
 const FormData = require('form-data');
 const { Buffer } = require('buffer');
 const MAX_REFERENCE_IMAGES = 4;
+const DEFAULT_RATE_LIMIT = 100;
+const MODEL_RATE_LIMIT_FIELD = {
+  openai: 'openAIRateLimit',
+  gemini: 'nanoBananaRateLimit',
+};
+const MODEL_USAGE_FIELD = {
+  openai: 'openaiUsage',
+  gemini: 'geminiUsage',
+};
 // Gemini client (lazy dependency; only used when no mask is provided)
 let GoogleGenerativeAI;
 try {
@@ -81,6 +90,83 @@ const getImageSize = (buffer) => {
     return null;
 };
 
+const parseNumberOrDefault = (value, fallback) => {
+    const parsed = typeof value === 'number' ? value : parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const getUtcDayId = () => new Date().toISOString().slice(0, 10);
+
+const fetchModelRateLimit = async (dynamoClient, modelKey) => {
+    const tableName = process.env.API_MEMESRC_WEBSITESETTINGTABLE_NAME;
+    if (!tableName) {
+        console.warn('[RateLimit] Missing website settings table env var; using default', { fallback: DEFAULT_RATE_LIMIT });
+        return DEFAULT_RATE_LIMIT;
+    }
+    const limitField = MODEL_RATE_LIMIT_FIELD[modelKey] || MODEL_RATE_LIMIT_FIELD.openai;
+    const resp = await dynamoClient.send(new GetItemCommand({
+        TableName: tableName,
+        Key: { id: { S: 'globalSettings' } },
+        ProjectionExpression: '#limitField',
+        ExpressionAttributeNames: {
+            '#limitField': limitField,
+        },
+    }));
+    const limit = parseNumberOrDefault(resp?.Item?.[limitField]?.N, DEFAULT_RATE_LIMIT);
+    return limit;
+};
+
+const incrementDailyUsage = async ({ dynamoClient, modelKey, limit }) => {
+    const tableName = process.env.API_MEMESRC_RATELIMITTABLE_NAME;
+    if (!tableName) {
+        throw new Error('Missing API_MEMESRC_RATELIMITTABLE_NAME environment variable');
+    }
+    const rateLimitId = getUtcDayId();
+    const modelUsageField = MODEL_USAGE_FIELD[modelKey] || MODEL_USAGE_FIELD.openai;
+    try {
+        const updateResp = await dynamoClient.send(new UpdateItemCommand({
+            TableName: tableName,
+            Key: { id: { S: rateLimitId } },
+            UpdateExpression: 'SET currentUsage = if_not_exists(currentUsage, :zero) + :incr, #modelUsage = if_not_exists(#modelUsage, :zero) + :incr',
+            ConditionExpression: 'attribute_not_exists(#modelUsage) OR #modelUsage < :limitValue',
+            ExpressionAttributeNames: {
+                '#modelUsage': modelUsageField,
+            },
+            ExpressionAttributeValues: {
+                ':zero': { N: '0' },
+                ':incr': { N: '1' },
+                ':limitValue': { N: limit.toString() },
+            },
+            ReturnValues: 'UPDATED_NEW',
+        }));
+        const modelUsage = parseNumberOrDefault(updateResp?.Attributes?.[modelUsageField]?.N, 0);
+        const totalUsage = parseNumberOrDefault(updateResp?.Attributes?.currentUsage?.N, 0);
+        return { rateLimitId, modelUsage, totalUsage };
+    } catch (error) {
+        if (error?.name === 'ConditionalCheckFailedException') {
+            const rateLimitError = new Error(`Daily ${modelKey} rate limit reached`);
+            rateLimitError.code = 'RateLimitExceeded';
+            rateLimitError.rateLimitId = rateLimitId;
+            rateLimitError.modelKey = modelKey;
+            throw rateLimitError;
+        }
+        throw error;
+    }
+};
+
+const enforceRateLimit = async (dynamoClient, modelKey) => {
+    const limit = await fetchModelRateLimit(dynamoClient, modelKey);
+    const usage = await incrementDailyUsage({ dynamoClient, modelKey, limit });
+    console.log('[RateLimit] Usage incremented', {
+        modelKey,
+        rateLimitId: usage.rateLimitId,
+        modelUsage: usage.modelUsage,
+        totalUsage: usage.totalUsage,
+        limit,
+    });
+    return { ...usage, limit };
+};
+
 const makeRequest = async (formData, headers) => {
     try {
         return await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
@@ -124,6 +210,11 @@ exports.handler = async (event) => {
     // Branch: if maskKey is provided, run existing OpenAI edit flow; otherwise run Gemini image+prompt flow
     if (!maskKey) {
         console.log('[Magic] Branch selected: Gemini (no maskKey)');
+        if (!imageKey) {
+            console.error('[Gemini] Missing required imageKey');
+            throw new Error('Missing required parameter: imageKey');
+        }
+        await enforceRateLimit(dynamoClient, 'gemini');
         // Gemini path: single image + prompt → new image
         const paramName = process.env.gemini_api_key;
         if (!paramName) {
@@ -145,10 +236,6 @@ exports.handler = async (event) => {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' });
 
         // Read input image from S3
-        if (!imageKey) {
-            console.error('[Gemini] Missing required imageKey');
-            throw new Error('Missing required parameter: imageKey');
-        }
         console.log('[Gemini] S3 GetObject (input image) start', {
             bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
             key: imageKey,
@@ -334,10 +421,6 @@ exports.handler = async (event) => {
         return; // done with Gemini branch
     }
 
-    const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
-    console.log('[OpenAI] Fetching API key from SSM', { paramName: process.env.openai_apikey });
-    const data = await ssmClient.send(command);
-
     // Fetch the images from S3
     if (!imageKey) {
         console.error('[OpenAI] Missing required imageKey');
@@ -347,6 +430,10 @@ exports.handler = async (event) => {
         console.error('[OpenAI] Missing required maskKey');
         throw new Error('Missing required parameter: maskKey');
     }
+    await enforceRateLimit(dynamoClient, 'openai');
+    const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
+    console.log('[OpenAI] Fetching API key from SSM', { paramName: process.env.openai_apikey });
+    const data = await ssmClient.send(command);
     console.log('[OpenAI] S3 GetObject (image) start', {
         bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
         key: imageKey,
