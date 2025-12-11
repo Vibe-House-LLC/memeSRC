@@ -1349,6 +1349,8 @@ export const getWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -1366,6 +1368,8 @@ export const listWebsiteSettings = /* GraphQL */ `
         id
         fullSiteMaintenance
         universalSearchMaintenance
+        openAIRateLimit
+        nanoBananaRateLimit
         createdAt
         updatedAt
         __typename
@@ -1729,6 +1733,36 @@ export const magicEditHistoriesByOwner = /* GraphQL */ `
         status
         createdAt
         owner
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getRateLimit = /* GraphQL */ `
+  query GetRateLimit($id: ID!) {
+    getRateLimit(id: $id) {
+      id
+      currentUsage
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listRateLimits = /* GraphQL */ `
+  query ListRateLimits(
+    $filter: ModelRateLimitFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listRateLimits(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        currentUsage
+        createdAt
         updatedAt
         __typename
       }

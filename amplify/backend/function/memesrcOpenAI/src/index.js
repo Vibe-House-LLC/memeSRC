@@ -222,7 +222,7 @@ exports.handler = async (event) => {
 
         console.log('[Gemini] Invoking model', {
             model: 'gemini-2.5-flash-image-preview',
-            promptPreview: String(promptText).slice(0, 120),
+            promptPreview: String(prompt).slice(0, 120),
             generationConfig: { responseModalities: ['IMAGE'], temperature: 0 },
             referenceCount: referenceImages.length,
         });

@@ -360,6 +360,8 @@ type WebsiteSetting @model @auth(
   id: ID!, 
   fullSiteMaintenance: Boolean,
   universalSearchMaintenance: Boolean
+  openAIRateLimit: Int @default(value: "100")
+  nanoBananaRateLimit: Int @default(value: "100")
 }
 
 type ProSupportMessage @model @auth(
@@ -450,3 +452,13 @@ type MagicEditHistory @model @auth(
     @index(name: "byOwner", sortKeyFields: ["createdAt"], queryField: "magicEditHistoriesByOwner")
 }
 
+type RateLimit @model @auth(
+  rules: [
+    { allow: public, operations: [read] },
+    { allow: private, operations: [read] },
+    { allow: groups, groups: ["admins"], operations: [create, read, update, delete] }
+  ]
+) {
+  id: ID!
+  currentUsage: Int
+}

@@ -2178,6 +2178,8 @@ export const onCreateWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -2192,6 +2194,8 @@ export const onUpdateWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -2206,6 +2210,8 @@ export const onDeleteWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -2501,6 +2507,45 @@ export const onDeleteMagicEditHistory = /* GraphQL */ `
       status
       createdAt
       owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateRateLimit = /* GraphQL */ `
+  subscription OnCreateRateLimit(
+    $filter: ModelSubscriptionRateLimitFilterInput
+  ) {
+    onCreateRateLimit(filter: $filter) {
+      id
+      currentUsage
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateRateLimit = /* GraphQL */ `
+  subscription OnUpdateRateLimit(
+    $filter: ModelSubscriptionRateLimitFilterInput
+  ) {
+    onUpdateRateLimit(filter: $filter) {
+      id
+      currentUsage
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteRateLimit = /* GraphQL */ `
+  subscription OnDeleteRateLimit(
+    $filter: ModelSubscriptionRateLimitFilterInput
+  ) {
+    onDeleteRateLimit(filter: $filter) {
+      id
+      currentUsage
+      createdAt
       updatedAt
       __typename
     }

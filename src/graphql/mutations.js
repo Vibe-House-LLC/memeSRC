@@ -2263,6 +2263,8 @@ export const createWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -2278,6 +2280,8 @@ export const updateWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -2293,6 +2297,8 @@ export const deleteWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -2594,6 +2600,48 @@ export const deleteMagicEditHistory = /* GraphQL */ `
       status
       createdAt
       owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createRateLimit = /* GraphQL */ `
+  mutation CreateRateLimit(
+    $input: CreateRateLimitInput!
+    $condition: ModelRateLimitConditionInput
+  ) {
+    createRateLimit(input: $input, condition: $condition) {
+      id
+      currentUsage
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateRateLimit = /* GraphQL */ `
+  mutation UpdateRateLimit(
+    $input: UpdateRateLimitInput!
+    $condition: ModelRateLimitConditionInput
+  ) {
+    updateRateLimit(input: $input, condition: $condition) {
+      id
+      currentUsage
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteRateLimit = /* GraphQL */ `
+  mutation DeleteRateLimit(
+    $input: DeleteRateLimitInput!
+    $condition: ModelRateLimitConditionInput
+  ) {
+    deleteRateLimit(input: $input, condition: $condition) {
+      id
+      currentUsage
+      createdAt
       updatedAt
       __typename
     }
