@@ -20,7 +20,7 @@ import { Send, AutoFixHighRounded, Close, Check, AddPhotoAlternate } from '@mui/
 import { API, graphqlOperation } from 'aws-amplify';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - generated JS module
-import { getMagicResult } from '../../graphql/queries';
+import { getMagicResult, getRateLimit, getWebsiteSetting } from '../../graphql/queries';
 import { resizeImage } from '../../utils/library/resizeImage';
 import { EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
 import { UserContext } from '../../UserContext';
@@ -136,6 +136,14 @@ async function ensureImageDataUrl(src: string): Promise<string> {
 }
 
 const MAX_REFERENCE_IMAGES = 4;
+const DEFAULT_NANO_LIMIT = 100;
+
+const toNumber = (value: unknown, fallback = 0): number => {
+  const parsed = typeof value === 'number' ? value : parseInt(String(value), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const getUtcDayId = (): string => new Date().toISOString().slice(0, 10);
 
 export interface MagicEditorProps {
   imageSrc: string; // required input photo
@@ -233,9 +241,51 @@ export default function MagicEditor({
   const originalSrcRef = useRef<string>(imageSrc);
   const progressTimerRef = useRef<number | null>(null);
   const autoStartTriggerRef = useRef<string | number | boolean | null>(null);
+  type RateLimitState = {
+    nanoUsage: number;
+    nanoLimit: number;
+    nanoAvailable: boolean;
+    loading: boolean;
+  };
+  const [rateLimitState, setRateLimitState] = useState<RateLimitState>({
+    nanoUsage: 0,
+    nanoLimit: DEFAULT_NANO_LIMIT,
+    nanoAvailable: true,
+    loading: true,
+  });
 
   // Elegant, subtle glow around the progress card
   const accentColor = '#8b5cc7';
+
+  const refreshRateLimitState = useCallback(async () => {
+    const dayId = getUtcDayId();
+    try {
+      const settingsResp = await API.graphql(graphqlOperation(getWebsiteSetting, { id: 'globalSettings' })) as any;
+      let rateResp: any = null;
+      try {
+        rateResp = await API.graphql(graphqlOperation(getRateLimit, { id: dayId }));
+      } catch (_) {
+        rateResp = null;
+      }
+      const settings = (settingsResp as any)?.data?.getWebsiteSetting || {};
+      const nanoLimit = toNumber(settings?.nanoBananaRateLimit, DEFAULT_NANO_LIMIT);
+      const rateItem = (rateResp as any)?.data?.getRateLimit;
+      const nanoUsage = toNumber((rateItem as any)?.geminiUsage ?? (rateItem as any)?.currentUsage, 0);
+      setRateLimitState({
+        nanoUsage,
+        nanoLimit,
+        nanoAvailable: nanoUsage < nanoLimit,
+        loading: false,
+      });
+    } catch (err) {
+      console.warn('[MagicEditor] Failed to load rate limits', err);
+      setRateLimitState((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshRateLimitState();
+  }, [refreshRateLimitState]);
 
   // User + credit management
   const { setUser, forceTokenRefresh } = useContext(UserContext) as any;
@@ -459,7 +509,10 @@ export default function MagicEditor({
     };
   }, []);
 
-  const canSend = useMemo(() => Boolean(internalSrc) && !processing && prompt.trim().length > 0, [internalSrc, processing, prompt]);
+  const canSend = useMemo(
+    () => Boolean(internalSrc) && !processing && prompt.trim().length > 0 && rateLimitState.nanoAvailable,
+    [internalSrc, processing, prompt, rateLimitState.nanoAvailable]
+  );
 
   useEffect(() => {
     setPrompt(defaultPrompt || '');
@@ -509,6 +562,10 @@ export default function MagicEditor({
 
   const handleApply = useCallback(async () => {
     if (!internalSrc || processing) return;
+    if (!rateLimitState.nanoAvailable) {
+      setError('Magic tools are currently unavailable due to daily limits. Please try again tomorrow.');
+      return;
+    }
     setProcessing(true);
     setProgress(0);
     setProgressVariant('indeterminate'); // initial: waiting for job to start
@@ -596,6 +653,7 @@ export default function MagicEditor({
       }, 1000 / UPDATES_PER_SECOND);
 
       let finalUrl: string | null = null;
+      let pollError: Error | null = null;
       // eslint-disable-next-line no-constant-condition
       while (true) {
         // timeout check
@@ -607,6 +665,20 @@ export default function MagicEditor({
             graphqlOperation(getMagicResult, { id: magicResultId })
           );
           const resultsStr: string | null = result?.data?.getMagicResult?.results ?? null;
+          const rawError = result?.data?.getMagicResult?.error ?? null;
+          if (rawError) {
+            let parsedError: any = rawError;
+            if (typeof rawError === 'string') {
+              try { parsedError = JSON.parse(rawError); } catch (_) { parsedError = rawError; }
+            }
+            const reason = parsedError?.reason;
+            const message = parsedError?.message || 'Magic edit failed.';
+            if (reason === 'rate_limit') {
+              setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+            }
+            pollError = Object.assign(new Error(message), { reason: parsedError?.reason });
+            break;
+          }
           if (resultsStr) {
             const urls = JSON.parse(resultsStr);
             finalUrl = urls?.[0] ?? null;
@@ -616,6 +688,10 @@ export default function MagicEditor({
           // swallow transient errors; keep polling
         }
         await new Promise((r) => setTimeout(r, QUERY_INTERVAL));
+      }
+
+      if (pollError) {
+        throw pollError;
       }
 
       if (!finalUrl) throw new Error('No result image returned');
@@ -629,6 +705,9 @@ export default function MagicEditor({
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Magic edit failed.';
       setError(msg);
+      if ((e as any)?.reason === 'rate_limit' || (typeof msg === 'string' && msg.toLowerCase().includes('limit'))) {
+        setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+      }
       // mark entry as failed
       updateHistoryEntry(pendingId, { pending: false, label: 'Edit failed', progress: undefined, prompt: undefined });
     } finally {
@@ -645,7 +724,7 @@ export default function MagicEditor({
       // In case of early failures or mismatched optimistic updates, refresh balance
       void refreshCreditsFromBackend();
     }
-  }, [addPendingEdit, applyCreditPatch, internalSrc, normalizeImageForApi, onResult, optimisticSpendCredit, processing, prompt, referenceImages, refreshCreditsFromBackend, setImage, updateHistoryEntry]);
+  }, [addPendingEdit, applyCreditPatch, internalSrc, normalizeImageForApi, onResult, optimisticSpendCredit, processing, prompt, rateLimitState.nanoAvailable, referenceImages, refreshCreditsFromBackend, setImage, updateHistoryEntry]);
 
   useEffect(() => {
     if (!autoStart) return;
@@ -691,6 +770,11 @@ export default function MagicEditor({
           }
         }}
       />
+      {!rateLimitState.nanoAvailable && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Magic tools are currently unavailable today due to usage limits. Please try again tomorrow or use the classic tools.
+        </Alert>
+      )}
       {/* Magic Editor subtitle; can be hidden by parent
       {showHeader && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
