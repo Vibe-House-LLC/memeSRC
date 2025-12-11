@@ -46,6 +46,41 @@ const streamToBuffer = (stream) => {
     });
 };
 
+// Minimal image size parser for PNG and JPEG buffers
+const getImageSize = (buffer) => {
+    if (!buffer || !Buffer.isBuffer(buffer)) return null;
+    // PNG signature
+    if (buffer.length >= 24 && buffer.readUInt32BE(0) === 0x89504e47) {
+        try {
+            const width = buffer.readUInt32BE(16);
+            const height = buffer.readUInt32BE(20);
+            if (width > 0 && height > 0) return { width, height };
+        } catch (_) { /* ignore */ }
+    }
+    // JPEG
+    if (buffer.length > 4 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+        let offset = 2;
+        while (offset < buffer.length) {
+            if (buffer[offset] !== 0xff) break;
+            const marker = buffer[offset + 1];
+            // SOF0 - SOF15, excluding DHT (0xC4) and JPG (0xC8, 0xCC)
+            if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+                if (offset + 8 <= buffer.length) {
+                    const height = buffer.readUInt16BE(offset + 5);
+                    const width = buffer.readUInt16BE(offset + 7);
+                    if (width > 0 && height > 0) return { width, height };
+                }
+                break;
+            } else {
+                const blockLen = buffer.readUInt16BE(offset + 2);
+                if (!blockLen || offset + 2 + blockLen > buffer.length) break;
+                offset += 2 + blockLen;
+            }
+        }
+    }
+    return null;
+};
+
 const makeRequest = async (formData, headers) => {
     try {
         return await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
@@ -125,6 +160,11 @@ exports.handler = async (event) => {
         const imgBuffer = await streamToBuffer(imgObj.Body);
         const imageBase64 = imgBuffer.toString('base64');
         const mimeType = 'image/png';
+        const baseSize = getImageSize(imgBuffer);
+        const baseAspect = baseSize && baseSize.height > 0 ? Number(baseSize.width / baseSize.height) : null;
+        const baseSizeHint = baseSize
+            ? `Base image dimensions: ${baseSize.width}x${baseSize.height} (aspect ratio ${baseAspect?.toFixed(4)}). Output must match this size and aspect ratio.`
+            : 'Output must match the original base image size and aspect ratio.';
 
         console.log('[Gemini] Input', {
             magicResultId,
@@ -163,6 +203,7 @@ exports.handler = async (event) => {
         ];
 
         if (referenceImages.length) {
+            contentParts.push({ text: baseSizeHint });
             contentParts.push({ text: `Reference photos (${referenceImages.length}). Use them for style/context; do not overwrite the base content unless requested.` });
             referenceImages.forEach((ref, idx) => {
                 contentParts.push({ text: `Reference ${idx + 1}` });
@@ -171,11 +212,8 @@ exports.handler = async (event) => {
         }
 
         const promptPreface = referenceImages.length
-            ? 'Edit the original base photo without changing its dimensions. Use the reference photos only as guidance for style/placement/content.'
+            ? `${baseSizeHint} Edit the original base photo without changing its aspect ratio or dimensions. Use the reference photos only as guidance for style/placement/content; do not resize, crop, or match their canvas. Final output must retain the base photo framing and canvas size.`
             : '';
-        const promptText = referenceImages.length
-            ? `${promptPreface}\nUser instructions: ${userPrompt}`
-            : userPrompt;
 
         if (promptPreface) {
             contentParts.push({ text: promptPreface });
