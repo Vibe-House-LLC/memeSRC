@@ -2009,6 +2009,7 @@ export const createMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -2044,6 +2045,7 @@ export const updateMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -2079,6 +2081,7 @@ export const deleteMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId

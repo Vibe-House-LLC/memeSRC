@@ -1182,6 +1182,7 @@ export const getMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -1200,6 +1201,7 @@ export const listMagicResults = /* GraphQL */ `
         id
         prompt
         results
+        error
         createdAt
         updatedAt
         magicResultUserId

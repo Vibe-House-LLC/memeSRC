@@ -311,6 +311,7 @@ type MagicResult @model @auth(
   user: UserDetails @hasOne,
   prompt: String,
   results: String
+  error: AWSJSON
 }
 
 type Template
