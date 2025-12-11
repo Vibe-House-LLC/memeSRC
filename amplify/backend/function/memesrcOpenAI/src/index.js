@@ -148,6 +148,7 @@ const incrementDailyUsage = async ({ dynamoClient, modelKey, limit }) => {
             rateLimitError.code = 'RateLimitExceeded';
             rateLimitError.rateLimitId = rateLimitId;
             rateLimitError.modelKey = modelKey;
+            rateLimitError.limit = limit;
             throw rateLimitError;
         }
         throw error;
@@ -165,6 +166,42 @@ const enforceRateLimit = async (dynamoClient, modelKey) => {
         limit,
     });
     return { ...usage, limit };
+};
+
+const recordRateLimitError = async ({ dynamoClient, magicResultId, modelKey, limit, rateLimitId }) => {
+    if (!magicResultId || !process.env.API_MEMESRC_MAGICRESULTTABLE_NAME) {
+        return;
+    }
+    const errorPayload = {
+        reason: 'rate_limit',
+        message: `Daily ${modelKey} limit reached. Please try again tomorrow.`,
+        model: modelKey,
+        limit,
+        rateLimitId,
+        timestamp: new Date().toISOString(),
+    };
+    try {
+        await dynamoClient.send(new UpdateItemCommand({
+            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+            Key: { id: { S: magicResultId } },
+            UpdateExpression: 'SET error = :error, updatedAt = :updatedAt',
+            ExpressionAttributeValues: {
+                ':error': { S: JSON.stringify(errorPayload) },
+                ':updatedAt': { S: new Date().toISOString() },
+            },
+        }));
+        console.warn('[RateLimit] Recorded rate limit error on MagicResult', {
+            magicResultId,
+            modelKey,
+            rateLimitId,
+            limit,
+        });
+    } catch (err) {
+        console.error('[RateLimit] Failed to record error on MagicResult', {
+            magicResultId,
+            message: err?.message,
+        });
+    }
 };
 
 const makeRequest = async (formData, headers) => {
@@ -214,7 +251,20 @@ exports.handler = async (event) => {
             console.error('[Gemini] Missing required imageKey');
             throw new Error('Missing required parameter: imageKey');
         }
-        await enforceRateLimit(dynamoClient, 'gemini');
+        try {
+            await enforceRateLimit(dynamoClient, 'gemini');
+        } catch (err) {
+            if (err?.code === 'RateLimitExceeded') {
+                await recordRateLimitError({
+                    dynamoClient,
+                    magicResultId,
+                    modelKey: 'gemini',
+                    limit: err?.limit,
+                    rateLimitId: err?.rateLimitId,
+                });
+            }
+            throw err;
+        }
         // Gemini path: single image + prompt → new image
         const paramName = process.env.gemini_api_key;
         if (!paramName) {
@@ -430,7 +480,20 @@ exports.handler = async (event) => {
         console.error('[OpenAI] Missing required maskKey');
         throw new Error('Missing required parameter: maskKey');
     }
-    await enforceRateLimit(dynamoClient, 'openai');
+    try {
+        await enforceRateLimit(dynamoClient, 'openai');
+    } catch (err) {
+        if (err?.code === 'RateLimitExceeded') {
+            await recordRateLimitError({
+                dynamoClient,
+                magicResultId,
+                modelKey: 'openai',
+                limit: err?.limit,
+                rateLimitId: err?.rateLimitId,
+            });
+        }
+        throw err;
+    }
     const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
     console.log('[OpenAI] Fetching API key from SSM', { paramName: process.env.openai_apikey });
     const data = await ssmClient.send(command);
