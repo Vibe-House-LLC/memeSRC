@@ -462,4 +462,6 @@ type RateLimit @model @auth(
 ) {
   id: ID!
   currentUsage: Int
+  openaiUsage: Int
+  geminiUsage: Int
 }

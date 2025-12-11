@@ -2522,6 +2522,8 @@ export const onCreateRateLimit = /* GraphQL */ `
     onCreateRateLimit(filter: $filter) {
       id
       currentUsage
+      openaiUsage
+      geminiUsage
       createdAt
       updatedAt
       __typename
@@ -2535,6 +2537,8 @@ export const onUpdateRateLimit = /* GraphQL */ `
     onUpdateRateLimit(filter: $filter) {
       id
       currentUsage
+      openaiUsage
+      geminiUsage
       createdAt
       updatedAt
       __typename
@@ -2548,6 +2552,8 @@ export const onDeleteRateLimit = /* GraphQL */ `
     onDeleteRateLimit(filter: $filter) {
       id
       currentUsage
+      openaiUsage
+      geminiUsage
       createdAt
       updatedAt
       __typename

@@ -1748,6 +1748,8 @@ export const getRateLimit = /* GraphQL */ `
     getRateLimit(id: $id) {
       id
       currentUsage
+      openaiUsage
+      geminiUsage
       createdAt
       updatedAt
       __typename
@@ -1764,6 +1766,8 @@ export const listRateLimits = /* GraphQL */ `
       items {
         id
         currentUsage
+        openaiUsage
+        geminiUsage
         createdAt
         updatedAt
         __typename

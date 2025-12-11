@@ -2616,6 +2616,8 @@ export const createRateLimit = /* GraphQL */ `
     createRateLimit(input: $input, condition: $condition) {
       id
       currentUsage
+      openaiUsage
+      geminiUsage
       createdAt
       updatedAt
       __typename
@@ -2630,6 +2632,8 @@ export const updateRateLimit = /* GraphQL */ `
     updateRateLimit(input: $input, condition: $condition) {
       id
       currentUsage
+      openaiUsage
+      geminiUsage
       createdAt
       updatedAt
       __typename
@@ -2644,6 +2648,8 @@ export const deleteRateLimit = /* GraphQL */ `
     deleteRateLimit(input: $input, condition: $condition) {
       id
       currentUsage
+      openaiUsage
+      geminiUsage
       createdAt
       updatedAt
       __typename
