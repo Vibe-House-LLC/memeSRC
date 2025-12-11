@@ -115,7 +115,7 @@
         "memesrcOpenAI": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcOpenAI-30757957396f7453434b-build.zip"
+          "s3Key": "amplify-builds/memesrcOpenAI-6646663250314d56356d-build.zip"
         },
         "frameExtractor": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
