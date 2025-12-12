@@ -123,11 +123,12 @@ const incrementDailyUsage = async ({ dynamoClient, modelKey, limit }) => {
     }
     const rateLimitId = getUtcDayId();
     const modelUsageField = MODEL_USAGE_FIELD[modelKey] || MODEL_USAGE_FIELD.openai;
+    const nowIso = new Date().toISOString();
     try {
         const updateResp = await dynamoClient.send(new UpdateItemCommand({
             TableName: tableName,
             Key: { id: { S: rateLimitId } },
-            UpdateExpression: 'SET currentUsage = if_not_exists(currentUsage, :zero) + :incr, #modelUsage = if_not_exists(#modelUsage, :zero) + :incr',
+            UpdateExpression: 'SET currentUsage = if_not_exists(currentUsage, :zero) + :incr, #modelUsage = if_not_exists(#modelUsage, :zero) + :incr, createdAt = if_not_exists(createdAt, :now), updatedAt = :now',
             ConditionExpression: 'attribute_not_exists(#modelUsage) OR #modelUsage < :limitValue',
             ExpressionAttributeNames: {
                 '#modelUsage': modelUsageField,
@@ -136,6 +137,7 @@ const incrementDailyUsage = async ({ dynamoClient, modelKey, limit }) => {
                 ':zero': { N: '0' },
                 ':incr': { N: '1' },
                 ':limitValue': { N: limit.toString() },
+                ':now': { S: nowIso },
             },
             ReturnValues: 'UPDATED_NEW',
         }));

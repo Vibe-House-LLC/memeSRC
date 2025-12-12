@@ -270,7 +270,7 @@ export default function MagicEditor({
       const settings = (settingsResp as any)?.data?.getWebsiteSetting || {};
       const nanoLimit = toNumber(settings?.nanoBananaRateLimit, DEFAULT_NANO_LIMIT);
       const rateItem = (rateResp as any)?.data?.getRateLimit;
-      const nanoUsage = toNumber((rateItem as any)?.geminiUsage ?? (rateItem as any)?.currentUsage, 0);
+      const nanoUsage = toNumber((rateItem as any)?.geminiUsage, 0);
       setRateLimitState({
         nanoUsage,
         nanoLimit,
@@ -563,7 +563,7 @@ export default function MagicEditor({
   const handleApply = useCallback(async () => {
     if (!internalSrc || processing) return;
     if (!rateLimitState.nanoAvailable) {
-      setError('Magic tools are currently unavailable due to daily limits. Please try again tomorrow.');
+      setError('Magic tools are temporarily unavailable. Please try again later.');
       return;
     }
     setProcessing(true);
@@ -723,8 +723,9 @@ export default function MagicEditor({
       setPrompt('');
       // In case of early failures or mismatched optimistic updates, refresh balance
       void refreshCreditsFromBackend();
+      void refreshRateLimitState();
     }
-  }, [addPendingEdit, applyCreditPatch, internalSrc, normalizeImageForApi, onResult, optimisticSpendCredit, processing, prompt, rateLimitState.nanoAvailable, referenceImages, refreshCreditsFromBackend, setImage, updateHistoryEntry]);
+  }, [addPendingEdit, applyCreditPatch, internalSrc, normalizeImageForApi, onResult, optimisticSpendCredit, processing, prompt, rateLimitState.nanoAvailable, referenceImages, refreshCreditsFromBackend, refreshRateLimitState, setImage, updateHistoryEntry]);
 
   useEffect(() => {
     if (!autoStart) return;
@@ -772,7 +773,7 @@ export default function MagicEditor({
       />
       {!rateLimitState.nanoAvailable && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Magic tools are currently unavailable today due to usage limits. Please try again tomorrow or use the classic tools.
+          Magic tools are temporarily unavailable. Please try again later.
         </Alert>
       )}
       {/* Magic Editor subtitle; can be hidden by parent
@@ -1203,7 +1204,7 @@ export default function MagicEditor({
                           bgcolor: canSend ? 'primary.main' : 'transparent',
                           color: canSend ? 'primary.contrastText' : 'action.disabled',
                           '&:hover': { bgcolor: canSend ? 'primary.dark' : 'transparent' },
-                          '&.Mui-disabled': { bgcolor: 'transparent' },
+                          '&.Mui-disabled': { bgcolor: 'transparent', cursor: 'not-allowed' },
                         }}
                       >
                         <Send fontSize="small" />

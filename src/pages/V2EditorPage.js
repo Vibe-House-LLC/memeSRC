@@ -410,16 +410,19 @@ const EditorPage = ({ shows }) => {
   const refreshRateLimits = useCallback(async () => {
     const dayId = getUtcDayId();
     try {
-      const [settingsResp, rateResp] = await Promise.all([
-        API.graphql(graphqlOperation(getWebsiteSetting, { id: 'globalSettings' })),
-        API.graphql(graphqlOperation(getRateLimit, { id: dayId })).catch(() => null),
-      ]);
+      const settingsResp = await API.graphql(graphqlOperation(getWebsiteSetting, { id: 'globalSettings' }));
+      let rateResp = null;
+      try {
+        rateResp = await API.graphql(graphqlOperation(getRateLimit, { id: dayId }));
+      } catch (_) {
+        rateResp = null;
+      }
       const settings = settingsResp?.data?.getWebsiteSetting || {};
       const nanoLimit = toNumber(settings?.nanoBananaRateLimit, DEFAULT_RATE_LIMIT);
       const openaiLimit = toNumber(settings?.openAIRateLimit, DEFAULT_RATE_LIMIT);
       const rateItem = rateResp?.data?.getRateLimit;
-      const nanoUsage = toNumber(rateItem?.geminiUsage ?? rateItem?.currentUsage, 0);
-      const openaiUsage = toNumber(rateItem?.openaiUsage ?? rateItem?.currentUsage, 0);
+      const nanoUsage = toNumber(rateItem?.geminiUsage, 0);
+      const openaiUsage = toNumber(rateItem?.openaiUsage, 0);
       setRateLimitState({
         nanoUsage,
         nanoLimit,
@@ -1856,12 +1859,17 @@ const EditorPage = ({ shows }) => {
 
         if (parsedError) {
           const reason = parsedError?.reason;
-          const message = parsedError?.message || 'Magic tools are currently unavailable.';
+          const model = parsedError?.model;
+          const message = parsedError?.message || 'Magic tools are temporarily unavailable.';
           setSeverity('error');
           setMessage(message);
           setOpen(true);
           if (reason === 'rate_limit') {
-            setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
+            if (model === 'gemini') {
+              setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+            } else {
+              setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
+            }
           }
         } else if (results) {
           try {
@@ -1869,6 +1877,7 @@ const EditorPage = ({ shows }) => {
             setReturnedImages((prev) => [...prev, ...imageUrls]);
             setOpenSelectResult(true);
             await spendMagicCredit();
+            void refreshRateLimits();
           } catch (err) {
             console.error('Error parsing magic results:', err);
             alert('Error: Unable to parse magic results. Please try again.');
@@ -1876,6 +1885,9 @@ const EditorPage = ({ shows }) => {
         } else {
           console.error("Timeout reached without fetching magic results.");
           alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
+        }
+        if (parsedError?.reason === 'rate_limit') {
+          void refreshRateLimits();
         }
       }
     }, QUERY_INTERVAL);
@@ -1900,7 +1912,7 @@ const EditorPage = ({ shows }) => {
     }
     if (rateLimitState.openaiAvailable === false) {
       setSeverity('error');
-      setMessage('Magic tools are currently unavailable due to daily limits. Please try again tomorrow.');
+      setMessage('Magic tools are temporarily unavailable. Please try again later.');
       setOpen(true);
       return;
     }
@@ -1935,14 +1947,21 @@ const EditorPage = ({ shows }) => {
         } catch (error) {
           setLoadingInpaintingResult(false);
           const rateLimitReason = error?.response?.data?.error?.reason || error?.response?.data?.error?.code;
+          const rateLimitModel = error?.response?.data?.error?.model;
           const messageText = error?.message ? error.message.toLowerCase() : '';
           if (rateLimitReason === 'rate_limit' || messageText.includes('rate limit')) {
+            if (rateLimitModel === 'gemini') {
+            setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+          } else {
             setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
-            setSeverity('error');
-            setMessage('Classic tools are unavailable today due to daily limits. Please try again tomorrow.');
-            setOpen(true);
-            return;
           }
+          setSeverity('error');
+          setMessage(rateLimitModel === 'gemini'
+            ? 'Magic tools are temporarily unavailable. Please try again later.'
+            : 'Classic Magic Tools are temporarily unavailable. Please try again later.');
+          setOpen(true);
+          return;
+        }
           if (error.response?.data?.error?.name === "InsufficientCredits") {
             setSeverity('error');
             setMessage('Insufficient Credits');
@@ -2023,7 +2042,7 @@ const EditorPage = ({ shows }) => {
         setRateLimitDialogOpen(true);
       } else {
         setSeverity('error');
-        setMessage('Magic tools are currently unavailable due to daily limits. Please try again tomorrow.');
+        setMessage('Magic tools are temporarily unavailable. Please try again later.');
         setOpen(true);
       }
       return;
@@ -3562,7 +3581,7 @@ const EditorPage = ({ shows }) => {
                           <Box>
                             {!rateLimitState.nanoAvailable && (
                               <Alert severity="warning" sx={{ mb: 2 }}>
-                                Magic tools are currently unavailable today due to usage limits. {rateLimitState.openaiAvailable ? 'Switch to classic tools below.' : 'Please try again tomorrow.'}
+                                Magic tools are temporarily unavailable. {rateLimitState.openaiAvailable ? 'Switch to classic tools below.' : 'Please try again later.'}
                               </Alert>
                             )}
                             {/* Input field comes first */}
@@ -3610,18 +3629,18 @@ const EditorPage = ({ shows }) => {
                                         aria-label="send prompt"
                                         size="small"
                                         onClick={() => {
-                                          if (magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable) {
-                                            magicPromptInputRef.current?.blur();
-                                            handleMagicEdit();
-                                          }
-                                        }}
-                                        disabled={!magicPrompt?.trim() || loadingInpaintingResult || !rateLimitState.nanoAvailable}
-                                        edge="end"
-                                        color={magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable ? 'primary' : 'default'}
-                                        sx={{ ml: 0.5, color: magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable ? 'primary.main' : undefined }}
-                                      >
-                                        <Send />
-                                      </IconButton>
+                                      if (magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable) {
+                                        magicPromptInputRef.current?.blur();
+                                        handleMagicEdit();
+                                      }
+                                    }}
+                                    disabled={!magicPrompt?.trim() || loadingInpaintingResult || !rateLimitState.nanoAvailable}
+                                    edge="end"
+                                    color={magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable ? 'primary' : 'default'}
+                                    sx={{ ml: 0.5, color: magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable ? 'primary.main' : undefined, cursor: (!magicPrompt?.trim() || loadingInpaintingResult || !rateLimitState.nanoAvailable) ? 'not-allowed' : undefined }}
+                                  >
+                                    <Send />
+                                  </IconButton>
                                     )}
                                   </InputAdornment>
                                 ),
@@ -3804,6 +3823,7 @@ const EditorPage = ({ shows }) => {
                                 setPromptEnabled('edit');
                                 toggleDrawingMode('captions');
                               }}
+                              disabled={!rateLimitState.nanoAvailable}
                               startIcon={<AutoFixHighRounded />}
                               sx={{
                                 mb: 2,
@@ -3822,7 +3842,7 @@ const EditorPage = ({ shows }) => {
 
                             {!rateLimitState.openaiAvailable && (
                               <Alert severity="warning" sx={{ mb: 2 }}>
-                                Classic magic tools are unavailable today due to usage limits. Please try again tomorrow.
+                                Classic magic tools are temporarily unavailable. Please try again later.
                               </Alert>
                             )}
 
@@ -3896,6 +3916,7 @@ const EditorPage = ({ shows }) => {
                                   setPromptEnabled('erase');
                                   toggleDrawingMode('magicEraser');
                                 }}
+                                disabled={!rateLimitState.openaiAvailable}
                                 sx={{
                                   flex: 1,
                                   py: 1.25,
@@ -3919,6 +3940,7 @@ const EditorPage = ({ shows }) => {
                                   setPromptEnabled('fill');
                                   toggleDrawingMode('magicEraser');
                                 }}
+                                disabled={!rateLimitState.openaiAvailable}
                                 sx={{
                                   flex: 1,
                                   py: 1.25,
@@ -4012,7 +4034,7 @@ const EditorPage = ({ shows }) => {
                               variant='contained'
                               fullWidth
                               size="large"
-                              disabled={!hasFabricPaths || loadingInpaintingResult}
+                              disabled={!hasFabricPaths || loadingInpaintingResult || !rateLimitState.openaiAvailable}
                               onClick={() => {
                                 exportDrawing();
                               }}
@@ -4020,9 +4042,9 @@ const EditorPage = ({ shows }) => {
                               sx={{
                                 py: 1.5,
                                 fontWeight: 600,
-                                backgroundColor: hasFabricPaths ? 'primary.main' : 'grey.400',
+                                backgroundColor: hasFabricPaths && rateLimitState.openaiAvailable ? 'primary.main' : 'grey.400',
                                 '&:hover': {
-                                  backgroundColor: hasFabricPaths ? 'primary.dark' : 'grey.400',
+                                  backgroundColor: hasFabricPaths && rateLimitState.openaiAvailable ? 'primary.dark' : 'grey.400',
                                 },
                                 '&.Mui-disabled': {
                                   backgroundColor: 'grey.300',
@@ -4030,7 +4052,7 @@ const EditorPage = ({ shows }) => {
                                 },
                               }}
                             >
-                              {loadingInpaintingResult ? 'Processing...' : hasFabricPaths ? 'Apply Changes' : 'Paint on canvas to start'}
+                              {loadingInpaintingResult ? 'Processing...' : hasFabricPaths ? (rateLimitState.openaiAvailable ? 'Apply Changes' : 'Classic Magic Tools are temporarily unavailable') : 'Paint on canvas to start'}
                             </Button>
                           </Box>
                         </>
@@ -4503,10 +4525,10 @@ const EditorPage = ({ shows }) => {
         onClose={handleStayOnMagicTools}
         aria-labelledby="rate-limit-dialog-title"
       >
-        <DialogTitle id="rate-limit-dialog-title">Magic tools are unavailable</DialogTitle>
+        <DialogTitle id="rate-limit-dialog-title">Magic tools are temporarily unavailable</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ maxWidth: 380 }}>
-            nanoBanana reached its daily limit. Would you like to switch to the classic tools (OpenAI) for now?
+            Magic tools are temporarily unavailable. Would you like to switch to the classic tools for now?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
