@@ -56,10 +56,13 @@ const RateLimits: React.FC<RateLimitsProps> = ({
         const fetchUsage = async () => {
             const dayId = new Date().toISOString().slice(0, 10);
             try {
-                const [settingsResp, rateResp] = await Promise.all([
-                    API.graphql(graphqlOperation(getWebsiteSetting, { id: 'globalSettings' })) as any,
-                    API.graphql(graphqlOperation(getRateLimit, { id: dayId })).catch(() => null) as any,
-                ]);
+                const settingsResp = await API.graphql(graphqlOperation(getWebsiteSetting, { id: 'globalSettings' })) as any;
+                let rateResp: any = null;
+                try {
+                    rateResp = await API.graphql(graphqlOperation(getRateLimit, { id: dayId }));
+                } catch (_) {
+                    rateResp = null;
+                }
                 const settings = (settingsResp as any)?.data?.getWebsiteSetting || {};
                 const rate = (rateResp as any)?.data?.getRateLimit || {};
                 setOpenAIRateLimit(String(settings?.openAIRateLimit ?? openAIRateLimit));
