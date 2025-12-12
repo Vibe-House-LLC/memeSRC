@@ -38,6 +38,7 @@ const MODEL_USAGE_FIELD = {
   openai: 'openaiUsage',
   gemini: 'geminiUsage',
 };
+let cachedOpenAiKey;
 // Gemini client (lazy dependency; only used when no mask is provided)
 let GoogleGenerativeAI;
 try {
@@ -93,6 +94,56 @@ const getImageSize = (buffer) => {
 const parseNumberOrDefault = (value, fallback) => {
     const parsed = typeof value === 'number' ? value : parseInt(value, 10);
     return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const getOpenAiApiKey = async (ssmClient) => {
+    if (cachedOpenAiKey) return cachedOpenAiKey;
+    const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
+    console.log('[OpenAI] Fetching API key from SSM', { paramName: process.env.openai_apikey });
+    const data = await ssmClient.send(command);
+    cachedOpenAiKey = data?.Parameter?.Value;
+    if (!cachedOpenAiKey) {
+        throw new Error('Missing OpenAI API key');
+    }
+    return cachedOpenAiKey;
+};
+
+const moderateContent = async ({ apiKey, prompt, images = [] }) => {
+    if (!apiKey) throw new Error('OpenAI API key missing for moderation');
+    const input = [];
+    if (prompt) {
+        input.push({ type: 'text', text: String(prompt).slice(0, 8000) });
+    }
+    images.forEach((img) => {
+        if (img) {
+            input.push({
+                type: 'image_url',
+                image_url: { url: img },
+            });
+        }
+    });
+    if (!input.length) return { flagged: false };
+    console.log('[Moderation] Checking content', { promptLength: prompt ? String(prompt).length : 0, imageCount: images.length });
+    const resp = await axios.post('https://api.openai.com/v1/moderations', {
+        model: 'omni-moderation-latest',
+        input,
+    }, {
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+        },
+    });
+    const result = resp?.data?.results?.[0];
+    console.log('[Moderation] Response', {
+        id: resp?.data?.id,
+        model: resp?.data?.model,
+        flagged: Boolean(result?.flagged),
+        categories: result?.categories,
+    });
+    if (!result) return { flagged: false };
+    const categories = result.categories || {};
+    const flagged = Boolean(result.flagged);
+    return { flagged, categories };
 };
 
 const getUtcDayId = () => new Date().toISOString().slice(0, 10);
@@ -186,7 +237,10 @@ const recordRateLimitError = async ({ dynamoClient, magicResultId, modelKey, lim
         await dynamoClient.send(new UpdateItemCommand({
             TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
             Key: { id: { S: magicResultId } },
-            UpdateExpression: 'SET error = :error, updatedAt = :updatedAt',
+            UpdateExpression: 'SET #error = :error, updatedAt = :updatedAt',
+            ExpressionAttributeNames: {
+                '#error': 'error',
+            },
             ExpressionAttributeValues: {
                 ':error': { S: JSON.stringify(errorPayload) },
                 ':updatedAt': { S: new Date().toISOString() },
@@ -203,6 +257,60 @@ const recordRateLimitError = async ({ dynamoClient, magicResultId, modelKey, lim
             magicResultId,
             message: err?.message,
         });
+    }
+};
+
+const recordModerationError = async ({ dynamoClient, magicResultId, modelKey, categories }) => {
+    if (!magicResultId || !process.env.API_MEMESRC_MAGICRESULTTABLE_NAME) {
+        return;
+    }
+    const errorPayload = {
+        reason: 'moderation',
+        message: 'Content was blocked by safety filters.',
+        model: modelKey,
+        categories,
+        timestamp: new Date().toISOString(),
+    };
+    try {
+        await dynamoClient.send(new UpdateItemCommand({
+            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+            Key: { id: { S: magicResultId } },
+            UpdateExpression: 'SET #error = :error, updatedAt = :updatedAt',
+            ExpressionAttributeNames: {
+                '#error': 'error',
+            },
+            ExpressionAttributeValues: {
+                ':error': { S: JSON.stringify(errorPayload) },
+                ':updatedAt': { S: new Date().toISOString() },
+            },
+        }));
+    } catch (err) {
+        console.error('[Moderation] Failed to record error on MagicResult', { magicResultId, message: err?.message });
+    }
+};
+
+const ensureNotFlagged = async ({ apiKey, prompt, images, dynamoClient, magicResultId, modelKey }) => {
+    let moderation;
+    try {
+        moderation = await moderateContent({ apiKey, prompt, images });
+    } catch (err) {
+        await recordModerationError({
+            dynamoClient,
+            magicResultId,
+            modelKey,
+            categories: { provider: 'openai', reason: 'moderation_api_error', message: err?.message },
+        });
+        const error = new Error('Moderation service failed');
+        error.code = 'ModerationUnavailable';
+        error.modelKey = modelKey;
+        throw error;
+    }
+    if (moderation.flagged) {
+        await recordModerationError({ dynamoClient, magicResultId, modelKey, categories: moderation.categories });
+        const error = new Error('Content blocked by safety filters');
+        error.code = 'ModerationBlocked';
+        error.modelKey = modelKey;
+        throw error;
     }
 };
 
@@ -253,20 +361,6 @@ exports.handler = async (event) => {
             console.error('[Gemini] Missing required imageKey');
             throw new Error('Missing required parameter: imageKey');
         }
-        try {
-            await enforceRateLimit(dynamoClient, 'gemini');
-        } catch (err) {
-            if (err?.code === 'RateLimitExceeded') {
-                await recordRateLimitError({
-                    dynamoClient,
-                    magicResultId,
-                    modelKey: 'gemini',
-                    limit: err?.limit,
-                    rateLimitId: err?.rateLimitId,
-                });
-            }
-            throw err;
-        }
         // Gemini path: single image + prompt → new image
         const paramName = process.env.gemini_api_key;
         if (!paramName) {
@@ -299,6 +393,7 @@ exports.handler = async (event) => {
         const imgBuffer = await streamToBuffer(imgObj.Body);
         const imageBase64 = imgBuffer.toString('base64');
         const mimeType = 'image/png';
+        const openAiKey = await getOpenAiApiKey(ssmClient);
         const baseSize = getImageSize(imgBuffer);
         const baseAspect = baseSize && baseSize.height > 0 ? Number(baseSize.width / baseSize.height) : null;
         const baseSizeHint = baseSize
@@ -358,6 +453,40 @@ exports.handler = async (event) => {
             contentParts.push({ text: promptPreface });
         }
         contentParts.push({ text: `User instructions: ${userPrompt}` });
+
+        // Moderation: prompt + base image + references
+        try {
+            const moderationImages = [
+                `data:${mimeType};base64,${imageBase64}`,
+                ...referenceImages.map((ref) => `data:${ref.mimeType || 'image/png'};base64,${ref.data}`),
+            ];
+            await ensureNotFlagged({
+                apiKey: openAiKey,
+                prompt: userPrompt,
+                images: moderationImages,
+                dynamoClient,
+                magicResultId,
+                modelKey: 'gemini',
+            });
+        } catch (err) {
+            console.error('[Moderation] Gemini input blocked', { message: err?.message });
+            throw err;
+        }
+        // Rate limit after passing moderation
+        try {
+            await enforceRateLimit(dynamoClient, 'gemini');
+        } catch (err) {
+            if (err?.code === 'RateLimitExceeded') {
+                await recordRateLimitError({
+                    dynamoClient,
+                    magicResultId,
+                    modelKey: 'gemini',
+                    limit: err?.limit,
+                    rateLimitId: err?.rateLimitId,
+                });
+            }
+            throw err;
+        }
 
         console.log('[Gemini] Invoking model', {
             model: 'gemini-2.5-flash-image-preview',
@@ -443,7 +572,30 @@ exports.handler = async (event) => {
         if (!outBuffer) {
             const textParts = parts.filter(p => typeof p?.text === 'string').map(p => p.text);
             console.error('[Gemini] No image returned; parts detail', { partsSummary, textPreview: (textParts.join('\n') || '').slice(0, 200) });
-            throw new Error('No image was returned by Gemini');
+            await recordModerationError({
+                dynamoClient,
+                magicResultId,
+                modelKey: 'gemini',
+                categories: { provider: 'gemini', reason: 'no_image_returned' },
+            });
+            const err = new Error('No image was returned by Gemini (possibly blocked by provider).');
+            err.code = 'ProviderModeration';
+            throw err;
+        }
+
+        try {
+            const encodedOutput = `data:${outMime || 'image/jpeg'};base64,${outBuffer.toString('base64')}`;
+            await ensureNotFlagged({
+                apiKey: openAiKey,
+                prompt: userPrompt,
+                images: [encodedOutput],
+                dynamoClient,
+                magicResultId,
+                modelKey: 'gemini',
+            });
+        } catch (err) {
+            console.error('[Moderation] Gemini output blocked', { message: err?.message });
+            throw err;
         }
 
         const fileName = `${uuid.v4()}.jpeg`;
@@ -482,23 +634,7 @@ exports.handler = async (event) => {
         console.error('[OpenAI] Missing required maskKey');
         throw new Error('Missing required parameter: maskKey');
     }
-    try {
-        await enforceRateLimit(dynamoClient, 'openai');
-    } catch (err) {
-        if (err?.code === 'RateLimitExceeded') {
-            await recordRateLimitError({
-                dynamoClient,
-                magicResultId,
-                modelKey: 'openai',
-                limit: err?.limit,
-                rateLimitId: err?.rateLimitId,
-            });
-        }
-        throw err;
-    }
-    const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
-    console.log('[OpenAI] Fetching API key from SSM', { paramName: process.env.openai_apikey });
-    const data = await ssmClient.send(command);
+    const openAiKey = await getOpenAiApiKey(ssmClient);
     console.log('[OpenAI] S3 GetObject (image) start', {
         bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
         key: imageKey,
@@ -533,9 +669,40 @@ exports.handler = async (event) => {
     formData.append('size', "1024x1024");
 
     const headers = {
-        'Authorization': `Bearer ${data.Parameter.Value}`,
+        'Authorization': `Bearer ${openAiKey}`,
         ...formData.getHeaders()
     };
+
+    // Moderation: input prompt + base image
+    const baseImageDataUrl = `data:${imageObject.ContentType || 'image/png'};base64,${image_data.toString('base64')}`;
+    try {
+        await ensureNotFlagged({
+            apiKey: openAiKey,
+            prompt,
+            images: [baseImageDataUrl],
+            dynamoClient,
+            magicResultId,
+            modelKey: 'openai',
+        });
+    } catch (err) {
+        console.error('[Moderation] OpenAI input blocked', { message: err?.message });
+        throw err;
+    }
+    // Rate limit after passing moderation
+    try {
+        await enforceRateLimit(dynamoClient, 'openai');
+    } catch (err) {
+        if (err?.code === 'RateLimitExceeded') {
+            await recordRateLimitError({
+                dynamoClient,
+                magicResultId,
+                modelKey: 'openai',
+                limit: err?.limit,
+                rateLimitId: err?.rateLimitId,
+            });
+        }
+        throw err;
+    }
 
     console.log('[OpenAI] Submitting edit request to OpenAI');
     const response = await makeRequest(formData, headers);
@@ -559,13 +726,47 @@ exports.handler = async (event) => {
             ContentType: 'image/jpeg',
         };
 
+        // Moderation on generated output
+        const encodedOutput = `data:${s3Params.ContentType};base64,${imageBuffer.toString('base64')}`;
+        try {
+            await ensureNotFlagged({
+                apiKey: openAiKey,
+                prompt,
+                images: [encodedOutput],
+                dynamoClient,
+                magicResultId,
+                modelKey: 'openai',
+            });
+        } catch (err) {
+            console.error('[Moderation] OpenAI output blocked', { message: err?.message });
+            await recordModerationError({
+                dynamoClient,
+                magicResultId,
+                modelKey: 'openai',
+                categories: { provider: 'openai', reason: 'output_blocked' },
+            });
+            throw err;
+        }
+
         console.log('[OpenAI] Writing generated image to S3', { key: s3Params.Key });
         await s3Client.send(new PutObjectCommand(s3Params));
 
         return `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
     });
 
-    const cdnImageUrls = await Promise.all(promises);
+    let cdnImageUrls;
+    try {
+        cdnImageUrls = await Promise.all(promises);
+    } catch (err) {
+        // If moderation blocked output, record and rethrow
+        await recordModerationError({
+            dynamoClient,
+            magicResultId,
+            modelKey: 'openai',
+            categories: { provider: 'openai', reason: 'no_image_returned' },
+        });
+        throw err;
+    }
     console.log('[OpenAI] Uploaded images to S3', { count: cdnImageUrls.length });
 
     console.log('[OpenAI] Updating DynamoDB with results');

@@ -563,7 +563,7 @@ export default function MagicEditor({
   const handleApply = useCallback(async () => {
     if (!internalSrc || processing) return;
     if (!rateLimitState.nanoAvailable) {
-      setError('Magic tools are temporarily unavailable. Please try again later.');
+      setError('Content blocked by moderation or daily limits.');
       return;
     }
     setProcessing(true);
@@ -666,15 +666,28 @@ export default function MagicEditor({
           );
           const resultsStr: string | null = result?.data?.getMagicResult?.results ?? null;
           const rawError = result?.data?.getMagicResult?.error ?? null;
-          if (rawError) {
-            let parsedError: any = rawError;
-            if (typeof rawError === 'string') {
-              try { parsedError = JSON.parse(rawError); } catch (_) { parsedError = rawError; }
+          let parsedError: any = rawError;
+          if (typeof rawError === 'string') {
+            try {
+              parsedError = JSON.parse(rawError);
+              if (typeof parsedError === 'string') {
+                parsedError = JSON.parse(parsedError);
+              }
+            } catch (_) {
+              parsedError = rawError;
             }
+          }
+          if (rawError) {
             const reason = parsedError?.reason;
-            const message = parsedError?.message || 'Magic edit failed.';
+            const message = (reason === 'moderation' || reason === 'ProviderModeration')
+              ? 'Content blocked by moderation.'
+              : (parsedError?.message || 'Magic edit failed.');
             if (reason === 'rate_limit') {
               setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+            }
+            if (reason === 'ProviderModeration') {
+              // keep nano availability, just surface error
+              console.warn('[MagicEditor] Provider blocked output', { model: parsedError?.model });
             }
             pollError = Object.assign(new Error(message), { reason: parsedError?.reason });
             break;
@@ -684,7 +697,12 @@ export default function MagicEditor({
             finalUrl = urls?.[0] ?? null;
             break;
           }
-        } catch (e) {
+        } catch (e: any) {
+          const graphQLError = e?.errors?.[0]?.message || e?.message;
+          if (graphQLError) {
+            pollError = new Error(graphQLError);
+            break;
+          }
           // swallow transient errors; keep polling
         }
         await new Promise((r) => setTimeout(r, QUERY_INTERVAL));
@@ -703,8 +721,12 @@ export default function MagicEditor({
       setHasCompletedEdit(true);
       if (onResult) onResult(finalUrl);
     } catch (e: unknown) {
+      const reason = (e as any)?.reason;
       const msg = e instanceof Error ? e.message : 'Magic edit failed.';
-      setError(msg);
+      const displayMessage = (reason === 'moderation' || reason === 'ProviderModeration')
+        ? 'Content blocked by moderation.'
+        : msg;
+      setError(displayMessage);
       if ((e as any)?.reason === 'rate_limit' || (typeof msg === 'string' && msg.toLowerCase().includes('limit'))) {
         setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
       }
@@ -773,7 +795,7 @@ export default function MagicEditor({
       />
       {!rateLimitState.nanoAvailable && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Magic tools are temporarily unavailable. Please try again later.
+          Content blocked by moderation or daily limits.
         </Alert>
       )}
       {/* Magic Editor subtitle; can be hidden by parent

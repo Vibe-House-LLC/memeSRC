@@ -1705,13 +1705,26 @@ const EditorPage = ({ shows }) => {
   async function checkMagicResult(id) {
     try {
       const result = await API.graphql(graphqlOperation(getMagicResultQuery, { id }));
+      const rawError = result?.data?.getMagicResult?.error;
+      let normalizedError = rawError;
+      if (typeof rawError === 'string') {
+        try {
+          normalizedError = JSON.parse(rawError);
+          if (typeof normalizedError === 'string') {
+            normalizedError = JSON.parse(normalizedError);
+          }
+        } catch (_) {
+          normalizedError = rawError;
+        }
+      }
       return {
         results: result?.data?.getMagicResult?.results,
-        error: result?.data?.getMagicResult?.error,
+        error: normalizedError,
       };
     } catch (error) {
       console.error('Error fetching magic result:', error);
-      return { results: null, error: null };
+      const fallbackMessage = error?.errors?.[0]?.message || error?.message || null;
+      return { results: null, error: fallbackMessage ? { message: fallbackMessage, reason: 'fetch_error' } : null };
     }
   }
 
@@ -1862,16 +1875,24 @@ const EditorPage = ({ shows }) => {
           const model = parsedError?.model;
           const message = parsedError?.message || 'Magic tools are temporarily unavailable.';
           setSeverity('error');
-          setMessage(message);
+          if (reason === 'moderation' || reason === 'ProviderModeration') {
+            setMessage('Content blocked by moderation.');
+          } else {
+            setMessage(message);
+          }
           setOpen(true);
           if (reason === 'rate_limit') {
             if (model === 'gemini') {
               setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
             } else {
-              setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
-            }
+            setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
           }
-        } else if (results) {
+        } else if (reason === 'moderation') {
+          console.warn('[V2Editor] Moderation block received', { model });
+        } else if (reason === 'ProviderModeration') {
+          console.warn('[V2Editor] Provider moderation blocked output', { model });
+        }
+      } else if (results) {
           try {
             const imageUrls = JSON.parse(results);
             setReturnedImages((prev) => [...prev, ...imageUrls]);
@@ -1912,7 +1933,7 @@ const EditorPage = ({ shows }) => {
     }
     if (rateLimitState.openaiAvailable === false) {
       setSeverity('error');
-      setMessage('Magic tools are temporarily unavailable. Please try again later.');
+      setMessage('Content blocked by moderation or daily limits.');
       setOpen(true);
       return;
     }
@@ -1951,17 +1972,23 @@ const EditorPage = ({ shows }) => {
           const messageText = error?.message ? error.message.toLowerCase() : '';
           if (rateLimitReason === 'rate_limit' || messageText.includes('rate limit')) {
             if (rateLimitModel === 'gemini') {
-            setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
-          } else {
-            setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
+              setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+            } else {
+              setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
+            }
+            setSeverity('error');
+            setMessage(rateLimitModel === 'gemini'
+              ? 'Content blocked by moderation or daily limits.'
+              : 'Content blocked by moderation or daily limits.');
+            setOpen(true);
+            return;
           }
-          setSeverity('error');
-          setMessage(rateLimitModel === 'gemini'
-            ? 'Magic tools are temporarily unavailable. Please try again later.'
-            : 'Classic Magic Tools are temporarily unavailable. Please try again later.');
-          setOpen(true);
-          return;
-        }
+          if (rateLimitReason === 'moderation' || messageText.includes('moderation')) {
+            setSeverity('error');
+            setMessage(error?.response?.data?.error?.message || 'Content was blocked by safety filters.');
+            setOpen(true);
+            return;
+          }
           if (error.response?.data?.error?.name === "InsufficientCredits") {
             setSeverity('error');
             setMessage('Insufficient Credits');
