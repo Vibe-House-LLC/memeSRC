@@ -3730,27 +3730,29 @@ const EditorPage = ({ shows }) => {
                                     }}
                                   >
                                     <Close fontSize="small" />
-                                  </IconButton>
-                                </Box>
-                              ))}
-                              {magicReferences.length < MAGIC_MAX_REFERENCES && (
-                                <Button
-                                  variant="text"
-                                  size="small"
-                                  startIcon={<AddPhotoAlternate />}
-                                  onClick={() => magicReferenceInputRef.current?.click()}
-                                  disabled={loadingInpaintingResult || !rateLimitState.nanoAvailable}
-                                  sx={{ minWidth: 0, px: 0.5 }}
-                                >
-                                  Add ref
-                                </Button>
-                              )}
-                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                Optional refs; main image stays primary.
-                              </Typography>
+                              </IconButton>
                             </Box>
-                            <input
-                              ref={magicReferenceInputRef}
+                          ))}
+                          {/* References temporarily disabled
+                          {magicReferences.length < MAGIC_MAX_REFERENCES && (
+                            <Button
+                              variant="text"
+                              size="small"
+                              startIcon={<AddPhotoAlternate />}
+                              onClick={() => magicReferenceInputRef.current?.click()}
+                              disabled={loadingInpaintingResult || !rateLimitState.nanoAvailable}
+                              sx={{ minWidth: 0, px: 0.5 }}
+                            >
+                              Add ref
+                            </Button>
+                          )}
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            Optional refs; main image stays primary.
+                          </Typography>
+                          */}
+                        </Box>
+                        <input
+                          ref={magicReferenceInputRef}
                               type="file"
                               accept="image/*"
                               multiple

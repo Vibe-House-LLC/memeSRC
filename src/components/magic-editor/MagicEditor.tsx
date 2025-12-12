@@ -1047,6 +1047,7 @@ export default function MagicEditor({
                   </IconButton>
                 </Box>
               ))}
+              {/* References temporarily disabled
               {referenceImages.length < MAX_REFERENCE_IMAGES && (
                 <Button
                   variant="text"
@@ -1059,6 +1060,7 @@ export default function MagicEditor({
                   Add ref
                 </Button>
               )}
+              */}
             </Box>
 
             {/* Save/Cancel inside the combined unit on mobile */}
