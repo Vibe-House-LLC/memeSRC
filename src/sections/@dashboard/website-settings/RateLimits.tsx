@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Save } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import { Card, Grid, Stack, TextField, Typography } from '@mui/material';
+import { API, graphqlOperation } from 'aws-amplify';
+import { getRateLimit, getWebsiteSetting } from '../../../graphql/queries';
 
 type RateLimitsProps = {
     saveFunction?: () => void | Promise<void>;
@@ -20,6 +22,12 @@ const RateLimits: React.FC<RateLimitsProps> = ({
     nanoBananaRateLimit,
     setNanoBananaRateLimit,
 }) => {
+    const [usage, setUsage] = useState<{ openaiUsage: number; geminiUsage: number; resetAt: string | null }>({
+        openaiUsage: 0,
+        geminiUsage: 0,
+        resetAt: null,
+    });
+
     const handleOpenAIRateLimitChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = event.target.value;
         const digitsOnly = value.replace(/\D/g, '');
@@ -37,6 +45,37 @@ const RateLimits: React.FC<RateLimitsProps> = ({
     const handleSave = () => {
         saveFunction();
     };
+
+    const resetAtLocal = useMemo(() => {
+        if (!usage.resetAt) return '';
+        const date = new Date(usage.resetAt);
+        return date.toLocaleString();
+    }, [usage.resetAt]);
+
+    useEffect(() => {
+        const fetchUsage = async () => {
+            const dayId = new Date().toISOString().slice(0, 10);
+            try {
+                const [settingsResp, rateResp] = await Promise.all([
+                    API.graphql(graphqlOperation(getWebsiteSetting, { id: 'globalSettings' })) as any,
+                    API.graphql(graphqlOperation(getRateLimit, { id: dayId })).catch(() => null) as any,
+                ]);
+                const settings = (settingsResp as any)?.data?.getWebsiteSetting || {};
+                const rate = (rateResp as any)?.data?.getRateLimit || {};
+                setOpenAIRateLimit(String(settings?.openAIRateLimit ?? openAIRateLimit));
+                setNanoBananaRateLimit(String(settings?.nanoBananaRateLimit ?? nanoBananaRateLimit));
+                setUsage({
+                    openaiUsage: Number(rate?.openaiUsage || 0),
+                    geminiUsage: Number(rate?.geminiUsage || 0),
+                    resetAt: new Date(`${dayId}T23:59:59.999Z`).toISOString(),
+                });
+            } catch (err) {
+                console.warn('[RateLimits] Failed to fetch usage', err);
+            }
+        };
+        void fetchUsage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <Grid container spacing={3} sx={{ mt: 4 }}>
@@ -60,6 +99,9 @@ const RateLimits: React.FC<RateLimitsProps> = ({
                             inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                             fullWidth
                         />
+                        <Typography variant="body2" color="text.secondary">
+                            Current usage (OpenAI): {usage.openaiUsage} / {openAIRateLimit || '—'}
+                        </Typography>
                         <TextField
                             type="text"
                             label="Nano Banana Rate Limit"
@@ -69,6 +111,14 @@ const RateLimits: React.FC<RateLimitsProps> = ({
                             inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                             fullWidth
                         />
+                        <Typography variant="body2" color="text.secondary">
+                            Current usage (Nano Banana): {usage.geminiUsage} / {nanoBananaRateLimit || '—'}
+                        </Typography>
+                        {resetAtLocal && (
+                            <Typography variant="body2" color="text.secondary">
+                                Resets at (local): {resetAtLocal}
+                            </Typography>
+                        )}
                         <LoadingButton
                             onClick={handleSave}
                             disabled={saving}
