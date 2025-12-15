@@ -59,6 +59,7 @@ const AdminPopularFramesPage = lazy(() => import('./pages/AdminPopularFramesPage
 const AdminFrameTotalsPage = lazy(() => import('./pages/AdminFrameTotalsPage'));
 const AdminUserContentReview = lazy(() => import('./pages/AdminUserContentReview'));
 const AdminMagicEditReview = lazy(() => import('./pages/AdminMagicEditReview'));
+const AdminMagicEditHistoryPage = lazy(() => import('./pages/AdminMagicEditHistoryPage'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const InvoiceListPage = lazy(() => import('./pages/InvoicesListPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
@@ -179,6 +180,7 @@ export default function Router() {
         { path: 'frame-totals', element: <AdminFrameTotalsPage /> },
         { path: 'user-content-review', element: <AdminUserContentReview /> },
         { path: 'magic-edit-review', element: <AdminMagicEditReview /> },
+        { path: 'magic-edit-history', element: <AdminMagicEditHistoryPage /> },
         { path: 'home', element: <HomePage /> },
         { path: 'editor', element: <EditorPage /> },
         { path: 'editor/:fid', element: <EditorPage /> },
