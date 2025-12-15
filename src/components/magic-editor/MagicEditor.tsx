@@ -187,7 +187,7 @@ export default function MagicEditor({
   className,
   style,
   showHeader = true,
-  saveLabel = 'Save',
+  saveLabel = 'Save to Library',
   showActions = true,
   showEditor = true,
   showHistory = true,
