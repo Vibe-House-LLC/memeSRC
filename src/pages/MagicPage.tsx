@@ -233,7 +233,7 @@ export default function MagicPage() {
       
       <Box sx={{ mb: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
-          Magic Editor (Demo)
+          Magic Editor
         </Typography>
         {/* Mobile: always show subheading */}
         <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, mt: 0.5 }}>

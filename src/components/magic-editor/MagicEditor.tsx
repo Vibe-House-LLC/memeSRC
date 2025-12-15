@@ -196,7 +196,7 @@ export default function MagicEditor({
   onPromptStateChange,
   saving = false,
   defaultPrompt = '',
-  variationCount = 2,
+  variationCount = 1,
   autoStart = false,
   autoStartKey,
   className,
@@ -1301,9 +1301,9 @@ export default function MagicEditor({
                 Add ref
               </Button>
             )} */}
-            <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+            {/* <Typography variant="caption" sx={{ color: 'text.disabled' }}>
               Optional refs stay secondary to the main image.
-            </Typography>
+            </Typography> */}
           </Stack>
 
           {/* Versions list */}
