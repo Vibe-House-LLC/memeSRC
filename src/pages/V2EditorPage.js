@@ -14,7 +14,7 @@ import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRound
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
-import { getMagicResult as getMagicResultQuery, getRateLimit, getWebsiteSetting } from '../graphql/queries';
+import { getRateLimit, getWebsiteSetting } from '../graphql/queries';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
@@ -38,6 +38,21 @@ import { shouldShowAds } from '../utils/adsenseLoader';
 import { isAdPauseActive } from '../utils/adsenseLoader';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
+
+// Minimal magic result query to avoid unauthorized user field.
+const getMagicResultLite = /* GraphQL */ `
+  query GetMagicResultLite($id: ID!) {
+    getMagicResult(id: $id) {
+      id
+      prompt
+      results
+      error
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 
 const ParentContainer = styled('div')`
     height: 100%;
@@ -1704,7 +1719,7 @@ const EditorPage = ({ shows }) => {
 
   async function checkMagicResult(id) {
     try {
-      const result = await API.graphql(graphqlOperation(getMagicResultQuery, { id }));
+      const result = await API.graphql(graphqlOperation(getMagicResultLite, { id }));
       const rawError = result?.data?.getMagicResult?.error;
       let normalizedError = rawError;
       if (typeof rawError === 'string') {
