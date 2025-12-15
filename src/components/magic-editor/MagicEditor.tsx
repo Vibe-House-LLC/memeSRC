@@ -20,7 +20,7 @@ import { Send, AutoFixHighRounded, Close, Check, AddPhotoAlternate } from '@mui/
 import { API, graphqlOperation } from 'aws-amplify';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - generated JS module
-import { getMagicResult, getRateLimit, getWebsiteSetting } from '../../graphql/queries';
+import { getRateLimit, getWebsiteSetting } from '../../graphql/queries';
 import { resizeImage } from '../../utils/library/resizeImage';
 import { EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
 import { UserContext } from '../../UserContext';
@@ -144,6 +144,21 @@ const toNumber = (value: unknown, fallback = 0): number => {
 };
 
 const getUtcDayId = (): string => new Date().toISOString().slice(0, 10);
+
+// Minimal magic result query to avoid unauthorized user field.
+const getMagicResultLite = /* GraphQL */ `
+  query GetMagicResultLite($id: ID!) {
+    getMagicResult(id: $id) {
+      id
+      prompt
+      results
+      error
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 
 export interface MagicEditorProps {
   imageSrc: string; // required input photo
@@ -662,7 +677,7 @@ export default function MagicEditor({
         }
         try {
           const result: any = await API.graphql(
-            graphqlOperation(getMagicResult, { id: magicResultId })
+            graphqlOperation(getMagicResultLite, { id: magicResultId })
           );
           const resultsStr: string | null = result?.data?.getMagicResult?.results ?? null;
           const rawError = result?.data?.getMagicResult?.error ?? null;

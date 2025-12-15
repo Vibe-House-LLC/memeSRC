@@ -22,7 +22,9 @@ export default function MagicPage() {
   const location = useLocation() as any;
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
-  const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const typedUser = (user && typeof user === 'object') ? user as any : null;
+  const isAdmin = typedUser?.['cognito:groups']?.includes('admins');
+  const isPro = typedUser?.userDetails?.magicSubscription === 'true';
   const [stage, setStage] = useState<'pick' | 'choose' | 'edit' | 'done'>('pick');
   const [chosen, setChosen] = useState<string | null>(null);
   const [finalSrc, setFinalSrc] = useState<string | null>(null);
@@ -42,6 +44,10 @@ export default function MagicPage() {
     [location?.state, collageEditContext]
   );
   const magicEditSource = location?.state?.magicEditContext?.source;
+  const cameFromFrame = useMemo(
+    () => typeof returnToPath === 'string' && returnToPath.includes('/frame/'),
+    [returnToPath]
+  );
   const saveButtonLabel = useMemo(() => {
     if (collageEditContext) return 'Save to Collage';
     if (returnToPath && (returnToPath.includes('collage') || returnToPath.includes('/projects'))) return 'Save to Collage';
@@ -53,14 +59,14 @@ export default function MagicPage() {
 
   // Gate this page to admins only
   useEffect(() => {
-    if (isAdmin === false) {
+    if (!isAdmin && !isPro) {
       if (returnToPath) {
         navigate(returnToPath, { replace: true });
       } else {
         navigate('/', { replace: true });
       }
     }
-  }, [isAdmin, navigate, returnToPath]);
+  }, [isAdmin, isPro, navigate, returnToPath]);
 
   const chooseFrom = useMemo(() => location?.state?.chooseFrom as undefined | { originalSrc?: string; frameSrc?: string }, [location?.state]);
   const defaultPromptFromState = useMemo(
@@ -161,10 +167,14 @@ export default function MagicPage() {
   const saveMagicEdit = async (src: string) => {
     setSaving(true);
     try {
-      if (returnToPath) {
+      if (returnToPath && !cameFromFrame) {
         await handleReturnToCaller(src);
       } else {
         await saveImageToLibrary(src, 'magic-edit.jpg', { level: 'private', metadata: { source: 'magic-editor' } });
+        if (cameFromFrame) {
+          navigate('/library', { replace: false });
+          return;
+        }
         setFinalSrc(src);
         setStage('done');
       }

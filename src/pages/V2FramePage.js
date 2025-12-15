@@ -36,13 +36,14 @@ import {
   Collapse,
   FormControl,
   FormLabel,
+  Menu,
   MenuItem,
   Select,
   ToggleButtonGroup,
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, Check, Add } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, ArrowDropDown, AutoFixHigh, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu as MenuIcon, OpenInNew, Collections, Check, Add, PhotoLibrary } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -51,6 +52,7 @@ import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import getV2Metadata from '../utils/getV2Metadata';
 import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
+import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import { shouldShowAds } from '../utils/adsenseLoader';
@@ -186,9 +188,14 @@ export default function FramePage() {
   const lastTrackedFrameRef = useRef('');
 
   const { user } = useContext(UserContext);
+  const { openSubscriptionDialog } = useSubscribeDialog();
   const isAdmin = user?.['cognito:groups']?.includes('admins');
   const isPro = user?.userDetails?.magicSubscription === 'true';
   const hasLibraryAccess = isAdmin || isPro;
+  const hasToolAccess = isAdmin || isPro;
+  const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
+  const toolsMenuOpen = Boolean(toolsAnchorEl);
+  const currentImage = displayImage || frameData?.frameImage;
 
   // Function to save current frame to library
   const handleSaveToLibrary = async () => {
@@ -267,6 +274,83 @@ export default function FramePage() {
       console.error('Error saving frame to library:', error);
     } finally {
       setSavingToLibrary(false);
+    }
+  };
+
+  const handleOpenToolsMenu = (event) => {
+    setToolsAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseToolsMenu = () => {
+    setToolsAnchorEl(null);
+  };
+
+  const requireToolAccess = () => {
+    if (!hasToolAccess) {
+      openSubscriptionDialog();
+      handleCloseToolsMenu();
+      return false;
+    }
+    return true;
+  };
+
+  const trackToolSelect = (tool) => {
+    const payload = {
+      source: 'V2FramePage',
+      tool,
+      cid: confirmedCid || cid,
+      season,
+      episode,
+      frame,
+    };
+
+    if (fineTuningIndex !== null && fineTuningIndex !== undefined) {
+      payload.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (typeof selectedFrameIndex === 'number') {
+      payload.selectedFrameIndex = selectedFrameIndex;
+    }
+
+    trackUsageEvent('frame_tool_select', payload);
+  };
+
+  const handleToolSelect = (tool) => {
+    if (!currentImage) {
+      handleCloseToolsMenu();
+      return;
+    }
+
+    if (tool === 'advanced') {
+      trackToolSelect(tool);
+      navigate(advancedEditorPath);
+      handleCloseToolsMenu();
+      return;
+    }
+
+    if (!requireToolAccess()) return;
+
+    trackToolSelect(tool);
+
+    if (tool === 'magic') {
+      navigate('/magic', { state: { initialSrc: currentImage, returnTo: `${window.location.pathname}${window.location.search}` } });
+      handleCloseToolsMenu();
+      return;
+    }
+
+    if (tool === 'collage') {
+      navigate('/collage', {
+        state: {
+          fromCollage: true,
+          images: [{
+            originalUrl: currentImage,
+            displayUrl: currentImage,
+            subtitle: loadedSubtitle || '',
+            subtitleShowing: Boolean(loadedSubtitle),
+          }],
+        },
+      });
+      handleCloseToolsMenu();
     }
   };
 
@@ -392,6 +476,12 @@ export default function FramePage() {
     selectedFrameIndex,
     resolvedSearchTermValue,
   ]);
+
+  const advancedEditorPath = useMemo(() => {
+    const fineTuningSuffix = (fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : '';
+    const searchSuffix = encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : '';
+    return `/editor/${cid}/${season}/${episode}/${frame}${fineTuningSuffix}${searchSuffix}`;
+  }, [cid, season, episode, frame, fineTuningIndex, fineTuningLoadStarted, selectedFrameIndex, encodedSearchTerm]);
 
   const mainImageSaveIntentHandlers = useTrackImageSaveIntent(mainImageSaveIntentMeta);
 
@@ -1858,7 +1948,8 @@ useEffect(() => {
               </>
             )}
             <Collapse in={!savedToLibrary} timeout={250}>
-            <Box sx={{ width: '100%' }}>
+              <Stack spacing={1.5} sx={{ width: '100%' }}>
+                <Box sx={{ width: '100%' }}>
                   {/* Formatting Toolbar */}
                   {showText &&
                     <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
@@ -2003,6 +2094,47 @@ useEffect(() => {
                         />
                         </Stack>
                       </Stack>
+                      <Button
+                        size="medium"
+                        fullWidth
+                        variant="contained"
+                        onClick={handleOpenToolsMenu}
+                        startIcon={<Edit />}
+                        endIcon={<ArrowDropDown />}
+                        aria-haspopup="true"
+                        aria-controls={toolsMenuOpen ? 'frame-tools-menu' : undefined}
+                        aria-expanded={toolsMenuOpen ? 'true' : undefined}
+                        sx={{ mt: 1.5, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                      >
+                        Tools
+                      </Button>
+                      <Menu
+                        id="frame-tools-menu"
+                        anchorEl={toolsAnchorEl}
+                        open={toolsMenuOpen}
+                        onClose={handleCloseToolsMenu}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                      >
+                        <MenuItem onClick={() => handleToolSelect('advanced')} disabled={!currentImage}>
+                          <ListItemIcon>
+                            <Edit fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary="Advanced Editor" secondary={hasToolAccess ? 'Open with this frame' : undefined} />
+                        </MenuItem>
+                        <MenuItem onClick={() => handleToolSelect('magic')} disabled={!currentImage}>
+                          <ListItemIcon>
+                            <AutoFixHigh fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary="Magic Tools" secondary={hasToolAccess ? 'Send to Magic' : 'Pro required'} />
+                        </MenuItem>
+                        <MenuItem onClick={() => handleToolSelect('collage')} disabled={!currentImage}>
+                          <ListItemIcon>
+                            <PhotoLibrary fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary="Create Collage" secondary={hasToolAccess ? 'Start with this image' : 'Pro required'} />
+                        </MenuItem>
+                      </Menu>
                       {showText && loadedSubtitle?.trim() !== '' && (
                         <Button
                           size="medium"
@@ -2215,71 +2347,8 @@ useEffect(() => {
 
                 {/* </CardContent>
               </Card> */}
-            </Box>
-            </Collapse>
-            {/* {alertOpenTapToEdit && (
-              <Alert
-                severity='success'
-                sx={{ marginTop: 1.5 }}
-                action={
-                  <IconButton
-                    aria-label="close"
-                    color="inherit"
-                    size="small"
-                    onClick={() => {
-                      sessionStorage.setItem('alertDismissed-98ruio', 'true');
-                      setAlertOpenTapToEdit(!alertOpenTapToEdit);
-                    }}
-                  >
-                    <Close fontSize="inherit" />
-                  </IconButton>
-                }
-              >
-                <b>New!</b> Tap the text ☝️ to edit your caption
-              </Alert>
-            )} */}
-
-            {/* <Button
-              size="medium"
-              fullWidth
-              variant="contained"
-              // to={`/editor/${fid}${getCurrentQueryString()}`}
-              onClick={() => setShowText(!showText)}
-              sx={{ marginTop: 2, '&:hover': { backgroundColor: '#737373' } }}
-              startIcon={showText ? <VisibilityOff /> : <Visibility />}
-            >
-              {showText ? "Disable" : "Enable"} Caption
-            </Button> */}
-
-            <Collapse in={!savedToLibrary} timeout={250}>
-              {!showText &&
-                <Button
-                size="medium"
-                fullWidth
-                variant="contained"
-                component={RouterLink}
-                sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
-                // startIcon={<Edit />}
-                onClick={() => {
-                  setShowText(true);
-                  setSubtitleUserInteracted(true);
-                }}
-              >
-                Make A Meme
-              </Button>
-              }
-
-                <Button
-                  size="medium"
-                  fullWidth
-                  variant="contained"
-                  to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`}
-                  component={RouterLink}
-                  sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                  startIcon={<Edit />}
-                >
-                  Advanced Editor
-                </Button>
+                </Box>
+              </Stack>
             </Collapse>
 
               {/* Library actions are now above text controls in right column */}
@@ -2301,7 +2370,7 @@ useEffect(() => {
                     {subtitlesExpanded ? (
                       <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                     ) : (
-                      <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                      <MenuIcon style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                     )}
                     {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
                   </Typography>
