@@ -438,7 +438,7 @@ type SearchFilterGroup @model @auth(
 
 type MagicEditHistory @model @auth(
   rules: [
-    { allow: owner },
+    { allow: owner, identityClaim: "sub" },
     { allow: groups, groups: ["admins"], operations: [create, read, delete] }
   ]
 ) {
@@ -449,7 +449,7 @@ type MagicEditHistory @model @auth(
   status: String @default(value: "unreviewed") @index(name: "byStatus", sortKeyFields: ["createdAt"], queryField: "magicEditHistoriesByStatus")
   createdAt: AWSDateTime!
   owner: String
-    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
+    @auth(rules: [{ allow: owner, operations: [create, read, delete], identityClaim: "sub" }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
     @index(name: "byOwner", sortKeyFields: ["createdAt"], queryField: "magicEditHistoriesByOwner")
 }
 
