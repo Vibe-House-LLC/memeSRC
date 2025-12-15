@@ -1274,7 +1274,7 @@ export default function MagicEditor({
                 </IconButton>
               </Box>
             ))}
-            {referenceImages.length < MAX_REFERENCE_IMAGES && (
+            {/* {referenceImages.length < MAX_REFERENCE_IMAGES && (
               <Button
                 variant="text"
                 size="small"
@@ -1285,7 +1285,7 @@ export default function MagicEditor({
               >
                 Add ref
               </Button>
-            )}
+            )} */}
             <Typography variant="caption" sx={{ color: 'text.disabled' }}>
               Optional refs stay secondary to the main image.
             </Typography>
