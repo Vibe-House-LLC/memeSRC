@@ -445,6 +445,7 @@ type MagicEditHistory @model @auth(
   id: ID!
   prompt: String,
   imageKey: String,
+  imageUrl: String,
   metadata: AWSJSON,
   status: String @default(value: "unreviewed") @index(name: "byStatus", sortKeyFields: ["createdAt"], queryField: "magicEditHistoriesByStatus")
   createdAt: AWSDateTime!

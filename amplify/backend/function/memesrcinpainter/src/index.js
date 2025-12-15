@@ -143,7 +143,8 @@ exports.handler = async (event) => {
             // Only include maskKey if present; background will branch accordingly
             ...(maskKey ? { maskKey } : {}),
             ...(referenceKeys.length ? { referenceKeys } : {}),
-            prompt
+            prompt,
+            userSub: userSub[0]
         })
     }));
 

@@ -1641,6 +1641,7 @@ export const getMagicEditHistory = /* GraphQL */ `
       id
       prompt
       imageKey
+      imageUrl
       metadata
       status
       createdAt
@@ -1665,6 +1666,7 @@ export const listMagicEditHistories = /* GraphQL */ `
         id
         prompt
         imageKey
+        imageUrl
         metadata
         status
         createdAt
@@ -1698,6 +1700,7 @@ export const magicEditHistoriesByStatus = /* GraphQL */ `
         id
         prompt
         imageKey
+        imageUrl
         metadata
         status
         createdAt
@@ -1731,6 +1734,7 @@ export const magicEditHistoriesByOwner = /* GraphQL */ `
         id
         prompt
         imageKey
+        imageUrl
         metadata
         status
         createdAt

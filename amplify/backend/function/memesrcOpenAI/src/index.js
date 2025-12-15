@@ -23,7 +23,7 @@ Amplify Params - DO NOT EDIT */
 
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
 const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
-const { DynamoDBClient, UpdateItemCommand, GetItemCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, UpdateItemCommand, GetItemCommand, PutItemCommand } = require("@aws-sdk/client-dynamodb");
 const uuid = require('uuid');
 const axios = require('axios');
 const FormData = require('form-data');
@@ -314,6 +314,25 @@ const ensureNotFlagged = async ({ apiKey, prompt, images, dynamoClient, magicRes
     }
 };
 
+const recordMagicEditHistory = async ({ dynamoClient, ownerSub, prompt, imageUrl, metadata }) => {
+    if (!process.env.API_MEMESRC_MAGICEDITHISTORYTABLE_NAME) return;
+    const nowIso = new Date().toISOString();
+    const item = {
+        id: { S: uuid.v4() },
+        prompt: prompt ? { S: String(prompt) } : { NULL: true },
+        imageUrl: imageUrl ? { S: imageUrl } : { NULL: true },
+        metadata: metadata ? { S: JSON.stringify(metadata) } : { NULL: true },
+        owner: ownerSub ? { S: ownerSub } : { NULL: true },
+        createdAt: { S: nowIso },
+        updatedAt: { S: nowIso },
+        status: { S: 'unreviewed' },
+    };
+    await dynamoClient.send(new PutItemCommand({
+        TableName: process.env.API_MEMESRC_MAGICEDITHISTORYTABLE_NAME,
+        Item: item,
+    }));
+};
+
 const makeRequest = async (formData, headers) => {
     try {
         return await axios.post('https://api.openai.com/v1/images/edits', formData, { headers });
@@ -345,7 +364,7 @@ exports.handler = async (event) => {
         bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
     });
 
-    const { magicResultId, imageKey, maskKey, prompt, referenceKeys } = event || {};
+    const { magicResultId, imageKey, maskKey, prompt, referenceKeys, userSub } = event || {};
     console.log('[Magic] Params', {
         magicResultId,
         hasImageKey: Boolean(imageKey),
@@ -609,6 +628,22 @@ exports.handler = async (event) => {
         const cdnUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
         console.log('[Gemini] Wrote image + computed CDN URL', { fileName, cdnUrl });
 
+        // Record history entry (Gemini generates one image)
+        try {
+            await recordMagicEditHistory({
+                dynamoClient,
+                ownerSub: userSub,
+                prompt: userPrompt,
+                imageUrl: cdnUrl,
+                metadata: {
+                    initialImageKey: imageKey || null,
+                    model: 'gemini',
+                },
+            });
+        } catch (err) {
+            console.warn('[History] Failed to record Gemini magic edit history', { message: err?.message });
+        }
+
         console.log('[Gemini] Updating DynamoDB with results');
         await dynamoClient.send(new UpdateItemCommand({
             TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
@@ -746,6 +781,23 @@ exports.handler = async (event) => {
                 categories: { provider: 'openai', reason: 'output_blocked' },
             });
             throw err;
+        }
+
+        // Record history entry for each OpenAI-generated image
+        try {
+            const cdnUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+            await recordMagicEditHistory({
+                dynamoClient,
+                ownerSub: userSub,
+                prompt,
+                imageUrl: cdnUrl,
+                metadata: {
+                    initialImageKey: imageKey || null,
+                    model: 'openai',
+                },
+            });
+        } catch (err) {
+            console.warn('[History] Failed to record OpenAI magic edit history', { message: err?.message });
         }
 
         console.log('[OpenAI] Writing generated image to S3', { key: s3Params.Key });

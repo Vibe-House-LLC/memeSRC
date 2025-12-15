@@ -81,7 +81,7 @@
         "memesrcinpainter": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcinpainter-3464644c716b58554130-build.zip"
+          "s3Key": "amplify-builds/memesrcinpainter-64314971766f4a452b6a-build.zip"
         },
         "memesrcUserFunction": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -115,7 +115,7 @@
         "memesrcOpenAI": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcOpenAI-7a636537615a4c6b4839-build.zip"
+          "s3Key": "amplify-builds/memesrcOpenAI-523967796f6b52794d79-build.zip"
         },
         "frameExtractor": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",

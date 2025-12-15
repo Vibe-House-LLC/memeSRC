@@ -2470,6 +2470,7 @@ export const onCreateMagicEditHistory = /* GraphQL */ `
       id
       prompt
       imageKey
+      imageUrl
       metadata
       status
       createdAt
@@ -2488,6 +2489,7 @@ export const onUpdateMagicEditHistory = /* GraphQL */ `
       id
       prompt
       imageKey
+      imageUrl
       metadata
       status
       createdAt
@@ -2506,6 +2508,7 @@ export const onDeleteMagicEditHistory = /* GraphQL */ `
       id
       prompt
       imageKey
+      imageUrl
       metadata
       status
       createdAt
