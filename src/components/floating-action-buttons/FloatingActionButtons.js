@@ -1,10 +1,9 @@
-import React, { useContext, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
     Box,
     Button,
     styled,
-    CircularProgress,
     useTheme,
     Menu,
     MenuItem,
@@ -17,15 +16,15 @@ import {
     DialogActions,
     Typography,
     Stack,
+    Popper,
+    Paper,
 } from '@mui/material';
 import { Dashboard, KeyboardArrowDown, CloudUpload, PhotoLibrary, Search } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
-import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
-import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
 
 // Define constants for colors and fonts
@@ -92,70 +91,57 @@ const StyledRightFooter = styled('footer')(({ theme, hasAd }) => ({
 }));
 
 function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
-    const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const navigate = useNavigate();
-    const { user, shows: availableShows = [] } = useContext(UserContext);
+    const { user } = useContext(UserContext);
     const theme = useTheme();
-    const { triggerDialog } = useAdFreeDecember();
     const { openSubscriptionDialog } = useSubscribeDialog();
     const isAdmin = user?.['cognito:groups']?.includes('admins');
     const isPro = user?.userDetails?.magicSubscription === 'true';
     const hasToolAccess = Boolean(isAdmin || isPro);
+    const randomButtonRef = useRef(null);
+    const randomHelperTimeoutRef = useRef(null);
     const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
     const [uploadChoiceOpen, setUploadChoiceOpen] = useState(false);
     const [pendingUpload, setPendingUpload] = useState(null);
+    const [randomHelperOpen, setRandomHelperOpen] = useState(false);
     const fileInputRef = useRef(null);
-
-    const showCount = useMemo(() => {
-        if (Array.isArray(shows)) {
-            return shows.length;
-        }
-
-        if (shows === '_favorites') {
-            return availableShows.filter(singleShow => singleShow?.isFavorite).length;
-        }
-
-        if (!shows || shows === '_universal') {
-            return availableShows.length;
-        }
-
-        return availableShows.some(singleShow => singleShow?.id === shows) ? 1 : 0;
-    }, [shows, availableShows]);
-
-    const targetShow = useMemo(() => {
-        if (Array.isArray(shows)) {
-            const [firstShow] = shows;
-
-            if (!firstShow) {
-                return undefined;
-            }
-
-            if (typeof firstShow === 'string') {
-                return firstShow;
-            }
-
-            if (typeof firstShow === 'object' && 'id' in firstShow) {
-                return firstShow.id;
-            }
-
-            return undefined;
-        }
-
-        return shows;
-    }, [shows]);
 
     const toolsMenuOpen = Boolean(toolsAnchorEl);
 
-    const handleRandomClick = () => {
-        const payload = {
-            source: 'FloatingActionButtons',
-            showCount,
-            hasAd: showAd,
+    useEffect(() => {
+        return () => {
+            if (randomHelperTimeoutRef.current) {
+                clearTimeout(randomHelperTimeoutRef.current);
+            }
         };
+    }, []);
 
-        trackUsageEvent('random_frame', payload);
-        triggerDialog();
-        loadRandomFrame(targetShow);
+    const handleCloseRandomHelper = () => {
+        if (randomHelperTimeoutRef.current) {
+            clearTimeout(randomHelperTimeoutRef.current);
+            randomHelperTimeoutRef.current = null;
+        }
+        setRandomHelperOpen(false);
+    };
+
+    const openRandomHelper = () => {
+        setRandomHelperOpen(true);
+        if (randomHelperTimeoutRef.current) {
+            clearTimeout(randomHelperTimeoutRef.current);
+        }
+        randomHelperTimeoutRef.current = setTimeout(() => {
+            setRandomHelperOpen(false);
+            randomHelperTimeoutRef.current = null;
+        }, 10000);
+    };
+
+    const handleRandomClick = () => {
+        openRandomHelper();
+        trackUsageEvent('random_button_helper_opened', {
+            source: 'FloatingActionButtons',
+            shows,
+            hasAd: showAd,
+        });
     };
 
     const handleToolsButtonClick = (event) => {
@@ -286,6 +272,8 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         },
     };
 
+    const randomHelperId = randomHelperOpen ? 'random-helper-popover' : undefined;
+
     const toolsButton = (
         <StyledButton
             onClick={handleToolsButtonClick}
@@ -306,22 +294,13 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
 
     const randomButton = (
         <StyledButton
+            ref={randomButtonRef}
+            aria-describedby={randomHelperId}
             onClick={handleRandomClick}
-            disabled={loadingRandom}
-            startIcon={
-                loadingRandom ? (
-                    <CircularProgress size={22} thickness={4} sx={{ color: 'rgba(255,255,255,0.7)' }} />
-                ) : (
-                    <ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />
-                )
-            }
+            startIcon={<ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />}
             variant="contained"
             sx={{
                 ...sharedButtonSx,
-                '&.Mui-disabled': {
-                    backgroundColor: BUTTON_BASE_COLOR,
-                    color: 'rgba(255,255,255,0.7)',
-                },
             }}
         >
             Random
@@ -333,6 +312,69 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         alignItems: 'center',
         gap: 1.5,
     };
+
+    const randomHelperPopover = (
+        <Popper
+            id={randomHelperId}
+            open={Boolean(randomHelperOpen && randomButtonRef.current)}
+            anchorEl={randomButtonRef.current}
+            placement="top-start"
+            sx={{ zIndex: 2000 }}
+            modifiers={[
+                {
+                    name: 'offset',
+                    options: {
+                        offset: [-10, 14],
+                    },
+                },
+            ]}
+        >
+            <Paper
+                sx={{
+                    p: { xs: 1.5, sm: 2 },
+                    bgcolor: '#0f0f0f',
+                    color: '#fff',
+                    borderRadius: 2,
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    boxShadow: '0px 14px 40px rgba(0,0,0,0.45)',
+                    width: { xs: 220, sm: 280 },
+                    maxWidth: 'calc(100vw - 24px)',
+                    zIndex: 2000,
+                }}
+            >
+                <Stack spacing={1.25}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                        The random button is now part of the search bar
+                    </Typography>
+                    <Box
+                        component="img"
+                        src="/assets/randombutton.png"
+                        alt="New random button location in search bar"
+                        sx={{
+                            width: '100%',
+                            borderRadius: 1.5,
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            objectFit: 'cover',
+                            objectPosition: 'center center',
+                            alignSelf: 'center',
+                            maxHeight: { xs: 140, sm: 180 },
+                        }}
+                    />
+                    <Typography variant="body2" color="rgba(255,255,255,0.72)">
+                        Look for the shuffle icon next to search to get a random pick.
+                    </Typography>
+                    <Button
+                        onClick={handleCloseRandomHelper}
+                        variant="contained"
+                        size="small"
+                        sx={{ alignSelf: 'flex-end', px: 1.75, minWidth: 'unset' }}
+                    >
+                        Got it
+                    </Button>
+                </Stack>
+            </Paper>
+        </Popper>
+    );
 
     const toolsMenu = (
         <>
@@ -486,6 +528,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     </Box>
                 </Box>
                 {toolsMenu}
+                {randomHelperPopover}
             </>
         );
     }
@@ -500,6 +543,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 {randomButton}
             </StyledRightFooter>
             {toolsMenu}
+            {randomHelperPopover}
         </>
     );
 }
