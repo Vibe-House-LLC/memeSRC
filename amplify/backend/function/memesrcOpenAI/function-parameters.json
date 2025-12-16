@@ -5,6 +5,13 @@
         "read"
       ]
     },
+    "function": {
+      "memesrcUserFunction": [
+        "create",
+        "read",
+        "update"
+      ]
+    },
     "storage": {
       "memesrcGeneratedImages": [
         "create",

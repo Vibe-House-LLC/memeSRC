@@ -50,39 +50,6 @@ exports.handler = async (event) => {
 
     console.log(JSON.stringify(process.env))
 
-    // Deducting credits
-    const invokeRequest = {
-        FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
-        Payload: JSON.stringify({
-            subId: userSub[0],
-            path: `/${process.env.ENV}/public/user/spendCredits`,
-            numCredits: 1
-        }),
-    };
-
-    const userDetailsResult = await lambdaClient.send(new InvokeCommand(invokeRequest));
-    const userDetailsString = new TextDecoder().decode(userDetailsResult.Payload);
-    const userDetails = JSON.parse(userDetailsString);
-    const userDetailsBody = JSON.parse(userDetails.body);
-    const preSpendCredits = userDetailsBody?.data?.getUserDetails?.credits;
-
-    if (!preSpendCredits) {
-        return {
-            statusCode: 403,
-            body: JSON.stringify({
-                error: {
-                    name: "InsufficientCredits",
-                    message: "Insufficient credits"
-                }
-            }),
-            headers: {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Credentials": "true",
-            },
-        };
-    }
-
     // Upload image inputs to S3 (mask optional)
     const imageKey = `tmp/${uuid.v4()}.png`;
     await s3Client.send(new PutObjectCommand({
@@ -153,8 +120,7 @@ exports.handler = async (event) => {
         statusCode: 200,
         body: JSON.stringify({
             magicResultId: dynamoRecord.id.S,
-            // Include an updated credit balance so the frontend can update immediately
-            credits: typeof preSpendCredits === 'number' ? Math.max(0, preSpendCredits - 1) : undefined
+            // Credit is charged after successful generation; balance unchanged here
         }),
         headers: {
             "Content-Type": "application/json",

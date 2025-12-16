@@ -707,6 +707,13 @@
         },
         {
           "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
+        },
+        {
+          "attributes": [
             "BucketName"
           ],
           "category": "storage",

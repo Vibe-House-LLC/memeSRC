@@ -24,6 +24,7 @@ Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }
 	API_MEMESRC_WEBSITESETTINGTABLE_NAME
 	AUTH_MEMESRCC3C71449_USERPOOLID
 	ENV
+	FUNCTION_MEMESRCUSERFUNCTION_NAME
 	REGION
 	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
 Amplify Params - DO NOT EDIT */
@@ -31,11 +32,13 @@ Amplify Params - DO NOT EDIT */
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
 const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { DynamoDBClient, UpdateItemCommand, GetItemCommand, PutItemCommand } = require("@aws-sdk/client-dynamodb");
+const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const AWS = require('aws-sdk');
 const uuid = require('uuid');
 const axios = require('axios');
 const FormData = require('form-data');
 const { Buffer } = require('buffer');
+const { TextDecoder } = require('util');
 const { sendEmail } = require('/opt/email-function');
 const MAX_REFERENCE_IMAGES = 4;
 const DEFAULT_RATE_LIMIT = 100;
@@ -478,6 +481,36 @@ const recordRateLimitError = async ({ dynamoClient, magicResultId, modelKey, lim
     }
 };
 
+const recordCreditChargeError = async ({ dynamoClient, magicResultId, modelKey, message, code }) => {
+    if (!magicResultId || !process.env.API_MEMESRC_MAGICRESULTTABLE_NAME) {
+        return;
+    }
+    const errorPayload = {
+        reason: 'credit_charge_failed',
+        message: message || 'Failed to charge a credit for this generation.',
+        model: modelKey,
+        code,
+        timestamp: new Date().toISOString(),
+    };
+    try {
+        await dynamoClient.send(new UpdateItemCommand({
+            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+            Key: { id: { S: magicResultId } },
+            UpdateExpression: 'SET #error = :error, updatedAt = :updatedAt',
+            ExpressionAttributeNames: {
+                '#error': 'error',
+            },
+            ExpressionAttributeValues: {
+                ':error': { S: JSON.stringify(errorPayload) },
+                ':updatedAt': { S: new Date().toISOString() },
+            },
+        }));
+        console.warn('[Credits] Recorded credit charge error on MagicResult', { magicResultId, modelKey, code });
+    } catch (err) {
+        console.error('[Credits] Failed to record credit charge error on MagicResult', { magicResultId, message: err?.message });
+    }
+};
+
 const recordModerationError = async ({ dynamoClient, magicResultId, modelKey, categories }) => {
     if (!magicResultId || !process.env.API_MEMESRC_MAGICRESULTTABLE_NAME) {
         return;
@@ -532,6 +565,34 @@ const ensureNotFlagged = async ({ apiKey, prompt, images, dynamoClient, magicRes
     }
 };
 
+const spendUserCredit = async ({ lambdaClient, userFunctionName, userSub }) => {
+    if (!lambdaClient || !userFunctionName) {
+        throw Object.assign(new Error('User function not configured for credit charge'), { code: 'CreditChargeConfigMissing' });
+    }
+    if (!userSub) {
+        throw Object.assign(new Error('Missing userSub for credit charge'), { code: 'CreditChargeMissingUser' });
+    }
+    const payload = {
+        subId: userSub,
+        path: `/${process.env.ENV}/public/user/spendCredits`,
+        numCredits: 1,
+    };
+    const resp = await lambdaClient.send(new InvokeCommand({
+        FunctionName: userFunctionName,
+        Payload: Buffer.from(JSON.stringify(payload)),
+    }));
+    const decoded = resp?.Payload ? new TextDecoder().decode(resp.Payload) : '{}';
+    const parsed = decoded ? JSON.parse(decoded) : {};
+    const statusCode = parsed?.statusCode || parsed?.StatusCode || parsed?.status;
+    const body = typeof parsed?.body === 'string' ? JSON.parse(parsed.body) : parsed?.body;
+    if (statusCode >= 400 || body?.error) {
+        const err = new Error(body?.error?.message || body?.error || 'Credit charge failed');
+        err.code = 'CreditChargeFailed';
+        throw err;
+    }
+    return body;
+};
+
 const recordMagicEditHistory = async ({ dynamoClient, ownerSub, prompt, imageUrl, metadata }) => {
     if (!process.env.API_MEMESRC_MAGICEDITHISTORYTABLE_NAME) return;
     const nowIso = new Date().toISOString();
@@ -572,6 +633,7 @@ exports.handler = async (event) => {
     const ssmClient = new SSMClient({ region: "us-east-1" });
     const s3Client = new S3Client({ region: "us-east-1" });
     const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
+    const lambdaClient = new LambdaClient({ region: "us-east-1" });
 
     console.log('[Magic] Handler start', {
         hasEvent: Boolean(event),
@@ -877,6 +939,25 @@ exports.handler = async (event) => {
             console.warn('[History] Failed to record Gemini magic edit history', { message: err?.message });
         }
 
+        // Charge user credit after successful generation
+        try {
+            await spendUserCredit({
+                lambdaClient,
+                userFunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
+                userSub,
+            });
+        } catch (err) {
+            console.error('[Credits] Gemini credit charge failed', { message: err?.message });
+            await recordCreditChargeError({
+                dynamoClient,
+                magicResultId,
+                modelKey: 'gemini',
+                message: err?.message,
+                code: err?.code,
+            });
+            return;
+        }
+
         console.log('[Gemini] Updating DynamoDB with results');
         await dynamoClient.send(new UpdateItemCommand({
             TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
@@ -1079,6 +1160,25 @@ exports.handler = async (event) => {
         throw err;
     }
     console.log('[OpenAI] Uploaded images to S3', { count: cdnImageUrls.length });
+
+    // Charge user credit after successful generation
+    try {
+        await spendUserCredit({
+            lambdaClient,
+            userFunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
+            userSub,
+        });
+    } catch (err) {
+        console.error('[Credits] OpenAI credit charge failed', { message: err?.message });
+        await recordCreditChargeError({
+            dynamoClient,
+            magicResultId,
+            modelKey: 'openai',
+            message: err?.message,
+            code: err?.code,
+        });
+        return;
+    }
 
     console.log('[OpenAI] Updating DynamoDB with results');
     await dynamoClient.send(new UpdateItemCommand({

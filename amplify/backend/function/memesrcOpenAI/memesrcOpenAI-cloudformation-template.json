@@ -34,6 +34,10 @@
     "functionmemesrcSesLayerArn": {
       "Type": "String",
       "Default": "functionmemesrcSesLayerArn"
+    },
+    "functionmemesrcUserFunctionName": {
+      "Type": "String",
+      "Default": "functionmemesrcUserFunctionName"
     }
   },
   "Conditions": {
@@ -245,6 +249,9 @@
                   }
                 ]
               ]
+            },
+            "FUNCTION_MEMESRCUSERFUNCTION_NAME": {
+              "Ref": "functionmemesrcUserFunctionName"
             }
           }
         },
@@ -394,6 +401,39 @@
                       ":userpool/",
                       {
                         "Ref": "authmemesrcc3c71449UserPoolId"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lambda:Create*",
+                "lambda:Put*",
+                "lambda:Add*",
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:Invoke*",
+                "lambda:Update*"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:lambda:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":function:",
+                      {
+                        "Ref": "functionmemesrcUserFunctionName"
                       }
                     ]
                   ]
