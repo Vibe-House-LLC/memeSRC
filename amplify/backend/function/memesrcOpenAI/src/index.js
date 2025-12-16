@@ -1022,12 +1022,16 @@ exports.handler = async (event) => {
             });
         } catch (err) {
             console.error('[Moderation] OpenAI output blocked', { message: err?.message });
-            await recordModerationError({
-                dynamoClient,
-                magicResultId,
-                modelKey: 'openai',
-                categories: { provider: 'openai', reason: 'output_blocked' },
-            });
+            const moderationCodes = ['ModerationBlocked', 'ModerationUnavailable', 'ProviderModeration'];
+            if (moderationCodes.includes(err?.code) && !err?.moderationRecorded) {
+                await recordModerationError({
+                    dynamoClient,
+                    magicResultId,
+                    modelKey: 'openai',
+                    categories: { provider: 'openai', reason: 'output_blocked' },
+                });
+                err.moderationRecorded = true;
+            }
             throw err;
         }
 
@@ -1058,13 +1062,20 @@ exports.handler = async (event) => {
     try {
         cdnImageUrls = await Promise.all(promises);
     } catch (err) {
-        // If moderation blocked output, record and rethrow
-        await recordModerationError({
-            dynamoClient,
-            magicResultId,
-            modelKey: 'openai',
-            categories: { provider: 'openai', reason: 'no_image_returned' },
-        });
+        const moderationCodes = ['ModerationBlocked', 'ModerationUnavailable', 'ProviderModeration'];
+        const isModerationError = Boolean(err?.moderationRecorded || moderationCodes.includes(err?.code));
+        if (isModerationError && !err?.moderationRecorded) {
+            await recordModerationError({
+                dynamoClient,
+                magicResultId,
+                modelKey: 'openai',
+                categories: { provider: 'openai', reason: 'no_image_returned' },
+            });
+            err.moderationRecorded = true;
+        }
+        if (!isModerationError) {
+            console.error('[OpenAI] Image processing failed (non-moderation)', { message: err?.message, code: err?.code });
+        }
         throw err;
     }
     console.log('[OpenAI] Uploaded images to S3', { count: cdnImageUrls.length });
