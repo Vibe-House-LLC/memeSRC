@@ -710,7 +710,11 @@ export default function MagicEditor({
           if (resultsStr) {
             const urls = JSON.parse(resultsStr);
             finalUrl = urls?.[0] ?? null;
-            await forceTokenRefresh();
+            try {
+              await forceTokenRefresh();
+            } catch (refreshErr) {
+              console.warn('[MagicEditor] Token refresh after magic edit failed', refreshErr);
+            }
             break;
           }
         } catch (e: any) {
