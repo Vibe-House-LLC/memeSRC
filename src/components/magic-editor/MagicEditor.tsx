@@ -578,7 +578,7 @@ export default function MagicEditor({
   const handleApply = useCallback(async () => {
     if (!internalSrc || processing) return;
     if (!rateLimitState.nanoAvailable) {
-      setError('Content blocked by moderation or daily limits.');
+      setError('Magic Tools are temporarily unavailable. Please try again later.');
       return;
     }
     setProcessing(true);
@@ -810,7 +810,7 @@ export default function MagicEditor({
       />
       {!rateLimitState.nanoAvailable && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Content blocked by moderation or daily limits.
+          Magic Tools are temporarily unavailable. Please try again later.
         </Alert>
       )}
       {/* Magic Editor subtitle; can be hidden by parent

@@ -1948,7 +1948,7 @@ const EditorPage = ({ shows }) => {
     }
     if (rateLimitState.openaiAvailable === false) {
       setSeverity('error');
-      setMessage('Content blocked by moderation or daily limits.');
+      setMessage('Classic Magic Tools are temporarily unavailable. Please try again later.');
       setOpen(true);
       return;
     }
@@ -1993,8 +1993,8 @@ const EditorPage = ({ shows }) => {
             }
             setSeverity('error');
             setMessage(rateLimitModel === 'gemini'
-              ? 'Content blocked by moderation or daily limits.'
-              : 'Content blocked by moderation or daily limits.');
+              ? 'Magic Tools are temporarily unavailable. Please try again later.'
+              : 'Classic Magic Tools are temporarily unavailable. Please try again later.');
             setOpen(true);
             return;
           }
