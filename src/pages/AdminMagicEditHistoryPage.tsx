@@ -183,7 +183,16 @@ export default function AdminMagicEditHistoryPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          justifyContent: { xs: 'flex-start', sm: 'space-between' },
+          gap: { xs: 1.5, sm: 0 },
+          mb: 2,
+        }}
+      >
         <Box>
           <Typography variant="h4" fontWeight={800}>
             Magic Edit History
@@ -192,7 +201,7 @@ export default function AdminMagicEditHistoryPage() {
             Review generated images by status. Default shows unreviewed.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
           {statusChips}
         </Stack>
       </Box>
