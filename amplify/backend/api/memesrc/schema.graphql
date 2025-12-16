@@ -465,4 +465,5 @@ type RateLimit @model @auth(
   currentUsage: Int
   openaiUsage: Int
   geminiUsage: Int
+  adminAlerts: AWSJSON
 }

@@ -1754,6 +1754,7 @@ export const getRateLimit = /* GraphQL */ `
       currentUsage
       openaiUsage
       geminiUsage
+      adminAlerts
       createdAt
       updatedAt
       __typename
@@ -1772,6 +1773,7 @@ export const listRateLimits = /* GraphQL */ `
         currentUsage
         openaiUsage
         geminiUsage
+        adminAlerts
         createdAt
         updatedAt
         __typename

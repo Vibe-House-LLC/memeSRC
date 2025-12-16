@@ -2527,6 +2527,7 @@ export const onCreateRateLimit = /* GraphQL */ `
       currentUsage
       openaiUsage
       geminiUsage
+      adminAlerts
       createdAt
       updatedAt
       __typename
@@ -2542,6 +2543,7 @@ export const onUpdateRateLimit = /* GraphQL */ `
       currentUsage
       openaiUsage
       geminiUsage
+      adminAlerts
       createdAt
       updatedAt
       __typename
@@ -2557,6 +2559,7 @@ export const onDeleteRateLimit = /* GraphQL */ `
       currentUsage
       openaiUsage
       geminiUsage
+      adminAlerts
       createdAt
       updatedAt
       __typename

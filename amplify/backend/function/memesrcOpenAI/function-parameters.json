@@ -1,5 +1,10 @@
 {
   "permissions": {
+    "auth": {
+      "memesrcc3c71449": [
+        "read"
+      ]
+    },
     "storage": {
       "memesrcGeneratedImages": [
         "create",
@@ -10,10 +15,33 @@
         "create",
         "read",
         "update"
+      ],
+      "WebsiteSetting:@model(appsync)": [
+        "create",
+        "read",
+        "update"
+      ],
+      "MagicEditHistory:@model(appsync)": [
+        "create",
+        "read",
+        "update"
+      ],
+      "RateLimit:@model(appsync)": [
+        "create",
+        "read",
+        "update"
       ]
     }
   },
-  "lambdaLayers": [],
+  "lambdaLayers": [
+    {
+      "type": "ProjectLayer",
+      "resourceName": "memesrcSesLayer",
+      "env": "dev",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
+    }
+  ],
   "secretNames": [
     "openai_apikey",
     "gemini_api_key"

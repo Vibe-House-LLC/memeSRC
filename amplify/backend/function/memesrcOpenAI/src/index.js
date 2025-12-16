@@ -14,8 +14,15 @@ Parameters will be of the form { Name: 'secretName', Value: 'secretValue', ... }
 */
 /* Amplify Params - DO NOT EDIT
 	API_MEMESRC_GRAPHQLAPIIDOUTPUT
+	API_MEMESRC_MAGICEDITHISTORYTABLE_ARN
+	API_MEMESRC_MAGICEDITHISTORYTABLE_NAME
 	API_MEMESRC_MAGICRESULTTABLE_ARN
 	API_MEMESRC_MAGICRESULTTABLE_NAME
+	API_MEMESRC_RATELIMITTABLE_ARN
+	API_MEMESRC_RATELIMITTABLE_NAME
+	API_MEMESRC_WEBSITESETTINGTABLE_ARN
+	API_MEMESRC_WEBSITESETTINGTABLE_NAME
+	AUTH_MEMESRCC3C71449_USERPOOLID
 	ENV
 	REGION
 	STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME
@@ -24,10 +31,12 @@ Amplify Params - DO NOT EDIT */
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
 const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { DynamoDBClient, UpdateItemCommand, GetItemCommand, PutItemCommand } = require("@aws-sdk/client-dynamodb");
+const AWS = require('aws-sdk');
 const uuid = require('uuid');
 const axios = require('axios');
 const FormData = require('form-data');
 const { Buffer } = require('buffer');
+const { sendEmail } = require('/opt/email-function');
 const MAX_REFERENCE_IMAGES = 4;
 const DEFAULT_RATE_LIMIT = 100;
 const MODEL_RATE_LIMIT_FIELD = {
@@ -38,6 +47,9 @@ const MODEL_USAGE_FIELD = {
   openai: 'openaiUsage',
   gemini: 'geminiUsage',
 };
+const cognitoISP = new AWS.CognitoIdentityServiceProvider({
+  region: process.env.AWS_REGION || process.env.REGION || 'us-east-1',
+});
 let cachedOpenAiKey;
 // Gemini client (lazy dependency; only used when no mask is provided)
 let GoogleGenerativeAI;
@@ -96,6 +108,8 @@ const parseNumberOrDefault = (value, fallback) => {
     return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const capitalize = (value = '') => value.charAt(0).toUpperCase() + value.slice(1);
+
 const getOpenAiApiKey = async (ssmClient) => {
     if (cachedOpenAiKey) return cachedOpenAiKey;
     const command = new GetParameterCommand({ Name: process.env.openai_apikey, WithDecryption: true });
@@ -148,6 +162,16 @@ const moderateContent = async ({ apiKey, prompt, images = [] }) => {
 
 const getUtcDayId = () => new Date().toISOString().slice(0, 10);
 
+const getResetEta = () => {
+    const now = new Date();
+    const reset = new Date(now);
+    reset.setUTCHours(24, 0, 0, 0); // UTC midnight
+    const diffMs = Math.max(0, reset.getTime() - now.getTime());
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return { hours, minutes };
+};
+
 const fetchModelRateLimit = async (dynamoClient, modelKey) => {
     const tableName = process.env.API_MEMESRC_WEBSITESETTINGTABLE_NAME;
     if (!tableName) {
@@ -165,6 +189,200 @@ const fetchModelRateLimit = async (dynamoClient, modelKey) => {
     }));
     const limit = parseNumberOrDefault(resp?.Item?.[limitField]?.N, DEFAULT_RATE_LIMIT);
     return limit;
+};
+
+const fetchAdminEmails = async () => {
+    const userPoolId = process.env.AUTH_MEMESRCC3C71449_USERPOOLID;
+    if (!userPoolId) {
+        console.warn('[AdminEmail] Missing USERPOOLID env; cannot notify admins');
+        return [];
+    }
+    const emails = new Set();
+    let nextToken;
+    do {
+        try {
+            const resp = await cognitoISP.listUsersInGroup({
+                UserPoolId: userPoolId,
+                GroupName: 'admins',
+                Limit: 60,
+                NextToken: nextToken,
+            }).promise();
+            console.log('[AdminEmail] Fetched admin page', {
+                count: resp?.Users?.length || 0,
+                nextToken: resp?.NextToken ? 'yes' : 'no',
+            });
+            (resp?.Users || []).forEach((user) => {
+                const emailAttr = (user.Attributes || []).find((attr) => attr.Name === 'email');
+                if (emailAttr?.Value) {
+                    emails.add(emailAttr.Value);
+                }
+            });
+            nextToken = resp?.NextToken;
+        } catch (err) {
+            console.error('[AdminEmail] Failed to list admin users', { message: err?.message });
+            break;
+        }
+    } while (nextToken);
+    const emailList = Array.from(emails);
+    console.log('[AdminEmail] Final admin email list', { count: emailList.length, emails: emailList });
+    return emailList;
+};
+
+const getRateLimitSnapshot = async (dynamoClient, rateLimitId = getUtcDayId()) => {
+    if (!process.env.API_MEMESRC_RATELIMITTABLE_NAME) return null;
+    try {
+        const resp = await dynamoClient.send(new GetItemCommand({
+            TableName: process.env.API_MEMESRC_RATELIMITTABLE_NAME,
+            Key: { id: { S: rateLimitId } },
+        }));
+        const item = resp?.Item || {};
+        return {
+            rateLimitId,
+            usage: {
+                openai: parseNumberOrDefault(item?.[MODEL_USAGE_FIELD.openai]?.N, 0),
+                gemini: parseNumberOrDefault(item?.[MODEL_USAGE_FIELD.gemini]?.N, 0),
+                total: parseNumberOrDefault(item?.currentUsage?.N, 0),
+            },
+        };
+    } catch (err) {
+        console.error('[RateLimit] Failed to fetch usage snapshot', { message: err?.message });
+        return null;
+    }
+};
+
+const getAllModelLimits = async (dynamoClient) => {
+    const limits = {};
+    for (const key of Object.keys(MODEL_RATE_LIMIT_FIELD)) {
+        limits[key] = await fetchModelRateLimit(dynamoClient, key);
+    }
+    return limits;
+};
+
+const markAdminAlertSent = async ({ dynamoClient, modelKey, rateLimitId }) => {
+    if (!process.env.API_MEMESRC_RATELIMITTABLE_NAME || !rateLimitId) return false;
+    const nowIso = new Date().toISOString();
+    try {
+        await dynamoClient.send(new UpdateItemCommand({
+            TableName: process.env.API_MEMESRC_RATELIMITTABLE_NAME,
+            Key: { id: { S: rateLimitId } },
+            UpdateExpression: 'SET #alerts = if_not_exists(#alerts, :emptyMap), #alerts.#modelKey = if_not_exists(#alerts.#modelKey, :ts)',
+            ConditionExpression: 'attribute_not_exists(#alerts.#modelKey)',
+            ExpressionAttributeNames: {
+                '#alerts': 'adminAlerts',
+                '#modelKey': modelKey,
+            },
+            ExpressionAttributeValues: {
+                ':emptyMap': { M: {} },
+                ':ts': { S: nowIso },
+            },
+        }));
+        return true;
+    } catch (err) {
+        if (err?.message?.includes('document path')) {
+            console.warn('[AdminEmail] Resetting adminAlerts map due to invalid path; overwriting existing value', {
+                modelKey,
+                rateLimitId,
+            });
+            try {
+                await dynamoClient.send(new UpdateItemCommand({
+                    TableName: process.env.API_MEMESRC_RATELIMITTABLE_NAME,
+                    Key: { id: { S: rateLimitId } },
+                    UpdateExpression: 'SET #alerts = :map',
+                    ExpressionAttributeNames: {
+                        '#alerts': 'adminAlerts',
+                    },
+                    ExpressionAttributeValues: {
+                        ':map': { M: { [modelKey]: { S: nowIso } } },
+                    },
+                }));
+                return true;
+            } catch (fallbackErr) {
+                console.error('[AdminEmail] Fallback alert mark failed', { message: fallbackErr?.message });
+            }
+        }
+        if (err?.name !== 'ConditionalCheckFailedException') {
+            console.error('[AdminEmail] Failed to mark alert as sent', { message: err?.message });
+        }
+        return false;
+    }
+};
+
+const buildRateLimitEmailContent = ({ modelKey, limit, snapshot, limits, eta }) => {
+    const modelLabel = capitalize(modelKey);
+    const models = ['openai', 'gemini'];
+    const rows = models.map((key) => {
+        const used = snapshot?.usage?.[key] || 0;
+        const max = limits?.[key] || DEFAULT_RATE_LIMIT;
+        return {
+            key,
+            label: capitalize(key),
+            used,
+            max,
+            remaining: Math.max(0, max - used),
+        };
+    });
+    const etaText = `Limits reset in ${eta.hours} hour(s) and ${eta.minutes} minute(s) (midnight UTC).`;
+    const htmlBody = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #222;">
+          <h2 style="color: #111;">${modelLabel} daily limit reached</h2>
+          <p>The ${modelLabel} model hit its daily limit of ${limit} generations.</p>
+          <p><strong>Usage snapshot (${snapshot?.rateLimitId || getUtcDayId()}):</strong></p>
+          <ul>
+            ${rows.map((row) => `<li>${row.label}: ${row.used}/${row.max} used (${row.remaining} remaining today)</li>`).join('')}
+          </ul>
+          <p>${etaText}</p>
+          <p style="color: #555;">This notice was sent to the admins group.</p>
+        </body>
+      </html>
+    `;
+    const textBody = [
+        `${modelLabel} daily limit reached (${limit}).`,
+        '',
+        `Usage snapshot (${snapshot?.rateLimitId || getUtcDayId()}):`,
+        ...rows.map((row) => `- ${row.label}: ${row.used}/${row.max} used (${row.remaining} remaining today)`),
+        '',
+        etaText,
+        'This notice was sent to the admins group.',
+    ].join('\n');
+    return { subject: `memeSRC: ${modelLabel} daily limit reached`, htmlBody, textBody };
+};
+
+const notifyAdminsOfRateLimit = async ({ dynamoClient, modelKey, limit, rateLimitId }) => {
+    const safeRateLimitId = rateLimitId || getUtcDayId();
+    try {
+        const marked = await markAdminAlertSent({ dynamoClient, modelKey, rateLimitId: safeRateLimitId });
+        if (!marked) {
+            console.log('[AdminEmail] Alert already sent for this model/day', { modelKey, rateLimitId: safeRateLimitId });
+            return;
+        }
+        const adminEmails = await fetchAdminEmails();
+        if (!adminEmails.length) {
+            console.warn('[AdminEmail] No admin emails found; skipping notification');
+            return;
+        }
+        const [snapshot, limits] = await Promise.all([
+            getRateLimitSnapshot(dynamoClient, safeRateLimitId),
+            getAllModelLimits(dynamoClient),
+        ]);
+        const eta = getResetEta();
+        const { subject, htmlBody, textBody } = buildRateLimitEmailContent({
+            modelKey,
+            limit: limit || limits?.[modelKey] || DEFAULT_RATE_LIMIT,
+            snapshot,
+            limits,
+            eta,
+        });
+        await sendEmail({
+            toAddresses: adminEmails,
+            subject,
+            htmlBody,
+            textBody,
+        });
+        console.log('[AdminEmail] Rate limit alert sent', { modelKey, rateLimitId: safeRateLimitId, recipients: adminEmails.length });
+    } catch (err) {
+        console.error('[AdminEmail] Failed to send rate limit alert', { message: err?.message, modelKey });
+    }
 };
 
 const incrementDailyUsage = async ({ dynamoClient, modelKey, limit }) => {
@@ -492,8 +710,9 @@ exports.handler = async (event) => {
             throw err;
         }
         // Rate limit after passing moderation
+        let rateLimitUsageGemini;
         try {
-            await enforceRateLimit(dynamoClient, 'gemini');
+            rateLimitUsageGemini = await enforceRateLimit(dynamoClient, 'gemini');
         } catch (err) {
             if (err?.code === 'RateLimitExceeded') {
                 await recordRateLimitError({
@@ -503,8 +722,22 @@ exports.handler = async (event) => {
                     limit: err?.limit,
                     rateLimitId: err?.rateLimitId,
                 });
+                await notifyAdminsOfRateLimit({
+                    dynamoClient,
+                    modelKey: 'gemini',
+                    limit: err?.limit,
+                    rateLimitId: err?.rateLimitId,
+                });
             }
             throw err;
+        }
+        if (rateLimitUsageGemini?.modelUsage >= rateLimitUsageGemini?.limit) {
+            await notifyAdminsOfRateLimit({
+                dynamoClient,
+                modelKey: 'gemini',
+                limit: rateLimitUsageGemini.limit,
+                rateLimitId: rateLimitUsageGemini.rateLimitId,
+            });
         }
 
         console.log('[Gemini] Invoking model', {
@@ -724,8 +957,9 @@ exports.handler = async (event) => {
         throw err;
     }
     // Rate limit after passing moderation
+    let rateLimitUsageOpenai;
     try {
-        await enforceRateLimit(dynamoClient, 'openai');
+        rateLimitUsageOpenai = await enforceRateLimit(dynamoClient, 'openai');
     } catch (err) {
         if (err?.code === 'RateLimitExceeded') {
             await recordRateLimitError({
@@ -735,8 +969,22 @@ exports.handler = async (event) => {
                 limit: err?.limit,
                 rateLimitId: err?.rateLimitId,
             });
+            await notifyAdminsOfRateLimit({
+                dynamoClient,
+                modelKey: 'openai',
+                limit: err?.limit,
+                rateLimitId: err?.rateLimitId,
+            });
         }
         throw err;
+    }
+    if (rateLimitUsageOpenai?.modelUsage >= rateLimitUsageOpenai?.limit) {
+        await notifyAdminsOfRateLimit({
+            dynamoClient,
+            modelKey: 'openai',
+            limit: rateLimitUsageOpenai.limit,
+            rateLimitId: rateLimitUsageOpenai.rateLimitId,
+        });
     }
 
     console.log('[OpenAI] Submitting edit request to OpenAI');
