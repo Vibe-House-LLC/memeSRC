@@ -361,7 +361,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                         }}
                     />
                     <Typography variant="body2" color="rgba(255,255,255,0.72)">
-                        Look for the shuffle icon next to search to get a random pick.
+                        Look for the shuffle icon next to search to get a random frame.
                     </Typography>
                     <Button
                         onClick={handleCloseRandomHelper}
