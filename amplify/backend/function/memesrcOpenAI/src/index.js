@@ -481,7 +481,7 @@ const recordRateLimitError = async ({ dynamoClient, magicResultId, modelKey, lim
     }
 };
 
-const recordCreditChargeError = async ({ dynamoClient, magicResultId, modelKey, message, code }) => {
+const recordCreditChargeError = async ({ dynamoClient, magicResultId, modelKey, message, code, storeAsNote = false }) => {
     if (!magicResultId || !process.env.API_MEMESRC_MAGICRESULTTABLE_NAME) {
         return;
     }
@@ -493,18 +493,20 @@ const recordCreditChargeError = async ({ dynamoClient, magicResultId, modelKey, 
         timestamp: new Date().toISOString(),
     };
     try {
-        await dynamoClient.send(new UpdateItemCommand({
+        const updateExpression = storeAsNote ? 'SET creditChargeError = :error, updatedAt = :updatedAt' : 'SET #error = :error, updatedAt = :updatedAt';
+        const params = {
             TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
             Key: { id: { S: magicResultId } },
-            UpdateExpression: 'SET #error = :error, updatedAt = :updatedAt',
-            ExpressionAttributeNames: {
-                '#error': 'error',
-            },
+            UpdateExpression: updateExpression,
             ExpressionAttributeValues: {
                 ':error': { S: JSON.stringify(errorPayload) },
                 ':updatedAt': { S: new Date().toISOString() },
             },
-        }));
+        };
+        if (!storeAsNote) {
+            params.ExpressionAttributeNames = { '#error': 'error' };
+        }
+        await dynamoClient.send(new UpdateItemCommand(params));
         console.warn('[Credits] Recorded credit charge error on MagicResult', { magicResultId, modelKey, code });
     } catch (err) {
         console.error('[Credits] Failed to record credit charge error on MagicResult', { magicResultId, message: err?.message });
@@ -652,6 +654,27 @@ exports.handler = async (event) => {
         referenceCount: Array.isArray(referenceKeys) ? referenceKeys.length : 0,
         promptLength: (prompt || '').length,
     });
+
+    if (!userSub) {
+        await recordCreditChargeError({
+            dynamoClient,
+            magicResultId,
+            modelKey: maskKey ? 'openai' : 'gemini',
+            message: 'Missing userSub for credit charge',
+            code: 'CreditChargeMissingUser',
+        });
+        throw new Error('Missing userSub; cannot proceed without credit owner');
+    }
+    if (!process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME) {
+        await recordCreditChargeError({
+            dynamoClient,
+            magicResultId,
+            modelKey: maskKey ? 'openai' : 'gemini',
+            message: 'User function not configured for credit charge',
+            code: 'CreditChargeConfigMissing',
+        });
+        throw new Error('User function not configured for credit charge');
+    }
 
     // Branch: if maskKey is provided, run existing OpenAI edit flow; otherwise run Gemini image+prompt flow
     if (!maskKey) {
@@ -939,7 +962,20 @@ exports.handler = async (event) => {
             console.warn('[History] Failed to record Gemini magic edit history', { message: err?.message });
         }
 
-        // Charge user credit after successful generation
+        console.log('[Gemini] Updating DynamoDB with results');
+        await dynamoClient.send(new UpdateItemCommand({
+            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+            Key: {
+                "id": { S: magicResultId }
+            },
+            UpdateExpression: "set results = :results, updatedAt = :updatedAt",
+            ExpressionAttributeValues: {
+                ":results": { S: JSON.stringify([cdnUrl]) },
+                ":updatedAt": { S: new Date().toISOString() }
+            }
+        }));
+        console.log('[Gemini] UpdateItem complete', { magicResultId });
+        // Charge user credit after persisting results
         try {
             await spendUserCredit({
                 lambdaClient,
@@ -954,23 +990,9 @@ exports.handler = async (event) => {
                 modelKey: 'gemini',
                 message: err?.message,
                 code: err?.code,
+                storeAsNote: true,
             });
-            return;
         }
-
-        console.log('[Gemini] Updating DynamoDB with results');
-        await dynamoClient.send(new UpdateItemCommand({
-            TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
-            Key: {
-                "id": { S: magicResultId }
-            },
-            UpdateExpression: "set results = :results, updatedAt = :updatedAt",
-            ExpressionAttributeValues: {
-                ":results": { S: JSON.stringify([cdnUrl]) },
-                ":updatedAt": { S: new Date().toISOString() }
-            }
-        }));
-        console.log('[Gemini] UpdateItem complete', { magicResultId });
         return; // done with Gemini branch
     }
 
@@ -1161,7 +1183,20 @@ exports.handler = async (event) => {
     }
     console.log('[OpenAI] Uploaded images to S3', { count: cdnImageUrls.length });
 
-    // Charge user credit after successful generation
+    console.log('[OpenAI] Updating DynamoDB with results');
+    await dynamoClient.send(new UpdateItemCommand({
+        TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
+        Key: {
+            "id": { S: magicResultId }
+        },
+        UpdateExpression: "set results = :results, updatedAt = :updatedAt",
+        ExpressionAttributeValues: {
+            ":results": { S: JSON.stringify(cdnImageUrls) },
+            ":updatedAt": { S: new Date().toISOString() }
+        }
+    }));
+    console.log('[OpenAI] UpdateItem complete', { magicResultId });
+    // Charge user credit after persisting results
     try {
         await spendUserCredit({
             lambdaClient,
@@ -1176,23 +1211,9 @@ exports.handler = async (event) => {
             modelKey: 'openai',
             message: err?.message,
             code: err?.code,
+            storeAsNote: true,
         });
-        return;
     }
-
-    console.log('[OpenAI] Updating DynamoDB with results');
-    await dynamoClient.send(new UpdateItemCommand({
-        TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
-        Key: {
-            "id": { S: magicResultId }
-        },
-        UpdateExpression: "set results = :results, updatedAt = :updatedAt",
-        ExpressionAttributeValues: {
-            ":results": { S: JSON.stringify(cdnImageUrls) },
-            ":updatedAt": { S: new Date().toISOString() }
-        }
-    }));
-    console.log('[OpenAI] UpdateItem complete', { magicResultId });
 };
 
 // Top-level error listener (defensive): wrap handler in try/catch if desired
