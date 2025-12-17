@@ -187,6 +187,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             if (typeof base64data === 'string') {
                 setPendingUpload(base64data);
                 setUploadChoiceOpen(true);
+                closeToolsMenu();
                 if (inputEl?.value) {
                     inputEl.value = '';
                 }
@@ -227,17 +228,16 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             return;
         }
 
-        if (!hasToolAccess) {
-            handleRequestProUpsell();
+        if (action === 'upload') {
+            if (!hasToolAccess) {
+                handleRequestProUpsell();
+                return;
+            }
+            fileInputRef.current?.click();
             return;
         }
 
         closeToolsMenu();
-
-        if (action === 'upload') {
-            fileInputRef.current?.click();
-            return;
-        }
 
         if (action === 'collage') {
             handleCollageClick();
@@ -376,6 +376,18 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         </Popper>
     );
 
+    const toolMenuIconSx = {
+        minWidth: { xs: 32, md: 40 },
+        '& svg': {
+            fontSize: { xs: 18, md: 21 },
+        },
+    };
+
+    const toolMenuTextProps = {
+        primaryTypographyProps: { fontSize: { xs: 13, md: 15 }, fontWeight: 500 },
+        secondaryTypographyProps: { fontSize: { xs: 11, md: 13 } },
+    };
+
     const toolsMenu = (
         <>
             <Menu
@@ -401,20 +413,22 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     },
                 }}
             >
-                <MenuItem onClick={() => handleToolSelect('upload')}>
-                    <ListItemIcon>
-                        <CloudUpload fontSize="small" />
+                <MenuItem onClick={() => handleToolSelect('upload')} sx={{ fontSize: { xs: 13, md: 18 }, py: 1 }}>
+                    <ListItemIcon sx={toolMenuIconSx}>
+                        <CloudUpload sx={{ fontSize: { xs: 18, md: 24 } }} />
                     </ListItemIcon>
                     <ListItemText
+                        {...toolMenuTextProps}
                         primary="Upload Image"
                         secondary={hasToolAccess ? undefined : 'Pro required'}
                     />
                 </MenuItem>
-                <MenuItem onClick={() => handleToolSelect('collage')}>
-                    <ListItemIcon>
-                        <PhotoLibrary fontSize="small" />
+                <MenuItem onClick={() => handleToolSelect('collage')} sx={{ fontSize: { xs: 13, md: 18 }, py: 1 }}>
+                    <ListItemIcon sx={toolMenuIconSx}>
+                        <PhotoLibrary sx={{ fontSize: { xs: 18, md: 24 } }} />
                     </ListItemIcon>
                     <ListItemText
+                        {...toolMenuTextProps}
                         primary="Create Collage"
                         secondary={hasToolAccess ? undefined : 'Pro required'}
                     />
