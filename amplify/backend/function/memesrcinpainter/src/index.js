@@ -30,6 +30,7 @@ Amplify Params - DO NOT EDIT */
 const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
 const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { TextDecoder } = require('util');
 const uuid = require('uuid');
 
 const MAX_REFERENCE_IMAGES = 4;
@@ -42,7 +43,8 @@ exports.handler = async (event) => {
     const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
     const s3Client = new S3Client({ region: "us-east-1" });
 
-    const userSub = (event.requestContext?.identity?.cognitoAuthenticationProvider) ? event.requestContext.identity.cognitoAuthenticationProvider.split(':').slice(-1) : '';
+    const userAuthProvider = event.requestContext?.identity?.cognitoAuthenticationProvider || '';
+    const userSub = userAuthProvider ? userAuthProvider.split(':').pop() : '';
     const body = JSON.parse(event.body);
     const prompt = body.prompt;
     const hasMask = Boolean(body.mask);
@@ -50,29 +52,41 @@ exports.handler = async (event) => {
 
     console.log(JSON.stringify(process.env))
 
-    // Deducting credits
-    const invokeRequest = {
-        FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
-        Payload: JSON.stringify({
-            subId: userSub[0],
-            path: `/${process.env.ENV}/public/user/spendCredits`,
-            numCredits: 1
-        }),
+    const ensureCreditsAvailable = async () => {
+        if (!process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME) {
+            throw Object.assign(new Error('User function not configured'), { code: 'UserFunctionMissing' });
+        }
+        const payload = {
+            path: `/${process.env.ENV}/public/user/get`,
+            requestContext: userAuthProvider ? { identity: { cognitoAuthenticationProvider: userAuthProvider } } : undefined,
+        };
+        const userDetailsResult = await lambdaClient.send(new InvokeCommand({
+            FunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
+            Payload: Buffer.from(JSON.stringify(payload)),
+        }));
+        const userDetailsString = userDetailsResult.Payload ? new TextDecoder().decode(userDetailsResult.Payload) : '{}';
+        const userDetails = userDetailsString ? JSON.parse(userDetailsString) : {};
+        const userDetailsBody = typeof userDetails.body === 'string' ? JSON.parse(userDetails.body) : userDetails.body;
+        const credits = userDetailsBody?.data?.getUserDetails?.credits;
+        if (!Number.isFinite(credits)) {
+            throw Object.assign(new Error('Unable to determine credit balance'), { code: 'CreditLookupFailed' });
+        }
+        if (credits < 1) {
+            throw Object.assign(new Error('Insufficient credits'), { code: 'InsufficientCredits' });
+        }
+        return credits;
     };
 
-    const userDetailsResult = await lambdaClient.send(new InvokeCommand(invokeRequest));
-    const userDetailsString = new TextDecoder().decode(userDetailsResult.Payload);
-    const userDetails = JSON.parse(userDetailsString);
-    const userDetailsBody = JSON.parse(userDetails.body);
-    const preSpendCredits = userDetailsBody?.data?.getUserDetails?.credits;
-
-    if (!preSpendCredits) {
+    let preCredits;
+    try {
+        preCredits = await ensureCreditsAvailable();
+    } catch (err) {
         return {
             statusCode: 403,
             body: JSON.stringify({
                 error: {
-                    name: "InsufficientCredits",
-                    message: "Insufficient credits"
+                    name: err?.code || 'InsufficientCredits',
+                    message: err?.message || 'Insufficient credits'
                 }
             }),
             headers: {
@@ -122,7 +136,7 @@ exports.handler = async (event) => {
     const dynamoRecord = {
         "id": { S: uuid.v4() },
         "createdAt": { S: new Date().toISOString() },
-        "magicResultUserId": { S: userSub[0] },
+        "magicResultUserId": { S: userSub },
         "prompt": { S: prompt },
         "updatedAt": { S: new Date().toISOString() },
         "__typename": { S: "MagicResult" }
@@ -143,7 +157,8 @@ exports.handler = async (event) => {
             // Only include maskKey if present; background will branch accordingly
             ...(maskKey ? { maskKey } : {}),
             ...(referenceKeys.length ? { referenceKeys } : {}),
-            prompt
+            prompt,
+            userSub
         })
     }));
 
@@ -152,8 +167,8 @@ exports.handler = async (event) => {
         statusCode: 200,
         body: JSON.stringify({
             magicResultId: dynamoRecord.id.S,
-            // Include an updated credit balance so the frontend can update immediately
-            credits: typeof preSpendCredits === 'number' ? Math.max(0, preSpendCredits - 1) : undefined
+            // Include an expected credit balance so the frontend can update immediately
+            credits: typeof preCredits === 'number' ? Math.max(0, preCredits - 1) : undefined
         }),
         headers: {
             "Content-Type": "application/json",

@@ -182,17 +182,23 @@ const navConfig = [
         icon: <Functions />,
       },
       {
+        title: 'Magic Edit History',
+        path: '/dashboard/magic-edit-history',
+        externalLink: false,
+        icon: <AutoFixHigh />,
+      },
+      {
         title: 'User Content Review',
         path: '/dashboard/user-content-review',
         externalLink: false,
         icon: <Shield />,
       },
-      {
-        title: 'Magic Edit Review',
-        path: '/dashboard/magic-edit-review',
-        externalLink: false,
-        icon: <AutoFixHigh />,
-      },
+      // {
+      //   title: 'Magic Edit Review',
+      //   path: '/dashboard/magic-edit-review',
+      //   externalLink: false,
+      //   icon: <AutoFixHigh />,
+      // },
       {
         title: 'Website Settings',
         path: '/dashboard/websiteSettings',

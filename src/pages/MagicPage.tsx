@@ -22,7 +22,9 @@ export default function MagicPage() {
   const location = useLocation() as any;
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
-  const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const typedUser = (user && typeof user === 'object') ? user as any : null;
+  const isAdmin = typedUser?.['cognito:groups']?.includes('admins');
+  const isPro = typedUser?.userDetails?.magicSubscription === 'true';
   const [stage, setStage] = useState<'pick' | 'choose' | 'edit' | 'done'>('pick');
   const [chosen, setChosen] = useState<string | null>(null);
   const [finalSrc, setFinalSrc] = useState<string | null>(null);
@@ -35,20 +37,36 @@ export default function MagicPage() {
   const [versionChoice, setVersionChoice] = useState<'frame' | 'original' | null>(null);
   const [hasCompletedEdit, setHasCompletedEdit] = useState(false);
   const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
-  const magicEditContext = useMemo(() => location?.state?.magicEditContext || location?.state?.collageEditContext, [location?.state]);
+  const returnToPath = location?.state?.returnTo as string | undefined;
+  const collageEditContext = useMemo(() => location?.state?.collageEditContext, [location?.state]);
+  const magicEditContext = useMemo(
+    () => location?.state?.magicEditContext || collageEditContext,
+    [location?.state, collageEditContext]
+  );
+  const magicEditSource = location?.state?.magicEditContext?.source;
+  const cameFromFrame = useMemo(
+    () => typeof returnToPath === 'string' && returnToPath.includes('/frame/'),
+    [returnToPath]
+  );
+  const saveButtonLabel = useMemo(() => {
+    if (collageEditContext) return 'Save to Collage';
+    if (returnToPath && (returnToPath.includes('collage') || returnToPath.includes('/projects'))) return 'Save to Collage';
+    if (magicEditSource === 'v2editor') return 'Save to Editor';
+    if (returnToPath?.includes('/editor')) return 'Save to Editor';
+    return 'Save to Library';
+  }, [collageEditContext, magicEditSource, returnToPath]);
   const MAGIC_MAX_REFERENCES = 4;
 
   // Gate this page to admins only
   useEffect(() => {
-    if (isAdmin === false) {
-      const returnTo: string | undefined = location?.state?.returnTo;
-      if (returnTo) {
-        navigate(returnTo, { replace: true });
+    if (!isAdmin && !isPro) {
+      if (returnToPath) {
+        navigate(returnToPath, { replace: true });
       } else {
         navigate('/', { replace: true });
       }
     }
-  }, [isAdmin, navigate, location?.state]);
+  }, [isAdmin, isPro, navigate, returnToPath]);
 
   const chooseFrom = useMemo(() => location?.state?.chooseFrom as undefined | { originalSrc?: string; frameSrc?: string }, [location?.state]);
   const defaultPromptFromState = useMemo(
@@ -120,7 +138,7 @@ export default function MagicPage() {
   }, [chosen]);
 
   const handleReturnToCaller = async (src: string) => {
-    const returnTo: string | undefined = location?.state?.returnTo;
+    const returnTo: string | undefined = returnToPath;
     const context: any = magicEditContext;
     if (!returnTo) return;
     try {
@@ -143,6 +161,31 @@ export default function MagicPage() {
     } catch (_) {
       // If anything fails, still try to pass back via raw src
       navigate(returnTo, { replace: false, state: { magicResult: { originalUrl: src, displayUrl: src }, magicContext: context || null } });
+    }
+  };
+
+  const saveMagicEdit = async (src: string) => {
+    setSaving(true);
+    try {
+      if (returnToPath && !cameFromFrame) {
+        await handleReturnToCaller(src);
+      } else {
+        await saveImageToLibrary(src, 'magic-edit.jpg', { level: 'private', metadata: { source: 'magic-editor' } });
+        if (cameFromFrame) {
+          navigate('/library', { replace: false });
+          return;
+        }
+        setFinalSrc(src);
+        setStage('done');
+      }
+    } catch (err) {
+      console.error('Failed to save magic edit', err);
+      if (!returnToPath) {
+        setFinalSrc(src);
+        setStage('done');
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -190,7 +233,7 @@ export default function MagicPage() {
       
       <Box sx={{ mb: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
-          Magic Editor (Demo)
+          Magic Editor
         </Typography>
         {/* Mobile: always show subheading */}
         <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, mt: 0.5 }}>
@@ -278,14 +321,7 @@ export default function MagicPage() {
                     if (promptState.value && promptState.value.trim().length > 0) {
                       setConfirmDiscardOpen(true);
                     } else {
-                      setSaving(true);
-                      if (location?.state?.returnTo) {
-                        handleReturnToCaller(currentSrc).finally(() => setSaving(false));
-                      } else {
-                        setFinalSrc(currentSrc);
-                        setStage('done');
-                        setSaving(false);
-                      }
+                      void saveMagicEdit(currentSrc);
                     }
                   }}
                   disabled={!currentSrc || processing || !hasCompletedEdit || saving}
@@ -301,7 +337,7 @@ export default function MagicPage() {
                   }}
                   startIcon={saving ? <CircularProgress size={18} thickness={5} color="inherit" /> : undefined}
                 >
-                  {saving ? 'Saving…' : 'Save'}
+                  {saving ? 'Saving…' : saveButtonLabel}
                 </Button>
               </Box>
             </Box>
@@ -530,17 +566,11 @@ export default function MagicPage() {
           onProcessingChange={setProcessing}
           onPromptStateChange={setPromptState}
           saving={saving}
+          saveLabel={saveButtonLabel}
           onResult={() => setHasCompletedEdit(true)}
           onSave={(src) => {
-            setSaving(true);
             setFinalSrc(src);
-            // If we came from a caller, return result immediately
-            if (location?.state?.returnTo) {
-              handleReturnToCaller(src).finally(() => setSaving(false));
-            } else {
-              setStage('done');
-              setSaving(false);
-            }
+            void saveMagicEdit(src);
           }}
           onCancel={() => {
             const hasUnappliedPrompt = Boolean(promptState.value && promptState.value.trim().length > 0);
@@ -588,14 +618,8 @@ export default function MagicPage() {
           color="error"
           onClick={() => {
             if (currentSrc) {
-              setSaving(true);
-              if (location?.state?.returnTo) {
-                handleReturnToCaller(currentSrc).finally(() => setSaving(false));
-              } else {
-                setFinalSrc(currentSrc);
-                setStage('done');
-                setSaving(false);
-              }
+              setFinalSrc(currentSrc);
+              void saveMagicEdit(currentSrc);
             }
             setConfirmDiscardOpen(false);
           }}

@@ -1930,6 +1930,7 @@ export const onCreateMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -1964,6 +1965,7 @@ export const onUpdateMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -1998,6 +2000,7 @@ export const onDeleteMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -2178,6 +2181,8 @@ export const onCreateWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -2192,6 +2197,8 @@ export const onUpdateWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -2206,6 +2213,8 @@ export const onDeleteWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -2446,6 +2455,111 @@ export const onDeleteSearchFilterGroup = /* GraphQL */ `
       name
       filters
       owner
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateMagicEditHistory = /* GraphQL */ `
+  subscription OnCreateMagicEditHistory(
+    $filter: ModelSubscriptionMagicEditHistoryFilterInput
+    $owner: String
+  ) {
+    onCreateMagicEditHistory(filter: $filter, owner: $owner) {
+      id
+      prompt
+      imageKey
+      imageUrl
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateMagicEditHistory = /* GraphQL */ `
+  subscription OnUpdateMagicEditHistory(
+    $filter: ModelSubscriptionMagicEditHistoryFilterInput
+    $owner: String
+  ) {
+    onUpdateMagicEditHistory(filter: $filter, owner: $owner) {
+      id
+      prompt
+      imageKey
+      imageUrl
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteMagicEditHistory = /* GraphQL */ `
+  subscription OnDeleteMagicEditHistory(
+    $filter: ModelSubscriptionMagicEditHistoryFilterInput
+    $owner: String
+  ) {
+    onDeleteMagicEditHistory(filter: $filter, owner: $owner) {
+      id
+      prompt
+      imageKey
+      imageUrl
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateRateLimit = /* GraphQL */ `
+  subscription OnCreateRateLimit(
+    $filter: ModelSubscriptionRateLimitFilterInput
+  ) {
+    onCreateRateLimit(filter: $filter) {
+      id
+      currentUsage
+      openaiUsage
+      geminiUsage
+      adminAlerts
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateRateLimit = /* GraphQL */ `
+  subscription OnUpdateRateLimit(
+    $filter: ModelSubscriptionRateLimitFilterInput
+  ) {
+    onUpdateRateLimit(filter: $filter) {
+      id
+      currentUsage
+      openaiUsage
+      geminiUsage
+      adminAlerts
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteRateLimit = /* GraphQL */ `
+  subscription OnDeleteRateLimit(
+    $filter: ModelSubscriptionRateLimitFilterInput
+  ) {
+    onDeleteRateLimit(filter: $filter) {
+      id
+      currentUsage
+      openaiUsage
+      geminiUsage
+      adminAlerts
       createdAt
       updatedAt
       __typename

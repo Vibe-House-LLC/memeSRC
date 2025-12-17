@@ -1,14 +1,31 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, styled, CircularProgress, useTheme } from '@mui/material';
-import { Favorite, Dashboard } from '@mui/icons-material';
+import {
+    Box,
+    Button,
+    styled,
+    useTheme,
+    Menu,
+    MenuItem,
+    ListItemIcon,
+    ListItemText,
+    Input,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Typography,
+    Stack,
+    Popper,
+    Paper,
+} from '@mui/material';
+import { Dashboard, KeyboardArrowDown, CloudUpload, PhotoLibrary, Search } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
-import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
-import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
+import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
 
 // Define constants for colors and fonts
 const BUTTON_BASE_COLOR = '#0f0f0f';
@@ -74,79 +91,157 @@ const StyledRightFooter = styled('footer')(({ theme, hasAd }) => ({
 }));
 
 function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
-    const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const navigate = useNavigate();
-    const { user, shows: availableShows = [] } = useContext(UserContext);
+    const { user } = useContext(UserContext);
     const theme = useTheme();
-    const { triggerDialog } = useAdFreeDecember();
+    const { openSubscriptionDialog } = useSubscribeDialog();
     const isAdmin = user?.['cognito:groups']?.includes('admins');
     const isPro = user?.userDetails?.magicSubscription === 'true';
-    const hasCollageAccess = Boolean(isAdmin || isPro);
+    const hasToolAccess = Boolean(isAdmin || isPro);
+    const randomButtonRef = useRef(null);
+    const randomHelperTimeoutRef = useRef(null);
+    const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
+    const [uploadChoiceOpen, setUploadChoiceOpen] = useState(false);
+    const [pendingUpload, setPendingUpload] = useState(null);
+    const [randomHelperOpen, setRandomHelperOpen] = useState(false);
+    const fileInputRef = useRef(null);
 
-    const showCount = useMemo(() => {
-        if (Array.isArray(shows)) {
-            return shows.length;
-        }
+    const toolsMenuOpen = Boolean(toolsAnchorEl);
 
-        if (shows === '_favorites') {
-            return availableShows.filter(singleShow => singleShow?.isFavorite).length;
-        }
-
-        if (!shows || shows === '_universal') {
-            return availableShows.length;
-        }
-
-        return availableShows.some(singleShow => singleShow?.id === shows) ? 1 : 0;
-    }, [shows, availableShows]);
-
-    const targetShow = useMemo(() => {
-        if (Array.isArray(shows)) {
-            const [firstShow] = shows;
-
-            if (!firstShow) {
-                return undefined;
+    useEffect(() => {
+        return () => {
+            if (randomHelperTimeoutRef.current) {
+                clearTimeout(randomHelperTimeoutRef.current);
             }
-
-            if (typeof firstShow === 'string') {
-                return firstShow;
-            }
-
-            if (typeof firstShow === 'object' && 'id' in firstShow) {
-                return firstShow.id;
-            }
-
-            return undefined;
-        }
-
-        return shows;
-    }, [shows]);
-
-    const handleRandomClick = () => {
-        const payload = {
-            source: 'FloatingActionButtons',
-            showCount,
-            hasAd: showAd,
         };
+    }, []);
 
-        trackUsageEvent('random_frame', payload);
-        triggerDialog();
-        loadRandomFrame(targetShow);
+    const handleCloseRandomHelper = () => {
+        if (randomHelperTimeoutRef.current) {
+            clearTimeout(randomHelperTimeoutRef.current);
+            randomHelperTimeoutRef.current = null;
+        }
+        setRandomHelperOpen(false);
     };
 
-    const handleDonateClick = () => {
-        trackUsageEvent('donate_entry', {
+    const openRandomHelper = () => {
+        setRandomHelperOpen(true);
+        if (randomHelperTimeoutRef.current) {
+            clearTimeout(randomHelperTimeoutRef.current);
+        }
+        randomHelperTimeoutRef.current = setTimeout(() => {
+            setRandomHelperOpen(false);
+            randomHelperTimeoutRef.current = null;
+        }, 10000);
+    };
+
+    const handleRandomClick = () => {
+        openRandomHelper();
+        trackUsageEvent('random_button_helper_opened', {
             source: 'FloatingActionButtons',
+            shows,
+            hasAd: showAd,
         });
-        window.open('/donate', '_blank', 'noopener,noreferrer');
+    };
+
+    const handleToolsButtonClick = (event) => {
+        if (toolsMenuOpen) {
+            closeToolsMenu();
+            return;
+        }
+        setToolsAnchorEl(event.currentTarget);
+    };
+
+    const closeToolsMenu = () => {
+        setToolsAnchorEl(null);
+    };
+
+    const resetUploadState = () => {
+        setUploadChoiceOpen(false);
+        setPendingUpload(null);
+        if (fileInputRef.current?.value) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleRequestProUpsell = () => {
+        closeToolsMenu();
+        openSubscriptionDialog();
+    };
+
+    const handleImageUpload = (event) => {
+        const file = event.target.files?.[0];
+
+        if (!file) return;
+
+        if (!hasToolAccess) {
+            handleRequestProUpsell();
+            return;
+        }
+
+        const reader = new FileReader();
+        const inputEl = event.target;
+
+        reader.onloadend = () => {
+            const base64data = reader.result;
+            if (typeof base64data === 'string') {
+                setPendingUpload(base64data);
+                setUploadChoiceOpen(true);
+                if (inputEl?.value) {
+                    inputEl.value = '';
+                }
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleOpenAdvancedEditor = () => {
+        if (!pendingUpload) return;
+        navigate('/editor/project/new', { state: { uploadedImage: pendingUpload } });
+        resetUploadState();
+    };
+
+    const handleOpenMagicEditor = () => {
+        if (!pendingUpload) return;
+        navigate('/magic', { state: { initialSrc: pendingUpload } });
+        resetUploadState();
     };
 
     const handleCollageClick = () => {
         trackUsageEvent('collage_entry', {
             source: 'FloatingActionButtons',
             destination: '/collage',
-            hasAccess: hasCollageAccess,
+            hasAccess: hasToolAccess,
         });
+        if (!hasToolAccess) {
+            handleRequestProUpsell();
+            return;
+        }
         navigate('/collage');
+    };
+
+    const handleToolSelect = (action) => {
+        if (action === 'search') {
+            closeToolsMenu();
+            navigate('/');
+            return;
+        }
+
+        if (!hasToolAccess) {
+            handleRequestProUpsell();
+            return;
+        }
+
+        closeToolsMenu();
+
+        if (action === 'upload') {
+            fileInputRef.current?.click();
+            return;
+        }
+
+        if (action === 'collage') {
+            handleCollageClick();
+        }
     };
 
     const sharedButtonSx = {
@@ -177,52 +272,35 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         },
     };
 
-    const donateButton = (
-        <StyledButton
-            onClick={handleDonateClick}
-            startIcon={<Favorite sx={{ fontSize: 28 }} />}
-            variant="contained"
-            sx={{
-                ...sharedButtonSx,
-            }}
-        >
-            Donate
-        </StyledButton>
-    );
+    const randomHelperId = randomHelperOpen ? 'random-helper-popover' : undefined;
 
-    const collageButton = (
+    const toolsButton = (
         <StyledButton
-            onClick={handleCollageClick}
+            onClick={handleToolsButtonClick}
             startIcon={<Dashboard />}
+            endIcon={<KeyboardArrowDown />}
+            aria-haspopup="true"
+            aria-expanded={toolsMenuOpen ? 'true' : undefined}
+            aria-controls="floating-tools-menu"
             variant="contained"
             sx={{
                 ...sharedButtonSx,
+                minWidth: 0,
             }}
         >
-            Collage
+            Tools
         </StyledButton>
     );
-
-    const primaryButton = hasCollageAccess ? collageButton : donateButton;
 
     const randomButton = (
         <StyledButton
+            ref={randomButtonRef}
+            aria-describedby={randomHelperId}
             onClick={handleRandomClick}
-            disabled={loadingRandom}
-            startIcon={
-                loadingRandom ? (
-                    <CircularProgress size={22} thickness={4} sx={{ color: 'rgba(255,255,255,0.7)' }} />
-                ) : (
-                    <ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />
-                )
-            }
+            startIcon={<ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />}
             variant="contained"
             sx={{
                 ...sharedButtonSx,
-                '&.Mui-disabled': {
-                    backgroundColor: BUTTON_BASE_COLOR,
-                    color: 'rgba(255,255,255,0.7)',
-                },
             }}
         >
             Random
@@ -234,6 +312,171 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         alignItems: 'center',
         gap: 1.5,
     };
+
+    const randomHelperPopover = (
+        <Popper
+            id={randomHelperId}
+            open={Boolean(randomHelperOpen && randomButtonRef.current)}
+            anchorEl={randomButtonRef.current}
+            placement="top-start"
+            sx={{ zIndex: 2000 }}
+            modifiers={[
+                {
+                    name: 'offset',
+                    options: {
+                        offset: [-10, 14],
+                    },
+                },
+            ]}
+        >
+            <Paper
+                sx={{
+                    p: { xs: 1.5, sm: 2 },
+                    bgcolor: '#0f0f0f',
+                    color: '#fff',
+                    borderRadius: 2,
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    boxShadow: '0px 14px 40px rgba(0,0,0,0.45)',
+                    width: { xs: 220, sm: 280 },
+                    maxWidth: 'calc(100vw - 24px)',
+                    zIndex: 2000,
+                }}
+            >
+                <Stack spacing={1.25}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                        The random button is now part of the search bar
+                    </Typography>
+                    <Box
+                        component="img"
+                        src="/assets/randombutton.png"
+                        alt="New random button location in search bar"
+                        sx={{
+                            width: '100%',
+                            borderRadius: 1.5,
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            objectFit: 'cover',
+                            objectPosition: 'center center',
+                            alignSelf: 'center',
+                            maxHeight: { xs: 140, sm: 180 },
+                        }}
+                    />
+                    <Typography variant="body2" color="rgba(255,255,255,0.72)">
+                        Look for the shuffle icon next to search to get a random template.
+                    </Typography>
+                    <Button
+                        onClick={handleCloseRandomHelper}
+                        variant="contained"
+                        size="small"
+                        sx={{ alignSelf: 'flex-end', px: 1.75, minWidth: 'unset' }}
+                    >
+                        Got it
+                    </Button>
+                </Stack>
+            </Paper>
+        </Popper>
+    );
+
+    const toolsMenu = (
+        <>
+            <Menu
+                id="floating-tools-menu"
+                anchorEl={toolsAnchorEl}
+                open={toolsMenuOpen}
+                onClose={closeToolsMenu}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                PaperProps={{
+                    sx: {
+                        mt: 0,
+                        minWidth: 240,
+                        bgcolor: BUTTON_BASE_COLOR,
+                        color: '#fff',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        '& .MuiListItemIcon-root': {
+                            color: 'rgba(255,255,255,0.9)',
+                        },
+                        '& .MuiListItemText-secondary': {
+                            color: 'rgba(255,255,255,0.7)',
+                        },
+                    },
+                }}
+            >
+                <MenuItem onClick={() => handleToolSelect('upload')}>
+                    <ListItemIcon>
+                        <CloudUpload fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                        primary="Upload Image"
+                        secondary={hasToolAccess ? 'Open to edit' : 'Pro required'}
+                    />
+                </MenuItem>
+                <MenuItem onClick={() => handleToolSelect('collage')}>
+                    <ListItemIcon>
+                        <PhotoLibrary fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                        primary="Create Collage"
+                        secondary={hasToolAccess ? 'Build with multiple images' : 'Pro required'}
+                    />
+                </MenuItem>
+                <MenuItem onClick={() => handleToolSelect('search')}>
+                    <ListItemIcon>
+                        <Search fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                        primary="Search Images"
+                        secondary="Go to homepage"
+                    />
+                </MenuItem>
+            </Menu>
+
+            <Input
+                type="file"
+                inputRef={fileInputRef}
+                onChange={handleImageUpload}
+                inputProps={{ accept: 'image/png, image/jpeg' }}
+                sx={{ display: 'none' }}
+            />
+
+            <Dialog
+                open={uploadChoiceOpen}
+                onClose={resetUploadState}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 800 }}>
+                    Open image in...
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary">
+                        Choose where to edit your uploaded image.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Stack spacing={1.25} sx={{ width: '100%' }}>
+                        <Button
+                            variant="contained"
+                            size="large"
+                            onClick={handleOpenAdvancedEditor}
+                        >
+                            Advanced Editor
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="secondary"
+                            size="large"
+                            onClick={handleOpenMagicEditor}
+                        >
+                            Magic Editor
+                        </Button>
+                        <Button onClick={resetUploadState} size="large" color="inherit">
+                            Cancel
+                        </Button>
+                    </Stack>
+                </DialogActions>
+            </Dialog>
+        </>
+    );
 
     const safeAreaSpacerSx = useMemo(() => {
         const baseHeights = {
@@ -266,23 +509,27 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
 
     if (variant === 'inline') {
         return (
-            <Box
-                sx={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 2,
-                }}
-            >
-                <Box sx={inlineGroupStyles}>
-                    {primaryButton}
+            <>
+                <Box
+                    sx={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 2,
+                    }}
+                >
+                    <Box sx={inlineGroupStyles}>
+                        {toolsButton}
+                    </Box>
+                    <Box sx={inlineGroupStyles}>
+                        {randomButton}
+                    </Box>
                 </Box>
-                <Box sx={inlineGroupStyles}>
-                    {randomButton}
-                </Box>
-            </Box>
+                {toolsMenu}
+                {randomHelperPopover}
+            </>
         );
     }
 
@@ -290,11 +537,13 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         <>
             <Box aria-hidden sx={safeAreaSpacerSx} />
             <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
-                {primaryButton}
+                {toolsButton}
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn" hasAd={showAd}>
                 {randomButton}
             </StyledRightFooter>
+            {toolsMenu}
+            {randomHelperPopover}
         </>
     );
 }

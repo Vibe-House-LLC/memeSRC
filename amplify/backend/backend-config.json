@@ -700,6 +700,20 @@
       "dependsOn": [
         {
           "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "memesrcc3c71449"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
+        },
+        {
+          "attributes": [
             "BucketName"
           ],
           "category": "storage",
@@ -711,6 +725,13 @@
           ],
           "category": "api",
           "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcSesLayer"
         }
       ],
       "providerPlugin": "awscloudformation",

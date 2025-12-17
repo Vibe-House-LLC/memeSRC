@@ -1182,6 +1182,7 @@ export const getMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -1200,6 +1201,7 @@ export const listMagicResults = /* GraphQL */ `
         id
         prompt
         results
+        error
         createdAt
         updatedAt
         magicResultUserId
@@ -1349,6 +1351,8 @@ export const getWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
       createdAt
       updatedAt
       __typename
@@ -1366,6 +1370,8 @@ export const listWebsiteSettings = /* GraphQL */ `
         id
         fullSiteMaintenance
         universalSearchMaintenance
+        openAIRateLimit
+        nanoBananaRateLimit
         createdAt
         updatedAt
         __typename
@@ -1620,6 +1626,154 @@ export const searchFilterGroupsByOwner = /* GraphQL */ `
         name
         filters
         owner
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getMagicEditHistory = /* GraphQL */ `
+  query GetMagicEditHistory($id: ID!) {
+    getMagicEditHistory(id: $id) {
+      id
+      prompt
+      imageKey
+      imageUrl
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listMagicEditHistories = /* GraphQL */ `
+  query ListMagicEditHistories(
+    $filter: ModelMagicEditHistoryFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listMagicEditHistories(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        prompt
+        imageKey
+        imageUrl
+        metadata
+        status
+        createdAt
+        owner
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const magicEditHistoriesByStatus = /* GraphQL */ `
+  query MagicEditHistoriesByStatus(
+    $status: String!
+    $createdAt: ModelStringKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelMagicEditHistoryFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    magicEditHistoriesByStatus(
+      status: $status
+      createdAt: $createdAt
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        prompt
+        imageKey
+        imageUrl
+        metadata
+        status
+        createdAt
+        owner
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const magicEditHistoriesByOwner = /* GraphQL */ `
+  query MagicEditHistoriesByOwner(
+    $owner: String!
+    $createdAt: ModelStringKeyConditionInput
+    $sortDirection: ModelSortDirection
+    $filter: ModelMagicEditHistoryFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    magicEditHistoriesByOwner(
+      owner: $owner
+      createdAt: $createdAt
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        prompt
+        imageKey
+        imageUrl
+        metadata
+        status
+        createdAt
+        owner
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getRateLimit = /* GraphQL */ `
+  query GetRateLimit($id: ID!) {
+    getRateLimit(id: $id) {
+      id
+      currentUsage
+      openaiUsage
+      geminiUsage
+      adminAlerts
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listRateLimits = /* GraphQL */ `
+  query ListRateLimits(
+    $filter: ModelRateLimitFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listRateLimits(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        currentUsage
+        openaiUsage
+        geminiUsage
+        adminAlerts
         createdAt
         updatedAt
         __typename

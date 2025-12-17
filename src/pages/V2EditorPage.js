@@ -14,6 +14,7 @@ import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRound
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
+import { getRateLimit, getWebsiteSetting } from '../graphql/queries';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
@@ -37,6 +38,21 @@ import { shouldShowAds } from '../utils/adsenseLoader';
 import { isAdPauseActive } from '../utils/adsenseLoader';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
+
+// Minimal magic result query to avoid unauthorized user field.
+const getMagicResultLite = /* GraphQL */ `
+  query GetMagicResultLite($id: ID!) {
+    getMagicResult(id: $id) {
+      id
+      prompt
+      results
+      error
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 
 const ParentContainer = styled('div')`
     height: 100%;
@@ -77,6 +93,14 @@ const MAGIC_IMAGE_SIZE = 1024;
 const MAGIC_RESUME_STORAGE_KEY = 'v2-editor-magic-resume';
 const MAGIC_RESUME_MAX_AGE_MS = 10 * 60 * 1000;
 const MAGIC_MAX_REFERENCES = 4;
+const DEFAULT_RATE_LIMIT = 100;
+
+const toNumber = (value, fallback = 0) => {
+  const parsed = typeof value === 'number' ? value : parseInt(String(value), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const getUtcDayId = () => new Date().toISOString().slice(0, 10);
 
 
 const EditorSurroundingFrameThumbnail = ({
@@ -347,6 +371,16 @@ const EditorPage = ({ shows }) => {
   const [magicTypingPhase, setMagicTypingPhase] = useState('typing');
   const [magicCharIndex, setMagicCharIndex] = useState(0);
   const [magicPromptFocused, setMagicPromptFocused] = useState(false);
+  const [rateLimitState, setRateLimitState] = useState({
+    nanoUsage: 0,
+    nanoLimit: DEFAULT_RATE_LIMIT,
+    nanoAvailable: true,
+    openaiUsage: 0,
+    openaiLimit: DEFAULT_RATE_LIMIT,
+    openaiAvailable: true,
+    loading: true,
+  });
+  const [rateLimitDialogOpen, setRateLimitDialogOpen] = useState(false);
 
   const SELECTION_CACHE_TTL_MS = 15000;
 
@@ -387,6 +421,41 @@ const EditorPage = ({ shows }) => {
       if (timeout) window.clearTimeout(timeout);
     };
   }, [magicPrompt, loadingInpaintingResult, magicPromptFocused, magicExamples, magicExampleIndex, magicTypingPhase, magicCharIndex]);
+
+  const refreshRateLimits = useCallback(async () => {
+    const dayId = getUtcDayId();
+    try {
+      const settingsResp = await API.graphql(graphqlOperation(getWebsiteSetting, { id: 'globalSettings' }));
+      let rateResp = null;
+      try {
+        rateResp = await API.graphql(graphqlOperation(getRateLimit, { id: dayId }));
+      } catch (_) {
+        rateResp = null;
+      }
+      const settings = settingsResp?.data?.getWebsiteSetting || {};
+      const nanoLimit = toNumber(settings?.nanoBananaRateLimit, DEFAULT_RATE_LIMIT);
+      const openaiLimit = toNumber(settings?.openAIRateLimit, DEFAULT_RATE_LIMIT);
+      const rateItem = rateResp?.data?.getRateLimit;
+      const nanoUsage = toNumber(rateItem?.geminiUsage, 0);
+      const openaiUsage = toNumber(rateItem?.openaiUsage, 0);
+      setRateLimitState({
+        nanoUsage,
+        nanoLimit,
+        nanoAvailable: nanoUsage < nanoLimit,
+        openaiUsage,
+        openaiLimit,
+        openaiAvailable: openaiUsage < openaiLimit,
+        loading: false,
+      });
+    } catch (err) {
+      console.warn('[V2Editor] Failed to load rate limits', err);
+      setRateLimitState((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshRateLimits();
+  }, [refreshRateLimits]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -1650,15 +1719,27 @@ const EditorPage = ({ shows }) => {
 
   async function checkMagicResult(id) {
     try {
-      const result = await API.graphql(graphqlOperation(`query MyQuery {
-            getMagicResult(id: "${id}") {
-              results
-            }
-          }`));
-      return result.data.getMagicResult?.results;
+      const result = await API.graphql(graphqlOperation(getMagicResultLite, { id }));
+      const rawError = result?.data?.getMagicResult?.error;
+      let normalizedError = rawError;
+      if (typeof rawError === 'string') {
+        try {
+          normalizedError = JSON.parse(rawError);
+          if (typeof normalizedError === 'string') {
+            normalizedError = JSON.parse(normalizedError);
+          }
+        } catch (_) {
+          normalizedError = rawError;
+        }
+      }
+      return {
+        results: result?.data?.getMagicResult?.results,
+        error: normalizedError,
+      };
     } catch (error) {
       console.error('Error fetching magic result:', error);
-      return null;
+      const fallbackMessage = error?.errors?.[0]?.message || error?.message || null;
+      return { results: null, error: fallbackMessage ? { message: fallbackMessage, reason: 'fetch_error' } : null };
     }
   }
 
@@ -1787,17 +1868,52 @@ const EditorPage = ({ shows }) => {
     const startTime = Date.now();
 
     const pollInterval = setInterval(async () => {
-      const results = await checkMagicResult(magicResultId);
-      if (results || (Date.now() - startTime) >= TIMEOUT) {
+      const { results, error } = await checkMagicResult(magicResultId);
+      let parsedError = null;
+      if (error) {
+        parsedError = error;
+        if (typeof error === 'string') {
+          try {
+            parsedError = JSON.parse(error);
+          } catch (_) {
+            parsedError = { message: error };
+          }
+        }
+      }
+      const timedOut = (Date.now() - startTime) >= TIMEOUT;
+      if (results || parsedError || timedOut) {
         clearInterval(pollInterval);
         setLoadingInpaintingResult(false);  // Stop the loading spinner
 
-        if (results) {
+        if (parsedError) {
+          const reason = parsedError?.reason;
+          const model = parsedError?.model;
+          const message = parsedError?.message || 'Magic tools are temporarily unavailable.';
+          setSeverity('error');
+          if (reason === 'moderation' || reason === 'ProviderModeration') {
+            setMessage('Content blocked by moderation.');
+          } else {
+            setMessage(message);
+          }
+          setOpen(true);
+          if (reason === 'rate_limit') {
+            if (model === 'gemini') {
+              setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+            } else {
+            setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
+          }
+        } else if (reason === 'moderation') {
+          console.warn('[V2Editor] Moderation block received', { model });
+        } else if (reason === 'ProviderModeration') {
+          console.warn('[V2Editor] Provider moderation blocked output', { model });
+        }
+      } else if (results) {
           try {
             const imageUrls = JSON.parse(results);
             setReturnedImages((prev) => [...prev, ...imageUrls]);
             setOpenSelectResult(true);
             await spendMagicCredit();
+            void refreshRateLimits();
           } catch (err) {
             console.error('Error parsing magic results:', err);
             alert('Error: Unable to parse magic results. Please try again.');
@@ -1805,6 +1921,9 @@ const EditorPage = ({ shows }) => {
         } else {
           console.error("Timeout reached without fetching magic results.");
           alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
+        }
+        if (parsedError?.reason === 'rate_limit') {
+          void refreshRateLimits();
         }
       }
     }, QUERY_INTERVAL);
@@ -1824,6 +1943,12 @@ const EditorPage = ({ shows }) => {
     if (!editor?.canvas?.backgroundImage) {
       setSeverity('error');
       setMessage('Load an image before using Magic Eraser.');
+      setOpen(true);
+      return;
+    }
+    if (rateLimitState.openaiAvailable === false) {
+      setSeverity('error');
+      setMessage('Classic Magic Tools are temporarily unavailable. Please try again later.');
       setOpen(true);
       return;
     }
@@ -1857,6 +1982,28 @@ const EditorPage = ({ shows }) => {
           pollMagicResults(magicResultId);
         } catch (error) {
           setLoadingInpaintingResult(false);
+          const rateLimitReason = error?.response?.data?.error?.reason || error?.response?.data?.error?.code;
+          const rateLimitModel = error?.response?.data?.error?.model;
+          const messageText = error?.message ? error.message.toLowerCase() : '';
+          if (rateLimitReason === 'rate_limit' || messageText.includes('rate limit')) {
+            if (rateLimitModel === 'gemini') {
+              setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+            } else {
+              setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
+            }
+            setSeverity('error');
+            setMessage(rateLimitModel === 'gemini'
+              ? 'Magic Tools are temporarily unavailable. Please try again later.'
+              : 'Classic Magic Tools are temporarily unavailable. Please try again later.');
+            setOpen(true);
+            return;
+          }
+          if (rateLimitReason === 'moderation' || messageText.includes('moderation')) {
+            setSeverity('error');
+            setMessage(error?.response?.data?.error?.message || 'Content was blocked by safety filters.');
+            setOpen(true);
+            return;
+          }
           if (error.response?.data?.error?.name === "InsufficientCredits") {
             setSeverity('error');
             setMessage('Insufficient Credits');
@@ -1932,6 +2079,17 @@ const EditorPage = ({ shows }) => {
       return;
     }
 
+    if (rateLimitState.nanoAvailable === false) {
+      if (rateLimitState.openaiAvailable) {
+        setRateLimitDialogOpen(true);
+      } else {
+        setSeverity('error');
+        setMessage('Magic tools are temporarily unavailable. Please try again later.');
+        setOpen(true);
+      }
+      return;
+    }
+
     try {
       const { dataUrl, scale } = buildBackgroundDataUrl({ forceSquare: false });
       const resumeKey = `${Date.now()}`;
@@ -1986,6 +2144,19 @@ const EditorPage = ({ shows }) => {
       setMessage(error.message || 'An error occurred while preparing the magic edit.');
       setOpen(true);
     }
+  };
+
+  const handleSwitchToClassicTools = () => {
+    setRateLimitDialogOpen(false);
+    setPromptEnabled('erase');
+    toggleDrawingMode('magicEraser');
+    setSeverity('info');
+    setMessage('Switched to classic tools while nanoBanana is unavailable.');
+    setOpen(true);
+  };
+
+  const handleStayOnMagicTools = () => {
+    setRateLimitDialogOpen(false);
   };
 
   const handleAddCanvasBackground = (imgUrl, options = {}) => {
@@ -3450,6 +3621,11 @@ const EditorPage = ({ shows }) => {
                         <>
                           {/* Main Magic Edit Interface */}
                           <Box>
+                            {!rateLimitState.nanoAvailable && (
+                              <Alert severity="warning" sx={{ mb: 2 }}>
+                                Magic tools are temporarily unavailable. {rateLimitState.openaiAvailable ? 'Switch to classic tools below.' : 'Please try again later.'}
+                              </Alert>
+                            )}
                             {/* Input field comes first */}
                             <TextField
                               fullWidth
@@ -3458,7 +3634,7 @@ const EditorPage = ({ shows }) => {
                               onChange={(event) => setMagicPrompt(event.target.value)}
                               onFocus={() => setMagicPromptFocused(true)}
                               onBlur={() => setMagicPromptFocused(false)}
-                              disabled={loadingInpaintingResult}
+                              disabled={loadingInpaintingResult || !rateLimitState.nanoAvailable}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -3495,18 +3671,18 @@ const EditorPage = ({ shows }) => {
                                         aria-label="send prompt"
                                         size="small"
                                         onClick={() => {
-                                          if (magicPrompt?.trim() && !loadingInpaintingResult) {
-                                            magicPromptInputRef.current?.blur();
-                                            handleMagicEdit();
-                                          }
-                                        }}
-                                        disabled={!magicPrompt?.trim() || loadingInpaintingResult}
-                                        edge="end"
-                                        color={magicPrompt?.trim() && !loadingInpaintingResult ? 'primary' : 'default'}
-                                        sx={{ ml: 0.5, color: magicPrompt?.trim() && !loadingInpaintingResult ? 'primary.main' : undefined }}
-                                      >
-                                        <Send />
-                                      </IconButton>
+                                      if (magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable) {
+                                        magicPromptInputRef.current?.blur();
+                                        handleMagicEdit();
+                                      }
+                                    }}
+                                    disabled={!magicPrompt?.trim() || loadingInpaintingResult || !rateLimitState.nanoAvailable}
+                                    edge="end"
+                                    color={magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable ? 'primary' : 'default'}
+                                    sx={{ ml: 0.5, color: magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable ? 'primary.main' : undefined, cursor: (!magicPrompt?.trim() || loadingInpaintingResult || !rateLimitState.nanoAvailable) ? 'not-allowed' : undefined }}
+                                  >
+                                    <Send />
+                                  </IconButton>
                                     )}
                                   </InputAdornment>
                                 ),
@@ -3569,27 +3745,29 @@ const EditorPage = ({ shows }) => {
                                     }}
                                   >
                                     <Close fontSize="small" />
-                                  </IconButton>
-                                </Box>
-                              ))}
-                              {magicReferences.length < MAGIC_MAX_REFERENCES && (
-                                <Button
-                                  variant="text"
-                                  size="small"
-                                  startIcon={<AddPhotoAlternate />}
-                                  onClick={() => magicReferenceInputRef.current?.click()}
-                                  disabled={loadingInpaintingResult}
-                                  sx={{ minWidth: 0, px: 0.5 }}
-                                >
-                                  Add ref
-                                </Button>
-                              )}
-                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                Optional refs; main image stays primary.
-                              </Typography>
+                              </IconButton>
                             </Box>
-                            <input
-                              ref={magicReferenceInputRef}
+                          ))}
+                          {/* References temporarily disabled
+                          {magicReferences.length < MAGIC_MAX_REFERENCES && (
+                            <Button
+                              variant="text"
+                              size="small"
+                              startIcon={<AddPhotoAlternate />}
+                              onClick={() => magicReferenceInputRef.current?.click()}
+                              disabled={loadingInpaintingResult || !rateLimitState.nanoAvailable}
+                              sx={{ minWidth: 0, px: 0.5 }}
+                            >
+                              Add ref
+                            </Button>
+                          )}
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            Optional refs; main image stays primary.
+                          </Typography>
+                          */}
+                        </Box>
+                        <input
+                          ref={magicReferenceInputRef}
                               type="file"
                               accept="image/*"
                               multiple
@@ -3689,6 +3867,7 @@ const EditorPage = ({ shows }) => {
                                 setPromptEnabled('edit');
                                 toggleDrawingMode('captions');
                               }}
+                              disabled={!rateLimitState.nanoAvailable}
                               startIcon={<AutoFixHighRounded />}
                               sx={{
                                 mb: 2,
@@ -3704,6 +3883,12 @@ const EditorPage = ({ shows }) => {
                             >
                               Back to Magic Edit
                             </Button>
+
+                            {!rateLimitState.openaiAvailable && (
+                              <Alert severity="warning" sx={{ mb: 2 }}>
+                                Classic magic tools are temporarily unavailable. Please try again later.
+                              </Alert>
+                            )}
 
                             {/* Login prompt for unauthenticated users */}
                             {(!user || user?.userDetails?.credits <= 0) && (
@@ -3775,6 +3960,7 @@ const EditorPage = ({ shows }) => {
                                   setPromptEnabled('erase');
                                   toggleDrawingMode('magicEraser');
                                 }}
+                                disabled={!rateLimitState.openaiAvailable}
                                 sx={{
                                   flex: 1,
                                   py: 1.25,
@@ -3798,6 +3984,7 @@ const EditorPage = ({ shows }) => {
                                   setPromptEnabled('fill');
                                   toggleDrawingMode('magicEraser');
                                 }}
+                                disabled={!rateLimitState.openaiAvailable}
                                 sx={{
                                   flex: 1,
                                   py: 1.25,
@@ -3891,7 +4078,7 @@ const EditorPage = ({ shows }) => {
                               variant='contained'
                               fullWidth
                               size="large"
-                              disabled={!hasFabricPaths || loadingInpaintingResult}
+                              disabled={!hasFabricPaths || loadingInpaintingResult || !rateLimitState.openaiAvailable}
                               onClick={() => {
                                 exportDrawing();
                               }}
@@ -3899,9 +4086,9 @@ const EditorPage = ({ shows }) => {
                               sx={{
                                 py: 1.5,
                                 fontWeight: 600,
-                                backgroundColor: hasFabricPaths ? 'primary.main' : 'grey.400',
+                                backgroundColor: hasFabricPaths && rateLimitState.openaiAvailable ? 'primary.main' : 'grey.400',
                                 '&:hover': {
-                                  backgroundColor: hasFabricPaths ? 'primary.dark' : 'grey.400',
+                                  backgroundColor: hasFabricPaths && rateLimitState.openaiAvailable ? 'primary.dark' : 'grey.400',
                                 },
                                 '&.Mui-disabled': {
                                   backgroundColor: 'grey.300',
@@ -3909,7 +4096,7 @@ const EditorPage = ({ shows }) => {
                                 },
                               }}
                             >
-                              {loadingInpaintingResult ? 'Processing...' : hasFabricPaths ? 'Apply Changes' : 'Paint on canvas to start'}
+                              {loadingInpaintingResult ? 'Processing...' : hasFabricPaths ? (rateLimitState.openaiAvailable ? 'Apply Changes' : 'Classic Magic Tools are temporarily unavailable') : 'Paint on canvas to start'}
                             </Button>
                           </Box>
                         </>
@@ -4376,6 +4563,25 @@ const EditorPage = ({ shows }) => {
           Copied to clipboard!
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={rateLimitDialogOpen}
+        onClose={handleStayOnMagicTools}
+        aria-labelledby="rate-limit-dialog-title"
+      >
+        <DialogTitle id="rate-limit-dialog-title">Magic tools are temporarily unavailable</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ maxWidth: 380 }}>
+            Magic tools are temporarily unavailable. Would you like to switch to the classic tools for now?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleStayOnMagicTools}>Stay on new tools</Button>
+          <Button onClick={handleSwitchToClassicTools} autoFocus>
+            Switch to classic
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <LoadingBackdrop open={loadingInpaintingResult} variationCount={promptEnabled === 'edit' ? 1 : 2} />
 
