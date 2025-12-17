@@ -1226,6 +1226,7 @@ export const getTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -1249,6 +1250,7 @@ export const listTemplates = /* GraphQL */ `
         thumbnailUpdatedAt
         createdAt
         updatedAt
+        owner
         __typename
       }
       nextToken
@@ -1285,6 +1287,7 @@ export const templatesByOwnerIdentityIdAndCreatedAt = /* GraphQL */ `
         thumbnailUpdatedAt
         createdAt
         updatedAt
+        owner
         __typename
       }
       nextToken

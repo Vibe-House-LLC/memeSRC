@@ -2011,9 +2011,9 @@ export const onDeleteMagicResult = /* GraphQL */ `
 export const onCreateTemplate = /* GraphQL */ `
   subscription OnCreateTemplate(
     $filter: ModelSubscriptionTemplateFilterInput
-    $ownerIdentityId: String
+    $owner: String
   ) {
-    onCreateTemplate(filter: $filter, ownerIdentityId: $ownerIdentityId) {
+    onCreateTemplate(filter: $filter, owner: $owner) {
       id
       ownerIdentityId
       name
@@ -2025,6 +2025,7 @@ export const onCreateTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2032,9 +2033,9 @@ export const onCreateTemplate = /* GraphQL */ `
 export const onUpdateTemplate = /* GraphQL */ `
   subscription OnUpdateTemplate(
     $filter: ModelSubscriptionTemplateFilterInput
-    $ownerIdentityId: String
+    $owner: String
   ) {
-    onUpdateTemplate(filter: $filter, ownerIdentityId: $ownerIdentityId) {
+    onUpdateTemplate(filter: $filter, owner: $owner) {
       id
       ownerIdentityId
       name
@@ -2046,6 +2047,7 @@ export const onUpdateTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2053,9 +2055,9 @@ export const onUpdateTemplate = /* GraphQL */ `
 export const onDeleteTemplate = /* GraphQL */ `
   subscription OnDeleteTemplate(
     $filter: ModelSubscriptionTemplateFilterInput
-    $ownerIdentityId: String
+    $owner: String
   ) {
-    onDeleteTemplate(filter: $filter, ownerIdentityId: $ownerIdentityId) {
+    onDeleteTemplate(filter: $filter, owner: $owner) {
       id
       ownerIdentityId
       name
@@ -2067,6 +2069,7 @@ export const onDeleteTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }

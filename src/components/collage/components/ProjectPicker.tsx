@@ -13,6 +13,8 @@ type ProjectCardProps = {
   project: CollageProject;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
+  isSelected?: boolean;
+  compact?: boolean;
 };
 
 const aspectRatioLookup: Record<string, number> = {
@@ -39,7 +41,7 @@ const getProjectAspectRatio = (project: CollageProject): number => {
   return 1;
 };
 
-const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete }) => {
+const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete, isSelected = false, compact = false }) => {
   // Thumbnails are generated inline from project data and stored locally
   const [thumbUrl, setThumbUrl] = useState<string | null>(project.thumbnail || null);
   const [thumbLoading, setThumbLoading] = useState<boolean>(false);
@@ -84,9 +86,24 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onOpen, onDelete }) 
   }, [project.id, project.state, project.thumbnailKey, project.thumbnailUpdatedAt, project.thumbnailSignature]);
 
   return (
-    <Card variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider', overflow: 'hidden', borderRadius: 0 }}>
+    <Card
+      variant="outlined"
+      sx={(theme) => ({
+        bgcolor: 'background.paper',
+        borderColor: compact && isSelected ? theme.palette.primary.main : 'divider',
+        overflow: 'hidden',
+        borderRadius: 0,
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+        ...(compact && isSelected
+          ? {
+              boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.4)}`,
+              transform: 'translateY(-2px)',
+            }
+          : {}),
+      })}
+    >
       <Box sx={{ position: 'relative' }}>
-        <CardActionArea onClick={() => onOpen(project.id)}>
+        <CardActionArea onClick={() => onOpen(project.id)} aria-pressed={compact ? isSelected : undefined}>
           <Box sx={{ position: 'relative', width: '100%', pt: paddingPercent, bgcolor: '#000', overflow: 'hidden' }}>
             {thumbUrl ? (
               <Box
@@ -126,6 +143,8 @@ export type ProjectPickerProps = BoxProps & {
   onSearchChange?: (value: string) => void;
   isLoading?: boolean;
   hasError?: boolean;
+  compact?: boolean;
+  selectedProjectId?: string | null;
 };
 
 export default function ProjectPicker(props: ProjectPickerProps) {
@@ -137,6 +156,8 @@ export default function ProjectPicker(props: ProjectPickerProps) {
     onSearchChange,
     isLoading = false,
     hasError = false,
+    compact = false,
+    selectedProjectId,
     ...rest
   } = props; // keep onCreateNew in props type for API consistency
   const recent = useMemo(() => {
@@ -155,23 +176,25 @@ export default function ProjectPicker(props: ProjectPickerProps) {
 
   return (
     <Box sx={{ width: '100%' }} {...rest}>
-      <Stack spacing={1.25} sx={{ mb: 1.5 }}>
-        <Typography
-          variant="h3"
-          sx={{
-            fontWeight: 700,
-            color: '#fff',
-            mb: 0.5,
-            fontSize: { xs: '2.0rem', sm: '2.3rem' },
-            textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
-          }}
-        >
-          Your Memes
-        </Typography>
-      </Stack>
+      {!compact && (
+        <Stack spacing={1.25} sx={{ mb: 1.5 }}>
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 700,
+              color: '#fff',
+              mb: 0.5,
+              fontSize: { xs: '2.0rem', sm: '2.3rem' },
+              textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
+            }}
+          >
+            Your Memes
+          </Typography>
+        </Stack>
+      )}
 
       {/* Recent scroller */}
-      {showRecent && (
+      {showRecent && !compact && (
         <Box sx={{ mb: 1.5 }} aria-label="Recent Edits">
           <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
             Recent Edits
@@ -208,12 +231,12 @@ export default function ProjectPicker(props: ProjectPickerProps) {
           </Masonry>
         </>
       ) : showEmptyState ? (
-        <Box sx={{ mt: 4, color: 'text.secondary' }}>No saved memes yet. Click "Create Meme" to begin.</Box>
+        <Box sx={{ mt: 4, color: 'text.secondary' }}>{compact ? '' : 'No saved memes yet. Click "Create Meme" to begin.'}</Box>
       ) : (
         <>
-          <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.75, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+          {!compact && <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.75, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
             All Memes
-          </Typography>
+          </Typography>}
           {showSearch && (
             <Box sx={{ mb: 1.5 }}>
               <TextField
@@ -250,7 +273,13 @@ export default function ProjectPicker(props: ProjectPickerProps) {
             <Masonry columns={{ xs: 2, sm: 2, md: 3, lg: 4 }} spacing={1.5} sx={{ m: 0 }}>
               {projects.map((p) => (
                 <div key={p.id}>
-                  <ProjectCard project={p} onOpen={onOpen} onDelete={onDelete} />
+                  <ProjectCard
+                    project={p}
+                    onOpen={onOpen}
+                    onDelete={onDelete}
+                    compact={compact}
+                    isSelected={selectedProjectId === p.id}
+                  />
                 </div>
               ))}
             </Masonry>

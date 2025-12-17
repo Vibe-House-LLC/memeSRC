@@ -583,6 +583,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
           subtitleShowing: imageData?.subtitleShowing
         });
       }
+      const preferredFont = imageData?.metadata?.fontFamily || lastUsedTextSettings.fontFamily;
       
       // Only auto-assign subtitle if subtitleShowing is true (user enabled text display)
       if (imageData && imageData.subtitle && imageData.subtitle.trim() && imageData.subtitleShowing) {
@@ -590,7 +591,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
           content: imageData.subtitle,
           fontSize: lastUsedTextSettings.fontSize,
           fontWeight: lastUsedTextSettings.fontWeight,
-          fontFamily: lastUsedTextSettings.fontFamily,
+          fontFamily: preferredFont,
           color: lastUsedTextSettings.color,
           strokeWidth: lastUsedTextSettings.strokeWidth,
           autoAssigned: true, // Mark as auto-assigned from subtitle

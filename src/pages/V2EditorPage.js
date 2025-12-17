@@ -27,6 +27,8 @@ import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
+import { createProject } from '../components/collage/utils/templates';
+import AddToCollageChooser from '../components/collage/AddToCollageChooser';
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
@@ -310,7 +312,13 @@ const EditorPage = ({ shows }) => {
   const [librarySavePromptOpen, setLibrarySavePromptOpen] = useState(false);
   const [librarySaveStep, setLibrarySaveStep] = useState('choice');
   const [libraryCaptionSelectionIndex, setLibraryCaptionSelectionIndex] = useState(null);
+  const [addingToCollage, setAddingToCollage] = useState(false);
+  const [collagePromptOpen, setCollagePromptOpen] = useState(false);
+  const [collageCaptionSelectionIndex, setCollageCaptionSelectionIndex] = useState(null);
+  const [collageChooserOpen, setCollageChooserOpen] = useState(false);
+  const [pendingCollagePayload, setPendingCollagePayload] = useState(null);
   const [snackbarOpen, setSnackBarOpen] = useState(false);
+  const collageAppendStorageKey = 'collage-append-queue';
   const theme = useTheme();
   // const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
@@ -657,6 +665,9 @@ const EditorPage = ({ shows }) => {
     setLibrarySavePromptOpen(false);
     setLibrarySaveStep('choice');
     setLibraryCaptionSelectionIndex(null);
+    setCollagePromptOpen(false);
+    setCollageCaptionSelectionIndex(null);
+    setAddingToCollage(false);
 
     if (location.state?.collageState) {
       saveCollageImage();
@@ -673,6 +684,9 @@ const EditorPage = ({ shows }) => {
     setLibrarySavePromptOpen(false);
     setLibrarySaveStep('choice');
     setLibraryCaptionSelectionIndex(null);
+    setCollagePromptOpen(false);
+    setCollageCaptionSelectionIndex(null);
+    setAddingToCollage(false);
   };
 
   const handleAlignment = (index, alignment) => {
@@ -2800,6 +2814,7 @@ const EditorPage = ({ shows }) => {
       return {
         canvasIndex,
         text: cleanText || candidate || 'Text',
+        fontFamily: layer?.fontFamily || 'Arial',
       };
     });
   }, [editor, getTextLayers, layerRawText, parseFormattedText]);
@@ -2840,6 +2855,17 @@ const EditorPage = ({ shows }) => {
     },
     [editor, getTextLayers, imageScale]
   );
+
+  const blobToDataUrl = useCallback(async (blob) => new Promise((resolve, reject) => {
+    if (!blob) {
+      resolve(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  }), []);
 
   const getDefaultCaptionFromTextLayer = useCallback(
     (canvasIndexOverride) => {
@@ -2969,6 +2995,198 @@ const EditorPage = ({ shows }) => {
     savingToLibrary,
     trackSaveDialogAction,
   ]);
+
+  const performAddToCollage = useCallback(
+    async (captionEntry) => {
+      if (addingToCollage || imageUploading) return;
+
+      setAddingToCollage(true);
+
+      const captionIndex = typeof captionEntry?.canvasIndex === 'number' ? captionEntry.canvasIndex : null;
+      trackSaveDialogAction('add_to_collage', {
+        textLayerCount: textLayerEntries.length,
+        captionIndex,
+      });
+
+      try {
+        const cleanBlob = await captureCanvasBlob({ includeCaptions: false });
+        const dataUrl = await blobToDataUrl(cleanBlob);
+        if (!dataUrl) {
+          throw new Error('No image available to add to collage');
+        }
+
+        const subtitle = (captionEntry?.text || '').toString();
+        const fontFamily = captionEntry?.fontFamily || 'Arial';
+        const filename = generatedImageFilename || `collage-${Date.now()}.jpg`;
+
+        let libraryKey = null;
+        try {
+          const metadata = {
+            source: 'V2EditorPage',
+            ...(subtitle ? { defaultCaption: subtitle } : {}),
+            ...(fontFamily ? { fontFamily } : {}),
+            ...(editorProjectId ? { editorProjectId } : {}),
+            ...((confirmedCid || cid) ? { cid: confirmedCid || cid } : {}),
+            ...(season ? { season } : {}),
+            ...(episode ? { episode } : {}),
+            ...(frame ? { frame } : {}),
+          };
+          libraryKey = await saveImageToLibrary(cleanBlob, filename, { level: 'private', metadata });
+        } catch (err) {
+          console.error('Error saving collage image to library:', err);
+          setSeverity('error');
+          setMessage('Unable to save image for collage right now.');
+          setOpen(true);
+          return;
+        }
+
+        const imagePayload = {
+          originalUrl: dataUrl,
+          displayUrl: dataUrl,
+          subtitle,
+          subtitleShowing: Boolean(subtitle),
+          metadata: {
+            source: 'V2EditorPage',
+            ...(captionEntry?.fontFamily ? { fontFamily } : {}),
+            ...(libraryKey ? { libraryKey } : {}),
+          },
+        };
+
+        setPendingCollagePayload({
+          captionIndex,
+          textLayerCount: textLayerEntries.length,
+          imagePayload,
+          libraryKey,
+        });
+        setCollageChooserOpen(true);
+      } catch (error) {
+        console.error('Error adding to collage:', error);
+        setSeverity('error');
+        setMessage('Unable to add to collage right now.');
+        setOpen(true);
+      } finally {
+        setAddingToCollage(false);
+        setCollagePromptOpen(false);
+        setCollageCaptionSelectionIndex(null);
+      }
+    },
+    [
+      addingToCollage,
+      imageUploading,
+      trackSaveDialogAction,
+      textLayerEntries,
+      captureCanvasBlob,
+      blobToDataUrl,
+      navigate,
+      setSeverity,
+      setMessage,
+      setOpen,
+      editorImageIntentBaseMeta,
+      createProject,
+    ]
+  );
+
+  const handleAddToCollageClick = useCallback(() => {
+    if (imageUploading || addingToCollage) return;
+    const entries = textLayerEntries;
+    if (entries.length > 1) {
+      trackSaveDialogAction('add_to_collage_prompt', {
+        textLayerCount: entries.length,
+      });
+      setCollageCaptionSelectionIndex(entries[0]?.canvasIndex ?? null);
+      setCollagePromptOpen(true);
+      return;
+    }
+    const entry = entries[0] || null;
+    performAddToCollage(entry);
+  }, [addingToCollage, imageUploading, performAddToCollage, textLayerEntries, trackSaveDialogAction]);
+
+  const handleCollageChooserClose = useCallback(() => {
+    setCollageChooserOpen(false);
+    setPendingCollagePayload(null);
+  }, []);
+
+  const handleCollageNewProject = useCallback(async () => {
+    if (!pendingCollagePayload) return;
+    try {
+      setAddingToCollage(true);
+      const project = await createProject({ name: 'Untitled Meme' });
+      const projectId = project?.id;
+      if (!projectId) throw new Error('Missing project id for collage project');
+
+      try {
+        sessionStorage.setItem(
+          collageAppendStorageKey,
+          JSON.stringify({ projectId, images: [pendingCollagePayload.imagePayload] })
+        );
+      } catch (_) { /* ignore */ }
+
+      trackUsageEvent('add_to_collage', {
+        ...editorImageIntentBaseMeta,
+        projectId,
+        captionIndex: pendingCollagePayload.captionIndex,
+        textLayerCount: pendingCollagePayload.textLayerCount,
+        libraryKey: pendingCollagePayload.libraryKey,
+        target: 'new_project',
+      });
+
+      navigate(`/projects/${projectId}`, {
+        state: {
+          fromCollage: true,
+          images: [pendingCollagePayload.imagePayload],
+          projectId,
+        },
+      });
+    } catch (error) {
+      console.error('Error creating collage project:', error);
+      setSeverity('error');
+      setMessage('Unable to start a collage project right now.');
+      setOpen(true);
+    } finally {
+      setAddingToCollage(false);
+      handleCollageChooserClose();
+    }
+  }, [
+    editorImageIntentBaseMeta,
+    handleCollageChooserClose,
+    navigate,
+    pendingCollagePayload,
+    setMessage,
+    setOpen,
+    setSeverity,
+  ]);
+
+  const handleCollageExistingProject = useCallback(
+    (project) => {
+      if (!project?.id || !pendingCollagePayload) return;
+
+      try {
+        sessionStorage.setItem(
+          collageAppendStorageKey,
+          JSON.stringify({ projectId: project.id, images: [pendingCollagePayload.imagePayload] })
+        );
+      } catch (_) { /* ignore */ }
+
+      trackUsageEvent('add_to_collage', {
+        ...editorImageIntentBaseMeta,
+        projectId: project.id,
+        captionIndex: pendingCollagePayload.captionIndex,
+        textLayerCount: pendingCollagePayload.textLayerCount,
+        libraryKey: pendingCollagePayload.libraryKey,
+        target: 'existing_project',
+      });
+
+      navigate(`/projects/${project.id}`, {
+        state: {
+          fromCollage: true,
+          projectId: project.id,
+          appendImages: [pendingCollagePayload.imagePayload],
+        },
+      });
+      handleCollageChooserClose();
+    },
+    [editorImageIntentBaseMeta, handleCollageChooserClose, navigate, pendingCollagePayload]
+  );
 
   const handleAddTextLayer = useCallback(() => {
     const eventPayload = {
@@ -4759,6 +4977,16 @@ const EditorPage = ({ shows }) => {
                   </Box>
                 )}
                 <Button
+                  variant="outlined"
+                  fullWidth
+                  sx={{ padding: '12px 16px' }}
+                  disabled={imageUploading || addingToCollage}
+                  onClick={handleAddToCollageClick}
+                  startIcon={<AddPhotoAlternate />}
+                >
+                  {addingToCollage ? 'Adding...' : 'Add to collage'}
+                </Button>
+                <Button
                   variant="contained"
                   color="error"
                   fullWidth
@@ -4908,6 +5136,102 @@ const EditorPage = ({ shows }) => {
               )}
             </DialogActions>
           </Dialog>
+          <Dialog
+            open={collagePromptOpen}
+            onClose={() => {
+              if (!addingToCollage) {
+                setCollagePromptOpen(false);
+                setCollageCaptionSelectionIndex(null);
+              }
+            }}
+            aria-labelledby="collage-save-prompt-title"
+            fullWidth
+            maxWidth="xs"
+          >
+            <DialogTitle id="collage-save-prompt-title">Choose collage text</DialogTitle>
+            <DialogContent>
+              <DialogContentText sx={{ mb: textLayerEntries.length > 0 ? 1 : 0 }}>
+                Collages support one text layer. Pick which text to send as the collage caption, or skip text.
+              </DialogContentText>
+              {textLayerEntries.length > 0 && (
+                <RadioGroup
+                  value={
+                    collageCaptionSelectionIndex !== null && collageCaptionSelectionIndex !== undefined
+                      ? String(collageCaptionSelectionIndex)
+                      : textLayerEntries[0]?.canvasIndex !== undefined
+                        ? String(textLayerEntries[0]?.canvasIndex)
+                        : 'none'
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'none') {
+                      setCollageCaptionSelectionIndex(null);
+                    } else {
+                      setCollageCaptionSelectionIndex(Number(val));
+                    }
+                  }}
+                >
+                  {textLayerEntries.map((entry) => (
+                    <FormControlLabel
+                      key={entry.canvasIndex}
+                      value={entry.canvasIndex}
+                      control={<Radio />}
+                      label={entry.text}
+                    />
+                  ))}
+                  <FormControlLabel value="none" control={<Radio />} label="No text" />
+                </RadioGroup>
+              )}
+            </DialogContent>
+            <DialogActions
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                justifyContent: 'center',
+                gap: 0,
+                px: 3,
+                pb: 3,
+                width: '100%',
+                '& > *': { width: '100%' },
+                '& > :not(:first-of-type)': { marginLeft: 0, marginTop: 1 },
+              }}
+            >
+              <Button
+                variant="contained"
+                fullWidth
+                disabled={addingToCollage}
+                onClick={() => {
+                  const entry =
+                    collageCaptionSelectionIndex === null || collageCaptionSelectionIndex === undefined
+                      ? null
+                      : textLayerEntries.find((t) => t.canvasIndex === collageCaptionSelectionIndex) ||
+                        textLayerEntries[0] ||
+                        null;
+                  performAddToCollage(entry);
+                }}
+              >
+                Add to collage
+              </Button>
+              <Button
+                fullWidth
+                onClick={() => {
+                  setCollagePromptOpen(false);
+                  setCollageCaptionSelectionIndex(null);
+                }}
+                disabled={addingToCollage}
+              >
+                Cancel
+              </Button>
+            </DialogActions>
+          </Dialog>
+          <AddToCollageChooser
+            open={collageChooserOpen}
+            onClose={handleCollageChooserClose}
+            onSelectNew={handleCollageNewProject}
+            onSelectExisting={handleCollageExistingProject}
+            loading={addingToCollage}
+          />
           {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid container>
               <Grid item xs={12} mt={2}>

@@ -318,26 +318,36 @@ type Template
   @model(timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" })
   @auth(
     rules: [
-      { allow: groups, groups: ["admins"] },
       {
-        allow: owner
+        allow: owner,
         ownerField: "ownerIdentityId"
-        operations: [create, read, update, delete]
-      }
+      },
+      { allow: groups, groups: ["admins"], operations: [create, read, delete] }
     ]
   ) {
   id: ID!
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
   ownerIdentityId: String
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
     @index(name: "byOwnerIdentityId", sortKeyFields: ["createdAt"])
   name: String!
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   snapshotKey: String
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   snapshotVersion: Int
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   thumbnailKey: String
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   thumbnailSignature: String
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   thumbnailUpdatedAt: AWSDateTime
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   createdAt: AWSDateTime
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
   updatedAt: AWSDateTime
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
 }
 
 type EditorProject @model @auth(

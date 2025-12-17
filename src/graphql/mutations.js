@@ -2106,6 +2106,7 @@ export const createTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2127,6 +2128,7 @@ export const updateTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2148,6 +2150,7 @@ export const deleteTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
