@@ -60,6 +60,8 @@ import { shouldShowAds } from '../utils/adsenseLoader';
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
+import AddToCollageChooser from '../components/collage/AddToCollageChooser';
+import { createProject } from '../components/collage/utils/templates';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -74,6 +76,14 @@ const StyledCardMedia = styled('img')`
   height: auto;
   background-color: black;
 `;
+
+const blobToDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 
 const SurroundingFrameThumbnail = ({
   frameData,
@@ -196,6 +206,10 @@ export default function FramePage() {
   const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
   const toolsMenuOpen = Boolean(toolsAnchorEl);
   const currentImage = displayImage || frameData?.frameImage;
+  const [addingToCollage, setAddingToCollage] = useState(false);
+  const [collageChooserOpen, setCollageChooserOpen] = useState(false);
+  const [pendingCollagePayload, setPendingCollagePayload] = useState(null);
+  const collageAppendStorageKey = 'collage-append-queue';
 
   // Function to save current frame to library
   const handleSaveToLibrary = async () => {
@@ -339,18 +353,8 @@ export default function FramePage() {
     }
 
     if (tool === 'collage') {
-      navigate('/collage', {
-        state: {
-          fromCollage: true,
-          images: [{
-            originalUrl: currentImage,
-            displayUrl: currentImage,
-            subtitle: loadedSubtitle || '',
-            subtitleShowing: Boolean(loadedSubtitle),
-          }],
-        },
-      });
       handleCloseToolsMenu();
+      void handlePrepareCollage();
     }
   };
 
@@ -476,6 +480,43 @@ export default function FramePage() {
     selectedFrameIndex,
     resolvedSearchTermValue,
   ]);
+
+  const collageIntentMeta = useMemo(() => {
+    const meta = {
+      source: 'V2FramePage',
+    };
+
+    const resolvedCid = confirmedCid || cid;
+    if (resolvedCid) {
+      meta.cid = resolvedCid;
+    }
+
+    if (season) {
+      meta.season = season;
+    }
+
+    if (episode) {
+      meta.episode = episode;
+    }
+
+    if (frame) {
+      meta.frame = frame;
+    }
+
+    if (fineTuningIndex !== null && fineTuningIndex !== undefined) {
+      meta.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (typeof selectedFrameIndex === 'number') {
+      meta.selectedFrameIndex = selectedFrameIndex;
+    }
+
+    if (typeof resolvedSearchTermValue === 'string' && resolvedSearchTermValue.length > 0) {
+      meta.searchTerm = resolvedSearchTermValue;
+    }
+
+    return meta;
+  }, [cid, confirmedCid, episode, frame, fineTuningIndex, resolvedSearchTermValue, season, selectedFrameIndex]);
 
   const advancedEditorPath = useMemo(() => {
     const fineTuningSuffix = (fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : '';
@@ -1096,6 +1137,163 @@ useEffect(() => {
     };
     localStorage.setItem(`formatting-${user?.username}-${cid}`, JSON.stringify(formattingOptions));
   };
+
+  const handleCollageChooserClose = useCallback(() => {
+    setCollageChooserOpen(false);
+    setPendingCollagePayload(null);
+  }, []);
+
+  const handlePrepareCollage = useCallback(async () => {
+    if (addingToCollage || !currentImage) return;
+
+    setAddingToCollage(true);
+    try {
+      const response = await fetch(currentImage);
+      if (!response.ok) {
+        throw new Error('Failed to fetch frame image');
+      }
+      const blob = await response.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      if (!dataUrl) {
+        throw new Error('Unable to read frame image');
+      }
+
+      const rawSubtitle = typeof loadedSubtitle === 'string' ? loadedSubtitle : '';
+      const subtitle = rawSubtitle.trim();
+      const hasSubtitle = subtitle.length > 0;
+      const subtitleShowing = hasSubtitle && showText;
+      const filename = `collage-${Date.now()}.jpg`;
+
+      const metadata = {
+        source: 'V2FramePage',
+        ...(hasSubtitle ? { defaultCaption: subtitle } : {}),
+        ...(fontFamily ? { fontFamily } : {}),
+        ...((confirmedCid || cid) ? { cid: confirmedCid || cid } : {}),
+        ...(season ? { season } : {}),
+        ...(episode ? { episode } : {}),
+        ...(frame ? { frame } : {}),
+      };
+
+      const imagePayload = {
+        originalUrl: dataUrl,
+        displayUrl: dataUrl,
+        ...(hasSubtitle ? { subtitle } : {}),
+        subtitleShowing,
+        metadata: {
+          source: 'V2FramePage',
+          ...(fontFamily ? { fontFamily } : {}),
+          ...(hasSubtitle ? { defaultCaption: subtitle } : {}),
+        },
+      };
+
+      setPendingCollagePayload({ imagePayload, blob, metadata, filename });
+      setCollageChooserOpen(true);
+    } catch (error) {
+      console.error('Error preparing collage image:', error);
+    } finally {
+      setAddingToCollage(false);
+    }
+  }, [addingToCollage, cid, confirmedCid, currentImage, episode, fontFamily, frame, loadedSubtitle, season, showText]);
+
+  const handleCollageNewProject = useCallback(async () => {
+    if (!pendingCollagePayload) return;
+    try {
+      setAddingToCollage(true);
+      const libraryKey = await saveImageToLibrary(pendingCollagePayload.blob, pendingCollagePayload.filename, {
+        level: 'private',
+        metadata: pendingCollagePayload.metadata,
+      });
+      const imagePayload = {
+        ...pendingCollagePayload.imagePayload,
+        metadata: {
+          ...pendingCollagePayload.imagePayload.metadata,
+          libraryKey,
+        },
+      };
+      const project = await createProject({ name: 'Untitled Meme' });
+      const projectId = project?.id;
+      if (!projectId) throw new Error('Missing project id for collage project');
+
+      try {
+        sessionStorage.setItem(
+          collageAppendStorageKey,
+          JSON.stringify({ projectId, images: [imagePayload] })
+        );
+      } catch (_) { /* ignore */ }
+
+      trackUsageEvent('add_to_collage', {
+        ...collageIntentMeta,
+        projectId,
+        libraryKey,
+        subtitleIncluded: Boolean(imagePayload?.subtitle),
+        subtitleShowing: Boolean(imagePayload?.subtitleShowing),
+        target: 'new_project',
+      });
+
+      navigate(`/projects/${projectId}`, {
+        state: {
+          fromCollage: true,
+          images: [imagePayload],
+          projectId,
+        },
+      });
+    } catch (error) {
+      console.error('Error creating collage project:', error);
+    } finally {
+      setAddingToCollage(false);
+      handleCollageChooserClose();
+    }
+  }, [collageAppendStorageKey, collageIntentMeta, handleCollageChooserClose, navigate, pendingCollagePayload]);
+
+  const handleCollageExistingProject = useCallback(
+    (project) => {
+      if (!project?.id || !pendingCollagePayload) return;
+
+      const saveAndNavigate = async () => {
+        setAddingToCollage(true);
+        const libraryKey = await saveImageToLibrary(pendingCollagePayload.blob, pendingCollagePayload.filename, {
+          level: 'private',
+          metadata: pendingCollagePayload.metadata,
+        });
+        const imagePayload = {
+          ...pendingCollagePayload.imagePayload,
+          metadata: {
+            ...pendingCollagePayload.imagePayload.metadata,
+            libraryKey,
+          },
+        };
+
+        sessionStorage.setItem(
+          collageAppendStorageKey,
+          JSON.stringify({ projectId: project.id, images: [imagePayload] })
+        );
+        trackUsageEvent('add_to_collage', {
+          ...collageIntentMeta,
+          projectId: project.id,
+          libraryKey,
+          subtitleIncluded: Boolean(imagePayload?.subtitle),
+          subtitleShowing: Boolean(imagePayload?.subtitleShowing),
+          target: 'existing_project',
+        });
+
+        navigate(`/projects/${project.id}`, {
+          state: {
+            fromCollage: true,
+            projectId: project.id,
+            appendImages: [imagePayload],
+          },
+        });
+      };
+
+      saveAndNavigate().catch((err) => {
+        console.error('Error adding image to existing collage:', err);
+      }).finally(() => {
+        setAddingToCollage(false);
+        handleCollageChooserClose();
+      });
+    },
+    [collageAppendStorageKey, collageIntentMeta, handleCollageChooserClose, navigate, pendingCollagePayload]
+  );
 
   const handleMainImageLoad = () => {
     setMainImageLoaded(true);
@@ -1903,7 +2101,7 @@ useEffect(() => {
                 >
                   {savingToLibrary ? 'Saving…' : (savedToLibrary ? 'Saved to Library' : 'Add to Library')}
                 </Button>
-                <Collapse in={savedToLibrary} timeout={250} unmountOnExit>
+                {/* <Collapse in={savedToLibrary} timeout={250} unmountOnExit>
                   <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
                     <Button
                       size="medium"
@@ -1944,7 +2142,7 @@ useEffect(() => {
                       My Library
                     </Button>
                   </Stack>
-                </Collapse>
+                </Collapse> */}
               </>
             )}
             <Collapse in={!savedToLibrary} timeout={250}>
@@ -2120,19 +2318,28 @@ useEffect(() => {
                           <ListItemIcon>
                             <Edit fontSize="small" />
                           </ListItemIcon>
-                          <ListItemText primary="Advanced Editor" secondary={hasToolAccess ? 'Open with this frame' : undefined} />
+                          <ListItemText primary="Advanced Editor" />
                         </MenuItem>
                         <MenuItem onClick={() => handleToolSelect('magic')} disabled={!currentImage}>
                           <ListItemIcon>
                             <AutoFixHigh fontSize="small" />
                           </ListItemIcon>
-                          <ListItemText primary="Magic Tools" secondary={hasToolAccess ? 'Send to Magic' : 'Pro required'} />
+                          <ListItemText primary="Magic Tools" secondary={hasToolAccess ? undefined : 'Pro required'} />
                         </MenuItem>
-                        <MenuItem onClick={() => handleToolSelect('collage')} disabled={!currentImage}>
+                        <MenuItem onClick={() => handleToolSelect('collage')} disabled={!currentImage || addingToCollage}>
                           <ListItemIcon>
                             <PhotoLibrary fontSize="small" />
                           </ListItemIcon>
-                          <ListItemText primary="Create Collage" secondary={hasToolAccess ? 'Start with this image' : 'Pro required'} />
+                          <ListItemText
+                            primary="Add to Collage"
+                            secondary={
+                              !hasToolAccess
+                                ? 'Pro required'
+                                : addingToCollage
+                                  ? 'Preparing...'
+                                  : undefined
+                            }
+                          />
                         </MenuItem>
                       </Menu>
                       {showText && loadedSubtitle?.trim() !== '' && (
@@ -2465,6 +2672,14 @@ useEffect(() => {
               </Accordion>
             </Card>
           </Grid>
+
+          <AddToCollageChooser
+            open={collageChooserOpen}
+            onClose={handleCollageChooserClose}
+            onSelectNew={handleCollageNewProject}
+            onSelectExisting={handleCollageExistingProject}
+            loading={addingToCollage}
+          />
 
           <Snackbar
             open={snackbarOpen}
