@@ -61,7 +61,22 @@ import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 import AddToCollageChooser from '../components/collage/AddToCollageChooser';
-import { createProject } from '../components/collage/utils/templates';
+import {
+  createProject,
+  resolveTemplateSnapshot,
+  upsertProject,
+} from '../components/collage/utils/templates';
+import { renderThumbnailFromSnapshot } from '../components/collage/utils/renderThumbnailFromSnapshot';
+import {
+  appendImageToSnapshot,
+  buildSnapshotSignature,
+  MAX_COLLAGE_IMAGES,
+  normalizeSnapshot,
+  replaceImageInSnapshot,
+  snapshotImageFromPayload,
+} from '../components/collage/utils/snapshotEditing';
+import ReplaceCollageImageDialog from '../components/collage/ReplaceCollageImageDialog';
+import { get as getFromLibrary } from '../utils/library/storage';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -209,7 +224,101 @@ export default function FramePage() {
   const [addingToCollage, setAddingToCollage] = useState(false);
   const [collageChooserOpen, setCollageChooserOpen] = useState(false);
   const [pendingCollagePayload, setPendingCollagePayload] = useState(null);
-  const collageAppendStorageKey = 'collage-append-queue';
+  const [collagePreview, setCollagePreview] = useState(null);
+  const [collageReplaceDialogOpen, setCollageReplaceDialogOpen] = useState(false);
+  const [collageReplaceSelection, setCollageReplaceSelection] = useState(null);
+  const [collageReplaceOptions, setCollageReplaceOptions] = useState([]);
+  const [collageReplaceContext, setCollageReplaceContext] = useState(null);
+
+  const resolveSnapshotImageUrl = useCallback(
+    async (imageRef) => {
+      if (!imageRef) return null;
+      if (typeof imageRef.url === 'string' && imageRef.url.length > 0) {
+        return imageRef.url;
+      }
+      if (imageRef.libraryKey) {
+        try {
+          const blob = await getFromLibrary(imageRef.libraryKey, { level: 'private' });
+          return await blobToDataUrl(blob);
+        } catch (err) {
+          console.warn('Unable to load collage image from library', err);
+        }
+      }
+      return null;
+    },
+    [blobToDataUrl]
+  );
+
+  const persistCollageSnapshot = useCallback(
+    async (projectId, snapshot) => {
+      const normalized = normalizeSnapshot(snapshot, 'portrait');
+      await upsertProject(projectId, { state: normalized });
+      let thumbnail = null;
+      try {
+        thumbnail = await renderThumbnailFromSnapshot(normalized, { maxDim: 512 });
+        if (thumbnail) {
+          const signature = buildSnapshotSignature(normalized);
+          await upsertProject(projectId, {
+            thumbnail,
+            thumbnailSignature: signature,
+            thumbnailUpdatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to render collage thumbnail', err);
+      }
+      return { snapshot: normalized, thumbnail };
+    },
+    [buildSnapshotSignature, normalizeSnapshot, renderThumbnailFromSnapshot, upsertProject]
+  );
+
+  const loadCollageSnapshot = useCallback(
+    async (project) => {
+      const snap = await resolveTemplateSnapshot(project);
+      return normalizeSnapshot(snap, 'portrait');
+    },
+    [normalizeSnapshot, resolveTemplateSnapshot]
+  );
+
+  const prepareReplaceDialogOptions = useCallback(
+    async (snapshot) => {
+      const urls = await Promise.all(
+        (snapshot?.images || []).map(async (img) => ({
+          url: await resolveSnapshotImageUrl(img),
+        }))
+      );
+      setCollageReplaceOptions(urls);
+      setCollageReplaceSelection(urls.length ? 0 : null);
+    },
+    [resolveSnapshotImageUrl]
+  );
+
+  const ensureCollagePayloadHasLibraryKey = useCallback(async () => {
+    if (!pendingCollagePayload) return null;
+    if (pendingCollagePayload?.imagePayload?.metadata?.libraryKey) {
+      return pendingCollagePayload;
+    }
+    const libraryKey = await saveImageToLibrary(
+      pendingCollagePayload.blob,
+      pendingCollagePayload.filename,
+      {
+        level: 'private',
+        metadata: pendingCollagePayload.metadata,
+      }
+    );
+    const updatedPayload = {
+      ...pendingCollagePayload,
+      imagePayload: {
+        ...pendingCollagePayload.imagePayload,
+        metadata: {
+          ...pendingCollagePayload.imagePayload.metadata,
+          libraryKey,
+        },
+      },
+    };
+    setPendingCollagePayload(updatedPayload);
+    return updatedPayload;
+  }, [pendingCollagePayload, saveImageToLibrary]);
 
   // Function to save current frame to library
   const handleSaveToLibrary = async () => {
@@ -1141,6 +1250,7 @@ useEffect(() => {
   const handleCollageChooserClose = useCallback(() => {
     setCollageChooserOpen(false);
     setPendingCollagePayload(null);
+    setCollagePreview(null);
   }, []);
 
   const handlePrepareCollage = useCallback(async () => {
@@ -1196,104 +1306,165 @@ useEffect(() => {
   }, [addingToCollage, cid, confirmedCid, currentImage, episode, fontFamily, frame, loadedSubtitle, season, showText]);
 
   const handleCollageNewProject = useCallback(async () => {
-    if (!pendingCollagePayload) return;
     try {
       setAddingToCollage(true);
-      const libraryKey = await saveImageToLibrary(pendingCollagePayload.blob, pendingCollagePayload.filename, {
-        level: 'private',
-        metadata: pendingCollagePayload.metadata,
-      });
-      const imagePayload = {
-        ...pendingCollagePayload.imagePayload,
-        metadata: {
-          ...pendingCollagePayload.imagePayload.metadata,
-          libraryKey,
-        },
-      };
+      const payloadWithKey = await ensureCollagePayloadHasLibraryKey();
+      if (!payloadWithKey) return;
       const project = await createProject({ name: 'Untitled Meme' });
       const projectId = project?.id;
       if (!projectId) throw new Error('Missing project id for collage project');
-
-      try {
-        sessionStorage.setItem(
-          collageAppendStorageKey,
-          JSON.stringify({ projectId, images: [imagePayload] })
-        );
-      } catch (_) { /* ignore */ }
+      const { snapshot, thumbnail } = await persistCollageSnapshot(
+        projectId,
+        appendImageToSnapshot(null, snapshotImageFromPayload(payloadWithKey.imagePayload)).snapshot
+      );
 
       trackUsageEvent('add_to_collage', {
         ...collageIntentMeta,
         projectId,
-        libraryKey,
-        subtitleIncluded: Boolean(imagePayload?.subtitle),
-        subtitleShowing: Boolean(imagePayload?.subtitleShowing),
+        libraryKey: payloadWithKey.imagePayload?.metadata?.libraryKey,
+        subtitleIncluded: Boolean(payloadWithKey.imagePayload?.subtitle),
+        subtitleShowing: Boolean(payloadWithKey.imagePayload?.subtitleShowing),
         target: 'new_project',
       });
 
-      navigate(`/projects/${projectId}`, {
-        state: {
-          fromCollage: true,
-          images: [imagePayload],
-          projectId,
-        },
+      setCollagePreview({
+        projectId,
+        name: project?.name || 'Untitled Meme',
+        thumbnail: thumbnail || null,
+        snapshot,
       });
+      setCollageChooserOpen(true);
     } catch (error) {
       console.error('Error creating collage project:', error);
     } finally {
       setAddingToCollage(false);
-      handleCollageChooserClose();
     }
-  }, [collageAppendStorageKey, collageIntentMeta, handleCollageChooserClose, navigate, pendingCollagePayload]);
+  }, [
+    appendImageToSnapshot,
+    collageIntentMeta,
+    createProject,
+    ensureCollagePayloadHasLibraryKey,
+    persistCollageSnapshot,
+    snapshotImageFromPayload,
+    trackUsageEvent,
+  ]);
 
   const handleCollageExistingProject = useCallback(
-    (project) => {
-      if (!project?.id || !pendingCollagePayload) return;
-
-      const saveAndNavigate = async () => {
+    async (project) => {
+      try {
         setAddingToCollage(true);
-        const libraryKey = await saveImageToLibrary(pendingCollagePayload.blob, pendingCollagePayload.filename, {
-          level: 'private',
-          metadata: pendingCollagePayload.metadata,
-        });
-        const imagePayload = {
-          ...pendingCollagePayload.imagePayload,
-          metadata: {
-            ...pendingCollagePayload.imagePayload.metadata,
-            libraryKey,
-          },
-        };
+        const payloadWithKey = await ensureCollagePayloadHasLibraryKey();
+        if (!project?.id || !payloadWithKey) return;
+        const baseSnapshot = await loadCollageSnapshot(project);
+        const incomingImage = snapshotImageFromPayload(payloadWithKey.imagePayload);
+        if ((baseSnapshot.images || []).length >= MAX_COLLAGE_IMAGES) {
+          setCollageReplaceContext({
+            project,
+            snapshot: baseSnapshot,
+            incomingImage,
+            incomingPreview:
+              payloadWithKey.imagePayload.displayUrl ||
+              payloadWithKey.imagePayload.originalUrl ||
+              null,
+          });
+          setCollageChooserOpen(false);
+          await prepareReplaceDialogOptions(baseSnapshot);
+          setCollageReplaceDialogOpen(true);
+          setAddingToCollage(false);
+          return;
+        }
 
-        sessionStorage.setItem(
-          collageAppendStorageKey,
-          JSON.stringify({ projectId: project.id, images: [imagePayload] })
-        );
+        const { snapshot } = appendImageToSnapshot(baseSnapshot, incomingImage);
+        const { thumbnail } = await persistCollageSnapshot(project.id, snapshot);
+
         trackUsageEvent('add_to_collage', {
           ...collageIntentMeta,
           projectId: project.id,
-          libraryKey,
-          subtitleIncluded: Boolean(imagePayload?.subtitle),
-          subtitleShowing: Boolean(imagePayload?.subtitleShowing),
+          libraryKey: payloadWithKey.imagePayload?.metadata?.libraryKey,
+          subtitleIncluded: Boolean(payloadWithKey.imagePayload?.subtitle),
+          subtitleShowing: Boolean(payloadWithKey.imagePayload?.subtitleShowing),
           target: 'existing_project',
         });
 
-        navigate(`/projects/${project.id}`, {
-          state: {
-            fromCollage: true,
-            projectId: project.id,
-            appendImages: [imagePayload],
-          },
+        setCollagePreview({
+          projectId: project.id,
+          name: project?.name || 'Untitled Meme',
+          thumbnail: thumbnail || null,
+          snapshot,
         });
-      };
-
-      saveAndNavigate().catch((err) => {
+        setCollageChooserOpen(true);
+      } catch (err) {
         console.error('Error adding image to existing collage:', err);
-      }).finally(() => {
+      } finally {
         setAddingToCollage(false);
-        handleCollageChooserClose();
-      });
+      }
     },
-    [collageAppendStorageKey, collageIntentMeta, handleCollageChooserClose, navigate, pendingCollagePayload]
+    [
+      appendImageToSnapshot,
+      collageIntentMeta,
+      ensureCollagePayloadHasLibraryKey,
+      loadCollageSnapshot,
+      prepareReplaceDialogOptions,
+      persistCollageSnapshot,
+      snapshotImageFromPayload,
+      setCollageChooserOpen,
+      trackUsageEvent,
+    ]
   );
+
+  const handleCollageReplaceCancel = useCallback(() => {
+    if (addingToCollage) return;
+    setCollageReplaceDialogOpen(false);
+    setCollageReplaceContext(null);
+    setCollageReplaceOptions([]);
+    setCollageReplaceSelection(null);
+    setPendingCollagePayload(null);
+    setCollageChooserOpen(true);
+  }, [addingToCollage]);
+
+  const handleCollageReplaceConfirm = useCallback(async () => {
+    if (!collageReplaceContext || collageReplaceSelection == null) return;
+    try {
+      setAddingToCollage(true);
+      const nextSnapshot = replaceImageInSnapshot(
+        collageReplaceContext.snapshot,
+        collageReplaceSelection,
+        collageReplaceContext.incomingImage
+      );
+      const { thumbnail } = await persistCollageSnapshot(collageReplaceContext.project.id, nextSnapshot);
+
+      trackUsageEvent('add_to_collage', {
+        ...collageIntentMeta,
+        projectId: collageReplaceContext.project.id,
+        target: 'existing_project',
+        replacedIndex: collageReplaceSelection,
+      });
+
+      setCollagePreview({
+        projectId: collageReplaceContext.project.id,
+        name: collageReplaceContext.project?.name || 'Untitled Meme',
+        thumbnail: thumbnail || null,
+        snapshot: nextSnapshot,
+      });
+      setPendingCollagePayload(null);
+      setCollageReplaceDialogOpen(false);
+      setCollageReplaceContext(null);
+      setCollageReplaceOptions([]);
+      setCollageReplaceSelection(null);
+      setCollageChooserOpen(true);
+    } catch (err) {
+      console.error('Error replacing collage image:', err);
+    } finally {
+      setAddingToCollage(false);
+    }
+  }, [
+    collageIntentMeta,
+    collageReplaceContext,
+    collageReplaceSelection,
+    persistCollageSnapshot,
+    replaceImageInSnapshot,
+    trackUsageEvent,
+  ]);
 
   const handleMainImageLoad = () => {
     setMainImageLoaded(true);
@@ -2679,8 +2850,24 @@ useEffect(() => {
             onSelectNew={handleCollageNewProject}
             onSelectExisting={handleCollageExistingProject}
             loading={addingToCollage}
+            preview={collagePreview}
+            onEditPreview={() => {
+              if (!collagePreview?.projectId) return;
+              navigate(`/projects/${collagePreview.projectId}`, {
+                state: { projectId: collagePreview.projectId },
+              });
+              handleCollageChooserClose();
+            }}
+            onClearPreview={handleCollageChooserClose}
           />
-
+          <ReplaceCollageImageDialog
+            open={collageReplaceDialogOpen}
+            incomingImageUrl={collageReplaceContext?.incomingPreview || null}
+            existingImages={collageReplaceOptions}
+            onClose={handleCollageReplaceCancel}
+            onConfirm={handleCollageReplaceConfirm}
+            busy={addingToCollage}
+          />
           <Snackbar
             open={snackbarOpen}
             autoHideDuration={2000}
