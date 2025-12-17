@@ -19,7 +19,7 @@ import {
     Popper,
     Paper,
 } from '@mui/material';
-import { Dashboard, KeyboardArrowDown, CloudUpload, PhotoLibrary, Search } from '@mui/icons-material';
+import { Dashboard, KeyboardArrowDown, CloudUpload, PhotoLibrary, Search, KeyboardArrowUp } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
@@ -278,7 +278,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         <StyledButton
             onClick={handleToolsButtonClick}
             startIcon={<Dashboard />}
-            endIcon={<KeyboardArrowDown />}
+            endIcon={<KeyboardArrowUp />}
             aria-haspopup="true"
             aria-expanded={toolsMenuOpen ? 'true' : undefined}
             aria-controls="floating-tools-menu"
@@ -383,7 +383,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 anchorEl={toolsAnchorEl}
                 open={toolsMenuOpen}
                 onClose={closeToolsMenu}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
                 transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                 PaperProps={{
                     sx: {
@@ -407,7 +407,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     </ListItemIcon>
                     <ListItemText
                         primary="Upload Image"
-                        secondary={hasToolAccess ? 'Open to edit' : 'Pro required'}
+                        secondary={hasToolAccess ? undefined : 'Pro required'}
                     />
                 </MenuItem>
                 <MenuItem onClick={() => handleToolSelect('collage')}>
@@ -416,10 +416,10 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     </ListItemIcon>
                     <ListItemText
                         primary="Create Collage"
-                        secondary={hasToolAccess ? 'Build with multiple images' : 'Pro required'}
+                        secondary={hasToolAccess ? undefined : 'Pro required'}
                     />
                 </MenuItem>
-                <MenuItem onClick={() => handleToolSelect('search')}>
+                {/* <MenuItem onClick={() => handleToolSelect('search')}>
                     <ListItemIcon>
                         <Search fontSize="small" />
                     </ListItemIcon>
@@ -427,7 +427,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                         primary="Search Images"
                         secondary="Go to homepage"
                     />
-                </MenuItem>
+                </MenuItem> */}
             </Menu>
 
             <Input
