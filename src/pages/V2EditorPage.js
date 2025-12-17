@@ -9,7 +9,7 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, Chip, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, InputAdornment, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, Chip, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, InputAdornment, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Radio, FormControlLabel, RadioGroup, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, Edit, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Send, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
@@ -27,6 +27,7 @@ import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
+import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import getV2Metadata from '../utils/getV2Metadata';
@@ -304,6 +305,11 @@ const EditorPage = ({ shows }) => {
   const [imageUploading, setImageUploading] = useState();
   const [imageBlob, setImageBlob] = useState();
   const [shareImageFile, setShareImageFile] = useState();
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
+  const [librarySaveSuccess, setLibrarySaveSuccess] = useState(false);
+  const [librarySavePromptOpen, setLibrarySavePromptOpen] = useState(false);
+  const [librarySaveStep, setLibrarySaveStep] = useState('choice');
+  const [libraryCaptionSelectionIndex, setLibraryCaptionSelectionIndex] = useState(null);
   const [snackbarOpen, setSnackBarOpen] = useState(false);
   const theme = useTheme();
   // const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
@@ -328,6 +334,8 @@ const EditorPage = ({ shows }) => {
   // const [earlyAccessLoading, setEarlyAccessLoading] = useState(false);
 
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
+
+  const isProUser = user?.userDetails?.subscriptionStatus === 'active';
 
   // const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   // const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
@@ -644,6 +652,12 @@ const EditorPage = ({ shows }) => {
 
     trackUsageEvent('advanced_editor_save', eventPayload);
 
+    setLibrarySaveSuccess(false);
+    setSavingToLibrary(false);
+    setLibrarySavePromptOpen(false);
+    setLibrarySaveStep('choice');
+    setLibraryCaptionSelectionIndex(null);
+
     if (location.state?.collageState) {
       saveCollageImage();
     } else {
@@ -654,6 +668,11 @@ const EditorPage = ({ shows }) => {
 
   const handleDialogClose = () => {
     setOpenDialog(false);
+    setSavingToLibrary(false);
+    setLibrarySaveSuccess(false);
+    setLibrarySavePromptOpen(false);
+    setLibrarySaveStep('choice');
+    setLibraryCaptionSelectionIndex(null);
   };
 
   const handleAlignment = (index, alignment) => {
@@ -904,7 +923,7 @@ const EditorPage = ({ shows }) => {
         setImageLoaded(true);
 
         // Rendering the canvas after applying all changes
-        editor.canvas.renderAll();
+        editor?.canvas?.renderAll?.();
         setLoading(false);
 
         // If it's from the collage page, set some default states
@@ -2766,6 +2785,191 @@ const EditorPage = ({ shows }) => {
     [saveDialogImageIntentMeta]
   );
 
+  const getTextLayers = useCallback(() => {
+    if (!editor?.canvas) return [];
+    return editor.canvas.getObjects().filter((obj) => obj?.type === 'textbox' || obj?.type === 'text');
+  }, [editor]);
+
+  const getTextLayersWithText = useCallback(() => {
+    const objects = editor?.canvas?.getObjects() || [];
+    return getTextLayers().map((layer) => {
+      const canvasIndex = objects.indexOf(layer);
+      const rawValue = canvasIndex >= 0 ? layerRawText?.[canvasIndex] : undefined;
+      const candidate = (rawValue || layer?.text || '').toString();
+      const { cleanText } = parseFormattedText(candidate);
+      return {
+        canvasIndex,
+        text: cleanText || candidate || 'Text',
+      };
+    });
+  }, [editor, getTextLayers, layerRawText, parseFormattedText]);
+
+  const textLayerEntries = useMemo(() => getTextLayersWithText(), [getTextLayersWithText]);
+
+  const captureCanvasBlob = useCallback(
+    async ({ includeCaptions }) => {
+      if (!editor?.canvas) return null;
+      const textLayers = getTextLayers();
+      const shouldHideText = !includeCaptions && textLayers.length > 0;
+      const prevVisibility = [];
+
+      if (shouldHideText) {
+        textLayers.forEach((layer, idx) => {
+          prevVisibility[idx] = layer.visible;
+          layer.visible = false;
+        });
+        editor.canvas.renderAll();
+      }
+
+      try {
+        const dataUrl = editor.canvas.toDataURL({
+          format: 'jpeg',
+          quality: 0.6,
+          multiplier: imageScale || 1,
+        });
+        const res = await fetch(dataUrl);
+        return await res.blob();
+      } finally {
+        if (shouldHideText) {
+          textLayers.forEach((layer, idx) => {
+            layer.visible = typeof prevVisibility[idx] === 'boolean' ? prevVisibility[idx] : true;
+          });
+          editor.canvas.renderAll();
+        }
+      }
+    },
+    [editor, getTextLayers, imageScale]
+  );
+
+  const getDefaultCaptionFromTextLayer = useCallback(
+    (canvasIndexOverride) => {
+      const textLayers = getTextLayers();
+      if (!textLayers.length) return '';
+
+      const objects = editor?.canvas?.getObjects() || [];
+      const target =
+        typeof canvasIndexOverride === 'number'
+          ? objects[canvasIndexOverride]
+          : textLayers[0];
+      const index = objects.indexOf(target);
+      const rawValue = index >= 0 ? layerRawText?.[index] : undefined;
+      const candidate = (rawValue || target?.text || '').toString();
+      const { cleanText } = parseFormattedText(candidate);
+      return cleanText || candidate;
+    },
+    [editor, getTextLayers, layerRawText, parseFormattedText]
+  );
+
+  const performSaveToLibrary = useCallback(
+    async ({ includeCaptions, captionIndex }) => {
+      if (!isProUser || savingToLibrary) return;
+
+      setSavingToLibrary(true);
+      setLibrarySaveSuccess(false);
+
+      const textLayers = getTextLayers();
+
+      trackSaveDialogAction('save_to_library_button', {
+        isProUser: Boolean(isProUser),
+        hasImageBlob: Boolean(imageBlob),
+        includeCaptions: Boolean(includeCaptions),
+        textLayerCount: textLayers.length,
+      });
+
+      try {
+        const filename = generatedImageFilename || 'editor-image.jpg';
+        const metadata = {
+          source: 'V2EditorPage',
+          ...(editorProjectId ? { editorProjectId } : {}),
+          ...((confirmedCid || cid) ? { cid: confirmedCid || cid } : {}),
+          ...(season ? { season } : {}),
+          ...(episode ? { episode } : {}),
+          ...(frame ? { frame } : {}),
+        };
+
+        if (!includeCaptions) {
+          const defaultCaption = getDefaultCaptionFromTextLayer(captionIndex);
+          if (defaultCaption) {
+            metadata.defaultCaption = defaultCaption;
+          }
+        }
+
+        const blobToSave = includeCaptions
+          ? imageBlob || (await captureCanvasBlob({ includeCaptions: true }))
+          : await captureCanvasBlob({ includeCaptions: false });
+
+        if (!blobToSave) {
+          throw new Error('No image available to save');
+        }
+
+        const libraryKey = await saveImageToLibrary(blobToSave, filename, {
+          level: 'private',
+          metadata,
+        });
+
+        trackUsageEvent('add_to_library', {
+          ...editorImageIntentBaseMeta,
+          libraryKey,
+          trigger: 'save_dialog',
+          includeCaptions: Boolean(includeCaptions),
+          captionIndex: typeof captionIndex === 'number' ? captionIndex : undefined,
+        });
+
+        setLibrarySaveSuccess(true);
+      } catch (error) {
+        console.error('Error saving image to library:', error);
+        setSeverity('error');
+        setMessage('Unable to save to library right now.');
+        setOpen(true);
+      } finally {
+        setSavingToLibrary(false);
+      }
+    },
+    [
+      isProUser,
+      savingToLibrary,
+      getTextLayers,
+      trackSaveDialogAction,
+      imageBlob,
+      generatedImageFilename,
+      editorProjectId,
+      confirmedCid,
+      cid,
+      season,
+      episode,
+      frame,
+      getDefaultCaptionFromTextLayer,
+      captureCanvasBlob,
+      editorImageIntentBaseMeta,
+      setSeverity,
+      setMessage,
+      setOpen,
+    ]
+  );
+
+  const handleSaveToLibraryClick = useCallback(() => {
+    if (!isProUser || imageUploading || savingToLibrary) return;
+    setLibrarySaveSuccess(false);
+    setLibrarySaveStep('choice');
+    setLibraryCaptionSelectionIndex(null);
+    const textLayers = getTextLayers();
+    if (textLayers.length > 0) {
+      trackSaveDialogAction('save_to_library_prompt', {
+        textLayerCount: textLayers.length,
+      });
+      setLibrarySavePromptOpen(true);
+      return;
+    }
+    performSaveToLibrary({ includeCaptions: true });
+  }, [
+    getTextLayers,
+    imageUploading,
+    isProUser,
+    performSaveToLibrary,
+    savingToLibrary,
+    trackSaveDialogAction,
+  ]);
+
   const handleAddTextLayer = useCallback(() => {
     const eventPayload = {
       source: 'V2EditorPage',
@@ -4479,57 +4683,86 @@ const EditorPage = ({ shows }) => {
             </DialogContentText>
 
             <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
-              <Box display="grid" width="100%">
-                {navigator.canShare && (
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    sx={{ marginBottom: 2, padding: '12px 16px' }}
-                    disabled={imageUploading}
-                    onClick={() => {
-                      trackSaveDialogAction('share_button', {
-                        shareSupported: true,
-                        shareHasFile: Boolean(shareImageFile),
-                      });
-                      navigator.share({
-                        title: 'memeSRC.com',
-                        text: 'Check out this meme I made on memeSRC.com',
-                        files: [shareImageFile],
-                      }).catch(() => {
-                        trackSaveDialogAction('share_button_error', {
+              <Box display="grid" width="100%" gap={2}>
+                <Box
+                  display="grid"
+                  gridTemplateColumns={navigator.canShare ? '1fr 1fr' : '1fr'}
+                  gap={2}
+                  width="100%"
+                >
+                  {navigator.canShare && (
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      sx={{ padding: '12px 16px' }}
+                      disabled={imageUploading}
+                      onClick={() => {
+                        trackSaveDialogAction('share_button', {
                           shareSupported: true,
                           shareHasFile: Boolean(shareImageFile),
                         });
+                        navigator.share({
+                          title: 'memeSRC.com',
+                          text: 'Check out this meme I made on memeSRC.com',
+                          files: [shareImageFile],
+                        }).catch(() => {
+                          trackSaveDialogAction('share_button_error', {
+                            shareSupported: true,
+                            shareHasFile: Boolean(shareImageFile),
+                          });
+                        });
+                      }}
+                      startIcon={<IosShare />}
+                    >
+                      Share
+                    </Button>
+                  )}
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    sx={{ padding: '12px 16px' }}
+                    disabled={imageUploading}
+                    autoFocus
+                    onClick={() => {
+                      trackSaveDialogAction('copy_button', {
+                        clipboardSupported: Boolean(navigator?.clipboard?.write),
                       });
+                      const { ClipboardItem } = window;
+                      navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
+                      handleSnackbarOpen();
                     }}
-                    startIcon={<IosShare />}
+                    startIcon={<ContentCopy />}
                   >
-                    Share
+                    Copy
                   </Button>
+                </Box>
+                {isProUser && (
+                  <Box display="flex" flexDirection="column" alignItems="center" width="100%">
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      sx={{ padding: '12px 16px' }}
+                      disabled={imageUploading || savingToLibrary}
+                      onClick={handleSaveToLibraryClick}
+                      startIcon={<Save />}
+                    >
+                      {savingToLibrary ? 'Saving...' : 'Save to library'}
+                    </Button>
+                    {librarySaveSuccess && (
+                      <Typography variant="body2" sx={{ mt: 1, textAlign: 'center' }}>
+                        Saved!{' '}
+                        <Link to="/library" style={{ color: '#90caf9', textDecoration: 'underline' }}>
+                          Click here to view library.
+                        </Link>
+                      </Typography>
+                    )}
+                  </Box>
                 )}
-                <Button
-                  variant="contained"
-                  fullWidth
-                  sx={{ marginBottom: 2, padding: '12px 16px' }}
-                  disabled={imageUploading}
-                  autoFocus
-                  onClick={() => {
-                    trackSaveDialogAction('copy_button', {
-                      clipboardSupported: Boolean(navigator?.clipboard?.write),
-                    });
-                    const { ClipboardItem } = window;
-                    navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
-                    handleSnackbarOpen();
-                  }}
-                  startIcon={<ContentCopy />}
-                >
-                  Copy
-                </Button>
                 <Button
                   variant="contained"
                   color="error"
                   fullWidth
-                  sx={{ marginBottom: 2, padding: '12px 16px' }}
+                  sx={{ padding: '12px 16px' }}
                   autoFocus
                   onClick={handleDialogClose}
                   startIcon={<Close />}
@@ -4537,6 +4770,142 @@ const EditorPage = ({ shows }) => {
                   Close
                 </Button>
               </Box>
+            </DialogActions>
+          </Dialog>
+          <Dialog
+            open={librarySavePromptOpen}
+            onClose={() => {
+              if (!savingToLibrary) {
+                setLibrarySavePromptOpen(false);
+                setLibrarySaveStep('choice');
+                setLibraryCaptionSelectionIndex(null);
+              }
+            }}
+            aria-labelledby="library-save-prompt-title"
+            fullWidth
+            maxWidth="xs"
+          >
+            <DialogTitle id="library-save-prompt-title">
+              {librarySaveStep === 'choice' ? 'Save text on image?' : 'Choose default text'}
+            </DialogTitle>
+            <DialogContent>
+              {librarySaveStep === 'choice' ? (
+                <DialogContentText>
+                  Save to your library with the text burned into the image, or keep the image clean and store one of your text layers as the default caption instead.
+                </DialogContentText>
+              ) : (
+                <>
+                  <DialogContentText sx={{ mb: 1 }}>
+                    Which text should become the default caption in your library?
+                  </DialogContentText>
+                  <RadioGroup
+                    value={
+                      libraryCaptionSelectionIndex !== null && libraryCaptionSelectionIndex !== undefined
+                        ? String(libraryCaptionSelectionIndex)
+                        : textLayerEntries[0]?.canvasIndex !== undefined
+                          ? String(textLayerEntries[0]?.canvasIndex)
+                          : ''
+                    }
+                    onChange={(e) => setLibraryCaptionSelectionIndex(Number(e.target.value))}
+                  >
+                    {textLayerEntries.map((entry) => (
+                      <FormControlLabel
+                        key={entry.canvasIndex}
+                        value={entry.canvasIndex}
+                        control={<Radio />}
+                        label={entry.text}
+                        sx={{ py: 1 }}
+                      />
+                    ))}
+                  </RadioGroup>
+                </>
+              )}
+            </DialogContent>
+            <DialogActions
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                justifyContent: 'center',
+                gap: 0,
+                px: 3,
+                pb: 3,
+                width: '100%',
+                '& > *': { width: '100%' },
+                '& > :not(:first-of-type)': { marginLeft: 0, marginTop: 1 },
+              }}
+            >
+              {librarySaveStep === 'choice' ? (
+                <>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={savingToLibrary}
+                    onClick={() => {
+                      setLibrarySavePromptOpen(false);
+                      setLibrarySaveStep('choice');
+                      performSaveToLibrary({ includeCaptions: true });
+                    }}
+                  >
+                    With Permanent Text
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    disabled={savingToLibrary}
+                    onClick={() => {
+                      const entries = textLayerEntries;
+                      if (entries.length <= 1) {
+                        setLibrarySavePromptOpen(false);
+                        setLibrarySaveStep('choice');
+                        performSaveToLibrary({ includeCaptions: false, captionIndex: entries[0]?.canvasIndex });
+                        return;
+                      }
+                      setLibraryCaptionSelectionIndex(entries[0]?.canvasIndex ?? null);
+                      setLibrarySaveStep('selectCaption');
+                    }}
+                  >
+                    Without Permanent Text
+                  </Button>
+                  <Button
+                    fullWidth
+                    onClick={() => {
+                      setLibrarySavePromptOpen(false);
+                      setLibrarySaveStep('choice');
+                      setLibraryCaptionSelectionIndex(null);
+                    }}
+                    disabled={savingToLibrary}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={savingToLibrary}
+                    onClick={() => {
+                      const captionIndex =
+                        typeof libraryCaptionSelectionIndex === 'number'
+                          ? libraryCaptionSelectionIndex
+                          : textLayerEntries[0]?.canvasIndex;
+                      setLibrarySavePromptOpen(false);
+                      setLibrarySaveStep('choice');
+                      performSaveToLibrary({ includeCaptions: false, captionIndex });
+                    }}
+                  >
+                    Save without permanent text
+                  </Button>
+                  <Button
+                    fullWidth
+                    onClick={() => setLibrarySaveStep('choice')}
+                    disabled={savingToLibrary}
+                  >
+                    Back
+                  </Button>
+                </>
+              )}
             </DialogActions>
           </Dialog>
           {user?.userDetails?.subscriptionStatus !== 'active' &&
