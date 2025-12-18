@@ -52,6 +52,16 @@ function createLayoutConfigById(templateId, panelCount, customLayout) {
     }
   } catch (_) {}
   // Fallback simple grid
+  // For 5 images, prefer a top-down stack to avoid leaving an empty cell in a wider grid
+  if ((panelCount || 0) === 5) {
+    return {
+      gridTemplateColumns: '1fr',
+      gridTemplateRows: 'repeat(5, 1fr)',
+      gridTemplateAreas: null,
+      items: Array(5).fill({ gridArea: null }),
+    };
+  }
+
   const cols = Math.ceil(Math.sqrt(panelCount || 2));
   const rows = Math.ceil((panelCount || 2) / cols);
   return {
