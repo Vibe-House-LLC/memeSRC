@@ -68,7 +68,7 @@ type UpsertProjectPayload = Partial<
 const templateCache = new Map<string, CollageProject>();
 let templateCacheComplete = false;
 let listInFlight: Promise<CollageProject[]> | null = null;
-type ThumbnailCacheEntry = { url: string; signature: string };
+type ThumbnailCacheEntry = { url: string; signature: string; expiresAt: number };
 const thumbnailUrlCache = new Map<string, ThumbnailCacheEntry>();
 type TemplatesListener = (templates: CollageProject[]) => void;
 const templateListeners = new Set<TemplatesListener>();
@@ -667,17 +667,24 @@ export async function resolveThumbnailUrl(
   if (project.thumbnailKey) {
     const signature = buildThumbnailCacheSignature(project);
     const cached = thumbnailUrlCache.get(project.thumbnailKey);
-    if (!forceRefresh && cached && cached.signature === signature) {
+    const now = Date.now();
+    const safeExpiresIn = Math.max(1, expiresIn);
+    const isCacheFresh = cached && cached.signature === signature && cached.expiresAt > now + 1000;
+    if (!forceRefresh && isCacheFresh) {
       return cached.url;
     }
     try {
       const urlOrObj = await Storage.get(project.thumbnailKey, {
         level: STORAGE_LEVEL as StorageLevel,
-        expires: expiresIn,
+        expires: safeExpiresIn,
       } as any);
       const url = typeof urlOrObj === 'string' ? urlOrObj : (urlOrObj as any)?.signedUrl;
       if (typeof url === 'string') {
-        thumbnailUrlCache.set(project.thumbnailKey, { url, signature });
+        thumbnailUrlCache.set(project.thumbnailKey, {
+          url,
+          signature,
+          expiresAt: now + safeExpiresIn * 1000,
+        });
         return url;
       }
     } catch (err) {
