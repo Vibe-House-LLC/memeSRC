@@ -3328,13 +3328,14 @@ const EditorPage = ({ shows }) => {
     setCollageChooserOpen(true);
   }, [addingToCollage]);
 
-  const handleCollageReplaceConfirm = useCallback(async () => {
-    if (!collageReplaceContext || collageReplaceSelection == null) return;
+  const handleCollageReplaceConfirm = useCallback(async (selectedIndex) => {
+    const resolvedIndex = typeof selectedIndex === 'number' ? selectedIndex : collageReplaceSelection;
+    if (!collageReplaceContext || resolvedIndex == null) return;
     try {
       setAddingToCollage(true);
       const nextSnapshot = replaceImageInSnapshot(
         collageReplaceContext.snapshot,
-        collageReplaceSelection,
+        resolvedIndex,
         collageReplaceContext.incomingImage
       );
       const { thumbnail } = await persistCollageSnapshot(
@@ -3346,7 +3347,7 @@ const EditorPage = ({ shows }) => {
         ...editorImageIntentBaseMeta,
         projectId: collageReplaceContext.project.id,
         target: 'existing_project',
-        replacedIndex: collageReplaceSelection,
+        replacedIndex: resolvedIndex,
       });
 
       setCollagePreview({

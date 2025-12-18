@@ -15,6 +15,20 @@ const chooseTemplateId = (panelCount: number, aspectRatio: AspectRatio = 'portra
   }
 };
 
+const isTemplateIdCompatible = (
+  templateId: string | null | undefined,
+  panelCount: number,
+  aspectRatio: AspectRatio = 'portrait'
+): boolean => {
+  if (!templateId) return false;
+  try {
+    const templates = getLayoutsForPanelCount(Math.max(2, panelCount || 2), aspectRatio as string);
+    return templates?.some((template) => template.id === templateId) || false;
+  } catch (_) {
+    return false;
+  }
+};
+
 const cleanPanelImageMapping = (
   mapping: CollageSnapshot['panelImageMapping'],
   imageCount: number,
@@ -46,8 +60,13 @@ export function normalizeSnapshot(
   const panelIds = createPanelIds(desiredPanelCount);
 
   const selectedAspectRatio = (snapshot?.selectedAspectRatio || aspectRatio || 'portrait') as AspectRatio;
-  const selectedTemplateId =
-    snapshot?.selectedTemplateId || chooseTemplateId(desiredPanelCount, selectedAspectRatio);
+  const selectedTemplateId = isTemplateIdCompatible(
+    snapshot?.selectedTemplateId,
+    desiredPanelCount,
+    selectedAspectRatio
+  )
+    ? snapshot?.selectedTemplateId || null
+    : chooseTemplateId(desiredPanelCount, selectedAspectRatio);
 
   return {
     version: snapshot?.version || 1,
@@ -91,10 +110,7 @@ export function appendImageToSnapshot(
   }
 
   const nextImages = [...base.images, image];
-  const desiredPanelCount = Math.min(
-    MAX_COLLAGE_IMAGES,
-    Math.max(base.panelCount || 0, nextImages.length, 2)
-  );
+  const desiredPanelCount = Math.min(MAX_COLLAGE_IMAGES, Math.max(nextImages.length, 2));
   const panelIds = createPanelIds(desiredPanelCount);
   const panelImageMapping = cleanPanelImageMapping(base.panelImageMapping, nextImages.length, panelIds);
 
@@ -106,8 +122,13 @@ export function appendImageToSnapshot(
     nextImageIndex += 1;
   });
 
-  const selectedTemplateId =
-    base.selectedTemplateId || chooseTemplateId(desiredPanelCount, base.selectedAspectRatio);
+  const selectedTemplateId = isTemplateIdCompatible(
+    base.selectedTemplateId,
+    desiredPanelCount,
+    base.selectedAspectRatio
+  )
+    ? base.selectedTemplateId || null
+    : chooseTemplateId(desiredPanelCount, base.selectedAspectRatio);
 
   const panelTexts: Record<string, any> = { ...(base.panelTexts || {}) };
   if (image.subtitle && image.subtitleShowing) {

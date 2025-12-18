@@ -1,6 +1,21 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { LoadingButton } from '@mui/lab';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Radio, RadioGroup, Stack, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  FormControlLabel,
+  Radio,
+  RadioGroup,
+  Skeleton,
+  Stack,
+  Typography,
+} from '@mui/material';
 import ProjectPicker from './components/ProjectPicker';
 import type { CollageProject } from '../../types/collage';
 import { loadProjects } from './utils/templates';
@@ -38,6 +53,7 @@ export default function AddToCollageChooser({
   const [fetching, setFetching] = useState(false);
 
   const effectiveLoading = loading || fetching;
+  const isSaving = loading;
 
   useEffect(() => {
     if (!open) return;
@@ -109,6 +125,41 @@ export default function AddToCollageChooser({
                   <Typography variant="subtitle1">Collage updated</Typography>
                 </Box>
               )}
+            </Box>
+          </Stack>
+        ) : isSaving ? (
+          <Stack spacing={2}>
+            <DialogContentText>Saving your collage...</DialogContentText>
+            <Box
+              sx={{
+                borderRadius: 2,
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: 'background.paper',
+                position: 'relative',
+                height: 200,
+              }}
+            >
+              <Skeleton variant="rectangular" sx={{ position: 'absolute', inset: 0 }} />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                  bgcolor: 'rgba(0, 0, 0, 0.45)',
+                  color: '#fff',
+                }}
+              >
+                <CircularProgress size={28} thickness={4} sx={{ color: '#fff' }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, letterSpacing: 0.3 }}>
+                  Saving...
+                </Typography>
+              </Box>
             </Box>
           </Stack>
         ) : (
