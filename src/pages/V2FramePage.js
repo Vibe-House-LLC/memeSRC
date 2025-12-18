@@ -33,7 +33,6 @@ import {
   TextField,
   Snackbar,
   Alert,
-  Collapse,
   FormControl,
   FormLabel,
   Menu,
@@ -43,7 +42,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, ArrowDropDown, AutoFixHigh, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu as MenuIcon, OpenInNew, Collections, Check, Add, PhotoLibrary } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, ArrowDropDown, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu as MenuIcon, OpenInNew, Collections, Add, PhotoLibrary } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -391,8 +390,20 @@ export default function FramePage() {
       }
 
       trackUsageEvent('add_to_library', eventPayload);
-      
-      setSavedToLibrary(true);
+      handleSnackbarOpen('Saved to Library', {
+        autoHideDuration: 4000,
+        action: (
+          <Button
+            color="inherit"
+            size="small"
+            component={RouterLink}
+            to="/library"
+            onClick={handleSnackbarClose}
+          >
+            View Library
+          </Button>
+        ),
+      });
     } catch (error) {
       console.error('Error saving frame to library:', error);
     } finally {
@@ -438,7 +449,24 @@ export default function FramePage() {
     trackUsageEvent('frame_tool_select', payload);
   };
 
+  const handleLibrarySelect = async () => {
+    handleCloseToolsMenu();
+
+    if (!hasLibraryAccess || !displayImage || !confirmedCid || savingToLibrary) {
+      return;
+    }
+
+    trackToolSelect('library');
+
+    await handleSaveToLibrary();
+  };
+
   const handleToolSelect = (tool) => {
+    if (tool === 'library') {
+      void handleLibrarySelect();
+      return;
+    }
+
     if (!currentImage) {
       handleCloseToolsMenu();
       return;
@@ -454,12 +482,6 @@ export default function FramePage() {
     if (!requireToolAccess()) return;
 
     trackToolSelect(tool);
-
-    if (tool === 'magic') {
-      navigate('/magic', { state: { initialSrc: currentImage, returnTo: `${window.location.pathname}${window.location.search}` } });
-      handleCloseToolsMenu();
-      return;
-    }
 
     if (tool === 'collage') {
       handleCloseToolsMenu();
@@ -514,9 +536,13 @@ export default function FramePage() {
     })
   }, [cid]);
 
-  const [snackbarOpen, setSnackBarOpen] = useState(false);
-  // Inline confirmation for library (no snackbar)
-  const [savedToLibrary, setSavedToLibrary] = useState(false);
+  const [snackbarState, setSnackbarState] = useState({
+    open: false,
+    message: '',
+    severity: 'success',
+    duration: 2000,
+    action: null,
+  });
   const [savingToLibrary, setSavingToLibrary] = useState(false);
   const [loadedSubtitle, setLoadedSubtitle] = useState('');
 
@@ -635,18 +661,22 @@ export default function FramePage() {
 
   const mainImageSaveIntentHandlers = useTrackImageSaveIntent(mainImageSaveIntentMeta);
 
-  const handleSnackbarOpen = () => {
-    setSnackBarOpen(true);
-  }
+  const handleSnackbarOpen = (message, options = {}) => {
+    setSnackbarState({
+      open: true,
+      message,
+      severity: options.severity || 'success',
+      duration: options.autoHideDuration ?? 2000,
+      action: options.action || null,
+    });
+  };
 
   const handleSnackbarClose = () => {
-    setSnackBarOpen(false);
-  }
-
-  // Reset saved state when frame/display changes
-  useEffect(() => {
-    setSavedToLibrary(false);
-  }, [displayImage, confirmedCid, season, episode, frame]);
+    setSnackbarState((prev) => ({
+      ...prev,
+      open: false,
+    }));
+  };
 
   useEffect(() => {
     if (!confirmedCid || !frame || !displayImage) {
@@ -2243,493 +2273,427 @@ useEffect(() => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            {hasLibraryAccess && (
-              <>
-                <Button
-                  size="medium"
-                  fullWidth
-                  variant={savedToLibrary ? 'contained' : 'outlined'}
-                  onClick={handleSaveToLibrary}
-                  disabled={!confirmedCid || !displayImage || savingToLibrary || savedToLibrary}
-                  sx={{ 
-                    mb: 1.5,
-                    borderColor: savedToLibrary ? 'transparent' : '#FF9800', 
-                    color: savedToLibrary ? '#111' : '#FF9800',
-                    backgroundColor: savedToLibrary ? '#FF9800' : 'transparent',
-                    '&:hover': savedToLibrary ? {
-                      backgroundColor: '#F57C00'
-                    } : { 
-                      borderColor: '#F57C00', 
-                      backgroundColor: 'rgba(255, 152, 0, 0.04)' 
-                    },
-                    '&.Mui-disabled': {
-                      borderColor: savedToLibrary ? '#FF9800' : '#ccc',
-                      color: savedToLibrary ? '#111' : '#ccc',
-                      backgroundColor: savedToLibrary ? '#FF9800' : 'transparent'
-                    }
-                  }}
-                  startIcon={savingToLibrary ? <CircularProgress size={16} sx={{ color: savedToLibrary ? '#111' : '#FF9800' }} /> : (savedToLibrary ? <Check /> : <Collections />)}
-                >
-                  {savingToLibrary ? 'Saving…' : (savedToLibrary ? 'Saved to Library' : 'Add to Library')}
-                </Button>
-                {/* <Collapse in={savedToLibrary} timeout={250} unmountOnExit>
-                  <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
-                    <Button
-                      size="medium"
-                      variant="contained"
-                      component={RouterLink}
-                      to="/collage"
-                      startIcon={<Add />}
-                      sx={{
-                        flex: 1,
-                        color: '#e5e7eb',
-                        background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
-                        border: '1px solid rgba(255, 255, 255, 0.16)',
-                        '&:hover': {
-                          background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
-                          borderColor: 'rgba(255, 255, 255, 0.24)',
-                        },
-                      }}
-                    >
-                      New Collage
-                    </Button>
-                    <Button
-                      size="medium"
-                      variant="contained"
-                      component={RouterLink}
-                      to="/library"
-                      startIcon={<Collections />}
-                      sx={{
-                        flex: 1,
-                        color: '#e5e7eb',
-                        background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
-                        border: '1px solid rgba(255, 255, 255, 0.16)',
-                        '&:hover': {
-                          background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
-                          borderColor: 'rgba(255, 255, 255, 0.24)',
-                        },
-                      }}
-                    >
-                      My Library
-                    </Button>
-                  </Stack>
-                </Collapse> */}
-              </>
-            )}
-            <Collapse in={!savedToLibrary} timeout={250}>
-              <Stack spacing={1.5} sx={{ width: '100%' }}>
-                <Box sx={{ width: '100%' }}>
-                  {/* Formatting Toolbar */}
-                  {showText &&
-                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                    <ToggleButtonGroup
-                      value={activeFormats}
-                      onChange={(event, newFormats) => {
-                        const clickedFormat = event.currentTarget?.value;
-                        const styleKeyMap = { bold: 'bold', italic: 'italic', underline: 'underline' };
-                        if (clickedFormat && styleKeyMap[clickedFormat]) {
-                          const handledWithInline = applyInlineStyleToggle(styleKeyMap[clickedFormat]);
-                          if (handledWithInline) {
-                            setShowText(true);
-                            return;
-                          }
+            <Stack spacing={1.5} sx={{ width: '100%' }}>
+              <Box sx={{ width: '100%' }}>
+                {/* Formatting Toolbar */}
+                {showText &&
+                  <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                  <ToggleButtonGroup
+                    value={activeFormats}
+                    onChange={(event, newFormats) => {
+                      const clickedFormat = event.currentTarget?.value;
+                      const styleKeyMap = { bold: 'bold', italic: 'italic', underline: 'underline' };
+                      if (clickedFormat && styleKeyMap[clickedFormat]) {
+                        const handledWithInline = applyInlineStyleToggle(styleKeyMap[clickedFormat]);
+                        if (handledWithInline) {
+                          setShowText(true);
+                          return;
                         }
+                      }
 
-                        // If no text to format, just update UI state (don't persist to base styles)
-                        setActiveFormats(newFormats);
-                        setShowText(true);
-                      }}
-                      aria-label="text formatting"
-                      sx={{ flexShrink: 0 }}
-                    >
-                      <ToggleButton size='small' value="bold" aria-label="bold">
-                        <FormatBold />
-                      </ToggleButton>
-                      <ToggleButton size='small' value="italic" aria-label="italic">
-                        <FormatItalic />
-                      </ToggleButton>
-                      <ToggleButton size='small' value="underline" aria-label="underline">
-                        <FormatUnderlined />
-                      </ToggleButton>
-                    </ToggleButtonGroup>
-                    <ToggleButtonGroup
-                      sx={{ mx: 1, flexShrink: 0 }}
-                      value={[colorPickerShowing && 'fontColor'].filter(Boolean)}
-                      onChange={(event, newFormats) => {
-                        setColorPickerShowing(newFormats.includes('fontColor'))
-                        setShowText(true)
-                      }}
-                      aria-label="text formatting"
-                    >
-                      <ToggleButton ref={colorPicker} size='small' value="fontColor" aria-label="font color">
-                        <FormatColorFill sx={{ color: colorPickerColor }} />
-                      </ToggleButton>
-                    </ToggleButtonGroup>
-                    <FontSelector selectedFont={fontFamily} onSelectFont={setFontFamily} />
-                    <Popover
-                      open={colorPickerShowing}
-                      anchorEl={colorPicker.current}
-                      onClose={() => setColorPickerShowing(false)}
-                      id="colorPicker"
-                      anchorOrigin={{
-                        vertical: 'bottom',
-                        horizontal: 'center',
-                      }}
-                      transformOrigin={{
-                        vertical: 'top',
-                        horizontal: 'center',
-                      }}
-                    >
-                      <div>
-                        <TwitterPickerWrapper
-                          onChangeComplete={(color) => changeColor(color)}
-                          color={colorPickerColor}
-                          colors={[
-                            '#FFFFFF',
-                            '#FFFF00',
-                            '#000000',
-                            '#FF4136',
-                            '#2ECC40',
-                            '#0052CC',
-                            '#FF851B',
-                            '#B10DC9',
-                            '#39CCCC',
-                            '#F012BE',
-                          ]}
-                          width="280px"
-                        />
-                      </div>
-                    </Popover>
-                  </Box>
-                  }
+                      // If no text to format, just update UI state (don't persist to base styles)
+                      setActiveFormats(newFormats);
+                      setShowText(true);
+                    }}
+                    aria-label="text formatting"
+                    sx={{ flexShrink: 0 }}
+                  >
+                    <ToggleButton size='small' value="bold" aria-label="bold">
+                      <FormatBold />
+                    </ToggleButton>
+                    <ToggleButton size='small' value="italic" aria-label="italic">
+                      <FormatItalic />
+                    </ToggleButton>
+                    <ToggleButton size='small' value="underline" aria-label="underline">
+                      <FormatUnderlined />
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                  <ToggleButtonGroup
+                    sx={{ mx: 1, flexShrink: 0 }}
+                    value={[colorPickerShowing && 'fontColor'].filter(Boolean)}
+                    onChange={(event, newFormats) => {
+                      setColorPickerShowing(newFormats.includes('fontColor'))
+                      setShowText(true)
+                    }}
+                    aria-label="text formatting"
+                  >
+                    <ToggleButton ref={colorPicker} size='small' value="fontColor" aria-label="font color">
+                      <FormatColorFill sx={{ color: colorPickerColor }} />
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                  <FontSelector selectedFont={fontFamily} onSelectFont={setFontFamily} />
+                  <Popover
+                    open={colorPickerShowing}
+                    anchorEl={colorPicker.current}
+                    onClose={() => setColorPickerShowing(false)}
+                    id="colorPicker"
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'center',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'center',
+                    }}
+                  >
+                    <div>
+                      <TwitterPickerWrapper
+                        onChangeComplete={(color) => changeColor(color)}
+                        color={colorPickerColor}
+                        colors={[
+                          '#FFFFFF',
+                          '#FFFF00',
+                          '#000000',
+                          '#FF4136',
+                          '#2ECC40',
+                          '#0052CC',
+                          '#FF851B',
+                          '#B10DC9',
+                          '#39CCCC',
+                          '#F012BE',
+                        ]}
+                        width="280px"
+                      />
+                    </div>
+                  </Popover>
+                </Box>
+                }
 
-                  {loading ?
-                    <Skeleton variant='text' height={150} width={'max(100px, 50%)'} />
-                    :
-                    <>
-                      <Stack direction='row' spacing={1} alignItems='center'>
-                        <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
-                        <TextField
-                          multiline
-                          minRows={2}
-                          fullWidth
-                          variant="outlined"
-                          size="small"
-                          placeholder="Type a caption..."
-                          value={loadedSubtitle}
-                          onMouseDown={() => {
-                            setShowText(true);
-                            setSubtitleUserInteracted(true);
-                          }}
-                          onChange={(e) => {
-                            setLoadedSubtitle(e.target.value);
-                            syncActiveFormatsFromSelection();
-                          }}
-                          onFocus={() => {
-                            setTextFieldFocused(true);
-                            setSubtitleUserInteracted(true);
-                            syncActiveFormatsFromSelection();
-                          }}
-                          onBlur={() => setTextFieldFocused(false)}
-                          InputProps={{
-                            style: {
-                              fontFamily,
+                {loading ?
+                  <Skeleton variant='text' height={150} width={'max(100px, 50%)'} />
+                  :
+                  <>
+                    <Stack direction='row' spacing={1} alignItems='center'>
+                      <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
+                      <TextField
+                        multiline
+                        minRows={2}
+                        fullWidth
+                        variant="outlined"
+                        size="small"
+                        placeholder="Type a caption..."
+                        value={loadedSubtitle}
+                        onMouseDown={() => {
+                          setShowText(true);
+                          setSubtitleUserInteracted(true);
+                        }}
+                        onChange={(e) => {
+                          setLoadedSubtitle(e.target.value);
+                          syncActiveFormatsFromSelection();
+                        }}
+                        onFocus={() => {
+                          setTextFieldFocused(true);
+                          setSubtitleUserInteracted(true);
+                          syncActiveFormatsFromSelection();
+                        }}
+                        onBlur={() => setTextFieldFocused(false)}
+                        InputProps={{
+                          style: {
+                            fontFamily,
+                          },
+                        }}
+                        inputProps={{
+                          style: {
+                            textTransform: isLowercaseFont ? 'lowercase' : 'none',
+                          },
+                        }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'white',
+                            color: 'black',
+                            '& fieldset': {
+                              borderColor: 'rgba(0, 0, 0, 0.23)',
                             },
-                          }}
-                          inputProps={{
-                            style: {
-                              textTransform: isLowercaseFont ? 'lowercase' : 'none',
+                            '&:hover fieldset': {
+                              borderColor: 'rgba(0, 0, 0, 0.87)',
                             },
-                          }}
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              backgroundColor: 'white',
-                              color: 'black',
-                              '& fieldset': {
-                                borderColor: 'rgba(0, 0, 0, 0.23)',
-                              },
-                              '&:hover fieldset': {
-                                borderColor: 'rgba(0, 0, 0, 0.87)',
-                              },
-                              '&.Mui-focused fieldset': {
-                                borderColor: 'primary.main',
-                              },
+                            '&.Mui-focused fieldset': {
+                              borderColor: 'primary.main',
                             },
-                            '& .MuiInputBase-input': {
-                              color: 'black',
-                            },
-                          }}
-                          inputRef={textFieldRef}
-                        />
-                        </Stack>
+                          },
+                          '& .MuiInputBase-input': {
+                            color: 'black',
+                          },
+                        }}
+                        inputRef={textFieldRef}
+                      />
                       </Stack>
+                    </Stack>
+                    <Button
+                      size="medium"
+                      fullWidth
+                      variant="contained"
+                      onClick={handleOpenToolsMenu}
+                      startIcon={<Add />}
+                      endIcon={<ArrowDropDown />}
+                      aria-haspopup="true"
+                      aria-controls={toolsMenuOpen ? 'frame-tools-menu' : undefined}
+                      aria-expanded={toolsMenuOpen ? 'true' : undefined}
+                      sx={{ mt: 1.5, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                    >
+                      Add to...
+                    </Button>
+                    <Menu
+                      id="frame-tools-menu"
+                      anchorEl={toolsAnchorEl}
+                      open={toolsMenuOpen}
+                      onClose={handleCloseToolsMenu}
+                      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                      transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                    >
+                      <MenuItem
+                        onClick={() => handleToolSelect('library')}
+                        disabled={!hasLibraryAccess || !confirmedCid || !displayImage || savingToLibrary}
+                      >
+                        <ListItemIcon>
+                          {savingToLibrary ? (
+                            <CircularProgress size={18} />
+                          ) : (
+                            <Collections fontSize="small" />
+                          )}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={savingToLibrary ? 'Saving…' : 'Library'}
+                          secondary={!hasLibraryAccess ? 'Pro required' : undefined}
+                        />
+                      </MenuItem>
+                      <MenuItem onClick={() => handleToolSelect('advanced')} disabled={!currentImage}>
+                        <ListItemIcon>
+                          <Edit fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Caption Tool" />
+                      </MenuItem>
+                      <MenuItem onClick={() => handleToolSelect('collage')} disabled={!currentImage || addingToCollage}>
+                        <ListItemIcon>
+                          <PhotoLibrary fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary="Collage Tool"
+                          secondary={
+                            !hasToolAccess
+                              ? 'Pro required'
+                              : addingToCollage
+                                ? 'Preparing...'
+                                : undefined
+                          }
+                        />
+                      </MenuItem>
+                    </Menu>
+                    {showText && loadedSubtitle?.trim() !== '' && (
                       <Button
                         size="medium"
                         fullWidth
                         variant="contained"
-                        onClick={handleOpenToolsMenu}
-                        startIcon={<Edit />}
-                        endIcon={<ArrowDropDown />}
-                        aria-haspopup="true"
-                        aria-controls={toolsMenuOpen ? 'frame-tools-menu' : undefined}
-                        aria-expanded={toolsMenuOpen ? 'true' : undefined}
-                        sx={{ mt: 1.5, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        onClick={handleClearCaption}
+                        sx={{ mt: 2, backgroundColor: '#f44336', '&:hover': { backgroundColor: '#d32f2f' } }}
+                        startIcon={<Close />}
                       >
-                        Tools
+                        Clear Caption
                       </Button>
-                      <Menu
-                        id="frame-tools-menu"
-                        anchorEl={toolsAnchorEl}
-                        open={toolsMenuOpen}
-                        onClose={handleCloseToolsMenu}
-                        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                        transformOrigin={{ vertical: 'top', horizontal: 'center' }}
-                      >
-                        <MenuItem onClick={() => handleToolSelect('advanced')} disabled={!currentImage}>
-                          <ListItemIcon>
-                            <Edit fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText primary="Advanced Editor" />
-                        </MenuItem>
-                        <MenuItem onClick={() => handleToolSelect('magic')} disabled={!currentImage}>
-                          <ListItemIcon>
-                            <AutoFixHigh fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText primary="Magic Tools" secondary={hasToolAccess ? undefined : 'Pro required'} />
-                        </MenuItem>
-                        <MenuItem onClick={() => handleToolSelect('collage')} disabled={!currentImage || addingToCollage}>
-                          <ListItemIcon>
-                            <PhotoLibrary fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary="Add to Collage"
-                            secondary={
-                              !hasToolAccess
-                                ? 'Pro required'
-                                : addingToCollage
-                                  ? 'Preparing...'
-                                  : undefined
-                            }
+                    )}
+                    {textFieldFocused && showAds && (
+                      <Box sx={{ mt: 2 }}>
+                        <FixedMobileBannerAd />
+                      </Box>
+                    )}
+                    {showText &&
+                      <>
+                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
+                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                          {/* <Tooltip title="Line Height">
+                            <IconButton>
+                              <VerticalAlignTop alt="Line Height" />
+                            </IconButton>
+                          </Tooltip> */}
+                          <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                }
+                              },
+                              track: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                  backgroundColor: 'white',
+                                  height: 6,
+                                }
+                              },
+                              rail: {
+                                style: {
+                                  backgroundColor: 'white',
+                                  height: 6,
+                                }
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' }),
+                                  backgroundColor: '#2079fe',
+                                  width: 20,
+                                  height: 20,
+                                }
+                              }
+                            }}
+                            size="small"
+                            defaultValue={1}
+                            min={1}
+                            max={10}
+                            step={0.2}
+                            value={fontBottomMarginScaleFactor}
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              setFontBottomMarginScaleFactor(newValue)
+                            }}
+                            onChangeCommitted={() => updateCanvas()}
+                            marks
+                            valueLabelFormat='Bottom Margin'
+                            valueLabelDisplay
+                            onMouseDown={() => {
+                              setShowText(true)
+                            }}
+                            onTouchStart={() => {
+                              setShowText(true)
+                            }}
                           />
-                        </MenuItem>
-                      </Menu>
-                      {showText && loadedSubtitle?.trim() !== '' && (
-                        <Button
-                          size="medium"
-                          fullWidth
-                          variant="contained"
-                          onClick={handleClearCaption}
-                          sx={{ mt: 2, backgroundColor: '#f44336', '&:hover': { backgroundColor: '#d32f2f' } }}
-                          startIcon={<Close />}
-                        >
-                          Clear Caption
-                        </Button>
-                      )}
-                      {textFieldFocused && showAds && (
-                        <Box sx={{ mt: 2 }}>
-                          <FixedMobileBannerAd />
-                        </Box>
-                      )}
-                      {showText &&
-                        <>
-                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
-                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                            {/* <Tooltip title="Line Height">
-                              <IconButton>
-                                <VerticalAlignTop alt="Line Height" />
-                              </IconButton>
-                            </Tooltip> */}
-                            <Slider
-                              componentsProps={{
-                                root: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                  }
-                                },
-                                track: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                rail: {
-                                  style: {
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                thumb: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'auto' }),
-                                    backgroundColor: '#2079fe',
-                                    width: 20,
-                                    height: 20,
-                                  }
+                        </Stack>
+                      </FormControl>
+                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Font Size</FormLabel>
+                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                          {/* <Tooltip title="Font Size">
+                            <IconButton>
+                              <FormatSize alt="Font Size" />
+                            </IconButton>
+                          </Tooltip> */}
+                          <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' }),
                                 }
-                              }}
-                              size="small"
-                              defaultValue={1}
-                              min={1}
-                              max={10}
-                              step={0.2}
-                              value={fontBottomMarginScaleFactor}
-                              onChange={(e, newValue) => {
-                                if (e.type === 'mousedown') {
-                                  return;
+                              },
+                              track: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                  backgroundColor: 'white',
+                                  height: 6,
                                 }
-                                setFontBottomMarginScaleFactor(newValue)
-                              }}
-                              onChangeCommitted={() => updateCanvas()}
-                              marks
-                              valueLabelFormat='Bottom Margin'
-                              valueLabelDisplay
-                              onMouseDown={() => {
-                                setShowText(true)
-                              }}
-                              onTouchStart={() => {
-                                setShowText(true)
-                              }}
-                            />
-                          </Stack>
-                        </FormControl>
-                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Font Size</FormLabel>
-                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                            {/* <Tooltip title="Font Size">
-                              <IconButton>
-                                <FormatSize alt="Font Size" />
-                              </IconButton>
-                            </Tooltip> */}
-                            <Slider
-                              componentsProps={{
-                                root: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                  }
-                                },
-                                track: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                rail: {
-                                  style: {
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                thumb: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'auto' }),
-                                    backgroundColor: '#2079fe',
-                                    width: 20,
-                                    height: 20,
-                                  }
+                              },
+                              rail: {
+                                style: {
+                                  backgroundColor: 'white',
+                                  height: 6,
                                 }
-                              }}
-                              size="small"
-                              defaultValue={25}
-                              min={0.25}
-                              max={50}
-                              step={1}
-                              value={fontSizeScaleFactor * 25}
-                              onChange={(e, newValue) => {
-                                if (e.type === 'mousedown') {
-                                  return;
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' }),
+                                  backgroundColor: '#2079fe',
+                                  width: 20,
+                                  height: 20,
                                 }
-                                setFontSizeScaleFactor(newValue / 25)
-                              }}
-                              onChangeCommitted={() => updateCanvas()}
-                              marks
-                              valueLabelFormat='Font Size'
-                              valueLabelDisplay
-                              onMouseDown={() => {
-                                setShowText(true)
-                              }}
-                              onTouchStart={() => {
-                                setShowText(true)
-                              }}
-                            />
-                          </Stack>
-                        </FormControl>
-                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Line Height</FormLabel>
-                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                            {/* <Tooltip title="Line Height">
-                              <IconButton>
-                                <FormatLineSpacing alt="Line Height" />
-                              </IconButton>
-                            </Tooltip> */}
-                            <Slider
-                              componentsProps={{
-                                root: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                  }
-                                },
-                                track: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                rail: {
-                                  style: {
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                thumb: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'auto' }),
-                                    backgroundColor: '#2079fe',
-                                    width: 20,
-                                    height: 20,
-                                  }
+                              }
+                            }}
+                            size="small"
+                            defaultValue={25}
+                            min={0.25}
+                            max={50}
+                            step={1}
+                            value={fontSizeScaleFactor * 25}
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              setFontSizeScaleFactor(newValue / 25)
+                            }}
+                            onChangeCommitted={() => updateCanvas()}
+                            marks
+                            valueLabelFormat='Font Size'
+                            valueLabelDisplay
+                            onMouseDown={() => {
+                              setShowText(true)
+                            }}
+                            onTouchStart={() => {
+                              setShowText(true)
+                            }}
+                          />
+                        </Stack>
+                      </FormControl>
+                      <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                        <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Line Height</FormLabel>
+                        <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                          {/* <Tooltip title="Line Height">
+                            <IconButton>
+                              <FormatLineSpacing alt="Line Height" />
+                            </IconButton>
+                          </Tooltip> */}
+                          <Slider
+                            componentsProps={{
+                              root: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' }),
                                 }
-                              }}
-                              size="small"
-                              defaultValue={1}
-                              min={1}
-                              max={5}
-                              step={0.2}
-                              value={fontLineHeightScaleFactor}
-                              onChange={(e, newValue) => {
-                                if (e.type === 'mousedown') {
-                                  return;
+                              },
+                              track: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'none' }),
+                                  backgroundColor: 'white',
+                                  height: 6,
                                 }
-                                setFontLineHeightScaleFactor(newValue);
-                              }}
-                              onChangeCommitted={() => updateCanvas()}
-                              valueLabelFormat='Line Height'
-                              valueLabelDisplay
-                              onMouseDown={() => {
-                                setShowText(true)
-                              }}
-                              onTouchStart={() => {
-                                setShowText(true)
-                              }}
-                              marks
-                            />
-                          </Stack>
-                        </FormControl>
-                      </>
-                      }
+                              },
+                              rail: {
+                                style: {
+                                  backgroundColor: 'white',
+                                  height: 6,
+                                }
+                              },
+                              thumb: {
+                                style: {
+                                  ...(isSm && { pointerEvents: 'auto' }),
+                                  backgroundColor: '#2079fe',
+                                  width: 20,
+                                  height: 20,
+                                }
+                              }
+                            }}
+                            size="small"
+                            defaultValue={1}
+                            min={1}
+                            max={5}
+                            step={0.2}
+                            value={fontLineHeightScaleFactor}
+                            onChange={(e, newValue) => {
+                              if (e.type === 'mousedown') {
+                                return;
+                              }
+                              setFontLineHeightScaleFactor(newValue);
+                            }}
+                            onChangeCommitted={() => updateCanvas()}
+                            valueLabelFormat='Line Height'
+                            valueLabelDisplay
+                            onMouseDown={() => {
+                              setShowText(true)
+                            }}
+                            onTouchStart={() => {
+                              setShowText(true)
+                            }}
+                            marks
+                          />
+                        </Stack>
+                      </FormControl>
                     </>
-                  }
+                    }
+                  </>
+                }
 
-                {/* </CardContent>
-              </Card> */}
-                </Box>
-              </Stack>
-            </Collapse>
+              {/* </CardContent>
+            </Card> */}
+              </Box>
+            </Stack>
 
-              {/* Library actions are now above text controls in right column */}
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} my={1}>
@@ -2828,13 +2792,13 @@ useEffect(() => {
                                     md: { backgroundColor: 'ButtonHighlight' },
                                   },
                                 }}
-                                onClick={() => {
-                                  navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
-                                  handleSnackbarOpen();
-                                }}
-                              >
-                                <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
-                              </Fab>
+                              onClick={() => {
+                                navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
+                                handleSnackbarOpen('Copied to clipboard!');
+                              }}
+                            >
+                              <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                            </Fab>
                             </ListItemIcon>
                           </ListItem>
                         ))}
@@ -2869,18 +2833,20 @@ useEffect(() => {
             busy={addingToCollage}
           />
           <Snackbar
-            open={snackbarOpen}
-            autoHideDuration={2000}
-            severity="success"
+            open={snackbarState.open}
+            autoHideDuration={snackbarState.duration}
             onClose={handleSnackbarClose}
-            message="Copied to clipboard!"
+            message={snackbarState.message || 'Done'}
           >
-            <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
-              Copied to clipboard!
+            <Alert
+              onClose={handleSnackbarClose}
+              severity={snackbarState.severity}
+              action={snackbarState.action}
+              sx={{ width: '100%' }}
+            >
+              {snackbarState.message || 'Done'}
             </Alert>
           </Snackbar>
-
-          {/* Inline confirmation replaces library snackbar */}
 
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>
