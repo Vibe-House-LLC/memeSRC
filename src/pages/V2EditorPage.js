@@ -11,7 +11,7 @@ import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, Chip, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, InputAdornment, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Radio, FormControlLabel, RadioGroup, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, Edit, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Send, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, Edit, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, LocalPoliceRounded, Menu, Redo, Save, Send, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
@@ -55,6 +55,7 @@ import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from 
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import { shouldShowAds } from '../utils/adsenseLoader';
 import { isAdPauseActive } from '../utils/adsenseLoader';
+import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -374,6 +375,7 @@ const EditorPage = ({ shows }) => {
   const [showLegacyTools, setShowLegacyTools] = useState(false);
   // const buttonRef = useRef(null);
   const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
+  const { openSubscriptionDialog } = useSubscribeDialog();
 
   // Image selection stuff
   const [selectedImage, setSelectedImage] = useState(null);
@@ -3081,6 +3083,10 @@ const EditorPage = ({ shows }) => {
 
   const performAddToCollage = useCallback(
     async (captionEntry) => {
+      if (!isProUser) {
+        openSubscriptionDialog();
+        return;
+      }
       if (addingToCollage || imageUploading) return;
 
       setAddingToCollage(true);
@@ -3155,21 +3161,26 @@ const EditorPage = ({ shows }) => {
     },
     [
       addingToCollage,
-      imageUploading,
-      trackSaveDialogAction,
-      textLayerEntries,
-      captureCanvasBlob,
       blobToDataUrl,
-      navigate,
-      setSeverity,
+      captureCanvasBlob,
+      createProject,
+      editorImageIntentBaseMeta,
+      imageUploading,
+      isProUser,
+      openSubscriptionDialog,
       setMessage,
       setOpen,
-      editorImageIntentBaseMeta,
-      createProject,
+      setSeverity,
+      textLayerEntries,
+      trackSaveDialogAction,
     ]
   );
 
   const handleAddToCollageClick = useCallback(() => {
+    if (!isProUser) {
+      openSubscriptionDialog();
+      return;
+    }
     if (imageUploading || addingToCollage) return;
     const entries = textLayerEntries;
     if (entries.length > 1) {
@@ -3182,7 +3193,7 @@ const EditorPage = ({ shows }) => {
     }
     const entry = entries[0] || null;
     performAddToCollage(entry);
-  }, [addingToCollage, imageUploading, performAddToCollage, textLayerEntries, trackSaveDialogAction]);
+  }, [addingToCollage, imageUploading, isProUser, openSubscriptionDialog, performAddToCollage, textLayerEntries, trackSaveDialogAction]);
 
   const handleCollageChooserClose = useCallback(() => {
     setCollageChooserOpen(false);
@@ -5167,6 +5178,22 @@ const EditorPage = ({ shows }) => {
                   loading={addingToCollage}
                   onClick={handleAddToCollageClick}
                   startIcon={<AddPhotoAlternate />}
+                  endIcon={(
+                    <Chip
+                      icon={<LocalPoliceRounded fontSize="small" />}
+                      label="Pro"
+                      size="small"
+                      sx={{
+                        ml: 0.5,
+                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                        border: '1px solid #8b5cc7',
+                        boxShadow: '0 0 12px rgba(107,66,161,0.45)',
+                        '& .MuiChip-label': { fontWeight: 700, color: '#fff', fontSize: '12px' },
+                        '& .MuiChip-icon': { color: '#fff' },
+
+                      }}
+                    />
+                  )}
                 >
                   Add to collage
                 </LoadingButton>
@@ -5386,6 +5413,21 @@ const EditorPage = ({ shows }) => {
                 fullWidth
                 loading={addingToCollage}
                 disabled={addingToCollage}
+                endIcon={(
+                  <Chip
+                    icon={<LocalPoliceRounded fontSize="small" />}
+                    label="Pro"
+                    size="small"
+                    sx={{
+                      ml: 0.5,
+                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                      border: '1px solid #8b5cc7',
+                      boxShadow: '0 0 12px rgba(107,66,161,0.45)',
+                      '& .MuiChip-label': { fontWeight: 700, color: '#fff', fontSize: '12px' },
+                      '& .MuiChip-icon': { color: '#fff' },
+                    }}
+                  />
+                )}
                 onClick={() => {
                   const entry =
                     collageCaptionSelectionIndex === null || collageCaptionSelectionIndex === undefined
