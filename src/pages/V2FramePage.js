@@ -42,7 +42,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, ArrowDropDown, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu as MenuIcon, OpenInNew, Collections, Add, PhotoLibrary } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, ArrowDropDown, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu as MenuIcon, OpenInNew, Collections, Add, PhotoLibrary, Dashboard } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -2465,7 +2465,7 @@ useEffect(() => {
                       </MenuItem>
                       <MenuItem onClick={() => handleToolSelect('collage')} disabled={!currentImage || addingToCollage}>
                         <ListItemIcon>
-                          <PhotoLibrary fontSize="small" />
+                          <Dashboard fontSize="small" />
                         </ListItemIcon>
                         <ListItemText
                           primary="Collage Tool"
