@@ -15,6 +15,7 @@ import {
   CardMedia,
   Grid,
   Chip,
+  Badge,
   Slider,
   CircularProgress,
   Stack,
@@ -42,7 +43,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, ArrowDropDown, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu as MenuIcon, OpenInNew, Collections, Add, PhotoLibrary, Dashboard } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, ArrowDropDown, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu as MenuIcon, OpenInNew, Collections, Add, PhotoLibrary, Dashboard, LocalPoliceRounded } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -428,6 +429,15 @@ export default function FramePage() {
     return true;
   };
 
+  const requireLibraryAccess = () => {
+    if (!hasLibraryAccess) {
+      openSubscriptionDialog();
+      handleCloseToolsMenu();
+      return false;
+    }
+    return true;
+  };
+
   const trackToolSelect = (tool) => {
     const payload = {
       source: 'V2FramePage',
@@ -452,9 +462,9 @@ export default function FramePage() {
   const handleLibrarySelect = async () => {
     handleCloseToolsMenu();
 
-    if (!hasLibraryAccess || !displayImage || !confirmedCid || savingToLibrary) {
-      return;
-    }
+    if (!requireLibraryAccess()) return;
+
+    if (!displayImage || !confirmedCid || savingToLibrary) return;
 
     trackToolSelect('library');
 
@@ -2443,7 +2453,7 @@ useEffect(() => {
                     >
                       <MenuItem
                         onClick={() => handleToolSelect('library')}
-                        disabled={!hasLibraryAccess || !confirmedCid || !displayImage || savingToLibrary}
+                        disabled={!confirmedCid || !displayImage || savingToLibrary}
                       >
                         <ListItemIcon>
                           {savingToLibrary ? (
@@ -2453,8 +2463,38 @@ useEffect(() => {
                           )}
                         </ListItemIcon>
                         <ListItemText
-                          primary={savingToLibrary ? 'Saving…' : 'Library'}
-                          secondary={!hasLibraryAccess ? 'Pro required' : undefined}
+                          primary={
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Typography component="span" variant="body1">
+                                {savingToLibrary ? 'Saving…' : 'Library'}
+                              </Typography>
+                              {!hasLibraryAccess && !savingToLibrary && (
+                                <Badge>
+                                  <Chip
+                                    icon={<LocalPoliceRounded />}
+                                    label="Pro"
+                                    size="small"
+                                    sx={{
+                                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                                      border: '1px solid #8b5cc7',
+                                      boxShadow: '0 0 20px rgba(107,66,161,0.5)',
+                                      '& .MuiChip-label': {
+                                        fontWeight: 'bold',
+                                        color: '#fff',
+                                      },
+                                      '& .MuiChip-icon': {
+                                        color: '#fff',
+                                      },
+                                      '&:hover': {
+                                        background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                                        boxShadow: '0 0 25px rgba(107,66,161,0.6)',
+                                      },
+                                    }}
+                                  />
+                                </Badge>
+                              )}
+                            </Stack>
+                          }
                         />
                       </MenuItem>
                       <MenuItem onClick={() => handleToolSelect('advanced')} disabled={!currentImage}>
@@ -2468,14 +2508,39 @@ useEffect(() => {
                           <Dashboard fontSize="small" />
                         </ListItemIcon>
                         <ListItemText
-                          primary="Collage Tool"
-                          secondary={
-                            !hasToolAccess
-                              ? 'Pro required'
-                              : addingToCollage
-                                ? 'Preparing...'
-                                : undefined
+                          primary={
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Typography component="span" variant="body1">
+                                Collage Tool
+                              </Typography>
+                              {!hasToolAccess && (
+                                <Badge>
+                                  <Chip
+                                    icon={<LocalPoliceRounded />}
+                                    label="Pro"
+                                    size="small"
+                                    sx={{
+                                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                                      border: '1px solid #8b5cc7',
+                                      boxShadow: '0 0 20px rgba(107,66,161,0.5)',
+                                      '& .MuiChip-label': {
+                                        fontWeight: 'bold',
+                                        color: '#fff',
+                                      },
+                                      '& .MuiChip-icon': {
+                                        color: '#fff',
+                                      },
+                                      '&:hover': {
+                                        background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
+                                        boxShadow: '0 0 25px rgba(107,66,161,0.6)',
+                                      },
+                                    }}
+                                  />
+                                </Badge>
+                              )}
+                            </Stack>
                           }
+                          secondary={addingToCollage ? 'Preparing...' : undefined}
                         />
                       </MenuItem>
                     </Menu>
