@@ -212,6 +212,7 @@ export default function CollagePage() {
   const [currentView, setCurrentView] = useState('editor'); // 'library' | 'editor'
   const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 2 });
   const libraryActionsRef = useRef({ primary: null, clearSelection: null });
+  const [startInLibrary, setStartInLibrary] = useState(false);
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
@@ -253,6 +254,21 @@ export default function CollagePage() {
       } catch (_) { /* ignore */ }
     }
   }, [location.state, activeProjectId, projectId]);
+
+  useEffect(() => {
+    if (location.state?.startInLibrary) {
+      setStartInLibrary(true);
+      const { startInLibrary: _omit, ...rest } = location.state || {};
+      const nextState = rest && Object.keys(rest).length > 0 ? rest : undefined;
+      navigate(location.pathname, { replace: true, state: nextState });
+    }
+  }, [location.state, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (location.pathname !== '/projects/new') {
+      setStartInLibrary(false);
+    }
+  }, [location.pathname]);
 
 
 
@@ -1624,6 +1640,7 @@ export default function CollagePage() {
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
     libraryRefreshTrigger, // For refreshing library when new images are auto-saved
+    initialShowLibrary: startInLibrary,
     onCaptionEditorVisibleChange: (open) => {
       setIsCaptionEditorOpen(open);
       captionOpenPrevRef.current = open;
