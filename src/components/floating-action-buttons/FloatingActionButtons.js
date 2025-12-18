@@ -17,8 +17,9 @@ import {
     Divider,
     Badge,
     Chip,
+    IconButton,
 } from '@mui/material';
-import { Dashboard, KeyboardArrowUp, LocalPoliceRounded } from '@mui/icons-material';
+import { Close, Dashboard, Handyman, KeyboardArrowUp, LocalPoliceRounded } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
@@ -280,8 +281,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const toolsButton = (
         <StyledButton
             onClick={handleToolsButtonClick}
-            startIcon={<Dashboard />}
-            endIcon={<KeyboardArrowUp />}
+            startIcon={<Handyman />}
             aria-haspopup="dialog"
             aria-expanded={uploadChoiceOpen ? 'true' : undefined}
             aria-controls={uploadChoiceOpen ? 'upload-choice-dialog' : undefined}
@@ -395,10 +395,29 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 onClose={resetUploadState}
                 maxWidth="xs"
                 fullWidth
+                sx={{
+                    '& .MuiDialog-paper': {
+                        borderRadius: 3,
+                    },
+                }}
             >
-                <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>
-                    Tools
-                </DialogTitle>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <DialogTitle
+                        sx={{
+                            fontWeight: 800,
+                            textAlign: 'left',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                        }}
+                    >
+                        <Handyman fontSize="small" />
+                        Tools
+                    </DialogTitle>
+                    <IconButton onClick={resetUploadState} aria-label="close">
+                        <Close />
+                    </IconButton>
+                </Stack>
                 <Divider sx={{ mb: 2 }} />
                 {/* <DialogContent>
                     <Typography variant="body2" color="text.secondary">
@@ -414,7 +433,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                         >
                             Caption Tool
                         </Button>
-                        <Typography variant="body2" color="text.secondary" textAlign={'center'} pb={1}>
+                        <Typography variant="body2" color="text.secondary" textAlign={'center'} pb={1.5}>
                             Add text to your image.
                         </Typography>
                         <Button
@@ -449,7 +468,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                                 />
                             </Badge>
                         </Button>
-                        <Typography variant="body2" color="text.secondary" textAlign={'center'} pb={1}>
+                        <Typography variant="body2" color="text.secondary" textAlign={'center'} pb={1.5}>
                             Edit your image with prompts.
                         </Typography>
                         <Button
@@ -483,13 +502,15 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                                 />
                             </Badge>
                         </Button>
-                        <Typography variant="body2" color="text.secondary" textAlign={'center'} pb={2}>
+                        <Typography variant="body2" color="text.secondary" textAlign={'center'} pb={1.5}>
                             Create a collage from your images.
                         </Typography>
                         <Divider />
-                        <Button onClick={resetUploadState} size="large" color="inherit">
-                            Cancel
-                        </Button>
+                        <Box sx={{ width: '100%', pt: 2 }}>
+                            <Button onClick={resetUploadState} size="large" color="error" variant="contained" fullWidth>
+                                Cancel
+                            </Button>
+                        </Box>
                     </Stack>
                 </DialogActions>
             </Dialog>
