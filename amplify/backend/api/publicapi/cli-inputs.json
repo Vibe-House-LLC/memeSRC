@@ -147,38 +147,6 @@
         }
       }
     },
-    "/inpaint": {
-      "name": "/inpaint",
-      "lambdaFunction": "memesrcinpainter",
-      "permissions": {
-        "setting": "private",
-        "auth": [
-          "create",
-          "read",
-          "update",
-          "delete"
-        ],
-        "groups": {
-          "admins": [
-            "create",
-            "read",
-            "update",
-            "delete"
-          ],
-          "mods": [
-            "create",
-            "read",
-            "update",
-            "delete"
-          ],
-          "contributors": [
-            "create",
-            "read",
-            "update"
-          ]
-        }
-      }
-    },
     "/tvdb": {
       "name": "/tvdb",
       "lambdaFunction": "memesrcTVDB",
@@ -390,6 +358,45 @@
             "delete"
           ]
         }
+      }
+    },
+    "/inpaint": {
+      "name": "/inpaint",
+      "lambdaFunction": "memesrcinpainter",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update",
+          "delete"
+        ],
+        "groups": {
+          "admins": [
+            "create"
+          ],
+          "mods": [
+            "create"
+          ],
+          "contributors": [
+            "create"
+          ]
+        }
+      }
+    },
+    "/getSignedUrl": {
+      "name": "/getSignedUrl",
+      "lambdaFunction": "memesrcGetSignedUrl",
+      "permissions": {
+        "groups": {
+          "admins": [
+            "create"
+          ],
+          "mods": [
+            "create"
+          ]
+        },
+        "setting": "private"
       }
     }
   }

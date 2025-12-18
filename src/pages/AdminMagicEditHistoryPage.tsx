@@ -16,6 +16,7 @@ import {
   DialogTitle,
   Divider,
   Grid,
+  IconButton,
   Stack,
   MenuItem,
   TextField,
@@ -213,16 +214,12 @@ export default function AdminMagicEditHistoryPage() {
       )}
       <Grid container spacing={2}>
         {items.map((item) => {
-          const meta = parseMetadata(item.metadata);
           const isRemoved = normalizeStatus(item.status) === 'removed';
           return (
             <Grid item xs={12} sm={6} md={4} lg={3} key={item.id}>
               <Card variant="outlined">
                 <CardActionArea onClick={() => setSelected(item)} sx={{ alignItems: 'stretch' }}>
-                  <CardContent>
-                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-start">
-                      <Chip size="small" label={`Model: ${formatModel(meta?.model)}`} variant="outlined" />
-                    </Stack>
+                  <CardContent sx={{ p: 1.3 }}>
                     {isRemoved ? (
                       <Box
                         sx={{
@@ -247,19 +244,33 @@ export default function AdminMagicEditHistoryPage() {
                           src={item.imageUrl}
                           alt="Generated"
                           sx={{
-                          mt: 1,
-                          width: '100%',
-                          aspectRatio: '16 / 9',
-                          objectFit: 'contain',
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          cursor: 'pointer',
-                          backgroundColor: 'background.default',
+                            mt: 1,
+                            width: '100%',
+                            aspectRatio: '16 / 9',
+                            objectFit: 'contain',
+                            borderRadius: 1,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            cursor: 'pointer',
+                            backgroundColor: 'background.default',
                           }}
                         />
                       )
                     )}
+
+                    <Typography
+                      variant="body1"
+                      color="text.primary"
+                      sx={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        pt: 1,
+                      }}
+                    >
+                      <b>Prompt: </b>{item.prompt || '(No prompt)'}
+                    </Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
                       {item.createdAt ? new Date(item.createdAt).toLocaleString() : '—'}
                     </Typography>
@@ -299,13 +310,19 @@ function HistoryDialog({
   const [savingStatus, setSavingStatus] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<{ url: string; label: string } | null>(null);
+  const [submittedImageUrl, setSubmittedImageUrl] = useState<string | null>(null);
+  const [loadingSubmittedImage, setLoadingSubmittedImage] = useState(false);
+  const [submittedImageError, setSubmittedImageError] = useState<string | null>(null);
   const meta = useMemo(() => parseMetadata(item?.metadata), [item]);
   const effectiveStatus = normalizeStatus(statusValue);
   const showRemovedPlaceholder = effectiveStatus === 'removed';
+  const hasSubmittedImage = Boolean(meta?.initialImageKey);
 
   useEffect(() => {
     let cancelled = false;
     setStatusValue(normalizeStatus(item?.status));
+    setFullscreenImage(null);
     if (!item?.owner) {
       setUser(null);
       return;
@@ -328,6 +345,49 @@ function HistoryDialog({
       cancelled = true;
     };
   }, [item]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSubmittedImageUrl(null);
+    setSubmittedImageError(null);
+    const initialKey = meta?.initialImageKey;
+    if (!item || !initialKey || typeof initialKey !== 'string') {
+      setLoadingSubmittedImage(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (initialKey.startsWith('http://') || initialKey.startsWith('https://')) {
+      setSubmittedImageUrl(initialKey);
+      setLoadingSubmittedImage(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    const loadSubmittedImage = async () => {
+      setLoadingSubmittedImage(true);
+      try {
+        const resp = await API.post('publicapi', '/getSignedUrl', {
+          queryStringParameters: { path: initialKey },
+        });
+        if (!cancelled) {
+          setSubmittedImageUrl(resp?.url || null);
+          setSubmittedImageError(resp?.url ? null : 'Unable to load submitted image.');
+        }
+      } catch {
+        if (!cancelled) {
+          setSubmittedImageError('Unable to load submitted image.');
+          setSubmittedImageUrl(null);
+        }
+      } finally {
+        if (!cancelled) setLoadingSubmittedImage(false);
+      }
+    };
+    void loadSubmittedImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [item, meta?.initialImageKey]);
 
   const handleStatusUpdate = useCallback(
     async (next: StatusOption) => {
@@ -395,41 +455,113 @@ function HistoryDialog({
       <DialogTitle>Magic Edit Review</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          {showRemovedPlaceholder ? (
-            <Box
-              sx={{
-                width: '100%',
-                aspectRatio: '16 / 9',
-                objectFit: 'contain',
-                borderRadius: 1,
-                border: '1px dashed',
-                borderColor: 'divider',
-                backgroundColor: 'background.default',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <CloseIcon color="disabled" sx={{ fontSize: 56 }} />
-            </Box>
-          ) : (
-            item.imageUrl && (
-              <Box
-                component="img"
-                src={item.imageUrl}
-                alt="Generated"
-                sx={{
-                  width: '100%',
-                  aspectRatio: '16 / 9',
-                  objectFit: 'contain',
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  backgroundColor: 'background.default',
-                }}
-              />
-            )
-          )}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="stretch">
+            <Stack spacing={1} sx={{ flex: 1 }}>
+              <Typography variant="subtitle2" fontWeight={700}>
+                Generated image
+              </Typography>
+              {showRemovedPlaceholder ? (
+                <Box
+                  sx={{
+                    width: '100%',
+                    aspectRatio: '16 / 9',
+                    objectFit: 'contain',
+                    borderRadius: 1,
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                    backgroundColor: 'background.default',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <CloseIcon color="disabled" sx={{ fontSize: 56 }} />
+                </Box>
+              ) : item.imageUrl ? (
+                <Box
+                  component="img"
+                  src={item.imageUrl}
+                  alt="Generated"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setFullscreenImage({ url: item.imageUrl || '', label: 'Generated image' })}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setFullscreenImage({ url: item.imageUrl || '', label: 'Generated image' });
+                    }
+                  }}
+                  sx={{
+                    width: '100%',
+                    aspectRatio: '16 / 9',
+                    objectFit: 'contain',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    backgroundColor: 'background.default',
+                    cursor: 'pointer',
+                  }}
+                />
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Generated image unavailable.
+                </Typography>
+              )}
+            </Stack>
+            {hasSubmittedImage && (
+              <Stack spacing={1} sx={{ flex: 1 }}>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Submitted image
+                </Typography>
+                {loadingSubmittedImage ? (
+                  <Box
+                    sx={{
+                      width: '100%',
+                      aspectRatio: '16 / 9',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      backgroundColor: 'background.default',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <CircularProgress size={28} />
+                  </Box>
+                ) : submittedImageUrl ? (
+                  <Box
+                    component="img"
+                    src={submittedImageUrl}
+                    alt="Submitted"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setFullscreenImage({ url: submittedImageUrl, label: 'Submitted image' })}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setFullscreenImage({ url: submittedImageUrl, label: 'Submitted image' });
+                      }
+                    }}
+                    sx={{
+                      width: '100%',
+                      aspectRatio: '16 / 9',
+                      objectFit: 'contain',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      backgroundColor: 'background.default',
+                      cursor: 'pointer',
+                    }}
+                  />
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    {submittedImageError || 'Submitted image unavailable.'}
+                  </Typography>
+                )}
+              </Stack>
+            )}
+          </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip size="small" label={`Model: ${formatModel(meta?.model)}`} variant="outlined" />
             <Chip size="small" label={`Status: ${effectiveStatus}`} />
@@ -468,14 +600,9 @@ function HistoryDialog({
             {loadingUser
               ? 'Loading user...'
               : user
-              ? `${user.username || '—'} (${user.email || 'no email'})`
-              : item.owner || '—'}
+                ? `${user.username || '—'} (${user.email || 'no email'})`
+                : item.owner || '—'}
           </Typography>
-          {meta?.initialImageKey && (
-            <Typography variant="body2" color="text.secondary">
-              Initial Image Key: {meta.initialImageKey}
-            </Typography>
-          )}
           {item.updatedAt && (
             <Typography variant="body2" color="text.secondary">
               Last Updated: {new Date(item.updatedAt).toLocaleString()}
@@ -491,6 +618,40 @@ function HistoryDialog({
         )}
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
+      <Dialog open={!!fullscreenImage} onClose={() => setFullscreenImage(null)} fullScreen>
+        <Box
+          sx={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'background.default',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 2,
+          }}
+        >
+          <IconButton
+            onClick={() => setFullscreenImage(null)}
+            aria-label="Close image"
+            sx={{ position: 'absolute', top: 16, right: 16 }}
+          >
+            <CloseIcon />
+          </IconButton>
+          {fullscreenImage && (
+            <Box
+              component="img"
+              src={fullscreenImage.url}
+              alt={fullscreenImage.label}
+              sx={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+              }}
+            />
+          )}
+        </Box>
+      </Dialog>
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Remove Image</DialogTitle>
         <DialogContent dividers>
