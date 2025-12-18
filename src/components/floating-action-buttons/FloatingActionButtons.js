@@ -12,8 +12,6 @@ import {
     DialogActions,
     Typography,
     Stack,
-    Popper,
-    Paper,
     Divider,
     Badge,
     Chip,
@@ -98,7 +96,6 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const isAdmin = user?.['cognito:groups']?.includes('admins');
     const isPro = user?.userDetails?.magicSubscription === 'true';
     const hasToolAccess = Boolean(isAdmin || isPro);
-    const randomButtonRef = useRef(null);
     const randomHelperTimeoutRef = useRef(null);
     const [uploadChoiceOpen, setUploadChoiceOpen] = useState(false);
     const [pendingUpload, setPendingUpload] = useState(null);
@@ -276,7 +273,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         },
     };
 
-    const randomHelperId = randomHelperOpen ? 'random-helper-popover' : undefined;
+    const randomHelperId = 'random-helper-dialog';
 
     const toolsButton = (
         <StyledButton
@@ -297,8 +294,9 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
 
     const randomButton = (
         <StyledButton
-            ref={randomButtonRef}
-            aria-describedby={randomHelperId}
+            aria-haspopup="dialog"
+            aria-expanded={randomHelperOpen ? 'true' : undefined}
+            aria-controls={randomHelperOpen ? randomHelperId : undefined}
             onClick={handleRandomClick}
             startIcon={<ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />}
             variant="contained"
@@ -316,67 +314,49 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         gap: 1.5,
     };
 
-    const randomHelperPopover = (
-        <Popper
+    const randomHelperDialog = (
+        <Dialog
             id={randomHelperId}
-            open={Boolean(randomHelperOpen && randomButtonRef.current)}
-            anchorEl={randomButtonRef.current}
-            placement="top-start"
-            sx={{ zIndex: 2000 }}
-            modifiers={[
-                {
-                    name: 'offset',
-                    options: {
-                        offset: [-10, 14],
-                    },
+            open={randomHelperOpen}
+            onClose={handleCloseRandomHelper}
+            maxWidth="xs"
+            fullWidth
+            sx={{
+                '& .MuiDialog-paper': {
+                    borderRadius: 3,
                 },
-            ]}
+            }}
         >
-            <Paper
+            <DialogTitle
                 sx={{
-                    p: { xs: 1.5, sm: 2 },
-                    bgcolor: '#0f0f0f',
-                    color: '#fff',
-                    borderRadius: 2,
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    boxShadow: '0px 14px 40px rgba(0,0,0,0.45)',
-                    width: { xs: 220, sm: 280 },
-                    maxWidth: 'calc(100vw - 24px)',
-                    zIndex: 2000,
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    fontSize: { xs: '1.15rem', sm: '1.25rem' },
                 }}
             >
-                <Stack spacing={1.25}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                        The random button is now part of the search bar
-                    </Typography>
-                    <Box
-                        component="img"
-                        src="/assets/randombutton.png"
-                        alt="New random button location in search bar"
-                        sx={{
-                            width: '100%',
-                            borderRadius: 1.5,
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            objectFit: 'cover',
-                            objectPosition: 'center center',
-                            alignSelf: 'center',
-                            maxHeight: { xs: 140, sm: 180 },
-                        }}
-                    />
-                    <Typography variant="body2" color="rgba(255,255,255,0.72)">
-                        Look for the shuffle icon next to search to get a random template.
-                    </Typography>
-                    <Button
-                        onClick={handleCloseRandomHelper}
-                        variant="contained"
-                        size="small"
-                        sx={{ alignSelf: 'flex-end', px: 1.75, minWidth: 'unset' }}
-                    >
-                        Got it
-                    </Button>
-                </Stack>
-            </Paper>
-        </Popper>
+                The random button is moving.
+            </DialogTitle>
+            <DialogContent sx={{ pt: 0 }}>
+                <Box
+                    component="img"
+                    src="/assets/randombutton.png"
+                    alt="Random button location"
+                    sx={{
+                        width: '100%',
+                        borderRadius: 2,
+                        border: '1px solid rgba(0,0,0,0.08)',
+                        objectFit: 'cover',
+                        objectPosition: 'center center',
+                        maxHeight: { xs: 180, sm: 220 },
+                    }}
+                />
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 3 }}>
+                <Button onClick={handleCloseRandomHelper} variant="contained" fullWidth>
+                    Got it
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 
     const toolDialog = (
@@ -567,7 +547,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     </Box>
                 </Box>
                 {toolDialog}
-                {randomHelperPopover}
+                {randomHelperDialog}
             </>
         );
     }
@@ -582,7 +562,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 {randomButton}
             </StyledRightFooter>
             {toolDialog}
-            {randomHelperPopover}
+            {randomHelperDialog}
         </>
     );
 }
