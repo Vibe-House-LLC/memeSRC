@@ -1711,9 +1711,12 @@ useEffect(() => {
 
   useEffect(() => {
     if (!collagePickerOpen) return;
-    const totalPages = Math.max(1, Math.ceil(collageProjects.length / COLLAGE_PICKER_PAGE_SIZE));
-    if (collagePickerPage > totalPages - 1) {
-      setCollagePickerPage(totalPages - 1);
+    const maxPageIndex = Math.max(
+      0,
+      Math.floor((collageProjects.length - 1) / COLLAGE_PICKER_PAGE_SIZE),
+    );
+    if (collagePickerPage > maxPageIndex) {
+      setCollagePickerPage(maxPageIndex);
     }
   }, [collagePickerOpen, collagePickerPage, collageProjects.length, COLLAGE_PICKER_PAGE_SIZE]);
 
@@ -2434,13 +2437,18 @@ useEffect(() => {
   const recentCollageThumbnail = recentCollage
     ? recentCollage.thumbnail || collageThumbnails[recentCollage.id]
     : null;
-  const collagePickerTotalPages = Math.max(1, Math.ceil(collageProjects.length / COLLAGE_PICKER_PAGE_SIZE));
-  const collagePickerPageIndex = Math.min(collagePickerPage, collagePickerTotalPages - 1);
+  const collagePickerMaxPageIndex = Math.max(
+    0,
+    Math.floor((collageProjects.length - 1) / COLLAGE_PICKER_PAGE_SIZE),
+  );
+  const collagePickerPageIndex = Math.min(collagePickerPage, collagePickerMaxPageIndex);
   const collagePickerStart = collagePickerPageIndex * COLLAGE_PICKER_PAGE_SIZE;
   const collagePickerItems = collageProjects.slice(
     collagePickerStart,
     collagePickerStart + COLLAGE_PICKER_PAGE_SIZE,
   );
+  const collagePickerHasNext = collageProjects.length > (collagePickerPageIndex + 1) * COLLAGE_PICKER_PAGE_SIZE;
+  const collagePickerHasPrev = collagePickerPageIndex > 0;
   const collageTilesBusy = Boolean(
     (addingToCollage && activeCollageTile) || (activeCollageTile === 'more' && collageProjectsLoading),
   );
@@ -2550,15 +2558,35 @@ useEffect(() => {
               <Box sx={{ width: '100%' }}>
                 {collagePreview ? (
                   <Stack spacing={1.5}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#e5e7eb' }}>
-                      Collage preview
-                    </Typography>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#e5e7eb' }}>
+                        Collage preview
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        startIcon={<Edit />}
+                        onClick={() => {
+                          if (!collagePreview?.projectId) return;
+                          navigate(`/projects/${collagePreview.projectId}`, {
+                            state: { projectId: collagePreview.projectId },
+                          });
+                        }}
+                        sx={{ backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                      >
+                        Edit Collage
+                      </Button>
+                    </Stack>
                     <Box
                       sx={{
                         borderRadius: 2,
                         overflow: 'hidden',
                         border: '1px solid rgba(255, 255, 255, 0.16)',
                         backgroundColor: '#0f172a',
+                        width: '100%',
+                        maxWidth: { md: 400, lg: 400 },
+                        mx: { md: 'auto' },
+                        alignSelf: { md: 'center' },
                       }}
                     >
                       {collagePreview.thumbnail ? (
@@ -2582,21 +2610,6 @@ useEffect(() => {
                         </Box>
                       )}
                     </Box>
-                    <Button
-                      size="medium"
-                      fullWidth
-                      variant="contained"
-                      startIcon={<Edit />}
-                      onClick={() => {
-                        if (!collagePreview?.projectId) return;
-                        navigate(`/projects/${collagePreview.projectId}`, {
-                          state: { projectId: collagePreview.projectId },
-                        });
-                      }}
-                      sx={{ backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                    >
-                      Edit Collage
-                    </Button>
                   </Stack>
                 ) : (
                   <Stack spacing={1.5}>
@@ -2799,17 +2812,14 @@ useEffect(() => {
                                 <IconButton
                                   size="small"
                                   onClick={() => setCollagePickerPage((prev) => Math.max(0, prev - 1))}
-                                  disabled={collageTilesBusy || collagePickerPageIndex === 0}
+                                  disabled={collageTilesBusy || !collagePickerHasPrev}
                                 >
                                   <ArrowBackIos fontSize="small" />
                                 </IconButton>
-                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                  {collagePickerTotalPages === 0 ? 0 : collagePickerPageIndex + 1} / {collagePickerTotalPages}
-                                </Typography>
                                 <IconButton
                                   size="small"
-                                  onClick={() => setCollagePickerPage((prev) => Math.min(collagePickerTotalPages - 1, prev + 1))}
-                                  disabled={collageTilesBusy || collagePickerPageIndex >= collagePickerTotalPages - 1}
+                                  onClick={() => setCollagePickerPage((prev) => (collagePickerHasNext ? prev + 1 : prev))}
+                                  disabled={collageTilesBusy || !collagePickerHasNext}
                                 >
                                   <ArrowForwardIos fontSize="small" />
                                 </IconButton>
