@@ -2558,6 +2558,25 @@ useEffect(() => {
               <Box sx={{ width: '100%' }}>
                 {collagePreview ? (
                   <Stack spacing={1.5}>
+                    <Button
+                      size="medium"
+                      fullWidth
+                      variant="contained"
+                      disabled
+                      startIcon={<Check />}
+                      sx={{
+                        backgroundColor: '#FF9800',
+                        color: '#111',
+                        '&:hover': { backgroundColor: '#F57C00' },
+                        '&.Mui-disabled': {
+                          backgroundColor: '#FF9800',
+                          color: '#111',
+                          opacity: 0.85,
+                        },
+                      }}
+                    >
+                      Saved to collage
+                    </Button>
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
                       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#e5e7eb' }}>
                         Collage preview
