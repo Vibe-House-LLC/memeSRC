@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API, graphqlOperation, Storage } from 'aws-amplify';
 import {
   Alert,
@@ -124,6 +124,41 @@ const formatScore = (value: unknown) => {
   return Number.isFinite(numeric) ? numeric.toFixed(3) : String(value);
 };
 
+const isHttpUrl = (value: string) => value.startsWith('http://') || value.startsWith('https://');
+
+const getInitialImageKey = (metadata?: string | null) => {
+  const parsed = parseMetadata(metadata);
+  const initialKey = (parsed as { initialImageKey?: unknown } | null)?.initialImageKey;
+  if (typeof initialKey !== 'string') return null;
+  const trimmed = initialKey.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+type SignedUrlResponse = {
+  url?: string | null;
+  urls?: Record<string, string>;
+};
+
+const getGraphqlErrorMessage = (error: unknown) => {
+  if (!error) return 'Unknown error';
+  const typed = error as { errors?: { message?: string }[]; message?: string };
+  if (typed.errors && typed.errors[0]?.message) return typed.errors[0].message;
+  if (typed.message) return typed.message;
+  if (typeof error === 'string') return error;
+  return 'Unknown error';
+};
+
+const isRetryableError = (message: string) => {
+  const lowered = message.toLowerCase();
+  return (
+    lowered.includes('throttling') ||
+    lowered.includes('too many requests') ||
+    lowered.includes('rate exceeded') ||
+    lowered.includes('limit exceeded') ||
+    lowered.includes('temporarily unavailable')
+  );
+};
+
 export default function AdminMagicEditHistoryPage() {
   const [status, setStatus] = useState<StatusOption>('unreviewed');
   const [items, setItems] = useState<MagicEditHistory[]>([]);
@@ -131,6 +166,51 @@ export default function AdminMagicEditHistoryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<MagicEditHistory | null>(null);
+  const [originalImageUrls, setOriginalImageUrls] = useState<Record<string, string>>({});
+  const [loadingOriginalImages, setLoadingOriginalImages] = useState(false);
+  const [bulkApproving, setBulkApproving] = useState(false);
+  const originalImageUrlsRef = useRef<Record<string, string>>({});
+
+  const fetchSignedUrls = useCallback(async (paths: string[]) => {
+    if (!paths.length) return {};
+    const resp = (await API.post('publicapi', '/getSignedUrl', {
+      body: { paths },
+    })) as SignedUrlResponse;
+    if (resp?.urls && typeof resp.urls === 'object') {
+      return resp.urls;
+    }
+    if (resp?.url && paths.length === 1) {
+      return { [paths[0]]: resp.url };
+    }
+    return {};
+  }, []);
+
+  const resolveOriginalImages = useCallback(
+    async (itemsToResolve: MagicEditHistory[], knownUrls?: Record<string, string>) => {
+      const existingUrls = knownUrls ?? originalImageUrlsRef.current;
+      const paths = new Set<string>();
+      itemsToResolve.forEach((item) => {
+        const initialKey = getInitialImageKey(item.metadata);
+        if (!initialKey || isHttpUrl(initialKey)) return;
+        if (!existingUrls[initialKey]) {
+          paths.add(initialKey);
+        }
+      });
+      if (!paths.size) return;
+      setLoadingOriginalImages(true);
+      try {
+        const urls = await fetchSignedUrls(Array.from(paths));
+        if (Object.keys(urls).length) {
+          setOriginalImageUrls((prev) => ({ ...prev, ...urls }));
+        }
+      } catch {
+        // ignore signed url errors for list thumbnails
+      } finally {
+        setLoadingOriginalImages(false);
+      }
+    },
+    [fetchSignedUrls]
+  );
 
   const handleStatusChange = useCallback((id: string, newStatus: StatusOption) => {
     setItems((prev) => {
@@ -151,72 +231,129 @@ export default function AdminMagicEditHistoryPage() {
     setNextToken(null);
     setError(null);
     setLoading(true);
+    setOriginalImageUrls({});
+    setLoadingOriginalImages(false);
     try {
-      if (selected === 'autoModerated') {
-        const resp = (await API.graphql(
-          graphqlOperation(magicEditHistoriesByStatus, {
-            status: selected,
-            sortDirection: 'DESC',
-            limit: PAGE_SIZE,
-          })
-        )) as any;
-        const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
-        setItems(data?.items || []);
-        setNextToken(data?.nextToken || null);
-      } else {
-        const resp = (await API.graphql(
-          graphqlOperation(magicEditHistoriesByStatus, {
-            status: selected,
-            sortDirection: 'DESC',
-            limit: PAGE_SIZE,
-          })
-        )) as any;
-        const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
-        setItems(data?.items || []);
-        setNextToken(data?.nextToken || null);
-      }
+      const resp = (await API.graphql(
+        graphqlOperation(magicEditHistoriesByStatus, {
+          status: selected,
+          sortDirection: 'DESC',
+          limit: PAGE_SIZE,
+        })
+      )) as any;
+      const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
+      const nextItems = data?.items || [];
+      setItems(nextItems);
+      setNextToken(data?.nextToken || null);
+      void resolveOriginalImages(nextItems, {});
     } catch (err: any) {
       setError(err?.errors?.[0]?.message || err?.message || 'Failed to load history');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [resolveOriginalImages]);
 
   const loadMore = useCallback(async () => {
     if (!nextToken || loading) return;
     setLoading(true);
     try {
-      if (status === 'autoModerated') {
-        const resp = (await API.graphql(
-          graphqlOperation(magicEditHistoriesByStatus, {
-            status,
-            sortDirection: 'DESC',
-            limit: PAGE_SIZE,
-            nextToken,
-          })
-        )) as any;
-        const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
-        setItems((prev) => [...prev, ...(data?.items || [])]);
-        setNextToken(data?.nextToken || null);
-      } else {
-        const resp = (await API.graphql(
-          graphqlOperation(magicEditHistoriesByStatus, {
-            status,
-            sortDirection: 'DESC',
-            limit: PAGE_SIZE,
-            nextToken,
-          })
-        )) as any;
-        const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
-        setItems((prev) => [...prev, ...(data?.items || [])]);
-        setNextToken(data?.nextToken || null);
-      }
+      const resp = (await API.graphql(
+        graphqlOperation(magicEditHistoriesByStatus, {
+          status,
+          sortDirection: 'DESC',
+          limit: PAGE_SIZE,
+          nextToken,
+        })
+      )) as any;
+      const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
+      const nextItems = data?.items || [];
+      setItems((prev) => [...prev, ...nextItems]);
+      setNextToken(data?.nextToken || null);
+      void resolveOriginalImages(nextItems);
     } catch (err: any) {
       setError(err?.errors?.[0]?.message || err?.message || 'Failed to load more');
     } finally {
       setLoading(false);
     }
-  }, [nextToken, loading, status]);
+  }, [nextToken, loading, status, resolveOriginalImages]);
+
+  const bulkApproveCount = useMemo(
+    () => items.filter((item) => normalizeStatus(item.status) !== 'approved').length,
+    [items]
+  );
+
+  const handleBulkApprove = useCallback(async () => {
+    if (!bulkApproveCount || bulkApproving) return;
+    setBulkApproving(true);
+    setError(null);
+    try {
+      const targets = items.filter((item) => normalizeStatus(item.status) !== 'approved');
+      const approvedIds: string[] = [];
+      const failed: { id: string; message: string }[] = [];
+      for (const item of targets) {
+        let attempt = 0;
+        let approved = false;
+        let lastErrorMessage = '';
+        while (attempt < 3 && !approved) {
+          attempt += 1;
+          try {
+            const resp = (await API.graphql(
+              graphqlOperation(updateMagicEditHistory, {
+                input: {
+                  id: item.id,
+                  status: 'approved',
+                },
+              })
+            )) as { data?: { updateMagicEditHistory?: { id?: string } } };
+            if (resp?.data?.updateMagicEditHistory?.id) {
+              approvedIds.push(item.id);
+              approved = true;
+              break;
+            }
+            lastErrorMessage = 'Update returned no data.';
+          } catch (error) {
+            lastErrorMessage = getGraphqlErrorMessage(error);
+            if (isRetryableError(lastErrorMessage) && attempt < 3) {
+              await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+              continue;
+            }
+          }
+          if (!approved) break;
+        }
+        if (!approved) {
+          failed.push({ id: item.id, message: lastErrorMessage || 'Unknown error' });
+          console.warn('Bulk approve failed', { id: item.id, message: lastErrorMessage });
+        }
+      }
+      if (approvedIds.length) {
+        setItems((prev) => {
+          if (status === 'approved') {
+            return prev.map((item) =>
+              approvedIds.includes(item.id) ? { ...item, status: 'approved' } : item
+            );
+          }
+          return prev.filter((item) => !approvedIds.includes(item.id));
+        });
+        setSelected((prev) => {
+          if (!prev || !approvedIds.includes(prev.id)) return prev;
+          return { ...prev, status: 'approved' };
+        });
+      }
+      if (failed.length > 0) {
+        const message = failed[0]?.message ? ` First error: ${failed[0].message}` : '';
+        setError(`Approved ${approvedIds.length} of ${targets.length} items. Retry to approve the rest.${message}`);
+      }
+      if (nextToken && approvedIds.length > 0) {
+        await loadMore();
+      }
+    } finally {
+      setBulkApproving(false);
+    }
+  }, [bulkApproveCount, bulkApproving, items, loadMore, nextToken, status]);
+
+  useEffect(() => {
+    originalImageUrlsRef.current = originalImageUrls;
+  }, [originalImageUrls]);
 
   useEffect(() => {
     void resetAndLoad('unreviewed');
@@ -235,6 +372,8 @@ export default function AdminMagicEditHistoryPage() {
       )),
     [resetAndLoad, status]
   );
+  const canBulkApprove = bulkApproveCount > 0 && status !== 'approved';
+  const approveLabel = `Approve Batch (${bulkApproveCount})`;
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -256,8 +395,32 @@ export default function AdminMagicEditHistoryPage() {
             Review generated images by status. Default shows unreviewed.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
-          {statusChips}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          sx={{ flexWrap: 'wrap' }}
+        >
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleBulkApprove}
+            disabled={!canBulkApprove || bulkApproving || loading}
+            startIcon={bulkApproving ? <CircularProgress size={16} /> : null}
+            sx={{ order: { xs: 0, sm: 1 } }}
+          >
+            {approveLabel}
+          </Button>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            useFlexGap
+            flexWrap="wrap"
+            sx={{ order: { xs: 1, sm: 0 } }}
+          >
+            {statusChips}
+          </Stack>
         </Stack>
       </Box>
       <Divider sx={{ mb: 3 }} />
@@ -270,65 +433,132 @@ export default function AdminMagicEditHistoryPage() {
         {items.map((item) => {
           const isRemoved = normalizeStatus(item.status) === 'removed';
           const hasImage = Boolean(item.imageUrl);
+          const initialKey = getInitialImageKey(item.metadata);
+          const originalUrl = initialKey
+            ? isHttpUrl(initialKey)
+              ? initialKey
+              : originalImageUrls[initialKey]
+            : null;
+          const showOriginalLoading =
+            Boolean(initialKey) && !isHttpUrl(initialKey) && !originalUrl && loadingOriginalImages;
           return (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={item.id}>
+            <Grid item xs={12} sm={6} md={4} lg={4} xl={4} key={item.id}>
               <Card variant="outlined">
                 <CardActionArea onClick={() => setSelected(item)} sx={{ alignItems: 'stretch' }}>
                   <CardContent sx={{ p: 1.3 }}>
-                    {isRemoved ? (
-                      <Box
-                        sx={{
-                          mt: 1,
-                          width: '100%',
-                          aspectRatio: '16 / 9',
-                          borderRadius: 1,
-                          border: '1px dashed',
-                          borderColor: 'divider',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: 'background.default',
-                        }}
-                      >
-                        <CloseIcon color="disabled" sx={{ fontSize: 48 }} />
-                      </Box>
-                    ) : hasImage ? (
-                      <Box
-                        component="img"
-                        src={item.imageUrl as string}
-                        alt="Generated"
-                        sx={{
-                          mt: 1,
-                          width: '100%',
-                          aspectRatio: '16 / 9',
-                          objectFit: 'contain',
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          cursor: 'pointer',
-                          backgroundColor: 'background.default',
-                        }}
-                      />
-                    ) : (
-                      <Box
-                        sx={{
-                          mt: 1,
-                          width: '100%',
-                          aspectRatio: '16 / 9',
-                          borderRadius: 1,
-                          border: '1px dashed',
-                          borderColor: 'divider',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: 'background.default',
-                        }}
-                      >
+                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                      <Stack spacing={0.5} sx={{ flex: 1 }}>
                         <Typography variant="caption" color="text.secondary">
-                          No image available
+                          Original
                         </Typography>
-                      </Box>
-                    )}
+                        {originalUrl ? (
+                          <Box
+                            component="img"
+                            src={originalUrl}
+                            alt="Original"
+                            sx={{
+                              width: '100%',
+                              aspectRatio: '16 / 9',
+                              objectFit: 'contain',
+                              borderRadius: 1,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              backgroundColor: 'background.default',
+                            }}
+                          />
+                        ) : showOriginalLoading ? (
+                          <Box
+                            sx={{
+                              width: '100%',
+                              aspectRatio: '16 / 9',
+                              borderRadius: 1,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: 'background.default',
+                            }}
+                          >
+                            <CircularProgress size={18} />
+                          </Box>
+                        ) : (
+                          <Box
+                            sx={{
+                              width: '100%',
+                              aspectRatio: '16 / 9',
+                              borderRadius: 1,
+                              border: '1px dashed',
+                              borderColor: 'divider',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: 'background.default',
+                            }}
+                          >
+                            <Typography variant="caption" color="text.secondary">
+                              No original image
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                      <Stack spacing={0.5} sx={{ flex: 1 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Generated
+                        </Typography>
+                        {isRemoved ? (
+                          <Box
+                            sx={{
+                              width: '100%',
+                              aspectRatio: '16 / 9',
+                              borderRadius: 1,
+                              border: '1px dashed',
+                              borderColor: 'divider',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: 'background.default',
+                            }}
+                          >
+                            <CloseIcon color="disabled" sx={{ fontSize: 40 }} />
+                          </Box>
+                        ) : hasImage ? (
+                          <Box
+                            component="img"
+                            src={item.imageUrl as string}
+                            alt="Generated"
+                            sx={{
+                              width: '100%',
+                              aspectRatio: '16 / 9',
+                              objectFit: 'contain',
+                              borderRadius: 1,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              cursor: 'pointer',
+                              backgroundColor: 'background.default',
+                            }}
+                          />
+                        ) : (
+                          <Box
+                            sx={{
+                              width: '100%',
+                              aspectRatio: '16 / 9',
+                              borderRadius: 1,
+                              border: '1px dashed',
+                              borderColor: 'divider',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: 'background.default',
+                            }}
+                          >
+                            <Typography variant="caption" color="text.secondary">
+                              No generated image
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Stack>
 
                     <Typography
                       variant="body1"
@@ -353,11 +583,21 @@ export default function AdminMagicEditHistoryPage() {
           );
         })}
       </Grid>
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-        <Button variant="contained" onClick={loadMore} disabled={loading || !nextToken}>
+      <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" sx={{ mt: 3 }}>
+        <Button
+          variant="contained"
+          color="success"
+          onClick={handleBulkApprove}
+          disabled={!canBulkApprove || bulkApproving || loading}
+          startIcon={bulkApproving ? <CircularProgress size={16} /> : null}
+          sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+        >
+          {approveLabel}
+        </Button>
+        <Button variant="contained" onClick={loadMore} disabled={loading || bulkApproving || !nextToken}>
           {loading ? <CircularProgress size={18} /> : nextToken ? 'Load more' : 'No more'}
         </Button>
-      </Box>
+      </Stack>
       <HistoryDialog
         item={selected}
         onClose={() => setSelected(null)}

@@ -450,7 +450,7 @@ type SearchFilterGroup @model @auth(
 type MagicEditHistory @model @auth(
   rules: [
     { allow: owner, identityClaim: "sub" },
-    { allow: groups, groups: ["admins"], operations: [create, read, delete] }
+    { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }
   ]
 ) {
   id: ID!
