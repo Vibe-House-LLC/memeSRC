@@ -373,6 +373,7 @@ type WebsiteSetting @model @auth(
   universalSearchMaintenance: Boolean
   openAIRateLimit: Int @default(value: "100")
   nanoBananaRateLimit: Int @default(value: "100")
+  moderationThreshold: Float @default(value: "0.6")
 }
 
 type ProSupportMessage @model @auth(

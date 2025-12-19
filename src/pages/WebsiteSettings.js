@@ -15,6 +15,7 @@ export default function WebsiteSettings() {
     const [universalSearchMaintenance, setUniversalSearchMaintenance] = useState(false);
     const [openAIRateLimit, setOpenAIRateLimit] = useState('100');
     const [nanoBananaRateLimit, setNanoBananaRateLimit] = useState('100');
+    const [moderationThreshold, setModerationThreshold] = useState('0.6');
     const [globalSettings, setGlobalSettings] = useState();
 
     useEffect(() => {
@@ -30,6 +31,7 @@ export default function WebsiteSettings() {
                 setUniversalSearchMaintenance(globalSettings?.universalSearchMaintenance || false)
                 setOpenAIRateLimit((globalSettings?.openAIRateLimit ?? 100).toString())
                 setNanoBananaRateLimit((globalSettings?.nanoBananaRateLimit ?? 100).toString())
+                setModerationThreshold((globalSettings?.moderationThreshold ?? 0.6).toString())
                 setLoading(false)
             } else {
                 setGlobalSettings()
@@ -37,6 +39,7 @@ export default function WebsiteSettings() {
                 setUniversalSearchMaintenance(false)
                 setOpenAIRateLimit('100')
                 setNanoBananaRateLimit('100')
+                setModerationThreshold('0.6')
                 setLoading(false)
             }
         }).catch(error => {
@@ -90,9 +93,11 @@ export default function WebsiteSettings() {
             const safeOpenAIRateLimit = Number.isNaN(parsedOpenAIRateLimit) ? 0 : parsedOpenAIRateLimit
             const parsedNanoBananaRateLimit = parseInt(nanoBananaRateLimit, 10)
             const safeNanoBananaRateLimit = Number.isNaN(parsedNanoBananaRateLimit) ? 0 : parsedNanoBananaRateLimit
+            const parsedModerationThreshold = parseFloat(moderationThreshold)
+            const safeModerationThreshold = Number.isNaN(parsedModerationThreshold) ? 0.6 : parsedModerationThreshold
 
             const updateGlobalSettings = await API.graphql(
-                graphqlOperation(updateWebsiteSetting, { input: { id: 'globalSettings', openAIRateLimit: safeOpenAIRateLimit, nanoBananaRateLimit: safeNanoBananaRateLimit }})
+                graphqlOperation(updateWebsiteSetting, { input: { id: 'globalSettings', openAIRateLimit: safeOpenAIRateLimit, nanoBananaRateLimit: safeNanoBananaRateLimit, moderationThreshold: safeModerationThreshold }})
             )
             console.log(updateGlobalSettings)
             setGlobalSettings(updateGlobalSettings?.data?.updateWebsiteSetting)
@@ -133,6 +138,8 @@ export default function WebsiteSettings() {
                             nanoBananaRateLimit={nanoBananaRateLimit}
                             setOpenAIRateLimit={setOpenAIRateLimit}
                             setNanoBananaRateLimit={setNanoBananaRateLimit}
+                            moderationThreshold={moderationThreshold}
+                            setModerationThreshold={setModerationThreshold}
                         />
                     </>
                 }

@@ -2186,6 +2186,7 @@ export const onCreateWebsiteSetting = /* GraphQL */ `
       universalSearchMaintenance
       openAIRateLimit
       nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename
@@ -2202,6 +2203,7 @@ export const onUpdateWebsiteSetting = /* GraphQL */ `
       universalSearchMaintenance
       openAIRateLimit
       nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename
@@ -2218,6 +2220,7 @@ export const onDeleteWebsiteSetting = /* GraphQL */ `
       universalSearchMaintenance
       openAIRateLimit
       nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename

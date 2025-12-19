@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Save } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
-import { Card, Grid, Stack, TextField, Typography } from '@mui/material';
+import { Card, Divider, Grid, Stack, TextField, Typography } from '@mui/material';
 import { API, graphqlOperation } from 'aws-amplify';
 import { getRateLimit, getWebsiteSetting } from '../../../graphql/queries';
 
@@ -12,6 +12,8 @@ type RateLimitsProps = {
     setOpenAIRateLimit: React.Dispatch<React.SetStateAction<string>>;
     nanoBananaRateLimit: string;
     setNanoBananaRateLimit: React.Dispatch<React.SetStateAction<string>>;
+    moderationThreshold: string;
+    setModerationThreshold: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const RateLimits: React.FC<RateLimitsProps> = ({
@@ -21,6 +23,8 @@ const RateLimits: React.FC<RateLimitsProps> = ({
     setOpenAIRateLimit,
     nanoBananaRateLimit,
     setNanoBananaRateLimit,
+    moderationThreshold,
+    setModerationThreshold,
 }) => {
     const [usage, setUsage] = useState<{ openaiUsage: number; geminiUsage: number; resetAt: string | null }>({
         openaiUsage: 0,
@@ -40,6 +44,13 @@ const RateLimits: React.FC<RateLimitsProps> = ({
         const digitsOnly = value.replace(/\D/g, '');
         const normalized = digitsOnly === '' ? '' : digitsOnly.replace(/^0+(?=\d)/, '');
         setNanoBananaRateLimit(normalized);
+    };
+
+    const handleModerationThresholdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const value = event.target.value;
+        const sanitized = value.replace(/[^\d.]/g, '');
+        const normalized = sanitized.replace(/(\..*)\./g, '$1');
+        setModerationThreshold(normalized);
     };
 
     const handleSave = () => {
@@ -67,6 +78,7 @@ const RateLimits: React.FC<RateLimitsProps> = ({
                 const rate = (rateResp as any)?.data?.getRateLimit || {};
                 setOpenAIRateLimit(String(settings?.openAIRateLimit ?? openAIRateLimit));
                 setNanoBananaRateLimit(String(settings?.nanoBananaRateLimit ?? nanoBananaRateLimit));
+                setModerationThreshold(String(settings?.moderationThreshold ?? moderationThreshold));
                 setUsage({
                     openaiUsage: Number(rate?.openaiUsage || 0),
                     geminiUsage: Number(rate?.geminiUsage || 0),
@@ -119,9 +131,20 @@ const RateLimits: React.FC<RateLimitsProps> = ({
                         </Typography>
                         {resetAtLocal && (
                             <Typography variant="body2" color="text.secondary">
-                                Resets at (local): {resetAtLocal}
+                                Usage resets at (local): {resetAtLocal}
                             </Typography>
                         )}
+                        <Divider sx={{ my: 1 }} />
+                        <TextField
+                            type="text"
+                            label="Moderation Threshold"
+                            value={moderationThreshold}
+                            onChange={handleModerationThresholdChange}
+                            disabled={saving}
+                            inputProps={{ inputMode: 'decimal', pattern: '[0-9.]*' }}
+                            helperText="Use a value between 0 and 1."
+                            fullWidth
+                        />
                         <LoadingButton
                             onClick={handleSave}
                             disabled={saving}

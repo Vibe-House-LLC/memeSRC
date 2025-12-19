@@ -1356,6 +1356,7 @@ export const getWebsiteSetting = /* GraphQL */ `
       universalSearchMaintenance
       openAIRateLimit
       nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename
@@ -1375,6 +1376,7 @@ export const listWebsiteSettings = /* GraphQL */ `
         universalSearchMaintenance
         openAIRateLimit
         nanoBananaRateLimit
+        moderationThreshold
         createdAt
         updatedAt
         __typename

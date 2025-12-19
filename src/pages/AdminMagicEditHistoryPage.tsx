@@ -51,14 +51,19 @@ type UserDetails = {
   email?: string | null;
 };
 
-const STATUS_OPTIONS = ['unreviewed', 'approved', 'flagged', 'removed'] as const;
+const STATUS_OPTIONS = ['unreviewed', 'approved', 'flagged', 'removed', 'autoModerated'] as const;
 type StatusOption = (typeof STATUS_OPTIONS)[number];
 const UPDATE_STATUS_OPTIONS: StatusOption[] = ['unreviewed', 'approved', 'flagged'];
 const normalizeStatus = (value?: string | null): StatusOption => {
   if (value === 'approved' || value === 'reviewed') return 'approved';
   if (value === 'flagged') return 'flagged';
   if (value === 'removed') return 'removed';
+  if (value === 'autoModerated') return 'autoModerated';
   return 'unreviewed';
+};
+const formatStatusLabel = (value: StatusOption) => {
+  if (value === 'autoModerated') return 'Auto Moderated';
+  return value.charAt(0).toUpperCase() + value.slice(1);
 };
 const formatModel = (value?: string | null) => {
   if (!value) return 'unknown';
@@ -82,8 +87,8 @@ const getKeyFromUrl = (imageUrl?: string | null) => {
 
 const PAGE_SIZE = 25;
 
-const parseMetadata = (value?: string | null) => {
-  if (!value) return null;
+const parseJsonValue = (value?: unknown) => {
+  if (value === null || value === undefined) return null;
   let current: any = value;
   for (let i = 0; i < 2; i += 1) {
     if (typeof current === 'string') {
@@ -95,6 +100,28 @@ const parseMetadata = (value?: string | null) => {
     }
   }
   return typeof current === 'object' && current !== null ? current : null;
+};
+
+const parseMetadata = (value?: string | null) => parseJsonValue(value);
+
+const extractModerationDetails = (value?: unknown): Record<string, unknown> | null => {
+  const parsed = parseJsonValue(value);
+  if (!parsed || typeof parsed !== 'object') return null;
+  const typed = parsed as Record<string, any>;
+  if (typed.categories || typed.category_scores) return typed;
+  if (Array.isArray(typed.results) && typed.results[0]) {
+    const result = typed.results[0];
+    if (result?.categories || result?.category_scores) return result;
+  }
+  if (typed.moderation) {
+    return extractModerationDetails(typed.moderation);
+  }
+  return null;
+};
+
+const formatScore = (value: unknown) => {
+  const numeric = typeof value === 'number' ? value : Number.parseFloat(String(value));
+  return Number.isFinite(numeric) ? numeric.toFixed(3) : String(value);
 };
 
 export default function AdminMagicEditHistoryPage() {
@@ -125,16 +152,29 @@ export default function AdminMagicEditHistoryPage() {
     setError(null);
     setLoading(true);
     try {
-      const resp = (await API.graphql(
-        graphqlOperation(magicEditHistoriesByStatus, {
-          status: selected,
-          sortDirection: 'DESC',
-          limit: PAGE_SIZE,
-        })
-      )) as any;
-      const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
-      setItems(data?.items || []);
-      setNextToken(data?.nextToken || null);
+      if (selected === 'autoModerated') {
+        const resp = (await API.graphql(
+          graphqlOperation(magicEditHistoriesByStatus, {
+            status: selected,
+            sortDirection: 'DESC',
+            limit: PAGE_SIZE,
+          })
+        )) as any;
+        const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
+        setItems(data?.items || []);
+        setNextToken(data?.nextToken || null);
+      } else {
+        const resp = (await API.graphql(
+          graphqlOperation(magicEditHistoriesByStatus, {
+            status: selected,
+            sortDirection: 'DESC',
+            limit: PAGE_SIZE,
+          })
+        )) as any;
+        const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
+        setItems(data?.items || []);
+        setNextToken(data?.nextToken || null);
+      }
     } catch (err: any) {
       setError(err?.errors?.[0]?.message || err?.message || 'Failed to load history');
     } finally {
@@ -146,17 +186,31 @@ export default function AdminMagicEditHistoryPage() {
     if (!nextToken || loading) return;
     setLoading(true);
     try {
-      const resp = (await API.graphql(
-        graphqlOperation(magicEditHistoriesByStatus, {
-          status,
-          sortDirection: 'DESC',
-          limit: PAGE_SIZE,
-          nextToken,
-        })
-      )) as any;
-      const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
-      setItems((prev) => [...prev, ...(data?.items || [])]);
-      setNextToken(data?.nextToken || null);
+      if (status === 'autoModerated') {
+        const resp = (await API.graphql(
+          graphqlOperation(magicEditHistoriesByStatus, {
+            status,
+            sortDirection: 'DESC',
+            limit: PAGE_SIZE,
+            nextToken,
+          })
+        )) as any;
+        const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
+        setItems((prev) => [...prev, ...(data?.items || [])]);
+        setNextToken(data?.nextToken || null);
+      } else {
+        const resp = (await API.graphql(
+          graphqlOperation(magicEditHistoriesByStatus, {
+            status,
+            sortDirection: 'DESC',
+            limit: PAGE_SIZE,
+            nextToken,
+          })
+        )) as any;
+        const data = (resp as any)?.data?.magicEditHistoriesByStatus as HistoryResponse['magicEditHistoriesByStatus'];
+        setItems((prev) => [...prev, ...(data?.items || [])]);
+        setNextToken(data?.nextToken || null);
+      }
     } catch (err: any) {
       setError(err?.errors?.[0]?.message || err?.message || 'Failed to load more');
     } finally {
@@ -173,7 +227,7 @@ export default function AdminMagicEditHistoryPage() {
       STATUS_OPTIONS.map((opt) => (
         <Chip
           key={opt}
-          label={opt}
+          label={formatStatusLabel(opt)}
           color={status === opt ? 'primary' : 'default'}
           onClick={() => resetAndLoad(opt)}
           sx={{ textTransform: 'capitalize' }}
@@ -215,6 +269,7 @@ export default function AdminMagicEditHistoryPage() {
       <Grid container spacing={2}>
         {items.map((item) => {
           const isRemoved = normalizeStatus(item.status) === 'removed';
+          const hasImage = Boolean(item.imageUrl);
           return (
             <Grid item xs={12} sm={6} md={4} lg={3} key={item.id}>
               <Card variant="outlined">
@@ -237,25 +292,42 @@ export default function AdminMagicEditHistoryPage() {
                       >
                         <CloseIcon color="disabled" sx={{ fontSize: 48 }} />
                       </Box>
+                    ) : hasImage ? (
+                      <Box
+                        component="img"
+                        src={item.imageUrl as string}
+                        alt="Generated"
+                        sx={{
+                          mt: 1,
+                          width: '100%',
+                          aspectRatio: '16 / 9',
+                          objectFit: 'contain',
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          cursor: 'pointer',
+                          backgroundColor: 'background.default',
+                        }}
+                      />
                     ) : (
-                      item.imageUrl && (
-                        <Box
-                          component="img"
-                          src={item.imageUrl}
-                          alt="Generated"
-                          sx={{
-                            mt: 1,
-                            width: '100%',
-                            aspectRatio: '16 / 9',
-                            objectFit: 'contain',
-                            borderRadius: 1,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            cursor: 'pointer',
-                            backgroundColor: 'background.default',
-                          }}
-                        />
-                      )
+                      <Box
+                        sx={{
+                          mt: 1,
+                          width: '100%',
+                          aspectRatio: '16 / 9',
+                          borderRadius: 1,
+                          border: '1px dashed',
+                          borderColor: 'divider',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'background.default',
+                        }}
+                      >
+                        <Typography variant="caption" color="text.secondary">
+                          No image available
+                        </Typography>
+                      </Box>
                     )}
 
                     <Typography
@@ -315,6 +387,32 @@ function HistoryDialog({
   const [loadingSubmittedImage, setLoadingSubmittedImage] = useState(false);
   const [submittedImageError, setSubmittedImageError] = useState<string | null>(null);
   const meta = useMemo(() => parseMetadata(item?.metadata), [item]);
+  const moderationDetails = useMemo(() => {
+    const errorDetails = extractModerationDetails((item as any)?.error);
+    if (errorDetails) return errorDetails;
+    return extractModerationDetails((meta as any)?.moderation ?? meta);
+  }, [item, meta]);
+  const categories = useMemo(() => {
+    const raw = (moderationDetails as any)?.categories;
+    return raw && typeof raw === 'object' ? (raw as Record<string, boolean>) : null;
+  }, [moderationDetails]);
+  const categoryScores = useMemo(() => {
+    const raw = (moderationDetails as any)?.category_scores;
+    return raw && typeof raw === 'object' ? (raw as Record<string, number>) : null;
+  }, [moderationDetails]);
+  const flaggedCategories = useMemo(() => {
+    if (!categories) return [];
+    return Object.entries(categories)
+      .filter(([, value]) => Boolean(value))
+      .map(([key]) => key);
+  }, [categories]);
+  const scoreEntries = useMemo(() => {
+    if (!categoryScores) return [];
+    return Object.entries(categoryScores)
+      .map(([key, value]) => ({ key, value }))
+      .sort((a, b) => Number.parseFloat(String(b.value)) - Number.parseFloat(String(a.value)));
+  }, [categoryScores]);
+  const hasModerationDetails = Boolean(categories || categoryScores);
   const effectiveStatus = normalizeStatus(statusValue);
   const showRemovedPlaceholder = effectiveStatus === 'removed';
   const hasSubmittedImage = Boolean(meta?.initialImageKey);
@@ -410,7 +508,7 @@ function HistoryDialog({
         setSavingStatus(false);
       }
     },
-    [item, onStatusChange, statusValue]
+    [item, onStatusChange]
   );
 
   const handleRemove = useCallback(async () => {
@@ -564,7 +662,7 @@ function HistoryDialog({
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip size="small" label={`Model: ${formatModel(meta?.model)}`} variant="outlined" />
-            <Chip size="small" label={`Status: ${effectiveStatus}`} />
+            <Chip size="small" label={`Status: ${formatStatusLabel(effectiveStatus)}`} />
           </Stack>
           {effectiveStatus !== 'removed' && (
             <TextField
@@ -576,9 +674,12 @@ function HistoryDialog({
               disabled={savingStatus}
               helperText="Update review status"
             >
-              {UPDATE_STATUS_OPTIONS.map((opt) => (
-                <MenuItem key={opt} value={opt} sx={{ textTransform: 'capitalize' }}>
-                  {opt}
+              {(statusValue === 'autoModerated'
+                ? (['autoModerated', ...UPDATE_STATUS_OPTIONS] as StatusOption[])
+                : UPDATE_STATUS_OPTIONS
+              ).map((opt) => (
+                <MenuItem key={opt} value={opt} sx={{ textTransform: 'capitalize' }} disabled={opt === 'autoModerated'}>
+                  {formatStatusLabel(opt)}
                 </MenuItem>
               ))}
             </TextField>
@@ -592,6 +693,46 @@ function HistoryDialog({
           <Typography variant="body1" color="text.primary">
             {item.prompt || '(No prompt)'}
           </Typography>
+          {hasModerationDetails && (
+            <>
+              <Divider />
+              <Typography variant="subtitle1" fontWeight={700}>
+                Moderation
+              </Typography>
+              {categories && (
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Flags
+                  </Typography>
+                  {flaggedCategories.length ? (
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                      {flaggedCategories.map((category) => {
+                        const score = categoryScores?.[category];
+                        const label = score !== undefined ? `${category} (${formatScore(score)})` : category;
+                        return <Chip key={category} size="small" label={label} />;
+                      })}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No flags reported.
+                    </Typography>
+                  )}
+                </Stack>
+              )}
+              {categoryScores && (
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Scores
+                  </Typography>
+                  {scoreEntries.map(({ key, value }) => (
+                    <Typography key={key} variant="body2" color="text.secondary">
+                      {key}: {formatScore(value)}
+                    </Typography>
+                  ))}
+                </Stack>
+              )}
+            </>
+          )}
           <Divider />
           <Typography variant="subtitle1" fontWeight={700}>
             Owner

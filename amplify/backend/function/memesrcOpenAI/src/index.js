@@ -42,6 +42,7 @@ const { TextDecoder } = require('util');
 const { sendEmail } = require('/opt/email-function');
 const MAX_REFERENCE_IMAGES = 4;
 const DEFAULT_RATE_LIMIT = 100;
+const DEFAULT_MODERATION_THRESHOLD = 0.6;
 const MODEL_RATE_LIMIT_FIELD = {
   openai: 'openAIRateLimit',
   gemini: 'nanoBananaRateLimit',
@@ -111,6 +112,11 @@ const parseNumberOrDefault = (value, fallback) => {
     return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const parseFloatOrDefault = (value, fallback) => {
+    const parsed = typeof value === 'number' ? value : parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const capitalize = (value = '') => value.charAt(0).toUpperCase() + value.slice(1);
 
 const getOpenAiApiKey = async (ssmClient) => {
@@ -125,7 +131,7 @@ const getOpenAiApiKey = async (ssmClient) => {
     return cachedOpenAiKey;
 };
 
-const moderateContent = async ({ apiKey, prompt, images = [] }) => {
+const moderateContent = async ({ apiKey, prompt, images = [], threshold }) => {
     if (!apiKey) throw new Error('OpenAI API key missing for moderation');
     const input = [];
     if (prompt) {
@@ -150,17 +156,30 @@ const moderateContent = async ({ apiKey, prompt, images = [] }) => {
             'Content-Type': 'application/json',
         },
     });
+    console.log('[Moderation] Raw response', resp?.data);
     const result = resp?.data?.results?.[0];
+    const thresholdValue = Number.isFinite(threshold) ? threshold : DEFAULT_MODERATION_THRESHOLD;
+    const categories = result?.categories || {};
+    const categoryScores = result?.category_scores || {};
+    const flaggedCategories = Object.keys(categories).filter((key) => categories[key]);
+    const triggeredCategories = flaggedCategories.filter((key) => {
+        const rawScore = categoryScores[key];
+        const score = typeof rawScore === 'number' ? rawScore : parseFloat(rawScore);
+        return Number.isFinite(score) && score >= thresholdValue;
+    });
+    const hasScores = Object.keys(categoryScores).length > 0;
+    const flagged = triggeredCategories.length > 0 || (!hasScores && Boolean(result?.flagged));
     console.log('[Moderation] Response', {
         id: resp?.data?.id,
         model: resp?.data?.model,
         flagged: Boolean(result?.flagged),
-        categories: result?.categories,
+        threshold: thresholdValue,
+        flaggedCategories,
+        triggeredCategories,
+        categories,
     });
     if (!result) return { flagged: false };
-    const categories = result.categories || {};
-    const flagged = Boolean(result.flagged);
-    return { flagged, categories };
+    return { flagged, categories, categoryScores, moderationResponse: resp?.data };
 };
 
 const getUtcDayId = () => new Date().toISOString().slice(0, 10);
@@ -192,6 +211,30 @@ const fetchModelRateLimit = async (dynamoClient, modelKey) => {
     }));
     const limit = parseNumberOrDefault(resp?.Item?.[limitField]?.N, DEFAULT_RATE_LIMIT);
     return limit;
+};
+
+const fetchModerationThreshold = async (dynamoClient) => {
+    const tableName = process.env.API_MEMESRC_WEBSITESETTINGTABLE_NAME;
+    if (!tableName) {
+        console.warn('[Moderation] Missing website settings table env var; using default threshold', {
+            fallback: DEFAULT_MODERATION_THRESHOLD,
+        });
+        return DEFAULT_MODERATION_THRESHOLD;
+    }
+    try {
+        const resp = await dynamoClient.send(new GetItemCommand({
+            TableName: tableName,
+            Key: { id: { S: 'globalSettings' } },
+            ProjectionExpression: '#threshold',
+            ExpressionAttributeNames: {
+                '#threshold': 'moderationThreshold',
+            },
+        }));
+        return parseFloatOrDefault(resp?.Item?.moderationThreshold?.N, DEFAULT_MODERATION_THRESHOLD);
+    } catch (err) {
+        console.error('[Moderation] Failed to fetch moderation threshold; using default', { message: err?.message });
+        return DEFAULT_MODERATION_THRESHOLD;
+    }
 };
 
 const fetchAdminEmails = async () => {
@@ -513,7 +556,40 @@ const recordCreditChargeError = async ({ dynamoClient, magicResultId, modelKey, 
     }
 };
 
-const recordModerationError = async ({ dynamoClient, magicResultId, modelKey, categories }) => {
+const buildModerationMetadata = ({ imageKey, modelKey, moderationStage, moderation }) => {
+    const metadata = {
+        initialImageKey: imageKey || null,
+        model: modelKey,
+    };
+    if (moderationStage) {
+        metadata.moderationStage = moderationStage;
+    }
+    if (moderation) {
+        metadata.moderation = moderation;
+    }
+    return metadata;
+};
+
+const buildModerationHistory = ({ ownerSub, prompt, imageUrl, imageKey, modelKey, moderationStage, moderation }) => {
+    if (!ownerSub) return null;
+    return {
+        ownerSub,
+        prompt,
+        imageUrl: imageUrl || null,
+        metadata: buildModerationMetadata({ imageKey, modelKey, moderationStage, moderation }),
+        status: 'autoModerated',
+    };
+};
+
+const recordModerationError = async ({
+    dynamoClient,
+    magicResultId,
+    modelKey,
+    categories,
+    categoryScores,
+    history,
+    historyState,
+}) => {
     if (!magicResultId || !process.env.API_MEMESRC_MAGICRESULTTABLE_NAME) {
         return;
     }
@@ -521,48 +597,116 @@ const recordModerationError = async ({ dynamoClient, magicResultId, modelKey, ca
         reason: 'moderation',
         message: 'Content was blocked by safety filters.',
         model: modelKey,
-        categories,
         timestamp: new Date().toISOString(),
     };
+    if (categories) {
+        errorPayload.categories = categories;
+    }
+    if (categoryScores) {
+        errorPayload.category_scores = categoryScores;
+    }
     try {
         await dynamoClient.send(new UpdateItemCommand({
             TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
             Key: { id: { S: magicResultId } },
-            UpdateExpression: 'SET #error = :error, updatedAt = :updatedAt',
+            UpdateExpression: 'SET #error = :error, #status = :status, updatedAt = :updatedAt',
             ExpressionAttributeNames: {
                 '#error': 'error',
+                '#status': 'status',
             },
             ExpressionAttributeValues: {
                 ':error': { S: JSON.stringify(errorPayload) },
+                ':status': { S: 'autoModerated' },
                 ':updatedAt': { S: new Date().toISOString() },
             },
         }));
     } catch (err) {
         console.error('[Moderation] Failed to record error on MagicResult', { magicResultId, message: err?.message });
     }
+    if (history && history?.ownerSub && process.env.API_MEMESRC_MAGICEDITHISTORYTABLE_NAME) {
+        if (!historyState || !historyState.recorded) {
+            try {
+                await recordMagicEditHistory({
+                    dynamoClient,
+                    ownerSub: history.ownerSub,
+                    prompt: history.prompt,
+                    imageUrl: history.imageUrl,
+                    metadata: history.metadata,
+                    status: history.status || 'autoModerated',
+                });
+                if (historyState) historyState.recorded = true;
+            } catch (err) {
+                console.error('[Moderation] Failed to record MagicEditHistory', { magicResultId, message: err?.message });
+            }
+        }
+    }
 };
 
-const ensureNotFlagged = async ({ apiKey, prompt, images, dynamoClient, magicResultId, modelKey }) => {
+const ensureNotFlagged = async ({
+    apiKey,
+    prompt,
+    images,
+    dynamoClient,
+    magicResultId,
+    modelKey,
+    moderationThreshold,
+    historyContext,
+}) => {
     let moderation;
     try {
-        moderation = await moderateContent({ apiKey, prompt, images });
+        moderation = await moderateContent({ apiKey, prompt, images, threshold: moderationThreshold });
     } catch (err) {
+        const history = buildModerationHistory({
+            ownerSub: historyContext?.ownerSub,
+            prompt,
+            imageKey: historyContext?.imageKey,
+            modelKey,
+            moderationStage: historyContext?.moderationStage,
+            moderation: {
+                provider: 'openai',
+                reason: 'moderation_api_error',
+                message: err?.message,
+            },
+        });
         await recordModerationError({
             dynamoClient,
             magicResultId,
             modelKey,
             categories: { provider: 'openai', reason: 'moderation_api_error', message: err?.message },
+            history,
+            historyState: historyContext?.historyState,
         });
         const error = new Error('Moderation service failed');
         error.code = 'ModerationUnavailable';
         error.modelKey = modelKey;
+        error.moderationRecorded = true;
         throw error;
     }
     if (moderation.flagged) {
-        await recordModerationError({ dynamoClient, magicResultId, modelKey, categories: moderation.categories });
+        const history = buildModerationHistory({
+            ownerSub: historyContext?.ownerSub,
+            prompt,
+            imageKey: historyContext?.imageKey,
+            modelKey,
+            moderationStage: historyContext?.moderationStage,
+            moderation: moderation.moderationResponse || {
+                categories: moderation.categories,
+                category_scores: moderation.categoryScores,
+            },
+        });
+        await recordModerationError({
+            dynamoClient,
+            magicResultId,
+            modelKey,
+            categories: moderation.categories,
+            categoryScores: moderation.categoryScores,
+            history,
+            historyState: historyContext?.historyState,
+        });
         const error = new Error('Content blocked by safety filters');
         error.code = 'ModerationBlocked';
         error.modelKey = modelKey;
+        error.moderationRecorded = true;
         throw error;
     }
 };
@@ -595,7 +739,7 @@ const spendUserCredit = async ({ lambdaClient, userFunctionName, userSub }) => {
     return body;
 };
 
-const recordMagicEditHistory = async ({ dynamoClient, ownerSub, prompt, imageUrl, metadata }) => {
+const recordMagicEditHistory = async ({ dynamoClient, ownerSub, prompt, imageUrl, metadata, status }) => {
     if (!process.env.API_MEMESRC_MAGICEDITHISTORYTABLE_NAME) return;
     const nowIso = new Date().toISOString();
     const item = {
@@ -606,7 +750,7 @@ const recordMagicEditHistory = async ({ dynamoClient, ownerSub, prompt, imageUrl
         owner: ownerSub ? { S: ownerSub } : { NULL: true },
         createdAt: { S: nowIso },
         updatedAt: { S: nowIso },
-        status: { S: 'unreviewed' },
+        status: { S: status || 'unreviewed' },
     };
     await dynamoClient.send(new PutItemCommand({
         TableName: process.env.API_MEMESRC_MAGICEDITHISTORYTABLE_NAME,
@@ -654,6 +798,9 @@ exports.handler = async (event) => {
         referenceCount: Array.isArray(referenceKeys) ? referenceKeys.length : 0,
         promptLength: (prompt || '').length,
     });
+    const moderationThreshold = await fetchModerationThreshold(dynamoClient);
+    console.log('[Moderation] Using moderation threshold', { moderationThreshold });
+    const moderationHistoryState = { recorded: false };
 
     if (!userSub) {
         await recordCreditChargeError({
@@ -789,6 +936,13 @@ exports.handler = async (event) => {
                 dynamoClient,
                 magicResultId,
                 modelKey: 'gemini',
+                moderationThreshold,
+                historyContext: {
+                    ownerSub: userSub,
+                    imageKey,
+                    moderationStage: 'input',
+                    historyState: moderationHistoryState,
+                },
             });
         } catch (err) {
             console.error('[Moderation] Gemini input blocked', { message: err?.message });
@@ -914,6 +1068,15 @@ exports.handler = async (event) => {
                 magicResultId,
                 modelKey: 'gemini',
                 categories: { provider: 'gemini', reason: 'no_image_returned' },
+                history: buildModerationHistory({
+                    ownerSub: userSub,
+                    prompt: userPrompt,
+                    imageKey,
+                    modelKey: 'gemini',
+                    moderationStage: 'output',
+                    moderation: { provider: 'gemini', reason: 'no_image_returned' },
+                }),
+                historyState: moderationHistoryState,
             });
             const err = new Error('No image was returned by Gemini (possibly blocked by provider).');
             err.code = 'ProviderModeration';
@@ -929,6 +1092,13 @@ exports.handler = async (event) => {
                 dynamoClient,
                 magicResultId,
                 modelKey: 'gemini',
+                moderationThreshold,
+                historyContext: {
+                    ownerSub: userSub,
+                    imageKey,
+                    moderationStage: 'output',
+                    historyState: moderationHistoryState,
+                },
             });
         } catch (err) {
             console.error('[Moderation] Gemini output blocked', { message: err?.message });
@@ -1054,6 +1224,13 @@ exports.handler = async (event) => {
             dynamoClient,
             magicResultId,
             modelKey: 'openai',
+            moderationThreshold,
+            historyContext: {
+                ownerSub: userSub,
+                imageKey,
+                moderationStage: 'input',
+                historyState: moderationHistoryState,
+            },
         });
     } catch (err) {
         console.error('[Moderation] OpenAI input blocked', { message: err?.message });
@@ -1122,6 +1299,13 @@ exports.handler = async (event) => {
                 dynamoClient,
                 magicResultId,
                 modelKey: 'openai',
+                moderationThreshold,
+                historyContext: {
+                    ownerSub: userSub,
+                    imageKey,
+                    moderationStage: 'output',
+                    historyState: moderationHistoryState,
+                },
             });
         } catch (err) {
             console.error('[Moderation] OpenAI output blocked', { message: err?.message });
@@ -1132,6 +1316,15 @@ exports.handler = async (event) => {
                     magicResultId,
                     modelKey: 'openai',
                     categories: { provider: 'openai', reason: 'output_blocked' },
+                    history: buildModerationHistory({
+                        ownerSub: userSub,
+                        prompt,
+                        imageKey,
+                        modelKey: 'openai',
+                        moderationStage: 'output',
+                        moderation: { provider: 'openai', reason: 'output_blocked' },
+                    }),
+                    historyState: moderationHistoryState,
                 });
                 err.moderationRecorded = true;
             }
@@ -1173,6 +1366,15 @@ exports.handler = async (event) => {
                 magicResultId,
                 modelKey: 'openai',
                 categories: { provider: 'openai', reason: 'no_image_returned' },
+                history: buildModerationHistory({
+                    ownerSub: userSub,
+                    prompt,
+                    imageKey,
+                    modelKey: 'openai',
+                    moderationStage: 'output',
+                    moderation: { provider: 'openai', reason: 'no_image_returned' },
+                }),
+                historyState: moderationHistoryState,
             });
             err.moderationRecorded = true;
         }
