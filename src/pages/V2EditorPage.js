@@ -5170,34 +5170,20 @@ const EditorPage = ({ shows }) => {
                     )}
                   </Box>
                 )}
-                <LoadingButton
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  sx={{ padding: '12px 16px', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                  disabled={imageUploading}
-                  loading={addingToCollage}
-                  onClick={handleAddToCollageClick}
-                  startIcon={<AddPhotoAlternate />}
-                  endIcon={(
-                    <Chip
-                      icon={<LocalPoliceRounded fontSize="small" />}
-                      label="Pro"
-                      size="small"
-                      sx={{
-                        ml: 0.5,
-                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                        border: '1px solid #8b5cc7',
-                        boxShadow: '0 0 12px rgba(107,66,161,0.45)',
-                        '& .MuiChip-label': { fontWeight: 700, color: '#fff', fontSize: '12px' },
-                        '& .MuiChip-icon': { color: '#fff' },
-
-                      }}
-                    />
-                  )}
-                >
-                  Add to collage
-                </LoadingButton>
+                {isProUser && (
+                  <LoadingButton
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    sx={{ padding: '12px 16px', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                    disabled={imageUploading}
+                    loading={addingToCollage}
+                    onClick={handleAddToCollageClick}
+                    startIcon={<AddPhotoAlternate />}
+                  >
+                    Add to collage
+                  </LoadingButton>
+                )}
                 <Button
                   variant="contained"
                   color="error"

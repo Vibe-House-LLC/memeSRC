@@ -2611,7 +2611,7 @@ useEffect(() => {
                       )}
                     </Box>
                   </Stack>
-                ) : (
+                ) : hasLibraryAccess ? (
                   <Stack spacing={1.5}>
                     <Button
                       size="medium"
@@ -2906,7 +2906,7 @@ useEffect(() => {
                       </Stack>
                     </Collapse>
                   </Stack>
-                )}
+                ) : null}
               </Box>
               <Collapse in={!shouldCollapseEditor} timeout={250} unmountOnExit>
                 <Stack spacing={1.5} sx={{ width: '100%' }}>
