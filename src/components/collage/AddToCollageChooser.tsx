@@ -28,6 +28,7 @@ export type AddToCollageChooserProps = {
   onSelectNew: () => void;
   onSelectExisting: (project: CollageProject) => void;
   loading?: boolean;
+  defaultMode?: Mode;
   preview?: {
     projectId: string;
     name?: string | null;
@@ -43,11 +44,12 @@ export default function AddToCollageChooser({
   onSelectNew,
   onSelectExisting,
   loading = false,
+  defaultMode = 'new',
   preview = null,
   onEditPreview,
   onClearPreview,
 }: AddToCollageChooserProps) {
-  const [mode, setMode] = useState<Mode>('new');
+  const [mode, setMode] = useState<Mode>(defaultMode);
   const [projects, setProjects] = useState<CollageProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
@@ -57,6 +59,7 @@ export default function AddToCollageChooser({
 
   useEffect(() => {
     if (!open) return;
+    setMode(defaultMode);
     const load = async () => {
       setFetching(true);
       try {
@@ -69,7 +72,7 @@ export default function AddToCollageChooser({
       }
     };
     load();
-  }, [open]);
+  }, [defaultMode, open]);
 
   const selectedProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
