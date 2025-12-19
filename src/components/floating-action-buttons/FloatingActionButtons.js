@@ -10,14 +10,14 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    Popover,
     Typography,
     Stack,
-    Divider,
-    Badge,
+    List,
+    ListItemButton,
     Chip,
-    IconButton,
 } from '@mui/material';
-import { Close, Dashboard, Handyman, KeyboardArrowUp, LocalPoliceRounded } from '@mui/icons-material';
+import { Handyman } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
@@ -97,7 +97,8 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const isPro = user?.userDetails?.magicSubscription === 'true';
     const hasToolAccess = Boolean(isAdmin || isPro);
     const randomHelperTimeoutRef = useRef(null);
-    const [uploadChoiceOpen, setUploadChoiceOpen] = useState(false);
+    const toolsButtonRef = useRef(null);
+    const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
     const [pendingUpload, setPendingUpload] = useState(null);
     const [pendingTool, setPendingTool] = useState(null);
     const [randomHelperOpen, setRandomHelperOpen] = useState(false);
@@ -139,8 +140,8 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         });
     };
 
-    const handleToolsButtonClick = () => {
-        setUploadChoiceOpen(true);
+    const handleToolsButtonClick = (event) => {
+        setToolsAnchorEl(event.currentTarget);
         setPendingUpload(null);
         setPendingTool(null);
         if (fileInputRef.current?.value) {
@@ -148,8 +149,12 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         }
     };
 
+    const handleCloseToolsMenu = () => {
+        setToolsAnchorEl(null);
+    };
+
     const resetUploadState = () => {
-        setUploadChoiceOpen(false);
+        setToolsAnchorEl(null);
         setPendingUpload(null);
         setPendingTool(null);
         if (fileInputRef.current?.value) {
@@ -185,7 +190,9 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     handleOpenMagicEditor(base64data);
                 } else {
                     setPendingUpload(base64data);
-                    setUploadChoiceOpen(true);
+                    if (toolsButtonRef.current) {
+                        setToolsAnchorEl(toolsButtonRef.current);
+                    }
                 }
                 setPendingTool(null);
                 if (inputEl?.value) {
@@ -233,12 +240,14 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 handleRequestProUpsell();
                 return;
             }
+            resetUploadState();
             navigate('/magic');
             return;
         }
 
         setPendingTool(action);
         setPendingUpload(null);
+        handleCloseToolsMenu();
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
             fileInputRef.current.click();
@@ -274,14 +283,64 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     };
 
     const randomHelperId = 'random-helper-dialog';
+    const toolsMenuOpen = Boolean(toolsAnchorEl);
+    const toolsMenuId = toolsMenuOpen ? 'tools-menu' : undefined;
+    const toolItemSx = {
+        borderRadius: 2,
+        px: 1.5,
+        py: 1.25,
+        alignItems: 'flex-start',
+        textAlign: 'left',
+        gap: 2,
+        border: '1px solid transparent',
+        transition: 'background-color 0.2s ease, border-color 0.2s ease',
+        '&:hover': {
+            borderColor: theme.palette.divider,
+            backgroundColor: theme.palette.action.hover,
+        },
+        '&:focus-visible': {
+            borderColor: theme.palette.primary.main,
+            backgroundColor: theme.palette.action.focus,
+        },
+    };
+    const proChipSx = {
+        height: 22,
+        fontWeight: 700,
+        fontSize: '0.65rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        color: theme.palette.mode === 'dark' ? '#e3d1ff' : '#4c2c73',
+        borderColor: theme.palette.mode === 'dark' ? 'rgba(227, 209, 255, 0.45)' : 'rgba(76, 44, 115, 0.4)',
+        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(107, 66, 161, 0.2)' : 'rgba(107, 66, 161, 0.1)',
+    };
+    const toolOptions = [
+        {
+            action: 'advanced',
+            label: 'Caption Tool',
+            description: 'Add text to your image.',
+        },
+        {
+            action: 'magic',
+            label: 'Magic Editor',
+            description: 'Edit your image with prompts.',
+            isPro: true,
+        },
+        {
+            action: 'collage',
+            label: 'Collage Tool',
+            description: 'Create a collage from your images.',
+            isPro: true,
+        },
+    ];
 
     const toolsButton = (
         <StyledButton
             onClick={handleToolsButtonClick}
             startIcon={<Handyman />}
-            aria-haspopup="dialog"
-            aria-expanded={uploadChoiceOpen ? 'true' : undefined}
-            aria-controls={uploadChoiceOpen ? 'upload-choice-dialog' : undefined}
+            ref={toolsButtonRef}
+            aria-haspopup="menu"
+            aria-expanded={toolsMenuOpen ? 'true' : undefined}
+            aria-controls={toolsMenuOpen ? toolsMenuId : undefined}
             variant="contained"
             sx={{
                 ...sharedButtonSx,
@@ -359,7 +418,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         </Dialog>
     );
 
-    const toolDialog = (
+    const toolsPopover = (
         <>
             <Input
                 type="file"
@@ -369,131 +428,48 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 sx={{ display: 'none' }}
             />
 
-            <Dialog
-                id="upload-choice-dialog"
-                open={uploadChoiceOpen}
+            <Popover
+                id={toolsMenuId}
+                open={toolsMenuOpen}
+                anchorEl={toolsAnchorEl}
                 onClose={resetUploadState}
-                maxWidth="xs"
-                fullWidth
-                sx={{
-                    '& .MuiDialog-paper': {
+                anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                PaperProps={{
+                    sx: {
                         borderRadius: 3,
+                        p: 1.5,
+                        minWidth: 260,
+                        maxWidth: 320,
+                        border: `1px solid ${theme.palette.divider}`,
+                        boxShadow: '0 18px 40px rgba(0, 0, 0, 0.22)',
+                        backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0))',
                     },
                 }}
             >
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <DialogTitle
-                        sx={{
-                            fontWeight: 800,
-                            textAlign: 'left',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                        }}
-                    >
-                        <Handyman fontSize="small" />
-                        Tools
-                    </DialogTitle>
-                    <IconButton onClick={resetUploadState} aria-label="close">
-                        <Close />
-                    </IconButton>
-                </Stack>
-                <Divider sx={{ mb: 2 }} />
-                {/* <DialogContent>
-                    <Typography variant="body2" color="text.secondary">
-                        Pick a tool to continue. We will ask for a photo after choosing Advanced or Magic; Collage jumps straight to picking photos.
-                    </Typography>
-                </DialogContent> */}
-                <DialogActions sx={{ px: 3, pb: 3 }}>
-                    <Stack spacing={1.25} sx={{ width: '100%' }}>
-                        <Button
-                            variant="contained"
-                            size="large"
-                            onClick={() => handleToolSelect('advanced')}
+                <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {toolOptions.map((tool) => (
+                        <ListItemButton
+                            key={tool.action}
+                            disableGutters
+                            onClick={() => handleToolSelect(tool.action)}
+                            sx={toolItemSx}
                         >
-                            Caption Tool
-                        </Button>
-                        <Typography variant="body2" color="text.secondary" textAlign={'center'} pb={1.5}>
-                            Add text to your image.
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            size="large"
-                            onClick={() => handleToolSelect('magic')}
-                        >
-                            Magic Editor
-                            <Badge>
-                                <Chip
-                                    icon={<LocalPoliceRounded />}
-                                    label={'Pro'}
-                                    size="small"
-                                    sx={{
-                                        ml: 1,
-                                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                                        border: '1px solid #8b5cc7',
-                                        boxShadow: '0 0 20px rgba(107,66,161,0.5)',
-                                        '& .MuiChip-label': {
-                                            fontWeight: 'bold',
-                                            color: '#fff',
-                                        },
-                                        '& .MuiChip-icon': {
-                                            color: '#fff',
-                                        },
-                                        '&:hover': {
-                                            background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                                            boxShadow: '0 0 25px rgba(107,66,161,0.6)',
-                                        },
-                                    }}
-                                />
-                            </Badge>
-                        </Button>
-                        <Typography variant="body2" color="text.secondary" textAlign={'center'} pb={1.5}>
-                            Edit your image with prompts.
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            size="large"
-                            onClick={() => handleToolSelect('collage')}
-                        >
-                            Collage Tool
-                            <Badge>
-                                <Chip
-                                    icon={<LocalPoliceRounded />}
-                                    label={'Pro'}
-                                    size="small"
-                                    sx={{
-                                        ml: 1,
-                                        background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
-                                        border: '1px solid #8b5cc7',
-                                        boxShadow: '0 0 20px rgba(107,66,161,0.5)',
-                                        '& .MuiChip-label': {
-                                            fontWeight: 'bold',
-                                            color: '#fff',
-                                        },
-                                        '& .MuiChip-icon': {
-                                            color: '#fff',
-                                        },
-                                        '&:hover': {
-                                            background: 'linear-gradient(45deg, #472a69 30%, #7b4cb8 90%)',
-                                            boxShadow: '0 0 25px rgba(107,66,161,0.6)',
-                                        },
-                                    }}
-                                />
-                            </Badge>
-                        </Button>
-                        <Typography variant="body2" color="text.secondary" textAlign={'center'} pb={1.5}>
-                            Create a collage from your images.
-                        </Typography>
-                        <Divider />
-                        <Box sx={{ width: '100%', pt: 2 }}>
-                            <Button onClick={resetUploadState} size="large" color="error" variant="contained" fullWidth>
-                                Cancel
-                            </Button>
-                        </Box>
-                    </Stack>
-                </DialogActions>
-            </Dialog>
+                            <Box sx={{ flex: 1 }}>
+                                <Stack direction="row" alignItems="center" spacing={1}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                                        {tool.label}
+                                    </Typography>
+                                    {tool.isPro && <Chip label="Pro" size="small" variant="outlined" sx={proChipSx} />}
+                                </Stack>
+                                <Typography variant="body2" color="text.secondary">
+                                    {tool.description}
+                                </Typography>
+                            </Box>
+                        </ListItemButton>
+                    ))}
+                </List>
+            </Popover>
         </>
     );
 
@@ -546,7 +522,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                         {randomButton}
                     </Box>
                 </Box>
-                {toolDialog}
+                {toolsPopover}
                 {randomHelperDialog}
             </>
         );
@@ -561,7 +537,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             <StyledRightFooter className="bottomBtn" hasAd={showAd}>
                 {randomButton}
             </StyledRightFooter>
-            {toolDialog}
+            {toolsPopover}
             {randomHelperDialog}
         </>
     );
