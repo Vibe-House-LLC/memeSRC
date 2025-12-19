@@ -373,6 +373,8 @@ export default function AdminMagicEditHistoryPage() {
     [resetAndLoad, status]
   );
   const canBulkApprove = bulkApproveCount > 0 && status !== 'approved';
+  const disableBulkApprove =
+    !canBulkApprove || bulkApproving || loading || status === 'autoModerated' || status === 'removed';
   const approveLabel = `Approve Batch (${bulkApproveCount})`;
 
   return (
@@ -399,28 +401,32 @@ export default function AdminMagicEditHistoryPage() {
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
           alignItems={{ xs: 'flex-start', sm: 'center' }}
+          useFlexGap
           sx={{ flexWrap: 'wrap' }}
         >
           <Button
             variant="contained"
             color="success"
             onClick={handleBulkApprove}
-            disabled={!canBulkApprove || bulkApproving || loading}
+            disabled={disableBulkApprove}
             startIcon={bulkApproving ? <CircularProgress size={16} /> : null}
-            sx={{ order: { xs: 0, sm: 1 } }}
+            sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
           >
             {approveLabel}
           </Button>
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            useFlexGap
-            flexWrap="wrap"
-            sx={{ order: { xs: 1, sm: 0 } }}
-          >
+          <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
             {statusChips}
           </Stack>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleBulkApprove}
+            disabled={disableBulkApprove}
+            startIcon={bulkApproving ? <CircularProgress size={16} /> : null}
+            sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+          >
+            {approveLabel}
+          </Button>
         </Stack>
       </Box>
       <Divider sx={{ mb: 3 }} />
@@ -588,7 +594,7 @@ export default function AdminMagicEditHistoryPage() {
           variant="contained"
           color="success"
           onClick={handleBulkApprove}
-          disabled={!canBulkApprove || bulkApproving || loading}
+          disabled={disableBulkApprove}
           startIcon={bulkApproving ? <CircularProgress size={16} /> : null}
           sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
         >
@@ -794,62 +800,10 @@ function HistoryDialog({
       <DialogContent dividers>
         <Stack spacing={2}>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="stretch">
-            <Stack spacing={1} sx={{ flex: 1 }}>
-              <Typography variant="subtitle2" fontWeight={700}>
-                Generated image
-              </Typography>
-              {showRemovedPlaceholder ? (
-                <Box
-                  sx={{
-                    width: '100%',
-                    aspectRatio: '16 / 9',
-                    objectFit: 'contain',
-                    borderRadius: 1,
-                    border: '1px dashed',
-                    borderColor: 'divider',
-                    backgroundColor: 'background.default',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <CloseIcon color="disabled" sx={{ fontSize: 56 }} />
-                </Box>
-              ) : item.imageUrl ? (
-                <Box
-                  component="img"
-                  src={item.imageUrl}
-                  alt="Generated"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setFullscreenImage({ url: item.imageUrl || '', label: 'Generated image' })}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      setFullscreenImage({ url: item.imageUrl || '', label: 'Generated image' });
-                    }
-                  }}
-                  sx={{
-                    width: '100%',
-                    aspectRatio: '16 / 9',
-                    objectFit: 'contain',
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    backgroundColor: 'background.default',
-                    cursor: 'pointer',
-                  }}
-                />
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Generated image unavailable.
-                </Typography>
-              )}
-            </Stack>
             {hasSubmittedImage && (
               <Stack spacing={1} sx={{ flex: 1 }}>
                 <Typography variant="subtitle2" fontWeight={700}>
-                  Submitted image
+                  Original
                 </Typography>
                 {loadingSubmittedImage ? (
                   <Box
@@ -899,6 +853,58 @@ function HistoryDialog({
                 )}
               </Stack>
             )}
+            <Stack spacing={1} sx={{ flex: 1 }}>
+              <Typography variant="subtitle2" fontWeight={700}>
+                Generated
+              </Typography>
+              {showRemovedPlaceholder ? (
+                <Box
+                  sx={{
+                    width: '100%',
+                    aspectRatio: '16 / 9',
+                    objectFit: 'contain',
+                    borderRadius: 1,
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                    backgroundColor: 'background.default',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <CloseIcon color="disabled" sx={{ fontSize: 56 }} />
+                </Box>
+              ) : item.imageUrl ? (
+                <Box
+                  component="img"
+                  src={item.imageUrl}
+                  alt="Generated"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setFullscreenImage({ url: item.imageUrl || '', label: 'Generated image' })}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setFullscreenImage({ url: item.imageUrl || '', label: 'Generated image' });
+                    }
+                  }}
+                  sx={{
+                    width: '100%',
+                    aspectRatio: '16 / 9',
+                    objectFit: 'contain',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    backgroundColor: 'background.default',
+                    cursor: 'pointer',
+                  }}
+                />
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Generated image unavailable.
+                </Typography>
+              )}
+            </Stack>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip size="small" label={`Model: ${formatModel(meta?.model)}`} variant="outlined" />
