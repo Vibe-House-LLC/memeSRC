@@ -17,7 +17,7 @@ import {
     ListItemButton,
     Chip,
 } from '@mui/material';
-import { Handyman } from '@mui/icons-material';
+import { Handyman, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
@@ -285,6 +285,11 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const randomHelperId = 'random-helper-dialog';
     const toolsMenuOpen = Boolean(toolsAnchorEl);
     const toolsMenuId = toolsMenuOpen ? 'tools-menu' : undefined;
+    const toolsArrowIcon = toolsMenuOpen ? (
+        <KeyboardArrowDown fontSize="small" aria-hidden="true" />
+    ) : (
+        <KeyboardArrowUp fontSize="small" aria-hidden="true" />
+    );
     const toolItemSx = {
         borderRadius: 2,
         px: 1.5,
@@ -337,6 +342,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         <StyledButton
             onClick={handleToolsButtonClick}
             startIcon={<Handyman />}
+            endIcon={toolsArrowIcon}
             ref={toolsButtonRef}
             aria-haspopup="menu"
             aria-expanded={toolsMenuOpen ? 'true' : undefined}
