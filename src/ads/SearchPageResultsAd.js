@@ -1,19 +1,13 @@
-import { useContext, useEffect } from 'react';
+import { useContext, useRef } from 'react';
 import { UserContext } from '../UserContext';
-import { shouldShowAds, useAdsenseLoader } from '../utils/adsenseLoader';
+import { shouldShowAds, useAdsenseLoader, useAdsenseSlot } from '../utils/adsenseLoader';
 
 const SearchPageResultsAd = () => {
     const { user } = useContext(UserContext);
     const showAds = shouldShowAds(user);
+    const adRef = useRef(null);
     useAdsenseLoader();
-
-    useEffect(() => {
-        if (!showAds) {
-            return;
-        }
-        window.adsbygoogle = window.adsbygoogle || [];
-        window.adsbygoogle.push({});
-    }, [showAds]);
+    useAdsenseSlot({ adRef, enabled: showAds });
 
     if (!showAds) {
         return null;
@@ -21,6 +15,7 @@ const SearchPageResultsAd = () => {
 
     return (
         <ins className="adsbygoogle"
+            ref={adRef}
             style={{ display: 'block', textAlign: 'center' }}
             data-ad-format="fluid"
             data-ad-layout="in-article"

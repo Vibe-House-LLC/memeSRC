@@ -14,15 +14,23 @@ export async function list(
 ): Promise<ListItem[]> {
   // Clamp pageSize to Amplify's supported range 0-1000
   const safePageSize = Math.max(0, Math.min(1000, Number(pageSize) || 0));
-  const result: any = await Storage.list(prefix, { level, pageSize: safePageSize } as any);
-  const raw = (result?.results || result || []) as any[];
-  const items = raw
-    .map((entry: any) => ({
-      key: entry.key || entry?.Key || entry?.key, // support various shapes
-      lastModified: entry.lastModified || entry?.LastModified || entry?.lastModified || new Date().toISOString(),
-      size: entry.size || entry?.Size || entry?.size || 0,
-    }))
-    .filter((x: any) => x.key) as ListItem[];
+  const items: ListItem[] = [];
+  let nextToken: string | undefined;
+  let lastToken: string | undefined;
+  do {
+    const result: any = await Storage.list(prefix, { level, pageSize: safePageSize, nextToken } as any);
+    const raw = (result?.results || result?.items || result || []) as any[];
+    const pageItems = raw
+      .map((entry: any) => ({
+        key: entry.key || entry?.Key || entry?.key, // support various shapes
+        lastModified: entry.lastModified || entry?.LastModified || entry?.lastModified || new Date().toISOString(),
+        size: entry.size || entry?.Size || entry?.size || 0,
+      }))
+      .filter((x: any) => x.key) as ListItem[];
+    items.push(...pageItems);
+    lastToken = nextToken;
+    nextToken = result?.nextToken || result?.NextToken;
+  } while (nextToken && nextToken !== lastToken);
   items.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
   return items;
 }
@@ -32,9 +40,13 @@ export async function list(
  */
 export function getUrl(
   key: string,
-  { level = DEFAULT_LEVEL, expires = 3600 }: { level?: string; expires?: number } = {}
+  {
+    level = DEFAULT_LEVEL,
+    expires = 3600,
+    validateObjectExistence = false,
+  }: { level?: string; expires?: number; validateObjectExistence?: boolean } = {}
 ): Promise<any> {
-  return Storage.get(key, { level, expires } as any) as unknown as Promise<any>;
+  return Storage.get(key, { level, expires, validateObjectExistence } as any) as unknown as Promise<any>;
 }
 
 /**
