@@ -1,17 +1,23 @@
-import { useContext, useRef } from 'react';
+import { useContext, useEffect } from 'react';
 import { Link, Typography, Box } from '@mui/material';
 import { Close } from '@mui/icons-material';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { UserContext } from '../UserContext';
-import { shouldShowAds, useAdsenseLoader, useAdsenseSlot } from '../utils/adsenseLoader';
+import { shouldShowAds, useAdsenseLoader } from '../utils/adsenseLoader';
 
 const EditorPageBottomBannerAd = () => {
     const { user } = useContext(UserContext);
     const showAds = shouldShowAds(user);
     const { openSubscriptionDialog } = useSubscribeDialog();
-    const adRef = useRef(null);
     useAdsenseLoader();
-    useAdsenseSlot({ adRef, enabled: showAds });
+
+    useEffect(() => {
+        if (!showAds) {
+            return;
+        }
+        window.adsbygoogle = window.adsbygoogle || [];
+        window.adsbygoogle.push({});
+    }, [showAds]);
 
     if (!showAds) {
         return null;
@@ -19,7 +25,6 @@ const EditorPageBottomBannerAd = () => {
 
     const adSnippet = (
         <ins className="adsbygoogle"
-            ref={adRef}
             style={{ display: 'block' }}
             data-ad-format="auto"
             data-ad-layout-key="-gw-3+1f-3d+2z"
