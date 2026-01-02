@@ -2558,77 +2558,83 @@ useEffect(() => {
               <Box sx={{ width: '100%' }}>
                 {collagePreview ? (
                   <Stack spacing={1.5}>
-                    <Button
-                      size="medium"
-                      fullWidth
-                      variant="contained"
-                      disabled
-                      startIcon={<Check />}
-                      sx={{
-                        backgroundColor: '#FF9800',
-                        color: '#111',
-                        '&:hover': { backgroundColor: '#F57C00' },
-                        '&.Mui-disabled': {
-                          backgroundColor: '#FF9800',
-                          color: '#111',
-                          opacity: 0.85,
-                        },
-                      }}
+                    <Stack
+                      direction="row"
+                      spacing={2}
+                      alignItems={{ xs: 'stretch', md: 'flex-start' }}
+                      sx={{ flexWrap: 'nowrap' }}
                     >
-                      Saved to collage
-                    </Button>
-                    <Stack direction="row" alignItems="center" justifyContent="space-between">
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#e5e7eb' }}>
-                        Collage preview
-                      </Typography>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        startIcon={<Edit />}
-                        onClick={() => {
-                          if (!collagePreview?.projectId) return;
-                          navigate(`/projects/${collagePreview.projectId}`, {
-                            state: { projectId: collagePreview.projectId },
-                          });
-                        }}
-                        sx={{ backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                      >
-                        Edit Collage
-                      </Button>
-                    </Stack>
-                    <Box
-                      sx={{
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                        border: '1px solid rgba(255, 255, 255, 0.16)',
-                        backgroundColor: '#0f172a',
-                        width: '100%',
-                        maxWidth: { md: 400, lg: 400 },
-                        mx: { md: 'auto' },
-                        alignSelf: { md: 'center' },
-                      }}
-                    >
-                      {collagePreview.thumbnail ? (
-                        <Box
-                          component="img"
-                          src={collagePreview.thumbnail}
-                          alt={collagePreview.name || 'Collage preview'}
-                          sx={{ width: '100%', display: 'block' }}
-                        />
-                      ) : (
-                        <Box
+                      <Stack spacing={1.5} sx={{ flex: 1, minWidth: 0 }}>
+                        <Button
+                          size="medium"
+                          fullWidth
+                          variant="contained"
+                          disabled
+                          startIcon={<Check />}
                           sx={{
-                            height: 200,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#e5e7eb',
+                            backgroundColor: '#FF9800',
+                            color: '#111',
+                            '&:hover': { backgroundColor: '#F57C00' },
+                            '&.Mui-disabled': {
+                              backgroundColor: '#FF9800',
+                              color: '#111',
+                              opacity: 0.85,
+                            },
                           }}
                         >
-                          <Typography variant="subtitle1">Collage updated</Typography>
+                          Saved to collage
+                        </Button>
+                        <Button
+                          size="medium"
+                          fullWidth
+                          variant="contained"
+                          startIcon={<Edit />}
+                          onClick={() => {
+                            if (!collagePreview?.projectId) return;
+                            navigate(`/projects/${collagePreview.projectId}`, {
+                              state: { projectId: collagePreview.projectId },
+                            });
+                          }}
+                          sx={{ backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        >
+                          Edit Collage
+                        </Button>
+                      </Stack>
+                      <Stack spacing={1} sx={{ width: { xs: 140, sm: 160, md: 220 }, flexShrink: 0 }}>
+                        <Box
+                          sx={{
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            border: '1px solid rgba(255, 255, 255, 0.16)',
+                            backgroundColor: '#0f172a',
+                            width: '100%',
+                            maxWidth: { xs: 140, sm: 160, md: 220 },
+                            mx: 0,
+                          }}
+                        >
+                          {collagePreview.thumbnail ? (
+                            <Box
+                              component="img"
+                              src={collagePreview.thumbnail}
+                              alt={collagePreview.name || 'Collage preview'}
+                              sx={{ width: '100%', display: 'block' }}
+                            />
+                          ) : (
+                            <Box
+                              sx={{
+                                height: { xs: 100, sm: 120, md: 140 },
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#e5e7eb',
+                              }}
+                            >
+                              <Typography variant="subtitle1">Collage updated</Typography>
+                            </Box>
+                          )}
                         </Box>
-                      )}
-                    </Box>
+                      </Stack>
+                    </Stack>
                   </Stack>
                 ) : hasLibraryAccess ? (
                   <Stack spacing={1.5}>
