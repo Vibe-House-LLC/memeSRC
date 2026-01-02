@@ -2836,6 +2836,30 @@ useEffect(() => {
                                   <Typography variant="subtitle2">No recent collages</Typography>
                                 </Box>
                               )}
+                              {recentCollage && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    height: 48,
+                                    display: 'flex',
+                                    alignItems: 'flex-end',
+                                    justifyContent: 'center',
+                                    paddingBottom: 0.75,
+                                    background: 'linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.85) 100%)',
+                                    color: '#f8fafc',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    letterSpacing: 0.3,
+                                    textTransform: 'none',
+                                    pointerEvents: 'none',
+                                  }}
+                                >
+                                  Recent Edit
+                                </Box>
+                              )}
                               {activeCollageTile === `recent:${recentCollage?.id}` && addingToCollage && (
                                 <Box
                                   sx={{
