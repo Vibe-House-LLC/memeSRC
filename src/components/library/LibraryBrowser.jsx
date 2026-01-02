@@ -27,6 +27,7 @@ function blobToDataUrl(blob) {
 export default function LibraryBrowser({
   multiple = true,
   pageSize = 10,
+  paginationMode = 'infinite',
   onSelect,
   onError,
   uploadEnabled = true,
@@ -49,7 +50,7 @@ export default function LibraryBrowser({
   exposeActions,
   renderHeader,
 }) {
-  const { items, loading, hasMore, loadMore, reload, uploadMany, removeFromState } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
+  const { items, loading, hasMore, loadMore, reload, uploadMany, removeFromState, markItemError } = useLibraryData({ pageSize, storageLevel, refreshToken: refreshTrigger });
   const { selectedKeys, orderedKeys, isSelected, toggle, clear, count, atMax } = useSelection({ multiple, maxSelected: typeof maxSelected === 'number' ? maxSelected : Infinity });
   const [selectMode, setSelectMode] = useState(Boolean(initialSelectMode));
 
@@ -63,22 +64,33 @@ export default function LibraryBrowser({
   const [searchQuery, setSearchQuery] = useState('');
   const [metaByKey, setMetaByKey] = useState({}); // { [key]: { tags, description, defaultCaption } }
   const [deletingKeys, setDeletingKeys] = useState(() => new Set());
+  const [isSentinelVisible, setIsSentinelVisible] = useState(false);
 
   const sentinelRef = useRef(null);
+  const useInfiniteScroll = paginationMode === 'infinite';
 
   // Infinite scroll
   useEffect(() => {
+    if (!useInfiniteScroll) return undefined;
     if (!sentinelRef.current) return undefined;
     const el = sentinelRef.current;
     const io = new IntersectionObserver((entries) => {
       const [entry] = entries;
+      setIsSentinelVisible(entry.isIntersecting);
       if (entry.isIntersecting && hasMore && !loading) {
         loadMore();
       }
     }, { rootMargin: '200px' });
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, loadMore, loading]);
+  }, [hasMore, loadMore, loading, useInfiniteScroll]);
+
+  useEffect(() => {
+    if (!useInfiniteScroll) return;
+    if (isSentinelVisible && hasMore && !loading) {
+      loadMore();
+    }
+  }, [hasMore, isSentinelVisible, loadMore, loading, useInfiniteScroll]);
 
   const parseTimestampFromKey = (key) => {
     try {
@@ -554,12 +566,25 @@ export default function LibraryBrowser({
               }
             }}
             onPreview={() => !deletingKeys.has(item.key) && item.key && onTileClick(item.key)}
+            onImageError={() => item?.key && markItemError(item.key)}
           />
         )}
       />
 
-      {/* infinite scroll sentinel */}
-      <Box ref={sentinelRef} sx={{ height: 1 }} aria-hidden />
+      {useInfiniteScroll && (
+        <>
+          {/* infinite scroll sentinel */}
+          <Box ref={sentinelRef} sx={{ height: 1 }} aria-hidden />
+        </>
+      )}
+
+      {paginationMode === 'manual' && hasMore && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Button variant="outlined" onClick={loadMore} disabled={loading}>
+            {loading ? 'Loading...' : 'Load more'}
+          </Button>
+        </Box>
+      )}
 
       <PreviewDialog
         open={Boolean(previewKey)}
@@ -638,6 +663,7 @@ export default function LibraryBrowser({
 LibraryBrowser.propTypes = {
   multiple: PropTypes.bool,
   pageSize: PropTypes.number,
+  paginationMode: PropTypes.oneOf(['infinite', 'manual']),
   onSelect: PropTypes.func.isRequired,
   onError: PropTypes.func,
   uploadEnabled: PropTypes.bool,

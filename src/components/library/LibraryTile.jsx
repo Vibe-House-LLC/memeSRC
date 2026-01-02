@@ -3,17 +3,27 @@ import PropTypes from 'prop-types';
 import { Box, Skeleton, CircularProgress } from '@mui/material';
 import { Check } from '@mui/icons-material';
 
-export default function LibraryTile({ item, selected, onClick, onPreview, disabled, selectionMode, selectionIndex }) {
-  const loaded = Boolean(item?.url) && !item?.loading;
+export default function LibraryTile({
+  item,
+  selected,
+  onClick,
+  onPreview,
+  disabled,
+  selectionMode,
+  selectionIndex,
+  onImageError,
+}) {
+  const hasImageError = Boolean(item?.imageError);
+  const loaded = Boolean(item?.url) && !item?.loading && !hasImageError;
   return (
       <Box sx={{ position: 'relative', width: '100%', height: '100%', cursor: disabled ? 'not-allowed' : 'pointer', overflow: 'hidden', borderRadius: 1.5, outline: 'none', '&:focus-visible': { boxShadow: '0 0 0 2px #8b5cc7' } }}>
       <Box onClick={disabled ? undefined : onClick} onDoubleClick={disabled ? undefined : onPreview} aria-label={selected ? 'Unselect image' : 'Select image'} role="button" tabIndex={disabled ? -1 : 0} sx={{ width: '100%', height: '100%', pointerEvents: disabled ? 'none' : 'auto' }}>
         {!loaded && (
           <Skeleton variant="rectangular" animation="wave" width="100%" height="100%" sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
         )}
-        {item?.url && (
+        {item?.url && !hasImageError && (
           <>
-            <img src={item.url} alt="library item" loading="lazy" style={{ objectFit: 'cover', width: '100%', height: '100%', display: loaded ? 'block' : 'none' }} />
+            <img src={item.url} alt="library item" loading="lazy" onError={onImageError} style={{ objectFit: 'cover', width: '100%', height: '100%', display: loaded ? 'block' : 'none' }} />
             <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.0) 40%, rgba(0,0,0,0.35) 100%)', pointerEvents: 'none' }} />
           </>
         )}
@@ -97,4 +107,5 @@ LibraryTile.propTypes = {
   disabled: PropTypes.bool,
   selectionMode: PropTypes.bool,
   selectionIndex: PropTypes.number,
+  onImageError: PropTypes.func,
 };

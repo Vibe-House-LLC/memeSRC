@@ -14,6 +14,12 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
 
   // No favorites: keep original order as returned by storage
   const sortItems = useCallback((arr) => arr, []);
+  const shouldSkipKey = useCallback((key) => {
+    if (!key) return true;
+    const lower = String(key).toLowerCase();
+    if (lower.endsWith('/')) return true;
+    return lower.endsWith('.json');
+  }, []);
 
   const reload = useCallback(async ({ fromEnd } = {}) => {
     const useFromEnd = typeof fromEnd === 'boolean' ? fromEnd : fetchFromEnd;
@@ -22,12 +28,20 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
     setLoadedCount(0);
     try {
       // Fetch the full list of keys (up to backend max), not limited by the UI page size
-      const all = await list('library/', { level: storageLevel });
+      const allRaw = await list('library/', { level: storageLevel });
+      const all = allRaw.filter((item) => item?.key && !shouldSkipKey(item.key));
       setAllKeys(all);
       if (all.length > 0) {
         const totalToLoad = Math.min(pageSize, all.length);
         const keysToLoad = useFromEnd ? all.slice(-totalToLoad) : all.slice(0, totalToLoad);
-        const urls = await Promise.all(keysToLoad.map(async (it) => ({ key: it.key, url: await getUrl(it.key, { level: storageLevel }) })));
+        const urls = await Promise.all(keysToLoad.map(async (it) => {
+          try {
+            const url = await getUrl(it.key, { level: storageLevel, validateObjectExistence: true });
+            return { key: it.key, url };
+          } catch (_) {
+            return { key: it.key, imageError: true };
+          }
+        }));
         setItems(sortItems(urls));
         setLoadedCount(totalToLoad);
       }
@@ -46,7 +60,14 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
       const remaining = allKeys.filter((k) => !currentlyLoadedKeys.has(k.key));
       const count = Math.min(pageSize, remaining.length);
       const toLoad = fetchFromEnd ? remaining.slice(-count) : remaining.slice(0, count);
-      const urls = await Promise.all(toLoad.map(async (it) => ({ key: it.key, url: await getUrl(it.key, { level: storageLevel }) })));
+      const urls = await Promise.all(toLoad.map(async (it) => {
+        try {
+          const url = await getUrl(it.key, { level: storageLevel, validateObjectExistence: true });
+          return { key: it.key, url };
+        } catch (_) {
+          return { key: it.key, imageError: true };
+        }
+      }));
       setItems((prev) => sortItems([...prev, ...urls]));
       setLoadedCount((prev) => prev + count);
     } finally {
@@ -203,5 +224,10 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
     setAllKeys((prev) => prev.filter((i) => !removeSet.has(i.key)));
   }, []);
 
-  return { items, loading, hasMore, loadMore, reload, upload, uploadMany, remove: removeItem, removeFromState };
+  const markItemError = useCallback((key) => {
+    if (!key) return;
+    setItems((prev) => prev.map((item) => (item.key === key ? { ...item, imageError: true } : item)));
+  }, []);
+
+  return { items, loading, hasMore, loadMore, reload, upload, uploadMany, remove: removeItem, removeFromState, markItemError };
 }
