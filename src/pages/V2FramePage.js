@@ -465,6 +465,17 @@ export default function FramePage() {
     setAddToExpanded((prev) => !prev);
   };
 
+  const handleAddDone = () => {
+    setAddToExpanded(false);
+    setAddToSelection(null);
+    setCollagePreview(null);
+    setSavedToLibrary(false);
+    setPendingCollagePayload(null);
+    setCollagePickerOpen(false);
+    setCollagePickerPage(0);
+    setActiveCollageTile(null);
+  };
+
   const handleAddToLibrary = async () => {
     if (!requireLibraryAccess()) return;
     if (!displayImage || !confirmedCid || savingToLibrary) return;
@@ -2599,6 +2610,22 @@ useEffect(() => {
                         >
                           Edit Collage
                         </Button>
+                        <Button
+                          size="medium"
+                          fullWidth
+                          variant="outlined"
+                          onClick={handleAddDone}
+                          sx={{
+                            borderColor: 'rgba(148, 163, 184, 0.6)',
+                            color: '#e5e7eb',
+                            '&:hover': {
+                              borderColor: 'rgba(148, 163, 184, 0.9)',
+                              backgroundColor: 'rgba(148, 163, 184, 0.08)',
+                            },
+                          }}
+                        >
+                          Done
+                        </Button>
                       </Stack>
                       <Stack spacing={1} sx={{ width: { xs: 140, sm: 160, md: 220 }, flexShrink: 0 }}>
                         <Box
@@ -2695,26 +2722,44 @@ useEffect(() => {
                       </Stack>
                     </Collapse>
                     <Collapse in={showLibraryActions} timeout={200} unmountOnExit>
-                      <Stack direction="row" spacing={1}>
+                      <Stack spacing={1} sx={{ width: '100%' }}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <Button
+                            size="medium"
+                            variant="contained"
+                            onClick={handleAddToCollage}
+                            startIcon={<Add />}
+                            disabled={addingToCollage || !currentImage}
+                            sx={actionButtonSx}
+                          >
+                            Add to Collage
+                          </Button>
+                          <Button
+                            size="medium"
+                            variant="contained"
+                            component={RouterLink}
+                            to="/library"
+                            startIcon={<Collections />}
+                            sx={actionButtonSx}
+                          >
+                            My Library
+                          </Button>
+                        </Stack>
                         <Button
                           size="medium"
-                          variant="contained"
-                          onClick={handleAddToCollage}
-                          startIcon={<Add />}
-                          disabled={addingToCollage || !currentImage}
-                          sx={actionButtonSx}
+                          fullWidth
+                          variant="outlined"
+                          onClick={handleAddDone}
+                          sx={{
+                            borderColor: 'rgba(148, 163, 184, 0.6)',
+                            color: '#e5e7eb',
+                            '&:hover': {
+                              borderColor: 'rgba(148, 163, 184, 0.9)',
+                              backgroundColor: 'rgba(148, 163, 184, 0.08)',
+                            },
+                          }}
                         >
-                          Add to Collage
-                        </Button>
-                        <Button
-                          size="medium"
-                          variant="contained"
-                          component={RouterLink}
-                          to="/library"
-                          startIcon={<Collections />}
-                          sx={actionButtonSx}
-                        >
-                          My Library
+                          Done
                         </Button>
                       </Stack>
                     </Collapse>
