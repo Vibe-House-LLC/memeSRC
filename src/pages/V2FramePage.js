@@ -2815,7 +2815,7 @@ useEffect(() => {
                                   component="img"
                                   src={recentCollageThumbnail}
                                   alt={recentCollage.name || 'Recent collage'}
-                                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                 />
                               ) : recentCollage ? (
                                 <Skeleton
@@ -2929,7 +2929,7 @@ useEffect(() => {
                                             component="img"
                                             src={thumbnail}
                                             alt={project.name || 'Collage'}
-                                            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                           />
                                         ) : (
                                           <Skeleton
