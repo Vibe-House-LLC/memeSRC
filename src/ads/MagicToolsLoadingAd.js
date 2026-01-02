@@ -1,23 +1,17 @@
 import { Link, Typography, Box } from '@mui/material';
-import { useEffect, useContext } from 'react';
+import { useContext, useRef } from 'react';
 import { Close } from '@mui/icons-material';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import { UserContext } from '../UserContext';
-import { shouldShowAds, useAdsenseLoader } from '../utils/adsenseLoader';
+import { shouldShowAds, useAdsenseLoader, useAdsenseSlot } from '../utils/adsenseLoader';
 
 const MagicToolsLoadingAd = () => {
     const { user } = useContext(UserContext);
     const showAds = shouldShowAds(user);
     const { openSubscriptionDialog } = useSubscribeDialog();
+    const adRef = useRef(null);
     useAdsenseLoader();
-
-    useEffect(() => {
-        if (!showAds) {
-            return;
-        }
-        window.adsbygoogle = window.adsbygoogle || [];
-        window.adsbygoogle.push({});
-    }, [showAds]);
+    useAdsenseSlot({ adRef, enabled: showAds });
 
     if (!showAds) {
         return null;
@@ -25,6 +19,7 @@ const MagicToolsLoadingAd = () => {
 
     const adSnippet = (
         <ins className="adsbygoogle"
+            ref={adRef}
             style={{ display: 'block' }}
             data-ad-format="auto"
             data-ad-client="ca-pub-1307598869123774"
