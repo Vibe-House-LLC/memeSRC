@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getUrl, list, put, remove } from '../../utils/library/storage';
 import { resizeImage } from '../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
@@ -8,51 +8,97 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
   const [allKeys, setAllKeys] = useState([]); // full list for paging: { key, lastModified, size }
   const [loading, setLoading] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
-  const [fetchFromEnd, setFetchFromEnd] = useState(false);
+  const fetchFromEndRef = useRef(false);
+  const loadingRef = useRef(false);
+  const activeReloadsRef = useRef(0);
+  const reloadGenerationRef = useRef(0);
 
   const hasMore = useMemo(() => loadedCount < allKeys.length, [loadedCount, allKeys.length]);
 
   // No favorites: keep original order as returned by storage
   const sortItems = useCallback((arr) => arr, []);
+  const shouldSkipKey = useCallback((key) => {
+    if (!key) return true;
+    const lower = String(key).toLowerCase();
+    if (lower.endsWith('/')) return true;
+    return lower.endsWith('.json');
+  }, []);
 
   const reload = useCallback(async ({ fromEnd } = {}) => {
-    const useFromEnd = typeof fromEnd === 'boolean' ? fromEnd : fetchFromEnd;
-    setFetchFromEnd(useFromEnd);
+    const useFromEnd = typeof fromEnd === 'boolean' ? fromEnd : fetchFromEndRef.current;
+    fetchFromEndRef.current = useFromEnd;
+
+    const generation = reloadGenerationRef.current + 1;
+    reloadGenerationRef.current = generation;
+    activeReloadsRef.current += 1;
     setItems([]);
     setLoadedCount(0);
+    setLoading(true);
     try {
       // Fetch the full list of keys (up to backend max), not limited by the UI page size
-      const all = await list('library/', { level: storageLevel });
+      const allRaw = await list('library/', { level: storageLevel });
+      const seen = new Set();
+      const all = allRaw.filter((item) => {
+        if (!item?.key || shouldSkipKey(item.key)) return false;
+        if (seen.has(item.key)) return false;
+        seen.add(item.key);
+        return true;
+      });
+      if (reloadGenerationRef.current !== generation) return;
       setAllKeys(all);
       if (all.length > 0) {
         const totalToLoad = Math.min(pageSize, all.length);
         const keysToLoad = useFromEnd ? all.slice(-totalToLoad) : all.slice(0, totalToLoad);
-        const urls = await Promise.all(keysToLoad.map(async (it) => ({ key: it.key, url: await getUrl(it.key, { level: storageLevel }) })));
+        const urls = await Promise.all(keysToLoad.map(async (it) => {
+          try {
+            const url = await getUrl(it.key, { level: storageLevel, validateObjectExistence: true });
+            return { key: it.key, url };
+          } catch (_) {
+            return { key: it.key, imageError: true };
+          }
+        }));
+        if (reloadGenerationRef.current !== generation) return;
         setItems(sortItems(urls));
         setLoadedCount(totalToLoad);
       }
     } catch (e) {
       // ignore list error; caller can trigger reload again
+    } finally {
+      activeReloadsRef.current = Math.max(0, activeReloadsRef.current - 1);
+      if (!loadingRef.current && activeReloadsRef.current === 0) {
+        setLoading(false);
+      }
     }
-  }, [fetchFromEnd, pageSize, sortItems, storageLevel]);
+  }, [pageSize, shouldSkipKey, sortItems, storageLevel]);
 
   useEffect(() => { reload(); }, [reload, refreshToken]);
 
   const loadMore = useCallback(async () => {
-    if (loading) return;
+    if (loadingRef.current || activeReloadsRef.current > 0) return;
+    loadingRef.current = true;
     setLoading(true);
     try {
       const currentlyLoadedKeys = new Set(items.filter((i) => i.key).map((i) => i.key));
       const remaining = allKeys.filter((k) => !currentlyLoadedKeys.has(k.key));
       const count = Math.min(pageSize, remaining.length);
-      const toLoad = fetchFromEnd ? remaining.slice(-count) : remaining.slice(0, count);
-      const urls = await Promise.all(toLoad.map(async (it) => ({ key: it.key, url: await getUrl(it.key, { level: storageLevel }) })));
+      const toLoad = fetchFromEndRef.current ? remaining.slice(-count) : remaining.slice(0, count);
+      const urls = await Promise.all(toLoad.map(async (it) => {
+        try {
+          const url = await getUrl(it.key, { level: storageLevel, validateObjectExistence: true });
+          return { key: it.key, url };
+        } catch (_) {
+          return { key: it.key, imageError: true };
+        }
+      }));
       setItems((prev) => sortItems([...prev, ...urls]));
       setLoadedCount((prev) => prev + count);
     } finally {
-      setLoading(false);
+      loadingRef.current = false;
+      if (activeReloadsRef.current === 0) {
+        setLoading(false);
+      }
     }
-  }, [allKeys, fetchFromEnd, items, loading, pageSize, sortItems, storageLevel]);
+  }, [allKeys, items, pageSize, sortItems, storageLevel]);
 
   // Create a placeholder item and return a handle
   const createPlaceholder = useCallback((file, { withPreview = true, createdAtValue } = {}) => {
@@ -203,5 +249,10 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
     setAllKeys((prev) => prev.filter((i) => !removeSet.has(i.key)));
   }, []);
 
-  return { items, loading, hasMore, loadMore, reload, upload, uploadMany, remove: removeItem, removeFromState };
+  const markItemError = useCallback((key) => {
+    if (!key) return;
+    setItems((prev) => prev.map((item) => (item.key === key ? { ...item, imageError: true } : item)));
+  }, []);
+
+  return { items, loading, hasMore, loadMore, reload, upload, uploadMany, remove: removeItem, removeFromState, markItemError };
 }
