@@ -1,5 +1,6 @@
 // src/utils/adsenseLoader.ts
 import { useContext, useEffect } from 'react';
+import type { RefObject } from 'react';
 import { UserContext } from '../UserContext';
 
 let adsenseLoaded = false;
@@ -18,6 +19,11 @@ type IdleWindow = Window &
   typeof globalThis & {
     requestIdleCallback?: (cb: () => void) => number;
     cancelIdleCallback?: (id: number) => void;
+  };
+
+type AdsenseWindow = Window &
+  typeof globalThis & {
+    adsbygoogle?: Array<Record<string, unknown>>;
   };
 
 const removeAdsenseArtifacts = () => {
@@ -94,4 +100,82 @@ export const useAdsenseLoader = (): void => {
     }
     return undefined;
   }, [adsEnabled, user]);
+};
+
+type AdsenseSlotOptions = {
+  adRef: RefObject<HTMLElement>;
+  enabled: boolean;
+  minWidth?: number;
+};
+
+const DEFAULT_AD_MIN_WIDTH = 250;
+
+const getElementWidth = (element: HTMLElement): number => {
+  const rect = element.getBoundingClientRect();
+  return rect.width || element.offsetWidth || 0;
+};
+
+const isSlotComplete = (element: HTMLElement): boolean => {
+  return element.getAttribute('data-adsbygoogle-status') === 'done';
+};
+
+const isSlotWideEnough = (element: HTMLElement, minWidth: number): boolean => {
+  return getElementWidth(element) >= minWidth;
+};
+
+export const useAdsenseSlot = ({ adRef, enabled, minWidth = DEFAULT_AD_MIN_WIDTH }: AdsenseSlotOptions): void => {
+  useEffect(() => {
+    if (!enabled || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    let didPush = false;
+    const attemptRender = () => {
+      const element = adRef.current;
+      if (!element || didPush) {
+        return;
+      }
+      if (isSlotComplete(element)) {
+        didPush = true;
+        return;
+      }
+      if (!isSlotWideEnough(element, minWidth)) {
+        return;
+      }
+      didPush = true;
+      const adsenseWindow = window as AdsenseWindow;
+      adsenseWindow.adsbygoogle = adsenseWindow.adsbygoogle || [];
+      try {
+        adsenseWindow.adsbygoogle.push({});
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          // Keep the UI alive if AdSense rejects a slot render.
+          console.warn('Adsense slot render failed.', error);
+        }
+      }
+    };
+
+    attemptRender();
+    if (didPush) {
+      return undefined;
+    }
+
+    if (typeof ResizeObserver === 'undefined') {
+      const timeoutId = window.setTimeout(attemptRender, 250);
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    const observer = new ResizeObserver(() => {
+      attemptRender();
+      if (didPush) {
+        observer.disconnect();
+      }
+    });
+
+    if (adRef.current) {
+      observer.observe(adRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [adRef, enabled, minWidth]);
 };

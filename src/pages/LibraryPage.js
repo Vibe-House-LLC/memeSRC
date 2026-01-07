@@ -53,6 +53,8 @@ export default function LibraryPage() {
       <Box sx={{ mt: 2 }}>
         <LibraryBrowser
           multiple
+          pageSize={24}
+          paginationMode="manual"
           storageLevel="private"
           uploadEnabled
           deleteEnabled

@@ -1,8 +1,8 @@
-import { useContext, useEffect } from 'react';
+import { useContext, useRef } from 'react';
 import styled from '@emotion/styled';
 import Box from '@mui/material/Box';
 import { UserContext } from '../UserContext';
-import { shouldShowAds, useAdsenseLoader } from '../utils/adsenseLoader';
+import { shouldShowAds, useAdsenseLoader, useAdsenseSlot } from '../utils/adsenseLoader';
 
 const FixedSizeAdContainer = styled(Box)`
   display: flex;
@@ -19,15 +19,9 @@ const FixedSizeAdContainer = styled(Box)`
 const FixedMobileBannerAd = () => {
     const { user } = useContext(UserContext);
     const showAds = shouldShowAds(user);
+    const adRef = useRef(null);
     useAdsenseLoader();
-
-    useEffect(() => {
-        if (!showAds) {
-            return;
-        }
-        window.adsbygoogle = window.adsbygoogle || [];
-        window.adsbygoogle.push({});
-    }, [showAds]);
+    useAdsenseSlot({ adRef, enabled: showAds, minWidth: 300 });
 
     if (!showAds) {
         return null;
@@ -36,10 +30,11 @@ const FixedMobileBannerAd = () => {
     return (
         <FixedSizeAdContainer>
             <ins className="adsbygoogle"
-            style={{ display: 'inline-block', width: '300px', height: '50px' }}
-            data-ad-client="ca-pub-1307598869123774"
-            data-ad-slot="2351910795"
-        />
+                ref={adRef}
+                style={{ display: 'inline-block', width: '300px', height: '50px' }}
+                data-ad-client="ca-pub-1307598869123774"
+                data-ad-slot="2351910795"
+            />
         </FixedSizeAdContainer>
     );
 }
