@@ -77,13 +77,10 @@ export default function LibraryBrowser({
     const io = new IntersectionObserver((entries) => {
       const [entry] = entries;
       setIsSentinelVisible(entry.isIntersecting);
-      if (entry.isIntersecting && hasMore && !loading) {
-        loadMore();
-      }
     }, { rootMargin: '200px' });
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, loadMore, loading, useInfiniteScroll]);
+  }, [useInfiniteScroll]);
 
   useEffect(() => {
     if (!useInfiniteScroll) return;
