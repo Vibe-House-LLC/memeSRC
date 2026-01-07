@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getUrl, list, put, remove } from '../../utils/library/storage';
 import { resizeImage } from '../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX } from '../../constants/imageProcessing';
@@ -9,6 +9,8 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
   const [loading, setLoading] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
   const [fetchFromEnd, setFetchFromEnd] = useState(false);
+  const loadingRef = useRef(false);
+  const reloadingRef = useRef(false);
 
   const hasMore = useMemo(() => loadedCount < allKeys.length, [loadedCount, allKeys.length]);
 
@@ -26,10 +28,18 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
     setFetchFromEnd(useFromEnd);
     setItems([]);
     setLoadedCount(0);
+    reloadingRef.current = true;
+    setLoading(true);
     try {
       // Fetch the full list of keys (up to backend max), not limited by the UI page size
       const allRaw = await list('library/', { level: storageLevel });
-      const all = allRaw.filter((item) => item?.key && !shouldSkipKey(item.key));
+      const seen = new Set();
+      const all = allRaw.filter((item) => {
+        if (!item?.key || shouldSkipKey(item.key)) return false;
+        if (seen.has(item.key)) return false;
+        seen.add(item.key);
+        return true;
+      });
       setAllKeys(all);
       if (all.length > 0) {
         const totalToLoad = Math.min(pageSize, all.length);
@@ -47,13 +57,19 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
       }
     } catch (e) {
       // ignore list error; caller can trigger reload again
+    } finally {
+      reloadingRef.current = false;
+      if (!loadingRef.current) {
+        setLoading(false);
+      }
     }
   }, [fetchFromEnd, pageSize, sortItems, storageLevel]);
 
   useEffect(() => { reload(); }, [reload, refreshToken]);
 
   const loadMore = useCallback(async () => {
-    if (loading) return;
+    if (loadingRef.current || reloadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     try {
       const currentlyLoadedKeys = new Set(items.filter((i) => i.key).map((i) => i.key));
@@ -71,9 +87,12 @@ export default function useLibraryData({ pageSize = 10, storageLevel = 'private'
       setItems((prev) => sortItems([...prev, ...urls]));
       setLoadedCount((prev) => prev + count);
     } finally {
-      setLoading(false);
+      loadingRef.current = false;
+      if (!reloadingRef.current) {
+        setLoading(false);
+      }
     }
-  }, [allKeys, fetchFromEnd, items, loading, pageSize, sortItems, storageLevel]);
+  }, [allKeys, fetchFromEnd, items, pageSize, sortItems, storageLevel]);
 
   // Create a placeholder item and return a handle
   const createPlaceholder = useCallback((file, { withPreview = true, createdAtValue } = {}) => {
