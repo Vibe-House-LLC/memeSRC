@@ -1,15 +1,11 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
     Box,
-    Button,
     styled,
+    CircularProgress,
     useTheme,
     Input,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
     Popover,
     Typography,
     Stack,
@@ -21,8 +17,10 @@ import { Handyman, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-materia
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
+import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
+import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
 
 // Define constants for colors and fonts
@@ -89,55 +87,69 @@ const StyledRightFooter = styled('footer')(({ theme, hasAd }) => ({
 }));
 
 function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
+    const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const navigate = useNavigate();
-    const { user } = useContext(UserContext);
+    const { user, shows: availableShows = [] } = useContext(UserContext);
     const theme = useTheme();
+    const { triggerDialog } = useAdFreeDecember();
     const { openSubscriptionDialog } = useSubscribeDialog();
     const isAdmin = user?.['cognito:groups']?.includes('admins');
     const isPro = user?.userDetails?.magicSubscription === 'true';
     const hasToolAccess = Boolean(isAdmin || isPro);
-    const randomHelperTimeoutRef = useRef(null);
     const toolsButtonRef = useRef(null);
     const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
     const [pendingUpload, setPendingUpload] = useState(null);
     const [pendingTool, setPendingTool] = useState(null);
-    const [randomHelperOpen, setRandomHelperOpen] = useState(false);
     const fileInputRef = useRef(null);
 
-    useEffect(() => {
-        return () => {
-            if (randomHelperTimeoutRef.current) {
-                clearTimeout(randomHelperTimeoutRef.current);
+    const showCount = useMemo(() => {
+        if (Array.isArray(shows)) {
+            return shows.length;
+        }
+
+        if (shows === '_favorites') {
+            return availableShows.filter((singleShow) => singleShow?.isFavorite).length;
+        }
+
+        if (!shows || shows === '_universal') {
+            return availableShows.length;
+        }
+
+        return availableShows.some((singleShow) => singleShow?.id === shows) ? 1 : 0;
+    }, [shows, availableShows]);
+
+    const targetShow = useMemo(() => {
+        if (Array.isArray(shows)) {
+            const [firstShow] = shows;
+
+            if (!firstShow) {
+                return undefined;
             }
-        };
-    }, []);
 
-    const handleCloseRandomHelper = () => {
-        if (randomHelperTimeoutRef.current) {
-            clearTimeout(randomHelperTimeoutRef.current);
-            randomHelperTimeoutRef.current = null;
-        }
-        setRandomHelperOpen(false);
-    };
+            if (typeof firstShow === 'string') {
+                return firstShow;
+            }
 
-    const openRandomHelper = () => {
-        setRandomHelperOpen(true);
-        if (randomHelperTimeoutRef.current) {
-            clearTimeout(randomHelperTimeoutRef.current);
+            if (typeof firstShow === 'object' && 'id' in firstShow) {
+                return firstShow.id;
+            }
+
+            return undefined;
         }
-        randomHelperTimeoutRef.current = setTimeout(() => {
-            setRandomHelperOpen(false);
-            randomHelperTimeoutRef.current = null;
-        }, 10000);
-    };
+
+        return shows;
+    }, [shows]);
 
     const handleRandomClick = () => {
-        openRandomHelper();
-        trackUsageEvent('random_button_helper_opened', {
+        const payload = {
             source: 'FloatingActionButtons',
-            shows,
             hasAd: showAd,
-        });
+            showCount,
+        };
+
+        trackUsageEvent('random_frame', payload);
+        triggerDialog();
+        loadRandomFrame(targetShow);
     };
 
     const handleToolsButtonClick = (event) => {
@@ -282,7 +294,6 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         },
     };
 
-    const randomHelperId = 'random-helper-dialog';
     const toolsMenuOpen = Boolean(toolsAnchorEl);
     const toolsMenuId = toolsMenuOpen ? 'tools-menu' : undefined;
     const toolsArrowIcon = toolsMenuOpen ? (
@@ -359,14 +370,22 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
 
     const randomButton = (
         <StyledButton
-            aria-haspopup="dialog"
-            aria-expanded={randomHelperOpen ? 'true' : undefined}
-            aria-controls={randomHelperOpen ? randomHelperId : undefined}
             onClick={handleRandomClick}
-            startIcon={<ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />}
+            disabled={loadingRandom}
+            startIcon={
+                loadingRandom ? (
+                    <CircularProgress size={22} thickness={4} sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                ) : (
+                    <ShuffleIcon size={22} strokeWidth={2.4} aria-hidden="true" focusable="false" />
+                )
+            }
             variant="contained"
             sx={{
                 ...sharedButtonSx,
+                '&.Mui-disabled': {
+                    backgroundColor: BUTTON_BASE_COLOR,
+                    color: 'rgba(255,255,255,0.7)',
+                },
             }}
         >
             Random
@@ -379,6 +398,8 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         gap: 1.5,
     };
 
+    // Random button moved notice (disabled for now, kept for later).
+    /*
     const randomHelperDialog = (
         <Dialog
             id={randomHelperId}
@@ -423,6 +444,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
             </DialogActions>
         </Dialog>
     );
+    */
 
     const toolsPopover = (
         <>
@@ -529,7 +551,6 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     </Box>
                 </Box>
                 {toolsPopover}
-                {randomHelperDialog}
             </>
         );
     }
@@ -544,7 +565,6 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 {randomButton}
             </StyledRightFooter>
             {toolsPopover}
-            {randomHelperDialog}
         </>
     );
 }
