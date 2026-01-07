@@ -180,14 +180,6 @@
             "Arn"
           ],
           "category": "function",
-          "resourceName": "memesrcinpainter"
-        },
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
           "resourceName": "memesrcTVDB"
         },
         {
@@ -293,6 +285,22 @@
           ],
           "category": "function",
           "resourceName": "memesrcDeleteFromLibrary"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcinpainter"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGetSignedUrl"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -571,6 +579,27 @@
           ],
           "category": "api",
           "resourceName": "memesrc"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "memesrcGetSignedUrl": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -1441,6 +1470,22 @@
         {
           "category": "function",
           "resourceName": "memesrcFrameFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcGetSignedUrl_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGetSignedUrl"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcGetSignedUrl_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGetSignedUrl"
         }
       ]
     },

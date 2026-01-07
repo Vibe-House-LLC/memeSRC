@@ -2106,6 +2106,7 @@ export const createTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2127,6 +2128,7 @@ export const updateTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2148,6 +2150,7 @@ export const deleteTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2268,6 +2271,7 @@ export const createWebsiteSetting = /* GraphQL */ `
       universalSearchMaintenance
       openAIRateLimit
       nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename
@@ -2285,6 +2289,7 @@ export const updateWebsiteSetting = /* GraphQL */ `
       universalSearchMaintenance
       openAIRateLimit
       nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename
@@ -2302,6 +2307,7 @@ export const deleteWebsiteSetting = /* GraphQL */ `
       universalSearchMaintenance
       openAIRateLimit
       nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename

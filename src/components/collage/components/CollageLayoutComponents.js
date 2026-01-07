@@ -418,6 +418,7 @@ export const CollageLayout = ({
               libraryRefreshTrigger={imagesStepProps.libraryRefreshTrigger}
               onLibrarySelectionChange={onLibrarySelectionChange}
               onLibraryActionsReady={onLibraryActionsReady}
+              initialShowLibrary={imagesStepProps.initialShowLibrary}
             />
           </Box>
         ) : isMobile ? (
@@ -546,6 +547,7 @@ CollageLayout.propTypes = {
     onStartFromScratch: PropTypes.func,
     libraryRefreshTrigger: PropTypes.number,
     isHydratingProject: PropTypes.bool,
+    initialShowLibrary: PropTypes.bool,
   }).isRequired,
   finalImage: PropTypes.string,
   setFinalImage: PropTypes.func.isRequired,

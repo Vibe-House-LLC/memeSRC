@@ -146,6 +146,7 @@ const BulkUploadSection = ({
   libraryRefreshTrigger, // For refreshing library when new images are auto-saved
   onLibrarySelectionChange,
   onLibraryActionsReady,
+  initialShowLibrary = false,
 }) => {
   const theme = useTheme();
   const { user } = useContext(UserContext);
@@ -156,6 +157,12 @@ const BulkUploadSection = ({
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (initialShowLibrary) {
+      setShowLibrary(true);
+    }
+  }, [initialShowLibrary]);
 
   const renderLibraryHeader = useCallback(({ count, minSelected: minSel, maxSelected: maxSel }) => {
     const minimum = Math.max(1, typeof minSel === 'number' ? minSel : 0);
@@ -1255,6 +1262,7 @@ BulkUploadSection.propTypes = {
   libraryRefreshTrigger: PropTypes.any,
   onLibrarySelectionChange: PropTypes.func,
   onLibraryActionsReady: PropTypes.func,
+  initialShowLibrary: PropTypes.bool,
 };
 
 export default BulkUploadSection; 

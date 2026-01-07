@@ -11,6 +11,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
   const canEdit = showInfo && Boolean(imageKey);
   const [moreAnchorEl, setMoreAnchorEl] = useState(null);
   const moreMenuOpen = Boolean(moreAnchorEl);
+  const showSingleSelectCta = Boolean(onToggleSelected && footerMode === 'single' && !isMobile);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +109,7 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
                 <Info />
               </IconButton>
             )}
-            {typeof isSelected === 'boolean' && onToggleSelected && (
+            {typeof isSelected === 'boolean' && onToggleSelected && !showSingleSelectCta && (
               <IconButton
                 onClick={onToggleSelected}
                 aria-label={isSelected ? 'Deselect image' : 'Select image'}
@@ -167,8 +168,8 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
         sx={{
           p: isMobile ? 1.5 : 3,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
           bgcolor: '#111214',
           position: 'relative',
           flexGrow: 1,
@@ -180,35 +181,62 @@ export default function PreviewDialog({ open, onClose, imageUrl, imageKey, stora
         onTouchMove={(e) => { handleTouchMove(e); e.preventDefault(); }}
         onTouchEnd={handleTouchEnd}
       >
-        {imageUrl && (
-          <Box
+        <Box sx={{ width: '100%', flexGrow: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {imageUrl && (
+            <Box
+              sx={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transform: `translateY(${swipeOffsetY}px)`,
+                opacity: swipeOffsetY ? Math.max(0.3, 1 - swipeOffsetY / 300) : 1,
+                transition: swipeOffsetY ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
+                position: 'relative',
+              }}
+            >
+              <img
+                src={imageUrl}
+                alt="Preview"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  borderRadius: 8,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+                }}
+              />
+              {isSelected && (
+                <Box sx={{ position: 'absolute', inset: 0, border: '2px solid #22c55e', borderRadius: 2, pointerEvents: 'none' }} />
+              )}
+            </Box>
+          )}
+        </Box>
+        {showSingleSelectCta && (
+          <Button
+            onClick={onToggleSelected}
+            variant="contained"
+            startIcon={<CheckCircle />}
             sx={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transform: `translateY(${swipeOffsetY}px)`,
-              opacity: swipeOffsetY ? Math.max(0.3, 1 - swipeOffsetY / 300) : 1,
-              transition: swipeOffsetY ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
-              position: 'relative',
+              mt: 1.5,
+              px: 3,
+              py: 1.25,
+              fontWeight: 800,
+              textTransform: 'none',
+              borderRadius: 999,
+              color: '#0b0f0c',
+              background: 'linear-gradient(45deg, #16a34a 10%, #22c55e 90%)',
+              border: '1px solid rgba(34,197,94,0.65)',
+              boxShadow: '0 8px 18px rgba(34,197,94,0.3)',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #12813c 10%, #1fb455 90%)',
+                boxShadow: '0 10px 22px rgba(34,197,94,0.4)'
+              }
             }}
           >
-            <img
-              src={imageUrl}
-              alt="Preview"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                borderRadius: 8,
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
-              }}
-            />
-            {isSelected && (
-              <Box sx={{ position: 'absolute', inset: 0, border: '2px solid #22c55e', borderRadius: 2, pointerEvents: 'none' }} />
-            )}
-          </Box>
+            Select
+          </Button>
         )}
         {!isMobile && hasPrev && (
           <IconButton
