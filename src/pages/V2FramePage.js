@@ -1392,6 +1392,10 @@ useEffect(() => {
         projectId,
         appendImageToSnapshot(null, snapshotImageFromPayload(payloadWithKey.imagePayload)).snapshot
       );
+      const previewImage =
+        payloadWithKey.imagePayload?.displayUrl ||
+        payloadWithKey.imagePayload?.originalUrl ||
+        null;
 
       trackUsageEvent('add_to_collage', {
         ...collageIntentMeta,
@@ -1407,6 +1411,7 @@ useEffect(() => {
         name: project?.name || 'Untitled Meme',
         thumbnail: thumbnail || null,
         snapshot,
+        previewImage,
       });
       setPendingCollagePayload(null);
     } catch (error) {
@@ -2443,6 +2448,10 @@ useEffect(() => {
   const showAddToOptions = addToExpanded && !addToSelection && !collagePreview;
   const showLibraryActions = addToSelection === 'library' && savedToLibrary && !collagePreview;
   const showCollageTiles = addToSelection === 'collage' && !collagePreview;
+  const collagePreviewImage = collagePreview?.previewImage || collagePreview?.thumbnail;
+  const collagePreviewAlt = collagePreview?.previewImage
+    ? 'Image preview'
+    : collagePreview?.name || 'Collage preview';
   const collageReady = Boolean(pendingCollagePayload);
   const recentCollage = useMemo(() => collageProjects[0] || null, [collageProjects]);
   const recentCollageThumbnail = recentCollage
@@ -2639,11 +2648,11 @@ useEffect(() => {
                             mx: 0,
                           }}
                         >
-                          {collagePreview.thumbnail ? (
+                          {collagePreviewImage ? (
                             <Box
                               component="img"
-                              src={collagePreview.thumbnail}
-                              alt={collagePreview.name || 'Collage preview'}
+                              src={collagePreviewImage}
+                              alt={collagePreviewAlt}
                               sx={{ width: '100%', display: 'block' }}
                             />
                           ) : (
