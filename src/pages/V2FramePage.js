@@ -2457,6 +2457,7 @@ useEffect(() => {
   const recentCollageThumbnail = recentCollage
     ? recentCollage.thumbnail || collageThumbnails[recentCollage.id]
     : null;
+  const hasCollageProjects = collageProjects.length > 0;
   const collagePickerMaxPageIndex = Math.max(
     0,
     Math.floor((collageProjects.length - 1) / COLLAGE_PICKER_PAGE_SIZE),
@@ -2503,6 +2504,13 @@ useEffect(() => {
       background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
       boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25)',
       transform: 'translateY(-2px)',
+    },
+  };
+  const collageTileDisabledSx = {
+    '&.Mui-disabled': {
+      opacity: 0.45,
+      cursor: 'not-allowed',
+      filter: 'grayscale(0.85)',
     },
   };
 
@@ -2816,7 +2824,7 @@ useEffect(() => {
                               !recentCollage ||
                               (collageTilesBusy && activeCollageTile !== `recent:${recentCollage?.id}`)
                             }
-                            sx={{ width: '100%' }}
+                            sx={{ width: '100%', ...collageTileDisabledSx }}
                           >
                             <Box sx={{ ...collageTileSx, display: 'block', padding: 0 }}>
                               {recentCollageThumbnail ? (
@@ -2889,9 +2897,10 @@ useEffect(() => {
                             onClick={handleViewMoreOpen}
                             disabled={
                               !collageReady ||
+                              !hasCollageProjects ||
                               (collageTilesBusy && activeCollageTile !== 'more')
                             }
-                            sx={{ width: '100%' }}
+                            sx={{ width: '100%', ...collageTileDisabledSx }}
                           >
                             <Box sx={collageTileSx}>
                               {activeCollageTile === 'more' && collageProjectsLoading ? (
