@@ -741,7 +741,7 @@ export default function CollagePage() {
             displayUrl: item.displayUrl || item.originalUrl || item,
             subtitle: item.subtitle || '',
             subtitleShowing: item.subtitleShowing || false,
-            metadata: item.metadata || {}
+            metadata: item.metadata || {},
           };
         });
 

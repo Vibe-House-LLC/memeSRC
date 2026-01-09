@@ -2,11 +2,22 @@
 
 export type AspectRatio = 'square' | 'landscape' | 'portrait' | string;
 
+export interface CollageImageMetadata {
+  libraryKey?: string;
+  fontFamily?: string;
+  source?: string;
+  // Allow additional metadata fields for future use cases
+  [key: string]: any;
+}
+
 export interface CollageImageRef {
   libraryKey?: string;
   url?: string;
+  // Optional direct font hint kept for backward compatibility; prefer metadata.fontFamily
+  fontFamily?: string;
   subtitle?: string;
   subtitleShowing?: boolean;
+  metadata?: CollageImageMetadata;
 }
 
 export interface CollageSnapshot {

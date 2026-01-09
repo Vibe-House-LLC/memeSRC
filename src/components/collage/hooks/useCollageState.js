@@ -259,7 +259,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
         displayUrl: imageData.displayUrl || imageData.originalUrl || imageData,
         subtitle: imageData.subtitle || '',
         subtitleShowing: imageData.subtitleShowing || false,
-        metadata: imageData.metadata || {}
+        metadata: imageData.metadata || {},
       };
       // Auto-save to library disabled
     } else {
@@ -583,10 +583,20 @@ const [borderThickness, setBorderThickness] = useState(() => {
           subtitleShowing: imageData?.subtitleShowing
         });
       }
-      const preferredFont = imageData?.metadata?.fontFamily || lastUsedTextSettings.fontFamily;
-      
+      const preferredFont =
+        (panelTexts?.[panelId] && panelTexts[panelId].fontFamily) ||
+        (imageData && imageData.metadata && imageData.metadata.fontFamily) ||
+        (imageData && imageData.fontFamily) ||
+        lastUsedTextSettings.fontFamily;
+
       // Only auto-assign subtitle if subtitleShowing is true (user enabled text display)
-      if (imageData && imageData.subtitle && imageData.subtitle.trim() && imageData.subtitleShowing) {
+      if (
+        imageData &&
+        imageData.subtitle &&
+        typeof imageData.subtitle === 'string' &&
+        imageData.subtitle.trim() &&
+        imageData.subtitleShowing
+      ) {
         newPanelTexts[panelId] = {
           content: imageData.subtitle,
           fontSize: lastUsedTextSettings.fontSize,
