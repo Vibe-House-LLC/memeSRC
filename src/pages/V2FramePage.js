@@ -92,6 +92,62 @@ const StyledCardMedia = styled('img')`
   background-color: black;
 `;
 
+const FONT_OPTIONS = [
+  'Arial',
+  'Courier New',
+  'Georgia',
+  'Verdana',
+  'Akbar',
+  'Baveuse',
+  'PULPY',
+  'scrubs',
+  'South Park',
+  'SPIDEY',
+  'HORROR',
+  'IMPACT',
+  'Star Jedi',
+  'twilight',
+  'zuume',
+];
+
+function FontSelector({ selectedFont, onSelectFont, onLowercaseChange }) {
+  return (
+    <Select
+      value={selectedFont}
+      onChange={(e) => {
+        const newFont = e.target.value;
+        onSelectFont(newFont);
+        if (onLowercaseChange) {
+          onLowercaseChange(newFont === 'Star Jedi');
+        }
+      }}
+      displayEmpty
+      inputProps={{ 'aria-label': 'Font selector' }}
+      size="small"
+      startAdornment={<FontDownloadOutlined sx={{ mr: 0.5 }} />}
+      sx={{
+        '& .MuiSelect-select': {
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        },
+      }}
+    >
+      {FONT_OPTIONS.map((font) => (
+        <MenuItem key={font} value={font} sx={{ fontFamily: font }}>
+          {font}
+        </MenuItem>
+      ))}
+    </Select>
+  );
+}
+
+FontSelector.propTypes = {
+  selectedFont: PropTypes.string.isRequired,
+  onSelectFont: PropTypes.func.isRequired,
+  onLowercaseChange: PropTypes.func,
+};
+
 const blobToDataUrl = (blob) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -523,42 +579,9 @@ export default function FramePage() {
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
   const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
-
-  const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "Baveuse", "PULPY", "scrubs", "South Park", "SPIDEY", "HORROR", "IMPACT", "Star Jedi", "twilight", "zuume"];
   const COLLAGE_PICKER_PAGE_SIZE = 6;
 
   /* -------------------------------------------------------------------------- */
-
-  const FontSelector = ({ selectedFont, onSelectFont }) => (
-      <Select
-        value={selectedFont}
-        onChange={(e) => {
-          const newFont = e.target.value;
-          onSelectFont(newFont);
-          setIsLowercaseFont(newFont === 'Star Jedi');
-        }}
-        displayEmpty
-        inputProps={{ 'aria-label': 'Without label' }}
-        size='small'
-        startAdornment={<FontDownloadOutlined sx={{ mr: 0.5}} />}
-        sx={{
-          '& .MuiSelect-select': {
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          },
-        }}
-      >
-        {fonts.map((font) => (
-          <MenuItem key={font} value={font} sx={{ fontFamily: font }}>{font}</MenuItem>
-        ))}
-      </Select>
-  );
-
-  FontSelector.propTypes = {
-    selectedFont: PropTypes.string.isRequired,
-    onSelectFont: PropTypes.func.isRequired,
-  };
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -1121,7 +1144,7 @@ export default function FramePage() {
           setOriginalSubtitle(initialInfo.subtitle);
           setLoadedSeason(season);
           setLoadedEpisode(episode);
-          if (initialInfo.fontFamily && fonts.includes(initialInfo.fontFamily)) {
+          if (initialInfo.fontFamily && FONT_OPTIONS.includes(initialInfo.fontFamily)) {
             setFontFamily(initialInfo.fontFamily);
           }        
         } catch (error) {
@@ -1361,6 +1384,7 @@ useEffect(() => {
       };
 
       const imagePayload = {
+        fontFamily,
         originalUrl: dataUrl,
         displayUrl: dataUrl,
         ...(hasSubtitle ? { subtitle } : {}),
@@ -3069,7 +3093,11 @@ useEffect(() => {
                           <FormatColorFill sx={{ color: colorPickerColor }} />
                         </ToggleButton>
                       </ToggleButtonGroup>
-                      <FontSelector selectedFont={fontFamily} onSelectFont={setFontFamily} />
+                      <FontSelector
+                        selectedFont={fontFamily}
+                        onSelectFont={setFontFamily}
+                        onLowercaseChange={setIsLowercaseFont}
+                      />
                       <Popover
                         open={colorPickerShowing}
                         anchorEl={colorPicker.current}

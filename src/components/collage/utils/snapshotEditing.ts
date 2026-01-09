@@ -1,5 +1,10 @@
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
-import type { AspectRatio, CollageImageRef, CollageSnapshot } from '../../../types/collage';
+import type {
+  AspectRatio,
+  CollageImageMetadata,
+  CollageImageRef,
+  CollageSnapshot,
+} from '../../../types/collage';
 
 export const MAX_COLLAGE_IMAGES = 5;
 
@@ -134,7 +139,7 @@ export function appendImageToSnapshot(
   if (image.subtitle && image.subtitleShowing) {
     const targetPanel = panelIds.find((id) => panelImageMapping[id] === baseCount);
     if (targetPanel) {
-      const fontFamily = (image as any)?.metadata?.fontFamily;
+      const fontFamily = (image as any)?.metadata?.fontFamily || (image as any)?.fontFamily;
       panelTexts[targetPanel] = buildAutoText(String(image.subtitle), fontFamily);
     }
   }
@@ -194,15 +199,20 @@ export function replaceImageInSnapshot(
 }
 
 export function snapshotImageFromPayload(payload: {
-  metadata?: { libraryKey?: string };
+  metadata?: CollageImageMetadata;
   originalUrl?: string;
   displayUrl?: string;
   subtitle?: string;
   subtitleShowing?: boolean;
 }): CollageImageRef {
   const imageRef: CollageImageRef = {};
-  const libraryKey = payload?.metadata?.libraryKey;
+  const metadata = payload?.metadata;
+  const libraryKey = metadata?.libraryKey;
   const url = payload?.originalUrl || payload?.displayUrl;
+
+  if (metadata && Object.keys(metadata).length > 0) {
+    imageRef.metadata = { ...metadata };
+  }
 
   if (libraryKey) {
     imageRef.libraryKey = libraryKey;
