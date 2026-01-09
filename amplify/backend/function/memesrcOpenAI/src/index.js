@@ -540,18 +540,28 @@ const recordCreditChargeError = async ({ dynamoClient, magicResultId, modelKey, 
         timestamp: new Date().toISOString(),
     };
     try {
-        const updateExpression = storeAsNote ? 'SET creditChargeError = :error, updatedAt = :updatedAt' : 'SET #error = :error, updatedAt = :updatedAt';
+        const expressionValues = {
+            ':error': { S: JSON.stringify(errorPayload) },
+            ':updatedAt': { S: new Date().toISOString() },
+        };
+        const expressionNames = {};
+        const updateClauses = ['updatedAt = :updatedAt'];
+        if (storeAsNote) {
+            updateClauses.unshift('creditChargeError = :error');
+        } else {
+            updateClauses.unshift('#error = :error', '#status = :status');
+            expressionNames['#error'] = 'error';
+            expressionNames['#status'] = 'status';
+            expressionValues[':status'] = { S: 'creditChargeFailed' };
+        }
         const params = {
             TableName: process.env.API_MEMESRC_MAGICRESULTTABLE_NAME,
             Key: { id: { S: magicResultId } },
-            UpdateExpression: updateExpression,
-            ExpressionAttributeValues: {
-                ':error': { S: JSON.stringify(errorPayload) },
-                ':updatedAt': { S: new Date().toISOString() },
-            },
+            UpdateExpression: `SET ${updateClauses.join(', ')}`,
+            ExpressionAttributeValues: expressionValues,
         };
-        if (!storeAsNote) {
-            params.ExpressionAttributeNames = { '#error': 'error' };
+        if (Object.keys(expressionNames).length) {
+            params.ExpressionAttributeNames = expressionNames;
         }
         await dynamoClient.send(new UpdateItemCommand(params));
         console.warn('[Credits] Recorded credit charge error on MagicResult', { magicResultId, modelKey, code });
@@ -1109,6 +1119,25 @@ exports.handler = async (event) => {
             throw err;
         }
 
+        // Charge credit before we persist or return any image to avoid delivering unpaid results
+        try {
+            await spendUserCredit({
+                lambdaClient,
+                userFunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
+                userSub,
+            });
+        } catch (err) {
+            console.error('[Credits] Gemini credit charge failed', { message: err?.message });
+            await recordCreditChargeError({
+                dynamoClient,
+                magicResultId,
+                modelKey: 'gemini',
+                message: err?.message,
+                code: err?.code,
+            });
+            return;
+        }
+
         const fileName = `${uuid.v4()}.jpeg`;
         console.log('[Gemini] Writing output image to S3');
         await s3Client.send(new PutObjectCommand({
@@ -1149,24 +1178,6 @@ exports.handler = async (event) => {
             }
         }));
         console.log('[Gemini] UpdateItem complete', { magicResultId });
-        // Charge user credit after persisting results
-        try {
-            await spendUserCredit({
-                lambdaClient,
-                userFunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
-                userSub,
-            });
-        } catch (err) {
-            console.error('[Credits] Gemini credit charge failed', { message: err?.message });
-            await recordCreditChargeError({
-                dynamoClient,
-                magicResultId,
-                modelKey: 'gemini',
-                message: err?.message,
-                code: err?.code,
-                storeAsNote: true,
-            });
-        }
         return; // done with Gemini branch
     }
 
@@ -1310,15 +1321,10 @@ exports.handler = async (event) => {
 
         const imageBuffer = Buffer.from(imageResponse.data, 'binary');
         const fileName = `${uuid.v4()}.jpeg`;
-        const s3Params = {
-            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
-            Key: `public/${fileName}`,
-            Body: imageBuffer,
-            ContentType: 'image/jpeg',
-        };
+        const contentType = 'image/jpeg';
 
         // Moderation on generated output
-        const encodedOutput = `data:${s3Params.ContentType};base64,${imageBuffer.toString('base64')}`;
+        const encodedOutput = `data:${contentType};base64,${imageBuffer.toString('base64')}`;
         try {
             await ensureNotFlagged({
                 apiKey: openAiKey,
@@ -1359,32 +1365,16 @@ exports.handler = async (event) => {
             throw err;
         }
 
-        // Record history entry for each OpenAI-generated image
-        try {
-            const cdnUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
-            await recordMagicEditHistory({
-                dynamoClient,
-                ownerSub: userSub,
-                prompt,
-                imageUrl: cdnUrl,
-                metadata: {
-                    initialImageKey: imageKey || null,
-                    model: 'openai',
-                },
-            });
-        } catch (err) {
-            console.warn('[History] Failed to record OpenAI magic edit history', { message: err?.message });
-        }
-
-        console.log('[OpenAI] Writing generated image to S3', { key: s3Params.Key });
-        await s3Client.send(new PutObjectCommand(s3Params));
-
-        return `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+        return {
+            fileName,
+            imageBuffer,
+            contentType,
+        };
     });
 
-    let cdnImageUrls;
+    let generatedImages;
     try {
-        cdnImageUrls = await Promise.all(promises);
+        generatedImages = await Promise.all(promises);
     } catch (err) {
         const moderationCodes = ['ModerationBlocked', 'ModerationUnavailable', 'ProviderModeration'];
         const isModerationError = Boolean(err?.moderationRecorded || moderationCodes.includes(err?.code));
@@ -1411,6 +1401,55 @@ exports.handler = async (event) => {
         }
         throw err;
     }
+    console.log('[OpenAI] Generated images ready; charging credit before publish');
+    try {
+        await spendUserCredit({
+            lambdaClient,
+            userFunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
+            userSub,
+        });
+    } catch (err) {
+        console.error('[Credits] OpenAI credit charge failed', { message: err?.message });
+        await recordCreditChargeError({
+            dynamoClient,
+            magicResultId,
+            modelKey: 'openai',
+            message: err?.message,
+            code: err?.code,
+        });
+        return;
+    }
+
+    const cdnImageUrls = [];
+    for (const { fileName, imageBuffer, contentType } of generatedImages) {
+        const cdnUrl = `https://i-${process.env.ENV}.memesrc.com/${fileName}`;
+
+        // Record history entry for each OpenAI-generated image
+        try {
+            await recordMagicEditHistory({
+                dynamoClient,
+                ownerSub: userSub,
+                prompt,
+                imageUrl: cdnUrl,
+                metadata: {
+                    initialImageKey: imageKey || null,
+                    model: 'openai',
+                },
+            });
+        } catch (err) {
+            console.warn('[History] Failed to record OpenAI magic edit history', { message: err?.message });
+        }
+
+        console.log('[OpenAI] Writing generated image to S3', { key: `public/${fileName}` });
+        await s3Client.send(new PutObjectCommand({
+            Bucket: process.env.STORAGE_MEMESRCGENERATEDIMAGES_BUCKETNAME,
+            Key: `public/${fileName}`,
+            Body: imageBuffer,
+            ContentType: contentType,
+        }));
+
+        cdnImageUrls.push(cdnUrl);
+    }
     console.log('[OpenAI] Uploaded images to S3', { count: cdnImageUrls.length });
 
     console.log('[OpenAI] Updating DynamoDB with results');
@@ -1426,24 +1465,6 @@ exports.handler = async (event) => {
         }
     }));
     console.log('[OpenAI] UpdateItem complete', { magicResultId });
-    // Charge user credit after persisting results
-    try {
-        await spendUserCredit({
-            lambdaClient,
-            userFunctionName: process.env.FUNCTION_MEMESRCUSERFUNCTION_NAME,
-            userSub,
-        });
-    } catch (err) {
-        console.error('[Credits] OpenAI credit charge failed', { message: err?.message });
-        await recordCreditChargeError({
-            dynamoClient,
-            magicResultId,
-            modelKey: 'openai',
-            message: err?.message,
-            code: err?.code,
-            storeAsNote: true,
-        });
-    }
 };
 
 // Top-level error listener (defensive): wrap handler in try/catch if desired
