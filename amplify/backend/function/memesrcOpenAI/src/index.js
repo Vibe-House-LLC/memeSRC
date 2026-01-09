@@ -86,23 +86,27 @@ const getImageSize = (buffer) => {
     // JPEG
     if (buffer.length > 4 && buffer[0] === 0xff && buffer[1] === 0xd8) {
         let offset = 2;
-        while (offset < buffer.length) {
-            if (buffer[offset] !== 0xff) break;
-            const marker = buffer[offset + 1];
-            // SOF0 - SOF15, excluding DHT (0xC4) and JPG (0xC8, 0xCC)
-            if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
-                if (offset + 8 <= buffer.length) {
-                    const height = buffer.readUInt16BE(offset + 5);
-                    const width = buffer.readUInt16BE(offset + 7);
-                    if (width > 0 && height > 0) return { width, height };
+        try {
+            while (offset + 1 < buffer.length) {
+                if (buffer[offset] !== 0xff) break;
+                const marker = buffer[offset + 1];
+                // SOF0 - SOF15, excluding DHT (0xC4) and JPG (0xC8, 0xCC)
+                if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+                    if (offset + 8 <= buffer.length) {
+                        const height = buffer.readUInt16BE(offset + 5);
+                        const width = buffer.readUInt16BE(offset + 7);
+                        if (width > 0 && height > 0) return { width, height };
+                    }
+                    break;
+                } else {
+                    if (offset + 4 > buffer.length) break; // need marker length bytes
+                    const blockLen = buffer.readUInt16BE(offset + 2);
+                    const nextOffset = offset + 2 + blockLen;
+                    if (!blockLen || nextOffset <= offset || nextOffset > buffer.length) break;
+                    offset = nextOffset;
                 }
-                break;
-            } else {
-                const blockLen = buffer.readUInt16BE(offset + 2);
-                if (!blockLen || offset + 2 + blockLen > buffer.length) break;
-                offset += 2 + blockLen;
             }
-        }
+        } catch (_) { /* ignore malformed JPEG blocks */ }
     }
     return null;
 };
