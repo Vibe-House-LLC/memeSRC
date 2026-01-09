@@ -1273,9 +1273,33 @@ exports.handler = async (event) => {
 
     console.log('[OpenAI] Submitting edit request to OpenAI');
     const response = await makeRequest(formData, headers);
-    console.log('[OpenAI] Received response', { items: Array.isArray(response?.data?.data) ? response.data.data.length : 0 });
+    const outputs = Array.isArray(response?.data?.data) ? response.data.data : [];
+    console.log('[OpenAI] Received response', { items: outputs.length });
 
-    const promises = response.data.data.map(async (imageItem) => {
+    if (!outputs.length) {
+        console.error('[OpenAI] No images returned by provider');
+        await recordModerationError({
+            dynamoClient,
+            magicResultId,
+            modelKey: 'openai',
+            categories: { provider: 'openai', reason: 'no_image_returned' },
+            history: buildModerationHistory({
+                ownerSub: userSub,
+                prompt,
+                imageKey,
+                modelKey: 'openai',
+                moderationStage: 'output',
+                moderation: { provider: 'openai', reason: 'no_image_returned' },
+            }),
+            historyState: moderationHistoryState,
+        });
+        const err = new Error('No image was returned by OpenAI (possibly blocked by provider).');
+        err.code = 'ProviderModeration';
+        err.moderationRecorded = true;
+        throw err;
+    }
+
+    const promises = outputs.map(async (imageItem) => {
         const image_url = imageItem.url;
 
         const imageResponse = await axios({
