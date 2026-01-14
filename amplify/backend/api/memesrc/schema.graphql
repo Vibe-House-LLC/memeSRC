@@ -322,7 +322,7 @@ type Template
         allow: owner,
         ownerField: "ownerIdentityId"
       },
-      { allow: groups, groups: ["admins"], operations: [create, read, delete] }
+      { allow: groups, groups: ["admins"], operations: [create, read, update, delete] }
     ]
   ) {
   id: ID!
