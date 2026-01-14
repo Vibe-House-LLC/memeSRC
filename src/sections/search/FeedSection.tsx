@@ -36,6 +36,7 @@ const FEED_CLEAR_ALL_KEY_PREFIX = 'memesrcFeedClearAll';
 const FEED_CLEAR_SINGLE_KEY_PREFIX = 'memesrcFeedClear';
 const FEED_UPDATE_DISMISSED_VERSION_KEY = 'feedUpdateBannerDismissedVersion';
 const FEED_RECENCY_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000;
+const FEED_SHOW_CUTOFF_MS = 30 * 24 * 60 * 60 * 1000;
 
 interface ShowRecord {
   id: string;
@@ -546,10 +547,12 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
   }, [userIdentifier]);
 
   const eligibleShows = useMemo(() => {
+    const cutoffTimestamp = Date.now() - FEED_SHOW_CUTOFF_MS;
+
     return [...showsInput]
       .filter((show): show is ShowRecord => Boolean(show && show.id && !show.id.startsWith('_')))
-      .filter((show) => show.createdAt > new Date('2025-09-01').toISOString())
       .map((show) => ({ show, timestamp: resolveSeriesTimestamp(show) }))
+      .filter(({ timestamp }) => timestamp >= cutoffTimestamp)
       .sort((a, b) => b.timestamp - a.timestamp)
       .filter(({ show, timestamp }) => {
         if (activeSeriesId && show.id === activeSeriesId) {

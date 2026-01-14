@@ -180,14 +180,6 @@
             "Arn"
           ],
           "category": "function",
-          "resourceName": "memesrcinpainter"
-        },
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
           "resourceName": "memesrcTVDB"
         },
         {
@@ -293,6 +285,22 @@
           ],
           "category": "function",
           "resourceName": "memesrcDeleteFromLibrary"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcinpainter"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcGetSignedUrl"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -576,6 +584,27 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "memesrcGetSignedUrl": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "BucketName"
+          ],
+          "category": "storage",
+          "resourceName": "memesrcGeneratedImages"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcS3Layer"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "memesrcGif": {
       "build": true,
       "providerPlugin": "awscloudformation",
@@ -700,6 +729,20 @@
       "dependsOn": [
         {
           "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "memesrcc3c71449"
+        },
+        {
+          "attributes": [
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "memesrcUserFunction"
+        },
+        {
+          "attributes": [
             "BucketName"
           ],
           "category": "storage",
@@ -711,6 +754,13 @@
           ],
           "category": "api",
           "resourceName": "memesrc"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "memesrcSesLayer"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -1420,6 +1470,22 @@
         {
           "category": "function",
           "resourceName": "memesrcFrameFunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcGetSignedUrl_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGetSignedUrl"
+        }
+      ]
+    },
+    "AMPLIFY_function_memesrcGetSignedUrl_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "memesrcGetSignedUrl"
         }
       ]
     },

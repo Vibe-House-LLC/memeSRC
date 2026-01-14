@@ -1,7 +1,19 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, styled, CircularProgress, useTheme } from '@mui/material';
-import { Favorite, Dashboard } from '@mui/icons-material';
+import {
+    Box,
+    styled,
+    CircularProgress,
+    useTheme,
+    Input,
+    Popover,
+    Typography,
+    Stack,
+    List,
+    ListItemButton,
+    Chip,
+} from '@mui/material';
+import { Handyman, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +21,7 @@ import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
+import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
 
 // Define constants for colors and fonts
 const BUTTON_BASE_COLOR = '#0f0f0f';
@@ -79,9 +92,15 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const { user, shows: availableShows = [] } = useContext(UserContext);
     const theme = useTheme();
     const { triggerDialog } = useAdFreeDecember();
+    const { openSubscriptionDialog } = useSubscribeDialog();
     const isAdmin = user?.['cognito:groups']?.includes('admins');
     const isPro = user?.userDetails?.magicSubscription === 'true';
-    const hasCollageAccess = Boolean(isAdmin || isPro);
+    const hasToolAccess = Boolean(isAdmin || isPro);
+    const toolsButtonRef = useRef(null);
+    const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
+    const [pendingUpload, setPendingUpload] = useState(null);
+    const [pendingTool, setPendingTool] = useState(null);
+    const fileInputRef = useRef(null);
 
     const showCount = useMemo(() => {
         if (Array.isArray(shows)) {
@@ -89,14 +108,14 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         }
 
         if (shows === '_favorites') {
-            return availableShows.filter(singleShow => singleShow?.isFavorite).length;
+            return availableShows.filter((singleShow) => singleShow?.isFavorite).length;
         }
 
         if (!shows || shows === '_universal') {
             return availableShows.length;
         }
 
-        return availableShows.some(singleShow => singleShow?.id === shows) ? 1 : 0;
+        return availableShows.some((singleShow) => singleShow?.id === shows) ? 1 : 0;
     }, [shows, availableShows]);
 
     const targetShow = useMemo(() => {
@@ -124,8 +143,8 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const handleRandomClick = () => {
         const payload = {
             source: 'FloatingActionButtons',
-            showCount,
             hasAd: showAd,
+            showCount,
         };
 
         trackUsageEvent('random_frame', payload);
@@ -133,20 +152,118 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         loadRandomFrame(targetShow);
     };
 
-    const handleDonateClick = () => {
-        trackUsageEvent('donate_entry', {
-            source: 'FloatingActionButtons',
-        });
-        window.open('/donate', '_blank', 'noopener,noreferrer');
+    const handleToolsButtonClick = (event) => {
+        setToolsAnchorEl(event.currentTarget);
+        setPendingUpload(null);
+        setPendingTool(null);
+        if (fileInputRef.current?.value) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleCloseToolsMenu = () => {
+        setToolsAnchorEl(null);
+    };
+
+    const resetUploadState = () => {
+        setToolsAnchorEl(null);
+        setPendingUpload(null);
+        setPendingTool(null);
+        if (fileInputRef.current?.value) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleRequestProUpsell = () => {
+        resetUploadState();
+        openSubscriptionDialog();
+    };
+
+    const handleImageUpload = (event) => {
+        const file = event.target.files?.[0];
+
+        if (!file) return;
+
+        if (pendingTool !== 'advanced' && !hasToolAccess) {
+            handleRequestProUpsell();
+            return;
+        }
+
+        const reader = new FileReader();
+        const inputEl = event.target;
+        const destination = pendingTool;
+
+        reader.onloadend = () => {
+            const base64data = reader.result;
+            if (typeof base64data === 'string') {
+                if (destination === 'advanced') {
+                    handleOpenAdvancedEditor(base64data);
+                } else if (destination === 'magic') {
+                    handleOpenMagicEditor(base64data);
+                } else {
+                    setPendingUpload(base64data);
+                    if (toolsButtonRef.current) {
+                        setToolsAnchorEl(toolsButtonRef.current);
+                    }
+                }
+                setPendingTool(null);
+                if (inputEl?.value) {
+                    inputEl.value = '';
+                }
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleOpenAdvancedEditor = (imageData = pendingUpload) => {
+        if (!imageData) return;
+        navigate('/editor/project/new', { state: { uploadedImage: imageData } });
+        resetUploadState();
+    };
+
+    const handleOpenMagicEditor = (imageData = pendingUpload) => {
+        if (!imageData) return;
+        navigate('/magic', { state: { initialSrc: imageData } });
+        resetUploadState();
     };
 
     const handleCollageClick = () => {
         trackUsageEvent('collage_entry', {
             source: 'FloatingActionButtons',
-            destination: '/collage',
-            hasAccess: hasCollageAccess,
+            destination: '/projects/new',
+            hasAccess: hasToolAccess,
         });
-        navigate('/collage');
+        if (!hasToolAccess) {
+            handleRequestProUpsell();
+            return;
+        }
+        resetUploadState();
+        navigate('/projects/new', { state: { startInLibrary: true } });
+    };
+
+    const handleToolSelect = (action) => {
+        if (action === 'collage') {
+            handleCollageClick();
+            return;
+        }
+
+        if (action === 'magic') {
+            if (!hasToolAccess) {
+                handleRequestProUpsell();
+                return;
+            }
+            resetUploadState();
+            navigate('/magic');
+            return;
+        }
+
+        setPendingTool(action);
+        setPendingUpload(null);
+        handleCloseToolsMenu();
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+            fileInputRef.current.click();
+        }
     };
 
     const sharedButtonSx = {
@@ -177,33 +294,79 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         },
     };
 
-    const donateButton = (
+    const toolsMenuOpen = Boolean(toolsAnchorEl);
+    const toolsMenuId = toolsMenuOpen ? 'tools-menu' : undefined;
+    const toolsArrowIcon = toolsMenuOpen ? (
+        <KeyboardArrowDown fontSize="small" aria-hidden="true" />
+    ) : (
+        <KeyboardArrowUp fontSize="small" aria-hidden="true" />
+    );
+    const toolItemSx = {
+        borderRadius: 2,
+        px: 1.5,
+        py: 1.25,
+        alignItems: 'flex-start',
+        textAlign: 'left',
+        gap: 2,
+        border: '1px solid transparent',
+        transition: 'background-color 0.2s ease, border-color 0.2s ease',
+        '&:hover': {
+            borderColor: theme.palette.divider,
+            backgroundColor: theme.palette.action.hover,
+        },
+        '&:focus-visible': {
+            borderColor: theme.palette.primary.main,
+            backgroundColor: theme.palette.action.focus,
+        },
+    };
+    const proChipSx = {
+        height: 22,
+        fontWeight: 700,
+        fontSize: '0.65rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        color: theme.palette.mode === 'dark' ? '#e3d1ff' : '#4c2c73',
+        borderColor: theme.palette.mode === 'dark' ? 'rgba(227, 209, 255, 0.45)' : 'rgba(76, 44, 115, 0.4)',
+        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(107, 66, 161, 0.2)' : 'rgba(107, 66, 161, 0.1)',
+    };
+    const toolOptions = [
+        {
+            action: 'advanced',
+            label: 'Caption Tool',
+            description: 'Add text to your image.',
+        },
+        {
+            action: 'magic',
+            label: 'Magic Editor',
+            description: 'Edit your image with prompts.',
+            isPro: true,
+        },
+        {
+            action: 'collage',
+            label: 'Collage Tool',
+            description: 'Create a collage from your images.',
+            isPro: true,
+        },
+    ];
+
+    const toolsButton = (
         <StyledButton
-            onClick={handleDonateClick}
-            startIcon={<Favorite sx={{ fontSize: 28 }} />}
+            onClick={handleToolsButtonClick}
+            startIcon={<Handyman />}
+            endIcon={toolsArrowIcon}
+            ref={toolsButtonRef}
+            aria-haspopup="menu"
+            aria-expanded={toolsMenuOpen ? 'true' : undefined}
+            aria-controls={toolsMenuOpen ? toolsMenuId : undefined}
             variant="contained"
             sx={{
                 ...sharedButtonSx,
+                minWidth: 0,
             }}
         >
-            Donate
+            Tools
         </StyledButton>
     );
-
-    const collageButton = (
-        <StyledButton
-            onClick={handleCollageClick}
-            startIcon={<Dashboard />}
-            variant="contained"
-            sx={{
-                ...sharedButtonSx,
-            }}
-        >
-            Collage
-        </StyledButton>
-    );
-
-    const primaryButton = hasCollageAccess ? collageButton : donateButton;
 
     const randomButton = (
         <StyledButton
@@ -234,6 +397,109 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         alignItems: 'center',
         gap: 1.5,
     };
+
+    // Random button moved notice (disabled for now, kept for later).
+    /*
+    const randomHelperDialog = (
+        <Dialog
+            id={randomHelperId}
+            open={randomHelperOpen}
+            onClose={handleCloseRandomHelper}
+            maxWidth="xs"
+            fullWidth
+            sx={{
+                '& .MuiDialog-paper': {
+                    borderRadius: 3,
+                },
+            }}
+        >
+            <DialogTitle
+                sx={{
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    fontSize: { xs: '1.15rem', sm: '1.25rem' },
+                }}
+            >
+                The random button is moving.
+            </DialogTitle>
+            <DialogContent sx={{ pt: 0 }}>
+                <Box
+                    component="img"
+                    src="/assets/randombutton.png"
+                    alt="Random button location"
+                    sx={{
+                        width: '100%',
+                        borderRadius: 2,
+                        border: '1px solid rgba(0,0,0,0.08)',
+                        objectFit: 'cover',
+                        objectPosition: 'center center',
+                        maxHeight: { xs: 180, sm: 220 },
+                    }}
+                />
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 3 }}>
+                <Button onClick={handleCloseRandomHelper} variant="contained" fullWidth>
+                    Got it
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+    */
+
+    const toolsPopover = (
+        <>
+            <Input
+                type="file"
+                inputRef={fileInputRef}
+                onChange={handleImageUpload}
+                inputProps={{ accept: 'image/png, image/jpeg' }}
+                sx={{ display: 'none' }}
+            />
+
+            <Popover
+                id={toolsMenuId}
+                open={toolsMenuOpen}
+                anchorEl={toolsAnchorEl}
+                onClose={resetUploadState}
+                anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        p: 1.5,
+                        minWidth: 260,
+                        maxWidth: 320,
+                        border: `1px solid ${theme.palette.divider}`,
+                        boxShadow: '0 18px 40px rgba(0, 0, 0, 0.22)',
+                        backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0))',
+                    },
+                }}
+            >
+                <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {toolOptions.map((tool) => (
+                        <ListItemButton
+                            key={tool.action}
+                            disableGutters
+                            onClick={() => handleToolSelect(tool.action)}
+                            sx={toolItemSx}
+                        >
+                            <Box sx={{ flex: 1 }}>
+                                <Stack direction="row" alignItems="center" spacing={1}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                                        {tool.label}
+                                    </Typography>
+                                    {tool.isPro && <Chip label="Pro" size="small" variant="outlined" sx={proChipSx} />}
+                                </Stack>
+                                <Typography variant="body2" color="text.secondary">
+                                    {tool.description}
+                                </Typography>
+                            </Box>
+                        </ListItemButton>
+                    ))}
+                </List>
+            </Popover>
+        </>
+    );
 
     const safeAreaSpacerSx = useMemo(() => {
         const baseHeights = {
@@ -266,23 +532,26 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
 
     if (variant === 'inline') {
         return (
-            <Box
-                sx={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 2,
-                }}
-            >
-                <Box sx={inlineGroupStyles}>
-                    {primaryButton}
+            <>
+                <Box
+                    sx={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 2,
+                    }}
+                >
+                    <Box sx={inlineGroupStyles}>
+                        {toolsButton}
+                    </Box>
+                    <Box sx={inlineGroupStyles}>
+                        {randomButton}
+                    </Box>
                 </Box>
-                <Box sx={inlineGroupStyles}>
-                    {randomButton}
-                </Box>
-            </Box>
+                {toolsPopover}
+            </>
         );
     }
 
@@ -290,11 +559,12 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         <>
             <Box aria-hidden sx={safeAreaSpacerSx} />
             <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
-                {primaryButton}
+                {toolsButton}
             </StyledLeftFooter>
             <StyledRightFooter className="bottomBtn" hasAd={showAd}>
                 {randomButton}
             </StyledRightFooter>
+            {toolsPopover}
         </>
     );
 }

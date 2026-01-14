@@ -9,11 +9,13 @@ import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, Menu, Redo, Save, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, Chip, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, InputAdornment, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Radio, FormControlLabel, RadioGroup, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { LoadingButton } from '@mui/lab';
+import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, Edit, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, LocalPoliceRounded, Menu, Redo, Save, Send, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
+import { getRateLimit, getWebsiteSetting } from '../graphql/queries';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
@@ -26,6 +28,24 @@ import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
+import {
+  createProject,
+  resolveTemplateSnapshot,
+  upsertProject,
+} from '../components/collage/utils/templates';
+import AddToCollageChooser from '../components/collage/AddToCollageChooser';
+import { renderThumbnailFromSnapshot } from '../components/collage/utils/renderThumbnailFromSnapshot';
+import {
+  appendImageToSnapshot,
+  buildSnapshotSignature,
+  MAX_COLLAGE_IMAGES,
+  normalizeSnapshot,
+  replaceImageInSnapshot,
+  snapshotImageFromPayload,
+} from '../components/collage/utils/snapshotEditing';
+import ReplaceCollageImageDialog from '../components/collage/ReplaceCollageImageDialog';
+import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
+import { get as getFromLibrary } from '../utils/library/storage';
 
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import getV2Metadata from '../utils/getV2Metadata';
@@ -35,8 +55,24 @@ import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from 
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import { shouldShowAds } from '../utils/adsenseLoader';
 import { isAdPauseActive } from '../utils/adsenseLoader';
+import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
+
+// Minimal magic result query to avoid unauthorized user field.
+const getMagicResultLite = /* GraphQL */ `
+  query GetMagicResultLite($id: ID!) {
+    getMagicResult(id: $id) {
+      id
+      prompt
+      results
+      error
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 
 const ParentContainer = styled('div')`
     height: 100%;
@@ -72,6 +108,19 @@ const StyledCardMedia = styled('img')`
   height: auto;
   background-color: black;
 `;
+
+const MAGIC_IMAGE_SIZE = 1024;
+const MAGIC_RESUME_STORAGE_KEY = 'v2-editor-magic-resume';
+const MAGIC_RESUME_MAX_AGE_MS = 10 * 60 * 1000;
+const MAGIC_MAX_REFERENCES = 4;
+const DEFAULT_RATE_LIMIT = 100;
+
+const toNumber = (value, fallback = 0) => {
+  const parsed = typeof value === 'number' ? value : parseInt(String(value), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const getUtcDayId = () => new Date().toISOString().slice(0, 10);
 
 
 const EditorSurroundingFrameThumbnail = ({
@@ -275,12 +324,28 @@ const EditorPage = ({ shows }) => {
   const [imageUploading, setImageUploading] = useState();
   const [imageBlob, setImageBlob] = useState();
   const [shareImageFile, setShareImageFile] = useState();
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
+  const [librarySaveSuccess, setLibrarySaveSuccess] = useState(false);
+  const [librarySavePromptOpen, setLibrarySavePromptOpen] = useState(false);
+  const [librarySaveStep, setLibrarySaveStep] = useState('choice');
+  const [libraryCaptionSelectionIndex, setLibraryCaptionSelectionIndex] = useState(null);
+  const [addingToCollage, setAddingToCollage] = useState(false);
+  const [collagePromptOpen, setCollagePromptOpen] = useState(false);
+  const [collageCaptionSelectionIndex, setCollageCaptionSelectionIndex] = useState(null);
+  const [collageChooserOpen, setCollageChooserOpen] = useState(false);
+  const [pendingCollagePayload, setPendingCollagePayload] = useState(null);
+  const [collagePreview, setCollagePreview] = useState(null);
+  const [collageReplaceDialogOpen, setCollageReplaceDialogOpen] = useState(false);
+  const [collageReplaceSelection, setCollageReplaceSelection] = useState(null);
+  const [collageReplaceOptions, setCollageReplaceOptions] = useState([]);
+  const [collageReplaceContext, setCollageReplaceContext] = useState(null);
   const [snackbarOpen, setSnackBarOpen] = useState(false);
   const theme = useTheme();
   // const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   // const [drawingMode, setDrawingMode] = useState(false);
-  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinematic cinestill sample')  // , Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred
+  const [magicPrompt, setMagicPrompt] = useState('')
+  const [magicReferences, setMagicReferences] = useState([])
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -299,14 +364,18 @@ const EditorPage = ({ shows }) => {
 
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
 
+  const isProUser = user?.userDetails?.subscriptionStatus === 'active';
+
   // const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   // const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
   // const [loadingSubscriptionUrl, setLoadingSubscriptionUrl] = useState(false);
 
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
-  const [promptEnabled, setPromptEnabled] = useState('erase');
+  const [promptEnabled, setPromptEnabled] = useState('edit');
+  const [showLegacyTools, setShowLegacyTools] = useState(false);
   // const buttonRef = useRef(null);
   const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
+  const { openSubscriptionDialog } = useSubscribeDialog();
 
   // Image selection stuff
   const [selectedImage, setSelectedImage] = useState(null);
@@ -316,10 +385,151 @@ const EditorPage = ({ shows }) => {
   const [returnedImages, setReturnedImages] = useState([]);
 
   const magicToolsButtonRef = useRef();
+  const magicPromptInputRef = useRef();
+  const magicReferenceInputRef = useRef();
   const textFieldRefs = useRef({});
   const selectionCacheRef = useRef({});
+  const pendingMagicResumeRef = useRef(null);
+  const skipNextDefaultFrameRef = useRef(false);
+  const skipNextDefaultSubtitleRef = useRef(false);
+
+  // Animated placeholder for magic prompt
+  const magicExamples = useMemo(
+    () => [
+      'Remove the text…',
+      'Add a tophat…',
+      'Make him laugh…',
+      'Add an angry cat…',
+      'Change background to sunset…',
+    ],
+    []
+  );
+  const [magicExampleIndex, setMagicExampleIndex] = useState(0);
+  const [magicPlaceholder, setMagicPlaceholder] = useState('');
+  const [magicTypingPhase, setMagicTypingPhase] = useState('typing');
+  const [magicCharIndex, setMagicCharIndex] = useState(0);
+  const [magicPromptFocused, setMagicPromptFocused] = useState(false);
+  const [rateLimitState, setRateLimitState] = useState({
+    nanoUsage: 0,
+    nanoLimit: DEFAULT_RATE_LIMIT,
+    nanoAvailable: true,
+    openaiUsage: 0,
+    openaiLimit: DEFAULT_RATE_LIMIT,
+    openaiAvailable: true,
+    loading: true,
+  });
+  const [rateLimitDialogOpen, setRateLimitDialogOpen] = useState(false);
 
   const SELECTION_CACHE_TTL_MS = 15000;
+
+  // Animated placeholder effect for magic prompt
+  useEffect(() => {
+    let timeout;
+    // If user is typing, keep placeholder empty
+    if ((magicPrompt && magicPrompt.length > 0) || loadingInpaintingResult || magicPromptFocused) {
+      setMagicPlaceholder('');
+      return () => {
+        if (timeout) window.clearTimeout(timeout);
+      };
+    }
+    const full = magicExamples[magicExampleIndex] || '';
+    if (magicTypingPhase === 'typing') {
+      if (magicCharIndex < full.length) {
+        timeout = window.setTimeout(() => {
+          setMagicCharIndex((c) => c + 1);
+          setMagicPlaceholder(full.slice(0, magicCharIndex + 1));
+        }, 60);
+      } else {
+        setMagicTypingPhase('pausing');
+      }
+    } else if (magicTypingPhase === 'pausing') {
+      timeout = window.setTimeout(() => setMagicTypingPhase('deleting'), 1000);
+    } else if (magicTypingPhase === 'deleting') {
+      if (magicCharIndex > 0) {
+        timeout = window.setTimeout(() => {
+          setMagicCharIndex((c) => c - 1);
+          setMagicPlaceholder(full.slice(0, Math.max(0, magicCharIndex - 1)));
+        }, 35);
+      } else {
+        setMagicTypingPhase('typing');
+        setMagicExampleIndex((i) => (i + 1) % magicExamples.length);
+      }
+    }
+    return () => {
+      if (timeout) window.clearTimeout(timeout);
+    };
+  }, [magicPrompt, loadingInpaintingResult, magicPromptFocused, magicExamples, magicExampleIndex, magicTypingPhase, magicCharIndex]);
+
+  const refreshRateLimits = useCallback(async () => {
+    const dayId = getUtcDayId();
+    try {
+      const settingsResp = await API.graphql(graphqlOperation(getWebsiteSetting, { id: 'globalSettings' }));
+      let rateResp = null;
+      try {
+        rateResp = await API.graphql(graphqlOperation(getRateLimit, { id: dayId }));
+      } catch (_) {
+        rateResp = null;
+      }
+      const settings = settingsResp?.data?.getWebsiteSetting || {};
+      const nanoLimit = toNumber(settings?.nanoBananaRateLimit, DEFAULT_RATE_LIMIT);
+      const openaiLimit = toNumber(settings?.openAIRateLimit, DEFAULT_RATE_LIMIT);
+      const rateItem = rateResp?.data?.getRateLimit;
+      const nanoUsage = toNumber(rateItem?.geminiUsage, 0);
+      const openaiUsage = toNumber(rateItem?.openaiUsage, 0);
+      setRateLimitState({
+        nanoUsage,
+        nanoLimit,
+        nanoAvailable: nanoUsage < nanoLimit,
+        openaiUsage,
+        openaiLimit,
+        openaiAvailable: openaiUsage < openaiLimit,
+        loading: false,
+      });
+    } catch (err) {
+      console.warn('[V2Editor] Failed to load rate limits', err);
+      setRateLimitState((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshRateLimits();
+  }, [refreshRateLimits]);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const fromCollage = Boolean(location.state?.collageState);
+  const uploadedImageSource = location.state?.uploadedImage || null;
+
+  const readMagicResumeSnapshot = useCallback(() => {
+    try {
+      const raw = sessionStorage.getItem(MAGIC_RESUME_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const isForPath = parsed?.path === `${location.pathname}${location.search}`;
+      const isFresh = !parsed?.timestamp || (Math.abs(Date.now() - parsed.timestamp) <= MAGIC_RESUME_MAX_AGE_MS);
+      if (!isForPath || !isFresh) {
+        sessionStorage.removeItem(MAGIC_RESUME_STORAGE_KEY);
+        return null;
+      }
+      return parsed;
+    } catch (err) {
+      console.error('Failed to read magic resume snapshot', err);
+      try { sessionStorage.removeItem(MAGIC_RESUME_STORAGE_KEY); } catch (_) {}
+      return null;
+    }
+  }, [location.pathname, location.search]);
+
+  const persistMagicResumeSnapshot = useCallback((snapshot) => {
+    try {
+      sessionStorage.setItem(MAGIC_RESUME_STORAGE_KEY, JSON.stringify(snapshot));
+    } catch (err) {
+      console.error('Failed to store magic resume snapshot', err);
+    }
+  }, []);
+
+  const clearMagicResumeSnapshot = useCallback(() => {
+    try { sessionStorage.removeItem(MAGIC_RESUME_STORAGE_KEY); } catch (_) {}
+  }, []);
 
   const handleSubtitlesExpand = () => {
     setSubtitlesExpanded(!subtitlesExpanded);
@@ -360,10 +570,33 @@ const EditorPage = ({ shows }) => {
 
   const TwitterPickerWrapper = memo(StyledTwitterPicker);
 
-  const navigate = useNavigate();
-  const location = useLocation();
-  const fromCollage = Boolean(location.state?.collageState);
-  const uploadedImageSource = location.state?.uploadedImage || null;
+  useEffect(() => {
+    const storedResume = readMagicResumeSnapshot();
+    if (storedResume) {
+      pendingMagicResumeRef.current = storedResume;
+    }
+  }, [readMagicResumeSnapshot]);
+
+  useEffect(() => {
+    const navState = location.state;
+    if (!navState || !navState.magicResult) {
+      return;
+    }
+
+    const { magicResult, magicContext } = navState;
+    const cleanState = { ...navState };
+    delete cleanState.magicResult;
+    delete cleanState.magicContext;
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: cleanState });
+
+    const storedResume = readMagicResumeSnapshot();
+    const resumeKey = magicContext?.resumeKey;
+    if (storedResume && resumeKey && storedResume.key && storedResume.key !== resumeKey) {
+      console.warn('Magic resume key mismatch; continuing with stored snapshot.');
+    }
+
+    pendingMagicResumeRef.current = { ...(storedResume || {}), magicResult, magicContext };
+  }, [location.pathname, location.search, location.state, navigate, readMagicResumeSnapshot]);
 
   const saveCollageImage = () => {
     const resultImage = editor.canvas.toDataURL({
@@ -449,6 +682,15 @@ const EditorPage = ({ shows }) => {
 
     trackUsageEvent('advanced_editor_save', eventPayload);
 
+    setLibrarySaveSuccess(false);
+    setSavingToLibrary(false);
+    setLibrarySavePromptOpen(false);
+    setLibrarySaveStep('choice');
+    setLibraryCaptionSelectionIndex(null);
+    setCollagePromptOpen(false);
+    setCollageCaptionSelectionIndex(null);
+    setAddingToCollage(false);
+
     if (location.state?.collageState) {
       saveCollageImage();
     } else {
@@ -459,6 +701,14 @@ const EditorPage = ({ shows }) => {
 
   const handleDialogClose = () => {
     setOpenDialog(false);
+    setSavingToLibrary(false);
+    setLibrarySaveSuccess(false);
+    setLibrarySavePromptOpen(false);
+    setLibrarySaveStep('choice');
+    setLibraryCaptionSelectionIndex(null);
+    setCollagePromptOpen(false);
+    setCollageCaptionSelectionIndex(null);
+    setAddingToCollage(false);
   };
 
   const handleAlignment = (index, alignment) => {
@@ -709,7 +959,7 @@ const EditorPage = ({ shows }) => {
         setImageLoaded(true);
 
         // Rendering the canvas after applying all changes
-        editor.canvas.renderAll();
+        editor?.canvas?.renderAll?.();
         setLoading(false);
 
         // If it's from the collage page, set some default states
@@ -814,6 +1064,11 @@ const EditorPage = ({ shows }) => {
 
   useEffect(() => {
     if (defaultFrame) {
+      if (skipNextDefaultFrameRef.current) {
+        skipNextDefaultFrameRef.current = false;
+        return;
+      }
+
       const oImg = defaultFrame
       const imageAspectRatio = oImg.width / oImg.height;
       setEditorAspectRatio(imageAspectRatio);
@@ -837,6 +1092,10 @@ const EditorPage = ({ shows }) => {
 
   useEffect(() => {
     if (defaultSubtitle) {
+      if (skipNextDefaultSubtitleRef.current) {
+        skipNextDefaultSubtitleRef.current = false;
+        return;
+      }
       addText(defaultSubtitle || '')
     }
   }, [defaultSubtitle]);
@@ -1502,17 +1761,40 @@ const EditorPage = ({ shows }) => {
   const QUERY_INTERVAL = 1000; // Every second
   const TIMEOUT = 60 * 1000;   // 1 minute
 
+  const spendMagicCredit = useCallback(async () => {
+    try {
+      const currentCredits = user?.userDetails?.credits ?? 0;
+      const newCreditAmount = Math.max(0, currentCredits - 1);
+      setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
+      await forceTokenRefresh();
+    } catch (err) {
+      console.error('Failed to refresh credits after magic edit:', err);
+    }
+  }, [forceTokenRefresh, setUser, user]);
+
   async function checkMagicResult(id) {
     try {
-      const result = await API.graphql(graphqlOperation(`query MyQuery {
-            getMagicResult(id: "${id}") {
-              results
-            }
-          }`));
-      return result.data.getMagicResult?.results;
+      const result = await API.graphql(graphqlOperation(getMagicResultLite, { id }));
+      const rawError = result?.data?.getMagicResult?.error;
+      let normalizedError = rawError;
+      if (typeof rawError === 'string') {
+        try {
+          normalizedError = JSON.parse(rawError);
+          if (typeof normalizedError === 'string') {
+            normalizedError = JSON.parse(normalizedError);
+          }
+        } catch (_) {
+          normalizedError = rawError;
+        }
+      }
+      return {
+        results: result?.data?.getMagicResult?.results,
+        error: normalizedError,
+      };
     } catch (error) {
       console.error('Error fetching magic result:', error);
-      return null;
+      const fallbackMessage = error?.errors?.[0]?.message || error?.message || null;
+      return { results: null, error: fallbackMessage ? { message: fallbackMessage, reason: 'fetch_error' } : null };
     }
   }
 
@@ -1536,6 +1818,174 @@ const EditorPage = ({ shows }) => {
     // setDrawingMode((tool === 'magicEraser'))
   }
 
+  const buildBackgroundDataUrl = ({ forceSquare = true } = {}) => {
+    if (!editor?.canvas?.backgroundImage) {
+      throw new Error('No background image available for magic edits.');
+    }
+
+    const canvasWidth = editor.canvas.getWidth() || MAGIC_IMAGE_SIZE;
+    const canvasHeight = editor.canvas.getHeight() || MAGIC_IMAGE_SIZE;
+    const backgroundImage = editor.canvas.backgroundImage;
+    const imageElement = backgroundImage.getElement();
+    if (!imageElement) {
+      throw new Error('Unable to access background image for magic edit.');
+    }
+
+    const naturalWidth = backgroundImage.width || imageElement.naturalWidth || imageElement.width || canvasWidth;
+    const naturalHeight = backgroundImage.height || imageElement.naturalHeight || imageElement.height || canvasHeight;
+    const visibleWidth = typeof backgroundImage.getScaledWidth === 'function'
+      ? backgroundImage.getScaledWidth()
+      : naturalWidth * (backgroundImage.scaleX || 1);
+    const visibleHeight = typeof backgroundImage.getScaledHeight === 'function'
+      ? backgroundImage.getScaledHeight()
+      : naturalHeight * (backgroundImage.scaleY || 1);
+
+    const exportScale = MAGIC_IMAGE_SIZE / Math.max(visibleWidth, visibleHeight);
+    const targetWidth = forceSquare ? MAGIC_IMAGE_SIZE : Math.max(1, Math.round(visibleWidth * exportScale));
+    const targetHeight = forceSquare ? MAGIC_IMAGE_SIZE : Math.max(1, Math.round(visibleHeight * exportScale));
+
+    console.log('[Magic Edit Export Debug]', {
+      forceSquare,
+      canvasSize: { width: canvasWidth, height: canvasHeight },
+      canvasZoom: editor.canvas.getZoom(),
+      logicalCanvasSize: {
+        width: canvasWidth / (editor.canvas.getZoom() || 1),
+        height: canvasHeight / (editor.canvas.getZoom() || 1)
+      },
+      backgroundImage: {
+        natural: { width: naturalWidth, height: naturalHeight },
+        visible: { width: visibleWidth, height: visibleHeight },
+        position: { left: backgroundImage.left, top: backgroundImage.top },
+        scale: { x: backgroundImage.scaleX, y: backgroundImage.scaleY }
+      },
+      exportScale,
+      exportedSize: { width: targetWidth, height: targetHeight }
+    });
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = targetWidth;
+    tempCanvas.height = targetHeight;
+    const ctx = tempCanvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Unable to prepare magic edit image.');
+    }
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+    const drawWidth = visibleWidth * exportScale;
+    const drawHeight = visibleHeight * exportScale;
+    const offsetX = (targetWidth - drawWidth) / 2;
+    const offsetY = (targetHeight - drawHeight) / 2;
+
+    ctx.drawImage(imageElement, offsetX, offsetY, drawWidth, drawHeight);
+
+    return { dataUrl: tempCanvas.toDataURL('image/png'), scale: exportScale };
+  };
+
+  const buildMaskDataUrl = () => {
+    if (!editor?.canvas) {
+      throw new Error('Editor not ready for magic erase.');
+    }
+
+    const tempCanvasDrawing = new fabric.Canvas();
+    tempCanvasDrawing.setWidth(MAGIC_IMAGE_SIZE);
+    tempCanvasDrawing.setHeight(MAGIC_IMAGE_SIZE);
+
+    tempCanvasDrawing.backgroundColor = 'black';
+
+    const originalHeight = editor.canvas.height;
+    const originalWidth = editor.canvas.width;
+
+    const scale = Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight);
+    const offsetX = (MAGIC_IMAGE_SIZE - originalWidth * scale) / 2;
+    const offsetY = (MAGIC_IMAGE_SIZE - originalHeight * scale) / 2;
+
+    editor.canvas.getObjects().forEach((obj) => {
+      if (obj instanceof fabric.Path) {
+        const path = obj.toObject();
+        const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
+        newPath.scale(scale);
+        newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
+        tempCanvasDrawing.add(newPath);
+      }
+    });
+
+    return tempCanvasDrawing.toDataURL({
+      format: 'png',
+      left: 0,
+      top: 0,
+      width: tempCanvasDrawing.getWidth(),
+      height: tempCanvasDrawing.getHeight(),
+    });
+  };
+
+  const pollMagicResults = (magicResultId) => {
+    const startTime = Date.now();
+
+    const pollInterval = setInterval(async () => {
+      const { results, error } = await checkMagicResult(magicResultId);
+      let parsedError = null;
+      if (error) {
+        parsedError = error;
+        if (typeof error === 'string') {
+          try {
+            parsedError = JSON.parse(error);
+          } catch (_) {
+            parsedError = { message: error };
+          }
+        }
+      }
+      const timedOut = (Date.now() - startTime) >= TIMEOUT;
+      if (results || parsedError || timedOut) {
+        clearInterval(pollInterval);
+        setLoadingInpaintingResult(false);  // Stop the loading spinner
+
+        if (parsedError) {
+          const reason = parsedError?.reason;
+          const model = parsedError?.model;
+          const message = parsedError?.message || 'Magic tools are temporarily unavailable.';
+          setSeverity('error');
+          if (reason === 'moderation' || reason === 'ProviderModeration') {
+            setMessage('Content blocked by moderation.');
+          } else {
+            setMessage(message);
+          }
+          setOpen(true);
+          if (reason === 'rate_limit') {
+            if (model === 'gemini') {
+              setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+            } else {
+            setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
+          }
+        } else if (reason === 'moderation') {
+          console.warn('[V2Editor] Moderation block received', { model });
+        } else if (reason === 'ProviderModeration') {
+          console.warn('[V2Editor] Provider moderation blocked output', { model });
+        }
+      } else if (results) {
+          try {
+            const imageUrls = JSON.parse(results);
+            setReturnedImages((prev) => [...prev, ...imageUrls]);
+            setOpenSelectResult(true);
+            await spendMagicCredit();
+            void refreshRateLimits();
+          } catch (err) {
+            console.error('Error parsing magic results:', err);
+            alert('Error: Unable to parse magic results. Please try again.');
+          }
+        } else {
+          console.error("Timeout reached without fetching magic results.");
+          alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
+        }
+        if (parsedError?.reason === 'rate_limit') {
+          void refreshRateLimits();
+        }
+      }
+    }, QUERY_INTERVAL);
+
+    return pollInterval;
+  };
+
   const downloadDataURL = (dataURL, fileName) => {
     const link = document.createElement('a');
     link.href = dataURL;
@@ -1545,129 +1995,227 @@ const EditorPage = ({ shows }) => {
   };
 
   const exportDrawing = async () => {
-    setLoadingInpaintingResult(true)
+    if (!editor?.canvas?.backgroundImage) {
+      setSeverity('error');
+      setMessage('Load an image before using Magic Eraser.');
+      setOpen(true);
+      return;
+    }
+    if (rateLimitState.openaiAvailable === false) {
+      setSeverity('error');
+      setMessage('Classic Magic Tools are temporarily unavailable. Please try again later.');
+      setOpen(true);
+      return;
+    }
+
+    setLoadingInpaintingResult(true);
     window.scrollTo(0, 0);
     const originalCanvas = editor.canvas;
 
-    // let fabricImage = null;
+    try {
+      const dataURLDrawing = buildMaskDataUrl();
+      const { dataUrl: dataURLBgImage } = buildBackgroundDataUrl();
 
-    const tempCanvasDrawing = new fabric.Canvas();
-    tempCanvasDrawing.setWidth(1024);
-    tempCanvasDrawing.setHeight(1024);
+      if (dataURLBgImage && dataURLDrawing) {
+        const data = {
+          image: dataURLBgImage,
+          mask: dataURLDrawing,
+          prompt: magicPrompt,
+        };
 
-    tempCanvasDrawing.backgroundColor = 'black'
-
-    // tempCanvasDrawing.add(solidRect);
-
-    const originalHeight = editor.canvas.height
-    const originalWidth = editor.canvas.width
-
-    const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-    const offsetX = (1024 - originalWidth * scale) / 2;
-    const offsetY = (1024 - originalHeight * scale) / 2;
-
-    originalCanvas.getObjects().forEach((obj) => {
-      if (obj instanceof fabric.Path) {
-        const path = obj.toObject();
-        const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
-        newPath.scale(scale);
-        newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
-        tempCanvasDrawing.add(newPath);
-      }
-
-      // if (obj instanceof fabric.Image) {
-      //     fabricImage = obj;
-      // }
-
-
-    });
-
-    const dataURLDrawing = tempCanvasDrawing.toDataURL({
-      format: 'png',
-      left: 0,
-      top: 0,
-      width: tempCanvasDrawing.getWidth(),
-      height: tempCanvasDrawing.getHeight(),
-    });
-    const backgroundImage = { ...editor.canvas.backgroundImage };
-
-    const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement())
-
-    const imageWidth = backgroundImage.width
-    const imageHeight = backgroundImage.height
-    const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
-    const imageOffsetX = (1024 - imageWidth * imageScale) / 2;
-    const imageOffsetY = (1024 - imageHeight * imageScale) / 2;
-
-    tempCanvasDrawing.clear();
-
-    tempCanvasDrawing.backgroundColor = 'black'
-
-    newBackgroundImage.scale(imageScale)
-    newBackgroundImage.set({ left: imageOffsetX, top: imageOffsetY });
-    tempCanvasDrawing.add(newBackgroundImage)
-    const dataURLBgImage = tempCanvasDrawing.toDataURL('image/png');
-
-
-    if (dataURLBgImage && dataURLDrawing) {
-      //   const dataURLBgImage = fabricImage.toDataURL('image/png');
-
-      const data = {
-        image: dataURLBgImage,
-        mask: dataURLDrawing,
-        prompt: magicPrompt,
-      };
-
-      try {
-        const response = await API.post('publicapi', '/inpaint', {
-          body: data
-        });
-
-        const {magicResultId} = response;
-
-        const startTime = Date.now();
-
-        const pollInterval = setInterval(async () => {
-          const results = await checkMagicResult(magicResultId);
-          if (results || (Date.now() - startTime) >= TIMEOUT) {
-            clearInterval(pollInterval);
-            setLoadingInpaintingResult(false);  // Stop the loading spinner
-
-            if (results) {
-              const imageUrls = JSON.parse(results);
-              setReturnedImages([...returnedImages, ...imageUrls]);
-              setLoadingInpaintingResult(false);
-              setOpenSelectResult(true);
-              const newCreditAmount = user?.userDetails.credits - 1;
-              setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
-              await forceTokenRefresh();
-            } else {
-              console.error("Timeout reached without fetching magic results.");
-              alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
-            }
-          }
-        }, QUERY_INTERVAL);
-
-      } catch (error) {
-        setLoadingInpaintingResult(false);
-        if (error.response?.data?.error?.name === "InsufficientCredits") {
-          setSeverity('error');
-          setMessage('Insufficient Credits');
-          setOpen(true);
-          originalCanvas.getObjects().forEach((obj) => {
-            if (obj instanceof fabric.Path) {
-              editor.canvas.remove(obj);
-            }
+        try {
+          const response = await API.post('publicapi', '/inpaint', {
+            body: data
           });
-          setHasFabricPaths(false);
+
+          const {magicResultId} = response;
+
+          if (!magicResultId) {
+            throw new Error('Unable to start magic edit.');
+          }
+
+          pollMagicResults(magicResultId);
+        } catch (error) {
+          setLoadingInpaintingResult(false);
+          const rateLimitReason = error?.response?.data?.error?.reason || error?.response?.data?.error?.code;
+          const rateLimitModel = error?.response?.data?.error?.model;
+          const messageText = error?.message ? error.message.toLowerCase() : '';
+          if (rateLimitReason === 'rate_limit' || messageText.includes('rate limit')) {
+            if (rateLimitModel === 'gemini') {
+              setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
+            } else {
+              setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
+            }
+            setSeverity('error');
+            setMessage(rateLimitModel === 'gemini'
+              ? 'Magic Tools are temporarily unavailable. Please try again later.'
+              : 'Classic Magic Tools are temporarily unavailable. Please try again later.');
+            setOpen(true);
+            return;
+          }
+          if (rateLimitReason === 'moderation' || messageText.includes('moderation')) {
+            setSeverity('error');
+            setMessage(error?.response?.data?.error?.message || 'Content was blocked by safety filters.');
+            setOpen(true);
+            return;
+          }
+          if (error.response?.data?.error?.name === "InsufficientCredits") {
+            setSeverity('error');
+            setMessage('Insufficient Credits');
+            setOpen(true);
+            originalCanvas.getObjects().forEach((obj) => {
+              if (obj instanceof fabric.Path) {
+                editor.canvas.remove(obj);
+              }
+            });
+            setHasFabricPaths(false);
+          } else {
+            console.error(error);
+            setSeverity('error');
+            setMessage(error.message || 'An error occurred while applying magic erase.');
+            setOpen(true);
+          }
+          if (error.response?.data) {
+            console.log(error.response.data);
+            alert(`Error: ${JSON.stringify(error.response.data)}`);
+          }
         }
-        console.log(error.response.data);
-        alert(`Error: ${JSON.stringify(error.response.data)}`);
       }
+    } catch (error) {
+      setLoadingInpaintingResult(false);
+      setSeverity('error');
+      setMessage(error.message || 'An error occurred while preparing the magic edit.');
+      setOpen(true);
     }
   };
 
-  const handleAddCanvasBackground = (imgUrl) => {
+  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleMagicReferenceFiles = useCallback(async (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList).slice(0, MAGIC_MAX_REFERENCES);
+    const reads = await Promise.all(files.map(async (file) => {
+      try {
+        return await readFileAsDataUrl(file);
+      } catch (err) {
+        console.error('Failed to read reference image', err);
+        return null;
+      }
+    }));
+    const filtered = reads.filter(Boolean);
+    if (!filtered.length) return;
+    setMagicReferences((prev) => {
+      const merged = [...prev, ...filtered];
+      return merged.slice(0, MAGIC_MAX_REFERENCES);
+    });
+  }, []);
+
+  const removeMagicReference = useCallback((index) => {
+    setMagicReferences((prev) => prev.filter((_, idx) => idx !== index));
+  }, []);
+
+  const handleMagicEdit = async () => {
+    if (!magicPrompt || magicPrompt.trim().length === 0) {
+      setSeverity('error');
+      setMessage('Add a prompt to describe the magic edit.');
+      setOpen(true);
+      return;
+    }
+
+    if (!editor?.canvas?.backgroundImage) {
+      setSeverity('error');
+      setMessage('Load an image before using Magic Edit.');
+      setOpen(true);
+      return;
+    }
+
+    if (rateLimitState.nanoAvailable === false) {
+      if (rateLimitState.openaiAvailable) {
+        setRateLimitDialogOpen(true);
+      } else {
+        setSeverity('error');
+        setMessage('Magic tools are temporarily unavailable. Please try again later.');
+        setOpen(true);
+      }
+      return;
+    }
+
+    try {
+      const { dataUrl, scale } = buildBackgroundDataUrl({ forceSquare: false });
+      const resumeKey = `${Date.now()}`;
+      try {
+        const canvasWidth = typeof editor.canvas.getWidth === 'function' ? editor.canvas.getWidth() : editor.canvas.width;
+        const canvasHeight = typeof editor.canvas.getHeight === 'function' ? editor.canvas.getHeight() : editor.canvas.height;
+        const snapshot = {
+          key: resumeKey,
+          path: `${location.pathname}${location.search}`,
+          timestamp: Date.now(),
+          canvasJSON: JSON.stringify(editor.canvas),
+          canvasWidth,
+          canvasHeight,
+          canvasSize,
+          editorAspectRatio,
+          whiteSpaceHeight,
+          whiteSpaceValue,
+          showWhiteSpaceSlider,
+          imageScale,
+          layerFonts,
+          layerRawText,
+          layerActiveFormats,
+          magicPrompt,
+          magicReferences,
+          sourceScale: scale,
+        };
+        pendingMagicResumeRef.current = snapshot;
+        persistMagicResumeSnapshot(snapshot);
+      } catch (snapshotError) {
+        console.error('Failed to preserve editor state for magic edit:', snapshotError);
+      }
+
+      navigate('/magic', {
+        state: {
+          initialSrc: dataUrl,
+          returnTo: `${location.pathname}${location.search}`,
+          magicPrompt,
+          magicAutoStart: true,
+          magicAutoStartKey: resumeKey,
+          magicVariationCount: 1,
+          magicEditContext: {
+            source: 'v2editor',
+            resumeKey,
+            sourceScale: scale,
+          },
+          references: magicReferences,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      setSeverity('error');
+      setMessage(error.message || 'An error occurred while preparing the magic edit.');
+      setOpen(true);
+    }
+  };
+
+  const handleSwitchToClassicTools = () => {
+    setRateLimitDialogOpen(false);
+    setPromptEnabled('erase');
+    toggleDrawingMode('magicEraser');
+    setSeverity('info');
+    setMessage('Switched to classic tools while nanoBanana is unavailable.');
+    setOpen(true);
+  };
+
+  const handleStayOnMagicTools = () => {
+    setRateLimitDialogOpen(false);
+  };
+
+  const handleAddCanvasBackground = (imgUrl, options = {}) => {
+    const { skipHistory = false } = options;
     try {
       setOpenSelectResult(false);
 
@@ -1687,20 +2235,85 @@ const EditorPage = ({ shows }) => {
         setSelectedImage();
         setReturnedImages([]);
 
-        const originalHeight = editor.canvas.height;
-        const originalWidth = editor.canvas.width;
-        const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-        returnedImage.scale(1 / scale);
+        const bg = editor.canvas.backgroundImage;
+        const naturalWidth = returnedImage.width || MAGIC_IMAGE_SIZE;
+        const naturalHeight = returnedImage.height || MAGIC_IMAGE_SIZE;
+
+        let appliedScale;
+        let left = 0;
+        let top = 0;
+        let originX = 'left';
+        let originY = 'top';
+
+        if (options?.sourceScale) {
+          const targetWidth = editor.canvas.getWidth() / (editor.canvas.getZoom() || 1);
+          const targetHeight = editor.canvas.getHeight() / (editor.canvas.getZoom() || 1);
+
+          const sourceBasedScale = 1 / options.sourceScale;
+          const minCoverScale = Math.max(
+            targetWidth / naturalWidth,
+            targetHeight / naturalHeight
+          );
+
+          appliedScale = Math.max(sourceBasedScale, minCoverScale);
+
+          console.log('[Magic Edit Debug]', {
+            sourceScale: options.sourceScale,
+            sourceBasedScale,
+            minCoverScale,
+            appliedScale,
+            returnedImageSize: { width: naturalWidth, height: naturalHeight },
+            canvasZoom: editor.canvas.getZoom(),
+            canvasSize: {
+              width: editor.canvas.getWidth(),
+              height: editor.canvas.getHeight()
+            },
+            logicalSize: { width: targetWidth, height: targetHeight },
+            finalImageSize: {
+              width: naturalWidth * appliedScale,
+              height: naturalHeight * appliedScale
+            },
+            bgPosition: bg ? { left: bg.left, top: bg.top, width: bg.width, height: bg.height, scaleX: bg.scaleX, scaleY: bg.scaleY, originX: bg.originX, originY: bg.originY } : null
+          });
+
+          if (bg) {
+            left = typeof bg.left === 'number' ? bg.left : 0;
+            top = typeof bg.top === 'number' ? bg.top : 0;
+            originX = bg.originX || 'left';
+            originY = bg.originY || 'top';
+          }
+        } else {
+          // Classic tools logic: simple scale and center
+          const originalHeight = editor.canvas.height;
+          const originalWidth = editor.canvas.width;
+          const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
+          appliedScale = 1 / scale;
+        }
+
+        returnedImage.scale(appliedScale);
+        returnedImage.set({
+          left,
+          top,
+          originX,
+          originY,
+        });
         editor.canvas.setBackgroundImage(returnedImage);
+
+        // For classic tools (no sourceScale), center the image
+        if (!options?.sourceScale) {
+          editor.canvas.backgroundImage.center();
+        }
+
         setBgEditorStates(prevHistory => [...prevHistory, returnedImage]);
-        editor.canvas.backgroundImage.center();
         editor.canvas.renderAll();
 
         setEditorTool('captions');
         toggleDrawingMode('captions');
-        setMagicPrompt('Everyday scene as cinematic cinestill sample');
+        setMagicPrompt(promptEnabled === 'edit' ? '' : 'Everyday scene as cinematic cinestill sample');
         // setPromptEnabled('erase');
-        addToHistory();
+        if (!skipHistory) {
+          addToHistory();
+        }
       }, {
         crossOrigin: "anonymous"
       });
@@ -1713,6 +2326,98 @@ const EditorPage = ({ shows }) => {
   };
 
 
+
+  const restoreMagicResume = async (resume) => {
+    if (!resume || !resume.canvasJSON || !editor?.canvas) {
+      return false;
+    }
+
+    return new Promise((resolve) => {
+      try {
+        skipNextDefaultFrameRef.current = true;
+        skipNextDefaultSubtitleRef.current = true;
+        const width = resume.canvasWidth || (typeof editor.canvas.getWidth === 'function' ? editor.canvas.getWidth() : editor.canvas.width) || canvasSize.width;
+        const height = resume.canvasHeight || (typeof editor.canvas.getHeight === 'function' ? editor.canvas.getHeight() : editor.canvas.height) || canvasSize.height;
+
+        editor.canvas.loadFromJSON(resume.canvasJSON, () => {
+          editor.canvas.setWidth(width);
+          editor.canvas.setHeight(height);
+          editor.canvas.renderAll();
+
+          const nextCanvasSize = (resume.canvasSize && resume.canvasSize.width && resume.canvasSize.height)
+            ? resume.canvasSize
+            : { width, height };
+
+          setCanvasSize(nextCanvasSize);
+          setEditorAspectRatio(resume.editorAspectRatio || ((width && height) ? width / height : editorAspectRatio));
+          setWhiteSpaceHeight(resume.whiteSpaceHeight ?? 0);
+          setWhiteSpaceValue(resume.whiteSpaceValue ?? 0);
+          setShowWhiteSpaceSlider(Boolean(resume.showWhiteSpaceSlider));
+          setImageScale(resume.imageScale || imageScale);
+
+          const rawText = resume.layerRawText ? { ...resume.layerRawText } : {};
+          if (!resume.layerRawText) {
+            editor.canvas.getObjects().forEach((obj, idx) => {
+              if (obj && typeof obj.text === 'string') {
+                rawText[idx] = obj.text;
+              }
+            });
+          }
+
+          setLayerRawText(rawText);
+          setLayerActiveFormats(resume.layerActiveFormats || {});
+          setLayerFonts(resume.layerFonts || {});
+          setCanvasObjects([...editor.canvas._objects]);
+          setEditorStates([resume.canvasJSON]);
+          setCanvasSizes([{ width: nextCanvasSize.width, height: nextCanvasSize.height }]);
+          setFutureStates([]);
+          setFutureCanvasSizes([]);
+          setHasFabricPaths(editor.canvas.getObjects().some((obj) => obj instanceof fabric.Path));
+          setBgEditorStates([editor.canvas.backgroundImage]);
+          setBgFutureStates([]);
+          setEditorTool('captions');
+          toggleDrawingMode('captions');
+          setMagicPrompt(resume.magicPrompt ?? magicPrompt);
+          setLoading(false);
+          setImageLoaded(true);
+          resolve(true);
+        });
+      } catch (err) {
+        console.error('Failed to restore magic edit session', err);
+        resolve(false);
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!editor?.canvas) {
+      return;
+    }
+
+    const applyPendingMagic = async () => {
+      const pending = pendingMagicResumeRef.current || readMagicResumeSnapshot();
+      if (!pending) {
+        return;
+      }
+
+      const applied = await restoreMagicResume(pending);
+      const resultUrl = pending.magicResult?.displayUrl || pending.magicResult?.originalUrl;
+      if (resultUrl) {
+        const sourceScale = pending.magicContext?.sourceScale || pending.sourceScale;
+        handleAddCanvasBackground(resultUrl, { sourceScale, skipHistory: true });
+
+        // Add single history entry after magic result is applied
+        setTimeout(() => {
+          addToHistory();
+        }, 100);
+      }
+
+      clearMagicResumeSnapshot();
+      pendingMagicResumeRef.current = null;
+    };
+
+    applyPendingMagic();
+  }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectResultCancel = () => {
     setSelectedImage()
@@ -1775,22 +2480,46 @@ const EditorPage = ({ shows }) => {
     setEditorStates(prevHistory => prevHistory.slice(0, prevHistory.length - 1));
     setCanvasSizes(prevSizes => prevSizes.slice(0, prevSizes.length - 1));
 
+    const restoredSize = canvasSizes[canvasSizes.length - 2];
+
     // Load the previous state into the canvas
     editor.canvas.loadFromJSON(editorStates[editorStates.length - 2], () => {
-      editor.canvas.setWidth(canvasSizes[canvasSizes.length - 2].width);
-      editor.canvas.setHeight(canvasSizes[canvasSizes.length - 2].height);
+      const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
+      const scaleFactorX = desiredWidth / restoredSize.width;
+      const scaleFactorY = desiredHeight / restoredSize.height;
+      const scaleFactor = Math.min(scaleFactorX, scaleFactorY);
+
+      editor.canvas.setZoom(scaleFactor);
+      editor.canvas.setWidth(desiredWidth);
+      editor.canvas.setHeight(desiredHeight);
+
+      // Ensure background image fills the canvas
+      const bg = editor.canvas.backgroundImage;
+      if (bg) {
+        const bgNaturalWidth = bg.width || bg.getOriginalSize?.().width || 1;
+        const bgNaturalHeight = bg.height || bg.getOriginalSize?.().height || 1;
+        const requiredScaleX = restoredSize.width / bgNaturalWidth;
+        const requiredScaleY = restoredSize.height / bgNaturalHeight;
+        const requiredScale = Math.max(requiredScaleX, requiredScaleY);
+
+        bg.scaleX = requiredScale;
+        bg.scaleY = requiredScale;
+      }
+
       editor.canvas.renderAll();
       setCanvasObjects([...editor.canvas._objects]);
-      setWhiteSpaceHeight(canvasSizes[canvasSizes.length - 2].height - canvasSize.height);
+      setWhiteSpaceHeight(restoredSize.height - canvasSize.height);
     });
   }
 
   const redo = () => {
     if (futureStates.length === 0) return; // Ensure there's at least one state to go forward to
 
+    const restoredSize = futureCanvasSizes[0];
+
     // Move the first future state back to editorStates
     setEditorStates(prevHistory => [...prevHistory, futureStates[0]]);
-    setCanvasSizes(prevSizes => [...prevSizes, futureCanvasSizes[0]]);
+    setCanvasSizes(prevSizes => [...prevSizes, restoredSize]);
 
     // Remove the state we've just moved from futureStates
     setFutureStates(prevFuture => prevFuture.slice(1));
@@ -1798,11 +2527,31 @@ const EditorPage = ({ shows }) => {
 
     // Load the restored state into the canvas
     editor.canvas.loadFromJSON(futureStates[0], () => {
-      editor.canvas.setWidth(futureCanvasSizes[0].width);
-      editor.canvas.setHeight(futureCanvasSizes[0].height);
+      const [desiredHeight, desiredWidth] = calculateEditorSize(editorAspectRatio);
+      const scaleFactorX = desiredWidth / restoredSize.width;
+      const scaleFactorY = desiredHeight / restoredSize.height;
+      const scaleFactor = Math.min(scaleFactorX, scaleFactorY);
+
+      editor.canvas.setZoom(scaleFactor);
+      editor.canvas.setWidth(desiredWidth);
+      editor.canvas.setHeight(desiredHeight);
+
+      // Ensure background image fills the canvas
+      const bg = editor.canvas.backgroundImage;
+      if (bg) {
+        const bgNaturalWidth = bg.width || bg.getOriginalSize?.().width || 1;
+        const bgNaturalHeight = bg.height || bg.getOriginalSize?.().height || 1;
+        const requiredScaleX = restoredSize.width / bgNaturalWidth;
+        const requiredScaleY = restoredSize.height / bgNaturalHeight;
+        const requiredScale = Math.max(requiredScaleX, requiredScaleY);
+
+        bg.scaleX = requiredScale;
+        bg.scaleY = requiredScale;
+      }
+
       editor.canvas.renderAll();
       setCanvasObjects([...editor.canvas._objects]);
-      setWhiteSpaceHeight(futureCanvasSizes[0].height - canvasSize.height);
+      setWhiteSpaceHeight(restoredSize.height - canvasSize.height);
     });
   }
 
@@ -1904,11 +2653,11 @@ const EditorPage = ({ shows }) => {
     setLoadingFineTuningFrames(false)
   }
 
-  // This is going to handle toggling our default prompt and no prompt when the user switches between erase and fill.
+  // This is going to handle toggling our default prompt when the user switches between modes.
   useEffect(() => {
-    if (promptEnabled === "fill") {
+    if (promptEnabled === "fill" || promptEnabled === 'edit') {
       setMagicPrompt('')
-    } else {
+    } else if (promptEnabled === 'erase') {
       setMagicPrompt('Everyday scene as cinematic cinestill sample')
     }
   }, [promptEnabled])
@@ -1924,12 +2673,24 @@ const EditorPage = ({ shows }) => {
   }, []);
 
   useEffect(() => {
-    setPromptEnabled('erase')
-    setMagicPrompt('Everyday scene as cinematic cinestill sample')
+    if (editorTool === 'magicEraser') {
+      setPromptEnabled('edit');
+      setMagicPrompt('');
+    }
     if (editorTool === 'fineTuning') {
       loadFineTuningImages()
     }
   }, [editorTool])
+
+  useEffect(() => {
+    if (editorTool === 'magicEraser') {
+      if (promptEnabled === 'edit') {
+        toggleDrawingMode('captions');
+      } else {
+        toggleDrawingMode('magicEraser');
+      }
+    }
+  }, [editorTool, promptEnabled])
 
   useEffect(() => {
     if (editorLoaded) {
@@ -2059,6 +2820,567 @@ const EditorPage = ({ shows }) => {
     },
     [saveDialogImageIntentMeta]
   );
+
+  const getTextLayers = useCallback(() => {
+    if (!editor?.canvas) return [];
+    return editor.canvas.getObjects().filter((obj) => obj?.type === 'textbox' || obj?.type === 'text');
+  }, [editor]);
+
+  const getTextLayersWithText = useCallback(() => {
+    const objects = editor?.canvas?.getObjects() || [];
+    return getTextLayers().map((layer) => {
+      const canvasIndex = objects.indexOf(layer);
+      const rawValue = canvasIndex >= 0 ? layerRawText?.[canvasIndex] : undefined;
+      const candidate = (rawValue || layer?.text || '').toString();
+      const { cleanText } = parseFormattedText(candidate);
+      return {
+        canvasIndex,
+        text: cleanText || candidate || 'Text',
+        fontFamily: layer?.fontFamily || 'Arial',
+      };
+    });
+  }, [editor, getTextLayers, layerRawText, parseFormattedText]);
+
+  const textLayerEntries = useMemo(() => getTextLayersWithText(), [getTextLayersWithText]);
+
+  const captureCanvasBlob = useCallback(
+    async ({ includeCaptions }) => {
+      if (!editor?.canvas) return null;
+      const textLayers = getTextLayers();
+      const shouldHideText = !includeCaptions && textLayers.length > 0;
+      const prevVisibility = [];
+
+      if (shouldHideText) {
+        textLayers.forEach((layer, idx) => {
+          prevVisibility[idx] = layer.visible;
+          layer.visible = false;
+        });
+        editor.canvas.renderAll();
+      }
+
+      try {
+        const dataUrl = editor.canvas.toDataURL({
+          format: 'jpeg',
+          quality: 0.6,
+          multiplier: imageScale || 1,
+        });
+        const res = await fetch(dataUrl);
+        return await res.blob();
+      } finally {
+        if (shouldHideText) {
+          textLayers.forEach((layer, idx) => {
+            layer.visible = typeof prevVisibility[idx] === 'boolean' ? prevVisibility[idx] : true;
+          });
+          editor.canvas.renderAll();
+        }
+      }
+    },
+    [editor, getTextLayers, imageScale]
+  );
+
+  const blobToDataUrl = useCallback(async (blob) => new Promise((resolve, reject) => {
+    if (!blob) {
+      resolve(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  }), []);
+
+  const resolveSnapshotImageUrl = useCallback(
+    async (imageRef) => {
+      if (!imageRef) return null;
+      if (typeof imageRef.url === 'string' && imageRef.url.length > 0) {
+        return imageRef.url;
+      }
+      if (imageRef.libraryKey) {
+        try {
+          const blob = await getFromLibrary(imageRef.libraryKey, { level: 'private' });
+          return await blobToDataUrl(blob);
+        } catch (err) {
+          console.warn('Unable to load collage image from library', err);
+        }
+      }
+      return null;
+    },
+    [blobToDataUrl]
+  );
+
+  const persistCollageSnapshot = useCallback(
+    async (projectId, snapshot) => {
+      const normalized = normalizeSnapshot(snapshot, 'portrait');
+      await upsertProject(projectId, { state: normalized });
+      let thumbnail = null;
+      try {
+        thumbnail = await renderThumbnailFromSnapshot(normalized, { maxDim: 512 });
+        if (thumbnail) {
+          const signature = buildSnapshotSignature(normalized);
+          await upsertProject(projectId, {
+            thumbnail,
+            thumbnailSignature: signature,
+            thumbnailUpdatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to render collage thumbnail', err);
+      }
+      return { snapshot: normalized, thumbnail };
+    },
+    [buildSnapshotSignature, normalizeSnapshot, renderThumbnailFromSnapshot, upsertProject]
+  );
+
+  const loadCollageSnapshot = useCallback(
+    async (project) => {
+      const snap = await resolveTemplateSnapshot(project);
+      return normalizeSnapshot(snap, 'portrait');
+    },
+    [normalizeSnapshot, resolveTemplateSnapshot]
+  );
+
+  const prepareReplaceDialogOptions = useCallback(
+    async (snapshot) => {
+      const urls = await Promise.all(
+        (snapshot?.images || []).map(async (img) => ({
+          url: await resolveSnapshotImageUrl(img),
+        }))
+      );
+      setCollageReplaceOptions(urls);
+      setCollageReplaceSelection(urls.length ? 0 : null);
+    },
+    [resolveSnapshotImageUrl]
+  );
+
+  const getDefaultCaptionFromTextLayer = useCallback(
+    (canvasIndexOverride) => {
+      const textLayers = getTextLayers();
+      if (!textLayers.length) return '';
+
+      const objects = editor?.canvas?.getObjects() || [];
+      const target =
+        typeof canvasIndexOverride === 'number'
+          ? objects[canvasIndexOverride]
+          : textLayers[0];
+      const index = objects.indexOf(target);
+      const rawValue = index >= 0 ? layerRawText?.[index] : undefined;
+      const candidate = (rawValue || target?.text || '').toString();
+      const { cleanText } = parseFormattedText(candidate);
+      return cleanText || candidate;
+    },
+    [editor, getTextLayers, layerRawText, parseFormattedText]
+  );
+
+  const performSaveToLibrary = useCallback(
+    async ({ includeCaptions, captionIndex }) => {
+      if (!isProUser || savingToLibrary) return;
+
+      setSavingToLibrary(true);
+      setLibrarySaveSuccess(false);
+
+      const textLayers = getTextLayers();
+
+      trackSaveDialogAction('save_to_library_button', {
+        isProUser: Boolean(isProUser),
+        hasImageBlob: Boolean(imageBlob),
+        includeCaptions: Boolean(includeCaptions),
+        textLayerCount: textLayers.length,
+      });
+
+      try {
+        const filename = generatedImageFilename || 'editor-image.jpg';
+        const metadata = {
+          source: 'V2EditorPage',
+          ...(editorProjectId ? { editorProjectId } : {}),
+          ...((confirmedCid || cid) ? { cid: confirmedCid || cid } : {}),
+          ...(season ? { season } : {}),
+          ...(episode ? { episode } : {}),
+          ...(frame ? { frame } : {}),
+        };
+
+        if (!includeCaptions) {
+          const defaultCaption = getDefaultCaptionFromTextLayer(captionIndex);
+          if (defaultCaption) {
+            metadata.defaultCaption = defaultCaption;
+          }
+        }
+
+        const blobToSave = includeCaptions
+          ? imageBlob || (await captureCanvasBlob({ includeCaptions: true }))
+          : await captureCanvasBlob({ includeCaptions: false });
+
+        if (!blobToSave) {
+          throw new Error('No image available to save');
+        }
+
+        const libraryKey = await saveImageToLibrary(blobToSave, filename, {
+          level: 'private',
+          metadata,
+        });
+
+        trackUsageEvent('add_to_library', {
+          ...editorImageIntentBaseMeta,
+          libraryKey,
+          trigger: 'save_dialog',
+          includeCaptions: Boolean(includeCaptions),
+          captionIndex: typeof captionIndex === 'number' ? captionIndex : undefined,
+        });
+
+        setLibrarySaveSuccess(true);
+      } catch (error) {
+        console.error('Error saving image to library:', error);
+        setSeverity('error');
+        setMessage('Unable to save to library right now.');
+        setOpen(true);
+      } finally {
+        setSavingToLibrary(false);
+      }
+    },
+    [
+      isProUser,
+      savingToLibrary,
+      getTextLayers,
+      trackSaveDialogAction,
+      imageBlob,
+      generatedImageFilename,
+      editorProjectId,
+      confirmedCid,
+      cid,
+      season,
+      episode,
+      frame,
+      getDefaultCaptionFromTextLayer,
+      captureCanvasBlob,
+      editorImageIntentBaseMeta,
+      setSeverity,
+      setMessage,
+      setOpen,
+    ]
+  );
+
+  const handleSaveToLibraryClick = useCallback(() => {
+    if (!isProUser || imageUploading || savingToLibrary) return;
+    setLibrarySaveSuccess(false);
+    setLibrarySaveStep('choice');
+    setLibraryCaptionSelectionIndex(null);
+    const textLayers = getTextLayers();
+    if (textLayers.length > 0) {
+      trackSaveDialogAction('save_to_library_prompt', {
+        textLayerCount: textLayers.length,
+      });
+      setLibrarySavePromptOpen(true);
+      return;
+    }
+    performSaveToLibrary({ includeCaptions: true });
+  }, [
+    getTextLayers,
+    imageUploading,
+    isProUser,
+    performSaveToLibrary,
+    savingToLibrary,
+    trackSaveDialogAction,
+  ]);
+
+  const performAddToCollage = useCallback(
+    async (captionEntry) => {
+      if (!isProUser) {
+        openSubscriptionDialog();
+        return;
+      }
+      if (addingToCollage || imageUploading) return;
+
+      setAddingToCollage(true);
+
+      const captionIndex = typeof captionEntry?.canvasIndex === 'number' ? captionEntry.canvasIndex : null;
+      trackSaveDialogAction('add_to_collage', {
+        textLayerCount: textLayerEntries.length,
+        captionIndex,
+      });
+
+      try {
+        const cleanBlob = await captureCanvasBlob({ includeCaptions: false });
+        const dataUrl = await blobToDataUrl(cleanBlob);
+        if (!dataUrl) {
+          throw new Error('No image available to add to collage');
+        }
+
+        const subtitle = (captionEntry?.text || '').toString();
+        const fontFamily = captionEntry?.fontFamily || 'Arial';
+        const filename = generatedImageFilename || `collage-${Date.now()}.jpg`;
+
+        let libraryKey = null;
+        try {
+          const metadata = {
+            source: 'V2EditorPage',
+            ...(subtitle ? { defaultCaption: subtitle } : {}),
+            ...(fontFamily ? { fontFamily } : {}),
+            ...(editorProjectId ? { editorProjectId } : {}),
+            ...((confirmedCid || cid) ? { cid: confirmedCid || cid } : {}),
+            ...(season ? { season } : {}),
+            ...(episode ? { episode } : {}),
+            ...(frame ? { frame } : {}),
+          };
+          libraryKey = await saveImageToLibrary(cleanBlob, filename, { level: 'private', metadata });
+        } catch (err) {
+          console.error('Error saving collage image to library:', err);
+          setSeverity('error');
+          setMessage('Unable to save image for collage right now.');
+          setOpen(true);
+          return;
+        }
+
+        const imagePayload = {
+          originalUrl: dataUrl,
+          displayUrl: dataUrl,
+          subtitle,
+          subtitleShowing: Boolean(subtitle),
+          metadata: {
+            source: 'V2EditorPage',
+            ...(captionEntry?.fontFamily ? { fontFamily } : {}),
+            ...(libraryKey ? { libraryKey } : {}),
+          },
+        };
+
+        setPendingCollagePayload({
+          captionIndex,
+          textLayerCount: textLayerEntries.length,
+          imagePayload,
+          libraryKey,
+        });
+        setCollageChooserOpen(true);
+      } catch (error) {
+        console.error('Error adding to collage:', error);
+        setSeverity('error');
+        setMessage('Unable to add to collage right now.');
+        setOpen(true);
+      } finally {
+        setAddingToCollage(false);
+        setCollagePromptOpen(false);
+        setCollageCaptionSelectionIndex(null);
+      }
+    },
+    [
+      addingToCollage,
+      blobToDataUrl,
+      captureCanvasBlob,
+      createProject,
+      editorImageIntentBaseMeta,
+      imageUploading,
+      isProUser,
+      openSubscriptionDialog,
+      setMessage,
+      setOpen,
+      setSeverity,
+      textLayerEntries,
+      trackSaveDialogAction,
+    ]
+  );
+
+  const handleAddToCollageClick = useCallback(() => {
+    if (!isProUser) {
+      openSubscriptionDialog();
+      return;
+    }
+    if (imageUploading || addingToCollage) return;
+    const entries = textLayerEntries;
+    if (entries.length > 1) {
+      trackSaveDialogAction('add_to_collage_prompt', {
+        textLayerCount: entries.length,
+      });
+      setCollageCaptionSelectionIndex(entries[0]?.canvasIndex ?? null);
+      setCollagePromptOpen(true);
+      return;
+    }
+    const entry = entries[0] || null;
+    performAddToCollage(entry);
+  }, [addingToCollage, imageUploading, isProUser, openSubscriptionDialog, performAddToCollage, textLayerEntries, trackSaveDialogAction]);
+
+  const handleCollageChooserClose = useCallback(() => {
+    setCollageChooserOpen(false);
+    setPendingCollagePayload(null);
+    setCollagePreview(null);
+  }, []);
+
+  const handleCollageNewProject = useCallback(async () => {
+    if (!pendingCollagePayload) return;
+    try {
+      setAddingToCollage(true);
+      const project = await createProject({ name: 'Untitled Meme' });
+      const projectId = project?.id;
+      if (!projectId) throw new Error('Missing project id for collage project');
+      const { snapshot, thumbnail } = await persistCollageSnapshot(
+        projectId,
+        appendImageToSnapshot(null, snapshotImageFromPayload(pendingCollagePayload.imagePayload)).snapshot
+      );
+
+      trackUsageEvent('add_to_collage', {
+        ...editorImageIntentBaseMeta,
+        projectId,
+        captionIndex: pendingCollagePayload.captionIndex,
+        textLayerCount: pendingCollagePayload.textLayerCount,
+        libraryKey: pendingCollagePayload.libraryKey,
+        target: 'new_project',
+      });
+
+      setCollagePreview({
+        projectId,
+        name: project?.name || 'Untitled Meme',
+        thumbnail: thumbnail || null,
+        snapshot,
+      });
+      setCollageChooserOpen(true);
+    } catch (error) {
+      console.error('Error creating collage project:', error);
+      setSeverity('error');
+      setMessage('Unable to start a collage project right now.');
+      setOpen(true);
+    } finally {
+      setAddingToCollage(false);
+    }
+  }, [
+    appendImageToSnapshot,
+    createProject,
+    editorImageIntentBaseMeta,
+    pendingCollagePayload,
+    persistCollageSnapshot,
+    snapshotImageFromPayload,
+    setMessage,
+    setOpen,
+    setSeverity,
+  ]);
+
+  const handleCollageExistingProject = useCallback(
+    async (project) => {
+      if (!project?.id || !pendingCollagePayload) return;
+      try {
+        setAddingToCollage(true);
+        const baseSnapshot = await loadCollageSnapshot(project);
+        const incomingImage = snapshotImageFromPayload(pendingCollagePayload.imagePayload);
+        if ((baseSnapshot.images || []).length >= MAX_COLLAGE_IMAGES) {
+          setCollageReplaceContext({
+            project,
+            snapshot: baseSnapshot,
+            incomingImage,
+            incomingPreview:
+              pendingCollagePayload.imagePayload.displayUrl ||
+              pendingCollagePayload.imagePayload.originalUrl ||
+              null,
+          });
+          setCollageChooserOpen(false);
+          await prepareReplaceDialogOptions(baseSnapshot);
+          setCollageReplaceDialogOpen(true);
+          setAddingToCollage(false);
+          return;
+        }
+
+        const { snapshot } = appendImageToSnapshot(baseSnapshot, incomingImage);
+        const { thumbnail } = await persistCollageSnapshot(project.id, snapshot);
+
+        trackUsageEvent('add_to_collage', {
+          ...editorImageIntentBaseMeta,
+          projectId: project.id,
+          captionIndex: pendingCollagePayload.captionIndex,
+          textLayerCount: pendingCollagePayload.textLayerCount,
+          libraryKey: pendingCollagePayload.libraryKey,
+          target: 'existing_project',
+        });
+
+        setCollagePreview({
+          projectId: project.id,
+          name: project?.name || 'Untitled Meme',
+          thumbnail: thumbnail || null,
+          snapshot,
+        });
+        setCollageChooserOpen(true);
+      } catch (err) {
+        console.error('Error adding image to existing collage:', err);
+        setSeverity('error');
+        setMessage('Unable to add to collage right now.');
+        setOpen(true);
+      } finally {
+        setAddingToCollage(false);
+      }
+    },
+    [
+      appendImageToSnapshot,
+      editorImageIntentBaseMeta,
+      handleCollageChooserClose,
+      loadCollageSnapshot,
+      pendingCollagePayload,
+      persistCollageSnapshot,
+      prepareReplaceDialogOptions,
+      setCollageChooserOpen,
+      setMessage,
+      setOpen,
+      setSeverity,
+      snapshotImageFromPayload,
+      trackUsageEvent,
+    ]
+  );
+
+  const handleCollageReplaceCancel = useCallback(() => {
+    if (addingToCollage) return;
+    setCollageReplaceDialogOpen(false);
+    setCollageReplaceContext(null);
+    setCollageReplaceOptions([]);
+    setCollageReplaceSelection(null);
+    setPendingCollagePayload(null);
+    setCollageChooserOpen(true);
+  }, [addingToCollage]);
+
+  const handleCollageReplaceConfirm = useCallback(async (selectedIndex) => {
+    const resolvedIndex = typeof selectedIndex === 'number' ? selectedIndex : collageReplaceSelection;
+    if (!collageReplaceContext || resolvedIndex == null) return;
+    try {
+      setAddingToCollage(true);
+      const nextSnapshot = replaceImageInSnapshot(
+        collageReplaceContext.snapshot,
+        resolvedIndex,
+        collageReplaceContext.incomingImage
+      );
+      const { thumbnail } = await persistCollageSnapshot(
+        collageReplaceContext.project.id,
+        nextSnapshot
+      );
+
+      trackUsageEvent('add_to_collage', {
+        ...editorImageIntentBaseMeta,
+        projectId: collageReplaceContext.project.id,
+        target: 'existing_project',
+        replacedIndex: resolvedIndex,
+      });
+
+      setCollagePreview({
+        projectId: collageReplaceContext.project.id,
+        name: collageReplaceContext.project?.name || 'Untitled Meme',
+        thumbnail: thumbnail || null,
+        snapshot: nextSnapshot,
+      });
+      setPendingCollagePayload(null);
+      setCollageChooserOpen(true);
+      setCollageReplaceDialogOpen(false);
+      setCollageReplaceContext(null);
+      setCollageReplaceOptions([]);
+      setCollageReplaceSelection(null);
+    } catch (err) {
+      console.error('Error replacing collage image:', err);
+      setSeverity('error');
+      setMessage('Unable to replace collage image right now.');
+      setOpen(true);
+    } finally {
+      setAddingToCollage(false);
+    }
+  }, [
+    collageReplaceContext,
+    collageReplaceSelection,
+    editorImageIntentBaseMeta,
+    persistCollageSnapshot,
+    replaceImageInSnapshot,
+    setMessage,
+    setOpen,
+    setSeverity,
+    trackUsageEvent,
+  ]);
 
   const handleAddTextLayer = useCallback(() => {
     const eventPayload = {
@@ -2911,90 +4233,489 @@ const EditorPage = ({ shows }) => {
 
                   {editorTool === 'magicEraser' && (
                     <>
-                      <Tabs
-                        value={promptEnabled}
-                        onChange={(event, value) => {
-                          setPromptEnabled(value);
-                        }}
-                        centered
-                        TabIndicatorProps={{
-                          style: {
-                            backgroundColor: 'limegreen',
-                            height: '3px'
-                          }
-                        }}
-                      >
-                        <Tab
-                          icon={<AutoFixHigh fontSize='small' />}
-                          label="Eraser"
-                          value="erase"
-                          style={{ color: promptEnabled === 'erase' ? 'limegreen' : undefined }}
-                        />
-                        <Tab
-                          icon={<FormatColorFill fontSize='small' />}
-                          label="Fill"
-                          value="fill"
-                          style={{ color: promptEnabled === 'fill' ? 'limegreen' : undefined }}
-                        />
-                      </Tabs>
+                      {promptEnabled === 'edit' ? (
+                        <>
+                          {/* Main Magic Edit Interface */}
+                          <Box>
+                            {!rateLimitState.nanoAvailable && (
+                              <Alert severity="warning" sx={{ mb: 2 }}>
+                                Magic tools are temporarily unavailable. {rateLimitState.openaiAvailable ? 'Switch to classic tools below.' : 'Please try again later.'}
+                              </Alert>
+                            )}
+                            {/* Input field comes first */}
+                            <TextField
+                              fullWidth
+                              placeholder={magicPlaceholder}
+                              value={magicPrompt}
+                              onChange={(event) => setMagicPrompt(event.target.value)}
+                              onFocus={() => setMagicPromptFocused(true)}
+                              onBlur={() => setMagicPromptFocused(false)}
+                              disabled={loadingInpaintingResult || !rateLimitState.nanoAvailable}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (magicPrompt?.trim() && !loadingInpaintingResult) {
+                                    magicPromptInputRef.current?.blur();
+                                    handleMagicEdit();
+                                  }
+                                }
+                              }}
+                              inputRef={magicPromptInputRef}
+                              InputProps={{
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    <AutoFixHighRounded sx={{ color: loadingInpaintingResult ? 'grey.500' : 'primary.main' }} />
+                                  </InputAdornment>
+                                ),
+                                endAdornment: (
+                                  <InputAdornment position="end">
+                                    {magicPrompt?.length && !loadingInpaintingResult ? (
+                                      <IconButton
+                                        aria-label="clear prompt"
+                                        size="small"
+                                        onClick={() => setMagicPrompt('')}
+                                        edge="end"
+                                        sx={{ mr: 0.5 }}
+                                      >
+                                        <Close fontSize="small" />
+                                      </IconButton>
+                                    ) : null}
+                                    {loadingInpaintingResult ? (
+                                      <CircularProgress size={18} thickness={5} sx={{ ml: 0.5 }} />
+                                    ) : (
+                                      <IconButton
+                                        aria-label="send prompt"
+                                        size="small"
+                                        onClick={() => {
+                                      if (magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable) {
+                                        magicPromptInputRef.current?.blur();
+                                        handleMagicEdit();
+                                      }
+                                    }}
+                                    disabled={!magicPrompt?.trim() || loadingInpaintingResult || !rateLimitState.nanoAvailable}
+                                    edge="end"
+                                    color={magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable ? 'primary' : 'default'}
+                                    sx={{ ml: 0.5, color: magicPrompt?.trim() && !loadingInpaintingResult && rateLimitState.nanoAvailable ? 'primary.main' : undefined, cursor: (!magicPrompt?.trim() || loadingInpaintingResult || !rateLimitState.nanoAvailable) ? 'not-allowed' : undefined }}
+                                  >
+                                    <Send />
+                                  </IconButton>
+                                    )}
+                                  </InputAdornment>
+                                ),
+                              }}
+                              inputProps={{ 'aria-label': 'Magic edit prompt' }}
+                              sx={{
+                                mb: 1.5,
+                                '& .MuiOutlinedInput-root': {
+                                  borderRadius: 2,
+                                  backgroundColor: '#fff',
+                                },
+                                '& .MuiOutlinedInput-root.Mui-disabled': {
+                                  backgroundColor: '#f5f5f5',
+                                },
+                                '& .MuiOutlinedInput-input': {
+                                  color: 'rgba(0,0,0,0.9)',
+                                  fontWeight: 600,
+                                },
+                                '& .MuiOutlinedInput-input.Mui-disabled': {
+                                  color: 'rgba(0,0,0,0.55)',
+                                  WebkitTextFillColor: 'rgba(0,0,0,0.55)',
+                                },
+                                '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: 'rgba(0,0,0,0.12)',
+                                },
+                                '& .MuiInputBase-input::placeholder': {
+                                  color: 'rgba(0,0,0,0.5)',
+                                  opacity: 1,
+                                  fontWeight: 500,
+                                },
+                              }}
+                            />
+                            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 0.75 }}>
+                              {magicReferences.map((src, idx) => (
+                                <Box key={`${src}-${idx}`} sx={{ position: 'relative' }}>
+                                  <Box
+                                    component="img"
+                                    src={src}
+                                    alt={`Ref ${idx + 1}`}
+                                    sx={{
+                                      width: 40,
+                                      height: 40,
+                                      objectFit: 'cover',
+                                      borderRadius: 1,
+                                      border: '1px solid',
+                                      borderColor: 'divider',
+                                    }}
+                                  />
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Remove reference"
+                                    onClick={() => removeMagicReference(idx)}
+                                    sx={{
+                                      position: 'absolute',
+                                      top: -10,
+                                      right: -10,
+                                      bgcolor: 'background.paper',
+                                      boxShadow: 1,
+                                      '&:hover': { bgcolor: 'grey.100' },
+                                    }}
+                                  >
+                                    <Close fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          ))}
+                          {/* References temporarily disabled
+                          {magicReferences.length < MAGIC_MAX_REFERENCES && (
+                            <Button
+                              variant="text"
+                              size="small"
+                              startIcon={<AddPhotoAlternate />}
+                              onClick={() => magicReferenceInputRef.current?.click()}
+                              disabled={loadingInpaintingResult || !rateLimitState.nanoAvailable}
+                              sx={{ minWidth: 0, px: 0.5 }}
+                            >
+                              Add ref
+                            </Button>
+                          )}
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            Optional refs; main image stays primary.
+                          </Typography>
+                          */}
+                        </Box>
+                        <input
+                          ref={magicReferenceInputRef}
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              hidden
+                              onChange={(e) => {
+                                void handleMagicReferenceFiles(e.target.files);
+                                if (magicReferenceInputRef.current) {
+                                  magicReferenceInputRef.current.value = '';
+                                }
+                              }}
+                            />
 
-                      <Stack direction='row' alignItems='center' spacing={2}>
-                        <Slider
-                          size="small"
-                          min={1}
-                          max={100}
-                          value={brushToolSize}
-                          aria-label="Small"
-                          valueLabelDisplay='auto'
-                          sx={{ marginRight: 0.5 }}
-                          onChange={(event, value) => {
-                            setShowBrushSize(true);
-                            handleBrushToolSize(value);
-                          }}
-                          onChangeCommitted={() => {
-                            setShowBrushSize(false);
-                          }}
-                          track={false}
-                        />
-                        <Button variant='contained' onClick={() => {
-                          setEditorTool('captions');
-                          toggleDrawingMode('captions');
-                        }}>Cancel</Button>
-                        <Button
-                          variant='contained'
-                          style={{
-                            backgroundColor: hasFabricPaths ? 'limegreen' : 'grey',
-                            color: 'white',
-                            opacity: hasFabricPaths ? 1 : 0.5
-                          }}
-                          onClick={() => {
-                            exportDrawing();
-                            // toggleDrawingMode('fineTuning');
-                          }}
-                          disabled={!hasFabricPaths} // Button is disabled if there are no fabric.Path instances
-                        >
-                          Apply
-                        </Button>
-                      </Stack>
+                            {/* Label that leads into suggestions */}
+                            <Typography variant="body2" sx={{ mb: 1.5, color: 'text.secondary', fontSize: '0.875rem' }}>
+                              Or tap a suggestion to try it:
+                            </Typography>
 
-                      {promptEnabled === "fill" && (
-                        <TextField
-                          value={magicPrompt}
-                          onChange={(event) => {
-                            setMagicPrompt(event.target.value);
-                          }}
-                          fullWidth
-                          sx={{
-                            mt: 3,
-                            '& .MuiInputLabel-root.Mui-focused': {
-                              color: 'limegreen',
-                            },
-                            '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                              borderColor: 'limegreen',
-                            },
-                          }}
-                          label='Magic Fill Prompt'
-                        />
+                            {/* Suggestion Chips */}
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
+                              {[
+                                "Remove the text",
+                                "Zoom in",
+                                "Zoom out",
+                                "Add a tophat",
+                                "Add sunglasses",
+                                "Censor the faces",
+                                "Add a beard",
+                                "Add a mustache",
+                                "Make it black and white"           
+                              ].map((suggestion) => (
+                                <Chip
+                                  key={suggestion}
+                                  label={suggestion}
+                                  onClick={() => {
+                                    setMagicPrompt(suggestion);
+                                    magicPromptInputRef.current?.focus();
+                                  }}
+                                  disabled={loadingInpaintingResult}
+                                  sx={{
+                                    borderRadius: 2,
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    bgcolor: 'rgba(25, 118, 210, 0.08)',
+                                    color: 'primary.main',
+                                    border: '1px solid rgba(25, 118, 210, 0.2)',
+                                    '&:hover': {
+                                      bgcolor: 'rgba(25, 118, 210, 0.15)',
+                                      borderColor: 'primary.main',
+                                      transform: 'translateY(-1px)',
+                                    },
+                                    '&.Mui-disabled': {
+                                      bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                      color: 'rgba(0, 0, 0, 0.26)',
+                                      borderColor: 'rgba(0, 0, 0, 0.12)',
+                                    },
+                                  }}
+                                />
+                              ))}
+                            </Box>
+
+                            {/* Small link to switch to classic */}
+                            <Box sx={{ textAlign: 'center', pt: 2, pb: 1 }}>
+                              <Button
+                                variant="text"
+                                size="small"
+                                onClick={() => {
+                                  setPromptEnabled('erase');
+                                }}
+                                sx={{
+                                  color: 'text.secondary',
+                                  fontSize: '0.75rem',
+                                  textTransform: 'none',
+                                  textDecoration: 'underline',
+                                  '&:hover': {
+                                    color: 'primary.main',
+                                    backgroundColor: 'transparent',
+                                    textDecoration: 'underline',
+                                  },
+                                }}
+                              >
+                                Switch to classic Erase & Fill
+                              </Button>
+                            </Box>
+                          </Box>
+                        </>
+                      ) : (
+                        <>
+                          {/* Classic Tools Interface */}
+                          <Box sx={{ mb: 2 }}>
+                            {/* Back to Magic Edit button */}
+                            <Button
+                              variant="outlined"
+                              fullWidth
+                              onClick={() => {
+                                setPromptEnabled('edit');
+                                toggleDrawingMode('captions');
+                              }}
+                              disabled={!rateLimitState.nanoAvailable}
+                              startIcon={<AutoFixHighRounded />}
+                              sx={{
+                                mb: 2,
+                                py: 1.25,
+                                borderColor: 'primary.main',
+                                color: 'primary.main',
+                                fontWeight: 600,
+                                '&:hover': {
+                                  borderColor: 'primary.dark',
+                                  backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                                },
+                              }}
+                            >
+                              Back to Magic Edit
+                            </Button>
+
+                            {!rateLimitState.openaiAvailable && (
+                              <Alert severity="warning" sx={{ mb: 2 }}>
+                                Classic magic tools are temporarily unavailable. Please try again later.
+                              </Alert>
+                            )}
+
+                            {/* Login prompt for unauthenticated users */}
+                            {(!user || user?.userDetails?.credits <= 0) && (
+                              <Box sx={{
+                                p: 2,
+                                borderRadius: 2,
+                                bgcolor: 'rgba(76, 175, 80, 0.08)',
+                                border: '1px solid rgba(76, 175, 80, 0.3)',
+                                mb: 2,
+                                textAlign: 'center'
+                              }}>
+                                <Typography variant="body2" sx={{ mb: 1.5, color: 'rgb(46, 125, 50)', fontWeight: 600 }}>
+                                  {!user ? 'Sign in to use Magic Tools' : 'Get more credits for Magic Tools'}
+                                </Typography>
+                                <Button
+                                  variant="contained"
+                                  fullWidth
+                                  component={Link}
+                                  to="/pro"
+                                  sx={{
+                                    bgcolor: 'rgb(76, 175, 80)',
+                                    color: '#fff',
+                                    fontWeight: 600,
+                                    py: 1,
+                                    '&:hover': {
+                                      bgcolor: 'rgb(56, 142, 60)',
+                                    }
+                                  }}
+                                >
+                                  {!user ? 'Sign In / Sign Up' : 'Get More Credits'}
+                                </Button>
+                              </Box>
+                            )}
+
+                            <Box sx={{
+                              p: 1.5,
+                              borderRadius: 1,
+                              bgcolor: 'rgba(255, 152, 0, 0.08)',
+                              border: '1px solid rgba(255, 152, 0, 0.2)',
+                              mb: 2
+                            }}>
+                              <Typography variant="caption" sx={{ display: 'block', color: 'rgb(230, 81, 0)', lineHeight: 1.4, fontSize: '0.75rem', fontWeight: 600 }}>
+                                ⚠️ Classic magic tools may produce lower quality results.{' '}
+                                <Typography
+                                  component="span"
+                                  variant="caption"
+                                  onClick={() => {
+                                    setPromptEnabled('edit');
+                                    toggleDrawingMode('captions');
+                                  }}
+                                  sx={{
+                                    color: 'rgb(230, 81, 0)',
+                                    textDecoration: 'underline',
+                                    cursor: 'pointer',
+                                    fontWeight: 700,
+                                    '&:hover': {
+                                      color: 'rgb(200, 61, 0)',
+                                    }
+                                  }}
+                                >
+                                  Try the new editor
+                                </Typography>
+                              </Typography>
+                            </Box>
+
+                            <ButtonGroup variant="outlined" fullWidth sx={{ mb: 2.5 }}>
+                              <Button
+                                onClick={() => {
+                                  setPromptEnabled('erase');
+                                  toggleDrawingMode('magicEraser');
+                                }}
+                                disabled={!rateLimitState.openaiAvailable}
+                                sx={{
+                                  flex: 1,
+                                  py: 1.25,
+                                  borderColor: promptEnabled === 'erase' ? 'primary.main' : 'rgba(0,0,0,0.12)',
+                                  backgroundColor: promptEnabled === 'erase' ? 'primary.main' : 'transparent',
+                                  color: promptEnabled === 'erase' ? '#fff' : 'text.secondary',
+                                  fontWeight: promptEnabled === 'erase' ? 600 : 500,
+                                  '&:hover': {
+                                    borderColor: 'primary.main',
+                                    backgroundColor: promptEnabled === 'erase' ? 'primary.dark' : 'rgba(25, 118, 210, 0.04)',
+                                  },
+                                }}
+                              >
+                                <Stack direction="column" spacing={0.25} alignItems="center">
+                                  <AutoFixHigh fontSize='small' />
+                                  <Typography variant="caption" sx={{ fontWeight: 'inherit', fontSize: '0.75rem' }}>Erase</Typography>
+                                </Stack>
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setPromptEnabled('fill');
+                                  toggleDrawingMode('magicEraser');
+                                }}
+                                disabled={!rateLimitState.openaiAvailable}
+                                sx={{
+                                  flex: 1,
+                                  py: 1.25,
+                                  borderColor: promptEnabled === 'fill' ? 'primary.main' : 'rgba(0,0,0,0.12)',
+                                  backgroundColor: promptEnabled === 'fill' ? 'primary.main' : 'transparent',
+                                  color: promptEnabled === 'fill' ? '#fff' : 'text.secondary',
+                                  fontWeight: promptEnabled === 'fill' ? 600 : 500,
+                                  '&:hover': {
+                                    borderColor: 'primary.main',
+                                    backgroundColor: promptEnabled === 'fill' ? 'primary.dark' : 'rgba(25, 118, 210, 0.04)',
+                                  },
+                                }}
+                              >
+                                <Stack direction="column" spacing={0.25} alignItems="center">
+                                  <FormatColorFill fontSize='small' />
+                                  <Typography variant="caption" sx={{ fontWeight: 'inherit', fontSize: '0.75rem' }}>Fill</Typography>
+                                </Stack>
+                              </Button>
+                            </ButtonGroup>
+
+                            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: '0.8125rem', lineHeight: 1.5 }}>
+                              {promptEnabled === 'erase' ? (
+                                'Paint over unwanted areas, then click Apply.'
+                              ) : (
+                                'Paint areas to modify and describe what to add below, then click Apply.'
+                              )}
+                            </Typography>
+
+                            {promptEnabled === "fill" && (
+                              <TextField
+                                value={magicPrompt}
+                                onChange={(event) => {
+                                  setMagicPrompt(event.target.value);
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="Describe what to fill with..."
+                                sx={{
+                                  mb: 2,
+                                  '& .MuiOutlinedInput-root': {
+                                    backgroundColor: '#fff',
+                                  },
+                                  '& .MuiOutlinedInput-input': {
+                                    color: 'rgba(0,0,0,0.87)',
+                                  },
+                                  '& .MuiInputLabel-root': {
+                                    color: 'rgba(0,0,0,0.6)',
+                                  },
+                                  '& .MuiInputLabel-root.Mui-focused': {
+                                    color: 'primary.main',
+                                  },
+                                  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'primary.main',
+                                  },
+                                }}
+                                label='What to fill with'
+                              />
+                            )}
+
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="caption" sx={{ display: 'block', mb: 1, fontWeight: 600, color: 'text.secondary' }}>
+                                Brush Size
+                              </Typography>
+                              <Slider
+                                size="medium"
+                                min={1}
+                                max={100}
+                                value={brushToolSize}
+                                aria-label="Brush size"
+                                valueLabelDisplay='auto'
+                                onChange={(event, value) => {
+                                  setShowBrushSize(true);
+                                  handleBrushToolSize(value);
+                                }}
+                                onChangeCommitted={() => {
+                                  setShowBrushSize(false);
+                                }}
+                                sx={{
+                                  color: 'primary.main',
+                                  '& .MuiSlider-thumb': {
+                                    backgroundColor: 'primary.main',
+                                  },
+                                  '& .MuiSlider-track': {
+                                    backgroundColor: 'primary.main',
+                                  },
+                                }}
+                              />
+                            </Box>
+
+                            <Button
+                              variant='contained'
+                              fullWidth
+                              size="large"
+                              disabled={!hasFabricPaths || loadingInpaintingResult || !rateLimitState.openaiAvailable}
+                              onClick={() => {
+                                exportDrawing();
+                              }}
+                              startIcon={loadingInpaintingResult ? <CircularProgress size={18} color="inherit" /> : <AutoFixHighRounded />}
+                              sx={{
+                                py: 1.5,
+                                fontWeight: 600,
+                                backgroundColor: hasFabricPaths && rateLimitState.openaiAvailable ? 'primary.main' : 'grey.400',
+                                '&:hover': {
+                                  backgroundColor: hasFabricPaths && rateLimitState.openaiAvailable ? 'primary.dark' : 'grey.400',
+                                },
+                                '&.Mui-disabled': {
+                                  backgroundColor: 'grey.300',
+                                  color: 'rgba(0,0,0,0.26)',
+                                },
+                              }}
+                            >
+                              {loadingInpaintingResult ? 'Processing...' : hasFabricPaths ? (rateLimitState.openaiAvailable ? 'Apply Changes' : 'Classic Magic Tools are temporarily unavailable') : 'Paint on canvas to start'}
+                            </Button>
+                          </Box>
+                        </>
                       )}
                     </>
                   )}
@@ -3374,57 +5095,100 @@ const EditorPage = ({ shows }) => {
             </DialogContentText>
 
             <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
-              <Box display="grid" width="100%">
-                {navigator.canShare && (
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    sx={{ marginBottom: 2, padding: '12px 16px' }}
-                    disabled={imageUploading}
-                    onClick={() => {
-                      trackSaveDialogAction('share_button', {
-                        shareSupported: true,
-                        shareHasFile: Boolean(shareImageFile),
-                      });
-                      navigator.share({
-                        title: 'memeSRC.com',
-                        text: 'Check out this meme I made on memeSRC.com',
-                        files: [shareImageFile],
-                      }).catch(() => {
-                        trackSaveDialogAction('share_button_error', {
+              <Box display="grid" width="100%" gap={2}>
+                <Box
+                  display="grid"
+                  gridTemplateColumns={navigator.canShare ? '1fr 1fr' : '1fr'}
+                  gap={2}
+                  width="100%"
+                >
+                  {navigator.canShare && (
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      sx={{ padding: '12px 16px' }}
+                      disabled={imageUploading}
+                      onClick={() => {
+                        trackSaveDialogAction('share_button', {
                           shareSupported: true,
                           shareHasFile: Boolean(shareImageFile),
                         });
+                        navigator.share({
+                          title: 'memeSRC.com',
+                          text: 'Check out this meme I made on memeSRC.com',
+                          files: [shareImageFile],
+                        }).catch(() => {
+                          trackSaveDialogAction('share_button_error', {
+                            shareSupported: true,
+                            shareHasFile: Boolean(shareImageFile),
+                          });
+                        });
+                      }}
+                      startIcon={<IosShare />}
+                    >
+                      Share
+                    </Button>
+                  )}
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    sx={{ padding: '12px 16px' }}
+                    disabled={imageUploading}
+                    autoFocus
+                    onClick={() => {
+                      trackSaveDialogAction('copy_button', {
+                        clipboardSupported: Boolean(navigator?.clipboard?.write),
                       });
+                      const { ClipboardItem } = window;
+                      navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
+                      handleSnackbarOpen();
                     }}
-                    startIcon={<IosShare />}
+                    startIcon={<ContentCopy />}
                   >
-                    Share
+                    Copy
                   </Button>
+                </Box>
+                {isProUser && (
+                  <Box display="flex" flexDirection="column" alignItems="center" width="100%">
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      sx={{ padding: '12px 16px', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                      disabled={imageUploading || savingToLibrary}
+                      onClick={handleSaveToLibraryClick}
+                      startIcon={<Save />}
+                    >
+                      {savingToLibrary ? 'Saving...' : 'Save to library'}
+                    </Button>
+                    {librarySaveSuccess && (
+                      <Typography variant="body2" sx={{ mt: 1, textAlign: 'center' }}>
+                        Saved!{' '}
+                        <Link to="/library" style={{ color: '#90caf9', textDecoration: 'underline' }}>
+                          Click here to view library.
+                        </Link>
+                      </Typography>
+                    )}
+                  </Box>
                 )}
-                <Button
-                  variant="contained"
-                  fullWidth
-                  sx={{ marginBottom: 2, padding: '12px 16px' }}
-                  disabled={imageUploading}
-                  autoFocus
-                  onClick={() => {
-                    trackSaveDialogAction('copy_button', {
-                      clipboardSupported: Boolean(navigator?.clipboard?.write),
-                    });
-                    const { ClipboardItem } = window;
-                    navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
-                    handleSnackbarOpen();
-                  }}
-                  startIcon={<ContentCopy />}
-                >
-                  Copy
-                </Button>
+                {isProUser && (
+                  <LoadingButton
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    sx={{ padding: '12px 16px', backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                    disabled={imageUploading}
+                    loading={addingToCollage}
+                    onClick={handleAddToCollageClick}
+                    startIcon={<AddPhotoAlternate />}
+                  >
+                    Add to collage
+                  </LoadingButton>
+                )}
                 <Button
                   variant="contained"
                   color="error"
                   fullWidth
-                  sx={{ marginBottom: 2, padding: '12px 16px' }}
+                  sx={{ padding: '12px 16px' }}
                   autoFocus
                   onClick={handleDialogClose}
                   startIcon={<Close />}
@@ -3434,6 +5198,271 @@ const EditorPage = ({ shows }) => {
               </Box>
             </DialogActions>
           </Dialog>
+          <Dialog
+            open={librarySavePromptOpen}
+            onClose={() => {
+              if (!savingToLibrary) {
+                setLibrarySavePromptOpen(false);
+                setLibrarySaveStep('choice');
+                setLibraryCaptionSelectionIndex(null);
+              }
+            }}
+            aria-labelledby="library-save-prompt-title"
+            fullWidth
+            maxWidth="xs"
+          >
+            <DialogTitle id="library-save-prompt-title">
+              {librarySaveStep === 'choice' ? 'Save text on image?' : 'Choose default text'}
+            </DialogTitle>
+            <DialogContent>
+              {librarySaveStep === 'choice' ? (
+                <DialogContentText>
+                  Save to your library with the text burned into the image, or keep the image clean and store one of your text layers as the default caption instead.
+                </DialogContentText>
+              ) : (
+                <>
+                  <DialogContentText sx={{ mb: 1 }}>
+                    Which text should become the default caption in your library?
+                  </DialogContentText>
+                  <RadioGroup
+                    value={
+                      libraryCaptionSelectionIndex !== null && libraryCaptionSelectionIndex !== undefined
+                        ? String(libraryCaptionSelectionIndex)
+                        : textLayerEntries[0]?.canvasIndex !== undefined
+                          ? String(textLayerEntries[0]?.canvasIndex)
+                          : ''
+                    }
+                    onChange={(e) => setLibraryCaptionSelectionIndex(Number(e.target.value))}
+                  >
+                    {textLayerEntries.map((entry) => (
+                      <FormControlLabel
+                        key={entry.canvasIndex}
+                        value={entry.canvasIndex}
+                        control={<Radio />}
+                        label={entry.text}
+                        sx={{ py: 1 }}
+                      />
+                    ))}
+                  </RadioGroup>
+                </>
+              )}
+            </DialogContent>
+            <DialogActions
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                justifyContent: 'center',
+                gap: 0,
+                px: 3,
+                pb: 3,
+                width: '100%',
+                '& > *': { width: '100%' },
+                '& > :not(:first-of-type)': { marginLeft: 0, marginTop: 1 },
+              }}
+            >
+              {librarySaveStep === 'choice' ? (
+                <>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={savingToLibrary}
+                    onClick={() => {
+                      setLibrarySavePromptOpen(false);
+                      setLibrarySaveStep('choice');
+                      performSaveToLibrary({ includeCaptions: true });
+                    }}
+                  >
+                    With Permanent Text
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    disabled={savingToLibrary}
+                    onClick={() => {
+                      const entries = textLayerEntries;
+                      if (entries.length <= 1) {
+                        setLibrarySavePromptOpen(false);
+                        setLibrarySaveStep('choice');
+                        performSaveToLibrary({ includeCaptions: false, captionIndex: entries[0]?.canvasIndex });
+                        return;
+                      }
+                      setLibraryCaptionSelectionIndex(entries[0]?.canvasIndex ?? null);
+                      setLibrarySaveStep('selectCaption');
+                    }}
+                  >
+                    Without Permanent Text
+                  </Button>
+                  <Button
+                    fullWidth
+                    onClick={() => {
+                      setLibrarySavePromptOpen(false);
+                      setLibrarySaveStep('choice');
+                      setLibraryCaptionSelectionIndex(null);
+                    }}
+                    disabled={savingToLibrary}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={savingToLibrary}
+                    onClick={() => {
+                      const captionIndex =
+                        typeof libraryCaptionSelectionIndex === 'number'
+                          ? libraryCaptionSelectionIndex
+                          : textLayerEntries[0]?.canvasIndex;
+                      setLibrarySavePromptOpen(false);
+                      setLibrarySaveStep('choice');
+                      performSaveToLibrary({ includeCaptions: false, captionIndex });
+                    }}
+                  >
+                    Save without permanent text
+                  </Button>
+                  <Button
+                    fullWidth
+                    onClick={() => setLibrarySaveStep('choice')}
+                    disabled={savingToLibrary}
+                  >
+                    Back
+                  </Button>
+                </>
+              )}
+            </DialogActions>
+          </Dialog>
+          <Dialog
+            open={collagePromptOpen}
+            onClose={() => {
+              if (!addingToCollage) {
+                setCollagePromptOpen(false);
+                setCollageCaptionSelectionIndex(null);
+              }
+            }}
+            aria-labelledby="collage-save-prompt-title"
+            fullWidth
+            maxWidth="xs"
+          >
+            <DialogTitle id="collage-save-prompt-title">Choose collage text</DialogTitle>
+            <DialogContent>
+              <DialogContentText sx={{ mb: textLayerEntries.length > 0 ? 1 : 0 }}>
+                Collages support one text layer. Pick which text to send as the collage caption, or skip text.
+              </DialogContentText>
+              {textLayerEntries.length > 0 && (
+                <RadioGroup
+                  value={
+                    collageCaptionSelectionIndex !== null && collageCaptionSelectionIndex !== undefined
+                      ? String(collageCaptionSelectionIndex)
+                      : textLayerEntries[0]?.canvasIndex !== undefined
+                        ? String(textLayerEntries[0]?.canvasIndex)
+                        : 'none'
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'none') {
+                      setCollageCaptionSelectionIndex(null);
+                    } else {
+                      setCollageCaptionSelectionIndex(Number(val));
+                    }
+                  }}
+                >
+                  {textLayerEntries.map((entry) => (
+                    <FormControlLabel
+                      key={entry.canvasIndex}
+                      value={entry.canvasIndex}
+                      control={<Radio />}
+                      label={entry.text}
+                    />
+                  ))}
+                  <FormControlLabel value="none" control={<Radio />} label="No text" />
+                </RadioGroup>
+              )}
+            </DialogContent>
+            <DialogActions
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                justifyContent: 'center',
+                gap: 0,
+                px: 3,
+                pb: 3,
+                width: '100%',
+                '& > *': { width: '100%' },
+                '& > :not(:first-of-type)': { marginLeft: 0, marginTop: 1 },
+              }}
+            >
+              <LoadingButton
+                variant="contained"
+                fullWidth
+                loading={addingToCollage}
+                disabled={addingToCollage}
+                endIcon={(
+                  <Chip
+                    icon={<LocalPoliceRounded fontSize="small" />}
+                    label="Pro"
+                    size="small"
+                    sx={{
+                      ml: 0.5,
+                      background: 'linear-gradient(45deg, #3d2459 30%, #6b42a1 90%)',
+                      border: '1px solid #8b5cc7',
+                      boxShadow: '0 0 12px rgba(107,66,161,0.45)',
+                      '& .MuiChip-label': { fontWeight: 700, color: '#fff', fontSize: '12px' },
+                      '& .MuiChip-icon': { color: '#fff' },
+                    }}
+                  />
+                )}
+                onClick={() => {
+                  const entry =
+                    collageCaptionSelectionIndex === null || collageCaptionSelectionIndex === undefined
+                      ? null
+                      : textLayerEntries.find((t) => t.canvasIndex === collageCaptionSelectionIndex) ||
+                        textLayerEntries[0] ||
+                        null;
+                  performAddToCollage(entry);
+                }}
+              >
+                Add to collage
+              </LoadingButton>
+              <Button
+                fullWidth
+                onClick={() => {
+                  setCollagePromptOpen(false);
+                  setCollageCaptionSelectionIndex(null);
+                }}
+                disabled={addingToCollage}
+              >
+                Cancel
+              </Button>
+            </DialogActions>
+          </Dialog>
+          <AddToCollageChooser
+            open={collageChooserOpen}
+            onClose={handleCollageChooserClose}
+            onSelectNew={handleCollageNewProject}
+            onSelectExisting={handleCollageExistingProject}
+            loading={addingToCollage}
+            preview={collagePreview}
+            onEditPreview={() => {
+              if (!collagePreview?.projectId) return;
+              navigate(`/projects/${collagePreview.projectId}`, {
+                state: { projectId: collagePreview.projectId },
+              });
+              handleCollageChooserClose();
+            }}
+            onClearPreview={handleCollageChooserClose}
+          />
+          <ReplaceCollageImageDialog
+            open={collageReplaceDialogOpen}
+            incomingImageUrl={collageReplaceContext?.incomingPreview || null}
+            existingImages={collageReplaceOptions}
+            onClose={handleCollageReplaceCancel}
+            onConfirm={handleCollageReplaceConfirm}
+            busy={addingToCollage}
+          />
           {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid container>
               <Grid item xs={12} mt={2}>
@@ -3459,7 +5488,26 @@ const EditorPage = ({ shows }) => {
         </Alert>
       </Snackbar>
 
-      <LoadingBackdrop open={loadingInpaintingResult} />
+      <Dialog
+        open={rateLimitDialogOpen}
+        onClose={handleStayOnMagicTools}
+        aria-labelledby="rate-limit-dialog-title"
+      >
+        <DialogTitle id="rate-limit-dialog-title">Magic tools are temporarily unavailable</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ maxWidth: 380 }}>
+            Magic tools are temporarily unavailable. Would you like to switch to the classic tools for now?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleStayOnMagicTools}>Stay on new tools</Button>
+          <Button onClick={handleSwitchToClassicTools} autoFocus>
+            Switch to classic
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <LoadingBackdrop open={loadingInpaintingResult} variationCount={promptEnabled === 'edit' ? 1 : 2} />
 
       <Dialog
         open={openSelectResult}

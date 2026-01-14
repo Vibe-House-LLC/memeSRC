@@ -5,12 +5,17 @@ import { API, graphqlOperation } from "aws-amplify";
 import { createWebsiteSetting, updateWebsiteSetting } from "../graphql/mutations";
 import { getWebsiteSetting } from "../graphql/queries";
 import MaintenanceModes from "../sections/@dashboard/website-settings/MaintenanceModes";
+import RateLimits from "../sections/@dashboard/website-settings/RateLimits";
 
 export default function WebsiteSettings() {
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [savingMaintenance, setSavingMaintenance] = useState(false);
+    const [savingRateLimits, setSavingRateLimits] = useState(false);
     const [fullSiteMaintenance, setFullSiteMaintenance] = useState(false);
     const [universalSearchMaintenance, setUniversalSearchMaintenance] = useState(false);
+    const [openAIRateLimit, setOpenAIRateLimit] = useState('100');
+    const [nanoBananaRateLimit, setNanoBananaRateLimit] = useState('100');
+    const [moderationThreshold, setModerationThreshold] = useState('0.6');
     const [globalSettings, setGlobalSettings] = useState();
 
     useEffect(() => {
@@ -24,11 +29,17 @@ export default function WebsiteSettings() {
                 setGlobalSettings(globalSettings || {})
                 setFullSiteMaintenance(globalSettings?.fullSiteMaintenance || false)
                 setUniversalSearchMaintenance(globalSettings?.universalSearchMaintenance || false)
+                setOpenAIRateLimit((globalSettings?.openAIRateLimit ?? 100).toString())
+                setNanoBananaRateLimit((globalSettings?.nanoBananaRateLimit ?? 100).toString())
+                setModerationThreshold((globalSettings?.moderationThreshold ?? 0.6).toString())
                 setLoading(false)
             } else {
                 setGlobalSettings()
                 setFullSiteMaintenance(false)
                 setUniversalSearchMaintenance(false)
+                setOpenAIRateLimit('100')
+                setNanoBananaRateLimit('100')
+                setModerationThreshold('0.6')
                 setLoading(false)
             }
         }).catch(error => {
@@ -41,27 +52,59 @@ export default function WebsiteSettings() {
         }
     }, []);
 
+    const ensureGlobalSettings = async () => {
+        if (globalSettings) {
+            return globalSettings;
+        }
+
+        const createGlobalSettings = await API.graphql(
+            graphqlOperation(createWebsiteSetting, { input: { id: 'globalSettings' }})
+        )
+        const createdSettings = createGlobalSettings?.data?.createWebsiteSetting
+        if (createdSettings) {
+            setGlobalSettings(createdSettings)
+        }
+        return createdSettings
+    }
+
     const saveMaintenance = async () => {
-        setSaving(true)
+        setSavingMaintenance(true)
         try {
-            if (!globalSettings) {
-                const createGlobalSettings = await API.graphql(
-                    graphqlOperation(createWebsiteSetting, { input: { id: 'globalSettings' }})
-                )
-                console.log(createGlobalSettings)
-            }
+            await ensureGlobalSettings()
 
             const updateGlobalSettings = await API.graphql(
                 graphqlOperation(updateWebsiteSetting, { input: { id: 'globalSettings', fullSiteMaintenance, universalSearchMaintenance }})
             )
             console.log(updateGlobalSettings)
             setGlobalSettings(updateGlobalSettings?.data?.updateWebsiteSetting)
-            setSaving(false)
         } catch (error) {
             console.log(error)
-            setSaving(false)
         }
+        setSavingMaintenance(false)
         
+    }
+
+    const saveRateLimits = async () => {
+        setSavingRateLimits(true)
+        try {
+            await ensureGlobalSettings()
+
+            const parsedOpenAIRateLimit = parseInt(openAIRateLimit, 10)
+            const safeOpenAIRateLimit = Number.isNaN(parsedOpenAIRateLimit) ? 0 : parsedOpenAIRateLimit
+            const parsedNanoBananaRateLimit = parseInt(nanoBananaRateLimit, 10)
+            const safeNanoBananaRateLimit = Number.isNaN(parsedNanoBananaRateLimit) ? 0 : parsedNanoBananaRateLimit
+            const parsedModerationThreshold = parseFloat(moderationThreshold)
+            const safeModerationThreshold = Number.isNaN(parsedModerationThreshold) ? 0.6 : parsedModerationThreshold
+
+            const updateGlobalSettings = await API.graphql(
+                graphqlOperation(updateWebsiteSetting, { input: { id: 'globalSettings', openAIRateLimit: safeOpenAIRateLimit, nanoBananaRateLimit: safeNanoBananaRateLimit, moderationThreshold: safeModerationThreshold }})
+            )
+            console.log(updateGlobalSettings)
+            setGlobalSettings(updateGlobalSettings?.data?.updateWebsiteSetting)
+        } catch (error) {
+            console.log(error)
+        }
+        setSavingRateLimits(false)
     }
 
     return (
@@ -78,15 +121,27 @@ export default function WebsiteSettings() {
                 </Typography>
                 <Divider sx={{ my: 4 }} />
                 {!loading &&
-                    <MaintenanceModes
-                        saveFunction={saveMaintenance}
-                        saving={saving}
-                        fullSiteMaintenance={fullSiteMaintenance}
-                        universalSearchMaintenance={universalSearchMaintenance}
-                        setFullSiteMaintenance={setFullSiteMaintenance}
-                        setUniversalSearchMaintenance={setUniversalSearchMaintenance}
-                        currentSettings={globalSettings}
-                    />
+                    <>
+                        <MaintenanceModes
+                            saveFunction={saveMaintenance}
+                            saving={savingMaintenance}
+                            fullSiteMaintenance={fullSiteMaintenance}
+                            universalSearchMaintenance={universalSearchMaintenance}
+                            setFullSiteMaintenance={setFullSiteMaintenance}
+                            setUniversalSearchMaintenance={setUniversalSearchMaintenance}
+                            currentSettings={globalSettings}
+                        />
+                        <RateLimits
+                            saveFunction={saveRateLimits}
+                            saving={savingRateLimits}
+                            openAIRateLimit={openAIRateLimit}
+                            nanoBananaRateLimit={nanoBananaRateLimit}
+                            setOpenAIRateLimit={setOpenAIRateLimit}
+                            setNanoBananaRateLimit={setNanoBananaRateLimit}
+                            moderationThreshold={moderationThreshold}
+                            setModerationThreshold={setModerationThreshold}
+                        />
+                    </>
                 }
                 {loading &&
                     <LinearProgress sx={{ mt: 5 }} />

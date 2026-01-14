@@ -311,32 +311,43 @@ type MagicResult @model @auth(
   user: UserDetails @hasOne,
   prompt: String,
   results: String
+  error: AWSJSON
 }
 
 type Template
   @model(timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" })
   @auth(
     rules: [
-      { allow: groups, groups: ["admins"] },
       {
-        allow: owner
+        allow: owner,
         ownerField: "ownerIdentityId"
-        operations: [create, read, update, delete]
-      }
+      },
+      { allow: groups, groups: ["admins"], operations: [create, read, update, delete] }
     ]
   ) {
   id: ID!
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
   ownerIdentityId: String
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
     @index(name: "byOwnerIdentityId", sortKeyFields: ["createdAt"])
   name: String!
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   state: AWSJSON @deprecated(reason: "Prefer S3 snapshotKey for large payloads")
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   snapshotKey: String
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   snapshotVersion: Int
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   thumbnailKey: String
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   thumbnailSignature: String
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   thumbnailUpdatedAt: AWSDateTime
+    @auth(rules: [{ allow: owner, operations: [create, update, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }])
   createdAt: AWSDateTime
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
   updatedAt: AWSDateTime
+    @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
 }
 
 type EditorProject @model @auth(
@@ -360,6 +371,9 @@ type WebsiteSetting @model @auth(
   id: ID!, 
   fullSiteMaintenance: Boolean,
   universalSearchMaintenance: Boolean
+  openAIRateLimit: Int @default(value: "100")
+  nanoBananaRateLimit: Int @default(value: "100")
+  moderationThreshold: Float @default(value: "0.6")
 }
 
 type ProSupportMessage @model @auth(
@@ -431,4 +445,36 @@ type SearchFilterGroup @model @auth(
   owner: String
     @auth(rules: [{ allow: owner, operations: [create, read, delete] }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
     @index(name: "byOwner", queryField: "searchFilterGroupsByOwner")
+}
+
+type MagicEditHistory @model @auth(
+  rules: [
+    { allow: owner, identityClaim: "sub" },
+    { allow: groups, groups: ["admins"], operations: [create, update, read, delete] }
+  ]
+) {
+  id: ID!
+  prompt: String,
+  imageKey: String,
+  imageUrl: String,
+  metadata: AWSJSON,
+  status: String @default(value: "unreviewed") @index(name: "byStatus", sortKeyFields: ["createdAt"], queryField: "magicEditHistoriesByStatus")
+  createdAt: AWSDateTime!
+  owner: String
+    @auth(rules: [{ allow: owner, operations: [create, read, delete], identityClaim: "sub" }, { allow: groups, groups: ["admins"], operations: [create, read, delete] }])
+    @index(name: "byOwner", sortKeyFields: ["createdAt"], queryField: "magicEditHistoriesByOwner")
+}
+
+type RateLimit @model @auth(
+  rules: [
+    { allow: public, operations: [read] },
+    { allow: private, operations: [read] },
+    { allow: groups, groups: ["admins"], operations: [create, read, update, delete] }
+  ]
+) {
+  id: ID!
+  currentUsage: Int
+  openaiUsage: Int
+  geminiUsage: Int
+  adminAlerts: AWSJSON
 }

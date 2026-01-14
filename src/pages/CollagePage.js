@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
 import { unstable_batchedUpdates } from 'react-dom';
@@ -90,6 +90,7 @@ const AUTOSAVE_DEBOUNCE_MS = 650;
 const AUTOSAVE_RETRY_BASE_DELAY_MS = 1500;
 const AUTOSAVE_RETRY_MAX_DELAY_MS = 8000;
 const PANEL_DIM_REFRESH_TIMEOUT_MS = 1800;
+const MAX_IMAGES = 5;
 
 // Navigation blocking removed - only browser tab close warning remains via useBeforeUnload
 
@@ -151,7 +152,7 @@ export default function CollagePage() {
   const authorized = (isPro || isAdmin);
   // Access flags
   const hasLibraryAccess = isAdmin || isPro; // enable library for paid pro users
-  const hasProjectsAccess = isAdmin; // keep projects admin-only
+  const hasProjectsAccess = isAdmin || isPro; // open projects to paid pro users
 
   // Autosave UI state
   const lastSavedSigRef = useRef(null);
@@ -174,6 +175,12 @@ export default function CollagePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId } = useParams();
+  const appendImagesHandledRef = useRef(false);
+  const appendImagesQueueRef = useRef(null);
+  const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
+  const [replaceSelection, setReplaceSelection] = useState(null);
+  const [pendingReplaceImage, setPendingReplaceImage] = useState(null);
+  const pendingReplaceQueueRef = useRef([]);
   
   // Projects state: track only the active project id for editor flows
   const [activeProjectId, setActiveProjectId] = useState(null);
@@ -205,6 +212,7 @@ export default function CollagePage() {
   const [currentView, setCurrentView] = useState('editor'); // 'library' | 'editor'
   const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 2 });
   const libraryActionsRef = useRef({ primary: null, clearSelection: null });
+  const [startInLibrary, setStartInLibrary] = useState(false);
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
@@ -213,7 +221,54 @@ export default function CollagePage() {
   const [showEarlyAccess, setShowEarlyAccess] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   
+  // Adopt a pre-created project id passed via navigation state (e.g., from editor)
+  useEffect(() => {
+    const incomingProjectId = location.state?.projectId;
+    if (!incomingProjectId) return;
+    if (activeProjectId) return;
+    setActiveProjectId(incomingProjectId);
+    activeSnapshotVersionRef.current = null;
+    acknowledgedRemoteVersionRef.current = null;
+    lastSavedSigRef.current = null;
+    lastThumbnailSigRef.current = null;
+    queuedSigRef.current = null;
+    didInitialSaveRef.current = false;
+  }, [location.state, activeProjectId]);
 
+  // Reset append processing flag when navigation state changes with new appendImages
+  useEffect(() => {
+    if (location.state?.appendImages) {
+      appendImagesHandledRef.current = false;
+      appendImagesQueueRef.current = location.state.appendImages;
+    } else {
+      try {
+        const stored = sessionStorage.getItem('collage-append-queue');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.projectId === (activeProjectId || projectId)) {
+            appendImagesHandledRef.current = false;
+            appendImagesQueueRef.current = parsed.images || [];
+          }
+          sessionStorage.removeItem('collage-append-queue');
+        }
+      } catch (_) { /* ignore */ }
+    }
+  }, [location.state, activeProjectId, projectId]);
+
+  useEffect(() => {
+    if (location.state?.startInLibrary) {
+      setStartInLibrary(true);
+      const { startInLibrary: _omit, ...rest } = location.state || {};
+      const nextState = rest && Object.keys(rest).length > 0 ? rest : undefined;
+      navigate(location.pathname, { replace: true, state: nextState });
+    }
+  }, [location.state, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (location.pathname !== '/projects/new') {
+      setStartInLibrary(false);
+    }
+  }, [location.pathname]);
 
 
 
@@ -254,6 +309,117 @@ export default function CollagePage() {
     updatePanelText,
     libraryRefreshTrigger,
   } = useCollageState(isAdmin);
+
+  const clearAppendNavigationState = useCallback(() => {
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [navigate, location.pathname]);
+
+  const startReplaceFlow = useCallback((incomingImages) => {
+    if (!incomingImages || incomingImages.length === 0) return false;
+    if (!selectedImages || selectedImages.length === 0) return false;
+    const [nextImage, ...rest] = incomingImages;
+    pendingReplaceQueueRef.current = rest;
+    setPendingReplaceImage(nextImage);
+    setReplaceSelection(0);
+    setReplaceDialogOpen(true);
+    return true;
+  }, [selectedImages?.length]);
+
+  const handleReplaceDialogClose = useCallback(() => {
+    setReplaceDialogOpen(false);
+    setPendingReplaceImage(null);
+    setReplaceSelection(null);
+    pendingReplaceQueueRef.current = [];
+  }, []);
+
+  const handleReplaceConfirm = useCallback(async () => {
+    if (pendingReplaceImage == null) return;
+    const targetIndex = typeof replaceSelection === 'number'
+      ? replaceSelection
+      : parseInt(replaceSelection, 10);
+    if (Number.isNaN(targetIndex)) return;
+    const maxIndex = (selectedImages?.length || 0) - 1;
+    if (targetIndex < 0 || targetIndex > maxIndex) return;
+
+    await replaceImage(targetIndex, pendingReplaceImage);
+
+    const remainingQueue = [...pendingReplaceQueueRef.current];
+    setReplaceDialogOpen(false);
+    setPendingReplaceImage(null);
+    setReplaceSelection(null);
+    pendingReplaceQueueRef.current = [];
+
+    if (remainingQueue.length > 0 && (selectedImages?.length || 0) >= MAX_IMAGES) {
+      startReplaceFlow(remainingQueue);
+    }
+  }, [pendingReplaceImage, replaceImage, replaceSelection, selectedImages?.length, startReplaceFlow]);
+
+  // Handle images appended from editor into an existing project
+  const processAppendImages = useCallback(async (imagesToAppend) => {
+    if (!imagesToAppend || imagesToAppend.length === 0) return;
+    const baseCount = selectedImages?.length || 0;
+
+    if (baseCount >= MAX_IMAGES) {
+      startReplaceFlow(imagesToAppend);
+      clearAppendNavigationState();
+      return;
+    }
+
+    const availableSlots = Math.max(0, MAX_IMAGES - baseCount);
+    const immediateAdds = imagesToAppend.slice(0, availableSlots);
+    const overflowImages = imagesToAppend.slice(availableSlots);
+
+    if (immediateAdds.length > 0) {
+      await addMultipleImages(immediateAdds);
+    }
+
+    const totalImages = baseCount + immediateAdds.length;
+    const desiredPanelCount = Math.min(Math.max(panelCount || 0, totalImages, 1), MAX_IMAGES);
+    if (desiredPanelCount > (panelCount || 0)) {
+      setPanelCount(desiredPanelCount);
+    }
+
+    setTimeout(() => {
+      const panels = (selectedTemplate?.layout?.panels && selectedTemplate.layout.panels.length > 0)
+        ? selectedTemplate.layout.panels
+        : Array.from({ length: desiredPanelCount }).map((_, idx) => ({ id: `panel-${idx + 1}` }));
+      const newMapping = { ...(panelImageMapping || {}) };
+      let nextImageIndex = baseCount;
+      panels.forEach((panel, idx) => {
+        const panelId = panel?.id || `panel-${idx + 1}`;
+        if (nextImageIndex >= totalImages) return;
+        if (typeof newMapping[panelId] === 'number') return;
+        newMapping[panelId] = nextImageIndex;
+        nextImageIndex += 1;
+      });
+      updatePanelImageMapping(newMapping);
+      clearAppendNavigationState();
+      if (overflowImages.length > 0) {
+        startReplaceFlow(overflowImages);
+      }
+    }, desiredPanelCount > (panelCount || 0) ? 200 : 0);
+  }, [
+    addMultipleImages,
+    clearAppendNavigationState,
+    panelCount,
+    panelImageMapping,
+    selectedImages?.length,
+    selectedTemplate,
+    setPanelCount,
+    startReplaceFlow,
+    updatePanelImageMapping,
+  ]);
+
+  useEffect(() => {
+    if (isHydratingProject) return;
+    if (appendImagesHandledRef.current) return;
+    if (appendImagesQueueRef.current) {
+      appendImagesHandledRef.current = true;
+      const queue = appendImagesQueueRef.current;
+      appendImagesQueueRef.current = null;
+      processAppendImages(queue);
+    }
+  }, [isHydratingProject, processAppendImages]);
 
   // Nudge states: visual hold vs. tooltip visibility
   const [nudgeVisualActive, setNudgeVisualActive] = useState(false);
@@ -575,7 +741,7 @@ export default function CollagePage() {
             displayUrl: item.displayUrl || item.originalUrl || item,
             subtitle: item.subtitle || '',
             subtitleShowing: item.subtitleShowing || false,
-            metadata: item.metadata || {}
+            metadata: item.metadata || {},
           };
         });
 
@@ -1474,6 +1640,7 @@ export default function CollagePage() {
     onStartFromScratch: handleStartFromScratch, // Handler for starting without images
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
     libraryRefreshTrigger, // For refreshing library when new images are auto-saved
+    initialShowLibrary: startInLibrary,
     onCaptionEditorVisibleChange: (open) => {
       setIsCaptionEditorOpen(open);
       captionOpenPrevRef.current = open;
@@ -2000,6 +2167,126 @@ export default function CollagePage() {
             onClose={() => setShowResultDialog(false)}
             finalImage={finalImage}
           />
+
+          {/* Replace image when at capacity */}
+          <Dialog
+            open={replaceDialogOpen}
+            onClose={handleReplaceDialogClose}
+            aria-labelledby="replace-image-dialog-title"
+            maxWidth="md"
+            fullWidth
+            BackdropProps={{
+              sx: {
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(2px)'
+              }
+            }}
+            PaperProps={{
+              elevation: 16,
+              sx: (theme) => ({
+                bgcolor: theme.palette.mode === 'dark' ? '#1f2126' : '#ffffff',
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 2,
+                boxShadow: theme.palette.mode === 'dark'
+                  ? '0 12px 32px rgba(0,0,0,0.7)'
+                  : '0 12px 32px rgba(0,0,0,0.25)'
+              })
+            }}
+          >
+            <DialogTitle id="replace-image-dialog-title" sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>
+              Replace an image
+            </DialogTitle>
+            <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
+              <Stack spacing={2}>
+                <Typography variant="body1" sx={{ m: 0, lineHeight: 1.5 }}>
+                  You already have {MAX_IMAGES} images. Choose one to overwrite with the incoming image.
+                </Typography>
+                {pendingReplaceImage && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      p: 1.5,
+                      borderRadius: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      bgcolor: (theme) => theme.palette.action.hover,
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={pendingReplaceImage.displayUrl || pendingReplaceImage.originalUrl || pendingReplaceImage}
+                      alt="Incoming image preview"
+                      sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 1 }}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      New image
+                    </Typography>
+                  </Box>
+                )}
+                <RadioGroup
+                  value={replaceSelection != null ? String(replaceSelection) : ''}
+                  onChange={(event) => {
+                    const next = parseInt(event.target.value, 10);
+                    setReplaceSelection(Number.isNaN(next) ? null : next);
+                  }}
+                >
+                  <Grid container spacing={1.5}>
+                    {(selectedImages || []).map((image, idx) => {
+                      const imageUrl = image?.displayUrl || image?.originalUrl || image;
+                      return (
+                        <Grid item xs={12} sm={6} key={`replace-option-${idx}`}>
+                          <FormControlLabel
+                            value={String(idx)}
+                            control={<Radio />}
+                            label={(
+                              <Stack direction="row" spacing={1.5} alignItems="center">
+                                <Box
+                                  component="img"
+                                  src={imageUrl}
+                                  alt={`Current collage image ${idx + 1}`}
+                                  sx={{
+                                    width: 72,
+                                    height: 72,
+                                    objectFit: 'cover',
+                                    borderRadius: 1,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                  }}
+                                />
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  Image {idx + 1}
+                                </Typography>
+                              </Stack>
+                            )}
+                            sx={{
+                              m: 0,
+                              p: 1,
+                              borderRadius: 1.5,
+                              width: '100%',
+                              alignItems: 'flex-start',
+                              '&:hover': { backgroundColor: (theme) => theme.palette.action.hover },
+                            }}
+                          />
+                        </Grid>
+                      );
+                    })}
+                  </Grid>
+                </RadioGroup>
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
+              <Button onClick={handleReplaceDialogClose}>Cancel</Button>
+              <Button
+                onClick={handleReplaceConfirm}
+                variant="contained"
+                disabled={replaceSelection === null}
+              >
+                Replace
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           {/* Confirm Reset Dialog (non-admin) */}
           <Dialog

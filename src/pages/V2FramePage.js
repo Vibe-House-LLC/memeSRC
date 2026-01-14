@@ -20,6 +20,7 @@ import {
   Stack,
   Tooltip,
   Skeleton,
+  ButtonBase,
   ListItem,
   ListItemIcon,
   Fab,
@@ -42,7 +43,7 @@ import {
   ToggleButton,
   Popover,
 } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu, OpenInNew, Collections, Check, Add } from '@mui/icons-material';
+import { ArrowBackIos, ArrowForwardIos, ArrowDropDown, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu as MenuIcon, OpenInNew, Collections, Check, Add, PhotoLibrary, Dashboard } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
 import PropTypes from 'prop-types';
 import useSearchDetails from '../hooks/useSearchDetails';
@@ -51,6 +52,7 @@ import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import getV2Metadata from '../utils/getV2Metadata';
 import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
+import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 import HomePageBannerAd from '../ads/HomePageBannerAd';
 import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import { shouldShowAds } from '../utils/adsenseLoader';
@@ -58,6 +60,23 @@ import { shouldShowAds } from '../utils/adsenseLoader';
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
+import {
+  createProject,
+  loadProjects,
+  resolveTemplateSnapshot,
+  upsertProject,
+} from '../components/collage/utils/templates';
+import { renderThumbnailFromSnapshot } from '../components/collage/utils/renderThumbnailFromSnapshot';
+import {
+  appendImageToSnapshot,
+  buildSnapshotSignature,
+  MAX_COLLAGE_IMAGES,
+  normalizeSnapshot,
+  replaceImageInSnapshot,
+  snapshotImageFromPayload,
+} from '../components/collage/utils/snapshotEditing';
+import ReplaceCollageImageDialog from '../components/collage/ReplaceCollageImageDialog';
+import { get as getFromLibrary } from '../utils/library/storage';
 
 // import { listGlobalMessages } from '../../../graphql/queries'
 
@@ -72,6 +91,70 @@ const StyledCardMedia = styled('img')`
   height: auto;
   background-color: black;
 `;
+
+const FONT_OPTIONS = [
+  'Arial',
+  'Courier New',
+  'Georgia',
+  'Verdana',
+  'Akbar',
+  'Baveuse',
+  'PULPY',
+  'scrubs',
+  'South Park',
+  'SPIDEY',
+  'HORROR',
+  'IMPACT',
+  'Star Jedi',
+  'twilight',
+  'zuume',
+];
+
+function FontSelector({ selectedFont, onSelectFont, onLowercaseChange }) {
+  return (
+    <Select
+      value={selectedFont}
+      onChange={(e) => {
+        const newFont = e.target.value;
+        onSelectFont(newFont);
+        if (onLowercaseChange) {
+          onLowercaseChange(newFont === 'Star Jedi');
+        }
+      }}
+      displayEmpty
+      inputProps={{ 'aria-label': 'Font selector' }}
+      size="small"
+      startAdornment={<FontDownloadOutlined sx={{ mr: 0.5 }} />}
+      sx={{
+        '& .MuiSelect-select': {
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        },
+      }}
+    >
+      {FONT_OPTIONS.map((font) => (
+        <MenuItem key={font} value={font} sx={{ fontFamily: font }}>
+          {font}
+        </MenuItem>
+      ))}
+    </Select>
+  );
+}
+
+FontSelector.propTypes = {
+  selectedFont: PropTypes.string.isRequired,
+  onSelectFont: PropTypes.func.isRequired,
+  onLowercaseChange: PropTypes.func,
+};
+
+const blobToDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 
 const SurroundingFrameThumbnail = ({
   frameData,
@@ -186,15 +269,126 @@ export default function FramePage() {
   const lastTrackedFrameRef = useRef('');
 
   const { user } = useContext(UserContext);
+  const { openSubscriptionDialog } = useSubscribeDialog();
   const isAdmin = user?.['cognito:groups']?.includes('admins');
   const isPro = user?.userDetails?.magicSubscription === 'true';
   const hasLibraryAccess = isAdmin || isPro;
+  const hasToolAccess = isAdmin || isPro;
+  const currentImage = displayImage || frameData?.frameImage;
+  const [addToExpanded, setAddToExpanded] = useState(false);
+  const [addToSelection, setAddToSelection] = useState(null);
+  const [savedToLibrary, setSavedToLibrary] = useState(false);
+  const [addingToCollage, setAddingToCollage] = useState(false);
+  const [pendingCollagePayload, setPendingCollagePayload] = useState(null);
+  const [collagePreview, setCollagePreview] = useState(null);
+  const [collageReplaceDialogOpen, setCollageReplaceDialogOpen] = useState(false);
+  const [collageReplaceSelection, setCollageReplaceSelection] = useState(null);
+  const [collageReplaceOptions, setCollageReplaceOptions] = useState([]);
+  const [collageReplaceContext, setCollageReplaceContext] = useState(null);
+  const [collageProjects, setCollageProjects] = useState([]);
+  const [collageProjectsLoading, setCollageProjectsLoading] = useState(false);
+  const [collagePickerOpen, setCollagePickerOpen] = useState(false);
+  const [collagePickerPage, setCollagePickerPage] = useState(0);
+  const [activeCollageTile, setActiveCollageTile] = useState(null);
+  const [collageThumbnails, setCollageThumbnails] = useState({});
+  const collageThumbnailFailuresRef = useRef(new Set());
+
+  const resolveSnapshotImageUrl = useCallback(
+    async (imageRef) => {
+      if (!imageRef) return null;
+      if (typeof imageRef.url === 'string' && imageRef.url.length > 0) {
+        return imageRef.url;
+      }
+      if (imageRef.libraryKey) {
+        try {
+          const blob = await getFromLibrary(imageRef.libraryKey, { level: 'private' });
+          return await blobToDataUrl(blob);
+        } catch (err) {
+          console.warn('Unable to load collage image from library', err);
+        }
+      }
+      return null;
+    },
+    [blobToDataUrl]
+  );
+
+  const persistCollageSnapshot = useCallback(
+    async (projectId, snapshot) => {
+      const normalized = normalizeSnapshot(snapshot, 'portrait');
+      await upsertProject(projectId, { state: normalized });
+      let thumbnail = null;
+      try {
+        thumbnail = await renderThumbnailFromSnapshot(normalized, { maxDim: 512 });
+        if (thumbnail) {
+          const signature = buildSnapshotSignature(normalized);
+          await upsertProject(projectId, {
+            thumbnail,
+            thumbnailSignature: signature,
+            thumbnailUpdatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to render collage thumbnail', err);
+      }
+      return { snapshot: normalized, thumbnail };
+    },
+    [buildSnapshotSignature, normalizeSnapshot, renderThumbnailFromSnapshot, upsertProject]
+  );
+
+  const loadCollageSnapshot = useCallback(
+    async (project) => {
+      const snap = await resolveTemplateSnapshot(project);
+      return normalizeSnapshot(snap, 'portrait');
+    },
+    [normalizeSnapshot, resolveTemplateSnapshot]
+  );
+
+  const prepareReplaceDialogOptions = useCallback(
+    async (snapshot) => {
+      const urls = await Promise.all(
+        (snapshot?.images || []).map(async (img) => ({
+          url: await resolveSnapshotImageUrl(img),
+        }))
+      );
+      setCollageReplaceOptions(urls);
+      setCollageReplaceSelection(urls.length ? 0 : null);
+    },
+    [resolveSnapshotImageUrl]
+  );
+
+  const ensureCollagePayloadHasLibraryKey = useCallback(async () => {
+    if (!pendingCollagePayload) return null;
+    if (pendingCollagePayload?.imagePayload?.metadata?.libraryKey) {
+      return pendingCollagePayload;
+    }
+    const libraryKey = await saveImageToLibrary(
+      pendingCollagePayload.blob,
+      pendingCollagePayload.filename,
+      {
+        level: 'private',
+        metadata: pendingCollagePayload.metadata,
+      }
+    );
+    const updatedPayload = {
+      ...pendingCollagePayload,
+      imagePayload: {
+        ...pendingCollagePayload.imagePayload,
+        metadata: {
+          ...pendingCollagePayload.imagePayload.metadata,
+          libraryKey,
+        },
+      },
+    };
+    setPendingCollagePayload(updatedPayload);
+    return updatedPayload;
+  }, [pendingCollagePayload, saveImageToLibrary]);
 
   // Function to save current frame to library
   const handleSaveToLibrary = async () => {
-    if (!displayImage || savingToLibrary) return;
+    if (!displayImage || savingToLibrary) return false;
 
     setSavingToLibrary(true);
+    setSavedToLibrary(false);
     try {
       // Create a canvas to generate the final image
       const offScreenCanvas = document.createElement('canvas');
@@ -261,53 +455,133 @@ export default function FramePage() {
       }
 
       trackUsageEvent('add_to_library', eventPayload);
-      
+      handleSnackbarOpen('Saved to Library', {
+        autoHideDuration: 4000,
+        action: (
+          <Button
+            color="inherit"
+            size="small"
+            component={RouterLink}
+            to="/library"
+            onClick={handleSnackbarClose}
+          >
+            View Library
+          </Button>
+        ),
+      });
       setSavedToLibrary(true);
+      return true;
     } catch (error) {
       console.error('Error saving frame to library:', error);
+      return false;
     } finally {
       setSavingToLibrary(false);
     }
   };
 
+  const requireToolAccess = () => {
+    if (!hasToolAccess) {
+      openSubscriptionDialog();
+      return false;
+    }
+    return true;
+  };
+
+  const requireLibraryAccess = () => {
+    if (!hasLibraryAccess) {
+      openSubscriptionDialog();
+      return false;
+    }
+    return true;
+  };
+
+  const trackToolSelect = (tool) => {
+    const payload = {
+      source: 'V2FramePage',
+      tool,
+      cid: confirmedCid || cid,
+      season,
+      episode,
+      frame,
+    };
+
+    if (fineTuningIndex !== null && fineTuningIndex !== undefined) {
+      payload.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (typeof selectedFrameIndex === 'number') {
+      payload.selectedFrameIndex = selectedFrameIndex;
+    }
+
+    trackUsageEvent('frame_tool_select', payload);
+  };
+
+  const handleAddToToggle = () => {
+    if (addToSelection || collagePreview) return;
+    setAddToExpanded((prev) => !prev);
+  };
+
+  const handleAddDone = () => {
+    setAddToExpanded(false);
+    setAddToSelection(null);
+    setCollagePreview(null);
+    setSavedToLibrary(false);
+    setPendingCollagePayload(null);
+    setCollagePickerOpen(false);
+    setCollagePickerPage(0);
+    setActiveCollageTile(null);
+  };
+
+  const handleAddToLibrary = async () => {
+    if (!requireLibraryAccess()) return;
+    if (!displayImage || !confirmedCid || savingToLibrary) return;
+    trackToolSelect('library');
+    setAddToExpanded(false);
+    setAddToSelection('library');
+    const saved = await handleSaveToLibrary();
+    if (!saved) {
+      setAddToSelection(null);
+    }
+  };
+
+  const handleAddToCollage = async () => {
+    if (!currentImage) {
+      setAddToExpanded(false);
+      return;
+    }
+    if (!requireToolAccess()) return;
+    trackToolSelect('collage');
+    setAddToExpanded(false);
+    setAddToSelection('collage');
+    await handlePrepareCollage();
+  };
+
+  const handleCollageBack = () => {
+    setPendingCollagePayload(null);
+    setCollagePickerOpen(false);
+    setCollagePickerPage(0);
+    setActiveCollageTile(null);
+    if (savedToLibrary) {
+      setAddToSelection('library');
+      setAddToExpanded(false);
+      return;
+    }
+    setAddToSelection(null);
+    setAddToExpanded(true);
+  };
+
+  const handleAdvancedEditor = () => {
+    if (!currentImage) return;
+    trackToolSelect('advanced');
+    navigate(advancedEditorPath);
+  };
+
   /* ---------- This is used to prevent slider activity while scrolling on mobile ---------- */
 
   const isSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
-
-  const fonts = ["Arial", "Courier New", "Georgia", "Verdana", "Akbar", "Baveuse", "PULPY", "scrubs", "South Park", "SPIDEY", "HORROR", "IMPACT", "Star Jedi", "twilight", "zuume"];
+  const COLLAGE_PICKER_PAGE_SIZE = 6;
 
   /* -------------------------------------------------------------------------- */
-
-  const FontSelector = ({ selectedFont, onSelectFont }) => (
-      <Select
-        value={selectedFont}
-        onChange={(e) => {
-          const newFont = e.target.value;
-          onSelectFont(newFont);
-          setIsLowercaseFont(newFont === 'Star Jedi');
-        }}
-        displayEmpty
-        inputProps={{ 'aria-label': 'Without label' }}
-        size='small'
-        startAdornment={<FontDownloadOutlined sx={{ mr: 0.5}} />}
-        sx={{
-          '& .MuiSelect-select': {
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          },
-        }}
-      >
-        {fonts.map((font) => (
-          <MenuItem key={font} value={font} sx={{ fontFamily: font }}>{font}</MenuItem>
-        ))}
-      </Select>
-  );
-
-  FontSelector.propTypes = {
-    selectedFont: PropTypes.string.isRequired,
-    onSelectFont: PropTypes.func.isRequired,
-  };
 
   useEffect(() => {
     getV2Metadata(cid).then(metadata => {
@@ -317,9 +591,13 @@ export default function FramePage() {
     })
   }, [cid]);
 
-  const [snackbarOpen, setSnackBarOpen] = useState(false);
-  // Inline confirmation for library (no snackbar)
-  const [savedToLibrary, setSavedToLibrary] = useState(false);
+  const [snackbarState, setSnackbarState] = useState({
+    open: false,
+    message: '',
+    severity: 'success',
+    duration: 2000,
+    action: null,
+  });
   const [savingToLibrary, setSavingToLibrary] = useState(false);
   const [loadedSubtitle, setLoadedSubtitle] = useState('');
 
@@ -393,19 +671,85 @@ export default function FramePage() {
     resolvedSearchTermValue,
   ]);
 
+  const collageIntentMeta = useMemo(() => {
+    const meta = {
+      source: 'V2FramePage',
+    };
+
+    const resolvedCid = confirmedCid || cid;
+    if (resolvedCid) {
+      meta.cid = resolvedCid;
+    }
+
+    if (season) {
+      meta.season = season;
+    }
+
+    if (episode) {
+      meta.episode = episode;
+    }
+
+    if (frame) {
+      meta.frame = frame;
+    }
+
+    if (fineTuningIndex !== null && fineTuningIndex !== undefined) {
+      meta.fineTuningIndex = fineTuningIndex;
+    }
+
+    if (typeof selectedFrameIndex === 'number') {
+      meta.selectedFrameIndex = selectedFrameIndex;
+    }
+
+    if (typeof resolvedSearchTermValue === 'string' && resolvedSearchTermValue.length > 0) {
+      meta.searchTerm = resolvedSearchTermValue;
+    }
+
+    return meta;
+  }, [cid, confirmedCid, episode, frame, fineTuningIndex, resolvedSearchTermValue, season, selectedFrameIndex]);
+
+  const advancedEditorPath = useMemo(() => {
+    const fineTuningSuffix = (fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : '';
+    const searchSuffix = encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : '';
+    return `/editor/${cid}/${season}/${episode}/${frame}${fineTuningSuffix}${searchSuffix}`;
+  }, [cid, season, episode, frame, fineTuningIndex, fineTuningLoadStarted, selectedFrameIndex, encodedSearchTerm]);
+
   const mainImageSaveIntentHandlers = useTrackImageSaveIntent(mainImageSaveIntentMeta);
 
-  const handleSnackbarOpen = () => {
-    setSnackBarOpen(true);
-  }
+  const handleSnackbarOpen = (message, options = {}) => {
+    setSnackbarState({
+      open: true,
+      message,
+      severity: options.severity || 'success',
+      duration: options.autoHideDuration ?? 2000,
+      action: options.action || null,
+    });
+  };
 
   const handleSnackbarClose = () => {
-    setSnackBarOpen(false);
-  }
+    setSnackbarState((prev) => ({
+      ...prev,
+      open: false,
+    }));
+  };
 
-  // Reset saved state when frame/display changes
   useEffect(() => {
+    setAddToExpanded(false);
+    setAddToSelection(null);
     setSavedToLibrary(false);
+    setPendingCollagePayload(null);
+    setCollagePreview(null);
+    setCollageReplaceDialogOpen(false);
+    setCollageReplaceContext(null);
+    setCollageReplaceOptions([]);
+    setCollageReplaceSelection(null);
+    setCollagePickerOpen(false);
+    setCollagePickerPage(0);
+    setActiveCollageTile(null);
+    setCollageProjects([]);
+    setCollageProjectsLoading(false);
+    setCollageThumbnails({});
+    collageThumbnailFailuresRef.current = new Set();
   }, [displayImage, confirmedCid, season, episode, frame]);
 
   useEffect(() => {
@@ -800,7 +1144,7 @@ export default function FramePage() {
           setOriginalSubtitle(initialInfo.subtitle);
           setLoadedSeason(season);
           setLoadedEpisode(episode);
-          if (initialInfo.fontFamily && fonts.includes(initialInfo.fontFamily)) {
+          if (initialInfo.fontFamily && FONT_OPTIONS.includes(initialInfo.fontFamily)) {
             setFontFamily(initialInfo.fontFamily);
           }        
         } catch (error) {
@@ -1006,6 +1350,415 @@ useEffect(() => {
     };
     localStorage.setItem(`formatting-${user?.username}-${cid}`, JSON.stringify(formattingOptions));
   };
+
+  const handlePrepareCollage = useCallback(async () => {
+    if (addingToCollage || !currentImage) return;
+
+    setPendingCollagePayload(null);
+    setAddingToCollage(true);
+    try {
+      const response = await fetch(currentImage);
+      if (!response.ok) {
+        throw new Error('Failed to fetch frame image');
+      }
+      const blob = await response.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      if (!dataUrl) {
+        throw new Error('Unable to read frame image');
+      }
+
+      const rawSubtitle = typeof loadedSubtitle === 'string' ? loadedSubtitle : '';
+      const subtitle = rawSubtitle.trim();
+      const hasSubtitle = subtitle.length > 0;
+      const subtitleShowing = hasSubtitle && showText;
+      const filename = `collage-${Date.now()}.jpg`;
+
+      const metadata = {
+        source: 'V2FramePage',
+        ...(hasSubtitle ? { defaultCaption: subtitle } : {}),
+        ...(fontFamily ? { fontFamily } : {}),
+        ...((confirmedCid || cid) ? { cid: confirmedCid || cid } : {}),
+        ...(season ? { season } : {}),
+        ...(episode ? { episode } : {}),
+        ...(frame ? { frame } : {}),
+      };
+
+      const imagePayload = {
+        fontFamily,
+        originalUrl: dataUrl,
+        displayUrl: dataUrl,
+        ...(hasSubtitle ? { subtitle } : {}),
+        subtitleShowing,
+        metadata: {
+          source: 'V2FramePage',
+          ...(fontFamily ? { fontFamily } : {}),
+          ...(hasSubtitle ? { defaultCaption: subtitle } : {}),
+        },
+      };
+
+      setPendingCollagePayload({ imagePayload, blob, metadata, filename });
+    } catch (error) {
+      console.error('Error preparing collage image:', error);
+    } finally {
+      setAddingToCollage(false);
+    }
+  }, [addingToCollage, cid, confirmedCid, currentImage, episode, fontFamily, frame, loadedSubtitle, season, showText]);
+
+  const handleCollageNewProject = useCallback(async () => {
+    try {
+      setAddingToCollage(true);
+      const payloadWithKey = await ensureCollagePayloadHasLibraryKey();
+      if (!payloadWithKey) return;
+      const project = await createProject({ name: 'Untitled Meme' });
+      const projectId = project?.id;
+      if (!projectId) throw new Error('Missing project id for collage project');
+      const { snapshot, thumbnail } = await persistCollageSnapshot(
+        projectId,
+        appendImageToSnapshot(null, snapshotImageFromPayload(payloadWithKey.imagePayload)).snapshot
+      );
+      const previewImage =
+        payloadWithKey.imagePayload?.displayUrl ||
+        payloadWithKey.imagePayload?.originalUrl ||
+        null;
+
+      trackUsageEvent('add_to_collage', {
+        ...collageIntentMeta,
+        projectId,
+        libraryKey: payloadWithKey.imagePayload?.metadata?.libraryKey,
+        subtitleIncluded: Boolean(payloadWithKey.imagePayload?.subtitle),
+        subtitleShowing: Boolean(payloadWithKey.imagePayload?.subtitleShowing),
+        target: 'new_project',
+      });
+
+      setCollagePreview({
+        projectId,
+        name: project?.name || 'Untitled Meme',
+        thumbnail: thumbnail || null,
+        snapshot,
+        previewImage,
+      });
+      setPendingCollagePayload(null);
+    } catch (error) {
+      console.error('Error creating collage project:', error);
+    } finally {
+      setAddingToCollage(false);
+    }
+  }, [
+    appendImageToSnapshot,
+    collageIntentMeta,
+    createProject,
+    ensureCollagePayloadHasLibraryKey,
+    persistCollageSnapshot,
+    snapshotImageFromPayload,
+    trackUsageEvent,
+  ]);
+
+  const handleCollageExistingProject = useCallback(
+    async (project) => {
+      try {
+        setAddingToCollage(true);
+        const payloadWithKey = await ensureCollagePayloadHasLibraryKey();
+        if (!project?.id || !payloadWithKey) return;
+        const baseSnapshot = await loadCollageSnapshot(project);
+        const incomingImage = snapshotImageFromPayload(payloadWithKey.imagePayload);
+        const emptyIndex = (baseSnapshot.images || []).findIndex(
+          (image) => !image?.url && !image?.libraryKey,
+        );
+        if (emptyIndex >= 0) {
+          const nextSnapshot = replaceImageInSnapshot(baseSnapshot, emptyIndex, incomingImage);
+          const { thumbnail } = await persistCollageSnapshot(project.id, nextSnapshot);
+
+          trackUsageEvent('add_to_collage', {
+            ...collageIntentMeta,
+            projectId: project.id,
+            libraryKey: payloadWithKey.imagePayload?.metadata?.libraryKey,
+            subtitleIncluded: Boolean(payloadWithKey.imagePayload?.subtitle),
+            subtitleShowing: Boolean(payloadWithKey.imagePayload?.subtitleShowing),
+            target: 'existing_project',
+          });
+
+          setCollagePreview({
+            projectId: project.id,
+            name: project?.name || 'Untitled Meme',
+            thumbnail: thumbnail || null,
+            snapshot: nextSnapshot,
+          });
+          setPendingCollagePayload(null);
+          return;
+        }
+        if ((baseSnapshot.images || []).length >= MAX_COLLAGE_IMAGES) {
+          setCollageReplaceContext({
+            project,
+            snapshot: baseSnapshot,
+            incomingImage,
+            incomingPreview:
+              payloadWithKey.imagePayload.displayUrl ||
+              payloadWithKey.imagePayload.originalUrl ||
+              null,
+          });
+          await prepareReplaceDialogOptions(baseSnapshot);
+          setCollageReplaceDialogOpen(true);
+          setAddingToCollage(false);
+          return;
+        }
+
+        const { snapshot } = appendImageToSnapshot(baseSnapshot, incomingImage);
+        const { thumbnail } = await persistCollageSnapshot(project.id, snapshot);
+
+        trackUsageEvent('add_to_collage', {
+          ...collageIntentMeta,
+          projectId: project.id,
+          libraryKey: payloadWithKey.imagePayload?.metadata?.libraryKey,
+          subtitleIncluded: Boolean(payloadWithKey.imagePayload?.subtitle),
+          subtitleShowing: Boolean(payloadWithKey.imagePayload?.subtitleShowing),
+          target: 'existing_project',
+        });
+
+        setCollagePreview({
+          projectId: project.id,
+          name: project?.name || 'Untitled Meme',
+          thumbnail: thumbnail || null,
+          snapshot,
+        });
+        setPendingCollagePayload(null);
+      } catch (err) {
+        console.error('Error adding image to existing collage:', err);
+      } finally {
+        setAddingToCollage(false);
+      }
+    },
+    [
+      appendImageToSnapshot,
+      collageIntentMeta,
+      ensureCollagePayloadHasLibraryKey,
+      loadCollageSnapshot,
+      prepareReplaceDialogOptions,
+      persistCollageSnapshot,
+      snapshotImageFromPayload,
+      trackUsageEvent,
+    ]
+  );
+
+  const startCollageTileAction = async (tileKey, action) => {
+    if (addingToCollage) return;
+    setActiveCollageTile(tileKey);
+    try {
+      await action();
+    } finally {
+      setActiveCollageTile(null);
+    }
+  };
+
+  const handleCollageNewTile = () => startCollageTileAction('new', handleCollageNewProject);
+
+  const handleCollageRecentTile = (project) => {
+    if (!project) return;
+    startCollageTileAction(`recent:${project.id}`, () => handleCollageExistingProject(project));
+  };
+
+  const handleCollagePickerSelect = (project) => {
+    if (!project) return;
+    startCollageTileAction(`project:${project.id}`, () => handleCollageExistingProject(project));
+  };
+
+  const handleViewMoreOpen = () => {
+    setCollagePickerOpen(true);
+    setCollagePickerPage(0);
+    setActiveCollageTile('more');
+  };
+
+  const handleCollageReplaceCancel = useCallback(() => {
+    if (addingToCollage) return;
+    setCollageReplaceDialogOpen(false);
+    setCollageReplaceContext(null);
+    setCollageReplaceOptions([]);
+    setCollageReplaceSelection(null);
+  }, [addingToCollage]);
+
+  const handleCollageReplaceConfirm = useCallback(async (selectedIndex) => {
+    const resolvedIndex = typeof selectedIndex === 'number' ? selectedIndex : collageReplaceSelection;
+    if (!collageReplaceContext || resolvedIndex == null) return;
+    try {
+      setAddingToCollage(true);
+      const nextSnapshot = replaceImageInSnapshot(
+        collageReplaceContext.snapshot,
+        resolvedIndex,
+        collageReplaceContext.incomingImage
+      );
+      const { thumbnail } = await persistCollageSnapshot(collageReplaceContext.project.id, nextSnapshot);
+
+      trackUsageEvent('add_to_collage', {
+        ...collageIntentMeta,
+        projectId: collageReplaceContext.project.id,
+        target: 'existing_project',
+        replacedIndex: resolvedIndex,
+      });
+
+      setCollagePreview({
+        projectId: collageReplaceContext.project.id,
+        name: collageReplaceContext.project?.name || 'Untitled Meme',
+        thumbnail: thumbnail || null,
+        snapshot: nextSnapshot,
+      });
+      setPendingCollagePayload(null);
+      setCollageReplaceDialogOpen(false);
+      setCollageReplaceContext(null);
+      setCollageReplaceOptions([]);
+      setCollageReplaceSelection(null);
+    } catch (err) {
+      console.error('Error replacing collage image:', err);
+    } finally {
+      setAddingToCollage(false);
+    }
+  }, [
+    collageIntentMeta,
+    collageReplaceContext,
+    collageReplaceSelection,
+    persistCollageSnapshot,
+    replaceImageInSnapshot,
+    trackUsageEvent,
+  ]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (addToSelection !== 'collage' || collagePreview) {
+      setCollageProjects([]);
+      setCollageProjectsLoading(false);
+      setCollagePickerOpen(false);
+      setCollagePickerPage(0);
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setCollageProjectsLoading(true);
+
+    loadProjects({ forceRefresh: true })
+      .then((projects) => {
+        if (!isActive) return;
+        const sorted = [...(projects || [])].sort((a, b) => {
+          const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return bTime - aTime;
+        });
+        setCollageProjects(sorted);
+      })
+      .catch((err) => {
+        if (isActive) {
+          console.error('Failed to load collages', err);
+          setCollageProjects([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setCollageProjectsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [addToSelection, collagePreview]);
+
+  useEffect(() => {
+    if (activeCollageTile === 'more' && !collageProjectsLoading) {
+      setActiveCollageTile(null);
+    }
+  }, [activeCollageTile, collageProjectsLoading]);
+
+  useEffect(() => {
+    if (addToSelection !== 'collage' || collagePreview) {
+      setCollageThumbnails({});
+      collageThumbnailFailuresRef.current = new Set();
+      return;
+    }
+
+    const projectsToCheck = [];
+    const recent = collageProjects[0];
+    if (recent) {
+      projectsToCheck.push(recent);
+    }
+
+    if (collagePickerOpen) {
+      const totalPages = Math.max(
+        1,
+        Math.ceil(collageProjects.length / COLLAGE_PICKER_PAGE_SIZE),
+      );
+      const pageIndex = Math.min(collagePickerPage, totalPages - 1);
+      const start = pageIndex * COLLAGE_PICKER_PAGE_SIZE;
+      projectsToCheck.push(
+        ...collageProjects.slice(start, start + COLLAGE_PICKER_PAGE_SIZE),
+      );
+    }
+
+    const uniqueProjects = new Map();
+    projectsToCheck.forEach((project) => {
+      if (project?.id && !uniqueProjects.has(project.id)) {
+        uniqueProjects.set(project.id, project);
+      }
+    });
+
+    const missing = Array.from(uniqueProjects.values()).filter(
+      (project) =>
+        project &&
+        !project.thumbnail &&
+        !collageThumbnails[project.id] &&
+        !collageThumbnailFailuresRef.current.has(project.id),
+    );
+
+    if (!missing.length) return;
+
+    let isActive = true;
+
+    const loadThumbnails = async () => {
+      const updates = {};
+      for (const project of missing) {
+        try {
+          const snapshot = await loadCollageSnapshot(project);
+          const thumbnail = await renderThumbnailFromSnapshot(snapshot, { maxDim: 320 });
+          if (thumbnail) {
+            updates[project.id] = thumbnail;
+          } else {
+            collageThumbnailFailuresRef.current.add(project.id);
+          }
+        } catch (err) {
+          console.error('Failed to render collage thumbnail', err);
+          collageThumbnailFailuresRef.current.add(project.id);
+        }
+      }
+
+      if (!isActive || !Object.keys(updates).length) return;
+      setCollageThumbnails((prev) => ({ ...prev, ...updates }));
+    };
+
+    void loadThumbnails();
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    addToSelection,
+    collagePreview,
+    collageProjects,
+    collagePickerOpen,
+    collagePickerPage,
+    COLLAGE_PICKER_PAGE_SIZE,
+    collageThumbnails,
+    loadCollageSnapshot,
+    renderThumbnailFromSnapshot,
+  ]);
+
+  useEffect(() => {
+    if (!collagePickerOpen) return;
+    const maxPageIndex = Math.max(
+      0,
+      Math.floor((collageProjects.length - 1) / COLLAGE_PICKER_PAGE_SIZE),
+    );
+    if (collagePickerPage > maxPageIndex) {
+      setCollagePickerPage(maxPageIndex);
+    }
+  }, [collagePickerOpen, collagePickerPage, collageProjects.length, COLLAGE_PICKER_PAGE_SIZE]);
 
   const handleMainImageLoad = () => {
     setMainImageLoaded(true);
@@ -1715,6 +2468,75 @@ useEffect(() => {
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const showAds = shouldShowAds(user);
+  const shouldCollapseEditor = Boolean(addToSelection) || Boolean(collagePreview);
+  const showAddToOptions = addToExpanded && !addToSelection && !collagePreview;
+  const showLibraryActions = addToSelection === 'library' && savedToLibrary && !collagePreview;
+  const showCollageTiles = addToSelection === 'collage' && !collagePreview;
+  const collagePreviewImage = collagePreview?.previewImage || collagePreview?.thumbnail;
+  const collagePreviewAlt = collagePreview?.previewImage
+    ? 'Image preview'
+    : collagePreview?.name || 'Collage preview';
+  const collageReady = Boolean(pendingCollagePayload);
+  const recentCollage = useMemo(() => collageProjects[0] || null, [collageProjects]);
+  const recentCollageThumbnail = recentCollage
+    ? recentCollage.thumbnail || collageThumbnails[recentCollage.id]
+    : null;
+  const hasCollageProjects = collageProjects.length > 0;
+  const collagePickerMaxPageIndex = Math.max(
+    0,
+    Math.floor((collageProjects.length - 1) / COLLAGE_PICKER_PAGE_SIZE),
+  );
+  const collagePickerPageIndex = Math.min(collagePickerPage, collagePickerMaxPageIndex);
+  const collagePickerStart = collagePickerPageIndex * COLLAGE_PICKER_PAGE_SIZE;
+  const collagePickerItems = collageProjects.slice(
+    collagePickerStart,
+    collagePickerStart + COLLAGE_PICKER_PAGE_SIZE,
+  );
+  const collagePickerHasNext = collageProjects.length > (collagePickerPageIndex + 1) * COLLAGE_PICKER_PAGE_SIZE;
+  const collagePickerHasPrev = collagePickerPageIndex > 0;
+  const collageTilesBusy = Boolean(
+    (addingToCollage && activeCollageTile) || (activeCollageTile === 'more' && collageProjectsLoading),
+  );
+  const actionButtonSx = {
+    flex: 1,
+    color: '#e5e7eb',
+    background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+    border: '1px solid rgba(255, 255, 255, 0.16)',
+    '&:hover': {
+      background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+      borderColor: 'rgba(255, 255, 255, 0.24)',
+    },
+  };
+  const collageTileSx = {
+    width: '100%',
+    height: 120,
+    borderRadius: 2,
+    border: '1px solid rgba(255, 255, 255, 0.16)',
+    background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
+    color: '#e5e7eb',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 0.5,
+    textAlign: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    padding: 1.5,
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    '&:hover': {
+      background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
+      boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25)',
+      transform: 'translateY(-2px)',
+    },
+  };
+  const collageTileDisabledSx = {
+    '&.Mui-disabled': {
+      opacity: 0.45,
+      cursor: 'not-allowed',
+      filter: 'grayscale(0.85)',
+    },
+  };
 
   return (
     <>
@@ -1784,505 +2606,820 @@ useEffect(() => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            {hasLibraryAccess && (
-              <>
-                <Button
-                  size="medium"
-                  fullWidth
-                  variant={savedToLibrary ? 'contained' : 'outlined'}
-                  onClick={handleSaveToLibrary}
-                  disabled={!confirmedCid || !displayImage || savingToLibrary || savedToLibrary}
-                  sx={{ 
-                    mb: 1.5,
-                    borderColor: savedToLibrary ? 'transparent' : '#FF9800', 
-                    color: savedToLibrary ? '#111' : '#FF9800',
-                    backgroundColor: savedToLibrary ? '#FF9800' : 'transparent',
-                    '&:hover': savedToLibrary ? {
-                      backgroundColor: '#F57C00'
-                    } : { 
-                      borderColor: '#F57C00', 
-                      backgroundColor: 'rgba(255, 152, 0, 0.04)' 
-                    },
-                    '&.Mui-disabled': {
-                      borderColor: savedToLibrary ? '#FF9800' : '#ccc',
-                      color: savedToLibrary ? '#111' : '#ccc',
-                      backgroundColor: savedToLibrary ? '#FF9800' : 'transparent'
-                    }
-                  }}
-                  startIcon={savingToLibrary ? <CircularProgress size={16} sx={{ color: savedToLibrary ? '#111' : '#FF9800' }} /> : (savedToLibrary ? <Check /> : <Collections />)}
-                >
-                  {savingToLibrary ? 'Saving…' : (savedToLibrary ? 'Saved to Library' : 'Add to Library')}
-                </Button>
-                <Collapse in={savedToLibrary} timeout={250} unmountOnExit>
-                  <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
-                    <Button
-                      size="medium"
-                      variant="contained"
-                      component={RouterLink}
-                      to="/collage"
-                      startIcon={<Add />}
-                      sx={{
-                        flex: 1,
-                        color: '#e5e7eb',
-                        background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
-                        border: '1px solid rgba(255, 255, 255, 0.16)',
-                        '&:hover': {
-                          background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
-                          borderColor: 'rgba(255, 255, 255, 0.24)',
-                        },
-                      }}
+            <Stack spacing={1.5} sx={{ width: '100%' }}>
+              <Box sx={{ width: '100%' }}>
+                {collagePreview ? (
+                  <Stack spacing={1.5}>
+                    <Stack
+                      direction="row"
+                      spacing={2}
+                      alignItems={{ xs: 'stretch', md: 'flex-start' }}
+                      sx={{ flexWrap: 'nowrap' }}
                     >
-                      New Collage
-                    </Button>
-                    <Button
-                      size="medium"
-                      variant="contained"
-                      component={RouterLink}
-                      to="/library"
-                      startIcon={<Collections />}
-                      sx={{
-                        flex: 1,
-                        color: '#e5e7eb',
-                        background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
-                        border: '1px solid rgba(255, 255, 255, 0.16)',
-                        '&:hover': {
-                          background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
-                          borderColor: 'rgba(255, 255, 255, 0.24)',
-                        },
-                      }}
-                    >
-                      My Library
-                    </Button>
-                  </Stack>
-                </Collapse>
-              </>
-            )}
-            <Collapse in={!savedToLibrary} timeout={250}>
-            <Box sx={{ width: '100%' }}>
-                  {/* Formatting Toolbar */}
-                  {showText &&
-                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                    <ToggleButtonGroup
-                      value={activeFormats}
-                      onChange={(event, newFormats) => {
-                        const clickedFormat = event.currentTarget?.value;
-                        const styleKeyMap = { bold: 'bold', italic: 'italic', underline: 'underline' };
-                        if (clickedFormat && styleKeyMap[clickedFormat]) {
-                          const handledWithInline = applyInlineStyleToggle(styleKeyMap[clickedFormat]);
-                          if (handledWithInline) {
-                            setShowText(true);
-                            return;
-                          }
-                        }
-
-                        // If no text to format, just update UI state (don't persist to base styles)
-                        setActiveFormats(newFormats);
-                        setShowText(true);
-                      }}
-                      aria-label="text formatting"
-                      sx={{ flexShrink: 0 }}
-                    >
-                      <ToggleButton size='small' value="bold" aria-label="bold">
-                        <FormatBold />
-                      </ToggleButton>
-                      <ToggleButton size='small' value="italic" aria-label="italic">
-                        <FormatItalic />
-                      </ToggleButton>
-                      <ToggleButton size='small' value="underline" aria-label="underline">
-                        <FormatUnderlined />
-                      </ToggleButton>
-                    </ToggleButtonGroup>
-                    <ToggleButtonGroup
-                      sx={{ mx: 1, flexShrink: 0 }}
-                      value={[colorPickerShowing && 'fontColor'].filter(Boolean)}
-                      onChange={(event, newFormats) => {
-                        setColorPickerShowing(newFormats.includes('fontColor'))
-                        setShowText(true)
-                      }}
-                      aria-label="text formatting"
-                    >
-                      <ToggleButton ref={colorPicker} size='small' value="fontColor" aria-label="font color">
-                        <FormatColorFill sx={{ color: colorPickerColor }} />
-                      </ToggleButton>
-                    </ToggleButtonGroup>
-                    <FontSelector selectedFont={fontFamily} onSelectFont={setFontFamily} />
-                    <Popover
-                      open={colorPickerShowing}
-                      anchorEl={colorPicker.current}
-                      onClose={() => setColorPickerShowing(false)}
-                      id="colorPicker"
-                      anchorOrigin={{
-                        vertical: 'bottom',
-                        horizontal: 'center',
-                      }}
-                      transformOrigin={{
-                        vertical: 'top',
-                        horizontal: 'center',
-                      }}
-                    >
-                      <div>
-                        <TwitterPickerWrapper
-                          onChangeComplete={(color) => changeColor(color)}
-                          color={colorPickerColor}
-                          colors={[
-                            '#FFFFFF',
-                            '#FFFF00',
-                            '#000000',
-                            '#FF4136',
-                            '#2ECC40',
-                            '#0052CC',
-                            '#FF851B',
-                            '#B10DC9',
-                            '#39CCCC',
-                            '#F012BE',
-                          ]}
-                          width="280px"
-                        />
-                      </div>
-                    </Popover>
-                  </Box>
-                  }
-
-                  {loading ?
-                    <Skeleton variant='text' height={150} width={'max(100px, 50%)'} />
-                    :
-                    <>
-                      <Stack direction='row' spacing={1} alignItems='center'>
-                        <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
-                        <TextField
-                          multiline
-                          minRows={2}
-                          fullWidth
-                          variant="outlined"
-                          size="small"
-                          placeholder="Type a caption..."
-                          value={loadedSubtitle}
-                          onMouseDown={() => {
-                            setShowText(true);
-                            setSubtitleUserInteracted(true);
-                          }}
-                          onChange={(e) => {
-                            setLoadedSubtitle(e.target.value);
-                            syncActiveFormatsFromSelection();
-                          }}
-                          onFocus={() => {
-                            setTextFieldFocused(true);
-                            setSubtitleUserInteracted(true);
-                            syncActiveFormatsFromSelection();
-                          }}
-                          onBlur={() => setTextFieldFocused(false)}
-                          InputProps={{
-                            style: {
-                              fontFamily,
-                            },
-                          }}
-                          inputProps={{
-                            style: {
-                              textTransform: isLowercaseFont ? 'lowercase' : 'none',
-                            },
-                          }}
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              backgroundColor: 'white',
-                              color: 'black',
-                              '& fieldset': {
-                                borderColor: 'rgba(0, 0, 0, 0.23)',
-                              },
-                              '&:hover fieldset': {
-                                borderColor: 'rgba(0, 0, 0, 0.87)',
-                              },
-                              '&.Mui-focused fieldset': {
-                                borderColor: 'primary.main',
-                              },
-                            },
-                            '& .MuiInputBase-input': {
-                              color: 'black',
-                            },
-                          }}
-                          inputRef={textFieldRef}
-                        />
-                        </Stack>
-                      </Stack>
-                      {showText && loadedSubtitle?.trim() !== '' && (
+                      <Stack spacing={1.5} sx={{ flex: 1, minWidth: 0 }}>
                         <Button
                           size="medium"
                           fullWidth
                           variant="contained"
-                          onClick={handleClearCaption}
-                          sx={{ mt: 2, backgroundColor: '#f44336', '&:hover': { backgroundColor: '#d32f2f' } }}
-                          startIcon={<Close />}
+                          disabled
+                          startIcon={<Check />}
+                          sx={{
+                            backgroundColor: '#FF9800',
+                            color: '#111',
+                            '&:hover': { backgroundColor: '#F57C00' },
+                            '&.Mui-disabled': {
+                              backgroundColor: '#FF9800',
+                              color: '#111',
+                              opacity: 0.85,
+                            },
+                          }}
                         >
-                          Clear Caption
+                          Saved to collage
                         </Button>
-                      )}
-                      {textFieldFocused && showAds && (
-                        <Box sx={{ mt: 2 }}>
-                          <FixedMobileBannerAd />
+                        <Button
+                          size="medium"
+                          fullWidth
+                          variant="contained"
+                          startIcon={<Edit />}
+                          onClick={() => {
+                            if (!collagePreview?.projectId) return;
+                            navigate(`/projects/${collagePreview.projectId}`, {
+                              state: { projectId: collagePreview.projectId },
+                            });
+                          }}
+                          sx={{ backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
+                        >
+                          Edit Collage
+                        </Button>
+                        <Button
+                          size="medium"
+                          fullWidth
+                          variant="outlined"
+                          onClick={handleAddDone}
+                          sx={{
+                            borderColor: 'rgba(148, 163, 184, 0.6)',
+                            color: '#e5e7eb',
+                            '&:hover': {
+                              borderColor: 'rgba(148, 163, 184, 0.9)',
+                              backgroundColor: 'rgba(148, 163, 184, 0.08)',
+                            },
+                          }}
+                        >
+                          Done
+                        </Button>
+                      </Stack>
+                      <Stack spacing={1} sx={{ width: { xs: 140, sm: 160, md: 220 }, flexShrink: 0 }}>
+                        <Box
+                          sx={{
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            border: '1px solid rgba(255, 255, 255, 0.16)',
+                            backgroundColor: '#0f172a',
+                            width: '100%',
+                            maxWidth: { xs: 140, sm: 160, md: 220 },
+                            mx: 0,
+                          }}
+                        >
+                          {collagePreviewImage ? (
+                            <Box
+                              component="img"
+                              src={collagePreviewImage}
+                              alt={collagePreviewAlt}
+                              sx={{ width: '100%', display: 'block' }}
+                            />
+                          ) : (
+                            <Box
+                              sx={{
+                                height: { xs: 100, sm: 120, md: 140 },
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#e5e7eb',
+                              }}
+                            >
+                              <Typography variant="subtitle1">Collage updated</Typography>
+                            </Box>
+                          )}
                         </Box>
-                      )}
-                      {showText &&
-                        <>
-                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
-                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                            {/* <Tooltip title="Line Height">
-                              <IconButton>
-                                <VerticalAlignTop alt="Line Height" />
-                              </IconButton>
-                            </Tooltip> */}
-                            <Slider
-                              componentsProps={{
-                                root: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                  }
-                                },
-                                track: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                rail: {
-                                  style: {
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                thumb: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'auto' }),
-                                    backgroundColor: '#2079fe',
-                                    width: 20,
-                                    height: 20,
-                                  }
-                                }
-                              }}
-                              size="small"
-                              defaultValue={1}
-                              min={1}
-                              max={10}
-                              step={0.2}
-                              value={fontBottomMarginScaleFactor}
-                              onChange={(e, newValue) => {
-                                if (e.type === 'mousedown') {
-                                  return;
-                                }
-                                setFontBottomMarginScaleFactor(newValue)
-                              }}
-                              onChangeCommitted={() => updateCanvas()}
-                              marks
-                              valueLabelFormat='Bottom Margin'
-                              valueLabelDisplay
-                              onMouseDown={() => {
-                                setShowText(true)
-                              }}
-                              onTouchStart={() => {
-                                setShowText(true)
-                              }}
-                            />
-                          </Stack>
-                        </FormControl>
-                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Font Size</FormLabel>
-                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                            {/* <Tooltip title="Font Size">
-                              <IconButton>
-                                <FormatSize alt="Font Size" />
-                              </IconButton>
-                            </Tooltip> */}
-                            <Slider
-                              componentsProps={{
-                                root: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                  }
-                                },
-                                track: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                rail: {
-                                  style: {
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                thumb: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'auto' }),
-                                    backgroundColor: '#2079fe',
-                                    width: 20,
-                                    height: 20,
-                                  }
-                                }
-                              }}
-                              size="small"
-                              defaultValue={25}
-                              min={0.25}
-                              max={50}
-                              step={1}
-                              value={fontSizeScaleFactor * 25}
-                              onChange={(e, newValue) => {
-                                if (e.type === 'mousedown') {
-                                  return;
-                                }
-                                setFontSizeScaleFactor(newValue / 25)
-                              }}
-                              onChangeCommitted={() => updateCanvas()}
-                              marks
-                              valueLabelFormat='Font Size'
-                              valueLabelDisplay
-                              onMouseDown={() => {
-                                setShowText(true)
-                              }}
-                              onTouchStart={() => {
-                                setShowText(true)
-                              }}
-                            />
-                          </Stack>
-                        </FormControl>
-                        <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
-                          <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Line Height</FormLabel>
-                          <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
-                            {/* <Tooltip title="Line Height">
-                              <IconButton>
-                                <FormatLineSpacing alt="Line Height" />
-                              </IconButton>
-                            </Tooltip> */}
-                            <Slider
-                              componentsProps={{
-                                root: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                  }
-                                },
-                                track: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'none' }),
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                rail: {
-                                  style: {
-                                    backgroundColor: 'white',
-                                    height: 6,
-                                  }
-                                },
-                                thumb: {
-                                  style: {
-                                    ...(isSm && { pointerEvents: 'auto' }),
-                                    backgroundColor: '#2079fe',
-                                    width: 20,
-                                    height: 20,
-                                  }
-                                }
-                              }}
-                              size="small"
-                              defaultValue={1}
-                              min={1}
-                              max={5}
-                              step={0.2}
-                              value={fontLineHeightScaleFactor}
-                              onChange={(e, newValue) => {
-                                if (e.type === 'mousedown') {
-                                  return;
-                                }
-                                setFontLineHeightScaleFactor(newValue);
-                              }}
-                              onChangeCommitted={() => updateCanvas()}
-                              valueLabelFormat='Line Height'
-                              valueLabelDisplay
-                              onMouseDown={() => {
-                                setShowText(true)
-                              }}
-                              onTouchStart={() => {
-                                setShowText(true)
-                              }}
-                              marks
-                            />
-                          </Stack>
-                        </FormControl>
-                      </>
+                      </Stack>
+                    </Stack>
+                  </Stack>
+                ) : hasLibraryAccess ? (
+                  <Stack spacing={1.5}>
+                    <Button
+                      size="medium"
+                      fullWidth
+                      variant={savedToLibrary ? 'contained' : 'outlined'}
+                      onClick={handleAddToToggle}
+                      disabled={!currentImage || savingToLibrary || Boolean(addToSelection)}
+                      startIcon={
+                        savingToLibrary ? (
+                          <CircularProgress size={16} sx={{ color: savedToLibrary ? '#111' : '#FF9800' }} />
+                        ) : savedToLibrary ? (
+                          <Check />
+                        ) : (
+                          <Add />
+                        )
                       }
-                    </>
-                  }
+                      endIcon={!savedToLibrary && !addToSelection ? <ArrowDropDown /> : undefined}
+                      sx={{
+                        borderColor: savedToLibrary ? 'transparent' : '#FF9800',
+                        color: savedToLibrary ? '#111' : '#FF9800',
+                        backgroundColor: savedToLibrary ? '#FF9800' : 'transparent',
+                        '&:hover': savedToLibrary
+                          ? { backgroundColor: '#F57C00' }
+                          : { borderColor: '#F57C00', backgroundColor: 'rgba(255, 152, 0, 0.04)' },
+                        '&.Mui-disabled': {
+                          borderColor: savedToLibrary ? '#FF9800' : '#ccc',
+                          color: savedToLibrary ? '#111' : '#ccc',
+                          backgroundColor: savedToLibrary ? '#FF9800' : 'transparent',
+                        },
+                      }}
+                    >
+                      {savingToLibrary ? 'Saving…' : savedToLibrary ? 'Saved to Library' : 'Add to...'}
+                    </Button>
+                    <Collapse in={showAddToOptions} timeout={200} unmountOnExit>
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          size="medium"
+                          variant="contained"
+                          onClick={handleAddToLibrary}
+                          startIcon={<Collections />}
+                          disabled={!displayImage || !confirmedCid || savingToLibrary}
+                          sx={actionButtonSx}
+                        >
+                          Library
+                        </Button>
+                        <Button
+                          size="medium"
+                          variant="contained"
+                          onClick={handleAddToCollage}
+                          startIcon={<Dashboard />}
+                          disabled={addingToCollage || !currentImage}
+                          sx={actionButtonSx}
+                        >
+                          Collage
+                        </Button>
+                      </Stack>
+                    </Collapse>
+                    <Collapse in={showLibraryActions} timeout={200} unmountOnExit>
+                      <Stack spacing={1} sx={{ width: '100%' }}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <Button
+                            size="medium"
+                            variant="contained"
+                            onClick={handleAddToCollage}
+                            startIcon={<Add />}
+                            disabled={addingToCollage || !currentImage}
+                            sx={actionButtonSx}
+                          >
+                            Add to Collage
+                          </Button>
+                          <Button
+                            size="medium"
+                            variant="contained"
+                            component={RouterLink}
+                            to="/library"
+                            startIcon={<Collections />}
+                            sx={actionButtonSx}
+                          >
+                            My Library
+                          </Button>
+                        </Stack>
+                        <Button
+                          size="medium"
+                          fullWidth
+                          variant="outlined"
+                          onClick={handleAddDone}
+                          sx={{
+                            borderColor: 'rgba(148, 163, 184, 0.6)',
+                            color: '#e5e7eb',
+                            '&:hover': {
+                              borderColor: 'rgba(148, 163, 184, 0.9)',
+                              backgroundColor: 'rgba(148, 163, 184, 0.08)',
+                            },
+                          }}
+                        >
+                          Done
+                        </Button>
+                      </Stack>
+                    </Collapse>
+                    <Collapse in={showCollageTiles} timeout={200} unmountOnExit>
+                      <Stack spacing={1}>
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={handleCollageBack}
+                          sx={{ alignSelf: 'flex-start', textTransform: 'none', color: 'text.secondary' }}
+                        >
+                          Back
+                        </Button>
+                        <Typography variant="subtitle2" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                          Add to collage
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                            gap: 1,
+                            width: '100%',
+                          }}
+                        >
+                          <ButtonBase
+                            onClick={handleCollageNewTile}
+                            disabled={!collageReady || (collageTilesBusy && activeCollageTile !== 'new')}
+                            sx={{ width: '100%' }}
+                          >
+                            <Box sx={collageTileSx}>
+                              {activeCollageTile === 'new' && addingToCollage ? (
+                                <CircularProgress size={28} sx={{ color: '#e5e7eb' }} />
+                              ) : (
+                                <>
+                                  <Add sx={{ fontSize: 28 }} />
+                                  <Typography variant="subtitle2">New</Typography>
+                                </>
+                              )}
+                            </Box>
+                          </ButtonBase>
+                          <ButtonBase
+                            onClick={() => handleCollageRecentTile(recentCollage)}
+                            disabled={
+                              !collageReady ||
+                              !recentCollage ||
+                              (collageTilesBusy && activeCollageTile !== `recent:${recentCollage?.id}`)
+                            }
+                            sx={{ width: '100%', ...collageTileDisabledSx }}
+                          >
+                            <Box sx={{ ...collageTileSx, display: 'block', padding: 0 }}>
+                              {recentCollageThumbnail ? (
+                                <Box
+                                  component="img"
+                                  src={recentCollageThumbnail}
+                                  alt={recentCollage.name || 'Recent collage'}
+                                  sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                />
+                              ) : recentCollage ? (
+                                <Skeleton
+                                  variant="rectangular"
+                                  sx={{ width: '100%', height: '100%' }}
+                                />
+                              ) : (
+                                <Box
+                                  sx={{
+                                    width: '100%',
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: 2,
+                                  }}
+                                >
+                                  <Typography variant="subtitle2">No recent collages</Typography>
+                                </Box>
+                              )}
+                              {recentCollage && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    height: 48,
+                                    display: 'flex',
+                                    alignItems: 'flex-end',
+                                    justifyContent: 'center',
+                                    paddingBottom: 0.75,
+                                    background: 'linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.85) 100%)',
+                                    color: '#f8fafc',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    letterSpacing: 0.3,
+                                    textTransform: 'none',
+                                    pointerEvents: 'none',
+                                  }}
+                                >
+                                  Recent Edit
+                                </Box>
+                              )}
+                              {activeCollageTile === `recent:${recentCollage?.id}` && addingToCollage && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                                  }}
+                                >
+                                  <CircularProgress size={24} sx={{ color: '#e5e7eb' }} />
+                                </Box>
+                              )}
+                            </Box>
+                          </ButtonBase>
+                          <ButtonBase
+                            onClick={handleViewMoreOpen}
+                            disabled={
+                              !collageReady ||
+                              !hasCollageProjects ||
+                              (collageTilesBusy && activeCollageTile !== 'more')
+                            }
+                            sx={{ width: '100%', ...collageTileDisabledSx }}
+                          >
+                            <Box sx={collageTileSx}>
+                              {activeCollageTile === 'more' && collageProjectsLoading ? (
+                                <CircularProgress size={28} sx={{ color: '#e5e7eb' }} />
+                              ) : (
+                                <>
+                                  <PhotoLibrary sx={{ fontSize: 26 }} />
+                                  <Typography variant="subtitle2">View more</Typography>
+                                </>
+                              )}
+                            </Box>
+                          </ButtonBase>
+                        </Box>
+                        <Collapse in={collagePickerOpen} timeout={200} unmountOnExit>
+                          <Stack spacing={1} sx={{ mt: 1 }}>
+                            <Stack direction="row" alignItems="center" justifyContent="space-between">
+                              <Typography variant="subtitle2" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                                Your collages
+                              </Typography>
+                              <Stack direction="row" spacing={0.5} alignItems="center">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => setCollagePickerPage((prev) => Math.max(0, prev - 1))}
+                                  disabled={collageTilesBusy || !collagePickerHasPrev}
+                                >
+                                  <ArrowBackIos fontSize="small" />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => setCollagePickerPage((prev) => (collagePickerHasNext ? prev + 1 : prev))}
+                                  disabled={collageTilesBusy || !collagePickerHasNext}
+                                >
+                                  <ArrowForwardIos fontSize="small" />
+                                </IconButton>
+                              </Stack>
+                            </Stack>
+                            <Box
+                              sx={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                                gap: 1,
+                                width: '100%',
+                              }}
+                            >
+                              {collageProjectsLoading ? (
+                                Array.from({ length: COLLAGE_PICKER_PAGE_SIZE }).map((_, index) => (
+                                  <Skeleton
+                                    key={`collage-picker-skeleton-${index}`}
+                                    variant="rounded"
+                                    sx={{ height: collageTileSx.height }}
+                                  />
+                                ))
+                              ) : collagePickerItems.length > 0 ? (
+                                collagePickerItems.map((project) => {
+                                  const tileKey = `project:${project.id}`;
+                                  const isActive = activeCollageTile === tileKey && addingToCollage;
+                                  const thumbnail = project.thumbnail || collageThumbnails[project.id] || null;
+                                  return (
+                                    <ButtonBase
+                                      key={project.id}
+                                      onClick={() => handleCollagePickerSelect(project)}
+                                      disabled={collageTilesBusy && activeCollageTile !== tileKey}
+                                      sx={{ width: '100%' }}
+                                    >
+                                      <Box sx={{ ...collageTileSx, display: 'block', padding: 0 }}>
+                                        {thumbnail ? (
+                                          <Box
+                                            component="img"
+                                            src={thumbnail}
+                                            alt={project.name || 'Collage'}
+                                            sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                          />
+                                        ) : (
+                                          <Skeleton
+                                            variant="rectangular"
+                                            sx={{ width: '100%', height: '100%' }}
+                                          />
+                                        )}
+                                        {isActive && (
+                                          <Box
+                                            sx={{
+                                              position: 'absolute',
+                                              inset: 0,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                                            }}
+                                          >
+                                            <CircularProgress size={28} sx={{ color: '#e5e7eb' }} />
+                                          </Box>
+                                        )}
+                                      </Box>
+                                    </ButtonBase>
+                                  );
+                                })
+                              ) : (
+                                <Box
+                                  sx={{
+                                    gridColumn: '1 / -1',
+                                    borderRadius: 2,
+                                    border: '1px dashed rgba(255, 255, 255, 0.16)',
+                                    padding: 2,
+                                    textAlign: 'center',
+                                  }}
+                                >
+                                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                    No collages yet.
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          </Stack>
+                        </Collapse>
+                      </Stack>
+                    </Collapse>
+                  </Stack>
+                ) : null}
+              </Box>
+              <Collapse in={!shouldCollapseEditor} timeout={250} unmountOnExit>
+                <Stack spacing={1.5} sx={{ width: '100%' }}>
+                  <Box sx={{ width: '100%' }}>
+                    {/* Formatting Toolbar */}
+                    {showText &&
+                      <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                      <ToggleButtonGroup
+                        value={activeFormats}
+                        onChange={(event, newFormats) => {
+                          const clickedFormat = event.currentTarget?.value;
+                          const styleKeyMap = { bold: 'bold', italic: 'italic', underline: 'underline' };
+                          if (clickedFormat && styleKeyMap[clickedFormat]) {
+                            const handledWithInline = applyInlineStyleToggle(styleKeyMap[clickedFormat]);
+                            if (handledWithInline) {
+                              setShowText(true);
+                              return;
+                            }
+                          }
 
-                {/* </CardContent>
-              </Card> */}
-            </Box>
-            </Collapse>
-            {/* {alertOpenTapToEdit && (
-              <Alert
-                severity='success'
-                sx={{ marginTop: 1.5 }}
-                action={
-                  <IconButton
-                    aria-label="close"
-                    color="inherit"
-                    size="small"
-                    onClick={() => {
-                      sessionStorage.setItem('alertDismissed-98ruio', 'true');
-                      setAlertOpenTapToEdit(!alertOpenTapToEdit);
-                    }}
+                          // If no text to format, just update UI state (don't persist to base styles)
+                          setActiveFormats(newFormats);
+                          setShowText(true);
+                        }}
+                        aria-label="text formatting"
+                        sx={{ flexShrink: 0 }}
+                      >
+                        <ToggleButton size='small' value="bold" aria-label="bold">
+                          <FormatBold />
+                        </ToggleButton>
+                        <ToggleButton size='small' value="italic" aria-label="italic">
+                          <FormatItalic />
+                        </ToggleButton>
+                        <ToggleButton size='small' value="underline" aria-label="underline">
+                          <FormatUnderlined />
+                        </ToggleButton>
+                      </ToggleButtonGroup>
+                      <ToggleButtonGroup
+                        sx={{ mx: 1, flexShrink: 0 }}
+                        value={[colorPickerShowing && 'fontColor'].filter(Boolean)}
+                        onChange={(event, newFormats) => {
+                          setColorPickerShowing(newFormats.includes('fontColor'))
+                          setShowText(true)
+                        }}
+                        aria-label="text formatting"
+                      >
+                        <ToggleButton ref={colorPicker} size='small' value="fontColor" aria-label="font color">
+                          <FormatColorFill sx={{ color: colorPickerColor }} />
+                        </ToggleButton>
+                      </ToggleButtonGroup>
+                      <FontSelector
+                        selectedFont={fontFamily}
+                        onSelectFont={setFontFamily}
+                        onLowercaseChange={setIsLowercaseFont}
+                      />
+                      <Popover
+                        open={colorPickerShowing}
+                        anchorEl={colorPicker.current}
+                        onClose={() => setColorPickerShowing(false)}
+                        id="colorPicker"
+                        anchorOrigin={{
+                          vertical: 'bottom',
+                          horizontal: 'center',
+                        }}
+                        transformOrigin={{
+                          vertical: 'top',
+                          horizontal: 'center',
+                        }}
+                      >
+                        <div>
+                          <TwitterPickerWrapper
+                            onChangeComplete={(color) => changeColor(color)}
+                            color={colorPickerColor}
+                            colors={[
+                              '#FFFFFF',
+                              '#FFFF00',
+                              '#000000',
+                              '#FF4136',
+                              '#2ECC40',
+                              '#0052CC',
+                              '#FF851B',
+                              '#B10DC9',
+                              '#39CCCC',
+                              '#F012BE',
+                            ]}
+                            width="280px"
+                          />
+                        </div>
+                      </Popover>
+                    </Box>
+                    }
+
+                    {loading ?
+                      <Skeleton variant='text' height={150} width={'max(100px, 50%)'} />
+                      :
+                      <>
+                        <Stack direction='row' spacing={1} alignItems='center'>
+                          <Stack direction='row' alignItems='center' sx={{ width: '100%' }}>
+                          <TextField
+                            multiline
+                            minRows={2}
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            placeholder="Type a caption..."
+                            value={loadedSubtitle}
+                            onMouseDown={() => {
+                              setShowText(true);
+                              setSubtitleUserInteracted(true);
+                            }}
+                            onChange={(e) => {
+                              setLoadedSubtitle(e.target.value);
+                              syncActiveFormatsFromSelection();
+                            }}
+                            onFocus={() => {
+                              setTextFieldFocused(true);
+                              setSubtitleUserInteracted(true);
+                              syncActiveFormatsFromSelection();
+                            }}
+                            onBlur={() => setTextFieldFocused(false)}
+                            InputProps={{
+                              style: {
+                                fontFamily,
+                              },
+                            }}
+                            inputProps={{
+                              style: {
+                                textTransform: isLowercaseFont ? 'lowercase' : 'none',
+                              },
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: 'white',
+                                color: 'black',
+                                '& fieldset': {
+                                  borderColor: 'rgba(0, 0, 0, 0.23)',
+                                },
+                                '&:hover fieldset': {
+                                  borderColor: 'rgba(0, 0, 0, 0.87)',
+                                },
+                                '&.Mui-focused fieldset': {
+                                  borderColor: 'primary.main',
+                                },
+                              },
+                              '& .MuiInputBase-input': {
+                                color: 'black',
+                              },
+                            }}
+                            inputRef={textFieldRef}
+                          />
+                          </Stack>
+                        </Stack>
+                        {showText && loadedSubtitle?.trim() !== '' && (
+                          <Button
+                            size="medium"
+                            fullWidth
+                            variant="contained"
+                            onClick={handleClearCaption}
+                            sx={{ mt: 2, backgroundColor: '#f44336', '&:hover': { backgroundColor: '#d32f2f' } }}
+                            startIcon={<Close />}
+                          >
+                            Clear Caption
+                          </Button>
+                        )}
+                        {textFieldFocused && showAds && (
+                          <Box sx={{ mt: 2 }}>
+                            <FixedMobileBannerAd />
+                          </Box>
+                        )}
+                        {showText &&
+                          <>
+                          <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                            <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Bottom Margin</FormLabel>
+                            <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                              {/* <Tooltip title="Line Height">
+                                <IconButton>
+                                  <VerticalAlignTop alt="Line Height" />
+                                </IconButton>
+                              </Tooltip> */}
+                              <Slider
+                                componentsProps={{
+                                  root: {
+                                    style: {
+                                      ...(isSm && { pointerEvents: 'none' }),
+                                    }
+                                  },
+                                  track: {
+                                    style: {
+                                      ...(isSm && { pointerEvents: 'none' }),
+                                      backgroundColor: 'white',
+                                      height: 6,
+                                    }
+                                  },
+                                  rail: {
+                                    style: {
+                                      backgroundColor: 'white',
+                                      height: 6,
+                                    }
+                                  },
+                                  thumb: {
+                                    style: {
+                                      ...(isSm && { pointerEvents: 'auto' }),
+                                      backgroundColor: '#2079fe',
+                                      width: 20,
+                                      height: 20,
+                                    }
+                                  }
+                                }}
+                                size="small"
+                                defaultValue={1}
+                                min={1}
+                                max={10}
+                                step={0.2}
+                                value={fontBottomMarginScaleFactor}
+                                onChange={(e, newValue) => {
+                                  if (e.type === 'mousedown') {
+                                    return;
+                                  }
+                                  setFontBottomMarginScaleFactor(newValue)
+                                }}
+                                onChangeCommitted={() => updateCanvas()}
+                                marks
+                                valueLabelFormat='Bottom Margin'
+                                valueLabelDisplay
+                                onMouseDown={() => {
+                                  setShowText(true)
+                                }}
+                                onTouchStart={() => {
+                                  setShowText(true)
+                                }}
+                              />
+                            </Stack>
+                          </FormControl>
+                          <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                            <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Font Size</FormLabel>
+                            <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                              {/* <Tooltip title="Font Size">
+                                <IconButton>
+                                  <FormatSize alt="Font Size" />
+                                </IconButton>
+                              </Tooltip> */}
+                              <Slider
+                                componentsProps={{
+                                  root: {
+                                    style: {
+                                      ...(isSm && { pointerEvents: 'none' }),
+                                    }
+                                  },
+                                  track: {
+                                    style: {
+                                      ...(isSm && { pointerEvents: 'none' }),
+                                      backgroundColor: 'white',
+                                      height: 6,
+                                    }
+                                  },
+                                  rail: {
+                                    style: {
+                                      backgroundColor: 'white',
+                                      height: 6,
+                                    }
+                                  },
+                                  thumb: {
+                                    style: {
+                                      ...(isSm && { pointerEvents: 'auto' }),
+                                      backgroundColor: '#2079fe',
+                                      width: 20,
+                                      height: 20,
+                                    }
+                                  }
+                                }}
+                                size="small"
+                                defaultValue={25}
+                                min={0.25}
+                                max={50}
+                                step={1}
+                                value={fontSizeScaleFactor * 25}
+                                onChange={(e, newValue) => {
+                                  if (e.type === 'mousedown') {
+                                    return;
+                                  }
+                                  setFontSizeScaleFactor(newValue / 25)
+                                }}
+                                onChangeCommitted={() => updateCanvas()}
+                                marks
+                                valueLabelFormat='Font Size'
+                                valueLabelDisplay
+                                onMouseDown={() => {
+                                  setShowText(true)
+                                }}
+                                onTouchStart={() => {
+                                  setShowText(true)
+                                }}
+                              />
+                            </Stack>
+                          </FormControl>
+                          <FormControl fullWidth variant="outlined" sx={{ mt: 2, border: '1px solid rgba(191, 191, 191, 0.57)', borderRadius: '8px', py: 1, px: 2 }}>
+                            <FormLabel sx={{ fontSize: '0.875rem', fontWeight: 'bold', mb: 1, textAlign: 'center' }}>Line Height</FormLabel>
+                            <Stack spacing={2} direction="row" p={0} alignItems={'center'}>
+                              {/* <Tooltip title="Line Height">
+                                <IconButton>
+                                  <FormatLineSpacing alt="Line Height" />
+                                </IconButton>
+                              </Tooltip> */}
+                              <Slider
+                                componentsProps={{
+                                  root: {
+                                    style: {
+                                      ...(isSm && { pointerEvents: 'none' }),
+                                    }
+                                  },
+                                  track: {
+                                    style: {
+                                      ...(isSm && { pointerEvents: 'none' }),
+                                      backgroundColor: 'white',
+                                      height: 6,
+                                    }
+                                  },
+                                  rail: {
+                                    style: {
+                                      backgroundColor: 'white',
+                                      height: 6,
+                                    }
+                                  },
+                                  thumb: {
+                                    style: {
+                                      ...(isSm && { pointerEvents: 'auto' }),
+                                      backgroundColor: '#2079fe',
+                                      width: 20,
+                                      height: 20,
+                                    }
+                                  }
+                                }}
+                                size="small"
+                                defaultValue={1}
+                                min={1}
+                                max={5}
+                                step={0.2}
+                                value={fontLineHeightScaleFactor}
+                                onChange={(e, newValue) => {
+                                  if (e.type === 'mousedown') {
+                                    return;
+                                  }
+                                  setFontLineHeightScaleFactor(newValue);
+                                }}
+                                onChangeCommitted={() => updateCanvas()}
+                                valueLabelFormat='Line Height'
+                                valueLabelDisplay
+                                onMouseDown={() => {
+                                  setShowText(true)
+                                }}
+                                onTouchStart={() => {
+                                  setShowText(true)
+                                }}
+                                marks
+                              />
+                            </Stack>
+                          </FormControl>
+                        </>
+                        }
+                      </>
+                    }
+                  </Box>
+                  <Button
+                    size="medium"
+                    fullWidth
+                    variant="contained"
+                    onClick={handleAdvancedEditor}
+                    startIcon={<Edit />}
+                    disabled={!currentImage}
+                    sx={{ backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
                   >
-                    <Close fontSize="inherit" />
-                  </IconButton>
-                }
-              >
-                <b>New!</b> Tap the text ☝️ to edit your caption
-              </Alert>
-            )} */}
+                    Advanced Editor
+                  </Button>
+                </Stack>
+              </Collapse>
+            </Stack>
 
-            {/* <Button
-              size="medium"
-              fullWidth
-              variant="contained"
-              // to={`/editor/${fid}${getCurrentQueryString()}`}
-              onClick={() => setShowText(!showText)}
-              sx={{ marginTop: 2, '&:hover': { backgroundColor: '#737373' } }}
-              startIcon={showText ? <VisibilityOff /> : <Visibility />}
-            >
-              {showText ? "Disable" : "Enable"} Caption
-            </Button> */}
-
-            <Collapse in={!savedToLibrary} timeout={250}>
-              {!showText &&
-                <Button
-                size="medium"
-                fullWidth
-                variant="contained"
-                component={RouterLink}
-                sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: theme => theme.palette.grey[400] } }}
-                // startIcon={<Edit />}
-                onClick={() => {
-                  setShowText(true);
-                  setSubtitleUserInteracted(true);
-                }}
-              >
-                Make A Meme
-              </Button>
-              }
-
-                <Button
-                  size="medium"
-                  fullWidth
-                  variant="contained"
-                  to={`/editor/${cid}/${season}/${episode}/${frame}${(fineTuningIndex || fineTuningLoadStarted) ? `/${selectedFrameIndex}` : ''}${encodedSearchTerm ? `?searchTerm=${encodedSearchTerm}` : ''}`}
-                  component={RouterLink}
-                  sx={{ my: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a045' } }}
-                  startIcon={<Edit />}
-                >
-                  Advanced Editor
-                </Button>
-            </Collapse>
-
-              {/* Library actions are now above text controls in right column */}
           </Grid>
           {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
             <Grid item xs={12} my={1}>
@@ -2301,7 +3438,7 @@ useEffect(() => {
                     {subtitlesExpanded ? (
                       <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                     ) : (
-                      <Menu style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
+                      <MenuIcon style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
                     )}
                     {subtitlesExpanded ? 'Hide' : 'View'} Nearby Subtitles
                   </Typography>
@@ -2381,13 +3518,13 @@ useEffect(() => {
                                     md: { backgroundColor: 'ButtonHighlight' },
                                   },
                                 }}
-                                onClick={() => {
-                                  navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
-                                  handleSnackbarOpen();
-                                }}
-                              >
-                                <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
-                              </Fab>
+                              onClick={() => {
+                                navigator.clipboard.writeText(result?.subtitle.replace(/\n/g, ' '));
+                                handleSnackbarOpen('Copied to clipboard!');
+                              }}
+                            >
+                              <ContentCopy sx={{ color: 'rgb(89, 89, 89)' }} />
+                            </Fab>
                             </ListItemIcon>
                           </ListItem>
                         ))}
@@ -2397,19 +3534,29 @@ useEffect(() => {
             </Card>
           </Grid>
 
+          <ReplaceCollageImageDialog
+            open={collageReplaceDialogOpen}
+            incomingImageUrl={collageReplaceContext?.incomingPreview || null}
+            existingImages={collageReplaceOptions}
+            onClose={handleCollageReplaceCancel}
+            onConfirm={handleCollageReplaceConfirm}
+            busy={addingToCollage}
+          />
           <Snackbar
-            open={snackbarOpen}
-            autoHideDuration={2000}
-            severity="success"
+            open={snackbarState.open}
+            autoHideDuration={snackbarState.duration}
             onClose={handleSnackbarClose}
-            message="Copied to clipboard!"
+            message={snackbarState.message || 'Done'}
           >
-            <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
-              Copied to clipboard!
+            <Alert
+              onClose={handleSnackbarClose}
+              severity={snackbarState.severity}
+              action={snackbarState.action}
+              sx={{ width: '100%' }}
+            >
+              {snackbarState.message || 'Done'}
             </Alert>
           </Snackbar>
-
-          {/* Inline confirmation replaces library snackbar */}
 
           <Grid item xs={12}>
             <Typography variant="h6">Surrounding Frames</Typography>

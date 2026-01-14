@@ -2009,6 +2009,7 @@ export const createMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -2044,6 +2045,7 @@ export const updateMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -2079,6 +2081,7 @@ export const deleteMagicResult = /* GraphQL */ `
       }
       prompt
       results
+      error
       createdAt
       updatedAt
       magicResultUserId
@@ -2103,6 +2106,7 @@ export const createTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2124,6 +2128,7 @@ export const updateTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2145,6 +2150,7 @@ export const deleteTemplate = /* GraphQL */ `
       thumbnailUpdatedAt
       createdAt
       updatedAt
+      owner
       __typename
     }
   }
@@ -2263,6 +2269,9 @@ export const createWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename
@@ -2278,6 +2287,9 @@ export const updateWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename
@@ -2293,6 +2305,9 @@ export const deleteWebsiteSetting = /* GraphQL */ `
       id
       fullSiteMaintenance
       universalSearchMaintenance
+      openAIRateLimit
+      nanoBananaRateLimit
+      moderationThreshold
       createdAt
       updatedAt
       __typename
@@ -2539,6 +2554,114 @@ export const deleteSearchFilterGroup = /* GraphQL */ `
       name
       filters
       owner
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createMagicEditHistory = /* GraphQL */ `
+  mutation CreateMagicEditHistory(
+    $input: CreateMagicEditHistoryInput!
+    $condition: ModelMagicEditHistoryConditionInput
+  ) {
+    createMagicEditHistory(input: $input, condition: $condition) {
+      id
+      prompt
+      imageKey
+      imageUrl
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateMagicEditHistory = /* GraphQL */ `
+  mutation UpdateMagicEditHistory(
+    $input: UpdateMagicEditHistoryInput!
+    $condition: ModelMagicEditHistoryConditionInput
+  ) {
+    updateMagicEditHistory(input: $input, condition: $condition) {
+      id
+      prompt
+      imageKey
+      imageUrl
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteMagicEditHistory = /* GraphQL */ `
+  mutation DeleteMagicEditHistory(
+    $input: DeleteMagicEditHistoryInput!
+    $condition: ModelMagicEditHistoryConditionInput
+  ) {
+    deleteMagicEditHistory(input: $input, condition: $condition) {
+      id
+      prompt
+      imageKey
+      imageUrl
+      metadata
+      status
+      createdAt
+      owner
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createRateLimit = /* GraphQL */ `
+  mutation CreateRateLimit(
+    $input: CreateRateLimitInput!
+    $condition: ModelRateLimitConditionInput
+  ) {
+    createRateLimit(input: $input, condition: $condition) {
+      id
+      currentUsage
+      openaiUsage
+      geminiUsage
+      adminAlerts
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateRateLimit = /* GraphQL */ `
+  mutation UpdateRateLimit(
+    $input: UpdateRateLimitInput!
+    $condition: ModelRateLimitConditionInput
+  ) {
+    updateRateLimit(input: $input, condition: $condition) {
+      id
+      currentUsage
+      openaiUsage
+      geminiUsage
+      adminAlerts
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteRateLimit = /* GraphQL */ `
+  mutation DeleteRateLimit(
+    $input: DeleteRateLimitInput!
+    $condition: ModelRateLimitConditionInput
+  ) {
+    deleteRateLimit(input: $input, condition: $condition) {
+      id
+      currentUsage
+      openaiUsage
+      geminiUsage
+      adminAlerts
       createdAt
       updatedAt
       __typename
