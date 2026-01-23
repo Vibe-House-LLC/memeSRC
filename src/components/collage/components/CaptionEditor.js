@@ -57,6 +57,8 @@ const TEXT_COLOR_PRESETS = [
   { color: '#00ffff', name: 'Cyan' },
 ];
 
+const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
+
 // Horizontal scrollable container for horizontal scrolling sections
 const HorizontalScroller = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -193,6 +195,16 @@ const CaptionEditor = ({
   
   const textFieldRefs = useRef({});
   const selectionCacheRef = useRef({});
+  const inlineParseCacheRef = useRef({
+    rawValue: '',
+    cleanText: '',
+    ranges: [],
+    hasMarkup: false,
+    rawToPlain: null,
+    plainToRaw: null,
+  });
+  const formatSyncRafRef = useRef(null);
+  const pendingFormatSyncRef = useRef(null);
   const [activeInlineFormats, setActiveInlineFormats] = useState([]);
 
   // State for text color scroll indicators
@@ -213,11 +225,45 @@ const CaptionEditor = ({
     panelTexts[panelId]?.rawContent ?? panelTexts[panelId]?.content ?? ''
   ), [panelTexts, panelId]);
 
-  const getParsedText = useCallback(() => {
-    const rawValue = getRawTextValue();
-    const parsed = parseFormattedText(rawValue);
-    return { rawValue, ...parsed };
+  const getParsedText = useCallback((rawValueOverride) => {
+    const rawValue = typeof rawValueOverride === 'string' ? rawValueOverride : getRawTextValue();
+    const cache = inlineParseCacheRef.current;
+    if (cache.rawValue === rawValue) {
+      return cache;
+    }
+
+    const hasMarkup = INLINE_TAG_REGEX.test(rawValue);
+    let cleanText = rawValue;
+    let ranges = [];
+
+    if (hasMarkup) {
+      const parsed = parseFormattedText(rawValue);
+      cleanText = parsed.cleanText;
+      ranges = parsed.ranges;
+    } else if (rawValue.length > 0) {
+      ranges = [{ start: 0, end: rawValue.length, style: { bold: false, italic: false, underline: false } }];
+    }
+
+    const next = {
+      rawValue,
+      cleanText,
+      ranges,
+      hasMarkup,
+      rawToPlain: null,
+      plainToRaw: null,
+    };
+    inlineParseCacheRef.current = next;
+    return next;
   }, [getRawTextValue]);
+
+  const ensureInlineIndexMaps = useCallback((parsed) => {
+    if (!parsed.rawToPlain || !parsed.plainToRaw) {
+      const maps = buildIndexMaps(parsed.rawValue);
+      parsed.rawToPlain = maps.rawToPlain;
+      parsed.plainToRaw = maps.plainToRaw;
+    }
+    return parsed;
+  }, [buildIndexMaps]);
 
   // Check if there's a saved custom color that's different from preset colors
   const hasSavedCustomTextColor = savedCustomTextColor && !TEXT_COLOR_PRESETS.some(c => c.color === savedCustomTextColor);
@@ -258,7 +304,7 @@ const CaptionEditor = ({
     setShowInlineColor(false);
   };
 
-  const handleTextChange = useCallback((property, value, rawValueOverride) => {
+  const handleTextChange = useCallback((property, value, rawValueOverride, parsedOverride) => {
     if (!updatePanelText) return;
 
     const currentText = panelTexts[panelId] || {};
@@ -266,7 +312,10 @@ const CaptionEditor = ({
 
     if (property === 'content') {
       const rawValue = rawValueOverride ?? value ?? '';
-      const { cleanText } = parseFormattedText(rawValue);
+      const parsed = parsedOverride && parsedOverride.rawValue === rawValue
+        ? parsedOverride
+        : parseFormattedText(rawValue);
+      const { cleanText } = parsed;
       const cleanValue = value ?? cleanText ?? '';
       const previousParsed = parseFormattedText(currentText.rawContent ?? currentText.content ?? '');
 
@@ -416,11 +465,17 @@ const CaptionEditor = ({
     return currentValue || 0;
   }, [panelTexts, panelId, lastUsedTextSettings, panelRects, calculateOptimalFontSize, textScaleFactor, getParsedText]);
 
-  const syncActiveFormatsFromSelection = useCallback((overrideSelection) => {
+  const syncActiveFormatsFromSelection = useCallback((overrideSelection, rawValueOverride, parsedOverride) => {
     const inputEl = textFieldRefs.current[panelId];
     if (!inputEl) return;
 
-    const { rawValue, cleanText, ranges } = getParsedText();
+    const rawValue = typeof rawValueOverride === 'string'
+      ? rawValueOverride
+      : undefined;
+    const parsed = parsedOverride && parsedOverride.rawValue === rawValueOverride
+      ? parsedOverride
+      : getParsedText(rawValue);
+    const { cleanText, ranges, hasMarkup } = parsed;
 
     if (cleanText.length === 0) {
       setActiveInlineFormats([]);
@@ -437,7 +492,12 @@ const CaptionEditor = ({
       hadFocus: true,
     };
 
-    const { rawToPlain } = buildIndexMaps(rawValue);
+    if (!hasMarkup) {
+      setActiveInlineFormats([]);
+      return;
+    }
+
+    const { rawToPlain } = ensureInlineIndexMaps(parsed);
     const { start, end } = resolveSelectionBounds(
       ranges,
       cleanText.length,
@@ -448,18 +508,44 @@ const CaptionEditor = ({
 
     const activeFormats = getActiveFormatsFromRanges(ranges, start, end);
     setActiveInlineFormats(activeFormats);
-  }, [getParsedText, panelId]);
+  }, [ensureInlineIndexMaps, getParsedText, panelId]);
 
-  const syncActiveFormatsRef = React.useRef(syncActiveFormatsFromSelection);
-  React.useEffect(() => {
-    syncActiveFormatsRef.current = syncActiveFormatsFromSelection;
+  const scheduleSyncActiveFormats = useCallback((overrideSelection, rawValueOverride, parsedOverride) => {
+    pendingFormatSyncRef.current = { overrideSelection, rawValueOverride, parsedOverride };
+    if (formatSyncRafRef.current !== null) return;
+
+    formatSyncRafRef.current = requestAnimationFrame(() => {
+      formatSyncRafRef.current = null;
+      const pending = pendingFormatSyncRef.current;
+      pendingFormatSyncRef.current = null;
+      if (pending) {
+        syncActiveFormatsFromSelection(
+          pending.overrideSelection,
+          pending.rawValueOverride,
+          pending.parsedOverride,
+        );
+      }
+    });
   }, [syncActiveFormatsFromSelection]);
+
+  useEffect(() => () => {
+    if (formatSyncRafRef.current !== null) {
+      cancelAnimationFrame(formatSyncRafRef.current);
+      formatSyncRafRef.current = null;
+    }
+  }, []);
+
+  const syncActiveFormatsRef = React.useRef(scheduleSyncActiveFormats);
+  React.useEffect(() => {
+    syncActiveFormatsRef.current = scheduleSyncActiveFormats;
+  }, [scheduleSyncActiveFormats]);
 
   const applyInlineStyleToggle = useCallback((styleKey) => {
     const inputEl = textFieldRefs.current[panelId];
     if (!inputEl) return false;
 
-    const { rawValue, cleanText, ranges } = getParsedText();
+    const parsed = getParsedText();
+    const { rawValue, cleanText, ranges } = parsed;
 
     if (cleanText.length === 0) {
       return false;
@@ -483,7 +569,7 @@ const CaptionEditor = ({
       : usedCachedSelection
         ? cache.end
         : rawValue.length;
-    const { rawToPlain } = buildIndexMaps(rawValue);
+    const { rawToPlain } = ensureInlineIndexMaps(parsed);
     const selectionIsCollapsed = selectionStart === selectionEnd;
     const originalPlainStart = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
     const originalPlainEnd = rawToPlain[Math.min(selectionEnd, rawToPlain.length - 1)] ?? originalPlainStart;
@@ -548,7 +634,7 @@ const CaptionEditor = ({
     });
 
     return true;
-  }, [getParsedText, panelId, handleTextChange]);
+  }, [ensureInlineIndexMaps, getParsedText, panelId, handleTextChange]);
 
   // Slider interaction handlers
   const handleSliderMouseDown = useCallback((propertyName) => {
@@ -577,7 +663,7 @@ const CaptionEditor = ({
         timestamp: Date.now(),
         hadFocus: true,
       };
-      syncActiveFormatsFromSelection({
+      scheduleSyncActiveFormats({
         start: inputEl.selectionStart,
         end: inputEl.selectionEnd,
       });
@@ -587,7 +673,7 @@ const CaptionEditor = ({
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [panelId, syncActiveFormatsFromSelection]);
+  }, [panelId, scheduleSyncActiveFormats]);
 
   // Text color scroll event handling
   useEffect(() => {
@@ -712,18 +798,20 @@ const CaptionEditor = ({
                 placeholder="Add Caption"
                 value={rawTextValue}
                 onChange={(e) => {
-                  handleTextChange('content', e.target.value);
-                  syncActiveFormatsFromSelection();
+                  const rawValue = e.target.value;
+                  const parsed = getParsedText(rawValue);
+                  handleTextChange('content', rawValue, rawValue, parsed);
+                  scheduleSyncActiveFormats(undefined, rawValue, parsed);
                 }}
                 inputRef={(el) => {
                   if (el) {
                     textFieldRefs.current[panelId] = el;
                   }
                 }}
-                onFocus={() => syncActiveFormatsFromSelection()}
-                onSelect={() => syncActiveFormatsFromSelection()}
-                onKeyUp={() => syncActiveFormatsFromSelection()}
-                onMouseUp={() => syncActiveFormatsFromSelection()}
+                onFocus={() => scheduleSyncActiveFormats()}
+                onSelect={() => scheduleSyncActiveFormats()}
+                onKeyUp={() => scheduleSyncActiveFormats()}
+                onMouseUp={() => scheduleSyncActiveFormats()}
                 size="small"
                 sx={{
                   mb: 1,
