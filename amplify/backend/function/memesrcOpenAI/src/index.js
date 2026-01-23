@@ -862,7 +862,7 @@ exports.handler = async (event) => {
         }
 
         const genAI = new GoogleGenerativeAI(keyResp.Parameter.Value);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3-pro-image-preview' });
 
         // Read input image from S3
         console.log('[Gemini] S3 GetObject (input image) start', {
@@ -994,7 +994,7 @@ exports.handler = async (event) => {
         }
 
         console.log('[Gemini] Invoking model', {
-            model: 'gemini-2.5-flash-image-preview',
+            model: 'gemini-3-pro-image-preview',
             promptPreview: String(prompt).slice(0, 120),
             generationConfig: { responseModalities: ['IMAGE'], temperature: 0 },
             referenceCount: referenceImages.length,

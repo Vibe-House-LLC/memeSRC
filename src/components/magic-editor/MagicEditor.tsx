@@ -634,7 +634,7 @@ export default function MagicEditor({
         try { window.clearInterval(progressTimerRef.current); } catch {}
         progressTimerRef.current = null;
       }
-      const DURATION_SECONDS = 10; // main phase target duration
+      const DURATION_SECONDS = 30; // main phase target duration
       const UPDATES_PER_SECOND = 2;
       const INCREMENT = 100 / (DURATION_SECONDS * UPDATES_PER_SECOND);
       progressTimerRef.current = window.setInterval(() => {
