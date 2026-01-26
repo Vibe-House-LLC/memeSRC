@@ -1492,21 +1492,19 @@ const EditorPage = ({ shows }) => {
     const parsed = parsedOverride && parsedOverride.rawValue === rawValue
       ? parsedOverride
       : getInlineParsed(rawValue);
-    const { cleanText, ranges, hasMarkup } = parsed;
+    const { cleanText, ranges } = parsed;
 
     textObject.set({ text: cleanText });
     textObject.styles = {};
 
-    if (hasMarkup) {
-      ranges.forEach(({ start, end, style }) => {
-        const selectionStyle = {
-          fontWeight: style.bold ? 'bold' : textObject.fontWeight || 'normal',
-          fontStyle: style.italic ? 'italic' : textObject.fontStyle || 'normal',
-          underline: style.underline === undefined ? Boolean(textObject.underline) : style.underline,
-        };
-        textObject.setSelectionStyles(selectionStyle, start, end);
-      });
-    }
+    ranges.forEach(({ start, end, style }) => {
+      const selectionStyle = {
+        fontWeight: style.bold ? 'bold' : textObject.fontWeight || 'normal',
+        fontStyle: style.italic ? 'italic' : textObject.fontStyle || 'normal',
+        underline: style.underline === undefined ? Boolean(textObject.underline) : style.underline,
+      };
+      textObject.setSelectionStyles(selectionStyle, start, end);
+    });
 
     textObject.initDimensions();
     textObject.setCoords();
