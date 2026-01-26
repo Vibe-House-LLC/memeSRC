@@ -1818,13 +1818,13 @@ useEffect(() => {
   const INLINE_TAG_ORDER = ['bold', 'italic', 'underline'];
   const STYLE_TO_TAG = { bold: 'b', italic: 'i', underline: 'u' };
 
-  const normalizeStyle = (style = {}) => ({
+  const normalizeStyle = useCallback((style = {}) => ({
     bold: Boolean(style.bold),
     italic: Boolean(style.italic),
     underline: Boolean(style.underline),
-  });
+  }), []);
 
-  const mergeAdjacentRanges = (ranges = []) => {
+  const mergeAdjacentRanges = useCallback((ranges = []) => {
     if (!ranges.length) return [];
 
     const merged = [];
@@ -1851,9 +1851,9 @@ useEffect(() => {
     });
 
     return merged;
-  };
+  }, [normalizeStyle]);
 
-  const parseFormattedTextForInlineEditing = (rawText = '') => {
+  const parseFormattedTextForInlineEditing = useCallback((rawText = '') => {
     const tagRegex = /<\/?(b|i|u)>/ig;
     const styleCounts = { b: 0, i: 0, u: 0 };
     const segments = [];
@@ -1901,7 +1901,7 @@ useEffect(() => {
       });
 
     return { cleanText, ranges: mergeAdjacentRanges(ranges) };
-  };
+  }, [mergeAdjacentRanges, normalizeStyle]);
 
   const getInlineParsed = useCallback((rawValue = '') => {
     const cache = inlineParseCacheRef.current;
@@ -1933,7 +1933,7 @@ useEffect(() => {
     return next;
   }, [parseFormattedTextForInlineEditing]);
 
-  const buildIndexMaps = (rawText = '') => {
+  const buildIndexMaps = useCallback((rawText = '') => {
     const rawToPlain = new Array(rawText.length + 1).fill(0);
     const plainToRaw = [];
     let plainIndex = 0;
@@ -1963,7 +1963,7 @@ useEffect(() => {
     plainToRaw[plainIndex] = rawText.length;
 
     return { rawToPlain, plainToRaw };
-  };
+  }, []);
 
   const ensureInlineIndexMaps = useCallback((parsed) => {
     if (!parsed.rawToPlain || !parsed.plainToRaw) {
