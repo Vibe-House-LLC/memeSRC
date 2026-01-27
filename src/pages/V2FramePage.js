@@ -110,6 +110,8 @@ const FONT_OPTIONS = [
   'zuume',
 ];
 
+const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
+
 function FontSelector({ selectedFont, onSelectFont, onLowercaseChange }) {
   return (
     <Select
@@ -1322,6 +1324,16 @@ useEffect(() => {
 
   const selectionCacheRef = useRef({});
   const SELECTION_CACHE_TTL_MS = 15000;
+  const inlineParseCacheRef = useRef({
+    rawValue: '',
+    cleanText: '',
+    ranges: [],
+    hasMarkup: false,
+    rawToPlain: null,
+    plainToRaw: null,
+  });
+  const formatSyncRafRef = useRef(null);
+  const pendingFormatSyncRef = useRef(null);
   
   const [colorPickerColor, setColorPickerColor] = useState(() => {
     const storedValue = localStorage.getItem(`formatting-${user?.username}-${cid}`);
@@ -1806,13 +1818,13 @@ useEffect(() => {
   const INLINE_TAG_ORDER = ['bold', 'italic', 'underline'];
   const STYLE_TO_TAG = { bold: 'b', italic: 'i', underline: 'u' };
 
-  const normalizeStyle = (style = {}) => ({
+  const normalizeStyle = useCallback((style = {}) => ({
     bold: Boolean(style.bold),
     italic: Boolean(style.italic),
     underline: Boolean(style.underline),
-  });
+  }), []);
 
-  const mergeAdjacentRanges = (ranges = []) => {
+  const mergeAdjacentRanges = useCallback((ranges = []) => {
     if (!ranges.length) return [];
 
     const merged = [];
@@ -1839,9 +1851,9 @@ useEffect(() => {
     });
 
     return merged;
-  };
+  }, [normalizeStyle]);
 
-  const parseFormattedTextForInlineEditing = (rawText = '') => {
+  const parseFormattedTextForInlineEditing = useCallback((rawText = '') => {
     const tagRegex = /<\/?(b|i|u)>/ig;
     const styleCounts = { b: 0, i: 0, u: 0 };
     const segments = [];
@@ -1889,9 +1901,39 @@ useEffect(() => {
       });
 
     return { cleanText, ranges: mergeAdjacentRanges(ranges) };
-  };
+  }, [mergeAdjacentRanges, normalizeStyle]);
 
-  const buildIndexMaps = (rawText = '') => {
+  const getInlineParsed = useCallback((rawValue = '') => {
+    const cache = inlineParseCacheRef.current;
+    if (cache.rawValue === rawValue) {
+      return cache;
+    }
+
+    const hasMarkup = INLINE_TAG_REGEX.test(rawValue);
+    let cleanText = rawValue;
+    let ranges = [];
+
+    if (hasMarkup) {
+      const parsed = parseFormattedTextForInlineEditing(rawValue);
+      cleanText = parsed.cleanText;
+      ranges = parsed.ranges;
+    } else if (rawValue.length > 0) {
+      ranges = [{ start: 0, end: rawValue.length, style: { bold: false, italic: false, underline: false } }];
+    }
+
+    const next = {
+      rawValue,
+      cleanText,
+      ranges,
+      hasMarkup,
+      rawToPlain: null,
+      plainToRaw: null,
+    };
+    inlineParseCacheRef.current = next;
+    return next;
+  }, [parseFormattedTextForInlineEditing]);
+
+  const buildIndexMaps = useCallback((rawText = '') => {
     const rawToPlain = new Array(rawText.length + 1).fill(0);
     const plainToRaw = [];
     let plainIndex = 0;
@@ -1921,7 +1963,16 @@ useEffect(() => {
     plainToRaw[plainIndex] = rawText.length;
 
     return { rawToPlain, plainToRaw };
-  };
+  }, []);
+
+  const ensureInlineIndexMaps = useCallback((parsed) => {
+    if (!parsed.rawToPlain || !parsed.plainToRaw) {
+      const maps = buildIndexMaps(parsed.rawValue);
+      parsed.rawToPlain = maps.rawToPlain;
+      parsed.plainToRaw = maps.plainToRaw;
+    }
+    return parsed;
+  }, [buildIndexMaps]);
 
   const resolveSelectionBounds = (ranges, textLength, rawStart = 0, rawEnd = 0, rawToPlain = []) => {
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -2060,12 +2111,17 @@ useEffect(() => {
     return output;
   };
 
-  const syncActiveFormatsFromSelection = useCallback((overrideSelection) => {
+  const syncActiveFormatsFromSelection = useCallback((overrideSelection, rawValueOverride, parsedOverride) => {
     const inputEl = textFieldRef.current;
     if (!inputEl) return;
 
-    const rawValue = inputEl.value ?? loadedSubtitle ?? '';
-    const { cleanText, ranges } = parseFormattedTextForInlineEditing(rawValue);
+    const rawValue = typeof rawValueOverride === 'string'
+      ? rawValueOverride
+      : inputEl.value ?? loadedSubtitle ?? '';
+    const parsed = parsedOverride && parsedOverride.rawValue === rawValue
+      ? parsedOverride
+      : getInlineParsed(rawValue);
+    const { cleanText, ranges, hasMarkup } = parsed;
 
     if (cleanText.length === 0) {
       setActiveFormats([]);
@@ -2082,7 +2138,12 @@ useEffect(() => {
       hadFocus: true,
     };
 
-    const { rawToPlain } = buildIndexMaps(rawValue);
+    if (!hasMarkup) {
+      setActiveFormats([]);
+      return;
+    }
+
+    const { rawToPlain } = ensureInlineIndexMaps(parsed);
     const { start, end } = resolveSelectionBounds(
       ranges,
       cleanText.length,
@@ -2093,14 +2154,40 @@ useEffect(() => {
 
     const activeFormats = getActiveFormatsFromRanges(ranges, start, end);
     setActiveFormats(activeFormats);
-  }, [loadedSubtitle]);
+  }, [ensureInlineIndexMaps, getInlineParsed, loadedSubtitle]);
+
+  const scheduleSyncActiveFormats = useCallback((overrideSelection, rawValueOverride, parsedOverride) => {
+    pendingFormatSyncRef.current = { overrideSelection, rawValueOverride, parsedOverride };
+    if (formatSyncRafRef.current !== null) return;
+
+    formatSyncRafRef.current = requestAnimationFrame(() => {
+      formatSyncRafRef.current = null;
+      const pending = pendingFormatSyncRef.current;
+      pendingFormatSyncRef.current = null;
+      if (pending) {
+        syncActiveFormatsFromSelection(
+          pending.overrideSelection,
+          pending.rawValueOverride,
+          pending.parsedOverride,
+        );
+      }
+    });
+  }, [syncActiveFormatsFromSelection]);
+
+  useEffect(() => () => {
+    if (formatSyncRafRef.current !== null) {
+      cancelAnimationFrame(formatSyncRafRef.current);
+      formatSyncRafRef.current = null;
+    }
+  }, []);
 
   const applyInlineStyleToggle = useCallback((styleKey) => {
     const inputEl = textFieldRef.current;
     if (!inputEl) return false;
 
     const rawValue = inputEl.value ?? loadedSubtitle ?? '';
-    const { cleanText, ranges } = parseFormattedTextForInlineEditing(rawValue);
+    const parsed = getInlineParsed(rawValue);
+    const { cleanText, ranges } = parsed;
 
     if (cleanText.length === 0) {
       return false;
@@ -2128,7 +2215,7 @@ useEffect(() => {
       : usedCachedSelection
         ? cache.end
         : rawValue.length;
-    const { rawToPlain, plainToRaw } = buildIndexMaps(rawValue);
+    const { rawToPlain, plainToRaw } = ensureInlineIndexMaps(parsed);
     const selectionIsCollapsed = selectionStart === selectionEnd;
     const originalPlainStart = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
     const originalPlainEnd = rawToPlain[Math.min(selectionEnd, rawToPlain.length - 1)] ?? originalPlainStart;
@@ -2194,7 +2281,7 @@ useEffect(() => {
     });
 
     return true;
-  }, [loadedSubtitle]);
+  }, [ensureInlineIndexMaps, getInlineParsed, loadedSubtitle]);
 
   useEffect(() => {
     const moveCursorToEnd = () => {
@@ -2225,7 +2312,7 @@ useEffect(() => {
         timestamp: Date.now(),
         hadFocus: true,
       };
-      syncActiveFormatsFromSelection({
+      scheduleSyncActiveFormats({
         start: inputEl.selectionStart,
         end: inputEl.selectionEnd,
       });
@@ -2235,7 +2322,7 @@ useEffect(() => {
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [syncActiveFormatsFromSelection]);
+  }, [scheduleSyncActiveFormats]);
 
   const colorPicker = useRef();
 
@@ -3154,13 +3241,15 @@ useEffect(() => {
                               setSubtitleUserInteracted(true);
                             }}
                             onChange={(e) => {
-                              setLoadedSubtitle(e.target.value);
-                              syncActiveFormatsFromSelection();
+                              const rawValue = e.target.value;
+                              const parsed = getInlineParsed(rawValue);
+                              setLoadedSubtitle(rawValue);
+                              scheduleSyncActiveFormats(undefined, rawValue, parsed);
                             }}
                             onFocus={() => {
                               setTextFieldFocused(true);
                               setSubtitleUserInteracted(true);
-                              syncActiveFormatsFromSelection();
+                              scheduleSyncActiveFormats();
                             }}
                             onBlur={() => setTextFieldFocused(false)}
                             InputProps={{

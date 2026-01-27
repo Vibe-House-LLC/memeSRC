@@ -114,6 +114,7 @@ const MAGIC_RESUME_STORAGE_KEY = 'v2-editor-magic-resume';
 const MAGIC_RESUME_MAX_AGE_MS = 10 * 60 * 1000;
 const MAGIC_MAX_REFERENCES = 4;
 const DEFAULT_RATE_LIMIT = 100;
+const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
 
 const toNumber = (value, fallback = 0) => {
   const parsed = typeof value === 'number' ? value : parseInt(String(value), 10);
@@ -389,6 +390,16 @@ const EditorPage = ({ shows }) => {
   const magicReferenceInputRef = useRef();
   const textFieldRefs = useRef({});
   const selectionCacheRef = useRef({});
+  const inlineParseCacheRef = useRef({
+    rawValue: '',
+    cleanText: '',
+    ranges: [],
+    hasMarkup: false,
+    rawToPlain: null,
+    plainToRaw: null,
+  });
+  const formatSyncRafRef = useRef(null);
+  const pendingFormatSyncRef = useRef(null);
   const pendingMagicResumeRef = useRef(null);
   const skipNextDefaultFrameRef = useRef(false);
   const skipNextDefaultSubtitleRef = useRef(false);
@@ -1180,13 +1191,13 @@ const EditorPage = ({ shows }) => {
   const INLINE_TAG_ORDER = ['bold', 'italic', 'underline'];
   const STYLE_TO_TAG = { bold: 'b', italic: 'i', underline: 'u' };
 
-  const normalizeStyle = (style = {}) => ({
+  const normalizeStyle = useCallback((style = {}) => ({
     bold: Boolean(style.bold),
     italic: Boolean(style.italic),
     underline: Boolean(style.underline),
-  });
+  }), []);
 
-  const mergeAdjacentRanges = (ranges = []) => {
+  const mergeAdjacentRanges = useCallback((ranges = []) => {
     if (!ranges.length) return [];
 
     const merged = [];
@@ -1213,9 +1224,9 @@ const EditorPage = ({ shows }) => {
     });
 
     return merged;
-  };
+  }, [normalizeStyle]);
 
-  const parseFormattedText = (rawText = '') => {
+  const parseFormattedText = useCallback((rawText = '') => {
     const tagRegex = /<\/?(b|i|u)>/ig;
     const styleCounts = { b: 0, i: 0, u: 0 };
     const segments = [];
@@ -1263,9 +1274,39 @@ const EditorPage = ({ shows }) => {
       });
 
     return { cleanText, ranges: mergeAdjacentRanges(ranges) };
-  };
+  }, [mergeAdjacentRanges, normalizeStyle]);
 
-  const buildIndexMaps = (rawText = '') => {
+  const getInlineParsed = useCallback((rawValue = '') => {
+    const cache = inlineParseCacheRef.current;
+    if (cache.rawValue === rawValue) {
+      return cache;
+    }
+
+    const hasMarkup = INLINE_TAG_REGEX.test(rawValue);
+    let cleanText = rawValue;
+    let ranges = [];
+
+    if (hasMarkup) {
+      const parsed = parseFormattedText(rawValue);
+      cleanText = parsed.cleanText;
+      ranges = parsed.ranges;
+    } else if (rawValue.length > 0) {
+      ranges = [{ start: 0, end: rawValue.length, style: { bold: false, italic: false, underline: false } }];
+    }
+
+    const next = {
+      rawValue,
+      cleanText,
+      ranges,
+      hasMarkup,
+      rawToPlain: null,
+      plainToRaw: null,
+    };
+    inlineParseCacheRef.current = next;
+    return next;
+  }, [parseFormattedText]);
+
+  const buildIndexMaps = useCallback((rawText = '') => {
     const rawToPlain = new Array(rawText.length + 1).fill(0);
     const plainToRaw = [];
     let plainIndex = 0;
@@ -1295,7 +1336,16 @@ const EditorPage = ({ shows }) => {
     plainToRaw[plainIndex] = rawText.length;
 
     return { rawToPlain, plainToRaw };
-  };
+  }, []);
+
+  const ensureInlineIndexMaps = useCallback((parsed) => {
+    if (!parsed.rawToPlain || !parsed.plainToRaw) {
+      const maps = buildIndexMaps(parsed.rawValue);
+      parsed.rawToPlain = maps.rawToPlain;
+      parsed.plainToRaw = maps.plainToRaw;
+    }
+    return parsed;
+  }, [buildIndexMaps]);
 
   const resolveSelectionBounds = (ranges, textLength, rawStart = 0, rawEnd = 0, rawToPlain = []) => {
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -1434,12 +1484,15 @@ const EditorPage = ({ shows }) => {
     return output;
   };
 
-  const applyFormattedTextToCanvas = useCallback((index, rawValue) => {
+  const applyFormattedTextToCanvas = useCallback((index, rawValue, parsedOverride) => {
     if (!editor?.canvas) return;
     const textObject = editor.canvas.item(index);
     if (!textObject) return;
 
-    const { cleanText, ranges } = parseFormattedText(rawValue);
+    const parsed = parsedOverride && parsedOverride.rawValue === rawValue
+      ? parsedOverride
+      : getInlineParsed(rawValue);
+    const { cleanText, ranges } = parsed;
 
     textObject.set({ text: cleanText });
     textObject.styles = {};
@@ -1458,15 +1511,20 @@ const EditorPage = ({ shows }) => {
     textObject.dirty = true;
     setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
-  }, [editor]);
+  }, [editor, getInlineParsed]);
 
-  const syncActiveFormatsFromSelection = useCallback((index, overrideSelection) => {
+  const syncActiveFormatsFromSelection = useCallback((index, overrideSelection, rawValueOverride, parsedOverride) => {
     const inputEl = textFieldRefs.current[index];
     const textObject = editor?.canvas?.item(index);
     if (!inputEl || !textObject) return;
 
-    const rawValue = inputEl.value ?? layerRawText[index] ?? textObject.text ?? '';
-    const { cleanText, ranges } = parseFormattedText(rawValue);
+    const rawValue = typeof rawValueOverride === 'string'
+      ? rawValueOverride
+      : inputEl.value ?? layerRawText[index] ?? textObject.text ?? '';
+    const parsed = parsedOverride && parsedOverride.rawValue === rawValue
+      ? parsedOverride
+      : getInlineParsed(rawValue);
+    const { cleanText, ranges, hasMarkup } = parsed;
 
     if (cleanText.length === 0) {
       setLayerActiveFormats((prev) => ({ ...prev, [index]: [] }));
@@ -1483,7 +1541,12 @@ const EditorPage = ({ shows }) => {
       hadFocus: true,
     };
 
-    const { rawToPlain } = buildIndexMaps(rawValue);
+    if (!hasMarkup) {
+      setLayerActiveFormats((prev) => ({ ...prev, [index]: [] }));
+      return;
+    }
+
+    const { rawToPlain } = ensureInlineIndexMaps(parsed);
     const { start, end } = resolveSelectionBounds(
       ranges,
       cleanText.length,
@@ -1494,7 +1557,33 @@ const EditorPage = ({ shows }) => {
 
     const activeFormats = getActiveFormatsFromRanges(ranges, start, end);
     setLayerActiveFormats((prev) => ({ ...prev, [index]: activeFormats }));
-  }, [editor, layerRawText]);
+  }, [editor, ensureInlineIndexMaps, getInlineParsed, layerRawText]);
+
+  const scheduleSyncActiveFormats = useCallback((index, overrideSelection, rawValueOverride, parsedOverride) => {
+    pendingFormatSyncRef.current = { index, overrideSelection, rawValueOverride, parsedOverride };
+    if (formatSyncRafRef.current !== null) return;
+
+    formatSyncRafRef.current = requestAnimationFrame(() => {
+      formatSyncRafRef.current = null;
+      const pending = pendingFormatSyncRef.current;
+      pendingFormatSyncRef.current = null;
+      if (pending) {
+        syncActiveFormatsFromSelection(
+          pending.index,
+          pending.overrideSelection,
+          pending.rawValueOverride,
+          pending.parsedOverride,
+        );
+      }
+    });
+  }, [syncActiveFormatsFromSelection]);
+
+  useEffect(() => () => {
+    if (formatSyncRafRef.current !== null) {
+      cancelAnimationFrame(formatSyncRafRef.current);
+      formatSyncRafRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     const handleSelectionChange = () => {
@@ -1515,7 +1604,7 @@ const EditorPage = ({ shows }) => {
         timestamp: Date.now(),
         hadFocus: true,
       };
-      syncActiveFormatsFromSelection(Number(matchedIndex), {
+      scheduleSyncActiveFormats(Number(matchedIndex), {
         start: matchedEl.selectionStart,
         end: matchedEl.selectionEnd,
       });
@@ -1525,7 +1614,7 @@ const EditorPage = ({ shows }) => {
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [syncActiveFormatsFromSelection]);
+  }, [scheduleSyncActiveFormats]);
 
   const applyInlineStyleToggle = useCallback((index, styleKey) => {
     const inputEl = textFieldRefs.current[index];
@@ -1533,7 +1622,8 @@ const EditorPage = ({ shows }) => {
     if (!inputEl || !textObject) return false;
 
     const rawValue = inputEl.value ?? layerRawText[index] ?? textObject.text ?? '';
-    const { cleanText, ranges } = parseFormattedText(rawValue);
+    const parsed = getInlineParsed(rawValue);
+    const { cleanText, ranges } = parsed;
 
     if (cleanText.length === 0) {
       return false;
@@ -1561,7 +1651,7 @@ const EditorPage = ({ shows }) => {
       : usedCachedSelection
         ? cache.end
         : rawValue.length;
-    const { rawToPlain, plainToRaw } = buildIndexMaps(rawValue);
+    const { rawToPlain, plainToRaw } = ensureInlineIndexMaps(parsed);
     const selectionIsCollapsed = selectionStart === selectionEnd;
     const originalPlainStart = rawToPlain[Math.min(selectionStart, rawToPlain.length - 1)] ?? 0;
     const originalPlainEnd = rawToPlain[Math.min(selectionEnd, rawToPlain.length - 1)] ?? originalPlainStart;
@@ -1628,19 +1718,20 @@ const EditorPage = ({ shows }) => {
     });
 
     return true;
-  }, [applyFormattedTextToCanvas, editor, layerRawText]);
+  }, [applyFormattedTextToCanvas, editor, ensureInlineIndexMaps, getInlineParsed, layerRawText]);
 
   const handleEdit = (event, index) => {
     const rawValue = event.target.value;
+    const parsed = getInlineParsed(rawValue);
     setLayerRawText((prev) => ({ ...prev, [index]: rawValue }));
-    applyFormattedTextToCanvas(index, rawValue);
-    syncActiveFormatsFromSelection(index);
+    applyFormattedTextToCanvas(index, rawValue, parsed);
+    scheduleSyncActiveFormats(index, undefined, rawValue, parsed);
   };
 
   const handleFocus = (index) => {
     editor.canvas.setActiveObject(editor.canvas.item(index));
     editor?.canvas.renderAll();
-    syncActiveFormatsFromSelection(index);
+    scheduleSyncActiveFormats(index);
   }
 
   const handleFontSize = (event, index) => {
@@ -1648,7 +1739,7 @@ const EditorPage = ({ shows }) => {
     editor.canvas.item(index).fontSize = defaultFontSize * (event.target.value / 100);
     setCanvasObjects([...editor.canvas._objects])
     editor?.canvas.renderAll();
-    syncActiveFormatsFromSelection(index);
+    scheduleSyncActiveFormats(index);
   }
 
   const addToHistory = async () => {
@@ -4103,9 +4194,9 @@ const EditorPage = ({ shows }) => {
                                     onFocus={() => handleFocus(index)}
                                     onBlur={addToHistory}
                                     onChange={(event) => handleEdit(event, index)}
-                                    onSelect={() => syncActiveFormatsFromSelection(index)}
-                                    onKeyUp={() => syncActiveFormatsFromSelection(index)}
-                                    onMouseUp={() => syncActiveFormatsFromSelection(index)}
+                                    onSelect={() => scheduleSyncActiveFormats(index)}
+                                    onKeyUp={() => scheduleSyncActiveFormats(index)}
+                                    onMouseUp={() => scheduleSyncActiveFormats(index)}
                                     placeholder='(type your caption)'
                                     inputRef={(el) => {
                                       if (el) {
