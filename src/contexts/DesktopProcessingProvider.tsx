@@ -36,11 +36,6 @@ interface Submission {
   error?: string;
 }
 
-type GraphQLResult<T> = {
-  data?: T;
-  errors?: readonly unknown[];
-};
-
 // Electron bridge
 type ElectronModule = {
   ipcRenderer: {
@@ -276,32 +271,6 @@ const updateSourceMediaMutation = /* GraphQL */ `
   }
 `;
 
-const createFileMutation = /* GraphQL */ `
-  mutation CreateFile(
-    $input: CreateFileInput!
-    $condition: ModelFileConditionInput
-  ) {
-    createFile(input: $input, condition: $condition) {
-      id
-      status
-    }
-  }
-`;
-
-const updateFileMutation = /* GraphQL */ `
-  mutation UpdateFile(
-    $input: UpdateFileInput!
-    $condition: ModelFileConditionInput
-  ) {
-    updateFile(input: $input, condition: $condition) {
-      id
-      status
-    }
-  }
-`;
-
-interface CreateFileMutationResult { createFile?: { id: string; status?: string | null } }
-
 // Context surface
 interface DesktopProcessingContextValue {
   activeUploadId: string | null;
@@ -430,10 +399,6 @@ export default function DesktopProcessingProvider({ children }: { children: Reac
       );
 
       const normalizedCompleted = sanitizeCompletedFiles(resume.completedFiles, snapshot.fileSizes);
-      let recordMap = Object.entries(resume.fileRecords ?? {}).reduce<Record<string, string>>((acc, [key, value]) => {
-        if (snapshot.fileSizes[key]) acc[key] = value;
-        return acc;
-      }, {});
       let uploadedBytes = sumCompletedBytes(normalizedCompleted, snapshot.fileSizes);
 
       resume = ensureResumeState(
@@ -443,7 +408,6 @@ export default function DesktopProcessingProvider({ children }: { children: Reac
           totalBytes: snapshot.totalBytes,
           totalFiles: snapshot.totalFiles,
           completedFiles: normalizedCompleted,
-          fileRecords: recordMap,
           uploadedBytes,
         },
         submission.id
@@ -523,39 +487,7 @@ export default function DesktopProcessingProvider({ children }: { children: Reac
 
         const fileBuffer = await fs.promises.readFile(diskPath);
 
-        let fileRecordId = workingResume.fileRecords[normalizedRelativePath] ?? null;
-        if (!fileRecordId) {
-          try {
-            const credentials = await Auth.currentCredentials();
-            const identityId = credentials?.identityId;
-            const createFileResponse = (await API.graphql(
-              graphqlOperation(createFileMutation, {
-                input: {
-                  sourceMediaFilesId: submission.sourceMediaId,
-                  key: `protected/${identityId}/${storageKey}`,
-                  status: 'uploading',
-                },
-              })
-            )) as GraphQLResult<CreateFileMutationResult>;
-            fileRecordId = createFileResponse.data?.createFile?.id ?? null;
-            if (fileRecordId) {
-              const nextMap = { ...workingResume.fileRecords, [normalizedRelativePath]: fileRecordId };
-              workingResume = persistResume({ fileRecords: nextMap });
-            }
-          } catch {}
-        }
-
         await uploadWithRetry(storageKey, fileBuffer, contentType);
-
-        if (fileRecordId) {
-          try {
-            await API.graphql(
-              graphqlOperation(updateFileMutation, {
-                input: { id: fileRecordId, status: 'uploaded' },
-              })
-            );
-          } catch {}
-        }
 
         completedSet.add(normalizedRelativePath);
         uploadedBytes += snapshot.fileSizes[normalizedRelativePath] ?? 0;
@@ -702,5 +634,4 @@ export default function DesktopProcessingProvider({ children }: { children: Reac
     </DesktopProcessingContext.Provider>
   );
 }
-
 

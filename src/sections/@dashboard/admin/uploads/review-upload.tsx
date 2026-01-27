@@ -67,13 +67,11 @@ const formatEpisodeSelectionSummary = (episodes: SeasonEpisodeSelection[]): stri
 const FileBrowserPlaceholder = ({
     sourceMediaStatus,
     identityId,
-    sourceMediaId,
-    hasFiles
+    sourceMediaId
 }: {
     sourceMediaStatus?: string;
     identityId?: string | null;
     sourceMediaId?: string | null;
-    hasFiles: boolean;
 }) => {
     let title = "File Browser";
     let message = "No files available for this source media.";
@@ -86,8 +84,6 @@ const FileBrowserPlaceholder = ({
     } else if (!identityId || !sourceMediaId) {
         message = "Missing identity information for this source media.";
         subtitle = "Ensure the upload completed successfully.";
-    } else if (!hasFiles) {
-        subtitle = "Files have not been linked to this upload yet.";
     }
 
     return (
@@ -152,7 +148,6 @@ interface AdminReviewUploadProps {
     initialStatus?: string;
     identityId?: string | null;
     fileStatuses?: string[];
-    hasFiles?: boolean;
     onStatusUpdate?: (status: string) => void;
 }
 
@@ -165,7 +160,6 @@ export default function AdminReviewUpload({
     initialStatus = '',
     identityId = null,
     fileStatuses: initialFileStatuses = [],
-    hasFiles: hasFilesProp = false,
     onStatusUpdate,
 }: AdminReviewUploadProps) {
     const [aliases, setAliases] = useState<string[]>([]);
@@ -328,20 +322,20 @@ export default function AdminReviewUpload({
 
     // Check if approve button should be enabled
     const resolvedIdentityId = identityId ?? '';
-    const hasFiles = hasFilesProp;
     const normalizedStatus = sourceMediaStatus.toLowerCase();
     const isSourceMediaReady = normalizedStatus === 'uploaded' || normalizedStatus === 'failed';
+    const isSourceMediaUploaded = normalizedStatus === 'uploaded';
     const hasSelectedEpisodes = selectedEpisodes.length > 0;
-    const canApprove = isSourceMediaReady && hasFiles && isAliasSaved && hasSelectedEpisodes && !approvingUpload;
-    const fileBrowserAvailable = Boolean(resolvedIdentityId && sourceMediaId && isSourceMediaReady && hasFiles);
+    const canApprove = isSourceMediaUploaded && isAliasSaved && hasSelectedEpisodes && !approvingUpload;
+    const fileBrowserAvailable = Boolean(resolvedIdentityId && sourceMediaId && isSourceMediaUploaded);
     const isProcessingState = ['indexing', 'pending', 'processing'].includes(normalizedStatus);
+    const shouldShowActions = ['uploaded', 'awaitingindexing', 'published', 'failed'].includes(normalizedStatus);
 
     // Debug: Log the enabling conditions
     console.log('Approve button conditions:', {
         sourceMediaStatus,
         isSourceMediaReady,
         fileStatuses,
-        hasFiles,
         hasSelectedEpisodes,
         pendingAlias,
         isAliasSaved,
@@ -491,7 +485,7 @@ export default function AdminReviewUpload({
                 </Box>
             )}
 
-            {!loading && hasFiles && (
+            {!loading && shouldShowActions && (
                 <>
                     {/* Approve Upload Button */}
                     <Box sx={{ mb: hasSelectedEpisodes ? 1 : 3 }}>
@@ -620,25 +614,13 @@ export default function AdminReviewUpload({
                         onEpisodeSelectionChange={handleEpisodeSelectionChange}
                     />
                 ) : (
-                    <FileBrowserPlaceholder
-                        sourceMediaStatus={sourceMediaStatus}
-                        identityId={resolvedIdentityId}
-                        sourceMediaId={sourceMediaId}
-                        hasFiles={hasFiles}
-                    />
+                        <FileBrowserPlaceholder
+                            sourceMediaStatus={sourceMediaStatus}
+                            identityId={resolvedIdentityId}
+                            sourceMediaId={sourceMediaId}
+                        />
                 )}
             </Box>
-
-
-            {!loading && !hasFiles && !error && (
-                <Card>
-                    <CardContent>
-                        <Typography variant="body1" color="text.secondary" textAlign="center" py={4}>
-                            No files found for this source media.
-                        </Typography>
-                    </CardContent>
-                </Card>
-            )}
 
             <Dialog open={openApproveDialog} onClose={handleCancelApproveDialog} maxWidth="sm" fullWidth>
                 <DialogTitle>Send update notifications?</DialogTitle>
