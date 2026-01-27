@@ -15,73 +15,8 @@ import {
     CircularProgress,
     Alert
 } from "@mui/material";
-import { API, graphqlOperation } from "aws-amplify";
 import { DetailedSourceMedia } from "../types";
 import getSourceMediaDetails from "../functions/get-source-media-details";
-
-interface ListFilesForSourceMediaResponse {
-    data?: {
-        listFiles?: {
-            items?: Array<{ id: string | null; status?: string | null }>;
-            nextToken?: string | null;
-        };
-    };
-}
-
-const listFilesForSourceMediaQuery = /* GraphQL */ `
-  query ListFilesForSourceMedia($filter: ModelFileFilterInput, $limit: Int, $nextToken: String) {
-    listFiles(filter: $filter, limit: $limit, nextToken: $nextToken) {
-      items {
-        id
-        status
-      }
-      nextToken
-    }
-  }
-`;
-
-const FILES_PAGE_SIZE = 500;
-
-interface StatusCount {
-    key: string;
-    label: string;
-    count: number;
-}
-
-const formatStatusLabelForDisplay = (status: string): string => {
-    const normalized = status
-        .replace(/_/g, ' ')
-        .replace(/([a-z])([A-Z])/g, '$1 $2');
-
-    return normalized
-        .split(' ')
-        .filter(Boolean)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ') || 'Unknown';
-};
-
-const buildStatusCounts = (items?: Array<{ status?: string | null }>): StatusCount[] => {
-    const counts: Record<string, StatusCount> = {};
-
-    (items ?? []).forEach(item => {
-        const rawStatus = item?.status ?? 'Unknown';
-        const key = rawStatus.toLowerCase();
-
-        if (!counts[key]) {
-            counts[key] = {
-                key,
-                label: rawStatus,
-                count: 0,
-            };
-        }
-
-        counts[key].count += 1;
-    });
-
-    return Object.values(counts).sort((a, b) =>
-        formatStatusLabelForDisplay(a.label).localeCompare(formatStatusLabelForDisplay(b.label))
-    );
-};
 
 interface SourceMediaDetailsDialogProps {
     open: boolean;
@@ -132,33 +67,6 @@ export default function SourceMediaDetailsDialog({ open, onClose, sourceMediaId 
     const [sourceMedia, setSourceMedia] = useState<DetailedSourceMedia | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [totalFilesCount, setTotalFilesCount] = useState<number | null>(null);
-    const [filesCountLoading, setFilesCountLoading] = useState(false);
-    const [fileStatusCounts, setFileStatusCounts] = useState<StatusCount[]>([]);
-    const fallbackStatusCounts = buildStatusCounts(sourceMedia?.files?.items);
-    const fallbackFileCount = fallbackStatusCounts.reduce((total, status) => total + status.count, 0);
-
-    const renderStatusCounts = (counts: StatusCount[]) => (
-        counts.map(status => (
-            <Box
-                key={status.key}
-                display="flex"
-                alignItems="center"
-                sx={{ mt: 1 }}
-            >
-                <Chip
-                    label={formatStatusLabelForDisplay(status.label)}
-                    color={getStatusColor(status.label)}
-                    size="small"
-                    variant="outlined"
-                    sx={{ mr: 1 }}
-                />
-                <Typography variant="body2">
-                    {status.count.toLocaleString()} file{status.count === 1 ? '' : 's'}
-                </Typography>
-            </Box>
-        ))
-    );
 
     useEffect(() => {
         let isMounted = true;
@@ -167,8 +75,6 @@ export default function SourceMediaDetailsDialog({ open, onClose, sourceMediaId 
             setLoading(true);
             setError(null);
             setSourceMedia(null);
-            setTotalFilesCount(null);
-            setFileStatusCounts([]);
 
             const fetchDetails = async () => {
                 try {
@@ -190,53 +96,7 @@ export default function SourceMediaDetailsDialog({ open, onClose, sourceMediaId 
                 }
             };
 
-            const fetchFileCount = async () => {
-                setFilesCountLoading(true);
-                let nextToken: string | null | undefined;
-                let count = 0;
-                const statusItems: Array<{ status?: string | null }> = [];
-
-                try {
-                    do {
-                        const response = await API.graphql<ListFilesForSourceMediaResponse>(
-                            graphqlOperation(listFilesForSourceMediaQuery, {
-                                filter: { sourceMediaFilesId: { eq: sourceMediaId } },
-                                limit: FILES_PAGE_SIZE,
-                                nextToken,
-                            })
-                        ) as ListFilesForSourceMediaResponse;
-
-                        const connection = response.data?.listFiles;
-                        const items = connection?.items ?? [];
-                        count += items.filter(item => Boolean(item?.id)).length;
-                        items.forEach(item => {
-                            if (item?.id) {
-                                statusItems.push({ status: item?.status });
-                            }
-                        });
-                        nextToken = connection?.nextToken ?? null;
-                    } while (nextToken);
-
-                    if (!isMounted) {
-                        return;
-                    }
-                    setTotalFilesCount(count);
-                    setFileStatusCounts(buildStatusCounts(statusItems));
-                } catch (err) {
-                    if (!isMounted) {
-                        return;
-                    }
-                    console.error('Error fetching file count:', err);
-                    setError(current => current ?? 'Failed to load file count');
-                } finally {
-                    if (isMounted) {
-                        setFilesCountLoading(false);
-                    }
-                }
-            };
-
             fetchDetails();
-            fetchFileCount();
         }
 
         return () => {
@@ -248,9 +108,6 @@ export default function SourceMediaDetailsDialog({ open, onClose, sourceMediaId 
         setSourceMedia(null);
         setError(null);
         setLoading(false);
-        setTotalFilesCount(null);
-        setFilesCountLoading(false);
-        setFileStatusCounts([]);
         onClose();
     };
 
@@ -290,44 +147,7 @@ export default function SourceMediaDetailsDialog({ open, onClose, sourceMediaId 
 
                 {sourceMedia && (
                     <Box>
-                        {/* Files - Moved to top */}
                         <Grid container spacing={3}>
-                            <Grid item xs={12}>
-                                <Card>
-                                    <CardContent>
-                                        <Typography variant="h6" gutterBottom>
-                                            Files
-                                        </Typography>
-                                        {filesCountLoading ? (
-                                            <Box display="flex" alignItems="center">
-                                                <CircularProgress size={20} />
-                                                <Typography variant="body2" sx={{ ml: 1 }}>
-                                                    Counting files...
-                                                </Typography>
-                                            </Box>
-                                        ) : totalFilesCount !== null ? (
-                                            <Box>
-                                                <Typography variant="body2">
-                                                    {totalFilesCount.toLocaleString()} file{totalFilesCount === 1 ? '' : 's'}
-                                                </Typography>
-                                                {fileStatusCounts.length > 0 && renderStatusCounts(fileStatusCounts)}
-                                            </Box>
-                                        ) : fallbackFileCount > 0 ? (
-                                            <Box>
-                                                <Typography variant="body2">
-                                                    {fallbackFileCount.toLocaleString()} file{fallbackFileCount === 1 ? '' : 's'} (partial list)
-                                                </Typography>
-                                                {renderStatusCounts(fallbackStatusCounts)}
-                                            </Box>
-                                        ) : (
-                                            <Typography variant="body2" color="text.secondary">
-                                                No files found
-                                            </Typography>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-
                             {/* Basic Info */}
                             <Grid item xs={12} md={6}>
                                 <Card>

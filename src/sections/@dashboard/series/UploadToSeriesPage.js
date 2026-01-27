@@ -114,28 +114,6 @@ export default function UploadToSeriesPage({ seriesId }) {
             }
           }
         `;
-        const createFileQuery = /* GraphQL */ `
-          mutation CreateFile(
-            $input: CreateFileInput!
-            $condition: ModelFileConditionInput
-          ) {
-            createFile(input: $input, condition: $condition) {
-              id
-              status
-            }
-          }
-        `;
-        const updateFileQuery = /* GraphQL */ `
-          mutation UpdateFile(
-            $input: UpdateFileInput!
-            $condition: ModelFileConditionInput
-          ) {
-            updateFile(input: $input, condition: $condition) {
-              id
-              status
-            }
-          }
-        `;
         const sourceMedia = await API.graphql(graphqlOperation(createSourceMedia, { input: sourceMediaInput }));
         const sourceMediaId = sourceMedia.data.createSourceMedia.id;
 
@@ -161,19 +139,10 @@ export default function UploadToSeriesPage({ seriesId }) {
           const normalizedRelativePath = normalizeRelativePath(relativePath) || file.name;
           console.log(`Attempting to upload ${normalizedRelativePath}...`);
           const s3Key = `${sourceMediaId}/${normalizedRelativePath}`;
-          let fileId;
 
           // Log the full S3 key including the protected identity prefix
           if (identityId) {
             const fullKey = `protected/${identityId}/${s3Key}`;
-            const createFileInput = {
-              sourceMediaFilesId: sourceMediaId,
-              key: fullKey,
-              status: 'uploading',
-            };
-            const createFile = await API.graphql(graphqlOperation(createFileQuery, { input: createFileInput }));
-            fileId = createFile.data.createFile.id;
-            console.log(createFile)
             console.log('Full S3 key:', fullKey);
           } else {
             console.log('Full S3 key (identityId unavailable):', `protected/<identityId>/${s3Key}`);
@@ -192,15 +161,6 @@ export default function UploadToSeriesPage({ seriesId }) {
           });
           console.log(uploadedFile)
           console.log(`${normalizedRelativePath} uploaded!`);
-
-          if (fileId) {
-            const updateFileInput = {
-              id: fileId,
-              status: 'uploaded',
-            };
-            const updateFile = await API.graphql(graphqlOperation(updateFileQuery, { input: updateFileInput }));
-            console.log(updateFile)
-          }
 
           // Increment uploaded files count
           setUploadedFilesCount(prevCount => prevCount + 1);

@@ -75,8 +75,6 @@ export default function AdminFileReview() {
         [sourceMedia]
     );
 
-    const hasFiles = fileStatuses.length > 0;
-
     if (!sourceMediaId) {
         return (
             <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -127,7 +125,6 @@ export default function AdminFileReview() {
                 initialStatus={sourceMedia?.status}
                 identityId={sourceMedia?.identityId}
                 fileStatuses={fileStatuses}
-                hasFiles={hasFiles}
                 onStatusUpdate={handleStatusUpdate}
             />
         </Container>
