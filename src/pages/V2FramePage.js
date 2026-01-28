@@ -42,6 +42,7 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Popover,
+  ClickAwayListener,
 } from '@mui/material';
 import { ArrowBackIos, ArrowForwardIos, ArrowDropDown, BrowseGallery, Close, ContentCopy, Edit, FontDownloadOutlined, FormatBold, FormatColorFill, FormatItalic, FormatUnderlined, GpsFixed, GpsNotFixed, HistoryToggleOffRounded, Menu as MenuIcon, OpenInNew, Collections, Check, Add, PhotoLibrary, Dashboard } from '@mui/icons-material';
 import { TwitterPicker } from 'react-color';
@@ -111,6 +112,19 @@ const FONT_OPTIONS = [
 ];
 
 const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
+const COLOR_PICKER_SWATCHES = [
+  '#FFFFFF',
+  '#FFFF00',
+  '#000000',
+  '#FF4136',
+  '#2ECC40',
+  '#0052CC',
+  '#FF851B',
+  '#B10DC9',
+  '#39CCCC',
+  '#F012BE',
+];
+const COLOR_PICKER_SWATCH_SET = new Set(COLOR_PICKER_SWATCHES.map((color) => color.toLowerCase()));
 
 function FontSelector({ selectedFont, onSelectFont, onLowercaseChange }) {
   return (
@@ -1312,8 +1326,9 @@ useEffect(() => {
   const [, setSubtitleUserInteracted] = useState(false);
   const [, setLoadedSeason] = useState('');
   const [, setLoadedEpisode] = useState('');
-  const [colorPickerShowing, setColorPickerShowing] = useState(false);
+  const [colorPickerAnchorEl, setColorPickerAnchorEl] = useState(null);
   const [mainImageLoaded, setMainImageLoaded] = useState(false);
+  const colorPickerShowing = Boolean(colorPickerAnchorEl);
 
   // Base styles always default to false - formatting is markup-based only
   const [isBold] = useState(false);
@@ -1681,7 +1696,7 @@ useEffect(() => {
 
   useEffect(() => {
     if (addToSelection !== 'collage' || collagePreview) {
-      setCollageThumbnails({});
+      setCollageThumbnails((prev) => (Object.keys(prev).length > 0 ? {} : prev));
       collageThumbnailFailuresRef.current = new Set();
       return;
     }
@@ -2324,8 +2339,6 @@ useEffect(() => {
     };
   }, [scheduleSyncActiveFormats]);
 
-  const colorPicker = useRef();
-
   const StyledTwitterPicker = styled(TwitterPicker)`
   span div {
       border: 1px solid rgb(240, 240, 240);
@@ -2333,10 +2346,39 @@ useEffect(() => {
 
   const TwitterPickerWrapper = memo(StyledTwitterPicker);
 
-  const changeColor = (color) => {
+  const setColorFromPicker = (color) => {
     setColorPickerColor(color.hex);
-    setColorPickerShowing(false);
-  }
+  };
+
+  const applyColorAndClose = (color) => {
+    setColorPickerColor(color.hex);
+    setColorPickerAnchorEl(null);
+  };
+
+  const handleColorSwatchPointerDown = (event) => {
+    if (event?.type === 'mousedown' && event?.button !== 0) {
+      return;
+    }
+
+    const target = event?.target;
+    if (!target || typeof target.closest !== 'function') {
+      return;
+    }
+
+    const swatchElement = target.closest('[title]');
+    const swatchColor = swatchElement?.getAttribute('title');
+    if (!swatchColor) {
+      return;
+    }
+
+    if (!COLOR_PICKER_SWATCH_SET.has(swatchColor.toLowerCase())) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    applyColorAndClose({ hex: swatchColor });
+  };
 
   // Scroll to top when this component loads
   useEffect(() => {
@@ -3171,12 +3213,13 @@ useEffect(() => {
                         sx={{ mx: 1, flexShrink: 0 }}
                         value={[colorPickerShowing && 'fontColor'].filter(Boolean)}
                         onChange={(event, newFormats) => {
-                          setColorPickerShowing(newFormats.includes('fontColor'))
-                          setShowText(true)
+                          const shouldShowPicker = newFormats.includes('fontColor');
+                          setColorPickerAnchorEl(shouldShowPicker ? event?.currentTarget : null);
+                          setShowText(true);
                         }}
                         aria-label="text formatting"
                       >
-                        <ToggleButton ref={colorPicker} size='small' value="fontColor" aria-label="font color">
+                        <ToggleButton size='small' value="fontColor" aria-label="font color">
                           <FormatColorFill sx={{ color: colorPickerColor }} />
                         </ToggleButton>
                       </ToggleButtonGroup>
@@ -3187,9 +3230,13 @@ useEffect(() => {
                       />
                       <Popover
                         open={colorPickerShowing}
-                        anchorEl={colorPicker.current}
-                        onClose={() => setColorPickerShowing(false)}
+                        anchorEl={colorPickerAnchorEl}
+                        onClose={() => setColorPickerAnchorEl(null)}
                         id="colorPicker"
+                        disableScrollLock
+                        disableAutoFocus
+                        disableEnforceFocus
+                        disableRestoreFocus
                         anchorOrigin={{
                           vertical: 'bottom',
                           horizontal: 'center',
@@ -3199,25 +3246,20 @@ useEffect(() => {
                           horizontal: 'center',
                         }}
                       >
-                        <div>
-                          <TwitterPickerWrapper
-                            onChangeComplete={(color) => changeColor(color)}
-                            color={colorPickerColor}
-                            colors={[
-                              '#FFFFFF',
-                              '#FFFF00',
-                              '#000000',
-                              '#FF4136',
-                              '#2ECC40',
-                              '#0052CC',
-                              '#FF851B',
-                              '#B10DC9',
-                              '#39CCCC',
-                              '#F012BE',
-                            ]}
-                            width="280px"
-                          />
-                        </div>
+                        <ClickAwayListener
+                          onClickAway={() => setColorPickerAnchorEl(null)}
+                          mouseEvent="onMouseDown"
+                          touchEvent="onTouchEnd"
+                        >
+                          <div onMouseDown={handleColorSwatchPointerDown} onTouchStart={handleColorSwatchPointerDown}>
+                            <TwitterPickerWrapper
+                              onChange={(color) => setColorFromPicker(color)}
+                              color={colorPickerColor}
+                              colors={COLOR_PICKER_SWATCHES}
+                              width="280px"
+                            />
+                          </div>
+                        </ClickAwayListener>
                       </Popover>
                     </Box>
                     }

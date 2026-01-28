@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useId, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { styled, alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
@@ -15,6 +15,7 @@ import SeriesSelectorDialog, { type SeriesItem } from '../SeriesSelectorDialog';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import { UserContext } from '../../UserContext';
 
 type SeriesSelectorDialogProps = React.ComponentProps<typeof SeriesSelectorDialog>;
 
@@ -942,6 +943,59 @@ function buildCurrentLabel(currentValueId: string, currentSeries?: SeriesItem): 
 const SHORTCUT_TRIGGER_CHAR = '@';
 const SHORTCUT_RESULT_LIMIT = 7;
 const SEARCH_CARET_STORAGE_KEY = 'memeSRC:pendingSearchCaret';
+const AUTOCOMPLETE_STORAGE_KEY = 'memeSRC:searchAutocompleteEnabled';
+
+const pickFirstString = (...values: Array<unknown>): string | null => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return null;
+};
+
+const buildAutocompleteUserKey = (user: any): string => {
+  if (!user || user === false) {
+    return 'no-user';
+  }
+
+  const sessionPayload =
+    user?.signInUserSession?.idToken?.payload ??
+    user?.signInUserSession?.accessToken?.payload ??
+    null;
+
+  const sub = pickFirstString(
+    sessionPayload?.sub,
+    user?.sub,
+    user?.attributes?.sub,
+    user?.userDetails?.sub
+  );
+
+  const username = pickFirstString(
+    sessionPayload?.['cognito:username'],
+    user?.['cognito:username'],
+    user?.username,
+    user?.userDetails?.username,
+    sessionPayload?.preferred_username,
+    sessionPayload?.username,
+    user?.attributes?.preferred_username,
+    sessionPayload?.email,
+    user?.attributes?.email,
+    user?.email,
+    user?.userDetails?.email
+  );
+
+  if (sub && username) {
+    return `${sub}::${username}`;
+  }
+
+  const fallback = pickFirstString(sub, username);
+  if (fallback) {
+    return `user:${fallback}`;
+  }
+
+  return 'no-user';
+};
 
 type ScopeShortcutKind = 'default' | 'series' | 'custom';
 
@@ -1128,12 +1182,19 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 }) => {
   const { groups } = useSearchFilterGroups();
   const { themePreference, setThemePreference, compactMode, setCompactMode, effectiveTheme } = useSearchSettings();
+  const { user } = useContext(UserContext) as { user?: any };
   const navigate = useNavigate();
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [selectorAnchorEl, setSelectorAnchorEl] = useState<HTMLElement | null>(null);
   const [internalRandomLoading, setInternalRandomLoading] = useState(false);
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const autocompleteUserKey = useMemo(() => buildAutocompleteUserKey(user), [user]);
+  const autocompleteStorageKey = useMemo(
+    () => `${AUTOCOMPLETE_STORAGE_KEY}:${autocompleteUserKey}`,
+    [autocompleteUserKey]
+  );
+  const [autocompleteEnabled, setAutocompleteEnabled] = useState<boolean>(true);
   const internalInputRef = useRef<HTMLInputElement | null>(null);
   const inputRef = externalInputRef || internalInputRef;
   const shouldRestoreFocusRef = useRef(false);
@@ -1150,6 +1211,20 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const lastFilterIdRef = useRef(currentValueId);
   const filtersScrollRef = useRef<HTMLDivElement | null>(null);
   const [scrollState, setScrollState] = useState({ atStart: true, atEnd: false });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem(autocompleteStorageKey);
+      if (stored === null) {
+        setAutocompleteEnabled(true);
+        return;
+      }
+      setAutocompleteEnabled(stored === 'true');
+    } catch {
+      setAutocompleteEnabled(true);
+    }
+  }, [autocompleteStorageKey]);
 
   const customFilters = useMemo<SeriesItem[]>(() => {
     return groups.map(g => {
@@ -1556,6 +1631,10 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   const updateShortcutState = useCallback(
     (nextValue: string, selectionPosition?: number | null) => {
+      if (!autocompleteEnabled) {
+        setShortcutState(null);
+        return;
+      }
       const resolvedSelection =
         typeof selectionPosition === 'number' && Number.isFinite(selectionPosition)
           ? selectionPosition
@@ -1563,12 +1642,17 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
       const derived = extractShortcutState(nextValue, resolvedSelection);
       setShortcutState((prev) => (shortcutStateEquals(prev, derived) ? prev : derived));
     },
-    [],
+    [autocompleteEnabled],
   );
 
   useEffect(() => {
-    updateShortcutState(value, lastSelectionRef.current);
-  }, [updateShortcutState, value]);
+    if (autocompleteEnabled) {
+      updateShortcutState(value, lastSelectionRef.current);
+      return;
+    }
+    setShortcutState(null);
+    setShortcutActiveIndex(0);
+  }, [autocompleteEnabled, updateShortcutState, value]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1634,13 +1718,14 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   }, [shortcutState, shortcutSuggestions.length]);
 
   const scheduleShortcutRefresh = useCallback(() => {
+    if (!autocompleteEnabled) return;
     requestAnimationFrame(() => {
       if (!inputRef.current) return;
       const selection = inputRef.current.selectionStart ?? value.length;
       lastSelectionRef.current = selection;
       updateShortcutState(value, selection);
     });
-  }, [updateShortcutState, value]);
+  }, [autocompleteEnabled, updateShortcutState, value]);
 
   const applyShortcutOption = useCallback(
     (option: ScopeShortcutOption) => {
@@ -1732,7 +1817,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   const handleInputKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (shortcutState) {
+      if (autocompleteEnabled && shortcutState) {
         const hasResults = shortcutSuggestions.length > 0;
         const isExplicitShortcut = shortcutState.mode === 'explicit';
         if (hasResults && event.key === 'ArrowDown') {
@@ -1793,7 +1878,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
         handleClear();
       }
     },
-    [applyShortcutOption, handleClear, shortcutActiveIndex, shortcutState, shortcutSuggestions, value],
+    [applyShortcutOption, autocompleteEnabled, handleClear, shortcutActiveIndex, shortcutState, shortcutSuggestions, value],
   );
 
   const handleInputFocus = useCallback(() => {
@@ -1869,7 +1954,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
 
   const shortcutPanelVisible = Boolean(shortcutState);
   const shortcutHasResults = shortcutSuggestions.length > 0;
-  const shouldRenderShortcutPanel = shortcutPanelVisible && shortcutHasResults && inputFocused;
+  const shouldRenderShortcutPanel = autocompleteEnabled && shortcutPanelVisible && shortcutHasResults && inputFocused;
   const shouldShowShortcutHint = Boolean(!shortcutState?.query || shortcutState?.start === 0);
 
   const handleScopeClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -1900,6 +1985,19 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
   const handleCloseHelpDialog = () => {
     setHelpDialogOpen(false);
   };
+
+  const handleAutocompleteToggle = useCallback(
+    (enabled: boolean) => {
+      setAutocompleteEnabled(enabled);
+      if (typeof window === 'undefined') return;
+      try {
+        window.localStorage.setItem(autocompleteStorageKey, String(enabled));
+      } catch {
+        // ignore storage failures
+      }
+    },
+    [autocompleteStorageKey]
+  );
 
   const handleSwitchToFilter = useCallback((filterId: string, matchedWords?: string[]) => {
     if (matchedWords && matchedWords.length > 0) {
@@ -1953,10 +2051,10 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             onSelect={scheduleShortcutRefresh}
             data-appearance={appearance}
             inputProps={{
-              autoComplete: 'off',
-              autoCorrect: 'off',
-              spellCheck: 'false',
-              'aria-autocomplete': 'none',
+              autoComplete: autocompleteEnabled ? 'on' : 'off',
+              autoCorrect: autocompleteEnabled ? 'on' : 'off',
+              spellCheck: autocompleteEnabled ? 'true' : 'false',
+              'aria-autocomplete': autocompleteEnabled ? 'list' : 'none',
             }}
             sx={{
               '& input': (theme) => ({
@@ -2406,6 +2504,25 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
             <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 600, lineHeight: 1, textTransform: 'none' }}>Dark</Typography>
           </ToggleButton>
         </ToggleButtonGroup>
+
+        <FormControlLabel
+          control={
+            <Switch
+              checked={autocompleteEnabled}
+              onChange={(e) => {
+                handleAutocompleteToggle(e.target.checked);
+                handleCloseSettings();
+              }}
+              size="small"
+            />
+          }
+          label={
+            <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
+              Autocomplete
+            </Typography>
+          }
+          sx={{ ml: 0, mb: 0.75 }}
+        />
 
         <FormControlLabel
           control={
