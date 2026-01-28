@@ -48,6 +48,41 @@ const trackAnalyticsEventToS3 = (eventData, eventType, sessionId) => {
   return s3.putObject(s3Params);
 };
 
+function tokenSuggestions(suggestBlock, original) {
+  const tokens = String(original || "").trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return [];
+
+  const normalized = tokens.map((t) => t.toLowerCase().replace(/[^\w]/g, ""));
+  const entries = suggestBlock?.did_you_mean || [];
+  const used = new Set();
+
+  const result = tokens.map((t) => ({ original: t, suggested: null }));
+
+  for (const entry of entries) {
+    const options = entry.options || [];
+    if (!options.length) continue;
+
+    const best =
+      options.reduce(
+        (acc, cur) =>
+          (cur.score ?? -Infinity) > (acc?.score ?? -Infinity) ? cur : acc,
+        null
+      ) || null;
+
+    if (!best?.text) continue;
+
+    const idx = normalized.findIndex(
+      (t, i) => !used.has(i) && t === entry.text.toLowerCase()
+    );
+    if (idx >= 0) {
+      result[idx].suggested = best.text;
+      used.add(idx);
+    }
+  }
+
+  return result;
+}
+
 
 const createTestObject = (prefix, data) => {
   const uniqueId = uuid.v4(); // use UUID for unique identifier
@@ -100,6 +135,16 @@ const search = async (searchString, seriesName, sessionId, opensearchEndpoint, o
       match: {
         sub_content: searchString
       }
+    },
+    suggest: {
+      did_you_mean: {
+        text: searchString,
+        term: {
+          field: "sub_content",
+          suggest_mode: "missing",
+          min_word_length: 3
+        }
+      }
     }
   };
 
@@ -120,7 +165,7 @@ exports.handler = async (event) => {
   const params = event.queryStringParameters;
 
   let cleanResults
-
+  let suggestions
   if (params.warmup) {
     cleanResults = { "status": "ready" }
   } else {
@@ -151,12 +196,13 @@ exports.handler = async (event) => {
       frame_image: `/${hit._index}/img/${hit._source.season}/${hit._source.episode}/${hit._id}.jpg`,
       subtitle: hit._source.sub_content
     }));
+    suggestions = tokenSuggestions(response.suggest, params.q);
   }
 
   // Return the search results as JSON
   return {
     statusCode: 200,
-    body: JSON.stringify(cleanResults),
+    body: JSON.stringify({ results: cleanResults, suggestions: suggestions }),
     headers: {
       'ContentType': 'application/json',
       "Access-Control-Allow-Origin": "*",

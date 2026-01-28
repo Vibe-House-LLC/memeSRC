@@ -616,6 +616,7 @@ export default function SearchPage() {
       }
 
       try {
+        // NOTE: Search Endpoint
         const response = await fetch(
           `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${seriesToSearch}/${encodedSearchTerm}`,
           { signal: abortController.signal }
