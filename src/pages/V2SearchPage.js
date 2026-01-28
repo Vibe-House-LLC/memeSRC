@@ -256,6 +256,7 @@ export default function SearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [displayedResults, setDisplayedResults] = useState(RESULTS_PER_PAGE / 2);
   const [newResults, setNewResults] = useState();
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
   const hasResults = Array.isArray(newResults) && newResults.length > 0;
   const { setShowObj, cid } = useSearchDetailsV2();
   const { groups, fetchGroups } = useSearchFilterGroups();
@@ -277,6 +278,40 @@ export default function SearchPage() {
     [searchQuery],
   );
   const hasSearchQuery = normalizedSearchTerm.length > 0;
+  const suggestionDisplay = useMemo(() => {
+    if (!Array.isArray(searchSuggestions) || searchSuggestions.length === 0) {
+      return null;
+    }
+
+    const hasReplacement = searchSuggestions.some((item) => item?.suggested);
+    if (!hasReplacement) {
+      return null;
+    }
+
+    const parts = searchSuggestions
+      .map((item) => {
+        const text = (item?.suggested ?? item?.original ?? '').trim();
+        if (!text) {
+          return null;
+        }
+        return {
+          text,
+          isSuggested: Boolean(item?.suggested),
+        };
+      })
+      .filter(Boolean);
+
+    if (parts.length === 0) {
+      return null;
+    }
+
+    const suggestedQuery = parts.map((part) => part.text).join(' ').trim();
+    if (!suggestedQuery) {
+      return null;
+    }
+
+    return { parts, suggestedQuery };
+  }, [searchSuggestions]);
 
   // Get filter recommendations based on the search query
   const recommendedFilters = useFilterRecommendations({
@@ -543,6 +578,7 @@ export default function SearchPage() {
 
     const searchText = async () => {
       setCustomFilterNotFound(false);
+      setSearchSuggestions([]);
 
       if (!normalizedSearch) {
         latestSearchKeyRef.current = '';
@@ -616,6 +652,7 @@ export default function SearchPage() {
       }
 
       try {
+        // NOTE: Search Endpoint
         const response = await fetch(
           `https://v2-${process.env.REACT_APP_USER_BRANCH}.memesrc.com/search/${seriesToSearch}/${encodedSearchTerm}`,
           { signal: abortController.signal }
@@ -630,14 +667,35 @@ export default function SearchPage() {
           }
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        const results = await response.json();
+        const parsedResponse = await response.json();
+        const suggestionList = Array.isArray(parsedResponse?.suggestions) ? parsedResponse.suggestions : [];
+        const resultItems = Array.isArray(parsedResponse?.results)
+          ? parsedResponse.results
+          : Array.isArray(parsedResponse)
+            ? parsedResponse
+            : [];
         const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 5 : Infinity;
-        const resultsWithAds = injectAds(results.results, adInterval);
+        const resultsWithAds = injectAds(resultItems, adInterval);
 
         if (isCancelled || latestSearchKeyRef.current !== searchKey) {
           return;
         }
 
+        setSearchSuggestions(suggestionList);
+        // setSearchSuggestions([
+        //   {
+        //     "original": "im",
+        //     "suggested": null
+        //   },
+        //   {
+        //     "original": "not",
+        //     "suggested": null
+        //   },
+        //   {
+        //     "original": "redy",
+        //     "suggested": "ready"
+        //   }
+        // ]);
         setNewResults(resultsWithAds);
         setLoadingResults(false);
       } catch (error) {
@@ -648,6 +706,7 @@ export default function SearchPage() {
         setMaintenanceDialogOpen(true);
         setAvailableShows(shows);
         setUniversalSearchMaintenance(true);
+        setSearchSuggestions([]);
         setLoadingResults(false);
       }
     };
@@ -669,6 +728,22 @@ export default function SearchPage() {
   const [indexFilterQuery, setIndexFilterQuery] = useState('');
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const showAds = shouldShowAds(user);
+
+  const handleSuggestionClick = (suggestedQueryString) => {
+    if (!suggestedQueryString) {
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.set('searchTerm', suggestedQueryString);
+
+    if (normalizedSearchTerm) {
+      params.set('originalQuery', normalizedSearchTerm);
+    }
+
+    const searchParam = params.toString();
+    navigate(`/search/${resolvedCid}${searchParam ? `?${searchParam}` : ''}`);
+  };
 
   const handleIndexFilterChange = (event) => {
     setIndexFilterQuery(event.target.value);
@@ -708,6 +783,70 @@ export default function SearchPage() {
             )}
             Search instead for <Link to={`/search/${resolvedCid}?searchTerm=${encodeURIComponent(originalQuery)}`} style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}><b>{originalQuery}</b></Link>?
           </Typography>
+        </Box>
+      )}
+
+      {suggestionDisplay && (
+        <Box sx={{ width: '100%', mb: 2 }}>
+          <Box
+            role="button"
+            tabIndex={0}
+            onClick={() => handleSuggestionClick(suggestionDisplay.suggestedQuery)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleSuggestionClick(suggestionDisplay.suggestedQuery);
+              }
+            }}
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.5,
+              py: 1,
+              borderRadius: 1,
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s ease, border-color 0.2s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                borderColor: 'rgba(255,255,255,0.2)',
+              },
+            }}
+          >
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
+              Did you mean:
+            </Typography>
+            <Typography
+              variant="body2"
+              component="div"
+              sx={{
+                color: 'rgba(255,255,255,0.95)',
+                fontWeight: 600,
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 0.35,
+              }}
+            >
+              <u>
+              {suggestionDisplay.parts.map((part, idx) => (
+                <React.Fragment key={`${part.text}-${idx}`}>
+                  {idx > 0 && ' '}
+                  <span
+                    style={{
+                      fontWeight: part.isSuggested ? 800 : 600,
+                      fontStyle: part.isSuggested ? 'italic' : 'normal',
+                    }}
+                  >
+                    {part.text}
+                  </span>
+                </React.Fragment>
+              ))}
+              </u>
+            </Typography>
+          </Box>
         </Box>
       )}
 
