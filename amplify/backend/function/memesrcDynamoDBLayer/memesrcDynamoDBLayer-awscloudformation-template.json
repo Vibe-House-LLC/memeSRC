@@ -20,7 +20,7 @@
     }
   },
   "Resources": {
-    "LambdaLayerVersionc1e6b41b": {
+    "LambdaLayerVersionfc1947e5": {
       "Type": "AWS::Lambda::LayerVersion",
       "Properties": {
         "CompatibleRuntimes": [
@@ -30,9 +30,9 @@
           "S3Bucket": {
             "Ref": "deploymentBucketName"
           },
-          "S3Key": "amplify-builds/memesrcDynamoDBLayer-LambdaLayerVersionc1e6b41b-build.zip"
+          "S3Key": "amplify-builds/memesrcDynamoDBLayer-LambdaLayerVersionfc1947e5-build.zip"
         },
-        "Description": "Updated layer version 2026-01-09T23:08:29.475Z",
+        "Description": "Updated layer version 2026-01-28T14:26:34.079Z",
         "LayerName": {
           "Fn::Sub": [
             "memesrcDynamoDBLayer-${env}",
@@ -47,11 +47,11 @@
       "DeletionPolicy": "Delete",
       "UpdateReplacePolicy": "Retain"
     },
-    "LambdaLayerPermissionPrivatec1e6b41b": {
+    "LambdaLayerPermissionPrivatefc1947e5": {
       "Type": "AWS::Lambda::LayerVersionPermission",
       "Properties": {
         "Action": "lambda:GetLayerVersion",
-        "LayerVersionArn": "arn:aws:lambda:us-east-1:458585755494:layer:memesrcDynamoDBLayer-dev:81",
+        "LayerVersionArn": "arn:aws:lambda:us-east-1:458585755494:layer:memesrcDynamoDBLayer-dev:87",
         "Principal": {
           "Ref": "AWS::AccountId"
         }
@@ -61,7 +61,7 @@
   "Outputs": {
     "Arn": {
       "Value": {
-        "Ref": "LambdaLayerVersionc1e6b41b"
+        "Ref": "LambdaLayerVersionfc1947e5"
       }
     }
   }
