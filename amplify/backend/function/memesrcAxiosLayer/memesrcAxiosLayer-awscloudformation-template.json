@@ -20,7 +20,7 @@
     }
   },
   "Resources": {
-    "LambdaLayerVersiona8d11a2c": {
+    "LambdaLayerVersionffa77243": {
       "Type": "AWS::Lambda::LayerVersion",
       "Properties": {
         "CompatibleRuntimes": [
@@ -30,9 +30,9 @@
           "S3Bucket": {
             "Ref": "deploymentBucketName"
           },
-          "S3Key": "amplify-builds/memesrcAxiosLayer-LambdaLayerVersiona8d11a2c-build.zip"
+          "S3Key": "amplify-builds/memesrcAxiosLayer-LambdaLayerVersionffa77243-build.zip"
         },
-        "Description": "Updated layer version 2026-01-09T23:08:29.475Z",
+        "Description": "Updated layer version 2026-01-28T14:26:34.079Z",
         "LayerName": {
           "Fn::Sub": [
             "memesrcAxiosLayer-${env}",
@@ -47,11 +47,11 @@
       "DeletionPolicy": "Delete",
       "UpdateReplacePolicy": "Retain"
     },
-    "LambdaLayerPermissionPrivatea8d11a2c": {
+    "LambdaLayerPermissionPrivateffa77243": {
       "Type": "AWS::Lambda::LayerVersionPermission",
       "Properties": {
         "Action": "lambda:GetLayerVersion",
-        "LayerVersionArn": "arn:aws:lambda:us-east-1:458585755494:layer:memesrcAxiosLayer-dev:82",
+        "LayerVersionArn": "arn:aws:lambda:us-east-1:458585755494:layer:memesrcAxiosLayer-dev:88",
         "Principal": {
           "Ref": "AWS::AccountId"
         }
@@ -61,7 +61,7 @@
   "Outputs": {
     "Arn": {
       "Value": {
-        "Ref": "LambdaLayerVersiona8d11a2c"
+        "Ref": "LambdaLayerVersionffa77243"
       }
     }
   }

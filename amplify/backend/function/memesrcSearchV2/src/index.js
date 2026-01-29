@@ -70,6 +70,41 @@ exports.handler = async (event) => {
         auth: `${OPENSEARCH_USER}:${OPENSEARCH_PASS}`,
     };
 
+    function tokenSuggestions(suggestBlock, original) {
+        const tokens = String(original || "").trim().split(/\s+/).filter(Boolean);
+        if (!tokens.length) return [];
+      
+        const normalized = tokens.map((t) => t.toLowerCase().replace(/[^\w]/g, ""));
+        const entries = suggestBlock?.did_you_mean || [];
+        const used = new Set();
+      
+        const result = tokens.map((t) => ({ original: t, suggested: null }));
+      
+        for (const entry of entries) {
+          const options = entry.options || [];
+          if (!options.length) continue;
+      
+          const best =
+            options.reduce(
+              (acc, cur) =>
+                (cur.score ?? -Infinity) > (acc?.score ?? -Infinity) ? cur : acc,
+              null
+            ) || null;
+      
+          if (!best?.text) continue;
+      
+          const idx = normalized.findIndex(
+            (t, i) => !used.has(i) && t === entry.text.toLowerCase()
+          );
+          if (idx >= 0) {
+            result[idx].suggested = best.text;
+            used.add(idx);
+          }
+        }
+      
+        return result;
+      }
+
     // Function to perform the search request
     const performSearch = async (payload) => {
         return new Promise((resolve, reject) => {
@@ -100,6 +135,7 @@ exports.handler = async (event) => {
     };
 
     let opensearchResponse;
+    let suggestions;
 
     try {
         // 1. Try advanced search with query_string (supports AND, OR, NOT, "phrase")
@@ -129,11 +165,22 @@ exports.handler = async (event) => {
                     ]
                 }
             },
-            "size": 350
+            "size": 350,
+            "suggest": {
+                "did_you_mean": {
+                  "text": decodedQuery,
+                  "term": {
+                    "field": "subtitle_text",
+                    "suggest_mode": "missing",
+                    "min_word_length": 3
+                  }
+                }
+              }
         };
 
         try {
             opensearchResponse = await performSearch(advancedPayload);
+            suggestions = tokenSuggestions(opensearchResponse.suggest, decodedQuery);
 
             // Check if OpenSearch returned an error (e.g. syntax error from unmatched quotes)
             if (opensearchResponse.error) {
@@ -163,9 +210,20 @@ exports.handler = async (event) => {
                         "default_operator": "or"
                     }
                 },
-                "size": 350
+                "size": 350,
+                "suggest": {
+                "did_you_mean": {
+                  "text": decodedQuery,
+                  "term": {
+                    "field": "subtitle_text",
+                    "suggest_mode": "missing",
+                    "min_word_length": 3
+                  }
+                }
+              }
             };
             opensearchResponse = await performSearch(fallbackPayload);
+            suggestions = tokenSuggestions(opensearchResponse.suggest, decodedQuery);
 
             if (opensearchResponse.error) {
                 console.log("Simple search failed.", opensearchResponse.error);
@@ -191,7 +249,8 @@ exports.handler = async (event) => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                results: sources
+                results: sources,
+                suggestions: suggestions
             }),
         };
     } catch (error) {
@@ -338,7 +397,7 @@ exports.handler = async (event) => {
                         "Access-Control-Allow-Headers": "*",
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({ results: combinedResults, offline_indexes: offlineIndexes }),
+                    body: JSON.stringify({ results: combinedResults, offline_indexes: offlineIndexes, suggestions: suggestions }),
                 };
             } catch (error) {
                 console.error("Error:", error);
