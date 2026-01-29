@@ -786,6 +786,7 @@ export default function SearchPage() {
         </Box>
       )}
 
+      {/*
       {suggestionDisplay && (
         <Box sx={{ width: '100%', mb: 2 }}>
           <Box
@@ -849,6 +850,7 @@ export default function SearchPage() {
           </Box>
         </Box>
       )}
+      */}
 
       {hasSearchQuery && recommendedFilters && recommendedFilters.length > 0 && (
         <RecommendedFilters

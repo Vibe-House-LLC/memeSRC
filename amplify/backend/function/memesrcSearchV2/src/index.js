@@ -166,21 +166,21 @@ exports.handler = async (event) => {
                 }
             },
             "size": 350,
-            "suggest": {
-                "did_you_mean": {
-                  "text": decodedQuery,
-                  "term": {
-                    "field": "subtitle_text",
-                    "suggest_mode": "missing",
-                    "min_word_length": 3
-                  }
-                }
-              }
+            // "suggest": {
+            //     "did_you_mean": {
+            //       "text": decodedQuery,
+            //       "term": {
+            //         "field": "subtitle_text",
+            //         "suggest_mode": "missing",
+            //         "min_word_length": 3
+            //       }
+            //     }
+            //   }
         };
 
         try {
             opensearchResponse = await performSearch(advancedPayload);
-            suggestions = tokenSuggestions(opensearchResponse.suggest, decodedQuery);
+            suggestions = tokenSuggestions(opensearchResponse?.suggest || {}, decodedQuery);
 
             // Check if OpenSearch returned an error (e.g. syntax error from unmatched quotes)
             if (opensearchResponse.error) {
@@ -211,19 +211,19 @@ exports.handler = async (event) => {
                     }
                 },
                 "size": 350,
-                "suggest": {
-                "did_you_mean": {
-                  "text": decodedQuery,
-                  "term": {
-                    "field": "subtitle_text",
-                    "suggest_mode": "missing",
-                    "min_word_length": 3
-                  }
-                }
-              }
+            //     "suggest": {
+            //     "did_you_mean": {
+            //       "text": decodedQuery,
+            //       "term": {
+            //         "field": "subtitle_text",
+            //         "suggest_mode": "missing",
+            //         "min_word_length": 3
+            //       }
+            //     }
+            //   }
             };
             opensearchResponse = await performSearch(fallbackPayload);
-            suggestions = tokenSuggestions(opensearchResponse.suggest, decodedQuery);
+            suggestions = tokenSuggestions(opensearchResponse?.suggest || {}, decodedQuery);
 
             if (opensearchResponse.error) {
                 console.log("Simple search failed.", opensearchResponse.error);
