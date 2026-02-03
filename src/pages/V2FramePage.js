@@ -1327,6 +1327,7 @@ useEffect(() => {
   const [, setLoadedSeason] = useState('');
   const [, setLoadedEpisode] = useState('');
   const [colorPickerAnchorEl, setColorPickerAnchorEl] = useState(null);
+  const colorPickerButtonRef = useRef(null);
   const [mainImageLoaded, setMainImageLoaded] = useState(false);
   const colorPickerShowing = Boolean(colorPickerAnchorEl);
 
@@ -3214,12 +3215,27 @@ useEffect(() => {
                         value={[colorPickerShowing && 'fontColor'].filter(Boolean)}
                         onChange={(event, newFormats) => {
                           const shouldShowPicker = newFormats.includes('fontColor');
-                          setColorPickerAnchorEl(shouldShowPicker ? event?.currentTarget : null);
+                          if (!shouldShowPicker) {
+                            setColorPickerAnchorEl(null);
+                            setShowText(true);
+                            return;
+                          }
+
+                          const target = event?.target;
+                          const anchorFromTarget =
+                            target && typeof target.closest === 'function' ? target.closest('button') : null;
+                          const nextAnchor = colorPickerButtonRef.current || anchorFromTarget || event?.currentTarget;
+                          setColorPickerAnchorEl(nextAnchor || null);
                           setShowText(true);
                         }}
                         aria-label="text formatting"
                       >
-                        <ToggleButton size='small' value="fontColor" aria-label="font color">
+                        <ToggleButton
+                          size='small'
+                          value="fontColor"
+                          aria-label="font color"
+                          ref={colorPickerButtonRef}
+                        >
                           <FormatColorFill sx={{ color: colorPickerColor }} />
                         </ToggleButton>
                       </ToggleButtonGroup>
