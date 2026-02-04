@@ -110,6 +110,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
   const [colorPickerAnchor, setColorPickerAnchor] = useState(null);
+  const [colorPickerAnchorPos, setColorPickerAnchorPos] = useState(null);
   const [colorPickerColor, setColorPickerColor] = useState({
     r: '0',
     g: '0',
@@ -197,6 +198,9 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const StyledTwitterPicker = styled(TwitterPicker)`
     span div {
         border: 1px solid rgb(240, 240, 240);
+    }
+    input {
+        font-size: 16px;
     }`;
 
   const TwitterPickerWrapper = memo(StyledTwitterPicker);
@@ -594,11 +598,83 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       });
   }
 
-  const showColorPicker = (event, index) => {
+  const resolveColorPickerAnchorPos = useCallback((anchorEl) => {
+    if (!anchorEl || typeof anchorEl.getBoundingClientRect !== 'function') {
+      return null;
+    }
+    const rect = anchorEl.getBoundingClientRect();
+    return {
+      top: rect.bottom,
+      left: rect.left + rect.width / 2,
+    };
+  }, []);
+
+  const updateColorPickerAnchorPos = useCallback((anchorEl) => {
+    const next = resolveColorPickerAnchorPos(anchorEl);
+    if (!next) {
+      setColorPickerAnchorPos(null);
+      return;
+    }
+    setColorPickerAnchorPos((prev) => {
+      if (!prev) return next;
+      if (Math.abs(prev.top - next.top) < 0.5 && Math.abs(prev.left - next.left) < 0.5) {
+        return prev;
+      }
+      return next;
+    });
+  }, [resolveColorPickerAnchorPos]);
+
+  const showColorPicker = (colorType, index, anchorEl) => {
     setPickingColor(index);
     setColorPickerShowing(index);
-    setColorPickerAnchor(event.target);
+    setColorPickerAnchor((prev) => anchorEl || prev);
+    updateColorPickerAnchorPos(anchorEl);
   }
+
+  useEffect(() => {
+    if (colorPickerShowing === false || !colorPickerAnchor) {
+      return undefined;
+    }
+
+    let rafId = null;
+    const scheduleUpdate = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        const scale = window.visualViewport?.scale ?? 1;
+        if (scale !== 1) {
+          return;
+        }
+        updateColorPickerAnchorPos(colorPickerAnchor);
+      });
+    };
+
+    scheduleUpdate();
+    window.addEventListener('scroll', scheduleUpdate, true);
+    window.addEventListener('resize', scheduleUpdate);
+    const visualViewport = window.visualViewport;
+    if (visualViewport) {
+      visualViewport.addEventListener('resize', scheduleUpdate);
+      visualViewport.addEventListener('scroll', scheduleUpdate);
+    }
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(scheduleUpdate);
+      observer.observe(colorPickerAnchor);
+    }
+
+    return () => {
+      window.removeEventListener('scroll', scheduleUpdate, true);
+      window.removeEventListener('resize', scheduleUpdate);
+      if (visualViewport) {
+        visualViewport.removeEventListener('resize', scheduleUpdate);
+        visualViewport.removeEventListener('scroll', scheduleUpdate);
+      }
+      if (observer) observer.disconnect();
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
+  }, [colorPickerShowing, colorPickerAnchor, updateColorPickerAnchorPos]);
 
   const showFontSizePicker = (event, index) => {
     const defaultFontSize = editor.canvas.getWidth() * 0.04;
@@ -616,6 +692,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     // console.log(editor.canvas.item(index));
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
+    setColorPickerAnchorPos(null);
     addToHistory();
   }
 
@@ -1423,7 +1500,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                               <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
                                 <div style={{ display: 'inline', position: 'relative' }}>
                                   <TextEditorControls
-                                    showColorPicker={(event) => showColorPicker(event, index)}
+                                    showColorPicker={(colorType, layerIndex, anchorEl) => showColorPicker(colorType, layerIndex, anchorEl)}
                                     colorPickerShowing={colorPickerShowing}
                                     index={index}
                                     showFontSizePicker={(event) => showFontSizePicker(event, index)}
@@ -1887,7 +1964,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
           <Popover
             open={colorPickerShowing !== false}
             anchorEl={colorPickerAnchor}
-            onClose={() => setColorPickerShowing(false)}
+            anchorReference={colorPickerAnchorPos ? 'anchorPosition' : 'anchorEl'}
+            anchorPosition={colorPickerAnchorPos || undefined}
+            onClose={() => {
+              setColorPickerShowing(false);
+              setColorPickerAnchor(null);
+              setColorPickerAnchorPos(null);
+            }}
             id="colorPicker"
             anchorOrigin={{
               vertical: 'bottom',

@@ -117,7 +117,8 @@ export default function TextEditorControls(props) {
   };
 
   const handleColorChange = (colorType, event) => {
-    props.showColorPicker(colorType, props.index, event);
+    const anchorEl = colorAnchorEl || event?.currentTarget || null;
+    props.showColorPicker(colorType, props.index, anchorEl);
     handleColorClose();
   };
 
