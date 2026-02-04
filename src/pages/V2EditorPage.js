@@ -272,6 +272,10 @@ const MagicResultOption = ({
 
 
 const EditorPage = ({ shows }) => {
+  // const renderCountRef = useRef(0);
+  // renderCountRef.current += 1;
+  // console.log('[V2EditorPage] render', { count: renderCountRef.current });
+
   const searchDetails = useSearchDetails();
   const [hasFabricPaths, setHasFabricPaths] = useState(false);
   const [openNavWithoutSavingDialog, setOpenNavWithoutSavingDialog] = useState(false);
@@ -302,6 +306,7 @@ const EditorPage = ({ shows }) => {
   const [defaultSubtitle, setDefaultSubtitle] = useState(null);
   const [colorPickerShowing, setColorPickerShowing] = useState(false);
   const [colorPickerAnchorEl, setColorPickerAnchorEl] = useState(null);
+  const [colorPickerAnchorPos, setColorPickerAnchorPos] = useState(null);
   const [colorPickerColor, setColorPickerColor] = useState({
     r: '0',
     g: '0',
@@ -434,11 +439,23 @@ const EditorPage = ({ shows }) => {
   const SELECTION_CACHE_TTL_MS = 15000;
 
   // Animated placeholder effect for magic prompt
+  const shouldAnimateMagicPlaceholder = editorTool === 'magicEraser' && promptEnabled === 'edit';
+
   useEffect(() => {
     let timeout;
+    if (!shouldAnimateMagicPlaceholder) {
+      if (magicPlaceholder !== '') {
+        setMagicPlaceholder('');
+      }
+      return () => {
+        if (timeout) window.clearTimeout(timeout);
+      };
+    }
     // If user is typing, keep placeholder empty
     if ((magicPrompt && magicPrompt.length > 0) || loadingInpaintingResult || magicPromptFocused) {
-      setMagicPlaceholder('');
+      if (magicPlaceholder !== '') {
+        setMagicPlaceholder('');
+      }
       return () => {
         if (timeout) window.clearTimeout(timeout);
       };
@@ -469,7 +486,17 @@ const EditorPage = ({ shows }) => {
     return () => {
       if (timeout) window.clearTimeout(timeout);
     };
-  }, [magicPrompt, loadingInpaintingResult, magicPromptFocused, magicExamples, magicExampleIndex, magicTypingPhase, magicCharIndex]);
+  }, [
+    shouldAnimateMagicPlaceholder,
+    magicPlaceholder,
+    magicPrompt,
+    loadingInpaintingResult,
+    magicPromptFocused,
+    magicExamples,
+    magicExampleIndex,
+    magicTypingPhase,
+    magicCharIndex,
+  ]);
 
   const refreshRateLimits = useCallback(async () => {
     const dayId = getUtcDayId();
@@ -577,6 +604,9 @@ const EditorPage = ({ shows }) => {
   const StyledTwitterPicker = styled(TwitterPicker)`
     span div {
         border: 1px solid rgb(240, 240, 240);
+    }
+    input {
+        font-size: 16px;
     }`;
 
   const TwitterPickerWrapper = memo(StyledTwitterPicker);
@@ -1151,12 +1181,84 @@ const EditorPage = ({ shows }) => {
       });
   }
 
-  const showColorPicker = (colorType, index, event) => {
+  const resolveColorPickerAnchorPos = useCallback((anchorEl) => {
+    if (!anchorEl || typeof anchorEl.getBoundingClientRect !== 'function') {
+      return null;
+    }
+    const rect = anchorEl.getBoundingClientRect();
+    return {
+      top: rect.bottom,
+      left: rect.left + rect.width / 2,
+    };
+  }, []);
+
+  const updateColorPickerAnchorPos = useCallback((anchorEl) => {
+    const next = resolveColorPickerAnchorPos(anchorEl);
+    if (!next) {
+      setColorPickerAnchorPos(null);
+      return;
+    }
+    setColorPickerAnchorPos((prev) => {
+      if (!prev) return next;
+      if (Math.abs(prev.top - next.top) < 0.5 && Math.abs(prev.left - next.left) < 0.5) {
+        return prev;
+      }
+      return next;
+    });
+  }, [resolveColorPickerAnchorPos]);
+
+  const showColorPicker = (colorType, index, anchorEl) => {
     setPickingColor(index);
     setColorPickerShowing(index);
     setCurrentColorType(colorType);
-    setColorPickerAnchorEl(event.currentTarget);
+    setColorPickerAnchorEl((prev) => anchorEl || prev);
+    updateColorPickerAnchorPos(anchorEl);
   }
+
+  useEffect(() => {
+    if (colorPickerShowing === false || !colorPickerAnchorEl) {
+      return undefined;
+    }
+
+    let rafId = null;
+    const scheduleUpdate = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        const scale = window.visualViewport?.scale ?? 1;
+        if (scale !== 1) {
+          return;
+        }
+        updateColorPickerAnchorPos(colorPickerAnchorEl);
+      });
+    };
+
+    scheduleUpdate();
+    window.addEventListener('scroll', scheduleUpdate, true);
+    window.addEventListener('resize', scheduleUpdate);
+    const visualViewport = window.visualViewport;
+    if (visualViewport) {
+      visualViewport.addEventListener('resize', scheduleUpdate);
+      visualViewport.addEventListener('scroll', scheduleUpdate);
+    }
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(scheduleUpdate);
+      observer.observe(colorPickerAnchorEl);
+    }
+
+    return () => {
+      window.removeEventListener('scroll', scheduleUpdate, true);
+      window.removeEventListener('resize', scheduleUpdate);
+      if (visualViewport) {
+        visualViewport.removeEventListener('resize', scheduleUpdate);
+        visualViewport.removeEventListener('scroll', scheduleUpdate);
+      }
+      if (observer) observer.disconnect();
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
+  }, [colorPickerShowing, colorPickerAnchorEl, updateColorPickerAnchorPos]);
 
   const showFontSizePicker = (event, index) => {
     const defaultFontSize = editor.canvas.getWidth() * 0.04;
@@ -1185,6 +1287,7 @@ const EditorPage = ({ shows }) => {
     setCanvasObjects([...editor.canvas._objects]);
     editor?.canvas.renderAll();
     setColorPickerShowing(false);
+    setColorPickerAnchorPos(null);
     addToHistory();
   }
 
@@ -4169,7 +4272,7 @@ const EditorPage = ({ shows }) => {
                               <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
                                 <div style={{ display: 'inline', position: 'relative' }}>
                               <TextEditorControls
-                                showColorPicker={(colorType, index, event) => showColorPicker(colorType, index, event)}
+                                showColorPicker={(colorType, index, anchorEl) => showColorPicker(colorType, index, anchorEl)}
                                 colorPickerShowing={colorPickerShowing}
                                 index={index}
                                 showFontSizePicker={(event) => showFontSizePicker(event, index)}
@@ -5070,9 +5173,12 @@ const EditorPage = ({ shows }) => {
           <Popover
             open={colorPickerShowing !== false}
             anchorEl={colorPickerAnchorEl}
+            anchorReference={colorPickerAnchorPos ? 'anchorPosition' : 'anchorEl'}
+            anchorPosition={colorPickerAnchorPos || undefined}
             onClose={() => {
               setColorPickerShowing(false);
               setColorPickerAnchorEl(null);
+              setColorPickerAnchorPos(null);
             }}
             id="colorPicker"
             anchorOrigin={{
