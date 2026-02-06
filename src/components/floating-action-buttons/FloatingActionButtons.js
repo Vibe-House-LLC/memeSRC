@@ -94,7 +94,7 @@ const StyledRightFooter = styled('footer')(({ theme, hasAd }) => ({
     },
 }));
 
-function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
+function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
     const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const navigate = useNavigate();
     const { user, shows: availableShows = [] } = useContext(UserContext);
@@ -719,11 +719,6 @@ FloatingActionButtons.propTypes = {
     ]).isRequired,
     showAd: PropTypes.bool,
     variant: PropTypes.oneOf(['fixed', 'inline']),
-};
-
-FloatingActionButtons.defaultProps = {
-    showAd: false,
-    variant: 'fixed',
 };
 
 export default React.memo(FloatingActionButtons);

@@ -295,8 +295,9 @@ const EditorPage = ({ shows }) => {
   const [imageScale, setImageScale] = useState();
   const [generatedImageFilename, setGeneratedImageFilename] = useState();
   const [canvasSize, setCanvasSize] = useState({
-    // width: 500,
-    // height: 500
+    // provide sane defaults to avoid NaN during first render
+    width: 750,
+    height: 422,
   });
   const [fineTuningFrames, setFineTuningFrames] = useState([]);
   const [canvasObjects, setCanvasObjects] = useState();
@@ -3934,10 +3935,11 @@ const EditorPage = ({ shows }) => {
   const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
   const [whiteSpacePreview, setWhiteSpacePreview] = useState(0);
   const [isSliding, setIsSliding] = useState(false);
+  const safeCanvasHeight = Math.max(canvasSize?.height || 1, 1);
 
   // Add this function to handle white space changes
   const handleWhiteSpaceChange = (newValue) => {
-    const newWhiteSpaceHeight = (newValue / 100) * canvasSize.height;
+    const newWhiteSpaceHeight = (newValue / 100) * safeCanvasHeight;
     setWhiteSpacePreview(newWhiteSpaceHeight);
   };
 
@@ -3979,12 +3981,12 @@ const EditorPage = ({ shows }) => {
       setShowWhiteSpaceSlider(true);
       const defaultWhiteSpaceValue = 20;
       setWhiteSpaceValue(defaultWhiteSpaceValue);
-      const newWhiteSpaceHeight = (defaultWhiteSpaceValue / 100) * canvasSize.height;
+      const newWhiteSpaceHeight = (defaultWhiteSpaceValue / 100) * safeCanvasHeight;
       setWhiteSpacePreview(newWhiteSpaceHeight);
       
       // Apply the default whitespace immediately
       if (editor) {
-        const newHeight = canvasSize.height + newWhiteSpaceHeight;
+        const newHeight = safeCanvasHeight + newWhiteSpaceHeight;
         editor.canvas.setHeight(newHeight);
         editor.canvas.getObjects().forEach((obj) => {
           obj.set('top', obj.top + newWhiteSpaceHeight);
@@ -3999,7 +4001,7 @@ const EditorPage = ({ shows }) => {
     } else {
       setShowWhiteSpaceSlider(false);
       if (editor) {
-        const newHeight = canvasSize.height - whiteSpaceHeight;
+        const newHeight = safeCanvasHeight - whiteSpaceHeight;
         editor.canvas.setHeight(newHeight);
         editor.canvas.getObjects().forEach((obj) => {
           obj.set('top', obj.top - whiteSpaceHeight);
@@ -4017,9 +4019,9 @@ const EditorPage = ({ shows }) => {
 
   const updateCanvasSize = useCallback((heightDifference) => {
     if (editor && canvasSize) {
-      const newHeight = canvasSize.height + whiteSpaceHeight;
+      const newHeight = safeCanvasHeight + whiteSpaceHeight;
       editor.canvas.setHeight(newHeight);
-      editor.canvas.setWidth(canvasSize.width);
+      editor.canvas.setWidth(canvasSize.width || 1);
 
       // Move all objects by the height difference
       editor.canvas.getObjects().forEach((obj) => {
@@ -4135,7 +4137,7 @@ const EditorPage = ({ shows }) => {
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Typography>Whitespace</Typography>
                           <Slider
-                            value={whiteSpacePreview / canvasSize.height * 100}
+                            value={(whiteSpacePreview / safeCanvasHeight) * 100}
                             onChange={(event, newValue) => handleWhiteSpaceChange(newValue)}
                             onChangeCommitted={applyWhiteSpace}
                             onMouseDown={startWhiteSpaceChange}
@@ -4167,7 +4169,7 @@ const EditorPage = ({ shows }) => {
                       }}
                     />
                   )}
-                  <div style={{ height: isSliding ? canvasSize.height : (canvasSize.height + whiteSpaceHeight) }}>
+                  <div style={{ height: isSliding ? safeCanvasHeight : (safeCanvasHeight + whiteSpaceHeight) }}>
                     <FabricJSCanvas onReady={onReady} />
                     {showBrushSize &&
                       <div style={{
@@ -5261,7 +5263,7 @@ const EditorPage = ({ shows }) => {
                 paddingRight: '12px',
               }}
             >
-              <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
+              <Box sx={{ marginTop: 'auto', marginBottom: 'auto', textAlign: 'center' }}>
                 {!imageUploading && (
                   <img
                     src={`https://i${process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
@@ -5272,23 +5274,20 @@ const EditorPage = ({ shows }) => {
                   />
                 )}
                 {imageUploading && (
-                  <center>
-                    <CircularProgress sx={{ margin: '30%' }} />
-                  </center>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <CircularProgress />
+                  </Box>
                 )}
-              </DialogContentText>
+              </Box>
             </DialogContent>
-            <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
-              <center>
-                <p>
-                  ☝️
-                  <b style={{ color: '#4CAF50' }}>
-                    {'ontouchstart' in window ? 'Tap and hold ' : 'Right click '}
-                    the image to save
-                  </b>,
-                  or use a quick action:
-                </p>
-              </center>
+            <DialogContentText component="div" sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2, textAlign: 'center' }}>
+              <Typography component="span" variant="body2">
+                ☝️{' '}
+                <Box component="span" sx={{ fontWeight: 700, color: '#4CAF50' }}>
+                  {'ontouchstart' in window ? 'Tap and hold ' : 'Right click '}the image to save
+                </Box>
+                , or use a quick action:
+              </Typography>
             </DialogContentText>
 
             <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>

@@ -227,7 +227,6 @@ const SurroundingFrameThumbnail = ({
       }}
     >
       <StyledCardMedia
-        component="img"
         alt={`${frameData?.frame}`}
         src={`${frameData?.frameImage}`}
         title={frameData?.subtitle || 'No subtitle'}
@@ -1218,7 +1217,7 @@ export default function FramePage() {
       setFrame(null);
       setFrameData(null);
       setDisplayImage(null);
-      setLoadedSubtitle(null);
+      setLoadedSubtitle('');
       setOriginalSubtitle('');
       setSubtitleUserInteracted(false);
       setSelectedFrameIndex(5);
@@ -3580,7 +3579,7 @@ useEffect(() => {
           <Grid item xs={12} md={6}>
             <Card sx={{ mt: 0 }}>
               <Accordion expanded={subtitlesExpanded} disableGutters>
-                <AccordionSummary sx={{ paddingX: 1.55 }} onClick={handleSubtitlesExpand} textAlign="center">
+                <AccordionSummary sx={{ paddingX: 1.55, textAlign: 'center' }} onClick={handleSubtitlesExpand}>
                   <Typography marginRight="auto" fontWeight="bold" color="#CACACA" fontSize={14.8}>
                     {subtitlesExpanded ? (
                       <Close style={{ verticalAlign: 'middle', marginTop: '-3px', marginRight: '10px' }} />
@@ -3594,8 +3593,11 @@ useEffect(() => {
                   <List sx={{ padding: '.5em 0' }}>
                     {surroundingSubtitles &&
                       surroundingSubtitles
-                        .map((result) => (
-                          <ListItem key={result?.id} disablePadding sx={{ padding: '0 0 .6em 0' }}>
+                        .map((result, index) => {
+                          const fallbackKey = `${result?.season || 's'}-${result?.episode || 'e'}-${result?.start || index}-${result?.end || ''}-${index}`;
+                          const itemKey = result?.id || fallbackKey;
+                          return (
+                          <ListItem key={itemKey} disablePadding sx={{ padding: '0 0 .6em 0' }}>
                             <ListItemIcon sx={{ paddingLeft: '0' }}>
                               <Fab
                                 size="small"
@@ -3674,7 +3676,8 @@ useEffect(() => {
                             </Fab>
                             </ListItemIcon>
                           </ListItem>
-                        ))}
+                          );
+                        })}
                   </List>
                 </AccordionDetails>
               </Accordion>
