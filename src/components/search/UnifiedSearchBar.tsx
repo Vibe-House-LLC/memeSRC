@@ -2212,6 +2212,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                     </Typography>
                     <ArrowDropDownIcon sx={{ fontSize: '1.1rem', ml: -0.2, opacity: 0.7 }} />
                     <IconButton
+                      component="span"
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -2303,6 +2304,7 @@ export const UnifiedSearchBar: React.FC<UnifiedSearchBarProps> = ({
                       </Typography>
                       <ArrowDropDownIcon sx={{ fontSize: { xs: '1rem', sm: '1.1rem' }, ml: -0.2, opacity: 0.7 }} />
                       <IconButton
+                        component="span"
                         size="small"
                         onClick={(e) => {
                           e.stopPropagation();

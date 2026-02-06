@@ -7,7 +7,9 @@ import PropTypes from 'prop-types';
 import { UserContext } from '../UserContext';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 
-const StyledIconButton = styled(IconButton)(({ isFavorite }) => ({
+const StyledIconButton = styled(IconButton, {
+  shouldForwardProp: (prop) => prop !== 'isFavorite',
+})(({ isFavorite }) => ({
   padding: '8px',
   borderRadius: '50%',
   transition: 'all 0.3s',
