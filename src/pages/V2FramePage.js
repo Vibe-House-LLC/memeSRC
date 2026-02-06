@@ -227,7 +227,6 @@ const SurroundingFrameThumbnail = ({
       }}
     >
       <StyledCardMedia
-        component="img"
         alt={`${frameData?.frame}`}
         src={`${frameData?.frameImage}`}
         title={frameData?.subtitle || 'No subtitle'}
@@ -1218,7 +1217,7 @@ export default function FramePage() {
       setFrame(null);
       setFrameData(null);
       setDisplayImage(null);
-      setLoadedSubtitle(null);
+      setLoadedSubtitle('');
       setOriginalSubtitle('');
       setSubtitleUserInteracted(false);
       setSelectedFrameIndex(5);
