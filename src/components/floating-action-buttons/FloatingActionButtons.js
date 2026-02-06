@@ -12,9 +12,15 @@ import {
     List,
     ListItemButton,
     Chip,
+    Dialog,
+    DialogContent,
+    DialogActions,
+    Button,
+    IconButton,
 } from '@mui/material';
 import { Handyman, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
+import CloseIcon from '@mui/icons-material/Close';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
@@ -22,6 +28,8 @@ import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
+import { LibraryBrowser } from '../library';
+import { get as getFromLibrary } from '../../utils/library/storage';
 
 // Define constants for colors and fonts
 const BUTTON_BASE_COLOR = '#0f0f0f';
@@ -100,7 +108,10 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
     const [pendingUpload, setPendingUpload] = useState(null);
     const [pendingTool, setPendingTool] = useState(null);
+    const [libraryOpen, setLibraryOpen] = useState(false);
+    const [libraryDestination, setLibraryDestination] = useState(null);
     const fileInputRef = useRef(null);
+    const isAuthenticated = Boolean(user && user !== false);
 
     const showCount = useMemo(() => {
         if (Array.isArray(shows)) {
@@ -169,6 +180,8 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         setToolsAnchorEl(null);
         setPendingUpload(null);
         setPendingTool(null);
+        setLibraryOpen(false);
+        setLibraryDestination(null);
         if (fileInputRef.current?.value) {
             fileInputRef.current.value = '';
         }
@@ -215,6 +228,40 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         reader.readAsDataURL(file);
     };
 
+    const handleLibrarySelect = async (items) => {
+        const selected = items?.[0];
+        if (!selected) return;
+
+        const toDataUrl = (blob) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+
+        let imageData = selected.displayUrl || selected.originalUrl;
+        const key = selected?.metadata?.libraryKey;
+        if (key) {
+            try {
+                const blob = await getFromLibrary(key, { level: 'private' });
+                imageData = await toDataUrl(blob);
+            } catch (e) {
+                // fallback to signed URL if blob fetch fails
+                imageData = selected.displayUrl || selected.originalUrl;
+            }
+        }
+
+        if (libraryDestination === 'advanced') {
+            handleOpenAdvancedEditor(imageData);
+        } else if (libraryDestination === 'magic') {
+            handleOpenMagicEditor(imageData);
+        }
+        setLibraryOpen(false);
+        setLibraryDestination(null);
+        setPendingTool(null);
+        setPendingUpload(null);
+    };
+
     const handleOpenAdvancedEditor = (imageData = pendingUpload) => {
         if (!imageData) return;
         navigate('/editor/project/new', { state: { uploadedImage: imageData } });
@@ -252,8 +299,26 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 handleRequestProUpsell();
                 return;
             }
+            if (isAuthenticated) {
+                setPendingTool(action);
+                setLibraryDestination(action);
+                setLibraryOpen(true);
+                setToolsAnchorEl(null);
+                setPendingUpload(null);
+                return;
+            }
             resetUploadState();
             navigate('/magic');
+            return;
+        }
+
+        // Advanced editor (no paywall)
+        if (isAuthenticated) {
+            setPendingTool(action);
+            setLibraryDestination(action);
+            setLibraryOpen(true);
+            setToolsAnchorEl(null);
+            setPendingUpload(null);
             return;
         }
 
@@ -446,21 +511,24 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     );
     */
 
+    // Keep file input mounted regardless of popover visibility so click() always works
+    const hiddenFileInput = (
+        <Input
+            type="file"
+            inputRef={fileInputRef}
+            onChange={handleImageUpload}
+            inputProps={{ accept: 'image/png, image/jpeg' }}
+            sx={{ display: 'none' }}
+        />
+    );
+
     const toolsPopover = (
         <>
-            <Input
-                type="file"
-                inputRef={fileInputRef}
-                onChange={handleImageUpload}
-                inputProps={{ accept: 'image/png, image/jpeg' }}
-                sx={{ display: 'none' }}
-            />
-
             <Popover
                 id={toolsMenuId}
                 open={toolsMenuOpen}
                 anchorEl={toolsAnchorEl}
-                onClose={resetUploadState}
+                onClose={handleCloseToolsMenu}
                 anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
                 transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                 PaperProps={{
@@ -501,6 +569,72 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
         </>
     );
 
+    const libraryDialog = (
+        <Dialog
+            fullScreen
+            open={libraryOpen}
+            onClose={resetUploadState}
+            PaperProps={{
+                sx: {
+                    bgcolor: '#0b0b0f',
+                    color: '#f5f5f7',
+                    display: 'flex',
+                    flexDirection: 'column',
+                },
+            }}
+        >
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    px: 2.5,
+                    py: 2,
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                }}
+            >
+                <Typography variant="h6" sx={{ fontWeight: 800, color: '#f5f5f7' }}>
+                    Choose a photo from your Library
+                </Typography>
+                <IconButton onClick={resetUploadState} sx={{ color: '#f5f5f7' }} aria-label="Close library">
+                    <CloseIcon />
+                </IconButton>
+            </Box>
+            <DialogContent
+                sx={{
+                    flex: 1,
+                    px: { xs: 1.5, sm: 2.5 },
+                    py: 2,
+                    bgcolor: '#0b0b0f',
+                }}
+            >
+                <LibraryBrowser
+                    multiple={false}
+                    uploadEnabled
+                    deleteEnabled={false}
+                    onSelect={handleLibrarySelect}
+                    showActionBar={false}
+                    selectionEnabled
+                    previewOnClick
+                    showSelectToggle
+                    initialSelectMode
+                />
+            </DialogContent>
+            <DialogActions
+                sx={{
+                    px: 2.5,
+                    py: 2,
+                    borderTop: '1px solid rgba(255,255,255,0.08)',
+                    bgcolor: '#0b0b0f',
+                }}
+            >
+                <Button onClick={resetUploadState} color="inherit" sx={{ color: '#f5f5f7' }}>
+                    Cancel
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+
     const safeAreaSpacerSx = useMemo(() => {
         const baseHeights = {
             xs: 120,
@@ -533,6 +667,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
     if (variant === 'inline') {
         return (
             <>
+                {hiddenFileInput}
                 <Box
                     sx={{
                         width: '100%',
@@ -551,12 +686,14 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                     </Box>
                 </Box>
                 {toolsPopover}
+                {libraryDialog}
             </>
         );
     }
 
     return (
         <>
+            {hiddenFileInput}
             <Box aria-hidden sx={safeAreaSpacerSx} />
             <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
                 {toolsButton}
@@ -565,6 +702,7 @@ function FloatingActionButtons({ shows, showAd, variant = 'fixed' }) {
                 {randomButton}
             </StyledRightFooter>
             {toolsPopover}
+            {libraryDialog}
         </>
     );
 }
