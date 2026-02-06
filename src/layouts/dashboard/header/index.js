@@ -40,7 +40,9 @@ import SubmissionStatusIndicator from '../../../components/SubmissionStatusIndic
 // Detect if running in Electron
 const isElectron = () => typeof window !== 'undefined' && window.process && window.process.type;
 
-const StyledRoot = styled(AppBar)(({ theme, isHomepageRoute }) => ({
+const StyledRoot = styled(AppBar, {
+  shouldForwardProp: (prop) => prop !== 'isHomepageRoute',
+})(({ theme, isHomepageRoute }) => ({
   backgroundColor: '#000000',
   borderBottom: '1px solid rgba(255,255,255,0.04)',
   boxShadow: 'none',
