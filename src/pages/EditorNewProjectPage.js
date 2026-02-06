@@ -1,20 +1,32 @@
-import { useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Typography, CardActionArea, Grid, Paper, Input, Chip, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack } from '@mui/material';
+import { Container, Typography, CardActionArea, Grid, Paper, Input, Chip, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack, Box, IconButton } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
+import CloseIcon from '@mui/icons-material/Close';
 import BasePage from './BasePage';
+import { LibraryBrowser } from '../components/library';
+import { UserContext } from '../UserContext';
+import { get as getFromLibrary } from '../utils/library/storage';
 
 export default function EditorNewProjectPage() {
   const navigate = useNavigate();
+  const { user } = useContext(UserContext);
   const [uploadChoiceOpen, setUploadChoiceOpen] = useState(false);
   const [pendingUpload, setPendingUpload] = useState(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const fileInputRef = useRef(null);
+  const isAuthenticated = Boolean(user && user !== false);
 
   const resetUploadState = () => {
     setUploadChoiceOpen(false);
     setPendingUpload(null);
+    setLibraryOpen(false);
+    if (fileInputRef.current?.value) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleImageUpload = async (event) => {
@@ -34,6 +46,31 @@ export default function EditorNewProjectPage() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleLibrarySelect = async (items) => {
+    const selected = items?.[0];
+    if (!selected) return;
+    const toDataUrl = (blob) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    let image = selected.displayUrl || selected.originalUrl;
+    const key = selected?.metadata?.libraryKey;
+    if (key) {
+      try {
+        const blob = await getFromLibrary(key, { level: 'private' });
+        image = await toDataUrl(blob);
+      } catch (e) {
+        image = selected.displayUrl || selected.originalUrl;
+      }
+    }
+    setPendingUpload(image);
+    setUploadChoiceOpen(true);
+    setLibraryOpen(false);
   };
 
   const handleOpenAdvancedEditor = () => {
@@ -66,36 +103,42 @@ export default function EditorNewProjectPage() {
   </Container>
       <Grid container justifyContent="center" spacing={2} sx={{ mt: 4 }}>
           <Grid item xs={12} sm={6} md={4} lg={3}>
-            <label htmlFor="upload-image" style={{ width: '100%', cursor: 'pointer' }}>
-              <CardActionArea component="div">
-                <Paper
-                  elevation={6}
-                  sx={{
-                    p: 3,
-                    position: 'relative',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '100%',
-                  }}
-                >
-                  <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
-                  <Typography variant="h5" component="div" gutterBottom>
-                    Upload Image
-                  </Typography>
-                  <Typography color="text.secondary">Choose your own image</Typography>
-                </Paper>
-              </CardActionArea>
-              {/* Hidden input for the image upload */}
-              <Input
-                type="file"
-                id="upload-image"
-                inputProps={{ accept: "image/png, image/jpeg" }}
-                style={{ display: 'none' }}
-                onChange={handleImageUpload}
-              />
-            </label>
+            <CardActionArea component="div" onClick={(e) => {
+              e.preventDefault();
+              if (isAuthenticated) {
+                setLibraryOpen(true);
+              } else {
+                fileInputRef.current?.click();
+              }
+            }}>
+              <Paper
+                elevation={6}
+                sx={{
+                  p: 3,
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                }}
+              >
+                <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
+                <Typography variant="h5" component="div" gutterBottom>
+                  Upload Image
+                </Typography>
+                <Typography color="text.secondary">
+                  {isAuthenticated ? 'Pick from Library or upload' : 'Choose your own image'}
+                </Typography>
+              </Paper>
+            </CardActionArea>
+            <Input
+              type="file"
+              inputProps={{ accept: 'image/png, image/jpeg' }}
+              style={{ display: 'none' }}
+              onChange={handleImageUpload}
+              inputRef={fileInputRef}
+            />
           </Grid>
 
           <Grid item xs={12} sm={6} md={4} lg={3}>
@@ -221,6 +264,69 @@ export default function EditorNewProjectPage() {
                 Cancel
               </Button>
             </Stack>
+          </DialogActions>
+        </Dialog>
+        <Dialog
+          fullScreen
+          open={libraryOpen}
+          onClose={resetUploadState}
+          PaperProps={{
+            sx: {
+              bgcolor: '#0b0b0f',
+              color: '#f5f5f7',
+              display: 'flex',
+              flexDirection: 'column',
+            },
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              px: 2.5,
+              py: 2,
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: 800, color: '#f5f5f7' }}>
+              Choose a photo from your Library
+            </Typography>
+            <IconButton onClick={resetUploadState} sx={{ color: '#f5f5f7' }} aria-label="Close library">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <DialogContent
+            sx={{
+              flex: 1,
+              px: { xs: 1.5, sm: 2.5 },
+              py: 2,
+              bgcolor: '#0b0b0f',
+            }}
+          >
+            <LibraryBrowser
+              multiple={false}
+              uploadEnabled
+              deleteEnabled={false}
+              onSelect={handleLibrarySelect}
+              showActionBar={false}
+              selectionEnabled
+              previewOnClick
+              showSelectToggle
+              initialSelectMode
+            />
+          </DialogContent>
+          <DialogActions
+            sx={{
+              px: 2.5,
+              py: 2,
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              bgcolor: '#0b0b0f',
+            }}
+          >
+            <Button onClick={resetUploadState} color="inherit" sx={{ color: '#f5f5f7' }}>
+              Cancel
+            </Button>
           </DialogActions>
         </Dialog>
         </BasePage>
