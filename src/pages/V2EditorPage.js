@@ -5263,7 +5263,7 @@ const EditorPage = ({ shows }) => {
                 paddingRight: '12px',
               }}
             >
-              <DialogContentText sx={{ marginTop: 'auto', marginBottom: 'auto' }}>
+              <Box sx={{ marginTop: 'auto', marginBottom: 'auto', textAlign: 'center' }}>
                 {!imageUploading && (
                   <img
                     src={`https://i${process.env.REACT_APP_USER_BRANCH === 'prod' ? 'prod' : `-${process.env.REACT_APP_USER_BRANCH}`
@@ -5274,23 +5274,20 @@ const EditorPage = ({ shows }) => {
                   />
                 )}
                 {imageUploading && (
-                  <center>
-                    <CircularProgress sx={{ margin: '30%' }} />
-                  </center>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <CircularProgress />
+                  </Box>
                 )}
-              </DialogContentText>
+              </Box>
             </DialogContent>
-            <DialogContentText sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2 }}>
-              <center>
-                <p>
-                  ☝️
-                  <b style={{ color: '#4CAF50' }}>
-                    {'ontouchstart' in window ? 'Tap and hold ' : 'Right click '}
-                    the image to save
-                  </b>,
-                  or use a quick action:
-                </p>
-              </center>
+            <DialogContentText component="div" sx={{ paddingX: 4, marginTop: 'auto', paddingBottom: 2, textAlign: 'center' }}>
+              <Typography component="span" variant="body2">
+                ☝️{' '}
+                <Box component="span" sx={{ fontWeight: 700, color: '#4CAF50' }}>
+                  {'ontouchstart' in window ? 'Tap and hold ' : 'Right click '}the image to save
+                </Box>
+                , or use a quick action:
+              </Typography>
             </DialogContentText>
 
             <DialogActions sx={{ marginBottom: 'auto', display: 'inline-flex', padding: '0 23px' }}>
