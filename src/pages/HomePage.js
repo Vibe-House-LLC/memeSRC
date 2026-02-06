@@ -161,5 +161,6 @@ export default function SearchPage({ metadata }) {
 }
 
 SearchPage.propTypes = {
-  metadata: PropTypes.array,
+  // Metadata is a single object describing the active series/theme; not a list.
+  metadata: PropTypes.object,
 };
