@@ -290,13 +290,18 @@ const sendUsageEvent = (
       const { authMode, trackingUserId } = await resolveAuthContext();
       const sessionId = await getSessionID();
       input = buildCreateUsageEventInput(eventType, eventData, trackingUserId, sessionId);
-      const graphQLRequest: GraphQLOptions = {
-        query: createUsageEventMutation,
-        variables: { input },
-        authMode,
-      };
+      // const graphQLRequest: GraphQLOptions = {
+      //   query: createUsageEventMutation,
+      //   variables: { input },
+      //   authMode,
+      // };
 
-      await (API.graphql(graphQLRequest) as Promise<GraphQLResult<CreateUsageEventMutation>>);
+      // await (API.graphql(graphQLRequest) as Promise<GraphQLResult<CreateUsageEventMutation>>);
+      await API.post('publicapi', '/createUsageEvent', {
+        body: {
+          ...input
+        }
+      });
     } catch (error) {
       logUsageEventError(error, input ?? { eventType });
     }
