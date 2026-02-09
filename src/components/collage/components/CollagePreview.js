@@ -4,27 +4,16 @@ import {
   Menu,
   MenuItem,
   Box,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  IconButton,
-  AppBar,
-  Toolbar,
-  Typography,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
-import CloseIcon from '@mui/icons-material/Close';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LibraryBrowser } from '../../library';
+import CollageFrameSearchModal from './CollageFrameSearchModal';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { UserContext } from '../../../UserContext';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
+import { V2SearchContext } from '../../../contexts/v2-search-context';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -79,17 +68,20 @@ const CollagePreview = ({
   allowHydrationTransformCarry = false,
 }) => {
   const fileInputRef = useRef(null);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { user } = useContext(UserContext);
+  const { user, shows } = useContext(UserContext);
+  const searchDetailsV2 = useContext(V2SearchContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
   const hasLibraryAccess = isAdmin || (user?.userDetails?.magicSubscription === 'true');
+  const favoriteSeriesIds = Array.isArray(shows)
+    ? shows.filter((show) => show?.isFavorite).map((show) => show.id).filter(Boolean)
+    : [];
   
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
   const [activePanelIndex, setActivePanelIndex] = useState(null);
   const [activePanelId, setActivePanelId] = useState(null);
-  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchSelectionBusy, setSearchSelectionBusy] = useState(false);
   const [isReplaceMode, setIsReplaceMode] = useState(false);
   const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
   // Legacy Magic Editor dialog flow removed; navigation to MagicPage is primary
@@ -118,7 +110,24 @@ const CollagePreview = ({
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
 
-  // Handle panel click - users with library access use Library; others use system file picker
+  const clearActivePanelSelection = () => {
+    setIsReplaceMode(false);
+    setActiveExistingImageIndex(null);
+    setActivePanelIndex(null);
+    setActivePanelId(null);
+  };
+
+  const resolvePanelIdFromIndex = (index) => {
+    try {
+      const layoutPanel = selectedTemplate?.layout?.panels?.[index];
+      const templatePanel = selectedTemplate?.panels?.[index];
+      return layoutPanel?.id || templatePanel?.id || `panel-${index + 1}`;
+    } catch (_) {
+      return `panel-${index + 1}`;
+    }
+  };
+
+  // Handle panel click - pro/admin users get memeSRC search picker, others use file picker fallback
   const handlePanelClick = (index, panelId) => {
     debugLog(`Panel clicked: index=${index}, panelId=${panelId}`);
     setActivePanelIndex(index);
@@ -138,7 +147,7 @@ const CollagePreview = ({
       setIsReplaceMode(false);
       setActiveExistingImageIndex(null);
       if (hasLibraryAccess) {
-        setIsLibraryOpen(true);
+        setIsSearchModalOpen(true);
       } else {
         // Non-admins: open system file picker (legacy behavior)
         fileInputRef.current?.click();
@@ -148,7 +157,7 @@ const CollagePreview = ({
       setIsReplaceMode(true);
       setActiveExistingImageIndex(imageIndex);
       if (hasLibraryAccess) {
-        setIsLibraryOpen(true);
+        setIsSearchModalOpen(true);
       } else {
         // Non-admins: open system file picker to replace image
         fileInputRef.current?.click();
@@ -177,22 +186,14 @@ const CollagePreview = ({
   // Handle replace image from menu
   const handleReplaceImage = () => {
     if (activePanelIndex !== null) {
-      // Determine panel ID and existing image index
-      let panelId;
-      try {
-        const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
-        const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
-        panelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
-      } catch (error) {
-        panelId = `panel-${activePanelIndex + 1}`;
-      }
+      const panelId = resolvePanelIdFromIndex(activePanelIndex);
 
       setActivePanelId(panelId);
       const existingIdx = panelImageMapping?.[panelId];
       setActiveExistingImageIndex(typeof existingIdx === 'number' ? existingIdx : null);
       setIsReplaceMode(true);
       if (hasLibraryAccess) {
-        setIsLibraryOpen(true);
+        setIsSearchModalOpen(true);
       } else {
         // Non-admins: open system file picker
         fileInputRef.current?.click();
@@ -460,32 +461,39 @@ const CollagePreview = ({
     }
   };
 
-  // Handle selecting an image from the Library for the active (empty) panel
-  const handleLibrarySelect = async (items) => {
-    if (!items || items.length === 0 || activePanelIndex === null) {
-      setIsLibraryOpen(false);
+  const handleSearchContextChange = ({ query, scopeId }) => {
+    if (!searchDetailsV2) return;
+    if (typeof searchDetailsV2.setSearchQuery === 'function') {
+      searchDetailsV2.setSearchQuery(query || '');
+    }
+    if (typeof searchDetailsV2.setCid === 'function' && scopeId) {
+      searchDetailsV2.setCid(scopeId);
+    }
+  };
+
+  // Handle selecting an image from memeSRC search results for the active panel
+  const handleSearchResultSelect = async (selection) => {
+    if (!selection || activePanelIndex === null || searchSelectionBusy) {
       return;
     }
 
-    // Optimistically close dialog for snappier UX
-    setIsLibraryOpen(false);
+    setSearchSelectionBusy(true);
 
-    // Determine panel ID
-    let clickedPanelId = activePanelId;
-    if (!clickedPanelId) {
-      try {
-        const layoutPanel = selectedTemplate?.layout?.panels?.[activePanelIndex];
-        const templatePanel = selectedTemplate?.panels?.[activePanelIndex];
-        clickedPanelId = layoutPanel?.id || templatePanel?.id || `panel-${activePanelIndex + 1}`;
-      } catch (e) {
-        clickedPanelId = `panel-${activePanelIndex + 1}`;
-      }
-    }
+    const clickedPanelId = activePanelId || resolvePanelIdFromIndex(activePanelIndex);
 
-    const selected = items[0];
+    const selected = {
+      url: selection.imageUrl,
+      metadata: {
+        source: 'memesrc-search',
+        cid: selection.cid,
+        season: selection.season,
+        episode: selection.episode,
+        frame: selection.frame,
+        searchTerm: selection.searchTerm,
+      },
+    };
 
-    // Helper to ensure we use a data URL for canvas safety
-    // Build a normalized image object (originalUrl at upload size, displayUrl at editor size)
+    // Normalize selected frame URL to upload/editor-sized image blobs for canvas safety.
     const toDataUrl = (blob) => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
@@ -510,7 +518,7 @@ const CollagePreview = ({
     const ensureNormalized = async (item) => {
       const srcUrl = item?.originalUrl || item?.displayUrl || item?.url || item;
       const libraryKey = item?.metadata?.libraryKey;
-      // Prefer fetching by library key to get a Blob we can normalize
+      // Prefer fetching by library key to get a Blob we can normalize.
       if (libraryKey) {
         try {
           const blob = await getFromLibrary(libraryKey);
@@ -519,7 +527,7 @@ const CollagePreview = ({
           // Fall back to treating the URL directly below
         }
       }
-      // If we already have a data URL or http url, fetch and normalize
+      // For memeSRC search selections, fetch the frame URL and normalize to editor-safe image blobs.
       try {
         const res = await fetch(srcUrl);
         const blob = await res.blob();
@@ -533,20 +541,18 @@ const CollagePreview = ({
     let committed = false;
     try {
       if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
-        // Replace existing image in place with data URL for display, but preserve library metadata for persistence
+        // Replace existing image in place.
         const normalized = await ensureNormalized(selected);
         const previousImage = selectedImages?.[activeExistingImageIndex];
         await replaceImage(activeExistingImageIndex, { ...normalized, metadata: selected?.metadata || {} });
-        // Mark committed right after state mutation to avoid revoking in-use blob URLs
         committed = true;
         setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       } else {
-        // Assign to empty panel: add to images and map using data URL
+        // Assign to empty panel.
         const currentLength = selectedImages.length;
         const normalized = await ensureNormalized(selected);
         const imageObj = { ...normalized, metadata: selected?.metadata || {} };
         await addMultipleImages([imageObj]);
-        // Mark committed immediately after adding to state
         committed = true;
         const newMapping = {
           ...panelImageMapping,
@@ -554,27 +560,21 @@ const CollagePreview = ({
         };
         updatePanelImageMapping(newMapping);
       }
-      // committed is set above immediately after add/replace
+      setIsSearchModalOpen(false);
+      clearActivePanelSelection();
     } finally {
-      // Cleanup any temporary blob URLs if we failed to commit
       if (!committed) {
         try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
       }
-      // Reset active state
-      setIsReplaceMode(false);
-      setActiveExistingImageIndex(null);
-      setActivePanelIndex(null);
-      setActivePanelId(null);
+      setSearchSelectionBusy(false);
     }
   };
 
-  // Close the library dialog and reset active state
-  const handleLibraryClose = () => {
-    setIsLibraryOpen(false);
-    setIsReplaceMode(false);
-    setActiveExistingImageIndex(null);
-    setActivePanelIndex(null);
-    setActivePanelId(null);
+  // Close the search dialog and reset active state.
+  const handleSearchModalClose = () => {
+    if (searchSelectionBusy) return;
+    setIsSearchModalOpen(false);
+    clearActivePanelSelection();
   };
 
 
@@ -626,85 +626,20 @@ const CollagePreview = ({
         onChange={handleFileChange}
       />
 
-      {/* Library selection dialog - admins and pro users */}
+      {/* memeSRC search selection modal for frame add/replace */}
       {hasLibraryAccess && (
-        <Dialog
-          open={isLibraryOpen}
-          onClose={handleLibraryClose}
-          fullWidth
-          maxWidth="md"
-          fullScreen={isMobile}
-          PaperProps={{
-            sx: {
-              borderRadius: isMobile ? 0 : 2,
-              bgcolor: '#121212',
-              color: '#eaeaea',
-            },
-          }}
-        >
-          {isMobile ? (
-            <AppBar
-              position="sticky"
-              color="default"
-              elevation={0}
-              sx={{ borderBottom: '1px solid #2a2a2a', bgcolor: '#121212', color: '#eaeaea' }}
-            >
-              <Toolbar>
-                <Typography variant="h6" sx={{ flexGrow: 1, color: '#eaeaea' }}>
-                  Select a photo
-                </Typography>
-                <IconButton edge="end" aria-label="close" onClick={handleLibraryClose} sx={{ color: '#eaeaea' }}>
-                  <CloseIcon />
-                </IconButton>
-              </Toolbar>
-            </AppBar>
-          ) : (
-            <DialogTitle sx={{ pr: 6, color: '#eaeaea' }}>
-              Select a photo
-              <IconButton
-                aria-label="close"
-                onClick={handleLibraryClose}
-                sx={{ position: 'absolute', right: 8, top: 8, color: '#eaeaea' }}
-              >
-                <CloseIcon />
-              </IconButton>
-            </DialogTitle>
-          )}
-          <DialogContent dividers sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#0f0f0f' }}>
-            <LibraryBrowser
-              multiple={false}
-              uploadEnabled
-              deleteEnabled={false}
-              onSelect={(arr) => handleLibrarySelect(arr)}
-              showActionBar={false}
-              selectionEnabled
-              previewOnClick
-              showSelectToggle
-              initialSelectMode
-            />
-          </DialogContent>
-          <DialogActions sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
-            <Button
-              onClick={handleLibraryClose}
-              variant="contained"
-              disableElevation
-              fullWidth={isMobile}
-              sx={{
-                bgcolor: '#252525',
-                color: '#f0f0f0',
-                border: '1px solid #3a3a3a',
-                borderRadius: '8px',
-                px: isMobile ? 2 : 2.5,
-                py: isMobile ? 1.25 : 0.75,
-                textTransform: 'none',
-                fontWeight: 600,
-                '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' }
-              }}
-            >
-              Cancel
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <CollageFrameSearchModal
+          open={isSearchModalOpen}
+          busy={searchSelectionBusy}
+          onClose={handleSearchModalClose}
+          onSelect={handleSearchResultSelect}
+          onSearchContextChange={handleSearchContextChange}
+          initialQuery={searchDetailsV2?.searchQuery || ''}
+          initialScopeId={searchDetailsV2?.cid || '_universal'}
+          favoriteSeriesIds={favoriteSeriesIds}
+          shows={Array.isArray(shows) ? shows : []}
+          savedCids={Array.isArray(searchDetailsV2?.savedCids) ? searchDetailsV2.savedCids : []}
+        />
       )}
       
       {/* Panel options menu */}
