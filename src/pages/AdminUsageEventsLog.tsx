@@ -1,6 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { API, graphqlOperation, Hub } from 'aws-amplify';
-import { CONNECTION_STATE_CHANGE } from '@aws-amplify/pubsub';
+import { API, graphqlOperation } from 'aws-amplify';
 import {
   Alert,
   Autocomplete,
@@ -10,7 +9,6 @@ import {
   Collapse,
   Container,
   Divider,
-  IconButton,
   Button,
   Checkbox,
   FormHelperText,
@@ -30,27 +28,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
-import { getUsageEvent, listUsageEvents, usageEventsByType } from '../graphql/queries';
-
-const USAGE_EVENT_SUBSCRIPTION = /* GraphQL */ `
-  subscription OnCreateUsageEvent {
-    onCreateUsageEvent {
-      id
-    }
-  }
-`;
-
-const GET_USAGE_EVENT_SUMMARY = /* GraphQL */ `
-  query GetUsageEventSummary($id: ID!) {
-    getUsageEvent(id: $id) {
-      id
-      eventType
-      identityId
-      sessionId
-      createdAt
-    }
-  }
-`;
+import { listUsageEvents, usageEventsByType } from '../graphql/queries';
 
 type UsageEventSummary = {
   id: string;
@@ -86,8 +64,6 @@ type UsageEventLogEntry = {
   detailError?: string;
 };
 
-type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
-
 type ChipColor = 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
 
 type AsyncStatus = 'idle' | 'loading' | 'loaded' | 'error';
@@ -100,7 +76,6 @@ type HistoricalCollectionState = {
   cutoffIso: string | null;
 };
 
-const MAX_EVENTS = 100;
 const HISTORICAL_PAGE_SIZE = 100;
 const EVENT_TYPE_SAMPLE_LIMIT = 200;
 const HISTORICAL_MAX_PAGES = 200;
@@ -593,79 +568,6 @@ const renderJsonBlock = (title: string, content: string | null | undefined, empt
   </Stack>
 );
 
-type ConnectionStatusIndicatorProps = {
-  status: ConnectionStatus;
-  onRetry: () => void;
-};
-
-type ConnectionStatusPresentation = {
-  label: string;
-  description: string;
-  color: ChipColor;
-  variant: 'filled' | 'outlined';
-};
-
-const CONNECTION_STATUS_COPY: Record<ConnectionStatus, ConnectionStatusPresentation> = {
-  connected: { label: 'Live', description: 'Subscription active', color: 'success', variant: 'filled' },
-  connecting: { label: 'Syncing', description: 'Connecting to stream', color: 'warning', variant: 'outlined' },
-  error: { label: 'Offline', description: 'Connection lost', color: 'error', variant: 'filled' },
-  idle: { label: 'Idle', description: 'Waiting for events', color: 'info', variant: 'outlined' },
-};
-
-const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps> = ({ status, onRetry }) => {
-  const config = CONNECTION_STATUS_COPY[status];
-  const showRetry = status === 'error';
-
-  return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={showRetry ? 1 : 0.75}
-      aria-label={config.description}
-    >
-      <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minHeight: 24 }}>
-        <Box
-          sx={(theme) => ({
-            width: 10,
-            height: 10,
-            borderRadius: '50%',
-            backgroundColor:
-              config.color === 'default'
-                ? theme.palette.text.disabled
-                : theme.palette[config.color].main,
-          })}
-        />
-        <Typography
-          variant="caption"
-          sx={{
-            fontWeight: 700,
-            letterSpacing: 0.6,
-            textTransform: 'uppercase',
-            color: 'text.primary',
-          }}
-        >
-          {config.label}
-        </Typography>
-      </Stack>
-      {showRetry && (
-        <IconButton
-          size="small"
-          aria-label="Retry connection"
-          title="Retry connection"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onRetry();
-          }}
-          sx={{ p: 0.5 }}
-        >
-          <RefreshIcon fontSize="inherit" sx={{ fontSize: 18 }} />
-        </IconButton>
-      )}
-    </Stack>
-  );
-};
-
 type UsageEventCardProps = {
   entry: UsageEventLogEntry;
   isExpanded: boolean;
@@ -953,9 +855,9 @@ const UsageEventCard: React.FC<UsageEventCardProps> = ({ entry, isExpanded, onTo
                           renderJsonBlock('Errors', entry.rawErrors, 'No GraphQL errors reported.')}
 
                         {renderJsonBlock(
-                          'Subscription payload',
+                          'Live payload',
                           entry.rawPayload,
-                          'Subscription payload was empty.'
+                          'Live payload was empty.'
                         )}
                       </Stack>
                     </Collapse>
@@ -1062,11 +964,8 @@ export default function AdminUsageEventsLog() {
   const { user } = useContext(UserContext);
   const storedEventTypeStateRef = useRef(getStoredEventTypeState());
   const storedEventTypeState = storedEventTypeStateRef.current;
-  const [events, setEvents] = useState<UsageEventLogEntry[]>([]);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle');
-  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
-  const [subscriptionAttempt, setSubscriptionAttempt] = useState(0);
+  const [refreshNonce, setRefreshNonce] = useState(0);
   const [eventTypeOptions, setEventTypeOptions] = useState<string[]>(() => {
     const seeded = new Set(Object.keys(EVENT_COLOR_MAP));
     storedEventTypeState.types.forEach((type) => {
@@ -1134,7 +1033,7 @@ export default function AdminUsageEventsLog() {
       formattedEventData,
       parsedEventData,
       formattedDetail: safeStringify(record),
-      rawPayload: 'Historical fetch (subscription payload unavailable).',
+      rawPayload: 'Historical fetch (no live payload).',
     };
   }, []);
 
@@ -1210,7 +1109,7 @@ export default function AdminUsageEventsLog() {
   const historicalCutoffIso = useMemo(() => {
     const windowMs = selectedTimeRangeOption.durationMs;
     return new Date(Date.now() - windowMs).toISOString();
-  }, [selectedTimeRangeOption]);
+  }, [refreshNonce, selectedTimeRangeOption]);
 
   const effectiveSelectedEventTypes = useMemo(() => {
     if (isAllTypesSelected) {
@@ -1487,145 +1386,6 @@ export default function AdminUsageEventsLog() {
   ]);
 
   useEffect(() => {
-    if (!isAdmin) return undefined;
-
-    setConnectionStatus('connecting');
-    setSubscriptionError(null);
-
-    const handleHubCapsule = (capsule: any) => {
-      const { payload } = capsule || {};
-      if (payload?.event === CONNECTION_STATE_CHANGE) {
-        const state = payload?.data?.connectionState as string | undefined;
-        switch (state) {
-          case 'Connected':
-            setConnectionStatus('connected');
-            break;
-          case 'Connecting':
-            setConnectionStatus('connecting');
-            break;
-          case 'Disconnected':
-          case 'ConnectionDisrupted':
-          case 'ConnectionDisruptedPendingNetwork':
-          case 'ConnectedPendingDisconnect':
-            setConnectionStatus('error');
-            break;
-          default:
-            break;
-        }
-      }
-    };
-
-    let isActive = true;
-
-    const observable = API.graphql(graphqlOperation(USAGE_EVENT_SUBSCRIPTION)) as any;
-
-    if (!observable || typeof observable.subscribe !== 'function') {
-      setConnectionStatus('error');
-      setSubscriptionError('Subscription client not available.');
-      return undefined;
-    }
-
-    Hub.listen('api', handleHubCapsule);
-
-    const subscription = observable.subscribe({
-      next: ({ value }: { value: any }) => {
-        if (!isActive || !isMountedRef.current) return;
-
-        setConnectionStatus('connected');
-        const subscriptionData = value?.data?.onCreateUsageEvent;
-        const subscriptionErrors = value?.errors;
-        const eventId: string | undefined = subscriptionData?.id;
-
-        const entryId = eventId || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-        const baseEntry: UsageEventLogEntry = {
-          id: entryId,
-          receivedAt: new Date().toISOString(),
-          summaryStatus: eventId ? 'loading' : 'error',
-          detailStatus: 'idle',
-          rawPayload: safeStringify(value),
-          rawErrors: subscriptionErrors?.length ? safeStringify(subscriptionErrors) : undefined,
-          summaryError: eventId ? undefined : 'Subscription did not include an event id.',
-        };
-
-        setEvents((prev) => [baseEntry, ...prev].slice(0, MAX_EVENTS));
-
-        if (!eventId) {
-          return;
-        }
-
-        void (async () => {
-          try {
-            const result: any = await API.graphql(
-              graphqlOperation(GET_USAGE_EVENT_SUMMARY, { id: eventId })
-            );
-            const summary = result?.data?.getUsageEvent as UsageEventSummary | null;
-
-            if (!isActive || !isMountedRef.current) return;
-
-            setEvents((prev) =>
-              prev.map((entry) => {
-                if (entry.id !== entryId) return entry;
-                if (!summary) {
-                  return {
-                    ...entry,
-                    summaryStatus: 'error',
-                    summaryError: 'Usage event record was empty.',
-                  };
-                }
-                return {
-                  ...entry,
-                  summaryStatus: 'loaded',
-                  summary,
-                  summaryError: undefined,
-                };
-              })
-            );
-          } catch (error) {
-            if (!isActive || !isMountedRef.current) return;
-
-            setEvents((prev) =>
-              prev.map((entry) => {
-                if (entry.id !== entryId) return entry;
-                return {
-                  ...entry,
-                  summaryStatus: 'error',
-                  summaryError: safeStringify(error),
-                };
-              })
-            );
-          }
-        })();
-      },
-      error: (error: any) => {
-        console.warn('Usage event subscription error', error);
-        if (!isActive || !isMountedRef.current) return;
-        setConnectionStatus('error');
-        const message = error?.errors?.[0]?.message || error?.message || 'Unknown subscription error.';
-        setSubscriptionError(message);
-      },
-    });
-
-    return () => {
-      isActive = false;
-      if (subscription && typeof subscription.unsubscribe === 'function') {
-        subscription.unsubscribe();
-      }
-      Hub.remove('api', handleHubCapsule);
-    };
-  }, [isAdmin, subscriptionAttempt]);
-
-  useEffect(() => {
-    if (!events.length) {
-      return;
-    }
-
-    addEventTypes(
-      events.map((entry) => entry.summary?.eventType ?? entry.detail?.eventType ?? null)
-    );
-  }, [addEventTypes, events]);
-
-  useEffect(() => {
     const collections = Object.values(historicalState.eventsByType);
     if (!collections.length) {
       return;
@@ -1642,95 +1402,6 @@ export default function AdminUsageEventsLog() {
     addEventTypes(eventTypes);
   }, [addEventTypes, historicalState.eventsByType]);
 
-  const fetchEventDetail = useCallback((entryId: string) => {
-    const currentEntry = events.find((event) => event.id === entryId);
-
-    if (!currentEntry || currentEntry.detailStatus === 'loading' || currentEntry.detailStatus === 'loaded') {
-      return;
-    }
-
-    const recordId = currentEntry.summary?.id ?? currentEntry.id;
-
-    if (!recordId) {
-      setEvents((prev) =>
-        prev.map((entry) => {
-          if (entry.id !== entryId) return entry;
-          return {
-            ...entry,
-            detailStatus: 'error',
-            detailError: 'Usage event id was unavailable.',
-          };
-        })
-      );
-      return;
-    }
-
-    setEvents((prev) =>
-      prev.map((entry) => {
-        if (entry.id !== entryId) return entry;
-        return {
-          ...entry,
-          detailStatus: 'loading',
-          detailError: undefined,
-        };
-      })
-    );
-
-    void (async () => {
-      try {
-        const result: any = await API.graphql(
-          graphqlOperation(getUsageEvent, { id: recordId })
-        );
-        const detail = result?.data?.getUsageEvent as UsageEventDetail | null;
-        if (!isMountedRef.current) return;
-
-        if (!detail) {
-          setEvents((prev) =>
-            prev.map((entry) => {
-              if (entry.id !== entryId) return entry;
-              return {
-                ...entry,
-                detailStatus: 'error',
-                detailError: 'Usage event record was empty.',
-              };
-            })
-          );
-          return;
-        }
-
-        const { formatted: formattedEventData, parsed: parsedEventData } = parseEventData(detail.eventData ?? null);
-
-        setEvents((prev) =>
-          prev.map((entry) => {
-            if (entry.id !== entryId) return entry;
-            return {
-              ...entry,
-              detailStatus: 'loaded',
-              detail,
-              formattedEventData,
-              parsedEventData,
-              formattedDetail: safeStringify(detail),
-              detailError: undefined,
-            };
-          })
-        );
-      } catch (error) {
-        if (!isMountedRef.current) return;
-
-        setEvents((prev) =>
-          prev.map((entry) => {
-            if (entry.id !== entryId) return entry;
-            return {
-              ...entry,
-              detailStatus: 'error',
-              detailError: safeStringify(error),
-            };
-          })
-        );
-      }
-    })();
-  }, [events]);
-
   const isUserLoading = user === false;
 
   const normalizedSelectedTypes = useMemo(
@@ -1741,70 +1412,10 @@ export default function AdminUsageEventsLog() {
     [effectiveSelectedEventTypes]
   );
 
-  const cutoffTimestamp = useMemo(
-    () => Date.now() - selectedTimeRangeOption.durationMs,
-    [selectedTimeRangeOption.durationMs]
+  const combinedEvents = useMemo(
+    () => historicalState.combined,
+    [historicalState.combined]
   );
-
-  const combinedEvents = useMemo(() => {
-    const liveWithinWindow = events.filter((entry) => getEventTimestamp(entry) >= cutoffTimestamp);
-
-    if (!normalizedSelectedTypes.length) {
-      return isAllTypesSelected ? liveWithinWindow : [];
-    }
-
-    const selectedTypeSet = new Set(normalizedSelectedTypes);
-
-    const historicalMatches = historicalState.combined.filter((entry) => {
-      if (getEventTimestamp(entry) < cutoffTimestamp) {
-        return false;
-      }
-
-      const summaryType = normalizeEventType(entry.summary?.eventType ?? null);
-      if (summaryType && selectedTypeSet.has(summaryType)) {
-        return true;
-      }
-
-      const detailType = normalizeEventType(entry.detail?.eventType ?? null);
-      return Boolean(detailType && selectedTypeSet.has(detailType));
-    });
-
-    const liveMatches = liveWithinWindow.filter((entry) => {
-      const summaryType = normalizeEventType(entry.summary?.eventType ?? null);
-      if (summaryType && selectedTypeSet.has(summaryType)) {
-        return true;
-      }
-
-      const detailType = normalizeEventType(entry.detail?.eventType ?? null);
-      return Boolean(detailType && selectedTypeSet.has(detailType));
-    });
-
-    if (!historicalMatches.length && !liveMatches.length) {
-      return [];
-    }
-
-    const deduped = new Map<string, UsageEventLogEntry>();
-
-    [...historicalMatches, ...liveMatches].forEach((entry) => {
-      const key = entry.summary?.id ?? entry.id;
-      if (!key) {
-        return;
-      }
-
-      const existing = deduped.get(key);
-      if (!existing || getEventTimestamp(entry) > getEventTimestamp(existing)) {
-        deduped.set(key, entry);
-      }
-    });
-
-    return Array.from(deduped.values()).sort((a, b) => getEventTimestamp(b) - getEventTimestamp(a));
-  }, [
-    cutoffTimestamp,
-    events,
-    historicalState.combined,
-    isAllTypesSelected,
-    normalizedSelectedTypes,
-  ]);
 
   const totalEventCount = combinedEvents.length;
 
@@ -1848,34 +1459,6 @@ export default function AdminUsageEventsLog() {
   const eventCountLabel = `${totalEventCount} event${totalEventCount === 1 ? '' : 's'}`;
   const userCountLabel = `${uniqueUserCount} user${uniqueUserCount === 1 ? '' : 's'}`;
 
-  useEffect(() => {
-    if (!normalizedSelectedTypes.length) {
-      return;
-    }
-
-    const selectedTypeSet = new Set(normalizedSelectedTypes);
-
-    displayedEvents.forEach((entry) => {
-      if (entry.detailStatus !== 'idle') {
-        return;
-      }
-
-      if (entry.parsedEventData !== undefined) {
-        return;
-      }
-
-      const summaryType = normalizeEventType(entry.summary?.eventType ?? null);
-      const detailType = normalizeEventType(entry.detail?.eventType ?? null);
-
-      if (
-        (summaryType && selectedTypeSet.has(summaryType)) ||
-        (detailType && selectedTypeSet.has(detailType))
-      ) {
-        fetchEventDetail(entry.id);
-      }
-    });
-  }, [displayedEvents, fetchEventDetail, normalizedSelectedTypes]);
-
   const customSelectedEventTypeLabels = useMemo(
     () => selectedEventTypes.map((type) => formatEventTypeLabel(type)),
     [selectedEventTypes]
@@ -1902,16 +1485,11 @@ export default function AdminUsageEventsLog() {
   const handleToggleExpand = (eventId: string) => {
     const isExpanding = expandedEventId !== eventId;
     setExpandedEventId(isExpanding ? eventId : null);
-
-    if (isExpanding) {
-      fetchEventDetail(eventId);
-    }
   };
-
-  const handleManualReconnect = () => {
-    setConnectionStatus('connecting');
-    setSubscriptionError(null);
-    setSubscriptionAttempt((prev) => prev + 1);
+  const handleRefresh = () => {
+    setExpandedEventId(null);
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
+    setRefreshNonce((prev) => prev + 1);
   };
 
   const handleTimeRangeChange = (_event: React.SyntheticEvent, nextValue: TimeRangeKey | null) => {
@@ -1993,7 +1571,15 @@ export default function AdminUsageEventsLog() {
               </Box>
 
               <Box sx={{ flexShrink: 0 }}>
-                <ConnectionStatusIndicator status={connectionStatus} onRetry={handleManualReconnect} />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<RefreshIcon />}
+                  onClick={handleRefresh}
+                  disabled={isHistoricalLoading}
+                >
+                  Refresh
+                </Button>
               </Box>
             </Box>
 
@@ -2151,12 +1737,6 @@ export default function AdminUsageEventsLog() {
             </Stack>
           </Stack>
         </Paper>
-
-        {subscriptionError && (
-          <Alert severity="error" variant="outlined">
-            {subscriptionError}
-          </Alert>
-        )}
 
         {isCustomSelection && selectedEventTypesSummary && (
           <Alert severity="info" variant="outlined">
