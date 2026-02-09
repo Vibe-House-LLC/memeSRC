@@ -7,20 +7,28 @@ import {
   CardActionArea,
   CardContent,
   CardMedia,
+  Chip,
   CircularProgress,
   Dialog,
   Grid,
   IconButton,
+  Slider,
   Skeleton,
+  Stack,
   Toolbar,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { Close } from '@mui/icons-material';
+import { ArrowBack, ArrowBackIos, ArrowForwardIos, Close, HistoryToggleOffRounded } from '@mui/icons-material';
 import { useSearchFilterGroups } from '../../../hooks/useSearchFilterGroups';
 import { UnifiedSearchBar, type UnifiedSearchBarProps } from '../../search/UnifiedSearchBar';
 
 const RESULT_BATCH_SIZE = 24;
 const RANDOM_SEARCH_TERMS = ['what', 'wait', 'no way', 'oh no', 'why', 'really', 'fine', 'okay'];
+const FINE_TUNE_RADIUS = 5;
+const SURROUNDING_FRAME_OFFSETS = [-40, -30, -20, -10, 0, 10, 20, 30, 40];
+const MODAL_Z_INDEX_BOOST = 1200;
 
 type SearchResultRecord = {
   id: string;
@@ -77,6 +85,27 @@ const stripHtml = (value: unknown): string => {
 
   return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 };
+
+const buildFrameImageUrl = (
+  branch: string | undefined,
+  cid: string,
+  season: string,
+  episode: string,
+  frame: number,
+): string => `https://v2-${branch}.memesrc.com/frame/${cid}/${season}/${episode}/${frame}`;
+
+const frameToTimeCode = (frame: number, frameRate = 10): string => {
+  const totalSeconds = Math.max(0, frame) / frameRate;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds - (hours * 3600)) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds
+    .toString()
+    .padStart(2, '0')}`;
+};
+
+const clampFrame = (frame: number): number => Math.max(0, Math.round(frame));
 
 const resolveFrameNumber = (item: RawSearchResult): number | null => {
   const start = Number.parseInt(String(item?.start_frame ?? ''), 10);
@@ -144,6 +173,8 @@ export default function CollageFrameSearchModal({
   onSelect,
   onSearchContextChange,
 }: CollageFrameSearchModalProps) {
+  const theme = useTheme();
+  const isWideRefine = useMediaQuery(theme.breakpoints.up('lg'));
   const [query, setQuery] = useState(initialQuery);
   const [scopeId, setScopeId] = useState(normalizeScopeId(initialScopeId));
   const [loading, setLoading] = useState(false);
@@ -152,11 +183,35 @@ export default function CollageFrameSearchModal({
   const [visibleCount, setVisibleCount] = useState(RESULT_BATCH_SIZE);
   const [hasSearched, setHasSearched] = useState(false);
   const [pendingSelectionId, setPendingSelectionId] = useState<string | null>(null);
+  const [refineTarget, setRefineTarget] = useState<SearchResultRecord | null>(null);
+  const [refineAnchorFrame, setRefineAnchorFrame] = useState<number | null>(null);
+  const [refineSliderIndex, setRefineSliderIndex] = useState(FINE_TUNE_RADIUS);
+  const [refinePreviewLoaded, setRefinePreviewLoaded] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const { groups } = useSearchFilterGroups();
   const hasFavorites = favoriteSeriesIds.length > 0;
+  const branch = process.env.REACT_APP_USER_BRANCH;
 
   const normalizedInitialQuery = useMemo(() => initialQuery.trim(), [initialQuery]);
+  const isRefineMode = Boolean(refineTarget && refineAnchorFrame !== null);
+  const selectedRefineFrame = useMemo(
+    () => (refineAnchorFrame === null ? null : clampFrame(refineAnchorFrame + (refineSliderIndex - FINE_TUNE_RADIUS))),
+    [refineAnchorFrame, refineSliderIndex],
+  );
+  const refinePreviewUrl = useMemo(() => {
+    if (!refineTarget || selectedRefineFrame === null) {
+      return '';
+    }
+    return buildFrameImageUrl(branch, refineTarget.cid, refineTarget.season, refineTarget.episode, selectedRefineFrame);
+  }, [branch, refineTarget, selectedRefineFrame]);
+  const nearbyFrames = useMemo(() => {
+    if (refineAnchorFrame === null) {
+      return [];
+    }
+    const unique = new Set<number>();
+    SURROUNDING_FRAME_OFFSETS.forEach((offset) => unique.add(clampFrame(refineAnchorFrame + offset)));
+    return Array.from(unique);
+  }, [refineAnchorFrame]);
 
   const runSearch = useCallback(
     async ({ queryValue, scopeValue }: { queryValue: string; scopeValue: string }) => {
@@ -180,7 +235,6 @@ export default function CollageFrameSearchModal({
       setHasSearched(true);
 
       try {
-        const branch = process.env.REACT_APP_USER_BRANCH;
         const groupList = Array.isArray(groups) ? (groups as SearchFilterGroup[]) : [];
         const seriesToSearch = resolveSeriesToSearch(
           normalizedScopeId,
@@ -269,6 +323,10 @@ export default function CollageFrameSearchModal({
       abortRef.current?.abort();
       setLoading(false);
       setPendingSelectionId(null);
+      setRefineTarget(null);
+      setRefineAnchorFrame(null);
+      setRefineSliderIndex(FINE_TUNE_RADIUS);
+      setRefinePreviewLoaded(false);
       return;
     }
 
@@ -277,6 +335,10 @@ export default function CollageFrameSearchModal({
     setScopeId(scoped);
     setError('');
     setPendingSelectionId(null);
+    setRefineTarget(null);
+    setRefineAnchorFrame(null);
+    setRefineSliderIndex(FINE_TUNE_RADIUS);
+    setRefinePreviewLoaded(false);
 
     if (normalizedInitialQuery) {
       runSearch({ queryValue: normalizedInitialQuery, scopeValue: scoped });
@@ -304,6 +366,9 @@ export default function CollageFrameSearchModal({
   };
 
   const handleScopeChange = (nextScopeId: string) => {
+    if (!nextScopeId || nextScopeId === 'addNewCid') {
+      return;
+    }
     setScopeId(nextScopeId);
     if (query.trim()) {
       runSearch({ queryValue: query, scopeValue: nextScopeId });
@@ -330,14 +395,63 @@ export default function CollageFrameSearchModal({
     runSearch({ queryValue: randomTerm, scopeValue: scopeId });
   };
 
-  const handleSelect = async (item: SearchResultRecord) => {
-    if (busy || loading) {
+  const handleStartRefine = (item: SearchResultRecord) => {
+    if (busy || loading || pendingSelectionId) {
       return;
     }
 
-    setPendingSelectionId(item.id);
+    setRefineTarget(item);
+    setRefineAnchorFrame(item.frame);
+    setRefineSliderIndex(FINE_TUNE_RADIUS);
+    setRefinePreviewLoaded(false);
+  };
+
+  const handleExitRefine = () => {
+    if (pendingSelectionId) {
+      return;
+    }
+    setRefineTarget(null);
+    setRefineAnchorFrame(null);
+    setRefineSliderIndex(FINE_TUNE_RADIUS);
+    setRefinePreviewLoaded(false);
+  };
+
+  const handleShiftAnchorFrame = (delta: number) => {
+    setRefineAnchorFrame((previous) => {
+      const fallback = refineTarget?.frame ?? 0;
+      return clampFrame((previous ?? fallback) + delta);
+    });
+    setRefineSliderIndex(FINE_TUNE_RADIUS);
+    setRefinePreviewLoaded(false);
+  };
+
+  const handleNearbyFrameSelect = (frame: number) => {
+    setRefineAnchorFrame(clampFrame(frame));
+    setRefineSliderIndex(FINE_TUNE_RADIUS);
+    setRefinePreviewLoaded(false);
+  };
+
+  const handleInsertRefinedFrame = async () => {
+    if (!refineTarget || selectedRefineFrame === null || busy || loading || pendingSelectionId) {
+      return;
+    }
+
+    const refinedSelection: SearchResultRecord = {
+      ...refineTarget,
+      id: `${refineTarget.cid}-${refineTarget.season}-${refineTarget.episode}-${selectedRefineFrame}`,
+      frame: selectedRefineFrame,
+      imageUrl: buildFrameImageUrl(
+        branch,
+        refineTarget.cid,
+        refineTarget.season,
+        refineTarget.episode,
+        selectedRefineFrame,
+      ),
+    };
+
+    setPendingSelectionId(refinedSelection.id);
     try {
-      await onSelect(item);
+      await onSelect(refinedSelection);
     } finally {
       setPendingSelectionId(null);
     }
@@ -347,11 +461,32 @@ export default function CollageFrameSearchModal({
     <Dialog
       open={open}
       fullScreen
-      onClose={busy ? undefined : onClose}
+      keepMounted
+      onClose={busy || Boolean(pendingSelectionId) ? undefined : onClose}
+      sx={{
+        zIndex: (muiTheme) => muiTheme.zIndex.modal + MODAL_Z_INDEX_BOOST,
+        '& .MuiDialog-container': {
+          alignItems: 'stretch',
+        },
+      }}
+      BackdropProps={{
+        sx: {
+          zIndex: (muiTheme) => muiTheme.zIndex.modal + MODAL_Z_INDEX_BOOST - 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.78)',
+        },
+      }}
       PaperProps={{
         sx: {
+          position: 'relative',
+          zIndex: (muiTheme) => muiTheme.zIndex.modal + MODAL_Z_INDEX_BOOST,
+          margin: 0,
+          width: '100%',
+          maxWidth: '100%',
+          height: '100%',
+          maxHeight: '100%',
           background: 'linear-gradient(180deg, #0b0d10 0%, #070708 100%)',
           color: '#f5f7fa',
+          overflowX: 'hidden',
         },
       }}
     >
@@ -365,171 +500,413 @@ export default function CollageFrameSearchModal({
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 64, sm: 72 } }}>
+          {isRefineMode && (
+            <IconButton edge="start" aria-label="Back to results" onClick={handleExitRefine} disabled={Boolean(pendingSelectionId)} sx={{ color: '#fff', mr: 1 }}>
+              <ArrowBack />
+            </IconButton>
+          )}
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            Search memeSRC
+            {isRefineMode ? 'Adjust Frame' : 'Search memeSRC'}
           </Typography>
-          <IconButton edge="end" aria-label="Close" onClick={onClose} disabled={busy} sx={{ color: '#fff' }}>
+          <IconButton edge="end" aria-label="Close" onClick={onClose} disabled={busy || Boolean(pendingSelectionId)} sx={{ color: '#fff' }}>
             <Close />
           </IconButton>
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ px: { xs: 1.25, sm: 2 }, pt: 1.25, pb: 1 }}>
-        <UnifiedSearchBar
-          value={query}
-          onValueChange={setQuery}
-          onSubmit={handleSubmit}
-          onClear={handleClearQuery}
-          onRandom={handleRandomSearch}
-          isRandomLoading={loading}
-          shows={shows}
-          savedCids={savedCids}
-          currentValueId={scopeId}
-          includeAllFavorites={hasFavorites}
-          onSelectSeries={handleScopeChange}
-          appearance="dark"
-          onClarifySearch={handleClarifySearch}
-          placeholder="Search captions, quotes, scenes..."
-        />
-      </Box>
+      {!isRefineMode && (
+        <Box sx={{ px: { xs: 1.25, sm: 2 }, pt: 1.25, pb: 1 }}>
+          <UnifiedSearchBar
+            value={query}
+            onValueChange={setQuery}
+            onSubmit={handleSubmit}
+            onClear={handleClearQuery}
+            onRandom={handleRandomSearch}
+            isRandomLoading={loading}
+            shows={shows}
+            savedCids={savedCids}
+            currentValueId={scopeId}
+            includeAllFavorites={hasFavorites}
+            onSelectSeries={handleScopeChange}
+            appearance="dark"
+            onClarifySearch={handleClarifySearch}
+            placeholder="Search captions, quotes, scenes..."
+          />
+        </Box>
+      )}
 
       <Box
         sx={{
           px: { xs: 1.25, sm: 2 },
           pb: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
           overflowY: 'auto',
+          overflowX: 'hidden',
           flex: 1,
         }}
       >
-        {loading && (
-          <Grid container spacing={1.25}>
-            {Array.from({ length: 12 }).map((_, idx) => (
-              <Grid item xs={6} sm={4} md={3} key={`search-loading-${idx}`}>
-                <Card sx={{ borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                  <Skeleton variant="rectangular" sx={{ pt: '56.25%', transform: 'none' }} />
-                  <CardContent sx={{ p: 1.25 }}>
-                    <Skeleton variant="text" width="90%" />
-                    <Skeleton variant="text" width="55%" />
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )}
+        {isRefineMode && refineTarget && selectedRefineFrame !== null ? (
+          <Stack
+            spacing={1.75}
+            sx={{
+              minHeight: 0,
+              width: '100%',
+              maxWidth: '100%',
+            }}
+          >
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+              <Chip
+                size="small"
+                label={`${refineTarget.cid} • S${refineTarget.season}E${refineTarget.episode}`}
+                sx={{ bgcolor: 'rgba(255,255,255,0.09)', color: '#fff' }}
+              />
+              <Chip
+                size="small"
+                label={frameToTimeCode(selectedRefineFrame)}
+                sx={{ bgcolor: 'rgba(255,255,255,0.09)', color: '#fff' }}
+              />
+            </Stack>
 
-        {!loading && error && (
-          <Box sx={{ py: 5, textAlign: 'center' }}>
-            <Typography variant="body1" color="error.light" sx={{ fontWeight: 600 }}>
-              {error}
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.78)' }}>
+              Use nearby frames, arrows, or fine tuning slider to get the exact image, then insert it.
             </Typography>
-          </Box>
-        )}
 
-        {!loading && !error && hasSearched && results.length === 0 && (
-          <Box sx={{ py: 6, textAlign: 'center' }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-              No matches found
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
-              Try a different quote or search all shows.
-            </Typography>
-          </Box>
-        )}
-
-        {!loading && !error && !hasSearched && (
-          <Box sx={{ py: 6, textAlign: 'center' }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-              Pick a frame for this collage slot
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
-              Search captions, then tap any result to place it.
-            </Typography>
-          </Box>
-        )}
-
-        {!loading && !error && visibleResults.length > 0 && (
-          <>
-            <Grid container spacing={1.25}>
-              {visibleResults.map((item) => {
-                const selectingThis = pendingSelectionId === item.id;
-                return (
-                  <Grid item xs={6} sm={4} md={3} key={item.id}>
-                    <Card
-                      sx={{
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                        backgroundColor: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      <CardActionArea
-                        disabled={busy || Boolean(pendingSelectionId)}
-                        onClick={() => handleSelect(item)}
-                        sx={{ alignItems: 'stretch' }}
-                      >
-                        <Box sx={{ position: 'relative' }}>
-                          <CardMedia
-                            component="img"
-                            src={item.imageUrl}
-                            alt={`${item.cid} S${item.season}E${item.episode} frame ${item.frame}`}
-                            sx={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }}
-                          />
-                          {selectingThis && (
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                inset: 0,
-                                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <CircularProgress size={24} sx={{ color: '#fff' }} />
-                            </Box>
-                          )}
-                        </Box>
-                        <CardContent sx={{ p: 1.1 }}>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              lineHeight: 1.35,
-                              minHeight: 38,
-                              maxHeight: 38,
-                              overflow: 'hidden',
-                              color: 'rgba(255,255,255,0.9)',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {item.subtitle || 'Tap to use this frame'}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block', mt: 0.8 }}>
-                            {item.cid} • S{item.season}E{item.episode}
-                          </Typography>
-                        </CardContent>
-                      </CardActionArea>
-                    </Card>
-                  </Grid>
-                );
-              })}
-            </Grid>
-
-            {canLoadMore && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2.25 }}>
-                <Button
-                  variant="outlined"
-                  onClick={() => setVisibleCount((prev) => prev + RESULT_BATCH_SIZE)}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: 'minmax(0, 1fr)',
+                  lg: 'minmax(0, 1.3fr) minmax(320px, 1fr)',
+                },
+                gap: 1.75,
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+              }}
+            >
+              <Stack spacing={1.25} sx={{ minWidth: 0 }}>
+                <Card
                   sx={{
-                    textTransform: 'none',
-                    borderColor: 'rgba(255,255,255,0.2)',
-                    color: '#fff',
                     borderRadius: 2,
-                    px: 2.25,
+                    overflow: 'hidden',
+                    backgroundColor: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.12)',
                   }}
                 >
-                  Load more results
-                </Button>
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: '#020202',
+                      width: '100%',
+                      aspectRatio: '16 / 9',
+                      minHeight: { xs: 220, sm: 300, md: 360, lg: 420 },
+                      maxHeight: isWideRefine ? 'min(70svh, 760px)' : 'none',
+                    }}
+                  >
+                    {!refinePreviewLoaded && (
+                      <Skeleton
+                        variant="rectangular"
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          transform: 'none',
+                          bgcolor: 'rgba(255,255,255,0.08)',
+                        }}
+                      />
+                    )}
+                    <CardMedia
+                      component="img"
+                      src={refinePreviewUrl}
+                      alt={`${refineTarget.cid} S${refineTarget.season}E${refineTarget.episode} frame ${selectedRefineFrame}`}
+                      onLoad={() => setRefinePreviewLoaded(true)}
+                      onError={() => setRefinePreviewLoaded(true)}
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        display: refinePreviewLoaded ? 'block' : 'none',
+                      }}
+                    />
+                    <IconButton
+                      aria-label="Previous nearby frame"
+                      onClick={() => handleShiftAnchorFrame(-10)}
+                      disabled={Boolean(pendingSelectionId)}
+                      sx={{
+                        position: 'absolute',
+                        left: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: '#fff',
+                        bgcolor: 'rgba(0,0,0,0.45)',
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.62)' },
+                      }}
+                    >
+                      <ArrowBackIos fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      aria-label="Next nearby frame"
+                      onClick={() => handleShiftAnchorFrame(10)}
+                      disabled={Boolean(pendingSelectionId)}
+                      sx={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: '#fff',
+                        bgcolor: 'rgba(0,0,0,0.45)',
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.62)' },
+                      }}
+                    >
+                      <ArrowForwardIos fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Card>
+
+                <Stack direction="row" spacing={1.25} alignItems="center" sx={{ px: { xs: 0.25, sm: 0.75 }, pt: 0.75 }}>
+                  <HistoryToggleOffRounded sx={{ color: 'rgba(255,255,255,0.85)' }} />
+                  <Slider
+                    size="small"
+                    min={0}
+                    max={FINE_TUNE_RADIUS * 2}
+                    step={1}
+                    marks
+                    value={refineSliderIndex}
+                    aria-label="Fine tune frame timing"
+                    onChange={(_, value) => {
+                      if (typeof value !== 'number') return;
+                      setRefineSliderIndex(value);
+                      setRefinePreviewLoaded(false);
+                    }}
+                    valueLabelDisplay="auto"
+                    valueLabelFormat={(value) => `${((value - FINE_TUNE_RADIUS) / 10).toFixed(1)}s`}
+                    sx={{
+                      color: '#fff',
+                      '& .MuiSlider-track': { bgcolor: '#fff' },
+                      '& .MuiSlider-rail': { bgcolor: 'rgba(255,255,255,0.45)' },
+                      '& .MuiSlider-thumb': { bgcolor: '#2079fe' },
+                    }}
+                  />
+                </Stack>
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25}>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    onClick={handleExitRefine}
+                    disabled={Boolean(pendingSelectionId)}
+                    sx={{
+                      textTransform: 'none',
+                      borderColor: 'rgba(255,255,255,0.24)',
+                      color: '#fff',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Back to Results
+                  </Button>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={handleInsertRefinedFrame}
+                    disabled={busy || loading || Boolean(pendingSelectionId)}
+                    sx={{ textTransform: 'none', fontWeight: 700 }}
+                  >
+                    {pendingSelectionId ? <CircularProgress size={18} color="inherit" /> : 'Insert Image'}
+                  </Button>
+                </Stack>
+              </Stack>
+
+              <Stack spacing={1} sx={{ minWidth: 0, minHeight: 0 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                  Nearby Frames
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: 'repeat(3, minmax(0, 1fr))',
+                      sm: 'repeat(4, minmax(0, 1fr))',
+                      md: 'repeat(5, minmax(0, 1fr))',
+                      lg: 'repeat(3, minmax(0, 1fr))',
+                    },
+                    gap: 1,
+                    overflowY: isWideRefine ? 'auto' : 'visible',
+                    maxHeight: isWideRefine ? 'min(70svh, 760px)' : 'none',
+                    pr: isWideRefine ? 0.5 : 0,
+                    pb: 0.5,
+                  }}
+                >
+                  {nearbyFrames.map((frame) => {
+                    const isActive = frame === selectedRefineFrame;
+                    const frameUrl = buildFrameImageUrl(
+                      branch,
+                      refineTarget.cid,
+                      refineTarget.season,
+                      refineTarget.episode,
+                      frame,
+                    );
+                    return (
+                      <Card
+                        key={`nearby-${frame}`}
+                        sx={{
+                          borderRadius: 1.5,
+                          overflow: 'hidden',
+                          border: isActive ? '2px solid #7db4ff' : '1px solid rgba(255,255,255,0.16)',
+                          backgroundColor: 'rgba(255,255,255,0.03)',
+                          minWidth: 0,
+                        }}
+                      >
+                        <CardActionArea
+                          onClick={() => handleNearbyFrameSelect(frame)}
+                          disabled={Boolean(pendingSelectionId)}
+                          sx={{ position: 'relative' }}
+                        >
+                          <CardMedia
+                            component="img"
+                            src={frameUrl}
+                            alt={`Nearby frame ${frame}`}
+                            sx={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }}
+                          />
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              px: 0.5,
+                              py: 0.25,
+                              bgcolor: 'rgba(0,0,0,0.58)',
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ color: '#fff', fontWeight: 600, fontSize: '0.65rem' }}>
+                              {frameToTimeCode(frame)}
+                            </Typography>
+                          </Box>
+                        </CardActionArea>
+                      </Card>
+                    );
+                  })}
+                </Box>
+              </Stack>
+            </Box>
+          </Stack>
+        ) : (
+          <>
+            {loading && (
+              <Grid container spacing={1.25}>
+                {Array.from({ length: 12 }).map((_, idx) => (
+                  <Grid item xs={6} sm={4} md={3} key={`search-loading-${idx}`}>
+                    <Card sx={{ borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                      <Skeleton variant="rectangular" sx={{ pt: '56.25%', transform: 'none' }} />
+                      <CardContent sx={{ p: 1.25 }}>
+                        <Skeleton variant="text" width="90%" />
+                        <Skeleton variant="text" width="55%" />
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+
+            {!loading && error && (
+              <Box sx={{ py: 5, textAlign: 'center' }}>
+                <Typography variant="body1" color="error.light" sx={{ fontWeight: 600 }}>
+                  {error}
+                </Typography>
               </Box>
+            )}
+
+            {!loading && !error && hasSearched && results.length === 0 && (
+              <Box sx={{ py: 6, textAlign: 'center' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                  No matches found
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
+                  Try a different quote or search all shows.
+                </Typography>
+              </Box>
+            )}
+
+            {!loading && !error && !hasSearched && (
+              <Box sx={{ py: 6, textAlign: 'center' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                  Pick a frame for this collage slot
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
+                  Search captions, then tap any result to refine and insert it.
+                </Typography>
+              </Box>
+            )}
+
+            {!loading && !error && visibleResults.length > 0 && (
+              <>
+                <Grid container spacing={1.25}>
+                  {visibleResults.map((item) => (
+                    <Grid item xs={6} sm={4} md={3} key={item.id}>
+                      <Card
+                        sx={{
+                          borderRadius: 2,
+                          overflow: 'hidden',
+                          backgroundColor: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                        }}
+                      >
+                        <CardActionArea
+                          disabled={busy || loading || Boolean(pendingSelectionId)}
+                          onClick={() => handleStartRefine(item)}
+                          sx={{ alignItems: 'stretch' }}
+                        >
+                          <Box sx={{ position: 'relative' }}>
+                            <CardMedia
+                              component="img"
+                              src={item.imageUrl}
+                              alt={`${item.cid} S${item.season}E${item.episode} frame ${item.frame}`}
+                              sx={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }}
+                            />
+                          </Box>
+                          <CardContent sx={{ p: 1.1 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                lineHeight: 1.35,
+                                minHeight: 38,
+                                maxHeight: 38,
+                                overflow: 'hidden',
+                                color: 'rgba(255,255,255,0.9)',
+                                fontWeight: 500,
+                              }}
+                            >
+                              {item.subtitle || 'Tap to refine this frame'}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block', mt: 0.8 }}>
+                              {item.cid} • S{item.season}E{item.episode}
+                            </Typography>
+                          </CardContent>
+                        </CardActionArea>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                {canLoadMore && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2.25 }}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => setVisibleCount((prev) => prev + RESULT_BATCH_SIZE)}
+                      sx={{
+                        textTransform: 'none',
+                        borderColor: 'rgba(255,255,255,0.2)',
+                        color: '#fff',
+                        borderRadius: 2,
+                        px: 2.25,
+                      }}
+                    >
+                      Load more results
+                    </Button>
+                  </Box>
+                )}
+              </>
             )}
           </>
         )}
