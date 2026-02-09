@@ -1060,6 +1060,66 @@
                       "/*/inpaint"
                     ]
                   ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:execute-api:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":",
+                      {
+                        "Ref": "publicapi"
+                      },
+                      "/",
+                      {
+                        "Fn::If": [
+                          "ShouldNotCreateEnvResources",
+                          "Prod",
+                          {
+                            "Ref": "env"
+                          }
+                        ]
+                      },
+                      "/POST/createUsageEvent/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:execute-api:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":",
+                      {
+                        "Ref": "publicapi"
+                      },
+                      "/",
+                      {
+                        "Fn::If": [
+                          "ShouldNotCreateEnvResources",
+                          "Prod",
+                          {
+                            "Ref": "env"
+                          }
+                        ]
+                      },
+                      "/POST/createUsageEvent"
+                    ]
+                  ]
                 }
               ]
             }
@@ -1321,6 +1381,66 @@
                         ]
                       },
                       "/PATCH/vote"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:execute-api:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":",
+                      {
+                        "Ref": "publicapi"
+                      },
+                      "/",
+                      {
+                        "Fn::If": [
+                          "ShouldNotCreateEnvResources",
+                          "Prod",
+                          {
+                            "Ref": "env"
+                          }
+                        ]
+                      },
+                      "/POST/createUsageEvent/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:execute-api:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":",
+                      {
+                        "Ref": "publicapi"
+                      },
+                      "/",
+                      {
+                        "Fn::If": [
+                          "ShouldNotCreateEnvResources",
+                          "Prod",
+                          {
+                            "Ref": "env"
+                          }
+                        ]
+                      },
+                      "/POST/createUsageEvent"
                     ]
                   ]
                 }
