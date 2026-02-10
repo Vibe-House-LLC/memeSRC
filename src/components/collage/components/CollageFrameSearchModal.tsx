@@ -21,6 +21,8 @@ import {
   useTheme,
 } from '@mui/material';
 import { ArrowBack, ArrowBackIos, ArrowForwardIos, Close, HistoryToggleOffRounded } from '@mui/icons-material';
+import { Buffer } from 'buffer';
+import { Storage } from 'aws-amplify';
 import { useSearchFilterGroups } from '../../../hooks/useSearchFilterGroups';
 import { UnifiedSearchBar, type UnifiedSearchBarProps } from '../../search/UnifiedSearchBar';
 
@@ -65,6 +67,12 @@ type SearchFilterGroup = {
   filters?: string;
 };
 
+type EpisodeSubtitleRange = {
+  startFrame: number;
+  endFrame: number;
+  subtitle: string;
+};
+
 type CollageFrameSearchModalProps = {
   open: boolean;
   busy?: boolean;
@@ -84,6 +92,79 @@ const stripHtml = (value: unknown): string => {
   }
 
   return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+const decodeSubtitleValue = (value: string): string => {
+  if (!value) {
+    return '';
+  }
+
+  try {
+    return Buffer.from(value, 'base64').toString('utf8');
+  } catch (_) {
+    return '';
+  }
+};
+
+const parseEpisodeSubtitleRanges = (csvText: string): EpisodeSubtitleRange[] => {
+  if (!csvText) {
+    return [];
+  }
+
+  return csvText
+    .split('\n')
+    .slice(1)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(',');
+      if (parts.length < 6) {
+        return null;
+      }
+
+      const encodedSubtitleText = parts[3] || '';
+      const startFrame = Number.parseInt(parts[4] || '', 10);
+      const endFrame = Number.parseInt(parts[5] || '', 10);
+
+      if (!Number.isFinite(startFrame) || !Number.isFinite(endFrame)) {
+        return null;
+      }
+
+      return {
+        startFrame,
+        endFrame,
+        subtitle: stripHtml(decodeSubtitleValue(encodedSubtitleText)),
+      };
+    })
+    .filter(Boolean) as EpisodeSubtitleRange[];
+};
+
+const resolveSubtitleForFrame = (ranges: EpisodeSubtitleRange[], frame: number): string => {
+  if (!Array.isArray(ranges) || ranges.length === 0 || !Number.isFinite(frame)) {
+    return '';
+  }
+
+  const directMatch = ranges.find((range) => frame >= range.startFrame && frame <= range.endFrame);
+  if (directMatch?.subtitle) {
+    return directMatch.subtitle;
+  }
+
+  let closest: EpisodeSubtitleRange | null = null;
+  let minDistance = Number.POSITIVE_INFINITY;
+
+  ranges.forEach((range) => {
+    const distance = frame < range.startFrame
+      ? range.startFrame - frame
+      : frame > range.endFrame
+        ? frame - range.endFrame
+        : 0;
+    if (distance < minDistance) {
+      minDistance = distance;
+      closest = range;
+    }
+  });
+
+  return closest?.subtitle || '';
 };
 
 const buildFrameImageUrl = (
@@ -187,7 +268,10 @@ export default function CollageFrameSearchModal({
   const [refineAnchorFrame, setRefineAnchorFrame] = useState<number | null>(null);
   const [refineSliderIndex, setRefineSliderIndex] = useState(FINE_TUNE_RADIUS);
   const [refinePreviewLoaded, setRefinePreviewLoaded] = useState(false);
+  const [refineLiveSubtitle, setRefineLiveSubtitle] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+  const subtitleRangesCacheRef = useRef<Record<string, EpisodeSubtitleRange[]>>({});
+  const subtitleLookupRequestRef = useRef(0);
   const { groups } = useSearchFilterGroups();
   const hasFavorites = favoriteSeriesIds.length > 0;
   const branch = process.env.REACT_APP_USER_BRANCH;
@@ -212,6 +296,27 @@ export default function CollageFrameSearchModal({
     SURROUNDING_FRAME_OFFSETS.forEach((offset) => unique.add(clampFrame(refineAnchorFrame + offset)));
     return Array.from(unique);
   }, [refineAnchorFrame]);
+
+  const loadEpisodeSubtitleRanges = useCallback(
+    async ({ cid, season, episode }: { cid: string; season: string; episode: string }) => {
+      const cacheKey = `${cid}::${season}::${episode}`;
+      const cached = subtitleRangesCacheRef.current[cacheKey];
+      if (cached) {
+        return cached;
+      }
+
+      const csvDownload = await Storage.get(`src/${cid}/${season}/${episode}/_docs.csv`, {
+        level: 'public',
+        download: true,
+        customPrefix: { public: 'protected/' },
+      });
+      const csvText = await csvDownload?.Body?.text?.();
+      const parsedRanges = parseEpisodeSubtitleRanges(typeof csvText === 'string' ? csvText : '');
+      subtitleRangesCacheRef.current[cacheKey] = parsedRanges;
+      return parsedRanges;
+    },
+    [],
+  );
 
   const runSearch = useCallback(
     async ({ queryValue, scopeValue }: { queryValue: string; scopeValue: string }) => {
@@ -327,6 +432,7 @@ export default function CollageFrameSearchModal({
       setRefineAnchorFrame(null);
       setRefineSliderIndex(FINE_TUNE_RADIUS);
       setRefinePreviewLoaded(false);
+      setRefineLiveSubtitle('');
       return;
     }
 
@@ -339,6 +445,7 @@ export default function CollageFrameSearchModal({
     setRefineAnchorFrame(null);
     setRefineSliderIndex(FINE_TUNE_RADIUS);
     setRefinePreviewLoaded(false);
+    setRefineLiveSubtitle('');
 
     if (normalizedInitialQuery) {
       runSearch({ queryValue: normalizedInitialQuery, scopeValue: scoped });
@@ -348,6 +455,39 @@ export default function CollageFrameSearchModal({
       setVisibleCount(RESULT_BATCH_SIZE);
     }
   }, [initialQuery, initialScopeId, normalizedInitialQuery, open, runSearch]);
+
+  useEffect(() => {
+    if (!isRefineMode || !refineTarget || selectedRefineFrame === null) {
+      setRefineLiveSubtitle('');
+      return;
+    }
+
+    const fallbackSubtitle = stripHtml(refineTarget.subtitle);
+    setRefineLiveSubtitle(fallbackSubtitle);
+
+    const requestId = subtitleLookupRequestRef.current + 1;
+    subtitleLookupRequestRef.current = requestId;
+
+    loadEpisodeSubtitleRanges({
+      cid: refineTarget.cid,
+      season: refineTarget.season,
+      episode: refineTarget.episode,
+    })
+      .then((ranges) => {
+        if (subtitleLookupRequestRef.current !== requestId) {
+          return;
+        }
+
+        const resolved = resolveSubtitleForFrame(ranges, selectedRefineFrame);
+        setRefineLiveSubtitle(stripHtml(resolved || fallbackSubtitle));
+      })
+      .catch(() => {
+        if (subtitleLookupRequestRef.current !== requestId) {
+          return;
+        }
+        setRefineLiveSubtitle(fallbackSubtitle);
+      });
+  }, [isRefineMode, loadEpisodeSubtitleRanges, refineTarget, selectedRefineFrame]);
 
   useEffect(() => () => {
     abortRef.current?.abort();
@@ -435,11 +575,13 @@ export default function CollageFrameSearchModal({
     if (!refineTarget || selectedRefineFrame === null || busy || loading || pendingSelectionId) {
       return;
     }
+    const selectionSubtitle = stripHtml(refineLiveSubtitle || refineTarget.subtitle || '');
 
     const refinedSelection: SearchResultRecord = {
       ...refineTarget,
       id: `${refineTarget.cid}-${refineTarget.season}-${refineTarget.episode}-${selectedRefineFrame}`,
       frame: selectedRefineFrame,
+      subtitle: selectionSubtitle,
       imageUrl: buildFrameImageUrl(
         branch,
         refineTarget.cid,
@@ -566,6 +708,37 @@ export default function CollageFrameSearchModal({
               />
             </Stack>
 
+            {refineLiveSubtitle && (
+              <Box
+                sx={{
+                  px: { xs: 1.2, sm: 1.5 },
+                  py: { xs: 0.9, sm: 1.1 },
+                  borderRadius: 2,
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  bgcolor: 'rgba(0,0,0,0.5)',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.05)',
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: '#fff',
+                    textAlign: 'center',
+                    fontWeight: 800,
+                    letterSpacing: 0.15,
+                    lineHeight: 1.3,
+                    fontSize: { xs: '0.95rem', sm: '1.02rem', md: '1.08rem' },
+                    textShadow: '0 1px 2px rgba(0,0,0,0.7)',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {refineLiveSubtitle}
+                </Typography>
+              </Box>
+            )}
+
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.78)' }}>
               Use nearby frames, arrows, or fine tuning slider to get the exact image, then insert it.
             </Typography>
@@ -629,6 +802,37 @@ export default function CollageFrameSearchModal({
                         display: refinePreviewLoaded ? 'block' : 'none',
                       }}
                     />
+                    {refineLiveSubtitle && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          px: { xs: 1, sm: 1.5 },
+                          py: { xs: 0.75, sm: 0.9 },
+                          bgcolor: 'rgba(0,0,0,0.58)',
+                          borderTop: '1px solid rgba(255,255,255,0.12)',
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            color: '#fff',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            lineHeight: 1.3,
+                            fontWeight: 700,
+                            textAlign: 'center',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                            fontSize: { xs: '0.86rem', sm: '0.93rem' },
+                          }}
+                        >
+                          {refineLiveSubtitle}
+                        </Typography>
+                      </Box>
+                    )}
                     <IconButton
                       aria-label="Previous nearby frame"
                       onClick={() => handleShiftAnchorFrame(-10)}

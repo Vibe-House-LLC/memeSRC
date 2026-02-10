@@ -105,6 +105,9 @@ const CollagePreview = ({
   const [searchSelectionBusy, setSearchSelectionBusy] = useState(false);
   const [isReplaceMode, setIsReplaceMode] = useState(false);
   const [activeExistingImageIndex, setActiveExistingImageIndex] = useState(null);
+  const [isCaptionDecisionOpen, setIsCaptionDecisionOpen] = useState(false);
+  const [incomingCaptionPreview, setIncomingCaptionPreview] = useState('');
+  const captionDecisionResolveRef = useRef(null);
   // Legacy Magic Editor dialog flow removed; navigation to MagicPage is primary
   
   // Dialog-based magic editor removed in favor of page navigation
@@ -132,11 +135,35 @@ const CollagePreview = ({
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
 
   const clearActivePanelSelection = () => {
+    if (captionDecisionResolveRef.current) {
+      captionDecisionResolveRef.current(false);
+      captionDecisionResolveRef.current = null;
+    }
+    setIsCaptionDecisionOpen(false);
+    setIncomingCaptionPreview('');
     setIsReplaceMode(false);
     setActiveExistingImageIndex(null);
     setActivePanelIndex(null);
     setActivePanelId(null);
   };
+
+  const closeCaptionDecision = (shouldUpdateCaption = false) => {
+    const resolve = captionDecisionResolveRef.current;
+    captionDecisionResolveRef.current = null;
+    setIsCaptionDecisionOpen(false);
+    setIncomingCaptionPreview('');
+    if (typeof resolve === 'function') {
+      resolve(Boolean(shouldUpdateCaption));
+    }
+  };
+
+  const requestCaptionReplacementDecision = (incomingCaption) => (
+    new Promise((resolve) => {
+      captionDecisionResolveRef.current = resolve;
+      setIncomingCaptionPreview(incomingCaption);
+      setIsCaptionDecisionOpen(true);
+    })
+  );
 
   const resolvePanelIdFromIndex = (index) => {
     try {
@@ -492,6 +519,9 @@ const CollagePreview = ({
       return;
     }
 
+    if (isSearchModalOpen) {
+      setIsSearchModalOpen(false);
+    }
     setSearchSelectionBusy(true);
 
     const clickedPanelId = activePanelId || resolvePanelIdFromIndex(activePanelIndex);
@@ -516,6 +546,29 @@ const CollagePreview = ({
     const resolvedSubtitleShowing = typeof selected?.subtitleShowing === 'boolean'
       ? selected.subtitleShowing
       : Boolean(resolvedSubtitle);
+    const existingImageSubtitle = normalizeText(selectedImages?.[activeExistingImageIndex]?.subtitle);
+    const existingImageSubtitleShowing = Boolean(selectedImages?.[activeExistingImageIndex]?.subtitleShowing);
+    const existingCaption = normalizeText(
+      panelTexts?.[clickedPanelId]?.rawContent ??
+      panelTexts?.[clickedPanelId]?.content ??
+      (existingImageSubtitleShowing ? existingImageSubtitle : '')
+    );
+    const incomingCaption = normalizeText(resolvedSubtitle);
+    const shouldPromptForCaptionUpdate = Boolean(
+      isReplaceMode &&
+      activeExistingImageIndex !== null &&
+      typeof activeExistingImageIndex === 'number' &&
+      existingCaption &&
+      incomingCaption
+    );
+    let shouldUpdateCaption = false;
+    let finalSubtitleShowing = resolvedSubtitleShowing;
+    if (shouldPromptForCaptionUpdate) {
+      shouldUpdateCaption = await requestCaptionReplacementDecision(incomingCaption);
+      if (!shouldUpdateCaption) {
+        finalSubtitleShowing = false;
+      }
+    }
 
     const buildNormalizedFromBlob = async (blob) => {
       // Create upload-sized and editor-sized JPEGs from the source blob
@@ -599,7 +652,7 @@ const CollagePreview = ({
       const imageObj = {
         ...normalized,
         subtitle: resolvedSubtitle,
-        subtitleShowing: resolvedSubtitleShowing,
+        subtitleShowing: finalSubtitleShowing,
         metadata: persistedMetadata,
       };
 
@@ -607,6 +660,13 @@ const CollagePreview = ({
         // Replace existing image in place.
         const previousImage = selectedImages?.[activeExistingImageIndex];
         await replaceImage(activeExistingImageIndex, imageObj);
+        if (shouldUpdateCaption && incomingCaption && typeof updatePanelText === 'function') {
+          updatePanelText(clickedPanelId, {
+            content: incomingCaption,
+            rawContent: incomingCaption,
+            subtitleShowing: true,
+          });
+        }
         committed = true;
         setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       } else {
@@ -633,7 +693,7 @@ const CollagePreview = ({
   };
 
   // Handle selecting an image from memeSRC search results for the active panel.
-  const handleSearchResultSelect = async (selection) => {
+  const handleSearchResultSelect = (selection) => {
     if (!selection) return;
     const subtitle = String(selection.subtitle || '').trim();
     const hasSubtitle = subtitle.length > 0;
@@ -652,13 +712,13 @@ const CollagePreview = ({
         ...(hasSubtitle ? { defaultCaption: subtitle } : {}),
       },
     };
-    await applySelectedAsset(selected);
+    void applySelectedAsset(selected);
   };
 
   // Handle selecting an image from My Library for the active panel.
-  const handleLibrarySelect = async (items) => {
+  const handleLibrarySelect = (items) => {
     if (!items || items.length === 0) return;
-    await applySelectedAsset(items[0]);
+    void applySelectedAsset(items[0]);
   };
 
   const handleSourceSelectorClose = () => {
@@ -718,8 +778,8 @@ const CollagePreview = ({
       description: 'Find frames by quote, then fine-tune the exact moment.',
       Icon: SearchRoundedIcon,
       onClick: handleChooseSearchSource,
-      accent: '#1d4ed8',
-      background: 'linear-gradient(135deg, rgba(29,78,216,0.16), rgba(29,78,216,0.03))',
+      accent: '#91b4ff',
+      tint: 'rgba(148, 163, 184, 0.07)',
     },
     {
       id: 'library',
@@ -727,8 +787,8 @@ const CollagePreview = ({
       description: 'Pick from your saved uploads and recent collage images.',
       Icon: PhotoLibraryRoundedIcon,
       onClick: handleChooseLibrarySource,
-      accent: '#0f766e',
-      background: 'linear-gradient(135deg, rgba(15,118,110,0.16), rgba(15,118,110,0.03))',
+      accent: '#8bd5c9',
+      tint: 'rgba(148, 163, 184, 0.07)',
     },
     {
       id: 'upload',
@@ -736,8 +796,8 @@ const CollagePreview = ({
       description: 'Instantly open your photo picker and add a new image.',
       Icon: UploadRoundedIcon,
       onClick: handleChooseDeviceSource,
-      accent: '#9a3412',
-      background: 'linear-gradient(135deg, rgba(154,52,18,0.16), rgba(154,52,18,0.03))',
+      accent: '#e8c18d',
+      tint: 'rgba(148, 163, 184, 0.07)',
     },
   ];
 
@@ -803,23 +863,25 @@ const CollagePreview = ({
               mx: { xs: 1.25, sm: 2 },
               width: 'calc(100% - 20px)',
               maxWidth: 900,
-              backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)',
+              backgroundImage: 'linear-gradient(180deg, #161616 0%, #0b0b0b 100%)',
+              border: '1px solid rgba(148,163,184,0.24)',
+              color: '#f8fafc',
             },
           }}
         >
-          <DialogTitle sx={{ pr: 6, fontWeight: 800 }}>
+          <DialogTitle sx={{ pr: 6, fontWeight: 800, color: '#f8fafc' }}>
             Add or replace image
             <IconButton
               aria-label="close"
               onClick={handleSourceSelectorClose}
-              sx={{ position: 'absolute', right: 8, top: 8 }}
+              sx={{ position: 'absolute', right: 8, top: 8, color: 'rgba(248,250,252,0.92)' }}
               disabled={searchSelectionBusy}
             >
               <CloseIcon />
             </IconButton>
           </DialogTitle>
           <DialogContent sx={{ pt: 0.5, pb: 2.25 }}>
-            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ mb: 2, color: 'rgba(203,213,225,0.86)', fontWeight: 500 }}>
               Pick the fastest way to fill this collage slot.
             </Typography>
             <Box
@@ -838,21 +900,29 @@ const CollagePreview = ({
                     disabled={searchSelectionBusy}
                     sx={{
                       p: 0,
+                      position: 'relative',
                       textTransform: 'none',
                       borderRadius: 2.5,
                       overflow: 'hidden',
                       justifyContent: 'stretch',
                       alignItems: 'stretch',
-                      border: '1px solid rgba(15, 23, 42, 0.12)',
-                      background: option.background,
-                      color: '#0f172a',
+                      border: '1px solid rgba(148,163,184,0.2)',
+                      background: 'linear-gradient(180deg, rgba(30,30,30,0.97) 0%, rgba(16,16,16,0.98) 100%)',
+                      color: '#f8fafc',
                       minHeight: { xs: 96, sm: 104, md: 146 },
-                      boxShadow: '0 6px 18px rgba(15, 23, 42, 0.08)',
+                      boxShadow: '0 8px 18px rgba(2,6,23,0.28)',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        inset: 0,
+                        background: `linear-gradient(120deg, ${option.tint}, rgba(15,23,42,0))`,
+                        pointerEvents: 'none',
+                      },
                       '&:hover': {
                         transform: 'translateY(-1px)',
-                        boxShadow: '0 12px 24px rgba(15, 23, 42, 0.12)',
-                        borderColor: `${option.accent}55`,
-                        background: option.background,
+                        boxShadow: '0 12px 22px rgba(2,6,23,0.38)',
+                        borderColor: 'rgba(148,163,184,0.34)',
+                        background: 'linear-gradient(180deg, rgba(38,38,38,0.98) 0%, rgba(22,22,22,0.98) 100%)',
                       },
                     }}
                   >
@@ -875,8 +945,8 @@ const CollagePreview = ({
                           display: 'grid',
                           placeItems: 'center',
                           color: option.accent,
-                          bgcolor: 'rgba(255,255,255,0.92)',
-                          border: `1px solid ${option.accent}33`,
+                          bgcolor: 'rgba(2,6,23,0.58)',
+                          border: '1px solid rgba(148,163,184,0.34)',
                         }}
                       >
                         <Icon fontSize="small" />
@@ -893,7 +963,7 @@ const CollagePreview = ({
                           sx={{
                             mt: 0.45,
                             display: 'block',
-                            color: 'rgba(15, 23, 42, 0.78)',
+                            color: 'rgba(226,232,240,0.86)',
                             fontSize: { xs: '0.76rem', sm: '0.8rem' },
                             lineHeight: 1.3,
                           }}
@@ -1014,6 +1084,65 @@ const CollagePreview = ({
           savedCids={Array.isArray(searchDetailsV2?.savedCids) ? searchDetailsV2.savedCids : []}
         />
       )}
+
+      <Dialog
+        open={isCaptionDecisionOpen}
+        onClose={() => closeCaptionDecision(false)}
+        fullWidth
+        maxWidth="xs"
+        sx={{
+          zIndex: (muiTheme) => muiTheme.zIndex.modal + 1305,
+        }}
+        BackdropProps={{
+          sx: {
+            backgroundColor: 'rgba(0, 0, 0, 0.62)',
+          },
+        }}
+        PaperProps={{
+          sx: {
+            background: '#111318',
+            color: '#f8fafc',
+            border: '1px solid rgba(148,163,184,0.24)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Update caption?</DialogTitle>
+        <DialogContent sx={{ pt: 0.5 }}>
+          <Typography variant="body2" sx={{ color: 'rgba(203,213,225,0.86)' }}>
+            Do you want to change the caption to:
+          </Typography>
+          <Box
+            sx={{
+              mt: 1.25,
+              px: 1.25,
+              py: 1,
+              borderRadius: 1.5,
+              bgcolor: 'rgba(2, 6, 23, 0.6)',
+              border: '1px solid rgba(148,163,184,0.3)',
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.35, textAlign: 'center' }}>
+              "{incomingCaptionPreview}"
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
+          <Button
+            onClick={() => closeCaptionDecision(false)}
+            sx={{ textTransform: 'none', fontWeight: 600 }}
+          >
+            No Thanks
+          </Button>
+          <Button
+            onClick={() => closeCaptionDecision(true)}
+            variant="contained"
+            disableElevation
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            Update Caption
+          </Button>
+        </DialogActions>
+      </Dialog>
       
       {/* Panel options menu */}
       <Menu
