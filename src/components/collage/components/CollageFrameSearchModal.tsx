@@ -270,6 +270,7 @@ export default function CollageFrameSearchModal({
   const [refinePreviewLoaded, setRefinePreviewLoaded] = useState(false);
   const [refineLiveSubtitle, setRefineLiveSubtitle] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+  const wasOpenRef = useRef(false);
   const subtitleRangesCacheRef = useRef<Record<string, EpisodeSubtitleRange[]>>({});
   const subtitleLookupRequestRef = useRef(0);
   const { groups } = useSearchFilterGroups();
@@ -439,17 +440,25 @@ export default function CollageFrameSearchModal({
 
   useEffect(() => {
     if (!open) {
-      dismissKeyboard();
-      abortRef.current?.abort();
-      setLoading(false);
-      setPendingSelectionId(null);
-      setRefineTarget(null);
-      setRefineAnchorFrame(null);
-      setRefineSliderIndex(FINE_TUNE_RADIUS);
-      setRefinePreviewLoaded(false);
-      setRefineLiveSubtitle('');
+      if (wasOpenRef.current) {
+        dismissKeyboard();
+        abortRef.current?.abort();
+        setLoading(false);
+        setPendingSelectionId(null);
+        setRefineTarget(null);
+        setRefineAnchorFrame(null);
+        setRefineSliderIndex(FINE_TUNE_RADIUS);
+        setRefinePreviewLoaded(false);
+        setRefineLiveSubtitle('');
+      }
+      wasOpenRef.current = false;
       return;
     }
+
+    if (wasOpenRef.current) {
+      return;
+    }
+    wasOpenRef.current = true;
 
     const scoped = normalizeScopeId(initialScopeId);
     setQuery(initialQuery);
