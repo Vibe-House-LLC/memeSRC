@@ -1,8 +1,6 @@
 import React, { useState, useRef, useContext, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Menu,
-  MenuItem,
   Box,
   Dialog,
   DialogTitle,
@@ -100,8 +98,6 @@ const CollagePreview = ({
   const setV2SearchQuery = searchDetailsV2?.setSearchQuery;
   const setV2SearchScope = searchDetailsV2?.setCid;
   
-  // State for menu
-  const [menuPosition, setMenuPosition] = useState(null);
   const [activePanelIndex, setActivePanelIndex] = useState(null);
   const [activePanelId, setActivePanelId] = useState(null);
   const [isSourceSelectorOpen, setIsSourceSelectorOpen] = useState(false);
@@ -216,61 +212,6 @@ const CollagePreview = ({
       setActiveExistingImageIndex(imageIndex);
       openSourceSelectorForActivePanel();
     }
-  };
-
-  // Open menu for a panel
-  const handleMenuOpen = (event, index) => {
-    event.stopPropagation(); // Prevent panel click
-
-    const panelId = resolvePanelIdFromIndex(index);
-    const imageIndex = panelImageMapping?.[panelId];
-    const hasValidImage =
-      imageIndex !== undefined &&
-      imageIndex !== null &&
-      imageIndex >= 0 &&
-      imageIndex < (selectedImages?.length || 0) &&
-      selectedImages?.[imageIndex];
-
-    setActivePanelIndex(index);
-    setActivePanelId(panelId);
-
-    if (!hasValidImage) {
-      setIsReplaceMode(false);
-      setActiveExistingImageIndex(null);
-      setMenuPosition(null);
-      openSourceSelectorForActivePanel();
-      return;
-    }
-
-    setIsReplaceMode(true);
-    setActiveExistingImageIndex(imageIndex);
-
-    // Store the mouse position instead of the element reference
-    setMenuPosition({
-      left: event.clientX - 2,
-      top: event.clientY - 4,
-    });
-  };
-
-  // Close menu
-  const handleMenuClose = () => {
-    setMenuPosition(null);
-  };
-
-  // Handle replace image from menu
-  const handleReplaceImage = () => {
-    if (activePanelIndex !== null) {
-      const panelId = resolvePanelIdFromIndex(activePanelIndex);
-
-      setActivePanelId(panelId);
-      const existingIdx = panelImageMapping?.[panelId];
-      setActiveExistingImageIndex(typeof existingIdx === 'number' ? existingIdx : null);
-      setIsReplaceMode(true);
-      openSourceSelectorForActivePanel();
-    }
-
-    // Close the menu
-    handleMenuClose();
   };
 
   // Helper: convert Blob to data URL
@@ -893,7 +834,6 @@ const CollagePreview = ({
         onPanelClick={handlePanelClick}
         onEditImage={isAdmin ? handleEditImageRequest : undefined}
         canEditImage={isAdmin}
-        onMenuOpen={handleMenuOpen}
         onSaveGestureDetected={onGenerateNudgeRequested}
         isFrameActionSuppressed={isFrameActionSuppressed}
         isHydratingProject={isHydratingProject}
@@ -1208,17 +1148,6 @@ const CollagePreview = ({
           </Button>
         </DialogActions>
       </Dialog>
-      
-      {/* Panel options menu */}
-      <Menu
-        open={Boolean(menuPosition)}
-        onClose={handleMenuClose}
-        anchorReference="anchorPosition"
-        anchorPosition={menuPosition || undefined}
-      >
-        <MenuItem onClick={handleReplaceImage}>Replace image</MenuItem>
-      </Menu>
-
       
     </Box>
   );
