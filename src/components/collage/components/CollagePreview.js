@@ -4,11 +4,27 @@ import {
   Menu,
   MenuItem,
   Box,
-} from "@mui/material";
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  IconButton,
+  AppBar,
+  Toolbar,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import PhotoLibraryRoundedIcon from '@mui/icons-material/PhotoLibraryRounded';
+import UploadRoundedIcon from '@mui/icons-material/UploadRounded';
 import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 import { useNavigate, useLocation } from 'react-router-dom';
 import CollageFrameSearchModal from './CollageFrameSearchModal';
+import { LibraryBrowser } from '../../library';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { UserContext } from '../../../UserContext';
 import { resizeImage } from '../../../utils/library/resizeImage';
@@ -68,6 +84,8 @@ const CollagePreview = ({
   allowHydrationTransformCarry = false,
 }) => {
   const fileInputRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, shows } = useContext(UserContext);
   const searchDetailsV2 = useContext(V2SearchContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
@@ -80,6 +98,8 @@ const CollagePreview = ({
   const [menuPosition, setMenuPosition] = useState(null);
   const [activePanelIndex, setActivePanelIndex] = useState(null);
   const [activePanelId, setActivePanelId] = useState(null);
+  const [isSourceSelectorOpen, setIsSourceSelectorOpen] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchSelectionBusy, setSearchSelectionBusy] = useState(false);
   const [isReplaceMode, setIsReplaceMode] = useState(false);
@@ -127,7 +147,17 @@ const CollagePreview = ({
     }
   };
 
-  // Handle panel click - pro/admin users get memeSRC search picker, others use file picker fallback
+  const openSourceSelectorForActivePanel = () => {
+    if (hasLibraryAccess) {
+      setIsLibraryOpen(false);
+      setIsSearchModalOpen(false);
+      setIsSourceSelectorOpen(true);
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  // Handle panel click - pro/admin users choose between Library and memeSRC search, others use file picker fallback
   const handlePanelClick = (index, panelId) => {
     debugLog(`Panel clicked: index=${index}, panelId=${panelId}`);
     setActivePanelIndex(index);
@@ -146,22 +176,12 @@ const CollagePreview = ({
       // Empty frame
       setIsReplaceMode(false);
       setActiveExistingImageIndex(null);
-      if (hasLibraryAccess) {
-        setIsSearchModalOpen(true);
-      } else {
-        // Non-admins: open system file picker (legacy behavior)
-        fileInputRef.current?.click();
-      }
+      openSourceSelectorForActivePanel();
     } else {
       // Frame has image
       setIsReplaceMode(true);
       setActiveExistingImageIndex(imageIndex);
-      if (hasLibraryAccess) {
-        setIsSearchModalOpen(true);
-      } else {
-        // Non-admins: open system file picker to replace image
-        fileInputRef.current?.click();
-      }
+      openSourceSelectorForActivePanel();
     }
   };
 
@@ -192,12 +212,7 @@ const CollagePreview = ({
       const existingIdx = panelImageMapping?.[panelId];
       setActiveExistingImageIndex(typeof existingIdx === 'number' ? existingIdx : null);
       setIsReplaceMode(true);
-      if (hasLibraryAccess) {
-        setIsSearchModalOpen(true);
-      } else {
-        // Non-admins: open system file picker
-        fileInputRef.current?.click();
-      }
+      openSourceSelectorForActivePanel();
     }
 
     // Close the menu
@@ -471,28 +486,14 @@ const CollagePreview = ({
     }
   };
 
-  // Handle selecting an image from memeSRC search results for the active panel
-  const handleSearchResultSelect = async (selection) => {
-    if (!selection || activePanelIndex === null || searchSelectionBusy) {
+  const applySelectedAsset = async (selected) => {
+    if (!selected || activePanelIndex === null || searchSelectionBusy) {
       return;
     }
 
     setSearchSelectionBusy(true);
 
     const clickedPanelId = activePanelId || resolvePanelIdFromIndex(activePanelIndex);
-
-    const selected = {
-      url: selection.imageUrl,
-      metadata: {
-        source: 'memesrc-search',
-        sourceUrl: selection.imageUrl,
-        cid: selection.cid,
-        season: selection.season,
-        episode: selection.episode,
-        frame: selection.frame,
-        searchTerm: selection.searchTerm,
-      },
-    };
 
     // Normalize selected frame URL to upload/editor-sized image blobs for canvas safety.
     const toDataUrl = (blob) => new Promise((resolve, reject) => {
@@ -528,7 +529,7 @@ const CollagePreview = ({
           // Fall back to treating the URL directly below
         }
       }
-      // For memeSRC search selections, fetch the frame URL and normalize to editor-safe image blobs.
+      // For URL-based selections, fetch the image and normalize to editor-safe image blobs.
       try {
         const res = await fetch(srcUrl);
         const blob = await res.blob();
@@ -561,6 +562,8 @@ const CollagePreview = ({
         };
         updatePanelImageMapping(newMapping);
       }
+      setIsSourceSelectorOpen(false);
+      setIsLibraryOpen(false);
       setIsSearchModalOpen(false);
       clearActivePanelSelection();
     } finally {
@@ -571,12 +574,109 @@ const CollagePreview = ({
     }
   };
 
+  // Handle selecting an image from memeSRC search results for the active panel.
+  const handleSearchResultSelect = async (selection) => {
+    if (!selection) return;
+    const selected = {
+      url: selection.imageUrl,
+      metadata: {
+        source: 'memesrc-search',
+        sourceUrl: selection.imageUrl,
+        cid: selection.cid,
+        season: selection.season,
+        episode: selection.episode,
+        frame: selection.frame,
+        searchTerm: selection.searchTerm,
+      },
+    };
+    await applySelectedAsset(selected);
+  };
+
+  // Handle selecting an image from My Library for the active panel.
+  const handleLibrarySelect = async (items) => {
+    if (!items || items.length === 0) return;
+    await applySelectedAsset(items[0]);
+  };
+
+  const handleSourceSelectorClose = () => {
+    if (searchSelectionBusy) return;
+    setIsSourceSelectorOpen(false);
+    clearActivePanelSelection();
+  };
+
+  const handleChooseSearchSource = () => {
+    if (searchSelectionBusy) return;
+    setIsSourceSelectorOpen(false);
+    setIsLibraryOpen(false);
+    setIsSearchModalOpen(true);
+  };
+
+  const handleChooseLibrarySource = () => {
+    if (searchSelectionBusy) return;
+    setIsSourceSelectorOpen(false);
+    setIsSearchModalOpen(false);
+    setIsLibraryOpen(true);
+  };
+
+  const handleChooseDeviceSource = () => {
+    if (searchSelectionBusy) return;
+    setIsSourceSelectorOpen(false);
+    setIsLibraryOpen(false);
+    setIsSearchModalOpen(false);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        fileInputRef.current?.click();
+      });
+      return;
+    }
+    setTimeout(() => fileInputRef.current?.click(), 0);
+  };
+
   // Close the search dialog and reset active state.
   const handleSearchModalClose = () => {
     if (searchSelectionBusy) return;
+    setIsSourceSelectorOpen(false);
     setIsSearchModalOpen(false);
     clearActivePanelSelection();
   };
+
+  // Close the library dialog and reset active state.
+  const handleLibraryClose = () => {
+    if (searchSelectionBusy) return;
+    setIsSourceSelectorOpen(false);
+    setIsLibraryOpen(false);
+    clearActivePanelSelection();
+  };
+
+  const sourceOptions = [
+    {
+      id: 'search',
+      title: 'Search memeSRC',
+      description: 'Find frames by quote, then fine-tune the exact moment.',
+      Icon: SearchRoundedIcon,
+      onClick: handleChooseSearchSource,
+      accent: '#1d4ed8',
+      background: 'linear-gradient(135deg, rgba(29,78,216,0.16), rgba(29,78,216,0.03))',
+    },
+    {
+      id: 'library',
+      title: 'Choose from Library',
+      description: 'Pick from your saved uploads and recent collage images.',
+      Icon: PhotoLibraryRoundedIcon,
+      onClick: handleChooseLibrarySource,
+      accent: '#0f766e',
+      background: 'linear-gradient(135deg, rgba(15,118,110,0.16), rgba(15,118,110,0.03))',
+    },
+    {
+      id: 'upload',
+      title: 'Upload from Device',
+      description: 'Instantly open your photo picker and add a new image.',
+      Icon: UploadRoundedIcon,
+      onClick: handleChooseDeviceSource,
+      accent: '#9a3412',
+      background: 'linear-gradient(135deg, rgba(154,52,18,0.16), rgba(154,52,18,0.03))',
+    },
+  ];
 
 
   return (
@@ -626,6 +726,215 @@ const CollagePreview = ({
         accept="image/*"
         onChange={handleFileChange}
       />
+
+      {/* Source selector for pro/admin users */}
+      {hasLibraryAccess && (
+        <Dialog
+          open={isSourceSelectorOpen}
+          onClose={handleSourceSelectorClose}
+          fullWidth
+          maxWidth="md"
+          PaperProps={{
+            sx: {
+              borderRadius: { xs: 3, sm: 4 },
+              mx: { xs: 1.25, sm: 2 },
+              width: 'calc(100% - 20px)',
+              maxWidth: 900,
+              backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)',
+            },
+          }}
+        >
+          <DialogTitle sx={{ pr: 6, fontWeight: 800 }}>
+            Add or replace image
+            <IconButton
+              aria-label="close"
+              onClick={handleSourceSelectorClose}
+              sx={{ position: 'absolute', right: 8, top: 8 }}
+              disabled={searchSelectionBusy}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ pt: 0.5, pb: 2.25 }}>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 500 }}>
+              Pick the fastest way to fill this collage slot.
+            </Typography>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+                gap: 1.25,
+              }}
+            >
+              {sourceOptions.map((option) => {
+                const Icon = option.Icon;
+                return (
+                  <Button
+                    key={option.id}
+                    onClick={option.onClick}
+                    disabled={searchSelectionBusy}
+                    sx={{
+                      p: 0,
+                      textTransform: 'none',
+                      borderRadius: 2.5,
+                      overflow: 'hidden',
+                      justifyContent: 'stretch',
+                      alignItems: 'stretch',
+                      border: '1px solid rgba(15, 23, 42, 0.12)',
+                      background: option.background,
+                      color: '#0f172a',
+                      minHeight: { xs: 96, sm: 104, md: 146 },
+                      boxShadow: '0 6px 18px rgba(15, 23, 42, 0.08)',
+                      '&:hover': {
+                        transform: 'translateY(-1px)',
+                        boxShadow: '0 12px 24px rgba(15, 23, 42, 0.12)',
+                        borderColor: `${option.accent}55`,
+                        background: option.background,
+                      },
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: '100%',
+                        px: 1.5,
+                        py: { xs: 1.5, md: 1.75 },
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.25,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          display: 'grid',
+                          placeItems: 'center',
+                          color: option.accent,
+                          bgcolor: 'rgba(255,255,255,0.92)',
+                          border: `1px solid ${option.accent}33`,
+                        }}
+                      >
+                        <Icon fontSize="small" />
+                      </Box>
+                      <Box sx={{ minWidth: 0, textAlign: 'left' }}>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{ fontWeight: 800, lineHeight: 1.25, fontSize: { xs: '0.95rem', sm: '1rem' } }}
+                        >
+                          {option.title}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            mt: 0.45,
+                            display: 'block',
+                            color: 'rgba(15, 23, 42, 0.78)',
+                            fontSize: { xs: '0.76rem', sm: '0.8rem' },
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {option.description}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Button>
+                );
+              })}
+            </Box>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* My Library selection dialog for frame add/replace */}
+      {hasLibraryAccess && (
+        <Dialog
+          open={isLibraryOpen}
+          onClose={handleLibraryClose}
+          fullWidth
+          maxWidth="md"
+          fullScreen={isMobile}
+          PaperProps={{
+            sx: {
+              borderRadius: isMobile ? 0 : 2,
+              bgcolor: '#121212',
+              color: '#eaeaea',
+            },
+          }}
+        >
+          {isMobile ? (
+            <AppBar
+              position="sticky"
+              color="default"
+              elevation={0}
+              sx={{ borderBottom: '1px solid #2a2a2a', bgcolor: '#121212', color: '#eaeaea' }}
+            >
+              <Toolbar>
+                <Typography variant="h6" sx={{ flexGrow: 1, color: '#eaeaea' }}>
+                  Select a photo
+                </Typography>
+                <IconButton
+                  edge="end"
+                  aria-label="close"
+                  onClick={handleLibraryClose}
+                  sx={{ color: '#eaeaea' }}
+                  disabled={searchSelectionBusy}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Toolbar>
+            </AppBar>
+          ) : (
+            <DialogTitle sx={{ pr: 6, color: '#eaeaea' }}>
+              Select a photo
+              <IconButton
+                aria-label="close"
+                onClick={handleLibraryClose}
+                sx={{ position: 'absolute', right: 8, top: 8, color: '#eaeaea' }}
+                disabled={searchSelectionBusy}
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+          )}
+          <DialogContent dividers sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#0f0f0f' }}>
+            <LibraryBrowser
+              multiple={false}
+              uploadEnabled
+              deleteEnabled={false}
+              onSelect={(arr) => handleLibrarySelect(arr)}
+              showActionBar={false}
+              selectionEnabled
+              previewOnClick
+              showSelectToggle
+              initialSelectMode
+            />
+          </DialogContent>
+          <DialogActions sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
+            <Button
+              onClick={handleLibraryClose}
+              variant="contained"
+              disableElevation
+              fullWidth={isMobile}
+              disabled={searchSelectionBusy}
+              sx={{
+                bgcolor: '#252525',
+                color: '#f0f0f0',
+                border: '1px solid #3a3a3a',
+                borderRadius: '8px',
+                px: isMobile ? 2 : 2.5,
+                py: isMobile ? 1.25 : 0.75,
+                textTransform: 'none',
+                fontWeight: 600,
+                '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' },
+              }}
+            >
+              Cancel
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* memeSRC search selection modal for frame add/replace */}
       {hasLibraryAccess && (
