@@ -26,6 +26,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import CollageFrameSearchModal from './CollageFrameSearchModal';
 import { LibraryBrowser } from '../../library';
 import { get as getFromLibrary } from '../../../utils/library/storage';
+import { saveImageToLibrary } from '../../../utils/library/saveImageToLibrary';
 import { UserContext } from '../../../UserContext';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
@@ -508,6 +509,13 @@ const CollagePreview = ({
       if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
       return u;
     };
+    const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const selectedSubtitle = normalizeText(selected?.subtitle);
+    const subtitleFallback = normalizeText(selected?.metadata?.defaultCaption);
+    const resolvedSubtitle = selectedSubtitle || subtitleFallback;
+    const resolvedSubtitleShowing = typeof selected?.subtitleShowing === 'boolean'
+      ? selected.subtitleShowing
+      : Boolean(resolvedSubtitle);
 
     const buildNormalizedFromBlob = async (blob) => {
       // Create upload-sized and editor-sized JPEGs from the source blob
@@ -515,7 +523,7 @@ const CollagePreview = ({
       const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
       const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
       const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
-      return { originalUrl, displayUrl };
+      return { originalUrl, displayUrl, sourceBlob: blob };
     };
     const ensureNormalized = async (item) => {
       const srcUrl = item?.originalUrl || item?.displayUrl || item?.url || item;
@@ -536,24 +544,74 @@ const CollagePreview = ({
         return await buildNormalizedFromBlob(blob);
       } catch (_) {
         // As a last resort, pass through
-        return { originalUrl: srcUrl, displayUrl: srcUrl, metadata: item?.metadata || {} };
+        return { originalUrl: srcUrl, displayUrl: srcUrl };
       }
+    };
+
+    const maybeSaveSelectionToLibrary = async ({ normalized, metadata }) => {
+      if (!normalized?.sourceBlob) return metadata;
+      if (typeof metadata?.libraryKey === 'string' && metadata.libraryKey) return metadata;
+      if (metadata?.source !== 'memesrc-search') return metadata;
+
+      try {
+        const cid = metadata?.cid ? String(metadata.cid).trim() : 'memesrc';
+        const season = metadata?.season ? `S${String(metadata.season).trim()}` : '';
+        const episode = metadata?.episode ? `E${String(metadata.episode).trim()}` : '';
+        const frame = metadata?.frame ? `F${String(metadata.frame).trim()}` : '';
+        const filename = [cid, season && episode ? `${season}${episode}` : season || episode, frame, Date.now().toString()]
+          .filter(Boolean)
+          .join('-');
+        const tags = metadata?.cid ? [String(metadata.cid)] : [];
+        const libraryMetadata = {
+          tags,
+          description: '',
+          defaultCaption: resolvedSubtitle,
+        };
+        const libraryKey = await saveImageToLibrary(normalized.sourceBlob, filename, {
+          level: 'private',
+          metadata: libraryMetadata,
+        });
+
+        if (libraryKey) {
+          return {
+            ...metadata,
+            libraryKey,
+          };
+        }
+      } catch (error) {
+        console.warn('Failed to save memeSRC selection to library', error);
+      }
+
+      return metadata;
     };
 
     let committed = false;
     try {
+      const normalized = await ensureNormalized(selected);
+      const metadataWithDefaults = {
+        ...(selected?.metadata || {}),
+        ...(resolvedSubtitle ? { defaultCaption: resolvedSubtitle } : {}),
+      };
+      const persistedMetadata = await maybeSaveSelectionToLibrary({
+        normalized,
+        metadata: metadataWithDefaults,
+      });
+      const imageObj = {
+        ...normalized,
+        subtitle: resolvedSubtitle,
+        subtitleShowing: resolvedSubtitleShowing,
+        metadata: persistedMetadata,
+      };
+
       if (isReplaceMode && activeExistingImageIndex !== null && typeof activeExistingImageIndex === 'number') {
         // Replace existing image in place.
-        const normalized = await ensureNormalized(selected);
         const previousImage = selectedImages?.[activeExistingImageIndex];
-        await replaceImage(activeExistingImageIndex, { ...normalized, metadata: selected?.metadata || {} });
+        await replaceImage(activeExistingImageIndex, imageObj);
         committed = true;
         setTimeout(() => revokeImageObjectUrls(previousImage), 0);
       } else {
         // Assign to empty panel.
         const currentLength = selectedImages.length;
-        const normalized = await ensureNormalized(selected);
-        const imageObj = { ...normalized, metadata: selected?.metadata || {} };
         await addMultipleImages([imageObj]);
         committed = true;
         const newMapping = {
@@ -577,8 +635,12 @@ const CollagePreview = ({
   // Handle selecting an image from memeSRC search results for the active panel.
   const handleSearchResultSelect = async (selection) => {
     if (!selection) return;
+    const subtitle = String(selection.subtitle || '').trim();
+    const hasSubtitle = subtitle.length > 0;
     const selected = {
       url: selection.imageUrl,
+      ...(hasSubtitle ? { subtitle } : {}),
+      subtitleShowing: hasSubtitle,
       metadata: {
         source: 'memesrc-search',
         sourceUrl: selection.imageUrl,
@@ -587,6 +649,7 @@ const CollagePreview = ({
         episode: selection.episode,
         frame: selection.frame,
         searchTerm: selection.searchTerm,
+        ...(hasSubtitle ? { defaultCaption: subtitle } : {}),
       },
     };
     await applySelectedAsset(selected);
