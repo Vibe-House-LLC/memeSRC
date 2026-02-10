@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Box, useMediaQuery } from '@mui/material';
+import { Box, Button, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 
 // Import our new dynamic CollagePreview component
 import CollagePreview from '../components/CollagePreview';
@@ -51,6 +52,11 @@ const CollageImagesStep = ({
   onGenerateNudgeRequested,
   isFrameActionSuppressed,
   isHydratingProject = false,
+  onAddPanelRequest,
+  canAddPanel = false,
+  panelAutoOpenRequest,
+  onPanelAutoOpenHandled,
+  onRemovePanelRequest,
   // Render tracking passthrough for autosave thumbnails
   renderSig,
   onPreviewRendered,
@@ -207,7 +213,36 @@ const CollageImagesStep = ({
           customLayoutKey={customLayoutKey}
           isHydratingProject={isHydratingProject}
           allowHydrationTransformCarry={allowHydrationTransformCarry}
+          panelAutoOpenRequest={panelAutoOpenRequest}
+          onPanelAutoOpenHandled={onPanelAutoOpenHandled}
+          onRemovePanelRequest={onRemovePanelRequest}
         />
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 0.5 }}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size={isMobile ? 'small' : 'medium'}
+            startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
+            onClick={() => {
+              if (typeof onAddPanelRequest === 'function') {
+                onAddPanelRequest();
+              }
+            }}
+            disabled={!canAddPanel || isCreatingCollage || isHydratingProject}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderColor: 'rgba(255,255,255,0.35)',
+              color: '#fff',
+              '&:hover': {
+                borderColor: 'rgba(255,255,255,0.65)',
+                backgroundColor: 'rgba(255,255,255,0.06)',
+              },
+            }}
+          >
+            Add panel
+          </Button>
         </Box>
         {/* Hidden file input for Add Image button */}
         <input
@@ -262,11 +297,20 @@ CollageImagesStep.propTypes = {
   // Editing session tracking
   onEditingSessionChange: PropTypes.func,
   isCreatingCollage: PropTypes.bool,
+  onAddPanelRequest: PropTypes.func,
+  canAddPanel: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,
   onGenerateNudgeRequested: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
   isHydratingProject: PropTypes.bool,
   allowHydrationTransformCarry: PropTypes.bool,
+  panelAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelAutoOpenHandled: PropTypes.func,
+  onRemovePanelRequest: PropTypes.func,
   canvasResetKey: PropTypes.number,
 };
 

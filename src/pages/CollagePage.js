@@ -141,6 +141,15 @@ const getCollagePreference = (user) => {
   return localStorage.getItem(key) || 'new';
 };
 
+const parsePanelIndexFromId = (panelId) => {
+  if (typeof panelId !== 'string') return null;
+  const match = panelId.match(/^panel-(\d+)$/);
+  if (!match) return null;
+  const parsed = parseInt(match[1], 10);
+  if (Number.isNaN(parsed) || parsed <= 0) return null;
+  return parsed - 1;
+};
+
 export default function CollagePage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -220,6 +229,8 @@ export default function CollagePage() {
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
   const [showEarlyAccess, setShowEarlyAccess] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [panelAutoOpenRequest, setPanelAutoOpenRequest] = useState(null);
+  const [removePanelDialog, setRemovePanelDialog] = useState({ open: false, panelId: null, hasImage: false });
   
   // Adopt a pre-created project id passed via navigation state (e.g., from editor)
   useEffect(() => {
@@ -298,6 +309,7 @@ export default function CollagePage() {
     addImage,
     addMultipleImages,
     removeImage,
+    removePanelAtIndex,
     updateImage,
     replaceImage,
     clearImages,
@@ -542,6 +554,8 @@ export default function CollagePage() {
       try {
         clearImages();
       } catch (_) { /* ignore */ }
+      setPanelAutoOpenRequest(null);
+      setRemovePanelDialog({ open: false, panelId: null, hasImage: false });
       setCustomLayout(null);
       setLiveCustomLayout(null);
       setLivePanelDimensions(null);
@@ -1385,6 +1399,8 @@ export default function CollagePage() {
     try {
       setShowResultDialog(false);
       clearImages();
+      setPanelAutoOpenRequest(null);
+      setRemovePanelDialog({ open: false, panelId: null, hasImage: false });
       setCustomLayout(null);
       setLiveCustomLayout(null);
       setLivePanelDimensions(null);
@@ -1402,6 +1418,105 @@ export default function CollagePage() {
   const openResetDialog = () => setResetDialogOpen(true);
   const closeResetDialog = () => setResetDialogOpen(false);
   const confirmReset = () => { setResetDialogOpen(false); handleResetToStart(); };
+
+  const resetCustomLayoutArtifacts = useCallback(() => {
+    setCustomLayout(null);
+    setLiveCustomLayout(null);
+    setLivePanelDimensions(null);
+  }, []);
+
+  const syncTemplateForPanelCount = useCallback((nextCount) => {
+    const templates = getLayoutsForPanelCount(nextCount, selectedAspectRatio);
+    setSelectedTemplate(templates.length > 0 ? templates[0] : null);
+  }, [selectedAspectRatio, setSelectedTemplate]);
+
+  const queuePanelAutoOpen = useCallback((panelIndex) => {
+    if (!Number.isInteger(panelIndex) || panelIndex < 0) return;
+    setPanelAutoOpenRequest({
+      requestId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      panelId: `panel-${panelIndex + 1}`,
+      panelIndex,
+    });
+  }, []);
+
+  const handlePanelAutoOpenHandled = useCallback((requestId) => {
+    if (!requestId) return;
+    setPanelAutoOpenRequest((prev) => (
+      prev?.requestId === requestId ? null : prev
+    ));
+  }, []);
+
+  const handleAddPanelRequested = useCallback(() => {
+    if (isHydratingProject || isCreatingCollage) return;
+    if ((panelCount || 0) >= MAX_IMAGES) return;
+
+    const nextCount = Math.min(MAX_IMAGES, Math.max(2, (panelCount || 2) + 1));
+    setPanelCount(nextCount);
+    syncTemplateForPanelCount(nextCount);
+    resetCustomLayoutArtifacts();
+    queuePanelAutoOpen(nextCount - 1);
+  }, [
+    isHydratingProject,
+    isCreatingCollage,
+    panelCount,
+    setPanelCount,
+    syncTemplateForPanelCount,
+    resetCustomLayoutArtifacts,
+    queuePanelAutoOpen,
+  ]);
+
+  const executePanelRemoval = useCallback((panelId) => {
+    if (!panelId || panelCount <= 2) return;
+    const parsedIndex = parsePanelIndexFromId(panelId);
+    if (parsedIndex === null) return;
+
+    const boundedIndex = Math.max(0, Math.min(parsedIndex, panelCount - 1));
+    removePanelAtIndex(boundedIndex);
+
+    const nextCount = Math.max(2, panelCount - 1);
+    setPanelCount(nextCount);
+    syncTemplateForPanelCount(nextCount);
+    resetCustomLayoutArtifacts();
+  }, [
+    panelCount,
+    removePanelAtIndex,
+    setPanelCount,
+    syncTemplateForPanelCount,
+    resetCustomLayoutArtifacts,
+  ]);
+
+  const handleRemovePanelRequest = useCallback((panelId) => {
+    if (!panelId) return;
+    if (panelCount <= 2) {
+      setSnackbar({
+        open: true,
+        message: 'A collage needs at least 2 panels.',
+        severity: 'info',
+      });
+      return;
+    }
+
+    const mappedImageIndex = panelImageMapping?.[panelId];
+    const hasImage = (
+      typeof mappedImageIndex === 'number' &&
+      mappedImageIndex >= 0 &&
+      Boolean(selectedImages?.[mappedImageIndex])
+    );
+
+    setRemovePanelDialog({ open: true, panelId, hasImage });
+  }, [panelCount, panelImageMapping, selectedImages]);
+
+  const closeRemovePanelDialog = useCallback(() => {
+    setRemovePanelDialog({ open: false, panelId: null, hasImage: false });
+  }, []);
+
+  const confirmRemovePanel = useCallback(() => {
+    const targetPanelId = removePanelDialog?.panelId;
+    closeRemovePanelDialog();
+    if (targetPanelId) {
+      executePanelRemoval(targetPanelId);
+    }
+  }, [removePanelDialog?.panelId, closeRemovePanelDialog, executePanelRemoval]);
 
   // Toggle settings disclosure and scroll when opening
   const handleToggleSettings = () => {
@@ -1647,6 +1762,11 @@ export default function CollagePage() {
     },
     onGenerateNudgeRequested: handleGenerateNudgeRequested,
     isFrameActionSuppressed: () => Date.now() < frameActionSuppressUntilRef.current,
+    onAddPanelRequest: handleAddPanelRequested,
+    canAddPanel: panelCount < MAX_IMAGES,
+    panelAutoOpenRequest,
+    onPanelAutoOpenHandled: handlePanelAutoOpenHandled,
+    onRemovePanelRequest: handleRemovePanelRequest,
     // Render tracking for timely thumbnail capture
     renderSig: currentSig,
     onPreviewRendered: (sig) => { lastRenderedSigRef.current = sig; setRenderBump(b => b + 1); },
@@ -2284,6 +2404,49 @@ export default function CollagePage() {
                 disabled={replaceSelection === null}
               >
                 Replace
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Confirm panel removal from panel action menu */}
+          <Dialog
+            open={removePanelDialog.open}
+            onClose={closeRemovePanelDialog}
+            aria-labelledby="confirm-remove-panel-title"
+            maxWidth="xs"
+            fullWidth
+            BackdropProps={{
+              sx: {
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(2px)'
+              }
+            }}
+            PaperProps={{
+              elevation: 16,
+              sx: (theme) => ({
+                bgcolor: theme.palette.mode === 'dark' ? '#1f2126' : '#ffffff',
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 2,
+                boxShadow: theme.palette.mode === 'dark'
+                  ? '0 12px 32px rgba(0,0,0,0.7)'
+                  : '0 12px 32px rgba(0,0,0,0.25)'
+              })
+            }}
+          >
+            <DialogTitle id="confirm-remove-panel-title" sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>
+              Remove panel?
+            </DialogTitle>
+            <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
+              <Typography variant="body1" sx={{ m: 0, lineHeight: 1.5 }}>
+                {removePanelDialog.hasImage
+                  ? 'This panel has an image. Removing it will remove that image from this collage.'
+                  : 'This panel is empty. Removing it will update the layout.'}
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
+              <Button onClick={closeRemovePanelDialog}>Cancel</Button>
+              <Button onClick={confirmRemovePanel} color="error" variant="contained" autoFocus>
+                Remove panel
               </Button>
             </DialogActions>
           </Dialog>
