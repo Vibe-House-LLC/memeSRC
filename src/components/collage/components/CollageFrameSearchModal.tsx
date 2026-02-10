@@ -431,6 +431,11 @@ export default function CollageFrameSearchModal({
     },
     [favoriteSeriesIds, groups, hasFavorites, onSearchContextChange],
   );
+  const runSearchRef = useRef(runSearch);
+
+  useEffect(() => {
+    runSearchRef.current = runSearch;
+  }, [runSearch]);
 
   useEffect(() => {
     if (!open) {
@@ -458,13 +463,13 @@ export default function CollageFrameSearchModal({
     setRefineLiveSubtitle('');
 
     if (normalizedInitialQuery) {
-      runSearch({ queryValue: normalizedInitialQuery, scopeValue: scoped });
+      runSearchRef.current({ queryValue: normalizedInitialQuery, scopeValue: scoped });
     } else {
       setHasSearched(false);
       setResults([]);
       setVisibleCount(RESULT_BATCH_SIZE);
     }
-  }, [dismissKeyboard, initialQuery, initialScopeId, normalizedInitialQuery, open, runSearch]);
+  }, [dismissKeyboard, initialQuery, initialScopeId, normalizedInitialQuery, open]);
 
   useEffect(() => {
     if (!isRefineMode || !refineTarget || selectedRefineFrame === null) {

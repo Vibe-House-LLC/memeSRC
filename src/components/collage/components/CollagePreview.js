@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext } from 'react';
+import React, { useState, useRef, useContext, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import {
   Menu,
@@ -91,9 +91,14 @@ const CollagePreview = ({
   const searchDetailsV2 = useContext(V2SearchContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
   const hasLibraryAccess = isAdmin || (user?.userDetails?.magicSubscription === 'true');
-  const favoriteSeriesIds = Array.isArray(shows)
-    ? shows.filter((show) => show?.isFavorite).map((show) => show.id).filter(Boolean)
-    : [];
+  const favoriteSeriesIds = useMemo(
+    () => (Array.isArray(shows)
+      ? shows.filter((show) => show?.isFavorite).map((show) => show.id).filter(Boolean)
+      : []),
+    [shows],
+  );
+  const setV2SearchQuery = searchDetailsV2?.setSearchQuery;
+  const setV2SearchScope = searchDetailsV2?.setCid;
   
   // State for menu
   const [menuPosition, setMenuPosition] = useState(null);
@@ -568,15 +573,14 @@ const CollagePreview = ({
     }
   };
 
-  const handleSearchContextChange = ({ query, scopeId }) => {
-    if (!searchDetailsV2) return;
-    if (typeof searchDetailsV2.setSearchQuery === 'function') {
-      searchDetailsV2.setSearchQuery(query || '');
+  const handleSearchContextChange = useCallback(({ query, scopeId }) => {
+    if (typeof setV2SearchQuery === 'function') {
+      setV2SearchQuery(query || '');
     }
-    if (typeof searchDetailsV2.setCid === 'function' && scopeId) {
-      searchDetailsV2.setCid(scopeId);
+    if (typeof setV2SearchScope === 'function' && scopeId) {
+      setV2SearchScope(scopeId);
     }
-  };
+  }, [setV2SearchQuery, setV2SearchScope]);
 
   const resetSearchFlowContext = () => {
     if (!searchDetailsV2) return;
