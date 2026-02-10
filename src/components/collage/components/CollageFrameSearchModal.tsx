@@ -429,7 +429,7 @@ export default function CollageFrameSearchModal({
         }
       }
     },
-    [favoriteSeriesIds, groups, hasFavorites, onSearchContextChange],
+    [branch, favoriteSeriesIds, groups, hasFavorites, onSearchContextChange],
   );
   const runSearchRef = useRef(runSearch);
 

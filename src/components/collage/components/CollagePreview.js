@@ -765,11 +765,11 @@ const CollagePreview = ({
       if (startedFromSearchModal) {
         resetSearchFlowContext();
       }
-      clearActivePanelSelection();
     } finally {
       if (!committed) {
         try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
       }
+      clearActivePanelSelection();
       setSearchSelectionBusy(false);
     }
   };
