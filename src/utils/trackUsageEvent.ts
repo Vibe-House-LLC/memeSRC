@@ -1,15 +1,6 @@
 import { API, Auth } from 'aws-amplify';
-import { GraphQLResult, GraphQLOptions } from '@aws-amplify/api-graphql';
 import { nanoid } from 'nanoid';
 import getSessionID from './getSessionsId';
-
-const createUsageEventMutation = /* GraphQL */ `
-  mutation CreateUsageEvent($input: CreateUsageEventInput!) {
-    createUsageEvent(input: $input) {
-      id
-    }
-  }
-`;
 
 type UsageEventPayload =
   | Record<string, unknown>
@@ -27,16 +18,7 @@ type CreateUsageEventInput = {
   sessionId?: string | null;
 };
 
-type CreateUsageEventMutation = {
-  createUsageEvent?: {
-    id: string;
-  } | null;
-};
-
-type GraphQLAuthMode = 'AWS_IAM' | 'AMAZON_COGNITO_USER_POOLS';
-
 type AuthContext = {
-  authMode: GraphQLAuthMode;
   trackingUserId?: string;
 };
 
@@ -109,9 +91,7 @@ const getAnonymousTrackingId = (): string => {
 const resolveAuthContext = async (): Promise<AuthContext> => {
   try {
     await Auth.currentAuthenticatedUser();
-    return {
-      authMode: 'AMAZON_COGNITO_USER_POOLS',
-    };
+    return {};
   } catch {
     try {
       await Auth.currentCredentials();
@@ -123,7 +103,6 @@ const resolveAuthContext = async (): Promise<AuthContext> => {
     }
 
     return {
-      authMode: 'AWS_IAM',
       trackingUserId: getAnonymousTrackingId(),
     };
   }
@@ -287,20 +266,13 @@ const sendUsageEvent = (
     let input: CreateUsageEventInput | undefined;
 
     try {
-      const { authMode, trackingUserId } = await resolveAuthContext();
+      const { trackingUserId } = await resolveAuthContext();
       const sessionId = await getSessionID();
       input = buildCreateUsageEventInput(eventType, eventData, trackingUserId, sessionId);
-      // const graphQLRequest: GraphQLOptions = {
-      //   query: createUsageEventMutation,
-      //   variables: { input },
-      //   authMode,
-      // };
-
-      // await (API.graphql(graphQLRequest) as Promise<GraphQLResult<CreateUsageEventMutation>>);
       await API.post('publicapi', '/createUsageEvent', {
         body: {
-          ...input
-        }
+          ...input,
+        },
       });
     } catch (error) {
       logUsageEventError(error, input ?? { eventType });
