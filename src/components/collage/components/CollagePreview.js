@@ -411,17 +411,60 @@ const CollagePreview = ({
       if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
       return u;
     };
+    const isBlobUrl = (value) => typeof value === 'string' && value.startsWith('blob:');
 
-    const getImageObject = async (file) => {
+    const sanitizeFilename = (value) => String(value || '')
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 48);
+
+    const getImageObject = async (file, index) => {
       try {
         const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
         const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
         const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
         const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
-        return { originalUrl, displayUrl };
+        const metadata = {
+          source: 'device-upload',
+        };
+
+        if (hasLibraryAccess) {
+          try {
+            const safeBaseName = sanitizeFilename(file?.name) || 'upload';
+            const filename = `${safeBaseName}-${Date.now()}-${index + 1}`;
+            const libraryMetadata = {
+              tags: ['upload'],
+              description: '',
+            };
+            const libraryKey = await saveImageToLibrary(uploadBlob, filename, {
+              level: 'private',
+              metadata: libraryMetadata,
+            });
+            if (libraryKey) {
+              metadata.libraryKey = libraryKey;
+            }
+          } catch (libraryError) {
+            console.warn('Failed to save uploaded device image to library', libraryError);
+          }
+        }
+
+        if (!metadata.libraryKey) {
+          metadata.sourceUrl = isBlobUrl(originalUrl) ? await toDataUrl(uploadBlob) : originalUrl;
+        }
+
+        return { originalUrl, displayUrl, metadata };
       } catch (_) {
         const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? trackBlobUrl(URL.createObjectURL(file)) : await toDataUrl(file);
-        return { originalUrl: dataUrl, displayUrl: dataUrl };
+        return {
+          originalUrl: dataUrl,
+          displayUrl: dataUrl,
+          metadata: {
+            source: 'device-upload',
+            sourceUrl: dataUrl,
+          },
+        };
       }
     };
     const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
@@ -465,7 +508,7 @@ const CollagePreview = ({
         await nextFrame();
         await nextFrame();
         // eslint-disable-next-line no-await-in-loop
-        const obj = await getImageObject(files[i]);
+        const obj = await getImageObject(files[i], i);
         imageObjs.push(obj);
       }
       debugLog(`Loaded ${imageObjs.length} files for panel ${clickedPanelId}`);
