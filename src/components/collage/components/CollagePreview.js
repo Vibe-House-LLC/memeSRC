@@ -216,14 +216,35 @@ const CollagePreview = ({
   // Open menu for a panel
   const handleMenuOpen = (event, index) => {
     event.stopPropagation(); // Prevent panel click
-    
+
+    const panelId = resolvePanelIdFromIndex(index);
+    const imageIndex = panelImageMapping?.[panelId];
+    const hasValidImage =
+      imageIndex !== undefined &&
+      imageIndex !== null &&
+      imageIndex >= 0 &&
+      imageIndex < (selectedImages?.length || 0) &&
+      selectedImages?.[imageIndex];
+
+    setActivePanelIndex(index);
+    setActivePanelId(panelId);
+
+    if (!hasValidImage) {
+      setIsReplaceMode(false);
+      setActiveExistingImageIndex(null);
+      setMenuPosition(null);
+      openSourceSelectorForActivePanel();
+      return;
+    }
+
+    setIsReplaceMode(true);
+    setActiveExistingImageIndex(imageIndex);
+
     // Store the mouse position instead of the element reference
     setMenuPosition({
       left: event.clientX - 2,
       top: event.clientY - 4,
     });
-    
-    setActivePanelIndex(index);
   };
 
   // Close menu
@@ -514,11 +535,22 @@ const CollagePreview = ({
     }
   };
 
+  const resetSearchFlowContext = () => {
+    if (!searchDetailsV2) return;
+    if (typeof searchDetailsV2.setSearchQuery === 'function') {
+      searchDetailsV2.setSearchQuery('');
+    }
+    if (typeof searchDetailsV2.setCid === 'function') {
+      searchDetailsV2.setCid('_universal');
+    }
+  };
+
   const applySelectedAsset = async (selected) => {
     if (!selected || activePanelIndex === null || searchSelectionBusy) {
       return;
     }
 
+    const startedFromSearchModal = isSearchModalOpen;
     if (isSearchModalOpen) {
       setIsSearchModalOpen(false);
     }
@@ -683,6 +715,9 @@ const CollagePreview = ({
       setIsSourceSelectorOpen(false);
       setIsLibraryOpen(false);
       setIsSearchModalOpen(false);
+      if (startedFromSearchModal) {
+        resetSearchFlowContext();
+      }
       clearActivePanelSelection();
     } finally {
       if (!committed) {
@@ -760,6 +795,7 @@ const CollagePreview = ({
     if (searchSelectionBusy) return;
     setIsSourceSelectorOpen(false);
     setIsSearchModalOpen(false);
+    resetSearchFlowContext();
     clearActivePanelSelection();
   };
 
@@ -775,7 +811,6 @@ const CollagePreview = ({
     {
       id: 'search',
       title: 'Search memeSRC',
-      description: 'Find frames by quote, then fine-tune the exact moment.',
       Icon: SearchRoundedIcon,
       onClick: handleChooseSearchSource,
       accent: '#91b4ff',
@@ -784,7 +819,6 @@ const CollagePreview = ({
     {
       id: 'library',
       title: 'Choose from Library',
-      description: 'Pick from your saved uploads and recent collage images.',
       Icon: PhotoLibraryRoundedIcon,
       onClick: handleChooseLibrarySource,
       accent: '#8bd5c9',
@@ -793,7 +827,6 @@ const CollagePreview = ({
     {
       id: 'upload',
       title: 'Upload from Device',
-      description: 'Instantly open your photo picker and add a new image.',
       Icon: UploadRoundedIcon,
       onClick: handleChooseDeviceSource,
       accent: '#e8c18d',
@@ -881,9 +914,6 @@ const CollagePreview = ({
             </IconButton>
           </DialogTitle>
           <DialogContent sx={{ pt: 0.5, pb: 2.25 }}>
-            <Typography variant="body2" sx={{ mb: 2, color: 'rgba(203,213,225,0.86)', fontWeight: 500 }}>
-              Pick the fastest way to fill this collage slot.
-            </Typography>
             <Box
               sx={{
                 display: 'grid',
@@ -909,7 +939,7 @@ const CollagePreview = ({
                       border: '1px solid rgba(148,163,184,0.2)',
                       background: 'linear-gradient(180deg, rgba(30,30,30,0.97) 0%, rgba(16,16,16,0.98) 100%)',
                       color: '#f8fafc',
-                      minHeight: { xs: 96, sm: 104, md: 146 },
+                      minHeight: { xs: 88, sm: 96, md: 116 },
                       boxShadow: '0 8px 18px rgba(2,6,23,0.28)',
                       '&::before': {
                         content: '""',
@@ -957,18 +987,6 @@ const CollagePreview = ({
                           sx={{ fontWeight: 800, lineHeight: 1.25, fontSize: { xs: '0.95rem', sm: '1rem' } }}
                         >
                           {option.title}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            mt: 0.45,
-                            display: 'block',
-                            color: 'rgba(226,232,240,0.86)',
-                            fontSize: { xs: '0.76rem', sm: '0.8rem' },
-                            lineHeight: 1.3,
-                          }}
-                        >
-                          {option.description}
                         </Typography>
                       </Box>
                     </Box>

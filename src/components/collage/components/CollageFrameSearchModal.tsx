@@ -275,6 +275,15 @@ export default function CollageFrameSearchModal({
   const { groups } = useSearchFilterGroups();
   const hasFavorites = favoriteSeriesIds.length > 0;
   const branch = process.env.REACT_APP_USER_BRANCH;
+  const dismissKeyboard = useCallback(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const activeElement = document.activeElement as HTMLElement | null;
+    if (activeElement && typeof activeElement.blur === 'function') {
+      activeElement.blur();
+    }
+  }, []);
 
   const normalizedInitialQuery = useMemo(() => initialQuery.trim(), [initialQuery]);
   const isRefineMode = Boolean(refineTarget && refineAnchorFrame !== null);
@@ -425,6 +434,7 @@ export default function CollageFrameSearchModal({
 
   useEffect(() => {
     if (!open) {
+      dismissKeyboard();
       abortRef.current?.abort();
       setLoading(false);
       setPendingSelectionId(null);
@@ -454,7 +464,7 @@ export default function CollageFrameSearchModal({
       setResults([]);
       setVisibleCount(RESULT_BATCH_SIZE);
     }
-  }, [initialQuery, initialScopeId, normalizedInitialQuery, open, runSearch]);
+  }, [dismissKeyboard, initialQuery, initialScopeId, normalizedInitialQuery, open, runSearch]);
 
   useEffect(() => {
     if (!isRefineMode || !refineTarget || selectedRefineFrame === null) {
@@ -502,6 +512,7 @@ export default function CollageFrameSearchModal({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    dismissKeyboard();
     runSearch({ queryValue: query, scopeValue: scopeId });
   };
 
@@ -510,6 +521,7 @@ export default function CollageFrameSearchModal({
       return;
     }
     setScopeId(nextScopeId);
+    dismissKeyboard();
     if (query.trim()) {
       runSearch({ queryValue: query, scopeValue: nextScopeId });
     }
@@ -526,12 +538,14 @@ export default function CollageFrameSearchModal({
   const handleClarifySearch: NonNullable<UnifiedSearchBarProps['onClarifySearch']> = ({ stripped }) => {
     const normalized = String(stripped || '').trim();
     setQuery(normalized);
+    dismissKeyboard();
     runSearch({ queryValue: normalized, scopeValue: scopeId });
   };
 
   const handleRandomSearch = () => {
     const randomTerm = RANDOM_SEARCH_TERMS[Math.floor(Math.random() * RANDOM_SEARCH_TERMS.length)] || 'what';
     setQuery(randomTerm);
+    dismissKeyboard();
     runSearch({ queryValue: randomTerm, scopeValue: scopeId });
   };
 
@@ -540,6 +554,7 @@ export default function CollageFrameSearchModal({
       return;
     }
 
+    dismissKeyboard();
     setRefineTarget(item);
     setRefineAnchorFrame(item.frame);
     setRefineSliderIndex(FINE_TUNE_RADIUS);
@@ -575,6 +590,7 @@ export default function CollageFrameSearchModal({
     if (!refineTarget || selectedRefineFrame === null || busy || loading || pendingSelectionId) {
       return;
     }
+    dismissKeyboard();
     const selectionSubtitle = stripHtml(refineLiveSubtitle || refineTarget.subtitle || '');
 
     const refinedSelection: SearchResultRecord = {
@@ -599,12 +615,17 @@ export default function CollageFrameSearchModal({
     }
   };
 
+  const handleCloseRequest = useCallback(() => {
+    dismissKeyboard();
+    onClose();
+  }, [dismissKeyboard, onClose]);
+
   return (
     <Dialog
       open={open}
       fullScreen
       keepMounted
-      onClose={busy || Boolean(pendingSelectionId) ? undefined : onClose}
+      onClose={busy || Boolean(pendingSelectionId) ? undefined : handleCloseRequest}
       sx={{
         zIndex: (muiTheme) => muiTheme.zIndex.modal + MODAL_Z_INDEX_BOOST,
         '& .MuiDialog-container': {
@@ -650,7 +671,7 @@ export default function CollageFrameSearchModal({
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
             {isRefineMode ? 'Adjust Frame' : 'Search memeSRC'}
           </Typography>
-          <IconButton edge="end" aria-label="Close" onClick={onClose} disabled={busy || Boolean(pendingSelectionId)} sx={{ color: '#fff' }}>
+          <IconButton edge="end" aria-label="Close" onClick={handleCloseRequest} disabled={busy || Boolean(pendingSelectionId)} sx={{ color: '#fff' }}>
             <Close />
           </IconButton>
         </Toolbar>
@@ -678,6 +699,8 @@ export default function CollageFrameSearchModal({
       )}
 
       <Box
+        onMouseDown={dismissKeyboard}
+        onTouchStart={dismissKeyboard}
         sx={{
           px: { xs: 1.25, sm: 2 },
           pb: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
