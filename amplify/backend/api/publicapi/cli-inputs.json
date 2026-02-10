@@ -398,6 +398,30 @@
         },
         "setting": "private"
       }
+    },
+    "/createUsageEvent": {
+      "name": "/createUsageEvent",
+      "lambdaFunction": "memesrcCreateUsageEvent",
+      "permissions": {
+        "setting": "protected",
+        "auth": [
+          "create"
+        ],
+        "guest": [
+          "create"
+        ],
+        "groups": {
+          "admins": [
+            "create"
+          ],
+          "mods": [
+            "create"
+          ],
+          "contributors": [
+            "create"
+          ]
+        }
+      }
     }
   }
 }
