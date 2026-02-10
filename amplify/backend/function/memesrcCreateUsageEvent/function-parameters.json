@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "auth": {
+      "memesrcc3c71449": [
+        "read"
+      ]
+    },
+    "storage": {
+      "UsageEvent:@model(appsync)": [
+        "create",
+        "read"
+      ]
+    }
+  },
+  "lambdaLayers": []
+}
