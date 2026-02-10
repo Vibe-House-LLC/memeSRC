@@ -485,6 +485,7 @@ const CollagePreview = ({
       url: selection.imageUrl,
       metadata: {
         source: 'memesrc-search',
+        sourceUrl: selection.imageUrl,
         cid: selection.cid,
         season: selection.season,
         episode: selection.episode,

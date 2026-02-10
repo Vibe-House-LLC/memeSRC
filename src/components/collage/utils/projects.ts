@@ -130,7 +130,7 @@ export function buildSnapshotFromState({
     | {
         originalUrl?: string;
         displayUrl?: string;
-        metadata?: { libraryKey?: string };
+        metadata?: { libraryKey?: string; sourceUrl?: string };
         subtitle?: string;
         subtitleShowing?: boolean;
       }
@@ -150,6 +150,7 @@ export function buildSnapshotFromState({
 }): CollageSnapshot {
   const images = (selectedImages || []).map((img) => {
     const ref: { libraryKey?: string; url?: string; subtitle?: string; subtitleShowing?: boolean } = {};
+    const isBlobUrl = (value: unknown): value is string => typeof value === 'string' && value.startsWith('blob:');
     if (typeof img === 'string') {
       ref.url = img;
       return ref;
@@ -162,8 +163,14 @@ export function buildSnapshotFromState({
     // Prefer originalUrl if present.
     const originalUrl = img?.originalUrl;
     const displayUrl = img?.displayUrl;
+    const sourceUrlFromMetadata =
+      maybeMeta && typeof maybeMeta.sourceUrl === 'string' && maybeMeta.sourceUrl.trim()
+        ? maybeMeta.sourceUrl
+        : '';
     if (!ref.libraryKey) {
-      ref.url = originalUrl || displayUrl || '';
+      const persistableOriginal = !isBlobUrl(originalUrl) ? originalUrl : '';
+      const persistableDisplay = !isBlobUrl(displayUrl) ? displayUrl : '';
+      ref.url = persistableOriginal || persistableDisplay || sourceUrlFromMetadata || originalUrl || displayUrl || '';
     }
     const subtitle = img?.subtitle;
     if (typeof subtitle === 'string' && subtitle.length > 0) ref.subtitle = subtitle;
