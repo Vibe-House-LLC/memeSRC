@@ -2373,6 +2373,24 @@ const CanvasCollagePreview = ({
     if (event && typeof event.stopPropagation === 'function') {
       event.stopPropagation();
     }
+    const mappedImageIndex = panelId ? panelImageMapping?.[panelId] : undefined;
+    const hasAssignedImage =
+      typeof mappedImageIndex === 'number' &&
+      mappedImageIndex >= 0 &&
+      mappedImageIndex < (images?.length || 0) &&
+      Boolean(images?.[mappedImageIndex]);
+    if (!hasAssignedImage) {
+      if (panelId && typeof onPanelClick === 'function') {
+        const rect = panelRects.find((r) => r.panelId === panelId);
+        if (rect) {
+          onPanelClick(rect.index, panelId);
+        }
+      }
+      setActionMenuAnchorEl(null);
+      setActionMenuPosition(null);
+      setActionMenuPanelId(null);
+      return;
+    }
     if (event && event.currentTarget) {
       setActionMenuAnchorEl(event.currentTarget);
       setActionMenuPosition(null);
@@ -2381,7 +2399,7 @@ const CanvasCollagePreview = ({
       setActionMenuAnchorEl(null);
     }
     setActionMenuPanelId(panelId);
-  }, []);
+  }, [images, onPanelClick, panelImageMapping, panelRects, isFrameActionSuppressed]);
 
   const handleActionMenuClose = useCallback(() => {
     setActionMenuAnchorEl(null);
