@@ -615,6 +615,8 @@ export default function CollageFrameSearchModal({
     setPendingSelectionId(refinedSelection.id);
     try {
       await onSelect(refinedSelection);
+    } catch (err) {
+      console.error('Failed to insert refined frame into collage', err);
     } finally {
       setPendingSelectionId(null);
     }

@@ -776,7 +776,7 @@ const CollagePreview = ({
 
   // Handle selecting an image from memeSRC search results for the active panel.
   const handleSearchResultSelect = (selection) => {
-    if (!selection) return;
+    if (!selection) return Promise.resolve();
     const subtitle = String(selection.subtitle || '').trim();
     const hasSubtitle = subtitle.length > 0;
     const selected = {
@@ -794,7 +794,7 @@ const CollagePreview = ({
         ...(hasSubtitle ? { defaultCaption: subtitle } : {}),
       },
     };
-    void applySelectedAsset(selected);
+    return applySelectedAsset(selected);
   };
 
   // Handle selecting an image from My Library for the active panel.
