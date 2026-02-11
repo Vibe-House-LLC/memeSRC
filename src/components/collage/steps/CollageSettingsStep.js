@@ -26,9 +26,6 @@ import {
   AspectRatio,
   GridView,
   Check,
-  Add,
-  Remove,
-  Tag,
   BorderAll,
   Palette,
   Colorize,
@@ -94,33 +91,6 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   '&:active': {
     transform: 'scale(0.98)',
     transition: 'transform 0.1s',
-  }
-}));
-
-// Panel Counter component for panel count selector
-const PanelCounter = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: theme.spacing(2),
-  padding: theme.spacing(1.25),
-  backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.78 : 0.96),
-  borderRadius: theme.shape.borderRadius,
-  border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.8)}`,
-  marginTop: 0,
-  marginBottom: theme.spacing(2)
-}));
-
-// Panel Count Button
-const PanelCountButton = styled(IconButton)(({ theme }) => ({
-  backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.18) : alpha(theme.palette.primary.main, 0.1),
-  color: theme.palette.text.primary,
-  '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.3) : alpha(theme.palette.primary.main, 0.2),
-  },
-  '&.Mui-disabled': {
-    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.action.disabled, 0.2) : alpha(theme.palette.action.disabled, 0.1),
-    color: theme.palette.action.disabled,
   }
 }));
 
@@ -294,7 +264,6 @@ const MOBILE_SETTING_OPTIONS = [
   { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
   { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
   { id: 'stickers', label: 'Stickers', panelId: 'collage-settings-panel-stickers' },
-  { id: 'panel-count', label: 'Panels', panelId: 'collage-settings-panel-panel-count' },
 ];
 
 // Helper function to convert aspect ratio value to a friendly format
@@ -377,7 +346,6 @@ const CollageLayoutSettings = ({
   selectedAspectRatio, 
   setSelectedAspectRatio,
   panelCount,
-  setPanelCount,
   handleNext,
   aspectRatioPresets,
   layoutTemplates,
@@ -386,9 +354,6 @@ const CollageLayoutSettings = ({
   borderColor,
   setBorderColor,
   borderThicknessOptions,
-  // New props for safe panel reduction
-  panelImageMapping,
-  removeImage,
   stickers = [],
   canManageStickers = false,
   onAddStickerFromLibrary,
@@ -404,8 +369,6 @@ const CollageLayoutSettings = ({
   const [borderRightScroll, setBorderRightScroll] = useState(false);
   const [colorLeftScroll, setColorLeftScroll] = useState(false);
   const [colorRightScroll, setColorRightScroll] = useState(false);
-  // Confirm dialog state for panel reduction when last panel has an image
-  const [confirmState, setConfirmState] = useState({ open: false, imageIndex: null, onConfirm: null });
   const [activeMobileSetting, setActiveMobileSetting] = useState('aspect-ratio');
   const [stickerLibraryOpen, setStickerLibraryOpen] = useState(false);
   const [stickerLoading, setStickerLoading] = useState(false);
@@ -499,73 +462,6 @@ const CollageLayoutSettings = ({
     const isCompatible = template.minImages <= panelCount && template.maxImages >= panelCount;
     if (isCompatible) {
       setSelectedTemplate(template);
-    }
-  };
-
-  // Handle panel count changes
-  const handlePanelCountIncrease = () => {
-    if (panelCount < 5) {
-      const newCount = panelCount + 1;
-      setPanelCount(newCount);
-      
-      // Get optimized templates for the new panel count
-      const newTemplates = (typeof getLayoutsForPanelCount === 'function')
-        ? getLayoutsForPanelCount(newCount, selectedAspectRatio)
-        : layoutTemplates.filter(t => t.minImages <= newCount && t.maxImages >= newCount);
-      
-      // Select the best template for the new panel count
-      if (newTemplates.length > 0) {
-        setSelectedTemplate(newTemplates[0]);
-      } else {
-        setSelectedTemplate(null);
-      }
-    }
-  };
-
-  const handlePanelCountDecrease = () => {
-    if (panelCount <= 1) return;
-
-    const newCount = panelCount - 1;
-
-    // Identify the panel that would be removed (last panel in current layout)
-    let lastPanelId = null;
-    try {
-      const panelsArr = selectedTemplate?.layout?.panels || selectedTemplate?.panels || [];
-      lastPanelId = panelsArr?.[panelCount - 1]?.id ?? `panel-${panelCount}`;
-    } catch (_) {
-      lastPanelId = `panel-${panelCount}`;
-    }
-
-    const imageIndexToRemove = panelImageMapping?.[lastPanelId];
-    const hasImageToRemove = typeof imageIndexToRemove === 'number' && imageIndexToRemove >= 0;
-
-    const proceedToDecrease = () => {
-      setPanelCount(newCount);
-
-      // Get optimized templates for the new panel count
-      const newTemplates = (typeof getLayoutsForPanelCount === 'function')
-        ? getLayoutsForPanelCount(newCount, selectedAspectRatio)
-        : layoutTemplates.filter(t => t.minImages <= newCount && t.maxImages >= newCount);
-
-      // Select the best template for the new panel count
-      if (newTemplates.length > 0) {
-        setSelectedTemplate(newTemplates[0]);
-      } else {
-        setSelectedTemplate(null);
-      }
-    };
-
-    if (hasImageToRemove && typeof removeImage === 'function') {
-      setConfirmState({
-        open: true,
-        imageIndex: imageIndexToRemove,
-        onConfirm: () => {
-          try { removeImage(imageIndexToRemove); } catch (_) { /* ignore */ }
-          proceedToDecrease();
-        },
-      });
-    } else {
-      proceedToDecrease();
     }
   };
 
@@ -886,54 +782,6 @@ const CollageLayoutSettings = ({
   
   return (
     <Box sx={{ pt: isMobile ? 0.5 : 0, pb: isMobile ? 0.25 : 0 }}>
-      {/* Confirm removal when reducing panel count hides an image */}
-      <Dialog
-        open={!!confirmState.open}
-        onClose={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}
-        maxWidth="xs"
-        fullWidth
-        BackdropProps={{
-          sx: {
-            backgroundColor: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(2px)'
-          }
-        }}
-        PaperProps={{
-          elevation: 16,
-          sx: theme => ({
-            bgcolor: theme.palette.mode === 'dark' ? '#1f2126' : '#ffffff',
-            border: `1px solid ${theme.palette.divider}`,
-            borderRadius: 2,
-            boxShadow: theme.palette.mode === 'dark'
-              ? '0 12px 32px rgba(0,0,0,0.7)'
-              : '0 12px 32px rgba(0,0,0,0.25)'
-          })
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>Remove panel?</DialogTitle>
-        <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
-          <Typography variant="body1" sx={{ m: 0, letterSpacing: 0, lineHeight: 1.5 }}>
-            This removes a panel and image {panelCount}
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
-          <Button onClick={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}>
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={() => {
-              const fn = confirmState.onConfirm;
-              setConfirmState({ open: false, imageIndex: null, onConfirm: null });
-              if (typeof fn === 'function') fn();
-            }}
-          >
-            Remove
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {isMobile && (
         <Box sx={{ mb: 1.25 }}>
           <MobileSettingsTypeScroller role="tablist" aria-label="Collage settings categories">
@@ -960,77 +808,6 @@ const CollageLayoutSettings = ({
           </MobileSettingsTypeScroller>
         </Box>
       )}
-
-      {/* Panel Count Selector - Moved to the top */}
-      <Box
-        id="collage-settings-panel-panel-count"
-        role={isMobile ? 'tabpanel' : undefined}
-        aria-labelledby={isMobile ? 'collage-settings-tab-panel-count' : undefined}
-        hidden={!isSectionVisible('panel-count')}
-        sx={{
-          display: isSectionVisible('panel-count') ? 'block' : 'none',
-          mb: isMobile ? 0.75 : 1,
-        }}
-      >
-        {!isMobile && (
-          <StepSectionHeading>
-            <Tag sx={{ mr: 1.5, color: 'text.secondary', fontSize: '1.3rem' }} />
-            <Typography variant="h5" fontWeight={600} sx={{ color: 'text.primary' }}>
-              Panel Count
-            </Typography>
-          </StepSectionHeading>
-        )}
-        
-        <PanelCounter>
-          <PanelCountButton 
-            aria-label="Decrease panel count" 
-            disabled={panelCount <= 1}
-            onClick={handlePanelCountDecrease}
-            size="medium"
-            sx={{
-              color: 'text.primary',
-              bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.1),
-              '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.2),
-              },
-              width: 32,
-              height: 32,
-              padding: 0.5
-            }}
-          >
-            <Remove />
-          </PanelCountButton>
-          
-          <Typography variant="h4" sx={{ 
-            minWidth: 50, 
-            textAlign: 'center',
-            fontWeight: 700,
-            color: 'text.primary',
-            fontSize: '2rem',
-          }}>
-            {panelCount}
-          </Typography>
-          
-          <PanelCountButton 
-            aria-label="Increase panel count" 
-            disabled={panelCount >= 5}
-            onClick={handlePanelCountIncrease}
-            size="medium"
-            sx={{
-              color: 'text.primary',
-              bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.1),
-              '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.2),
-              },
-              width: 32,
-              height: 32,
-              padding: 0.5
-            }}
-          >
-            <Add />
-          </PanelCountButton>
-        </PanelCounter>
-      </Box>
     
       {/* Aspect Ratio Section - with horizontal scrolling */}
       <Box
