@@ -183,23 +183,38 @@ export default function LibraryPickerDialog({
       </DialogContent>
       <DialogActions sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
         {busy ? <CircularProgress size={20} sx={{ mr: 'auto' }} /> : null}
-        <Box sx={{ width: isMobile ? '100%' : 'auto' }}>
+        <Box
+          sx={{
+            width: showSelectAction ? '100%' : (isMobile ? '100%' : 'auto'),
+            display: 'flex',
+            flexDirection: isMobile && showSelectAction ? 'column' : 'row',
+            alignItems: 'stretch',
+            justifyContent: 'flex-end',
+            gap: showSelectAction ? 1 : 0,
+          }}
+        >
           <Button
             onClick={onClose}
-            variant="contained"
+            variant={showSelectAction ? 'outlined' : 'contained'}
             disableElevation
             fullWidth={isMobile}
             disabled={busy}
             sx={{
-              bgcolor: '#252525',
-              color: '#f0f0f0',
-              border: '1px solid #3a3a3a',
+              ...(showSelectAction ? { flex: 1 } : {}),
+              bgcolor: showSelectAction ? 'transparent' : '#252525',
+              color: showSelectAction ? '#bdbdbd' : '#f0f0f0',
+              border: showSelectAction ? '1px solid #4a4a4a' : '1px solid #3a3a3a',
               borderRadius: '8px',
-              px: isMobile ? 2 : 2.5,
-              py: isMobile ? 1.25 : 0.75,
+              px: isMobile || showSelectAction ? 2 : 2.5,
+              py: isMobile || showSelectAction ? 1.25 : 0.75,
               textTransform: 'none',
-              fontWeight: 600,
-              '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' },
+              fontWeight: showSelectAction ? 500 : 600,
+              '@media (hover: hover) and (pointer: fine)': {
+                '&:hover': {
+                  bgcolor: showSelectAction ? '#1a1a1a' : '#2d2d2d',
+                  borderColor: showSelectAction ? '#666666' : '#4a4a4a',
+                },
+              },
             }}
           >
             {cancelLabel}
@@ -212,8 +227,7 @@ export default function LibraryPickerDialog({
               fullWidth={isMobile}
               disabled={isPrimaryDisabled}
               sx={{
-                ml: isMobile ? 0 : 1,
-                mt: isMobile ? 1 : 0,
+                flex: 1,
                 bgcolor: '#f3f3f3',
                 color: '#121212',
                 border: '1px solid #f3f3f3',
@@ -222,7 +236,9 @@ export default function LibraryPickerDialog({
                 py: isMobile ? 1.25 : 0.75,
                 textTransform: 'none',
                 fontWeight: 700,
-                '&:hover': { bgcolor: '#ffffff', borderColor: '#ffffff' },
+                '@media (hover: hover) and (pointer: fine)': {
+                  '&:hover': { bgcolor: '#ffffff', borderColor: '#ffffff' },
+                },
                 '&.Mui-disabled': {
                   bgcolor: '#4a4a4a',
                   color: '#9d9d9d',

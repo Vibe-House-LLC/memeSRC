@@ -24,7 +24,6 @@ import {
   ChevronRight,
   AspectRatio,
   GridView,
-  Check,
   BorderAll,
   Palette,
   Colorize,
@@ -64,10 +63,8 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   transition: 'none',
   border: selected 
     ? `2px solid ${alpha('#ffffff', 0.95)}`
-    : `1px solid ${alpha('#f5f5f5', 0.2)}`,
-  backgroundColor: selected 
-    ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
-    : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.15),
+    : `1px solid ${alpha('#f5f5f5', 0.26)}`,
+  backgroundColor: alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.12),
   boxShadow: 'none',
   borderRadius: theme.shape.borderRadius,
   // Card dimensions
@@ -78,10 +75,8 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   '@media (hover: hover) and (pointer: fine)': {
     '&:hover': {
       boxShadow: 'none',
-      borderColor: selected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.3),
-      backgroundColor: selected
-        ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
-        : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.2),
+      borderColor: selected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.38),
+      backgroundColor: alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.16),
     },
   }
 }));
@@ -883,26 +878,6 @@ const CollageLayoutSettings = ({
               >
                 {renderAspectRatioPreview(preset)}
                 
-                {selectedAspectRatio === preset.id && (
-                  <Box 
-                    sx={{ 
-                      position: 'absolute', 
-                      top: 4, 
-                      right: 4, 
-                      bgcolor: alpha('#f5f5f5', 0.96),
-                      border: `1px solid ${alpha('#0f1112', 0.2)}`,
-                      borderRadius: '50%',
-                      width: 20,
-                      height: 20,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Check sx={{ fontSize: 14, color: '#101214' }} />
-                  </Box>
-                )}
-                
                 <Chip
                   label={getFriendlyAspectRatio(preset.value)}
                   size="small"
@@ -916,14 +891,16 @@ const CollageLayoutSettings = ({
                     fontSize: '0.65rem',
                     fontWeight: 'bold',
                     px: 0.75,
-                    backgroundColor: theme => selectedAspectRatio === preset.id 
-                      ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
-                      : theme.palette.mode === 'dark' 
-                        ? alpha('#f5f5f5', 0.14)
-                        : alpha('#101214', 0.08),
-                    color: theme => selectedAspectRatio === preset.id 
-                      ? '#101214'
-                      : theme.palette.text.primary,
+                    border: '1px solid',
+                    borderColor: theme => selectedAspectRatio === preset.id
+                      ? alpha('#ffffff', 0.9)
+                      : alpha('#f5f5f5', 0.22),
+                    backgroundColor: theme => theme.palette.mode === 'dark'
+                      ? alpha('#f5f5f5', 0.12)
+                      : alpha('#101214', 0.08),
+                    color: theme => selectedAspectRatio === preset.id
+                      ? alpha('#ffffff', 0.96)
+                      : alpha('#f5f5f5', 0.76),
                     '& .MuiChip-label': {
                       px: 0.75,
                       py: 0
@@ -1051,18 +1028,14 @@ const CollageLayoutSettings = ({
                         transition: 'none',
                         border: isSelected
                           ? `2px solid ${alpha('#ffffff', 0.95)}`
-                          : `1px solid ${alpha('#f5f5f5', 0.2)}`,
-                        backgroundColor: isSelected
-                          ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
-                          : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.15),
+                          : `1px solid ${alpha('#f5f5f5', 0.26)}`,
+                        backgroundColor: alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.12),
                         boxShadow: 'none',
                         '@media (hover: hover) and (pointer: fine)': {
                           '&:hover': {
                             boxShadow: 'none',
-                            borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.3),
-                            backgroundColor: isSelected
-                              ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
-                              : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.2),
+                            borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.38),
+                            backgroundColor: alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.16),
                           },
                         },
                       }}
@@ -1090,25 +1063,6 @@ const CollageLayoutSettings = ({
                         </Box>
                       </Box>
                       
-                      {isSelected && (
-                        <Box 
-                          sx={{ 
-                            position: 'absolute', 
-                            top: 4, 
-                            right: 4, 
-                            bgcolor: alpha('#f5f5f5', 0.96),
-                            border: `1px solid ${alpha('#0f1112', 0.2)}`,
-                            borderRadius: '50%',
-                            width: 20,
-                            height: 20,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <Check sx={{ fontSize: 14, color: '#101214' }} />
-                        </Box>
-                      )}
                     </TemplateCard>
                   </Box>
                 );
