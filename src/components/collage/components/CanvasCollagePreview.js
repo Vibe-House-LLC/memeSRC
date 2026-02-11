@@ -16,7 +16,6 @@ const normalizeAngleDeg = (value) => {
   if (next <= -180) next += 360;
   return next;
 };
-const shortestAngleDeltaDeg = (next, prev) => normalizeAngleDeg(next - prev);
 const angleFromPointDeg = (centerX, centerY, pointX, pointY) => (
   Math.atan2(pointY - centerY, pointX - centerX) * (180 / Math.PI)
 );
@@ -1266,16 +1265,18 @@ const CanvasCollagePreview = ({
 
   const getStickerDraftFromPointer = useCallback((interaction, clientX, clientY) => {
     if (!interaction) return null;
-    const dx = clientX - interaction.startClientX;
-    const dy = clientY - interaction.startClientY;
 
     if (interaction.mode === 'rotate') {
-      const pointerAngle = angleFromPointDeg(interaction.centerX, interaction.centerY, clientX, clientY);
-      const delta = shortestAngleDeltaDeg(pointerAngle, interaction.startPointerAngleDeg);
+      // Fabric-like behavior: keep the top rotate handle on the center->pointer ray.
+      // Top handle sits at -90deg relative to +X axis, so angle is ray + 90deg.
+      const pointerAngle = angleFromPointDeg(interaction.centerClientX, interaction.centerClientY, clientX, clientY);
       return {
-        angleDeg: normalizeAngleDeg(interaction.startAngleDeg + delta),
+        angleDeg: normalizeAngleDeg(pointerAngle + 90),
       };
     }
+
+    const dx = clientX - interaction.startClientX;
+    const dy = clientY - interaction.startClientY;
 
     if (interaction.mode === 'resize') {
       const widthDeltaPercent = (dx / Math.max(componentWidth, 1)) * 100;
@@ -1330,6 +1331,11 @@ const CanvasCollagePreview = ({
       window.cancelAnimationFrame(stickerRafRef.current);
       stickerRafRef.current = null;
     }
+    const containerRect = containerRef.current?.getBoundingClientRect?.();
+    const centerLocalX = rect.x + (rect.width / 2);
+    const centerLocalY = rect.y + (rect.height / 2);
+    const centerClientX = (containerRect?.left || 0) + centerLocalX;
+    const centerClientY = (containerRect?.top || 0) + centerLocalY;
 
     setStickerInteraction({
       stickerId: sticker.id,
@@ -1340,10 +1346,8 @@ const CanvasCollagePreview = ({
       startYPercent: rect.yPercent,
       startWidthPercent: rect.widthPercent,
       aspectRatio: rect.aspectRatio,
-      startAngleDeg: rect.angleDeg || 0,
-      centerX: rect.x + (rect.width / 2),
-      centerY: rect.y + (rect.height / 2),
-      startPointerAngleDeg: angleFromPointDeg(rect.x + (rect.width / 2), rect.y + (rect.height / 2), event.clientX, event.clientY),
+      centerClientX,
+      centerClientY,
     });
   }, [getStickerRectPx, moveSticker, stickers, updateSticker]);
 
