@@ -394,10 +394,11 @@ const BulkUploadSection = ({
       // Calculate if we need to increase panel count
       let newPanelCount = panelCount;
       if (hasNoExistingImages) {
-        newPanelCount = Math.max(1, Math.min(numNewImages, 5));
+        const desiredPanelCount = Math.max(1, Math.min(numNewImages, 5));
+        newPanelCount = Math.max(panelCount || 1, desiredPanelCount);
         if (setPanelCount && newPanelCount !== panelCount) {
           setPanelCount(newPanelCount);
-          debugLog(`Initialized panel count from ${panelCount} to ${newPanelCount} for first upload`);
+          debugLog(`Expanded panel count from ${panelCount} to ${newPanelCount} for first upload`);
         }
       } else if (numNewImages > numEmptyPanels) {
         // Need more panels - increase by the difference
@@ -796,7 +797,8 @@ const BulkUploadSection = ({
 
     let newPanelCount = panelCount;
     if (hasNoExistingImages) {
-      newPanelCount = Math.max(1, Math.min(numNewImages, 5));
+      const desiredPanelCount = Math.max(1, Math.min(numNewImages, 5));
+      newPanelCount = Math.max(panelCount || 1, desiredPanelCount);
       if (setPanelCount && newPanelCount !== panelCount) {
         setPanelCount(newPanelCount);
       }
