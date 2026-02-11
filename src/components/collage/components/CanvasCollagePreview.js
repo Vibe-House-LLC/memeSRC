@@ -846,10 +846,10 @@ const CanvasCollagePreview = ({
     }
   }, [isHydratingProject, allowHydrationTransformCarry]);
 
-  // Shared helper: carry transform from one frame to another preserving
-  // absolute zoom and focal point while ensuring the image still covers
-  // the destination frame.
-  const computeCarriedTransformFromImage = useCallback((img, fromRect, toRect, fromTransform) => {
+  // Shared helper: carry transform between frames while preserving focal point.
+  // By default we preserve the user's scale parameter (relative zoom) to avoid
+  // compounding zoom across repeated layout changes.
+  const computeCarriedTransformFromImage = useCallback((img, fromRect, toRect, fromTransform, options = {}) => {
     try {
       if (!img || !fromRect || !toRect) return null;
       const imgW = img.naturalWidth || img.width;
@@ -857,21 +857,26 @@ const CanvasCollagePreview = ({
       const imgAspect = imgW / imgH;
       const fromAspect = fromRect.width / fromRect.height;
       const toAspect = toRect.width / toRect.height;
+      const preserveAbsoluteZoom = options?.preserveAbsoluteZoom === true;
 
       const fromInit = (imgAspect > fromAspect) ? (fromRect.height / imgH) : (fromRect.width / imgW);
       const toInit = (imgAspect > toAspect) ? (toRect.height / imgH) : (toRect.width / imgW);
+      const sourceScale = Math.max(1, Math.min(5, fromTransform?.scale || 1));
+      const fromFinal = fromInit * sourceScale;
+      const toFinal = preserveAbsoluteZoom
+        ? Math.max(fromFinal, toInit)
+        : (toInit * sourceScale);
+      const newScaleParam = Math.max(1, Math.min(5, toFinal / toInit));
 
-      const fromFinal = fromInit * (fromTransform?.scale || 1);
-      const toFinal = Math.max(fromFinal, toInit);
-      const newScaleParam = toFinal / toInit;
-
-      // Normalize offsets in source frame
+      // Normalize offsets in source frame using clamped in-bounds source offsets.
       const fromScaledW = imgW * fromFinal;
       const fromScaledH = imgH * fromFinal;
       const fromDx = Math.max(0, (fromScaledW - fromRect.width) / 2);
       const fromDy = Math.max(0, (fromScaledH - fromRect.height) / 2);
-      const normX = fromDx > 0 ? Math.max(-1, Math.min(1, (fromTransform?.positionX || 0) / fromDx)) : 0;
-      const normY = fromDy > 0 ? Math.max(-1, Math.min(1, (fromTransform?.positionY || 0) / fromDy)) : 0;
+      const sourcePosX = Math.max(-fromDx, Math.min(fromDx, fromTransform?.positionX || 0));
+      const sourcePosY = Math.max(-fromDy, Math.min(fromDy, fromTransform?.positionY || 0));
+      const normX = fromDx > 0 ? Math.max(-1, Math.min(1, sourcePosX / fromDx)) : 0;
+      const normY = fromDy > 0 ? Math.max(-1, Math.min(1, sourcePosY / fromDy)) : 0;
 
       // Map to destination and clamp
       const toScaledW = imgW * toFinal;
@@ -1152,7 +1157,9 @@ const CanvasCollagePreview = ({
       const fromTransform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
 
       const img = loadedImages[imageIndex];
-      const adjusted = computeCarriedTransformFromImage(img, prev, curr, fromTransform);
+      const adjusted = computeCarriedTransformFromImage(img, prev, curr, fromTransform, {
+        preserveAbsoluteZoom: false,
+      });
       if (adjusted && typeof updatePanelTransform === 'function' && !isTransformNearlyEqual(adjusted, fromTransform)) {
         updatePanelTransform(panelId, adjusted);
       }
@@ -2293,7 +2300,9 @@ const CanvasCollagePreview = ({
       const fromRect = panelRects.find(r => r.panelId === fromPanelId);
       const toRect = panelRects.find(r => r.panelId === toPanelId);
       const fromTransform = panelTransforms[fromPanelId] || { scale: 1, positionX: 0, positionY: 0 };
-      return computeCarriedTransformFromImage(img, fromRect, toRect, fromTransform) || { scale: 1, positionX: 0, positionY: 0 };
+      return computeCarriedTransformFromImage(img, fromRect, toRect, fromTransform, {
+        preserveAbsoluteZoom: true,
+      }) || { scale: 1, positionX: 0, positionY: 0 };
     };
 
     // Create new mapping with swapped images
