@@ -683,6 +683,8 @@ const CanvasCollagePreview = ({
   const [activeStickerId, setActiveStickerId] = useState(null);
   const [stickerInteraction, setStickerInteraction] = useState(null);
   const [stickerDrafts, setStickerDrafts] = useState({});
+  const hasInitializedStickerIdsRef = useRef(false);
+  const previousStickerIdsRef = useRef([]);
   const stickerDraftsRef = useRef({});
   const pendingStickerPointerRef = useRef(null);
   const stickerRafRef = useRef(null);
@@ -1198,6 +1200,29 @@ const CanvasCollagePreview = ({
       });
     }
   }, [activeStickerId, stickers]);
+
+  // Auto-select newly added stickers so controls are immediately available after insert.
+  useEffect(() => {
+    const stickerIds = Array.isArray(stickers)
+      ? stickers.map((sticker) => sticker?.id).filter(Boolean)
+      : [];
+
+    if (!hasInitializedStickerIdsRef.current) {
+      hasInitializedStickerIdsRef.current = true;
+      previousStickerIdsRef.current = stickerIds;
+      return;
+    }
+
+    const previousIds = previousStickerIdsRef.current;
+    const previousIdSet = new Set(previousIds);
+    const addedIds = stickerIds.filter((id) => !previousIdSet.has(id));
+    if (addedIds.length === 1 && stickerIds.length === previousIds.length + 1) {
+      setStickerInteraction(null);
+      setActiveStickerId(addedIds[0]);
+    }
+
+    previousStickerIdsRef.current = stickerIds;
+  }, [stickers]);
 
   const clampStickerWidthPx = useCallback((widthPx, aspectRatio) => {
     const safeAspectRatio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
@@ -4337,7 +4362,7 @@ const CanvasCollagePreview = ({
                       justifyContent: 'center',
                     }}
                   >
-                    <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff' }} />
+                    <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
                   </Box>
                   <Box
                     sx={{
