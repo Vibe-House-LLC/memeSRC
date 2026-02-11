@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Box, Button, IconButton, Stack, Typography, useMediaQuery } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { Link as RouterLink } from 'react-router-dom';
@@ -10,13 +10,11 @@ import { normalizeColorValue, isColorNearBlack } from '../../utils/colors';
 import { safeGetItem, safeSetItem } from '../../utils/storage';
 import {
   fetchLatestRelease,
-  formatReleaseDisplay,
-  formatRelativeTimeCompact,
-  getReleaseType,
   type GitHubRelease,
 } from '../../utils/githubReleases';
 import { FeedCardSurface } from './cards/CardSurface';
 import { AdFreeDecemberCard } from './cards/AdFreeDecemberCard';
+import { ReleaseDetailsCard } from './cards/ReleaseDetailsCard';
 import { Search } from '@mui/icons-material';
 import { isAdPauseActive, isSubscribedUser, type UserCtx } from '../../utils/adsenseLoader';
 import { hasDismissedAdFreeDecember, persistAdFreeDecemberDismissal } from '../../contexts/AdFreeDecemberContext';
@@ -410,37 +408,6 @@ export default function FeedSection({ anchorId = 'news-feed', onFeedSummaryChang
   const timeoutsRef = useRef<number[]>([]);
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up('md'));
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const releaseStatusColor = useMemo(() => {
-    if (!latestRelease) {
-      return theme?.palette?.success?.main ?? '#22c55e';
-    }
-    const isDraft = Boolean(latestRelease.draft);
-    const isPrerelease = Boolean(latestRelease.prerelease);
-    const type = getReleaseType(latestRelease.tag_name);
-    if (isDraft) return theme?.palette?.error?.main ?? '#ef4444';
-    if (isPrerelease) return theme?.palette?.warning?.main ?? '#f59e0b';
-    switch (type) {
-      case 'major':
-        return theme?.palette?.error?.main ?? '#ef4444';
-      case 'minor':
-        return theme?.palette?.success?.main ?? '#22c55e';
-      default:
-        return theme?.palette?.info?.main ?? '#3b82f6';
-    }
-  }, [latestRelease, theme]);
-  const releaseLinkStyle = useMemo<CSSProperties>(
-    () => ({
-      color: '#bfdbfe',
-      textDecoration: 'none',
-      whiteSpace: isMobile ? 'normal' : 'nowrap',
-      fontWeight: 600,
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 4,
-    }),
-    [isMobile]
-  );
   const releaseTimestamp = useMemo(() => {
     if (!latestRelease?.published_at) {
       return null;
@@ -717,122 +684,12 @@ const hasFeedContent = hasShows || shouldShowReleaseCard || shouldShowAdFreeCard
         transition: `transform ${CARD_EXIT_DURATION_MS}ms ease, opacity ${CARD_EXIT_DURATION_MS}ms ease`,
       }}
     >
-      <FeedCardSurface
-        tone="neutral"
-        gradient="rgba(15,23,42,0.92)"
-        sx={{
-          border: '1px solid rgba(148,163,184,0.25)',
-          boxShadow: '0 32px 64px rgba(8,10,20,0.52)',
-          backdropFilter: 'blur(18px) saturate(140%)',
-          gap: { xs: 1.8, sm: 2 },
-        }}
-      >
-        <Stack spacing={{ xs: 1.6, sm: 2.1 }} sx={{ width: '100%' }}>
-          <Stack
-            direction={{ xs: 'row', sm: 'row' }}
-            spacing={{ xs: 1.1, sm: 1.6 }}
-            alignItems={{ xs: 'center', sm: 'center' }}
-            justifyContent="space-between"
-            sx={{ width: '100%' }}
-          >
-            <Stack
-              direction="row"
-              spacing={1.1}
-              alignItems="center"
-              sx={{
-                flexGrow: 1,
-                minWidth: 0,
-              }}
-            >
-              <Box
-                component="span"
-                sx={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  backgroundColor: releaseStatusColor,
-                  boxShadow: `0 0 0 4px ${alpha(releaseStatusColor, 0.2)}`,
-                  flexShrink: 0,
-                }}
-              />
-              <Typography
-                component="span"
-                variant="body2"
-                sx={{
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: 1.2,
-                  color: 'rgba(226,232,240,0.86)',
-                }}
-              >
-                Latest update
-              </Typography>
-            </Stack>
-            <IconButton
-              aria-label="Dismiss latest update"
-              onClick={handleDismissReleaseCard}
-              size="small"
-              sx={{
-                color: 'rgba(226,232,240,0.78)',
-                backgroundColor: 'rgba(148,163,184,0.18)',
-                border: '1px solid rgba(148,163,184,0.28)',
-                '&:hover': {
-                  backgroundColor: 'rgba(148,163,184,0.28)',
-                  color: '#f8fafc',
-                },
-              }}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-          <Stack spacing={{ xs: 0.8, sm: 1 }} sx={{ width: '100%', pb: 1 }}>
-            <Typography
-              component="p"
-              variant="body1"
-              sx={{
-                color: '#e2e8f0',
-                fontWeight: 800,
-                fontSize: { xs: '1.4rem', sm: '1.5rem' },
-                lineHeight: { xs: 1.56, sm: 1.6 },
-                textAlign: 'center',
-              }}
-            >
-              Updated to{' '}
-              <Box component={RouterLink} to="/releases" style={releaseLinkStyle}>
-                {formatReleaseDisplay(latestRelease.tag_name)}
-              </Box>
-            </Typography>
-          </Stack>
-          <Stack
-            direction='column'
-            spacing={{ xs: 1, sm: 1.4 }}
-            alignItems='stretch'
-            sx={{ width: '100%' }}
-          >
-            <Button
-              component={RouterLink}
-              to="/releases"
-              variant="contained"
-              sx={{
-                borderRadius: 999,
-                px: { xs: 2.6, sm: 3 },
-                py: { xs: 0.9, sm: 1 },
-                textTransform: 'none',
-                fontWeight: 700,
-                color: isColorNearBlack(releaseStatusColor) ? '#f8fafc' : '#0b1020',
-                backgroundColor: releaseStatusColor,
-                boxShadow: '0 22px 44px rgba(7,11,23,0.42)',
-                '&:hover': {
-                  backgroundColor: releaseStatusColor,
-                  opacity: 0.94,
-                },
-              }}
-            >
-              View release notes
-            </Button>
-          </Stack>
-        </Stack>
-      </FeedCardSurface>
+      <ReleaseDetailsCard
+        release={latestRelease}
+        isLatest
+        onDismiss={handleDismissReleaseCard}
+        dismissAriaLabel="Dismiss latest update"
+      />
     </Box>
   ) : null;
 
