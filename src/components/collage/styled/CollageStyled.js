@@ -20,30 +20,24 @@ export const TemplateCard = styled(Paper)(({ theme, selected }) => ({
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: theme.transitions.create(
-    ['border-color', 'background-color', 'box-shadow'],
-    { duration: theme.transitions.duration.shorter }
-  ),
+  transition: 'none',
   borderRadius: theme.shape.borderRadius,
   border: selected 
-    ? `2px solid ${theme.palette.primary.main}` 
-    : `1px solid ${theme.palette.divider}`,
+    ? `2px solid ${alpha('#ffffff', 0.95)}`
+    : `1px solid ${alpha('#f5f5f5', 0.2)}`,
   backgroundColor: selected 
-    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.15 : 0.08)
-    : theme.palette.background.paper,
-  '&:hover': {
-    boxShadow: selected 
-      ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
-      : theme.palette.mode === 'dark'
-        ? '0 4px 12px rgba(0,0,0,0.25)'
-        : '0 4px 12px rgba(0,0,0,0.1)',
-    borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
+    ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+    : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.15),
+  boxShadow: 'none',
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:hover': {
+      boxShadow: 'none',
+      borderColor: selected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.3),
+      backgroundColor: selected
+        ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+        : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.2),
+    },
   },
-  // Subtle animation on click
-  '&:active': {
-    transform: 'scale(0.98)',
-    transition: 'transform 0.1s',
-  }
 }));
 
 // Image dropzone

@@ -61,34 +61,28 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: theme.transitions.create(
-    ['border-color', 'background-color', 'box-shadow'],
-    { duration: theme.transitions.duration.shorter }
-  ),
+  transition: 'none',
   border: selected 
-    ? `2px solid ${theme.palette.primary.main}` 
-    : `1px solid ${theme.palette.divider}`,
+    ? `2px solid ${alpha('#ffffff', 0.95)}`
+    : `1px solid ${alpha('#f5f5f5', 0.2)}`,
   backgroundColor: selected 
-    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.15 : 0.08)
-    : theme.palette.background.paper,
+    ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+    : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.15),
+  boxShadow: 'none',
   borderRadius: theme.shape.borderRadius,
-  '&:hover': {
-    boxShadow: selected 
-      ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
-      : theme.palette.mode === 'dark'
-        ? '0 4px 12px rgba(0,0,0,0.25)'
-        : '0 4px 12px rgba(0,0,0,0.1)',
-    borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
-  },
   // Card dimensions
   width: 80,
   height: 80,
   padding: theme.spacing(1),
   flexShrink: 0,
-  // Subtle animation on click
-  '&:active': {
-    transform: 'scale(0.98)',
-    transition: 'transform 0.1s',
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:hover': {
+      boxShadow: 'none',
+      borderColor: selected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.3),
+      backgroundColor: selected
+        ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+        : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.2),
+    },
   }
 }));
 
@@ -140,28 +134,14 @@ const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
   zIndex: 10,
   // Consistent styling across all devices
   backgroundColor: theme.palette.mode === 'dark' 
-    ? alpha(theme.palette.background.paper, 0.8)
-    : alpha(theme.palette.background.paper, 0.9),
-  // Better shadow for depth without overwhelming the UI
-  boxShadow: `0 2px 8px ${theme.palette.mode === 'dark' 
-    ? 'rgba(0,0,0,0.3)' 
-    : 'rgba(0,0,0,0.15)'}`,
+    ? alpha(theme.palette.background.paper, 0.7)
+    : alpha(theme.palette.background.paper, 0.92),
+  boxShadow: 'none',
   // Clean border
   border: `1px solid ${theme.palette.mode === 'dark'
-    ? alpha(theme.palette.divider, 0.5)
-    : theme.palette.divider}`,
-  // Primary color for better visibility
-  color: theme.palette.primary.main,
-  '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' 
-      ? alpha(theme.palette.background.paper, 0.9)
-      : alpha(theme.palette.background.default, 0.95),
-    color: theme.palette.primary.dark,
-    transform: 'translateY(-50%) scale(1.05)',
-    boxShadow: `0 3px 10px ${theme.palette.mode === 'dark' 
-      ? 'rgba(0,0,0,0.4)' 
-      : 'rgba(0,0,0,0.2)'}`,
-  },
+    ? alpha('#f5f5f5', 0.3)
+    : alpha('#101214', 0.2)}`,
+  color: theme.palette.mode === 'dark' ? alpha('#f5f5f5', 0.85) : alpha('#101214', 0.78),
   // Consistent positioning for both directions
   ...(direction === 'left' ? { left: -8 } : { right: -8 }),
   // Consistent sizing across devices
@@ -171,11 +151,17 @@ const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
   padding: 0,
   // Consistent circular shape on all devices
   borderRadius: '50%',
-  // Better transition for hover states
-  transition: theme.transitions.create(
-    ['background-color', 'color', 'box-shadow', 'transform', 'opacity'], 
-    { duration: theme.transitions.duration.shorter }
-  ),
+  transition: 'none',
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:hover': {
+      backgroundColor: theme.palette.mode === 'dark'
+        ? alpha(theme.palette.background.paper, 0.82)
+        : alpha(theme.palette.background.paper, 0.98),
+      color: theme.palette.mode === 'dark' ? '#ffffff' : alpha('#101214', 0.95),
+      transform: 'translateY(-50%)',
+      boxShadow: 'none',
+    },
+  },
   // Same styling for mobile and desktop
   [theme.breakpoints.up('sm')]: {
     width: 36,
@@ -304,9 +290,9 @@ const ColorSwatch = styled(Box)(({ theme, selected }) => ({
   borderRadius: '50%',
   cursor: 'pointer',
   boxSizing: 'border-box',
-  border: selected ? `3px solid ${theme.palette.primary.main}` : `2px solid ${alpha(theme.palette.background.paper, 0.95)}`,
+  border: selected ? `3px solid ${alpha('#ffffff', 0.95)}` : `2px solid ${alpha(theme.palette.background.paper, 0.95)}`,
   boxShadow: selected 
-    ? `0 0 0 2px ${theme.palette.primary.main}` 
+    ? `0 0 0 2px ${alpha('#ffffff', 0.35)}` 
     : `0 0 0 1px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.28 : 0.14)}`,
   transition: theme.transitions.create(
     ['transform', 'box-shadow'],
@@ -738,30 +724,26 @@ const CollageLayoutSettings = ({
         justifyContent: 'center',
         padding: 0.5
       }}>
-        <Box 
-          sx={{
-            width: `${width}%`,
-            height: `${height}%`,
-            border: theme => `2px solid ${alpha(
-              theme.palette.mode === 'dark' 
-                ? theme.palette.primary.light 
-                : theme.palette.primary.main, 
-              0.8
-            )}`,
-            borderRadius: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: theme => alpha(
-              theme.palette.mode === 'dark' 
-                ? theme.palette.primary.dark 
-                : theme.palette.primary.light, 
-              0.15
-            ),
-            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
-          }}
-        />
-      </Box>
+                <Box 
+                  sx={{
+                    width: `${width}%`,
+                    height: `${height}%`,
+                    border: theme => `2px solid ${alpha(
+                      '#f5f5f5',
+                      theme.palette.mode === 'dark' ? 0.72 : 0.55
+                    )}`,
+                    borderRadius: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: theme => alpha(
+                      '#f5f5f5',
+                      theme.palette.mode === 'dark' ? 0.12 : 0.18
+                    ),
+                    boxShadow: 'none'
+                  }}
+                />
+              </Box>
     );
   };
 
@@ -907,7 +889,8 @@ const CollageLayoutSettings = ({
                       position: 'absolute', 
                       top: 4, 
                       right: 4, 
-                      bgcolor: 'primary.main',
+                      bgcolor: alpha('#f5f5f5', 0.96),
+                      border: `1px solid ${alpha('#0f1112', 0.2)}`,
                       borderRadius: '50%',
                       width: 20,
                       height: 20,
@@ -916,7 +899,7 @@ const CollageLayoutSettings = ({
                       justifyContent: 'center'
                     }}
                   >
-                    <Check sx={{ fontSize: 14, color: 'primary.contrastText' }} />
+                    <Check sx={{ fontSize: 14, color: '#101214' }} />
                   </Box>
                 )}
                 
@@ -934,12 +917,12 @@ const CollageLayoutSettings = ({
                     fontWeight: 'bold',
                     px: 0.75,
                     backgroundColor: theme => selectedAspectRatio === preset.id 
-                      ? theme.palette.primary.main
+                      ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
                       : theme.palette.mode === 'dark' 
-                        ? 'rgba(255, 255, 255, 0.15)' 
-                        : 'rgba(0, 0, 0, 0.08)',
+                        ? alpha('#f5f5f5', 0.14)
+                        : alpha('#101214', 0.08),
                     color: theme => selectedAspectRatio === preset.id 
-                      ? theme.palette.primary.contrastText
+                      ? '#101214'
                       : theme.palette.text.primary,
                     '& .MuiChip-label': {
                       px: 0.75,
@@ -1065,21 +1048,23 @@ const CollageLayoutSettings = ({
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: theme.spacing(1),
-                        transition: theme.transitions.create(
-                          ['border-color', 'background-color', 'box-shadow'],
-                          { duration: theme.transitions.duration.shorter }
-                        ),
-                        '&:hover': {
-                          boxShadow: isSelected 
-                            ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
-                            : theme.palette.mode === 'dark'
-                              ? '0 4px 12px rgba(0,0,0,0.25)'
-                              : '0 4px 12px rgba(0,0,0,0.1)',
+                        transition: 'none',
+                        border: isSelected
+                          ? `2px solid ${alpha('#ffffff', 0.95)}`
+                          : `1px solid ${alpha('#f5f5f5', 0.2)}`,
+                        backgroundColor: isSelected
+                          ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+                          : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.15),
+                        boxShadow: 'none',
+                        '@media (hover: hover) and (pointer: fine)': {
+                          '&:hover': {
+                            boxShadow: 'none',
+                            borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.3),
+                            backgroundColor: isSelected
+                              ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+                              : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.2),
+                          },
                         },
-                        '&:active': {
-                          transform: 'scale(0.98)',
-                          transition: 'transform 0.1s',
-                        }
                       }}
                     >
                       {/* Container to properly handle aspect ratio */}
@@ -1111,7 +1096,8 @@ const CollageLayoutSettings = ({
                             position: 'absolute', 
                             top: 4, 
                             right: 4, 
-                            bgcolor: 'primary.main',
+                            bgcolor: alpha('#f5f5f5', 0.96),
+                            border: `1px solid ${alpha('#0f1112', 0.2)}`,
                             borderRadius: '50%',
                             width: 20,
                             height: 20,
@@ -1120,7 +1106,7 @@ const CollageLayoutSettings = ({
                             justifyContent: 'center'
                           }}
                         >
-                          <Check sx={{ fontSize: 14, color: 'primary.contrastText' }} />
+                          <Check sx={{ fontSize: 14, color: '#101214' }} />
                         </Box>
                       )}
                     </TemplateCard>
@@ -1240,26 +1226,29 @@ const CollageLayoutSettings = ({
                     key={option.label}
                     label={option.label}
                     clickable
-                    color={isSelected ? 'primary' : 'default'}
                     onClick={() => setBorderThickness(option.label.toLowerCase())}
                     sx={{ 
                       fontWeight,
                       height: 34,
                       borderRadius: 999,
                       px: 1.1,
+                      transition: 'none',
                       border: '1px solid',
-                      borderColor: isSelected ? alpha(theme.palette.primary.main, 0.9) : alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.8),
-                      color: isSelected ? 'text.primary' : 'text.secondary',
+                      borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.2),
+                      color: isSelected ? '#111213' : alpha('#f5f5f5', 0.7),
                       backgroundColor: isSelected
-                        ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.14)
-                        : alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.88),
+                        ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+                        : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.15),
                       '& .MuiChip-label': {
                         px: 1.25,
                       },
-                      '&:hover': {
-                        backgroundColor: isSelected
-                          ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.34 : 0.2)
-                          : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.55 : 1),
+                      '@media (hover: hover) and (pointer: fine)': {
+                        '&:hover': {
+                          backgroundColor: isSelected
+                            ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+                            : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.2),
+                          borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.3),
+                        },
                       },
                     }}
                   />
