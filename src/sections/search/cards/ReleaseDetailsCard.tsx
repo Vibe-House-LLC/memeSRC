@@ -28,6 +28,7 @@ import {
 } from '../../../utils/githubReleases';
 import { isColorNearBlack } from '../../../utils/colors';
 import { FeedCardSurface } from './CardSurface';
+import { Link as RouterLink } from 'react-router-dom';
 
 export interface ReleaseDetailsCardProps {
   release: GitHubRelease;
@@ -37,6 +38,8 @@ export interface ReleaseDetailsCardProps {
   sx?: SxProps<Theme>;
   onDismiss?: () => void;
   dismissAriaLabel?: string;
+  showViewAllUpdatesButton?: boolean;
+  viewAllUpdatesTo?: string;
 }
 
 export function ReleaseDetailsCard({
@@ -47,6 +50,8 @@ export function ReleaseDetailsCard({
   sx,
   onDismiss,
   dismissAriaLabel = 'Dismiss release update',
+  showViewAllUpdatesButton = false,
+  viewAllUpdatesTo = '/releases',
 }: ReleaseDetailsCardProps): React.ReactElement {
   const theme = useTheme();
   const title = String(release.name || release.tag_name || 'Untitled Release');
@@ -60,7 +65,7 @@ export function ReleaseDetailsCard({
   const releaseUrl = String(release.html_url || `https://github.com/${owner}/${repo}/releases`);
   const titleId = `release-title-${release.id}`;
   const toneLabel = isDraft ? 'Draft update' : isPrerelease ? 'Beta update' : isLatest ? 'Latest update' : 'Release';
-  const surfaceGradient = `linear-gradient(165deg, ${alpha('#020617', 0.96)} 0%, ${alpha('#0f172a', 0.94)} 62%, ${alpha(releasePalette.main, 0.3)} 100%)`;
+  const surfaceGradient = alpha('#0f172a', 0.94);
   const actionTextColor = isColorNearBlack(releasePalette.main)
     ? '#f8fafc'
     : theme.palette.getContrastText(releasePalette.main);
@@ -70,7 +75,7 @@ export function ReleaseDetailsCard({
     <FeedCardSurface
       role="article"
       aria-labelledby={titleId}
-      tone={releaseColorKey}
+      tone="neutral"
       gradient={surfaceGradient}
       sx={[
         {
@@ -78,9 +83,9 @@ export function ReleaseDetailsCard({
           maxWidth: '100%',
           mx: 0,
           gap: { xs: 1.8, sm: 2.1 },
-          border: `1px solid ${alpha(releasePalette.main, 0.36)}`,
-          boxShadow: `0 34px 72px ${alpha(releasePalette.main, 0.3)}`,
-          backdropFilter: 'blur(18px) saturate(140%)',
+          border: `1px solid ${alpha('#94a3b8', 0.26)}`,
+          boxShadow: 'none',
+          backdropFilter: 'none',
           transition: 'box-shadow 0.3s ease',
         },
         ...extraSx,
@@ -105,7 +110,6 @@ export function ReleaseDetailsCard({
                 height: 11,
                 borderRadius: '50%',
                 backgroundColor: releasePalette.main,
-                boxShadow: `0 0 0 4px ${alpha(releasePalette.main, 0.25)}`,
                 flexShrink: 0,
               }}
             />
@@ -150,9 +154,9 @@ export function ReleaseDetailsCard({
                 fontSize: { xs: '0.62rem', sm: '0.68rem' },
                 fontWeight: 700,
                 letterSpacing: '0.4px',
-                bgcolor: alpha(releasePalette.main, 0.2),
+                bgcolor: alpha(releasePalette.main, 0.14),
                 color: '#f8fafc',
-                border: `1px solid ${alpha(releasePalette.main, 0.45)}`,
+                border: `1px solid ${alpha(releasePalette.main, 0.3)}`,
                 '& .MuiChip-label': {
                   px: { xs: 0.75, sm: 1 },
                 },
@@ -166,10 +170,9 @@ export function ReleaseDetailsCard({
                   height: { xs: 20, sm: 22 },
                   fontSize: { xs: '0.62rem', sm: '0.68rem' },
                   fontWeight: 700,
-                  background: `linear-gradient(135deg, ${alpha('#f8fafc', 0.92)} 0%, ${alpha('#cbd5e1', 0.88)} 100%)`,
-                  border: `1px solid ${alpha('#ffffff', 0.45)}`,
+                  background: alpha('#f8fafc', 0.9),
+                  border: `1px solid ${alpha('#ffffff', 0.35)}`,
                   color: '#0b1222',
-                  boxShadow: `0 1px 4px ${alpha('#0b1222', 0.35)}`,
                   '& .MuiChip-label': { px: { xs: 0.75, sm: 1 } },
                 }}
               />
@@ -212,16 +215,16 @@ export function ReleaseDetailsCard({
               <IconButton
                 aria-label={dismissAriaLabel}
                 onClick={onDismiss}
-                size="small"
-                sx={{
-                  color: 'rgba(226,232,240,0.84)',
-                  backgroundColor: alpha('#94a3b8', 0.2),
-                  border: `1px solid ${alpha('#94a3b8', 0.34)}`,
-                  '&:hover': {
-                    backgroundColor: alpha('#94a3b8', 0.32),
-                    color: '#f8fafc',
-                  },
-                }}
+                  size="small"
+                  sx={{
+                    color: 'rgba(226,232,240,0.84)',
+                    backgroundColor: alpha('#94a3b8', 0.14),
+                    border: `1px solid ${alpha('#94a3b8', 0.34)}`,
+                    '&:hover': {
+                      backgroundColor: alpha('#94a3b8', 0.24),
+                      color: '#f8fafc',
+                    },
+                  }}
               >
                 <CloseIcon fontSize="small" />
               </IconButton>
@@ -457,7 +460,7 @@ export function ReleaseDetailsCard({
             borderTop: `1px solid ${alpha('#94a3b8', 0.22)}`,
           }}
         >
-          <Stack direction="row" spacing={{ xs: 1, sm: 1.25 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 1.25 }}>
             <Button
               component={MUILink as unknown as React.ElementType}
               href={releaseUrl}
@@ -476,18 +479,41 @@ export function ReleaseDetailsCard({
                 color: actionTextColor,
                 backgroundColor: releasePalette.main,
                 fontSize: { xs: '0.88rem', sm: '0.92rem' },
-                boxShadow: `0 18px 36px ${alpha('#020617', 0.44)}`,
-                transition: 'all 0.3s ease',
+                boxShadow: 'none',
+                transition: 'background-color 0.2s ease',
                 '&:hover': {
                   backgroundColor: releasePalette.main,
-                  opacity: 0.95,
-                  boxShadow: `0 22px 44px ${alpha('#020617', 0.5)}`,
-                  transform: 'translateY(-1px)',
+                  opacity: 0.96,
                 },
               }}
             >
-              View on GitHub
+              Open on GitHub
             </Button>
+            {showViewAllUpdatesButton && (
+              <Button
+                component={RouterLink}
+                to={viewAllUpdatesTo}
+                size={isLatest ? 'large' : 'medium'}
+                variant="outlined"
+                fullWidth
+                sx={{
+                  borderRadius: 999,
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  py: { xs: 0.9, sm: 1 },
+                  color: 'rgba(226,232,240,0.9)',
+                  borderColor: alpha('#94a3b8', 0.45),
+                  backgroundColor: alpha('#0b1222', 0.28),
+                  fontSize: { xs: '0.88rem', sm: '0.92rem' },
+                  '&:hover': {
+                    borderColor: alpha('#cbd5e1', 0.6),
+                    backgroundColor: alpha('#0b1222', 0.4),
+                  },
+                }}
+              >
+                View All Updates
+              </Button>
+            )}
           </Stack>
         </Box>
       </Stack>

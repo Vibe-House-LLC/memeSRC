@@ -689,6 +689,8 @@ const hasFeedContent = hasShows || shouldShowReleaseCard || shouldShowAdFreeCard
         isLatest
         onDismiss={handleDismissReleaseCard}
         dismissAriaLabel="Dismiss latest update"
+        showViewAllUpdatesButton
+        viewAllUpdatesTo="/releases"
       />
     </Box>
   ) : null;
@@ -808,7 +810,11 @@ const hasFeedContent = hasShows || shouldShowReleaseCard || shouldShowAdFreeCard
 
   return (
 
-    <Stack id={anchorId} spacing={{ xs: 1.8, md: 2 }} sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 } }}>
+    <Stack
+      id={anchorId}
+      spacing={{ xs: 1.8, md: 2 }}
+      sx={{ width: '100%', color: '#f8fafc', mt: { xs: 1.8, md: 0 }, pb: { xs: 2.5, md: 3.5 } }}
+    >
       {isMd && <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
