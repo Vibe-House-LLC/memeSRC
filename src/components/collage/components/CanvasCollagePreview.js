@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline, OpenInFull, RotateRight } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
@@ -1372,6 +1372,22 @@ const CanvasCollagePreview = ({
     }
     removeSticker(stickerId);
   }, [removeSticker]);
+
+  const clearActiveStickerSelection = useCallback((event) => {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    setActiveStickerId(null);
+    setStickerInteraction(null);
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+  }, []);
+
+  const handleStickerDone = useCallback((event) => {
+    clearActiveStickerSelection(event);
+  }, [clearActiveStickerSelection]);
 
   useEffect(() => {
     if (!stickerInteraction || typeof updateSticker !== 'function') return;
@@ -2776,7 +2792,10 @@ const CanvasCollagePreview = ({
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    setActiveStickerId(null);
+    if (activeStickerId) {
+      clearActiveStickerSelection();
+      return;
+    }
     
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -2874,7 +2893,7 @@ const CanvasCollagePreview = ({
         handleActionMenuOpen({ clientX: e.clientX, clientY: e.clientY }, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen]);
+  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, clearActiveStickerSelection]);
 
   const handleMouseUp = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -3091,12 +3110,16 @@ const CanvasCollagePreview = ({
   const handleTouchStart = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    setActiveStickerId(null);
     
     const rect = canvas.getBoundingClientRect();
     const touches = Array.from(e.touches);
     
     if (touches.length === 1) {
+      if (activeStickerId) {
+        touchStartInfo.current = null;
+        clearActiveStickerSelection(e);
+        return;
+      }
       // Single touch - handle like mouse down
       const touch = touches[0];
       const x = touch.clientX - rect.left;
@@ -3274,7 +3297,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, clearActiveStickerSelection]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -4149,11 +4172,6 @@ const CanvasCollagePreview = ({
                   touchAction: 'none',
                   transformOrigin: 'center center',
                   transform: `rotate(${rect.angleDeg || 0}deg)`,
-                  border: isActive ? '2px solid rgba(33, 150, 243, 0.95)' : '2px solid transparent',
-                  borderRadius: 1,
-                  boxShadow: isActive
-                    ? '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)'
-                    : 'none',
                 }}
               >
                 <Box
@@ -4188,6 +4206,7 @@ const CanvasCollagePreview = ({
               const handleSize = componentWidth < 560 ? 30 : 22;
               const rotateHandleSize = componentWidth < 560 ? 26 : 20;
               const deleteHandleSize = componentWidth < 560 ? 28 : 22;
+              const doneHandleSize = componentWidth < 560 ? 28 : 22;
 
               return (
                 <Box
@@ -4204,6 +4223,16 @@ const CanvasCollagePreview = ({
                     transform: `rotate(${rect.angleDeg || 0}deg)`,
                   }}
                 >
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      border: '2px solid rgba(33, 150, 243, 0.95)',
+                      borderRadius: 1,
+                      boxShadow: '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)',
+                      pointerEvents: 'none',
+                    }}
+                  />
                   <Box
                     sx={{
                       position: 'absolute',
@@ -4235,8 +4264,36 @@ const CanvasCollagePreview = ({
                         : 'grab',
                       pointerEvents: 'auto',
                       touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
-                  />
+                  >
+                    <RotateRight sx={{ fontSize: rotateHandleSize * 0.66, color: '#ffffff' }} />
+                  </Box>
+                  <Box
+                    onPointerDown={handleStickerDone}
+                    sx={{
+                      position: 'absolute',
+                      left: -(doneHandleSize * 0.35),
+                      top: -(doneHandleSize * 0.35),
+                      width: doneHandleSize,
+                      height: doneHandleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(67, 160, 71, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Check sx={{ fontSize: doneHandleSize * 0.62 }} />
+                  </Box>
                   <Box
                     onPointerDown={(event) => handleStickerDelete(event, sticker.id)}
                     sx={{
@@ -4275,8 +4332,33 @@ const CanvasCollagePreview = ({
                       cursor: 'nwse-resize',
                       pointerEvents: 'auto',
                       touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
-                  />
+                  >
+                    <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff' }} />
+                  </Box>
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      width: componentWidth < 560 ? 26 : 22,
+                      height: componentWidth < 560 ? 26 : 22,
+                      transform: 'translate(-50%, -50%)',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(15, 23, 42, 0.68)',
+                      border: '1px solid rgba(255,255,255,0.72)',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <DragIndicator sx={{ fontSize: componentWidth < 560 ? 15 : 13 }} />
+                  </Box>
                 </Box>
               );
             })}
