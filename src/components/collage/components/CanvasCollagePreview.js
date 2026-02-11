@@ -2374,33 +2374,18 @@ const CanvasCollagePreview = ({
     if (event && typeof event.stopPropagation === 'function') {
       event.stopPropagation();
     }
-    const mappedImageIndex = panelId ? panelImageMapping?.[panelId] : undefined;
-    const hasAssignedImage =
-      typeof mappedImageIndex === 'number' &&
-      mappedImageIndex >= 0 &&
-      mappedImageIndex < (images?.length || 0) &&
-      Boolean(images?.[mappedImageIndex]);
-    if (!hasAssignedImage) {
-      if (panelId && typeof onPanelClick === 'function') {
-        const rect = panelRects.find((r) => r.panelId === panelId);
-        if (rect) {
-          onPanelClick(rect.index, panelId);
-        }
-      }
-      setActionMenuAnchorEl(null);
-      setActionMenuPosition(null);
-      setActionMenuPanelId(null);
-      return;
-    }
+    setActionMenuPanelId(panelId || null);
     if (event && event.currentTarget) {
       setActionMenuAnchorEl(event.currentTarget);
       setActionMenuPosition(null);
     } else if (event && event.clientX != null && event.clientY != null) {
       setActionMenuPosition({ left: event.clientX, top: event.clientY });
       setActionMenuAnchorEl(null);
+    } else {
+      setActionMenuAnchorEl(null);
+      setActionMenuPosition(null);
     }
-    setActionMenuPanelId(panelId);
-  }, [images, onPanelClick, panelImageMapping, panelRects, isFrameActionSuppressed]);
+  }, [isFrameActionSuppressed]);
 
   const handleActionMenuClose = useCallback(() => {
     setActionMenuAnchorEl(null);
@@ -4030,6 +4015,24 @@ const CanvasCollagePreview = ({
           const imageIndex = actionMenuPanelId ? panelImageMapping[actionMenuPanelId] : undefined;
           const hasImageForPanel = imageIndex !== undefined && loadedImages[imageIndex];
           const hasCaption = !!(actionMenuPanelId && panelTexts[actionMenuPanelId] && (panelTexts[actionMenuPanelId].content || '').trim());
+          if (!hasImageForPanel) {
+            return (
+              <>
+                <MenuItem onClick={handleMenuReplace}>
+                  <ListItemIcon>
+                    <ImageIcon fontSize="small" />
+                  </ListItemIcon>
+                  Add image
+                </MenuItem>
+                <MenuItem onClick={handleMenuRemovePanel} disabled={panelCount <= 1} sx={{ color: 'error.main' }}>
+                  <ListItemIcon sx={{ color: 'inherit' }}>
+                    <DeleteOutline fontSize="small" />
+                  </ListItemIcon>
+                  Remove Panel
+                </MenuItem>
+              </>
+            );
+          }
           return (
             <>
               <MenuItem onClick={handleMenuTransform} disabled={!hasImageForPanel}>
