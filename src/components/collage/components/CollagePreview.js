@@ -71,6 +71,7 @@ const CollagePreview = ({
   removeSticker,
   lastUsedTextSettings,
   isCreatingCollage = false,
+  onPanelSourceDialogOpenChange,
   onCaptionEditorVisibleChange,
   onGenerateNudgeRequested,
   isFrameActionSuppressed,
@@ -118,6 +119,24 @@ const CollagePreview = ({
   // Dialog-based magic editor removed in favor of page navigation
   const navigate = useNavigate();
   const location = useLocation();
+  const hasPanelSourceDialogOpen = hasLibraryAccess && (
+    isSourceSelectorOpen ||
+    isLibraryOpen ||
+    isSearchModalOpen ||
+    isCaptionDecisionOpen
+  );
+
+  useEffect(() => {
+    if (typeof onPanelSourceDialogOpenChange === 'function') {
+      onPanelSourceDialogOpenChange(hasPanelSourceDialogOpen);
+    }
+  }, [hasPanelSourceDialogOpen, onPanelSourceDialogOpenChange]);
+
+  useEffect(() => () => {
+    if (typeof onPanelSourceDialogOpenChange === 'function') {
+      onPanelSourceDialogOpenChange(false);
+    }
+  }, [onPanelSourceDialogOpenChange]);
   
   // Helper: revoke blob: URLs to avoid memory leaks
   const revokeIfBlobUrl = (url) => {
@@ -1187,6 +1206,7 @@ CollagePreview.propTypes = {
   removeSticker: PropTypes.func,
   lastUsedTextSettings: PropTypes.object,
   isCreatingCollage: PropTypes.bool,
+  onPanelSourceDialogOpenChange: PropTypes.func,
   onCaptionEditorVisibleChange: PropTypes.func,
   onGenerateNudgeRequested: PropTypes.func,
   isFrameActionSuppressed: PropTypes.func,
