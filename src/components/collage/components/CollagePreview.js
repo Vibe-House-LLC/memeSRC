@@ -25,6 +25,7 @@ import { UserContext } from '../../../UserContext';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 import { V2SearchContext } from '../../../contexts/v2-search-context';
+import { parsePanelIndexFromId } from '../utils/panelId';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -168,7 +169,7 @@ const CollagePreview = ({
     })
   );
 
-  const resolvePanelIdFromIndex = (index) => {
+  const resolvePanelIdFromIndex = useCallback((index) => {
     try {
       const layoutPanel = selectedTemplate?.layout?.panels?.[index];
       const templatePanel = selectedTemplate?.panels?.[index];
@@ -176,18 +177,9 @@ const CollagePreview = ({
     } catch (_) {
       return `panel-${index + 1}`;
     }
-  };
+  }, [selectedTemplate]);
 
-  const resolvePanelIndexFromId = useCallback((panelId) => {
-    if (typeof panelId !== 'string') return null;
-    const match = panelId.match(/^panel-(\d+)$/);
-    if (!match) return null;
-    const parsed = parseInt(match[1], 10);
-    if (Number.isNaN(parsed) || parsed <= 0) return null;
-    return parsed - 1;
-  }, []);
-
-  const openSourceSelectorForActivePanel = () => {
+  const openSourceSelectorForActivePanel = useCallback(() => {
     if (hasLibraryAccess) {
       setIsLibraryOpen(false);
       setIsSearchModalOpen(false);
@@ -195,7 +187,7 @@ const CollagePreview = ({
       return;
     }
     fileInputRef.current?.click();
-  };
+  }, [hasLibraryAccess]);
 
   // Handle panel click - pro/admin users choose between Library and memeSRC search, others use file picker fallback
   const handlePanelClick = (index, panelId) => {
@@ -240,7 +232,7 @@ const CollagePreview = ({
       requestedPanelId = resolvePanelIdFromIndex(requestedPanelIndex);
     }
     if (requestedPanelIndex === null && requestedPanelId) {
-      requestedPanelIndex = resolvePanelIndexFromId(requestedPanelId);
+      requestedPanelIndex = parsePanelIndexFromId(requestedPanelId);
     }
     if (requestedPanelIndex === null || !requestedPanelId) return;
 
@@ -274,7 +266,6 @@ const CollagePreview = ({
     panelImageMapping,
     selectedImages,
     resolvePanelIdFromIndex,
-    resolvePanelIndexFromId,
     openSourceSelectorForActivePanel,
     onPanelAutoOpenHandled,
   ]);
