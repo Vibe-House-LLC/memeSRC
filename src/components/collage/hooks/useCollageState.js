@@ -501,7 +501,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     const shiftPanelStateKeys = (stateMap) => {
       const nextState = {};
       Object.entries(stateMap || {}).forEach(([panelId, value]) => {
-        const panelIndex = parsePanelIndex(panelId);
+        const panelIndex = parsePanelIndexFromId(panelId);
         if (panelIndex === null) {
           nextState[panelId] = value;
           return;
