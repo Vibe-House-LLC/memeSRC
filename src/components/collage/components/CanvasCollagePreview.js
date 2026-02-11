@@ -656,6 +656,7 @@ const CanvasCollagePreview = ({
   stickers = [],
   updateSticker,
   moveSticker,
+  removeSticker,
   updatePanelText,
   lastUsedTextSettings = {},
   onCaptionEditorVisibleChange,
@@ -1350,6 +1351,27 @@ const CanvasCollagePreview = ({
       centerClientY,
     });
   }, [getStickerRectPx, moveSticker, stickers, updateSticker]);
+
+  const handleStickerDelete = useCallback((event, stickerId) => {
+    if (!stickerId || typeof removeSticker !== 'function') return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+
+    setStickerInteraction((prev) => (prev?.stickerId === stickerId ? null : prev));
+    setActiveStickerId((prev) => (prev === stickerId ? null : prev));
+    setStickerDrafts((prev) => {
+      if (!prev || !prev[stickerId]) return prev;
+      const next = { ...prev };
+      delete next[stickerId];
+      return next;
+    });
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+    removeSticker(stickerId);
+  }, [removeSticker]);
 
   useEffect(() => {
     if (!stickerInteraction || typeof updateSticker !== 'function') return;
@@ -4019,6 +4041,24 @@ const CanvasCollagePreview = ({
 
   // Check if any panel has transform mode enabled for dynamic touch behavior
   const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+  const stickerLayers = Array.isArray(stickers)
+    ? stickers
+        .map((sticker, index) => {
+          if (!sticker?.id) return null;
+          const src = sticker.originalUrl || sticker.thumbnailUrl;
+          if (!src) return null;
+          const rect = getStickerRectPx(sticker);
+          if (!rect) return null;
+          return {
+            sticker,
+            index,
+            src,
+            rect,
+            isActive: activeStickerId === sticker.id,
+          };
+        })
+        .filter(Boolean)
+    : [];
 
   return (
     <Box 
@@ -4079,28 +4119,19 @@ const CanvasCollagePreview = ({
           }}
       />
 
-      {/* Global sticker overlays (canvas-wide layers, clipped to preview bounds) */}
-      {Array.isArray(stickers) && stickers.length > 0 && (
-        <Box
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            overflow: 'hidden',
-            zIndex: 30,
-            pointerEvents: 'none',
-          }}
-        >
-          {stickers.map((sticker, index) => {
-            if (!sticker?.id) return null;
-            const src = sticker.originalUrl || sticker.thumbnailUrl;
-            if (!src) return null;
-            const rect = getStickerRectPx(sticker);
-            if (!rect) return null;
-            const isActive = activeStickerId === sticker.id;
-            const handleSize = componentWidth < 560 ? 30 : 22;
-            const rotateHandleSize = componentWidth < 560 ? 26 : 20;
-
-            return (
+      {/* Sticker visuals stay clipped; control handles can render outside the preview bounds. */}
+      {stickerLayers.length > 0 && (
+        <>
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'hidden',
+              zIndex: 30,
+              pointerEvents: 'none',
+            }}
+          >
+            {stickerLayers.map(({ sticker, index, src, rect, isActive }) => (
               <Box
                 key={`sticker-layer-${sticker.id}`}
                 onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'move')}
@@ -4110,7 +4141,7 @@ const CanvasCollagePreview = ({
                   top: rect.y,
                   width: rect.width,
                   height: rect.height,
-                  zIndex: 30 + index,
+                  zIndex: 1 + index,
                   pointerEvents: 'auto',
                   cursor: stickerInteraction?.stickerId === sticker.id
                     ? ((stickerInteraction?.mode === 'move' || stickerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
@@ -4139,63 +4170,118 @@ const CanvasCollagePreview = ({
                     pointerEvents: 'none',
                   }}
                 />
-
-                {isActive && (
-                  <>
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        left: '50%',
-                        top: -18,
-                        width: 2,
-                        height: 14,
-                        transform: 'translateX(-50%)',
-                        backgroundColor: 'rgba(255,255,255,0.9)',
-                        boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
-                        pointerEvents: 'none',
-                      }}
-                    />
-                    <Box
-                      onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'rotate')}
-                      sx={{
-                        position: 'absolute',
-                        left: '50%',
-                        top: -(rotateHandleSize + 14),
-                        width: rotateHandleSize,
-                        height: rotateHandleSize,
-                        transform: 'translateX(-50%)',
-                        borderRadius: '50%',
-                        border: '2px solid rgba(255,255,255,0.95)',
-                        backgroundColor: 'rgba(244, 67, 54, 0.95)',
-                        boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                        cursor: stickerInteraction?.stickerId === sticker.id && stickerInteraction?.mode === 'rotate'
-                          ? 'grabbing'
-                          : 'grab',
-                        touchAction: 'none',
-                      }}
-                    />
-                    <Box
-                      onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'resize')}
-                      sx={{
-                        position: 'absolute',
-                        right: -(handleSize * 0.35),
-                        bottom: -(handleSize * 0.35),
-                        width: handleSize,
-                        height: handleSize,
-                        borderRadius: '50%',
-                        border: '2px solid rgba(255,255,255,0.95)',
-                        backgroundColor: 'rgba(33, 150, 243, 0.95)',
-                        boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                        cursor: 'nwse-resize',
-                        touchAction: 'none',
-                      }}
-                    />
-                  </>
-                )}
               </Box>
-            );
-          })}
-        </Box>
+            ))}
+          </Box>
+
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'visible',
+              zIndex: 32,
+              pointerEvents: 'none',
+            }}
+          >
+            {stickerLayers.map(({ sticker, index, rect, isActive }) => {
+              if (!isActive) return null;
+              const handleSize = componentWidth < 560 ? 30 : 22;
+              const rotateHandleSize = componentWidth < 560 ? 26 : 20;
+              const deleteHandleSize = componentWidth < 560 ? 28 : 22;
+
+              return (
+                <Box
+                  key={`sticker-controls-${sticker.id}`}
+                  sx={{
+                    position: 'absolute',
+                    left: rect.x,
+                    top: rect.y,
+                    width: rect.width,
+                    height: rect.height,
+                    zIndex: 1 + index,
+                    pointerEvents: 'none',
+                    transformOrigin: 'center center',
+                    transform: `rotate(${rect.angleDeg || 0}deg)`,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: -18,
+                      width: 2,
+                      height: 14,
+                      transform: 'translateX(-50%)',
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <Box
+                    onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'rotate')}
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: -(rotateHandleSize + 14),
+                      width: rotateHandleSize,
+                      height: rotateHandleSize,
+                      transform: 'translateX(-50%)',
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(244, 67, 54, 0.95)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: stickerInteraction?.stickerId === sticker.id && stickerInteraction?.mode === 'rotate'
+                        ? 'grabbing'
+                        : 'grab',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                    }}
+                  />
+                  <Box
+                    onPointerDown={(event) => handleStickerDelete(event, sticker.id)}
+                    sx={{
+                      position: 'absolute',
+                      right: -(deleteHandleSize * 0.35),
+                      top: -(deleteHandleSize * 0.35),
+                      width: deleteHandleSize,
+                      height: deleteHandleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(229, 57, 53, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <DeleteOutline sx={{ fontSize: deleteHandleSize * 0.62 }} />
+                  </Box>
+                  <Box
+                    onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'resize')}
+                    sx={{
+                      position: 'absolute',
+                      right: -(handleSize * 0.35),
+                      bottom: -(handleSize * 0.35),
+                      width: handleSize,
+                      height: handleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(33, 150, 243, 0.95)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: 'nwse-resize',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                    }}
+                  />
+                </Box>
+              );
+            })}
+          </Box>
+        </>
       )}
       
       {/* Control panels positioned over canvas */}
@@ -4654,6 +4740,7 @@ CanvasCollagePreview.propTypes = {
   ),
   updateSticker: PropTypes.func,
   moveSticker: PropTypes.func,
+  removeSticker: PropTypes.func,
   updatePanelText: PropTypes.func,
   lastUsedTextSettings: PropTypes.object,
   onCaptionEditorVisibleChange: PropTypes.func,

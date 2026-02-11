@@ -68,6 +68,7 @@ const CollagePreview = ({
   updatePanelText,
   updateSticker,
   moveSticker,
+  removeSticker,
   lastUsedTextSettings,
   isCreatingCollage = false,
   onCaptionEditorVisibleChange,
@@ -906,6 +907,7 @@ const CollagePreview = ({
         updatePanelText={updatePanelText}
         updateSticker={updateSticker}
         moveSticker={moveSticker}
+        removeSticker={removeSticker}
         lastUsedTextSettings={lastUsedTextSettings}
         onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
         isGeneratingCollage={isCreatingCollage}
@@ -1182,6 +1184,7 @@ CollagePreview.propTypes = {
   updatePanelText: PropTypes.func,
   updateSticker: PropTypes.func,
   moveSticker: PropTypes.func,
+  removeSticker: PropTypes.func,
   lastUsedTextSettings: PropTypes.object,
   isCreatingCollage: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,

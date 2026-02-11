@@ -47,6 +47,7 @@ const CollageImagesStep = ({
   updatePanelText,
   updateSticker,
   moveSticker,
+  removeSticker,
   setFinalImage = () => { console.warn("setFinalImage default prop called"); },
   handleOpenExportDialog = () => { console.warn("handleOpenExportDialog default prop called"); },
   onCollageGenerated = null,
@@ -239,6 +240,7 @@ const CollageImagesStep = ({
             updatePanelText={updatePanelText}
             updateSticker={updateSticker}
             moveSticker={moveSticker}
+            removeSticker={removeSticker}
             lastUsedTextSettings={lastUsedTextSettings}
             setFinalImage={setFinalImage}
             handleOpenExportDialog={handleOpenExportDialog}
@@ -334,6 +336,7 @@ CollageImagesStep.propTypes = {
   updatePanelText: PropTypes.func,
   updateSticker: PropTypes.func,
   moveSticker: PropTypes.func,
+  removeSticker: PropTypes.func,
   setFinalImage: PropTypes.func,
   handleOpenExportDialog: PropTypes.func,
   onCollageGenerated: PropTypes.func,

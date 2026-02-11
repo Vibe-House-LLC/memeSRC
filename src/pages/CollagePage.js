@@ -1914,6 +1914,7 @@ export default function CollagePage() {
     updatePanelText,
     updateSticker,
     moveSticker,
+    removeSticker,
     panelCount,
     selectedTemplate,
     selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value

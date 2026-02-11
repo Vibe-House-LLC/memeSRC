@@ -11,7 +11,8 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { FontDownloadOutlined, FormatSizeRounded, Settings } from '@mui/icons-material';
 import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
 import IconButton from '@mui/material/IconButton';
-import { MenuItem, Select, Typography, Menu, InputAdornment } from '@mui/material';
+import { MenuItem, Select, Typography, Menu, InputAdornment, Box, useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
 import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
@@ -33,6 +34,7 @@ TextEditorControls.propTypes = {
   layerFonts: PropTypes.object.isRequired,
   setLayerFonts: PropTypes.func.isRequired,
   activeFormats: PropTypes.arrayOf(PropTypes.string),
+  showHeader: PropTypes.bool,
 };
 
 const FontSelector = ({ selectedFont, onSelectFont, index }) => (
@@ -71,6 +73,8 @@ FontSelector.propTypes = {
 };
 
 export default function TextEditorControls(props) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [formats, setFormats] = React.useState(() => []);
   const [editorVisible, setEditorVisible] = React.useState(true);
   const [alignment, setAlignment] = React.useState('center');
@@ -123,59 +127,98 @@ export default function TextEditorControls(props) {
   };
 
   return (
-    <div style={{ marginBottom: '8px' }}>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <Typography variant="h5" marginY={1}>
-          <b>Layer {props.index + 1} (caption)</b>
-        </Typography>
-        <IconButton
-          size="small"
-          color={editorVisible ? 'primary' : 'default'}
-          onClick={() => setEditorVisible((prev) => !prev)}
-          sx={{ marginLeft: 1 }}
-        >
-          <Settings />
-        </IconButton>
-      </div>
+    <Box sx={{ mb: 0.75 }}>
+      {props.showHeader !== false ? (
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Typography variant="h5" marginY={1}>
+            <b>Layer {props.index + 1} (caption)</b>
+          </Typography>
+          <IconButton
+            size="small"
+            color={editorVisible ? 'primary' : 'default'}
+            onClick={() => setEditorVisible((prev) => !prev)}
+            sx={{ marginLeft: 1 }}
+          >
+            <Settings />
+          </IconButton>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.25 }}>
+          <IconButton
+            size="small"
+            color={editorVisible ? 'primary' : 'default'}
+            onClick={() => setEditorVisible((prev) => !prev)}
+            sx={{ marginLeft: 1 }}
+          >
+            <Settings />
+          </IconButton>
+        </Box>
+      )}
 
       {editorVisible && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <ToggleButtonGroup value={formats} onChange={handleFormat} aria-label="text formatting" size="small">
-            <ToggleButton value="bold" aria-label="bold">
-              <FormatBoldIcon />
-            </ToggleButton>
-            <ToggleButton value="italic" aria-label="italic">
-              <FormatItalicIcon />
-            </ToggleButton>
-            <ToggleButton value="underline" aria-label="underline">
-              <FormatUnderlinedIcon />
-            </ToggleButton>
-            <ToggleButton
-              value="fontsize"
-              aria-label="fontsize"
-              selected={props.fontSizePickerShowing === props.index}
-              onClick={props.showFontSizePicker}
+        <Box
+          sx={{
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            pb: 0.5,
+            mx: isMobile ? -0.5 : 0,
+            px: isMobile ? 0.5 : 0,
+          }}
+        >
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minWidth: 'max-content' }}>
+            <ToggleButtonGroup
+              value={formats}
+              onChange={handleFormat}
+              aria-label="text formatting"
+              size="small"
+              sx={{
+                flexWrap: 'nowrap',
+                '& .MuiToggleButton-root': {
+                  minWidth: isMobile ? 36 : 40,
+                },
+              }}
             >
-              <FormatSizeRounded />
-            </ToggleButton>
-            <ToggleButton value="alignment" aria-label="alignment" onClick={handleAlignmentClick}>
-              {alignment === 'left' && <FormatAlignLeftIcon />}
-              {alignment === 'center' && <FormatAlignCenterIcon />}
-              {alignment === 'right' && <FormatAlignRightIcon />}
-            </ToggleButton>
-            <ToggleButton value="color" aria-label="color" onClick={handleColorClick}>
-              <FormatColorFillIcon style={{ color: props.layerColor || 'inherit' }} />
-              <ArrowDropDownIcon />
-            </ToggleButton>
-          </ToggleButtonGroup>
-          <FontSelector
-            selectedFont={props.layerFonts[props.index] || 'Arial'}
-            onSelectFont={(font, index) => {
-              props.setLayerFonts({ ...props.layerFonts, [index]: font });
-              props.handleFontChange(index, font);
-            }}
-            index={props.index}
-          />
+              <ToggleButton value="bold" aria-label="bold">
+                <FormatBoldIcon />
+              </ToggleButton>
+              <ToggleButton value="italic" aria-label="italic">
+                <FormatItalicIcon />
+              </ToggleButton>
+              <ToggleButton value="underline" aria-label="underline">
+                <FormatUnderlinedIcon />
+              </ToggleButton>
+              <ToggleButton
+                value="fontsize"
+                aria-label="fontsize"
+                selected={props.fontSizePickerShowing === props.index}
+                onClick={props.showFontSizePicker}
+              >
+                <FormatSizeRounded />
+              </ToggleButton>
+              <ToggleButton value="alignment" aria-label="alignment" onClick={handleAlignmentClick}>
+                {alignment === 'left' && <FormatAlignLeftIcon />}
+                {alignment === 'center' && <FormatAlignCenterIcon />}
+                {alignment === 'right' && <FormatAlignRightIcon />}
+              </ToggleButton>
+              <ToggleButton value="color" aria-label="color" onClick={handleColorClick}>
+                <FormatColorFillIcon style={{ color: props.layerColor || 'inherit' }} />
+                <ArrowDropDownIcon />
+              </ToggleButton>
+            </ToggleButtonGroup>
+
+            <Box sx={{ width: isMobile ? 158 : 190, flexShrink: 0 }}>
+              <FontSelector
+                selectedFont={props.layerFonts[props.index] || 'Arial'}
+                onSelectFont={(font, index) => {
+                  props.setLayerFonts({ ...props.layerFonts, [index]: font });
+                  props.handleFontChange(index, font);
+                }}
+                index={props.index}
+              />
+            </Box>
+          </Box>
+
           <Menu anchorEl={alignmentAnchorEl} open={Boolean(alignmentAnchorEl)} onClose={handleAlignmentClose}>
             <MenuItem onClick={() => handleAlignmentChange('left')}>
               <FormatAlignLeftIcon />
@@ -201,8 +244,8 @@ export default function TextEditorControls(props) {
               Stroke Color
             </MenuItem>
           </Menu>
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
