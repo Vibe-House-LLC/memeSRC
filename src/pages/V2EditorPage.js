@@ -4200,8 +4200,10 @@ const EditorPage = ({ shows }) => {
   const showAds = shouldShowAds(user);
   const layerCardSx = {
     borderRadius: 2,
-    border: '1px solid rgba(148, 163, 184, 0.26)',
-    backgroundColor: 'rgba(15, 23, 42, 0.72)',
+    border: '1px solid rgba(255, 255, 255, 0.14)',
+    backgroundColor: '#121212',
+    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.03)',
+    color: '#f3f4f6',
     p: isMobile ? 1.1 : 1.4,
     mb: 1,
     overflow: 'hidden',
@@ -4210,16 +4212,16 @@ const EditorPage = ({ shows }) => {
     width: 32,
     height: 32,
     borderRadius: 1,
-    border: '1px solid rgba(148, 163, 184, 0.4)',
-    color: 'rgba(226, 232, 240, 0.95)',
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    border: '1px solid rgba(255, 255, 255, 0.22)',
+    color: 'rgba(241, 245, 249, 0.95)',
+    backgroundColor: '#1a1a1a',
     '&:hover': {
-      backgroundColor: 'rgba(30, 41, 59, 0.95)',
-      borderColor: 'rgba(226, 232, 240, 0.55)',
+      backgroundColor: '#262626',
+      borderColor: 'rgba(255, 255, 255, 0.36)',
     },
     '&.Mui-disabled': {
-      borderColor: 'rgba(148, 163, 184, 0.2)',
-      color: 'rgba(148, 163, 184, 0.45)',
+      borderColor: 'rgba(255, 255, 255, 0.12)',
+      color: 'rgba(255, 255, 255, 0.32)',
     },
   };
 
@@ -4458,9 +4460,9 @@ const EditorPage = ({ shows }) => {
                                       height: 24,
                                       borderRadius: 1,
                                       fontWeight: 700,
-                                      color: 'rgba(241, 245, 249, 0.95)',
-                                      border: '1px solid rgba(148, 163, 184, 0.45)',
-                                      backgroundColor: 'rgba(30, 41, 59, 0.72)',
+                                      color: '#f8fafc',
+                                      border: '1px solid rgba(255, 255, 255, 0.28)',
+                                      backgroundColor: '#1e1e1e',
                                     }}
                                   />
                                   <Typography variant="body2" sx={{ opacity: 0.88, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -4544,8 +4546,25 @@ const EditorPage = ({ shows }) => {
                                     }}
                                     sx={{
                                       mt: 0.75,
+                                      '& .MuiOutlinedInput-root': {
+                                        color: '#f8fafc',
+                                        backgroundColor: '#0f0f0f',
+                                        '& fieldset': {
+                                          borderColor: 'rgba(255,255,255,0.22)',
+                                        },
+                                        '&:hover fieldset': {
+                                          borderColor: 'rgba(255,255,255,0.35)',
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                          borderColor: 'rgba(255,255,255,0.52)',
+                                        },
+                                      },
                                       '& .MuiInputBase-root': {
                                         alignItems: 'flex-start',
+                                      },
+                                      '& .MuiInputBase-input::placeholder': {
+                                        color: 'rgba(255,255,255,0.56)',
+                                        opacity: 1,
                                       },
                                     }}
                                     InputProps={{
@@ -4564,8 +4583,8 @@ const EditorPage = ({ shows }) => {
                                       width: 64,
                                       height: 64,
                                       borderRadius: 1.25,
-                                      border: '1px solid rgba(148, 163, 184, 0.35)',
-                                      backgroundColor: 'rgba(30, 41, 59, 0.75)',
+                                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                                      backgroundColor: '#181818',
                                       overflow: 'hidden',
                                       display: 'flex',
                                       alignItems: 'center',
@@ -4615,11 +4634,11 @@ const EditorPage = ({ shows }) => {
                             zIndex: '50',
                             marginTop: '14px',
                             color: '#f8fafc',
-                            backgroundColor: '#334155',
-                            border: '1px solid rgba(226, 232, 240, 0.3)',
+                            backgroundColor: '#2b2b2b',
+                            border: '1px solid rgba(255, 255, 255, 0.26)',
                             '&:hover': {
-                              backgroundColor: '#3f5067',
-                              borderColor: 'rgba(226, 232, 240, 0.45)',
+                              backgroundColor: '#363636',
+                              borderColor: 'rgba(255, 255, 255, 0.4)',
                             },
                           }}
                           startIcon={<AddCircleOutline />}
@@ -4638,11 +4657,11 @@ const EditorPage = ({ shows }) => {
                             marginTop: '10px',
                             marginBottom: '12px',
                             color: '#f8fafc',
-                            backgroundColor: '#1f2937',
-                            border: '1px solid rgba(226, 232, 240, 0.3)',
+                            backgroundColor: '#1f1f1f',
+                            border: '1px solid rgba(255, 255, 255, 0.24)',
                             '&:hover': {
-                              backgroundColor: '#2a364a',
-                              borderColor: 'rgba(226, 232, 240, 0.45)',
+                              backgroundColor: '#2a2a2a',
+                              borderColor: 'rgba(255, 255, 255, 0.38)',
                             },
                           }}
                           startIcon={<AddPhotoAlternate />}
