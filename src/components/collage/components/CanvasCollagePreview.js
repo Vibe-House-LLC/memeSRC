@@ -775,6 +775,7 @@ const CanvasCollagePreview = ({
   const [actionMenuAnchorEl, setActionMenuAnchorEl] = useState(null);
   const [actionMenuPanelId, setActionMenuPanelId] = useState(null);
   const [actionMenuPosition, setActionMenuPosition] = useState(null);
+  const frameTapSuppressUntilRef = useRef(0);
 
   // Border dragging state
   const [borderZones, setBorderZones] = useState([]);
@@ -2786,9 +2787,10 @@ const CanvasCollagePreview = ({
     // Respect optional suppression window; guard against unexpected errors
     const suppressed = (() => {
       try {
+        if (Date.now() < (frameTapSuppressUntilRef.current || 0)) return true;
         return typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed();
       } catch (e) {
-        return false;
+        return Date.now() < (frameTapSuppressUntilRef.current || 0);
       }
     })();
     if (suppressed) return;
@@ -2818,7 +2820,8 @@ const CanvasCollagePreview = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (activeStickerId) {
-      clearActiveStickerSelection();
+      frameTapSuppressUntilRef.current = Date.now() + 260;
+      clearActiveStickerSelection(e);
       return;
     }
     
@@ -3142,6 +3145,7 @@ const CanvasCollagePreview = ({
     if (touches.length === 1) {
       if (activeStickerId) {
         touchStartInfo.current = null;
+        frameTapSuppressUntilRef.current = Date.now() + 260;
         clearActiveStickerSelection(e);
         return;
       }
@@ -3612,7 +3616,7 @@ const CanvasCollagePreview = ({
         // Confirmed tap on a frame: open actions menu (unless suppressed)
         if (textEditingPanel === null) {
           const touch = e.changedTouches[0];
-          if (!(typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed())) {
+          if (Date.now() >= (frameTapSuppressUntilRef.current || 0) && !(typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed())) {
             handleActionMenuOpen({ clientX: touch.clientX, clientY: touch.clientY }, touchStartInfo.current.panelId);
           }
         }
@@ -4363,26 +4367,6 @@ const CanvasCollagePreview = ({
                     }}
                   >
                     <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
-                  </Box>
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      width: componentWidth < 560 ? 26 : 22,
-                      height: componentWidth < 560 ? 26 : 22,
-                      transform: 'translate(-50%, -50%)',
-                      borderRadius: '50%',
-                      backgroundColor: 'rgba(15, 23, 42, 0.68)',
-                      border: '1px solid rgba(255,255,255,0.72)',
-                      color: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    <DragIndicator sx={{ fontSize: componentWidth < 560 ? 15 : 13 }} />
                   </Box>
                 </Box>
               );
