@@ -92,7 +92,8 @@ const CollagePreview = ({
   const { user, shows } = useContext(UserContext);
   const searchDetailsV2 = useContext(V2SearchContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
-  const hasLibraryAccess = isAdmin || (user?.userDetails?.magicSubscription === 'true');
+  const hasMagicEditorAccess = isAdmin || (user?.userDetails?.magicSubscription === 'true');
+  const hasLibraryAccess = hasMagicEditorAccess;
   const favoriteSeriesIds = useMemo(
     () => (Array.isArray(shows)
       ? shows.filter((show) => show?.isFavorite).map((show) => show.id).filter(Boolean)
@@ -891,8 +892,8 @@ const CollagePreview = ({
         images={selectedImages}
         onPanelClick={handlePanelClick}
         onRemovePanel={onRemovePanelRequest}
-        onEditImage={isAdmin ? handleEditImageRequest : undefined}
-        canEditImage={isAdmin}
+        onEditImage={hasMagicEditorAccess ? handleEditImageRequest : undefined}
+        canEditImage={hasMagicEditorAccess}
         onSaveGestureDetected={onGenerateNudgeRequested}
         isFrameActionSuppressed={isFrameActionSuppressed}
         isHydratingProject={isHydratingProject}
