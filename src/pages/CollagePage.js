@@ -219,6 +219,7 @@ export default function CollagePage() {
   const libraryActionsRef = useRef({ primary: null, clearSelection: null });
   const [startInLibrary, setStartInLibrary] = useState(false);
   const [isLibraryPickerOpen, setIsLibraryPickerOpen] = useState(false);
+  const [isPanelSourceDialogOpen, setIsPanelSourceDialogOpen] = useState(false);
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
@@ -1939,6 +1940,7 @@ export default function CollagePage() {
     libraryRefreshTrigger, // For refreshing library when new images are auto-saved
     initialShowLibrary: startInLibrary,
     onLibraryPickerOpenChange: setIsLibraryPickerOpen,
+    onPanelSourceDialogOpenChange: setIsPanelSourceDialogOpen,
     onCaptionEditorVisibleChange: (open) => {
       setIsCaptionEditorOpen(open);
       captionOpenPrevRef.current = open;
@@ -2256,7 +2258,7 @@ export default function CollagePage() {
             </Snackbar>
 
             {/* Bottom Action Bar (admins always see; no animation) */}
-            {(!showResultDialog && !isCaptionEditorOpen && !isLibraryPickerOpen) && (
+            {(!showResultDialog && !isCaptionEditorOpen && !isLibraryPickerOpen && !isPanelSourceDialogOpen) && (
                 <Box
                   sx={{
                     position: 'fixed',

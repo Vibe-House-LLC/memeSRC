@@ -52,6 +52,7 @@ const CollageImagesStep = ({
   handleOpenExportDialog = () => { console.warn("handleOpenExportDialog default prop called"); },
   onCollageGenerated = null,
   isCreatingCollage,
+  onPanelSourceDialogOpenChange,
   onCaptionEditorVisibleChange,
   onGenerateNudgeRequested,
   isFrameActionSuppressed,
@@ -246,24 +247,25 @@ const CollageImagesStep = ({
             handleOpenExportDialog={handleOpenExportDialog}
             onCollageGenerated={onCollageGenerated}
             isCreatingCollage={isCreatingCollage}
-          onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
-          onGenerateNudgeRequested={onGenerateNudgeRequested}
-          isFrameActionSuppressed={isFrameActionSuppressed}
-          // Render tracking
-          renderSig={renderSig}
-          onPreviewRendered={onPreviewRendered}
-          onPreviewMetaChange={onPreviewMetaChange}
-          // Editing session tracking
-          onEditingSessionChange={onEditingSessionChange}
-          // Initialize with custom layout if provided
-          customLayout={customLayout}
-          customLayoutKey={customLayoutKey}
-          isHydratingProject={isHydratingProject}
-          allowHydrationTransformCarry={allowHydrationTransformCarry}
-          panelAutoOpenRequest={panelAutoOpenRequest}
-          onPanelAutoOpenHandled={onPanelAutoOpenHandled}
-          onRemovePanelRequest={onRemovePanelRequest}
-        />
+            onPanelSourceDialogOpenChange={onPanelSourceDialogOpenChange}
+            onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
+            onGenerateNudgeRequested={onGenerateNudgeRequested}
+            isFrameActionSuppressed={isFrameActionSuppressed}
+            // Render tracking
+            renderSig={renderSig}
+            onPreviewRendered={onPreviewRendered}
+            onPreviewMetaChange={onPreviewMetaChange}
+            // Editing session tracking
+            onEditingSessionChange={onEditingSessionChange}
+            // Initialize with custom layout if provided
+            customLayout={customLayout}
+            customLayoutKey={customLayoutKey}
+            isHydratingProject={isHydratingProject}
+            allowHydrationTransformCarry={allowHydrationTransformCarry}
+            panelAutoOpenRequest={panelAutoOpenRequest}
+            onPanelAutoOpenHandled={onPanelAutoOpenHandled}
+            onRemovePanelRequest={onRemovePanelRequest}
+          />
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 0.5 }}>
           <Button
@@ -347,6 +349,7 @@ CollageImagesStep.propTypes = {
   // Editing session tracking
   onEditingSessionChange: PropTypes.func,
   isCreatingCollage: PropTypes.bool,
+  onPanelSourceDialogOpenChange: PropTypes.func,
   onAddPanelRequest: PropTypes.func,
   canAddPanel: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,
