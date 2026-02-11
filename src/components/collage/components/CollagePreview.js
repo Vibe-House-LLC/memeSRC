@@ -8,11 +8,7 @@ import {
   DialogActions,
   Button,
   IconButton,
-  AppBar,
-  Toolbar,
   Typography,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
@@ -22,7 +18,7 @@ import { aspectRatioPresets } from '../config/CollageConfig';
 import CanvasCollagePreview from './CanvasCollagePreview';
 import { useNavigate, useLocation } from 'react-router-dom';
 import CollageFrameSearchModal from './CollageFrameSearchModal';
-import { LibraryBrowser } from '../../library';
+import { LibraryPickerDialog } from '../../library';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { saveImageToLibrary } from '../../../utils/library/saveImageToLibrary';
 import { UserContext } from '../../../UserContext';
@@ -89,8 +85,6 @@ const CollagePreview = ({
   allowHydrationTransformCarry = false,
 }) => {
   const fileInputRef = useRef(null);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, shows } = useContext(UserContext);
   const searchDetailsV2 = useContext(V2SearchContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
@@ -1062,91 +1056,23 @@ const CollagePreview = ({
 
       {/* My Library selection dialog for frame add/replace */}
       {hasLibraryAccess && (
-        <Dialog
+        <LibraryPickerDialog
           open={isLibraryOpen}
           onClose={handleLibraryClose}
-          fullWidth
-          maxWidth="md"
-          fullScreen={isMobile}
-          PaperProps={{
-            sx: {
-              borderRadius: isMobile ? 0 : 2,
-              bgcolor: '#121212',
-              color: '#eaeaea',
-            },
+          title="Select a photo"
+          onSelect={(arr) => handleLibrarySelect(arr)}
+          busy={searchSelectionBusy}
+          browserProps={{
+            multiple: false,
+            uploadEnabled: true,
+            deleteEnabled: false,
+            showActionBar: false,
+            selectionEnabled: true,
+            previewOnClick: true,
+            showSelectToggle: true,
+            initialSelectMode: true,
           }}
-        >
-          {isMobile ? (
-            <AppBar
-              position="sticky"
-              color="default"
-              elevation={0}
-              sx={{ borderBottom: '1px solid #2a2a2a', bgcolor: '#121212', color: '#eaeaea' }}
-            >
-              <Toolbar>
-                <Typography variant="h6" sx={{ flexGrow: 1, color: '#eaeaea' }}>
-                  Select a photo
-                </Typography>
-                <IconButton
-                  edge="end"
-                  aria-label="close"
-                  onClick={handleLibraryClose}
-                  sx={{ color: '#eaeaea' }}
-                  disabled={searchSelectionBusy}
-                >
-                  <CloseIcon />
-                </IconButton>
-              </Toolbar>
-            </AppBar>
-          ) : (
-            <DialogTitle sx={{ pr: 6, color: '#eaeaea' }}>
-              Select a photo
-              <IconButton
-                aria-label="close"
-                onClick={handleLibraryClose}
-                sx={{ position: 'absolute', right: 8, top: 8, color: '#eaeaea' }}
-                disabled={searchSelectionBusy}
-              >
-                <CloseIcon />
-              </IconButton>
-            </DialogTitle>
-          )}
-          <DialogContent dividers sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#0f0f0f' }}>
-            <LibraryBrowser
-              multiple={false}
-              uploadEnabled
-              deleteEnabled={false}
-              onSelect={(arr) => handleLibrarySelect(arr)}
-              showActionBar={false}
-              selectionEnabled
-              previewOnClick
-              showSelectToggle
-              initialSelectMode
-            />
-          </DialogContent>
-          <DialogActions sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
-            <Button
-              onClick={handleLibraryClose}
-              variant="contained"
-              disableElevation
-              fullWidth={isMobile}
-              disabled={searchSelectionBusy}
-              sx={{
-                bgcolor: '#252525',
-                color: '#f0f0f0',
-                border: '1px solid #3a3a3a',
-                borderRadius: '8px',
-                px: isMobile ? 2 : 2.5,
-                py: isMobile ? 1.25 : 0.75,
-                textTransform: 'none',
-                fontWeight: 600,
-                '&:hover': { bgcolor: '#2d2d2d', borderColor: '#4a4a4a' },
-              }}
-            >
-              Cancel
-            </Button>
-          </DialogActions>
-        </Dialog>
+        />
       )}
 
       {/* memeSRC search selection modal for frame add/replace */}

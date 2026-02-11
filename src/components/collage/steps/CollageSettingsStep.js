@@ -15,8 +15,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  CircularProgress
+  DialogActions
 } from "@mui/material";
 import {
   KeyboardArrowLeft,
@@ -33,11 +32,10 @@ import {
   ArrowUpward,
   ArrowDownward,
   DeleteOutline,
-  AddPhotoAlternate,
-  Close
+  AddPhotoAlternate
 } from "@mui/icons-material";
 import { UserContext } from "../../../UserContext";
-import { LibraryBrowser } from "../../library";
+import { LibraryPickerDialog } from "../../library";
 
 // Import styled components
 import { TemplateCard } from "../styled/CollageStyled";
@@ -1549,43 +1547,24 @@ const CollageLayoutSettings = ({
         )}
       </Box>
 
-      <Dialog
+      <LibraryPickerDialog
         open={stickerLibraryOpen}
         onClose={closeStickerLibrary}
-        fullWidth
-        maxWidth="md"
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          Choose a sticker from your library
-          <IconButton onClick={closeStickerLibrary} disabled={stickerLoading} aria-label="close sticker library">
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ p: isMobile ? 1.25 : 2 }}>
-          <LibraryBrowser
-            multiple={false}
-            uploadEnabled
-            deleteEnabled={false}
-            onSelect={(arr) => { void handleStickerLibrarySelect(arr); }}
-            showActionBar={false}
-            selectionEnabled
-            previewOnClick
-            showSelectToggle
-            initialSelectMode
-          />
-          {stickerError && (
-            <Alert severity="error" sx={{ mt: 1.25 }}>
-              {stickerError}
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: isMobile ? 1.5 : 2, py: 1.2 }}>
-          {stickerLoading && <CircularProgress size={20} sx={{ mr: 'auto' }} />}
-          <Button onClick={closeStickerLibrary} disabled={stickerLoading}>
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
+        title="Choose a sticker from your library"
+        onSelect={(arr) => { void handleStickerLibrarySelect(arr); }}
+        busy={stickerLoading}
+        errorText={stickerError}
+        browserProps={{
+          multiple: false,
+          uploadEnabled: true,
+          deleteEnabled: false,
+          showActionBar: false,
+          selectionEnabled: true,
+          previewOnClick: true,
+          showSelectToggle: true,
+          initialSelectMode: true,
+        }}
+      />
     </Box>
   );
 };

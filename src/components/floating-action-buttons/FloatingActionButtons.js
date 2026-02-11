@@ -12,15 +12,9 @@ import {
     List,
     ListItemButton,
     Chip,
-    Dialog,
-    DialogContent,
-    DialogActions,
-    Button,
-    IconButton,
 } from '@mui/material';
 import { Handyman, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 import { Shuffle as ShuffleIcon } from 'lucide-react';
-import CloseIcon from '@mui/icons-material/Close';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
@@ -28,7 +22,7 @@ import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
-import { LibraryBrowser } from '../library';
+import { LibraryPickerDialog } from '../library';
 import { get as getFromLibrary } from '../../utils/library/storage';
 
 // Define constants for colors and fonts
@@ -570,69 +564,22 @@ function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
     );
 
     const libraryDialog = (
-        <Dialog
-            fullScreen
+        <LibraryPickerDialog
             open={libraryOpen}
             onClose={resetUploadState}
-            PaperProps={{
-                sx: {
-                    bgcolor: '#0b0b0f',
-                    color: '#f5f5f7',
-                    display: 'flex',
-                    flexDirection: 'column',
-                },
+            title="Choose a photo from your Library"
+            onSelect={handleLibrarySelect}
+            browserProps={{
+                multiple: false,
+                uploadEnabled: true,
+                deleteEnabled: false,
+                showActionBar: false,
+                selectionEnabled: true,
+                previewOnClick: true,
+                showSelectToggle: true,
+                initialSelectMode: true,
             }}
-        >
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    px: 2.5,
-                    py: 2,
-                    borderBottom: '1px solid rgba(255,255,255,0.08)',
-                }}
-            >
-                <Typography variant="h6" sx={{ fontWeight: 800, color: '#f5f5f7' }}>
-                    Choose a photo from your Library
-                </Typography>
-                <IconButton onClick={resetUploadState} sx={{ color: '#f5f5f7' }} aria-label="Close library">
-                    <CloseIcon />
-                </IconButton>
-            </Box>
-            <DialogContent
-                sx={{
-                    flex: 1,
-                    px: { xs: 1.5, sm: 2.5 },
-                    py: 2,
-                    bgcolor: '#0b0b0f',
-                }}
-            >
-                <LibraryBrowser
-                    multiple={false}
-                    uploadEnabled
-                    deleteEnabled={false}
-                    onSelect={handleLibrarySelect}
-                    showActionBar={false}
-                    selectionEnabled
-                    previewOnClick
-                    showSelectToggle
-                    initialSelectMode
-                />
-            </DialogContent>
-            <DialogActions
-                sx={{
-                    px: 2.5,
-                    py: 2,
-                    borderTop: '1px solid rgba(255,255,255,0.08)',
-                    bgcolor: '#0b0b0f',
-                }}
-            >
-                <Button onClick={resetUploadState} color="inherit" sx={{ color: '#f5f5f7' }}>
-                    Cancel
-                </Button>
-            </DialogActions>
-        </Dialog>
+        />
     );
 
     const safeAreaSpacerSx = useMemo(() => {

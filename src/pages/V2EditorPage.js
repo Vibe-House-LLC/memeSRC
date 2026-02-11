@@ -17,7 +17,7 @@ import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
 import { getRateLimit, getWebsiteSetting } from '../graphql/queries';
 import TextEditorControls from '../components/TextEditorControls';
-import { LibraryBrowser } from '../components/library';
+import { LibraryPickerDialog } from '../components/library';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
 import { MagicPopupContext } from '../MagicPopupContext';
@@ -5373,39 +5373,23 @@ const EditorPage = ({ shows }) => {
             </StyledLayerControlCard>
           </Popover>
 
-          <Dialog
-            fullScreen={isMobile}
+          <LibraryPickerDialog
             open={stickerPickerOpen}
             onClose={handleCloseStickerPicker}
-            aria-labelledby="sticker-picker-title"
-            fullWidth
-            maxWidth="md"
-          >
-            <DialogTitle id="sticker-picker-title" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              Choose a sticker from your library
-              <IconButton onClick={handleCloseStickerPicker} disabled={stickerLoading} aria-label="close sticker picker">
-                <Close />
-              </IconButton>
-            </DialogTitle>
-            <DialogContent sx={{ px: { xs: 1, sm: 2 }, py: 1.5 }}>
-              <LibraryBrowser
-                multiple={false}
-                uploadEnabled={false}
-                deleteEnabled={false}
-                onSelect={handleStickerLibrarySelect}
-                showActionBar={false}
-                selectionEnabled={false}
-                previewOnClick={false}
-                instantSelectOnClick
-              />
-            </DialogContent>
-            <DialogActions sx={{ px: 2, pb: 2 }}>
-              {stickerLoading && <CircularProgress size={20} sx={{ mr: 'auto' }} />}
-              <Button onClick={handleCloseStickerPicker} disabled={stickerLoading}>
-                Close
-              </Button>
-            </DialogActions>
-          </Dialog>
+            title="Choose a sticker from your library"
+            onSelect={handleStickerLibrarySelect}
+            busy={stickerLoading}
+            browserProps={{
+              multiple: false,
+              uploadEnabled: true,
+              deleteEnabled: false,
+              showActionBar: false,
+              selectionEnabled: true,
+              previewOnClick: true,
+              showSelectToggle: true,
+              initialSelectMode: true,
+            }}
+          />
 
           <Dialog
             open={openDialog}
