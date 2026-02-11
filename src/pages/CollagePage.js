@@ -220,6 +220,7 @@ export default function CollagePage() {
   const [startInLibrary, setStartInLibrary] = useState(false);
   const [isLibraryPickerOpen, setIsLibraryPickerOpen] = useState(false);
   const [isPanelSourceDialogOpen, setIsPanelSourceDialogOpen] = useState(false);
+  const [isStickerLibraryOpen, setIsStickerLibraryOpen] = useState(false);
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
@@ -1887,6 +1888,7 @@ export default function CollagePage() {
     onAddStickerFromLibrary: handleAddStickerFromLibrary,
     onMoveSticker: moveSticker,
     onRemoveSticker: removeSticker,
+    onStickerLibraryOpenChange: setIsStickerLibraryOpen,
   };
 
   // Handler for when collage is generated - show inline result
@@ -2258,7 +2260,11 @@ export default function CollagePage() {
             </Snackbar>
 
             {/* Bottom Action Bar (admins always see; no animation) */}
-            {(!showResultDialog && !isCaptionEditorOpen && !isLibraryPickerOpen && !isPanelSourceDialogOpen) && (
+            {(!showResultDialog
+              && !isCaptionEditorOpen
+              && !isLibraryPickerOpen
+              && !isPanelSourceDialogOpen
+              && !isStickerLibraryOpen) && (
                 <Box
                   sx={{
                     position: 'fixed',

@@ -347,6 +347,7 @@ const CollageLayoutSettings = ({
   borderThicknessOptions,
   stickers = [],
   canManageStickers = false,
+  onStickerLibraryOpenChange,
   onAddStickerFromLibrary,
   onMoveSticker,
   onRemoveSticker,
@@ -410,6 +411,18 @@ const CollageLayoutSettings = ({
     const nextTab = document.getElementById(`collage-settings-tab-${nextSettingId}`);
     if (nextTab) nextTab.focus();
   };
+
+  useEffect(() => {
+    if (typeof onStickerLibraryOpenChange === 'function') {
+      onStickerLibraryOpenChange(Boolean(stickerLibraryOpen));
+    }
+  }, [stickerLibraryOpen, onStickerLibraryOpenChange]);
+
+  useEffect(() => () => {
+    if (typeof onStickerLibraryOpenChange === 'function') {
+      onStickerLibraryOpenChange(false);
+    }
+  }, [onStickerLibraryOpenChange]);
   
   // Get aspect ratio value based on selected preset
   const getAspectRatioValue = () => {
