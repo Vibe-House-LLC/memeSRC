@@ -8,9 +8,9 @@ export const SimplePanel = ({ filled, theme }) => (
       width: '100%',
       height: '100%',
       backgroundColor: filled 
-        ? (theme?.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.3)' : 'rgba(25, 118, 210, 0.1)')
-        : (theme?.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'white'),
-      border: `1px solid ${theme?.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)'}`,
+        ? (theme?.palette.mode === 'dark' ? 'rgba(245, 245, 245, 0.16)' : 'rgba(245, 245, 245, 0.3)')
+        : (theme?.palette.mode === 'dark' ? 'rgba(245, 245, 245, 0.08)' : 'rgba(16, 18, 20, 0.06)'),
+      border: `1px solid ${theme?.palette.mode === 'dark' ? 'rgba(245, 245, 245, 0.58)' : 'rgba(16, 18, 20, 0.34)'}`,
       borderRadius: '4px',
       boxSizing: 'border-box',
     }}
@@ -33,7 +33,7 @@ export const getBaseGridStyle = (theme) => ({
   display: 'grid',
   gap: '4px',
   padding: '4px',
-  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(245, 245, 245, 0.08)' : 'rgba(16, 18, 20, 0.05)',
   borderRadius: theme.shape.borderRadius,
   transition: 'all 0.3s ease',
   boxSizing: 'border-box',

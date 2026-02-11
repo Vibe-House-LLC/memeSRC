@@ -894,13 +894,14 @@ const CollageLayoutSettings = ({
                     border: '1px solid',
                     borderColor: theme => selectedAspectRatio === preset.id
                       ? alpha('#ffffff', 0.9)
-                      : alpha('#f5f5f5', 0.22),
-                    backgroundColor: theme => theme.palette.mode === 'dark'
-                      ? alpha('#f5f5f5', 0.12)
-                      : alpha('#101214', 0.08),
+                      : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.52 : 0.42),
+                    backgroundColor: theme => selectedAspectRatio === preset.id
+                      ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.98 : 0.94)
+                      : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.38 : 0.32),
                     color: theme => selectedAspectRatio === preset.id
-                      ? alpha('#ffffff', 0.96)
-                      : alpha('#f5f5f5', 0.76),
+                      ? '#101214'
+                      : (theme.palette.mode === 'dark' ? alpha('#f5f5f5', 0.95) : alpha('#101214', 0.86)),
+                    boxShadow: 'none',
                     '& .MuiChip-label': {
                       px: 0.75,
                       py: 0
