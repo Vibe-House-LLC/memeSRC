@@ -143,6 +143,7 @@ const BulkUploadSection = ({
   onLibrarySelectionChange,
   onLibraryActionsReady,
   initialShowLibrary = false,
+  onLibraryPickerOpenChange,
 }) => {
   const theme = useTheme();
   const { user } = useContext(UserContext);
@@ -160,6 +161,17 @@ const BulkUploadSection = ({
       setLibraryPickerOpen(true);
     }
   }, [initialShowLibrary, hasLibraryAccess]);
+
+  useEffect(() => {
+    if (typeof onLibraryPickerOpenChange === 'function') {
+      onLibraryPickerOpenChange(Boolean(libraryPickerOpen));
+    }
+    return () => {
+      if (typeof onLibraryPickerOpenChange === 'function') {
+        onLibraryPickerOpenChange(false);
+      }
+    };
+  }, [libraryPickerOpen, onLibraryPickerOpenChange]);
 
   // State for context menu
   const [contextMenu, setContextMenu] = useState(null);
@@ -1050,6 +1062,8 @@ const BulkUploadSection = ({
                 open={libraryPickerOpen}
                 onClose={closeLibraryPicker}
                 title="Choose photos from your library"
+                showSelectAction
+                selectActionLabel="Continue"
                 onSelect={(items) => { void handleLibrarySelect(items); }}
                 maxWidth="lg"
                 browserProps={{
@@ -1059,11 +1073,11 @@ const BulkUploadSection = ({
                   refreshTrigger: libraryRefreshTrigger,
                   uploadEnabled: true,
                   deleteEnabled: false,
-                  showActionBar: true,
+                  showActionBar: false,
                   actionBarLabel: 'Add to collage',
                   selectionEnabled: true,
-                  previewOnClick: true,
-                  showSelectToggle: true,
+                  previewOnClick: false,
+                  showSelectToggle: false,
                   initialSelectMode: true,
                 }}
               />
@@ -1107,6 +1121,7 @@ BulkUploadSection.propTypes = {
   onLibrarySelectionChange: PropTypes.func,
   onLibraryActionsReady: PropTypes.func,
   initialShowLibrary: PropTypes.bool,
+  onLibraryPickerOpenChange: PropTypes.func,
 };
 
 export default BulkUploadSection; 

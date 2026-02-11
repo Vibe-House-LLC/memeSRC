@@ -321,6 +321,7 @@ export const CollageLayout = ({
               onLibrarySelectionChange={onLibrarySelectionChange}
               onLibraryActionsReady={onLibraryActionsReady}
               initialShowLibrary={imagesStepProps.initialShowLibrary}
+              onLibraryPickerOpenChange={imagesStepProps.onLibraryPickerOpenChange}
             />
           </Box>
         ) : isMobile ? (
@@ -435,6 +436,7 @@ CollageLayout.propTypes = {
     libraryRefreshTrigger: PropTypes.number,
     isHydratingProject: PropTypes.bool,
     initialShowLibrary: PropTypes.bool,
+    onLibraryPickerOpenChange: PropTypes.func,
   }).isRequired,
   finalImage: PropTypes.string,
   setFinalImage: PropTypes.func.isRequired,

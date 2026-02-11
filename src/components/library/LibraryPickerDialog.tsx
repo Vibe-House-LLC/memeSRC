@@ -29,6 +29,8 @@ type LibraryPickerDialogProps = {
   cancelLabel?: string;
   maxWidth?: DialogProps['maxWidth'];
   browserProps?: Record<string, any>;
+  showSelectAction?: boolean;
+  selectActionLabel?: string;
 };
 
 const defaultBrowserProps = {
@@ -52,11 +54,61 @@ export default function LibraryPickerDialog({
   busy = false,
   errorText = null,
   cancelLabel = 'Cancel',
+  showSelectAction = false,
+  selectActionLabel = 'Continue',
   maxWidth = 'md',
   browserProps = {},
 }: LibraryPickerDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const browserActionsRef = React.useRef<{ primary?: () => void | Promise<void> }>({});
+  const [selectionInfo, setSelectionInfo] = React.useState<{ count: number; minSelected: number }>({
+    count: 0,
+    minSelected: 1,
+  });
+  const [primaryBusy, setPrimaryBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) {
+      browserActionsRef.current = {};
+      setSelectionInfo({ count: 0, minSelected: 1 });
+      setPrimaryBusy(false);
+    }
+  }, [open]);
+
+  const minSelected = Number.isFinite(selectionInfo?.minSelected) ? Number(selectionInfo.minSelected) : 1;
+  const selectedCount = Number.isFinite(selectionInfo?.count) ? Number(selectionInfo.count) : 0;
+  const isPrimaryDisabled = busy || primaryBusy || selectedCount < Math.max(1, minSelected);
+
+  const handlePrimary = React.useCallback(async () => {
+    if (isPrimaryDisabled) return;
+    const primary = browserActionsRef.current?.primary;
+    if (typeof primary !== 'function') return;
+    setPrimaryBusy(true);
+    try {
+      await primary();
+    } finally {
+      setPrimaryBusy(false);
+    }
+  }, [isPrimaryDisabled]);
+
+  const browserOnSelectionChange = React.useCallback((info: any) => {
+    const normalized = {
+      count: Number.isFinite(info?.count) ? Number(info.count) : 0,
+      minSelected: Number.isFinite(info?.minSelected) ? Number(info.minSelected) : 1,
+    };
+    setSelectionInfo(normalized);
+    if (typeof browserProps?.onSelectionChange === 'function') {
+      browserProps.onSelectionChange(info);
+    }
+  }, [browserProps]);
+
+  const browserExposeActions = React.useCallback((actions: any) => {
+    browserActionsRef.current = actions || {};
+    if (typeof browserProps?.exposeActions === 'function') {
+      browserProps.exposeActions(actions);
+    }
+  }, [browserProps]);
 
   return (
     <Dialog
@@ -118,6 +170,9 @@ export default function LibraryPickerDialog({
         <AnyLibraryBrowser
           {...defaultBrowserProps}
           {...browserProps}
+          showActionBar={showSelectAction ? false : browserProps?.showActionBar}
+          onSelectionChange={browserOnSelectionChange}
+          exposeActions={browserExposeActions}
           onSelect={onSelect}
         />
         {errorText ? (
@@ -149,6 +204,35 @@ export default function LibraryPickerDialog({
           >
             {cancelLabel}
           </Button>
+          {showSelectAction ? (
+            <Button
+              onClick={() => { void handlePrimary(); }}
+              variant="contained"
+              disableElevation
+              fullWidth={isMobile}
+              disabled={isPrimaryDisabled}
+              sx={{
+                ml: isMobile ? 0 : 1,
+                mt: isMobile ? 1 : 0,
+                bgcolor: '#f3f3f3',
+                color: '#121212',
+                border: '1px solid #f3f3f3',
+                borderRadius: '8px',
+                px: isMobile ? 2 : 2.5,
+                py: isMobile ? 1.25 : 0.75,
+                textTransform: 'none',
+                fontWeight: 700,
+                '&:hover': { bgcolor: '#ffffff', borderColor: '#ffffff' },
+                '&.Mui-disabled': {
+                  bgcolor: '#4a4a4a',
+                  color: '#9d9d9d',
+                  borderColor: '#4a4a4a',
+                },
+              }}
+            >
+              {`${selectActionLabel}${selectedCount > 0 ? ` (${selectedCount})` : ''}`}
+            </Button>
+          ) : null}
         </Box>
       </DialogActions>
     </Dialog>
