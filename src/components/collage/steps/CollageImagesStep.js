@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Button, useMediaQuery } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, alpha } from '@mui/material/styles';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 
 // Import our new dynamic CollagePreview component
@@ -159,6 +159,24 @@ const CollageImagesStep = ({
       onAddPanelRequest(position);
     }
   };
+  const addPanelButtonSx = {
+    textTransform: 'none',
+    fontWeight: 700,
+    borderRadius: 999,
+    px: isMobile ? 1.75 : 2.25,
+    borderColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.55 : 0.42),
+    bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.14 : 0.08),
+    color: 'text.primary',
+    '&:hover': {
+      borderColor: theme.palette.primary.main,
+      bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.16),
+    },
+    '&.Mui-disabled': {
+      borderColor: alpha(theme.palette.action.disabled, 0.35),
+      color: 'text.disabled',
+      bgcolor: alpha(theme.palette.action.disabledBackground, theme.palette.mode === 'dark' ? 0.25 : 0.5),
+    },
+  };
 
   return (
     <Box sx={{ my: isMobile ? 0 : 0.25 }}>
@@ -176,21 +194,12 @@ const CollageImagesStep = ({
         <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: isMobile ? 0.75 : 1 }}>
           <Button
             variant="outlined"
-            color="inherit"
+            color="primary"
             size={isMobile ? 'small' : 'medium'}
             startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
             onClick={() => triggerAddPanelRequest('start')}
             disabled={!canTriggerAddPanel}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 700,
-              borderColor: 'rgba(255,255,255,0.35)',
-              color: '#fff',
-              '&:hover': {
-                borderColor: 'rgba(255,255,255,0.65)',
-                backgroundColor: 'rgba(255,255,255,0.06)',
-              },
-            }}
+            sx={addPanelButtonSx}
           >
             Add panel
           </Button>
@@ -250,21 +259,12 @@ const CollageImagesStep = ({
         <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 0.5 }}>
           <Button
             variant="outlined"
-            color="inherit"
+            color="primary"
             size={isMobile ? 'small' : 'medium'}
             startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
             onClick={() => triggerAddPanelRequest('end')}
             disabled={!canTriggerAddPanel}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 700,
-              borderColor: 'rgba(255,255,255,0.35)',
-              color: '#fff',
-              '&:hover': {
-                borderColor: 'rgba(255,255,255,0.65)',
-                backgroundColor: 'rgba(255,255,255,0.06)',
-              },
-            }}
+            sx={addPanelButtonSx}
           >
             Add panel
           </Button>

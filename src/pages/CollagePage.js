@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
@@ -1836,6 +1836,73 @@ export default function CollagePage() {
     }
   }, [panelImageMapping, selectedImages, borderThickness, borderThicknessValue, borderColor, selectedAspectRatio, panelTransforms]);
 
+  const neutralButtonBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 1);
+  const neutralButtonHoverBg = alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.62 : 1);
+  const neutralButtonBorder = alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82);
+  const neutralButtonHoverBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.36 : 0.22);
+  const neutralButtonShadow = `0 4px 14px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.32 : 0.14)}`;
+  const neutralActionButtonSx = {
+    minHeight: 48,
+    minWidth: isMobile ? 48 : undefined,
+    px: isMobile ? 1.25 : 2,
+    borderRadius: 1.5,
+    fontWeight: 700,
+    textTransform: 'none',
+    color: 'text.primary',
+    backgroundColor: neutralButtonBg,
+    border: '1px solid',
+    borderColor: neutralButtonBorder,
+    boxShadow: neutralButtonShadow,
+    '&:hover': {
+      backgroundColor: neutralButtonHoverBg,
+      borderColor: neutralButtonHoverBorder,
+      boxShadow: neutralButtonShadow,
+    },
+  };
+  const primaryActionButtonSx = {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 1.5,
+    fontWeight: 700,
+    textTransform: 'none',
+    backgroundColor: theme.palette.primary.main,
+    border: '1px solid',
+    borderColor: alpha(theme.palette.primary.dark, 0.95),
+    boxShadow: nudgeVisualActive
+      ? `0 10px 28px ${alpha(theme.palette.primary.main, 0.52)}`
+      : `0 6px 18px ${alpha(theme.palette.primary.main, 0.34)}`,
+    transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
+    transition: 'transform 180ms ease, box-shadow 220ms ease, background-color 160ms ease',
+    color: 'primary.contrastText',
+    '&:hover': {
+      backgroundColor: theme.palette.primary.dark,
+      boxShadow: nudgeVisualActive
+        ? `0 10px 28px ${alpha(theme.palette.primary.main, 0.56)}`
+        : `0 6px 18px ${alpha(theme.palette.primary.main, 0.4)}`,
+    },
+  };
+  const settingsActionButtonSx = {
+    ...neutralActionButtonSx,
+    px: 2,
+    color: settingsOpen ? 'text.primary' : 'text.primary',
+    backgroundColor: settingsOpen
+      ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.12)
+      : neutralButtonBg,
+    borderColor: settingsOpen ? alpha(theme.palette.primary.main, 0.72) : neutralButtonBorder,
+    boxShadow: settingsOpen
+      ? `0 0 0 1px ${alpha(theme.palette.primary.main, 0.4)}, ${neutralButtonShadow}`
+      : neutralButtonShadow,
+    '&:hover': {
+      backgroundColor: settingsOpen
+        ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.28 : 0.18)
+        : neutralButtonHoverBg,
+      borderColor: settingsOpen ? alpha(theme.palette.primary.main, 0.9) : neutralButtonHoverBorder,
+      boxShadow: settingsOpen
+        ? `0 0 0 1px ${alpha(theme.palette.primary.main, 0.55)}, ${neutralButtonShadow}`
+        : neutralButtonShadow,
+    },
+  };
+
   return (
     <>
       <Helmet><title>Collage Tool - Editor - memeSRC</title></Helmet>
@@ -1875,9 +1942,8 @@ export default function CollagePage() {
                   mb: isMobile ? 0.25 : 0.75,
                   pl: isMobile ? 0.5 : 0,
                   ml: isMobile ? 0 : -0.5,
-                  color: '#fff',
+                  color: 'text.primary',
                   fontSize: isMobile ? '2.2rem' : '2.5rem',
-                  textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
                 }}>
                   <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
                   <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -1888,8 +1954,10 @@ export default function CollagePage() {
                         size="small" 
                         onClick={() => setShowEarlyAccess(true)}
                         sx={{ 
-                          backgroundColor: '#ff9800',
-                          color: '#000',
+                          backgroundColor: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.26 : 0.18),
+                          color: theme.palette.warning.light,
+                          border: '1px solid',
+                          borderColor: alpha(theme.palette.warning.main, 0.6),
                           fontWeight: 'bold',
                           fontSize: '0.65rem',
                           height: 20,
@@ -1913,8 +1981,8 @@ export default function CollagePage() {
                 severity="warning"
                 sx={{
                   mb: 2,
-                  border: '1px solid rgba(255, 193, 7, 0.4)',
-                  background: 'rgba(255, 193, 7, 0.12)',
+                  border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+                  background: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.14 : 0.1),
                 }}
                 action={(
                   <Stack direction={isMobile ? 'column' : 'row'} spacing={1} sx={{ minWidth: isMobile ? 'auto' : 240 }}>
@@ -1980,7 +2048,7 @@ export default function CollagePage() {
                   sx={{
                     position: 'absolute',
                     inset: 0,
-                    bgcolor: 'rgba(0,0,0,0.35)',
+                    bgcolor: alpha(theme.palette.common.black, 0.35),
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1990,8 +2058,8 @@ export default function CollagePage() {
                   }}
                 >
                   <Stack spacing={1} alignItems="center">
-                    <CircularProgress size={26} thickness={4} sx={{ color: '#fff' }} />
-                    <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600 }}>
+                    <CircularProgress size={26} thickness={4} sx={{ color: 'common.white' }} />
+                    <Typography variant="subtitle2" sx={{ color: 'common.white', fontWeight: 600 }}>
                       Loading project…
                     </Typography>
                   </Stack>
@@ -2020,12 +2088,12 @@ export default function CollagePage() {
                     left: 0,
                     right: 0,
                     zIndex: 1600,
-                    bgcolor: 'background.paper',
+                    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.94 : 0.98),
                     borderTop: 1,
                     borderColor: 'divider',
                     p: isMobile ? 1.5 : 2,
                     pb: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
-                    boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
+                    boxShadow: `0 -8px 30px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.34 : 0.14)}`,
                     backdropFilter: 'blur(20px)',
                     display: 'flex',
                     justifyContent: 'center',
@@ -2044,18 +2112,8 @@ export default function CollagePage() {
                                 variant="contained"
                                 onClick={handleLibraryCancel}
                                 disabled={isCreatingCollage}
-                                sx={{
-                                  flex: 1,
-                                  minHeight: 48,
-                                  fontWeight: 700,
-                                  textTransform: 'none',
-                                  background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                  border: '1px solid #3a3a3a',
-                                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                  color: '#e0e0e0',
-                                  '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                }}
-                                startIcon={<Close sx={{ color: '#e0e0e0' }} />}
+                                sx={{ ...neutralActionButtonSx, flex: 1 }}
+                                startIcon={<Close />}
                               >
                                 Cancel
                               </Button>
@@ -2065,17 +2123,7 @@ export default function CollagePage() {
                               variant="contained"
                               onClick={() => libraryActionsRef.current?.primary?.()}
                               disabled={isCreatingCollage || (librarySelection?.count || 0) < (librarySelection?.minSelected || 1)}
-                              sx={{
-                                flex: 1,
-                                minHeight: 48,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                                border: '1px solid #8b5cc7',
-                                boxShadow: '0 6px 20px rgba(139, 92, 199, 0.4)',
-                                color: '#fff',
-                                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                              }}
+                              sx={primaryActionButtonSx}
                               startIcon={<ArrowForward />}
                             >
                               Continue
@@ -2091,22 +2139,11 @@ export default function CollagePage() {
                                   variant="contained"
                                   onClick={handleBackToProjects}
                                   disabled={isCreatingCollage}
-                                  startIcon={!isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : undefined}
+                                  startIcon={!isMobile ? <ArrowBack /> : undefined}
                                   aria-label="Back to memes"
-                                  sx={{
-                                    minHeight: 48,
-                                    minWidth: isMobile ? 48 : undefined,
-                                    px: isMobile ? 1.25 : 2,
-                                    fontWeight: 700,
-                                    textTransform: 'none',
-                                    background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                    border: '1px solid #3a3a3a',
-                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                    color: '#e0e0e0',
-                                    '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                  }}
+                                  sx={neutralActionButtonSx}
                                 >
-                                  {isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : 'Back to Memes'}
+                                  {isMobile ? <ArrowBack /> : 'Back to Memes'}
                                 </Button>
                               </Collapse>
                             )}
@@ -2119,18 +2156,7 @@ export default function CollagePage() {
                                   disabled={isCreatingCollage}
                                   startIcon={!isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : undefined}
                                   aria-label="Start over"
-                                  sx={{
-                                    minHeight: 48,
-                                    minWidth: isMobile ? 48 : undefined,
-                                    px: isMobile ? 1.25 : 2,
-                                    fontWeight: 700,
-                                    textTransform: 'none',
-                                    background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                    border: '1px solid #3a3a3a',
-                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                    color: '#e0e0e0',
-                                    '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                  }}
+                                  sx={neutralActionButtonSx}
                                 >
                                   {isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : 'Start Over'}
                                 </Button>
@@ -2143,19 +2169,7 @@ export default function CollagePage() {
                               disabled={isCreatingCollage || !allPanelsHaveImages}
                               size="large"
                               startIcon={<Save />}
-                              sx={{
-                                flex: 1,
-                                minHeight: 48,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                                border: '1px solid #8b5cc7',
-                                boxShadow: nudgeVisualActive ? '0 10px 28px rgba(139, 92, 199, 0.6)' : '0 6px 20px rgba(139, 92, 199, 0.4)',
-                                transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
-                                transition: 'transform 180ms ease, box-shadow 220ms ease',
-                                color: '#fff',
-                                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                              }}
+                              sx={primaryActionButtonSx}
                               aria-label="Create and save meme"
                               ref={generateBtnRef}
                             >
@@ -2168,19 +2182,9 @@ export default function CollagePage() {
                                   variant="contained"
                                   onClick={handleToggleSettings}
                                   disabled={isCreatingCollage}
-                                  startIcon={<Settings sx={{ color: '#ffffff' }} />}
+                                  startIcon={<Settings />}
                                   aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
-                                  sx={{
-                                    minHeight: 48,
-                                    px: 2,
-                                    fontWeight: 700,
-                                    textTransform: 'none',
-                                    background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                    border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
-                                    boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                    color: '#e0e0e0',
-                                    '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                  }}
+                                  sx={settingsActionButtonSx}
                                 >
                                   {settingsOpen ? 'Close' : 'Settings'}
                                 </Button>
@@ -2200,18 +2204,7 @@ export default function CollagePage() {
                               disabled={isCreatingCollage}
                               startIcon={!isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : undefined}
                               aria-label="Start over"
-                              sx={{
-                                minHeight: 48,
-                                minWidth: isMobile ? 48 : undefined,
-                                px: isMobile ? 1.25 : 2,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                border: '1px solid #3a3a3a',
-                                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                color: '#e0e0e0',
-                                '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                              }}
+                              sx={neutralActionButtonSx}
                             >
                               {isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : 'Start Over'}
                             </Button>
@@ -2223,19 +2216,7 @@ export default function CollagePage() {
                             disabled={isCreatingCollage || !allPanelsHaveImages}
                             size="large"
                             startIcon={<Save />}
-                            sx={{
-                              flex: 1,
-                              minHeight: 48,
-                              fontWeight: 700,
-                              textTransform: 'none',
-                              background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                              border: '1px solid #8b5cc7',
-                              boxShadow: nudgeVisualActive ? '0 10px 28px rgba(139, 92, 199, 0.6)' : '0 6px 20px rgba(139, 92, 199, 0.4)',
-                              transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
-                              transition: 'transform 180ms ease, box-shadow 220ms ease',
-                              color: '#fff',
-                              '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                            }}
+                            sx={primaryActionButtonSx}
                             aria-label="Create and save meme"
                             ref={generateBtnRef}
                           >
@@ -2248,19 +2229,9 @@ export default function CollagePage() {
                                 variant="contained"
                                 onClick={handleToggleSettings}
                                 disabled={isCreatingCollage}
-                                startIcon={<Settings sx={{ color: '#ffffff' }} />}
+                                startIcon={<Settings />}
                                 aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
-                                sx={{
-                                  minHeight: 48,
-                                  px: 2,
-                                  fontWeight: 700,
-                                  textTransform: 'none',
-                                  background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                  border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
-                                  boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                  color: '#e0e0e0',
-                                  '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                }}
+                                sx={settingsActionButtonSx}
                               >
                                 {settingsOpen ? 'Close' : 'Settings'}
                               </Button>
@@ -2289,13 +2260,13 @@ export default function CollagePage() {
                     alignItems: 'center',
                     position: 'relative',
                     transform: 'translateX(-50%)',
-                    bgcolor: 'rgba(25, 25, 25, 0.98)',
-                    color: '#fff',
+                    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.97 : 0.99),
+                    color: 'text.primary',
                     px: 2,
                     py: 1.25,
                     borderRadius: 2,
-                    border: '1px solid rgba(139, 92, 199, 0.5)',
-                    boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.55)}`,
+                    boxShadow: `0 12px 32px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.5 : 0.2)}`,
                     maxWidth: 320,
                     width: 'max-content',
                     textAlign: 'center',

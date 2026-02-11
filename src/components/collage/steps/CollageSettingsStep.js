@@ -95,20 +95,20 @@ const PanelCounter = styled(Box)(({ theme }) => ({
   alignItems: 'center',
   justifyContent: 'center',
   gap: theme.spacing(2),
-  padding: theme.spacing(1.25), // Reduced padding to decrease height
-  backgroundColor: alpha(theme.palette.background.paper, 0.6),
+  padding: theme.spacing(1.25),
+  backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.78 : 0.96),
   borderRadius: theme.shape.borderRadius,
-  border: `1px solid ${theme.palette.divider}`,
+  border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.8)}`,
   marginTop: 0,
-  marginBottom: theme.spacing(2) // Reduced bottom margin
+  marginBottom: theme.spacing(2)
 }));
 
 // Panel Count Button
 const PanelCountButton = styled(IconButton)(({ theme }) => ({
-  backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.primary.main, 0.08),
-  color: theme.palette.primary.main,
+  backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.18) : alpha(theme.palette.primary.main, 0.1),
+  color: theme.palette.text.primary,
   '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.3) : alpha(theme.palette.primary.main, 0.15),
+    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.3) : alpha(theme.palette.primary.main, 0.2),
   },
   '&.Mui-disabled': {
     backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.action.disabled, 0.2) : alpha(theme.palette.action.disabled, 0.1),
@@ -248,8 +248,8 @@ const MobileSettingsTypeScroller = styled(Box)(({ theme }) => ({
     display: 'none',
   },
   msOverflowStyle: 'none',
-  gap: theme.spacing(1),
-  paddingBottom: theme.spacing(0.25),
+  gap: theme.spacing(0.9),
+  paddingBottom: theme.spacing(0.35),
   WebkitOverflowScrolling: 'touch',
 }));
 
@@ -261,19 +261,19 @@ const MobileSettingsTypeButton = styled(Button, {
   textTransform: 'none',
   fontWeight: selected ? 700 : 600,
   letterSpacing: 0.1,
-  minHeight: 36,
+  minHeight: 38,
   minWidth: 0,
-  padding: theme.spacing(0.5, 1.6),
-  color: selected ? theme.palette.primary.main : theme.palette.text.secondary,
-  border: `1px solid ${selected ? theme.palette.primary.main : theme.palette.divider}`,
+  padding: theme.spacing(0.6, 1.9),
+  color: selected ? theme.palette.text.primary : theme.palette.text.secondary,
+  border: `1px solid ${selected ? alpha(theme.palette.primary.main, 0.85) : alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.8)}`,
   backgroundColor: selected
-    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.12)
-    : alpha(theme.palette.background.default, theme.palette.mode === 'dark' ? 0.3 : 0.8),
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.14)
+    : alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.88),
   '&:hover': {
     backgroundColor: selected
-      ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.2)
-      : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.25 : 0.7),
-    borderColor: selected ? theme.palette.primary.main : theme.palette.text.disabled,
+      ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.34 : 0.2)
+      : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.55 : 1),
+    borderColor: selected ? theme.palette.primary.main : alpha(theme.palette.text.secondary, 0.55),
   },
   '&.Mui-focusVisible': {
     outline: `2px solid ${alpha(theme.palette.primary.main, 0.6)}`,
@@ -316,10 +316,10 @@ const ColorSwatch = styled(Box)(({ theme, selected }) => ({
   borderRadius: '50%',
   cursor: 'pointer',
   boxSizing: 'border-box',
-  border: selected ? `3px solid ${theme.palette.primary.main}` : '2px solid #ffffff',
+  border: selected ? `3px solid ${theme.palette.primary.main}` : `2px solid ${alpha(theme.palette.background.paper, 0.95)}`,
   boxShadow: selected 
     ? `0 0 0 2px ${theme.palette.primary.main}` 
-    : '0 0 0 1px rgba(0,0,0,0.1)',
+    : `0 0 0 1px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.28 : 0.14)}`,
   transition: theme.transitions.create(
     ['transform', 'box-shadow'],
     { duration: theme.transitions.duration.shorter }
@@ -330,7 +330,7 @@ const ColorSwatch = styled(Box)(({ theme, selected }) => ({
   flexShrink: 0,
   '&:hover': {
     transform: 'scale(1.15)',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
+    boxShadow: `0 4px 10px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.36 : 0.2)}`
   },
   '&:active': {
     transform: 'scale(0.95)',
@@ -925,8 +925,8 @@ const CollageLayoutSettings = ({
       >
         {!isMobile && (
           <StepSectionHeading>
-            <Tag sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
-            <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+            <Tag sx={{ mr: 1.5, color: 'text.secondary', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: 'text.primary' }}>
               Panel Count
             </Typography>
           </StepSectionHeading>
@@ -939,10 +939,10 @@ const CollageLayoutSettings = ({
             onClick={handlePanelCountDecrease}
             size="medium"
             sx={{
-              color: isMobile ? 'text.primary' : '#fff',
-              bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.12) : 'rgba(255, 255, 255, 0.15)',
+              color: 'text.primary',
+              bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.1),
               '&:hover': {
-                bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.22) : 'rgba(255, 255, 255, 0.25)',
+                bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.2),
               },
               width: 32,
               height: 32,
@@ -956,9 +956,8 @@ const CollageLayoutSettings = ({
             minWidth: 50, 
             textAlign: 'center',
             fontWeight: 700,
-            color: isMobile ? 'text.primary' : '#fff',
+            color: 'text.primary',
             fontSize: '2rem',
-            textShadow: '0px 2px 3px rgba(0,0,0,0.1)'
           }}>
             {panelCount}
           </Typography>
@@ -969,10 +968,10 @@ const CollageLayoutSettings = ({
             onClick={handlePanelCountIncrease}
             size="medium"
             sx={{
-              color: isMobile ? 'text.primary' : '#fff',
-              bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.12) : 'rgba(255, 255, 255, 0.15)',
+              color: 'text.primary',
+              bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.1),
               '&:hover': {
-                bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.22) : 'rgba(255, 255, 255, 0.25)',
+                bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.2),
               },
               width: 32,
               height: 32,
@@ -997,8 +996,8 @@ const CollageLayoutSettings = ({
       >
         {!isMobile && (
           <StepSectionHeading>
-            <AspectRatio sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
-            <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+            <AspectRatio sx={{ mr: 1.5, color: 'text.secondary', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: 'text.primary' }}>
               Aspect Ratio
             </Typography>
           </StepSectionHeading>
@@ -1078,7 +1077,7 @@ const CollageLayoutSettings = ({
                       justifyContent: 'center'
                     }}
                   >
-                    <Check sx={{ fontSize: 14, color: 'white' }} />
+                    <Check sx={{ fontSize: 14, color: 'primary.contrastText' }} />
                   </Box>
                 )}
                 
@@ -1142,8 +1141,8 @@ const CollageLayoutSettings = ({
       >
         {!isMobile && (
           <StepSectionHeading>
-            <GridView sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
-            <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+            <GridView sx={{ mr: 1.5, color: 'text.secondary', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: 'text.primary' }}>
               Layout
             </Typography>
           </StepSectionHeading>
@@ -1282,7 +1281,7 @@ const CollageLayoutSettings = ({
                             justifyContent: 'center'
                           }}
                         >
-                          <Check sx={{ fontSize: 14, color: 'white' }} />
+                          <Check sx={{ fontSize: 14, color: 'primary.contrastText' }} />
                         </Box>
                       )}
                     </TemplateCard>
@@ -1324,8 +1323,8 @@ const CollageLayoutSettings = ({
       >
         {!isMobile && (
           <StepSectionHeading sx={{ mb: 0.5 }}>
-            <BorderAll sx={{ mr: 1, color: '#fff', fontSize: '1.3rem' }} />
-            <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+            <BorderAll sx={{ mr: 1, color: 'text.secondary', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: 'text.primary' }}>
               Borders
             </Typography>
           </StepSectionHeading>
@@ -1395,16 +1394,34 @@ const CollageLayoutSettings = ({
               {borderThicknessOptions.map((option, index) => {
                 // Progressive font weight: None=400, then each option gets progressively bolder
                 const fontWeight = option.label === "None" ? 400 : 400 + (index * 100);
+                const isSelected = borderThickness === option.label.toLowerCase();
                 
                 return (
                   <Chip
                     key={option.label}
                     label={option.label}
                     clickable
-                    color={borderThickness === option.label.toLowerCase() ? 'primary' : 'default'}
+                    color={isSelected ? 'primary' : 'default'}
                     onClick={() => setBorderThickness(option.label.toLowerCase())}
                     sx={{ 
-                      fontWeight // Same weight whether selected or not
+                      fontWeight,
+                      height: 34,
+                      borderRadius: 999,
+                      px: 1.1,
+                      border: '1px solid',
+                      borderColor: isSelected ? alpha(theme.palette.primary.main, 0.9) : alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.8),
+                      color: isSelected ? 'text.primary' : 'text.secondary',
+                      backgroundColor: isSelected
+                        ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.14)
+                        : alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.88),
+                      '& .MuiChip-label': {
+                        px: 1.25,
+                      },
+                      '&:hover': {
+                        backgroundColor: isSelected
+                          ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.34 : 0.2)
+                          : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.55 : 1),
+                      },
                     }}
                   />
                 );
@@ -1489,7 +1506,7 @@ const CollageLayoutSettings = ({
                       backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
                     }}
                   >
-                    <Colorize fontSize="small" sx={{ color: isDarkColor(savedCustomColor) ? '#fff' : '#000' }} />
+                    <Colorize fontSize="small" sx={{ color: isDarkColor(savedCustomColor) ? 'common.white' : 'common.black' }} />
                   </ColorSwatch>
                   <input
                     type="color"
